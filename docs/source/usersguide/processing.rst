@@ -194,7 +194,7 @@ Data Extraction
 ---------------
 
 A great deal of information is available in statepoint files (See
-:ref:`devguide_statepoint`), most of which is easily extracted by the provided
+:ref:`usersguide_statepoint`), most of which is easily extracted by the provided
 utility statepoint.py. This utility provides a Python class to load statepoints
 and extract data - it is used in many of the provided plotting utilities, and
 can be used in user-created scripts to carry out manipulations of the data. To

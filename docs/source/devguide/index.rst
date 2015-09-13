@@ -16,9 +16,5 @@ as debugging.
     styleguide
     workflow
     xml-parsing
-    statepoint
-    source
-    particle_restart
-    track
     voxel
     docbuild

@@ -1,4 +1,4 @@
-.. _devguide_statepoint:
+.. _usersguide_statepoint:
 
 =======================
 State Point File Format

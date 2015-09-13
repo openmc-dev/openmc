@@ -1,4 +1,4 @@
-.. _devguide_source:
+.. _usersguide_source:
 
 ==================
 Source File Format

@@ -461,15 +461,16 @@ class MultiGroupXS(object):
         # Construct a collection of the domain filter bins
         if subdomains != 'all':
             cv.check_iterable_type('subdomains', subdomains, Integral)
-            filters.append(self.domain_type)
-            filter_bins.append(tuple(subdomains))
+            for subdomain in subdomains:
+                filters.append(self.domain_type)
+                filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
         if groups != 'all':
             cv.check_iterable_type('groups', groups, Integral)
-            filters.append('energy')
             for group in groups:
-                filter_bins.append(self.energy_groups.get_group_bounds(group))
+                filters.append('energy')
+                filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
         # Query the multi-group cross-section tally for the data
         xs = self.xs_tally.get_values(filters=filters,
@@ -521,11 +522,7 @@ class MultiGroupXS(object):
             raise ValueError(msg)
 
         # Construct a collection of the subdomain filter bins to average across
-        # FIXME: Make Tally.summation take single rather than nested tuples
-        if subdomains != 'all':
-            cv.check_iterable_type('subdomains', subdomains, Integral)
         subdomain_indices = self.get_subdomain_indices(subdomains)
-#        subdomain_indices = [(index,) for index in subdomain_indices]
 
         # Clone this MultiGroupXS to initialize the condensed version
         avg_xs = copy.deepcopy(self)
@@ -596,7 +593,9 @@ class MultiGroupXS(object):
                     string += template.format('', group, bounds[0], bounds[1])
                     average = self.get_xs([group], [subdomain], 'mean')
                     rel_err = self.get_xs([group], [subdomain], 'rel_err')*100.
-                    string += '{:.2e}+/-{:1.2e}%'.format(average, rel_err)
+                    average = average.flatten()[0]
+                    rel_err = rel_err.flatten()[0]
+                    string += '{0:.2e} +/- {1:1.2e}%'.format(average, rel_err)
                     string += '\n'
                 string += '\n'
 
@@ -1062,13 +1061,13 @@ class ScatterMatrixXS(MultiGroupXS):
         # Initialize the Tallies
         super(ScatterMatrixXS, self).create_tallies(scores, filters, keys, estimator)
 
-    def compute_xs(self, correct=False):
+    def compute_xs(self, correction='None'):
         """Computes the multi-group scattering matrix using OpenMC
         tally arithmetic"""
 
-        # FIXME: This should only subtract P1 from the diagonal!!!
-        if correct:
-            scatter_p1 = self.tallies['scatter-P1']
+        # If using P0 correction subtract scatter-P1 from the diagonal
+        if correction == 'P0':
+            scatter_p1 = self.tallies['scatter-1']
             scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
             energy_filter = openmc.Filter(type='energy')
             energy_filter.bins = self.energy_groups.group_edges
@@ -1204,7 +1203,9 @@ class ScatterMatrixXS(MultiGroupXS):
                                           [subdomain], 'mean')
                     rel_err = self.get_xs([in_group], [out_group],
                                           [subdomain], 'rel. err.')*100.
-                    string += '{:.2e}+/-{:1.2e}%'.format(average, rel_err)
+                    average = average.flatten()[0]
+                    rel_err = rel_err.flatten()[0]
+                    string += '{0:1.2e} +/- {:1.2e}%'.format(average, rel_err)
                     string += '\n'
                 string += '\n'
 
@@ -1234,13 +1235,13 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         # Intialize the Tallies
         super(ScatterMatrixXS, self).create_tallies(scores, filters, keys, estimator)
 
-    def compute_xs(self, correct=False):
+    def compute_xs(self, correction='None'):
         """Computes the multi-group nu-scattering matrix using OpenMC
         tally arithmetic"""
 
-        # FIXME: This should only subtract P1 from the diagonal!!!
-        if correct:
-            scatter_p1 = self.tallies['scatter-P1']
+        # If using P0 correction subtract scatter-P1 from the diagonal
+        if correction == 'P0':
+            scatter_p1 = self.tallies['scatter-1']
             scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
             energy_filter = openmc.Filter(type='energy')
             energy_filter.bins = self.energy_groups.group_edges

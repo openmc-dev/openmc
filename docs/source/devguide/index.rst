@@ -18,5 +18,6 @@ as debugging.
     xml-parsing
     statepoint
     particle_restart
+    track
     voxel
     docbuild

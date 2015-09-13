@@ -1075,11 +1075,11 @@ class Tally(object):
                   'Summary info'.format(self.id)
             raise KeyError(msg)
 
-        # Attempt to import the pandas package
+        # Attempt to import Pandas
         try:
             import pandas as pd
         except ImportError:
-            msg = 'The pandas Python package must be installed on your system'
+            msg = 'The Pandas Python package must be installed on your system'
             raise ImportError(msg)
 
         # Initialize a pandas dataframe for the tally data

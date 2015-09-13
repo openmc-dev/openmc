@@ -542,20 +542,99 @@ class MultiGroupXS(object):
         self._xs_tally = xs_results['xs_tally']
         self._offset = xs_results['offset']
 
-    def build_hdf5_store(self, filename='mgxs', directory='mgxs',
-                         append=True, key=None):
+    def build_hdf5_store(self, filename='mgxs', directory='mgxs', append=True):
+        """Export the multi-group cross-section data into an HDF5 binary file.
+
+        This routine constructs an HDF5 file which stores the multi-group
+        cross-section data. The data is be stored in a hierarchy of HDF5 groups
+        from the domain type, domain id, subdomain id (for distribcell domains),
+        and cross-section type. Two datasets for the mean and standard deviation
+        are stored for each subddomain entry in the HDF5 file.
+
+        NOTE: This requires the h5py Python package.
+
+        Parameters
+        ----------
+        filename : str
+            Filename for the HDF5 file (default is 'mgxs')
+
+        directory : str
+            Directory for the HDF5 file (default is 'mgxs')
+
+        append : boolean
+            If true, appends to an existing HDF5 file with the same filename
+            directory (if one exists)
+
+        Raises
+        ------
+        ValueError
+            When this method is called before the multi-group cross-section is
+            computed from tally data.
+        ImportError
+            When h5py is not installed.
+
         """
 
-        :param filename:
-        :param directory:
-        :param append:
-        :param key:
-        :return:
-        """
+        if self.xs_tally is None:
+            msg = 'Unable to get build HDF5 store since the ' \
+                  'cross-section has not been computed'
+            raise ValueError(msg)
 
-        # FIXME:
-        import h5py
-        raise NotImplementedError('HDF5 storage is not yet implemented')
+        # Attempt to import h5py
+        try:
+            import h5py
+        except ImportError:
+            msg = 'The h5py Python package must be installed on your system'
+            raise ImportError(msg)
+
+        filename = directory + '/' + filename + '.h5'
+        filename = filename.replace(' ', '-')
+
+        if append:
+            xs_results = h5py.File(filename, 'a')
+        else:
+            xs_results = h5py.File(filename, 'w')
+
+        # Create an HDF5 group within the file for the domain
+        domain_type_group = xs_results.require_group(self.domain_type)
+        group_name = '{0} {1}'.format(self.domain_type, self.domain.id)
+        domain_group = domain_type_group.require_group(group_name)
+
+        if self.domain_type == 'distribcell':
+            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+        else:
+            subdomains = [self.domain.id]
+
+        # Determine number of digits to pad subdomain group keys
+        num_digits = len(str(self.num_subdomains))
+
+        # Create a separate HDF5 dataset for each subdomain
+        for i, subdomain in enumerate(subdomains):
+
+            # Create an HDF5 group for the subdomain
+            if self.domain_type == 'distribcell':
+                group_name = str(subdomain).zfill(num_digits)
+                subdomain_group = domain_group.require_group(group_name)
+            else:
+                subdomain_group = domain_group
+
+            # Create a separate HDF5 group for the xs type
+            xs_group = subdomain_group.require_group(self.xs_type)
+
+            # Extract the cross-section for this
+            average = self.get_xs(subdomains=[subdomain], value='mean')
+            std_dev = self.get_xs(subdomains=[subdomain], value='std_dev')
+            average = average.squeeze()
+            std_dev = std_dev.squeeze()
+
+            # Add MultiGroupXS results data to the HDF5 group
+            xs_group.require_dataset('average', dtype=np.float64,
+                                     shape=average.shape, data=average)
+            xs_group.require_dataset('std. dev.', dtype=np.float64,
+                                     shape=std_dev.shape, data=std_dev)
+
+        # Close the MultiGroup results HDF5 file
+        xs_results.close()
 
     def export_xs_data(self, filename='mgxs', directory='mgxs', format='csv'):
         """Export the multi-group cross-section data to a file.
@@ -1082,6 +1161,7 @@ class ScatterMatrixXS(MultiGroupXS):
         # Query the multi-group cross-section tally for the data
         xs = self.xs_tally.get_values(filters=filters,
                                       filter_bins=filter_bins, value=value)
+        xs = np.nan_to_num(xs)
         return xs
 
     def print_xs(self, subdomains='all'):
@@ -1217,26 +1297,13 @@ class Chi(MultiGroupXS):
         nu_fission_in = self.tallies['nu-fission-in']
         nu_fission_out = self.tallies['nu-fission-out']
 
-        # FIXME: Make filter bins simpler in Tally.summation(...)
-
         # Construct energy group filter bins to sum across
-        '''
-        filter_bins = []
-        for group in range(1, self.num_groups+1):
-            group_bounds = self.energy_groups.get_group_bounds(group)
-            filter_bins.append((group_bounds,))
-        energy_bins = [filter_bins]
-        '''
-
         energy_bins = []
         for group in range(1, self.num_groups+1):
             energy_bins.append(self.energy_groups.get_group_bounds(group))
 
         sum_nu_fission_in = nu_fission_in.summation(filter='energy',
                                                     filter_bins=energy_bins)
-
-        # FIXME: Need ability to override energy groups with group numbers
-        # FIXME: Reverse from fast to thermal with energy groups
 
         # FIXME: CrossFilter for energy + energy messes up tally arithmetic
         sum_nu_fission_in.remove_filter(sum_nu_fission_in.filters[-1])
@@ -1257,5 +1324,3 @@ class Chi(MultiGroupXS):
         self._xs_tally /= norm
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
         self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
-
-        # FIXME: Does this need to reset NaNs to zero?

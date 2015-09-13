@@ -511,7 +511,7 @@ class Filter(object):
         try:
             import pandas as pd
         except ImportError:
-            msg = 'The pandas Python package must be installed on your system'
+            msg = 'The Pandas Python package must be installed on your system'
             raise ImportError(msg)
 
         # Initialize Pandas DataFrame

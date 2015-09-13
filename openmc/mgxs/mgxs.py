@@ -455,6 +455,8 @@ class MultiGroupXS(object):
             msg = 'Unable to get cross-section since it has not been computed'
             raise ValueError(msg)
 
+        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
+
         filters = []
         filter_bins = []
 
@@ -593,8 +595,8 @@ class MultiGroupXS(object):
                     string += template.format('', group, bounds[0], bounds[1])
                     average = self.get_xs([group], [subdomain], 'mean')
                     rel_err = self.get_xs([group], [subdomain], 'rel_err')*100.
-                    average = average.flatten()[0]
-                    rel_err = rel_err.flatten()[0]
+                    average = np.nan_to_num(average.flatten())[0]
+                    rel_err = np.nan_to_num(rel_err.flatten())[0]
                     string += '{0:.2e} +/- {1:1.2e}%'.format(average, rel_err)
                     string += '\n'
                 string += '\n'
@@ -1118,7 +1120,7 @@ class ScatterMatrixXS(MultiGroupXS):
             msg = 'Unable to get cross-section since it has not been computed'
             raise ValueError(msg)
 
-        cv.check_value('value', value, ['mean', 'std. dev.', 'rel. err.'])
+        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
 
         filters = []
         filter_bins = []
@@ -1126,20 +1128,23 @@ class ScatterMatrixXS(MultiGroupXS):
         # Construct a collection of the domain filter bins
         if subdomains != 'all':
             cv.check_iterable_type('subdomains', subdomains, Integral)
-            filters.append(self.domain_type)
-            filter_bins.append(tuple(subdomains))
+            for subdomain in subdomains:
+                filters.append(self.domain_type)
+                filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
         if in_groups != 'all':
-            cv.check_iterable_type('in_groups', in_groups, Integral)
-            filters.append('energy')
-            for in_group in in_groups:
-                filter_bins.append(self.energy_groups.get_group_bounds(in_group))
+            cv.check_iterable_type('groups', in_groups, Integral)
+            for group in in_groups:
+                filters.append('energy')
+                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+
+        # Construct list of energy group bounds tuples for all requested groups
         if out_groups != 'all':
-            cv.check_iterable_type('out_groups', out_groups, Integral)
-            filters.append('energy')
-            for out_group in out_groups:
-                filter_bins.append(self.energy_groups.get_group_bounds(out_group))
+            cv.check_iterable_type('groups', out_groups, Integral)
+            for group in out_groups:
+                filters.append('energyout')
+                filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
         # Query the multi-group cross-section tally for the data
         xs = self.xs_tally.get_values(filters=filters,
@@ -1167,7 +1172,7 @@ class ScatterMatrixXS(MultiGroupXS):
             raise ValueError(msg)
 
         if subdomains != 'all':
-            cv.check_value('subdomains', subdomains, Iterable, Integral)
+            cv.check_iterable_type('subdomains', subdomains, Integral)
 
         string = 'Multi-Group XS\n'
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.xs_type)
@@ -1183,7 +1188,7 @@ class ScatterMatrixXS(MultiGroupXS):
             string += template.format('', group, bounds[0], bounds[1])
 
         if subdomains == 'all':
-            subdomains = self.subdomain_indices.keys()
+            subdomains = self.get_subdomain_indices()
 
         # Loop over all subdomains
         for subdomain in subdomains:
@@ -1202,10 +1207,10 @@ class ScatterMatrixXS(MultiGroupXS):
                     average = self.get_xs([in_group], [out_group],
                                           [subdomain], 'mean')
                     rel_err = self.get_xs([in_group], [out_group],
-                                          [subdomain], 'rel. err.')*100.
-                    average = average.flatten()[0]
-                    rel_err = rel_err.flatten()[0]
-                    string += '{0:1.2e} +/- {:1.2e}%'.format(average, rel_err)
+                                          [subdomain], 'rel_err')*100.
+                    average = np.nan_to_num(average.flatten())[0]
+                    rel_err = np.nan_to_num(rel_err.flatten())[0]
+                    string += '{0:1.2e} +/- {1:1.2e}%'.format(average, rel_err)
                     string += '\n'
                 string += '\n'
 

@@ -534,7 +534,6 @@ class MultiGroupXS(object):
 
         # Clone this MultiGroupXS to initialize the condensed version
         avg_xs = copy.deepcopy(self)
-        avg_xs._domain_type = 'avg. ' + avg_xs.domain_type
 
         # Reset subdomain indices and offsets for distribcell domains
         if self.domain_type == 'distribcell':
@@ -698,7 +697,8 @@ class MultiGroupXS(object):
         import h5py
         raise NotImplementedError('HDF5 storage is not yet implemented')
 
-    def export_xs_data(self, filename='mgxs', directory='mgxs', format='csv'):
+    def export_xs_data(self, filename='mgxs', directory='mgxs', format='csv',
+                       groups='indices', summary=None):
         """Export the multi-group cross-section data to a file.
 
         This routine leverages the functionality in the Pandas library to
@@ -716,17 +716,19 @@ class MultiGroupXS(object):
         format : {'csv', 'excel', 'pickle', 'latex'}
             The format for the exported data file
 
-        Raises
-        ------
-        ValueError
-            When this method is called before the multi-group cross-section is
-            computed from tally data.
+        groups : {'indices' or 'bounds'}
+            When set to 'indices' (default), integer group indices are inserted
+            in the energy in/out column(s) of the DataFrame. When it is 'bounds'
+            the lower and upper energy bounds are used.
+
+        summary : None or Summary
+            An optional Summary object to be used to construct columns for
+            distribcell tally filters (default is None). The geometric
+            information in the Summary object is embedded into a Multi-index
+            column with a geometric "path" to each distribcell intance.
+            NOTE: This option requires the OpenCG Python package.
 
         """
-
-        if self.xs_tally is None:
-            msg = 'Unable to export cross-section since it has not been computed'
-            raise ValueError(msg)
 
         cv.check_type('filename', filename, basestring)
         cv.check_type('directory', directory, basestring)
@@ -740,8 +742,7 @@ class MultiGroupXS(object):
         filename = filename.replace(' ', '-')
 
         # Get a Pandas DataFrame for the data
-        # FIXME: Column niceties need to be implemented here
-        df = self.get_pandas_dataframe()
+        df = self.get_pandas_dataframe(groups, summary)
 
         # Export the data using Pandas IO API
         if format == 'csv':
@@ -765,9 +766,9 @@ class MultiGroupXS(object):
         Parameters
         ----------
         groups : {'indices' or 'bounds'}
-            When set to 'indices', integer group indices are inserted in the
-            energy column(s) of the DataFrame. When set to 'bounds', the lower
-            and upper energy bounds are used.
+            When set to 'indices' (default), integer group indices are inserted
+            in the energy in/out column(s) of the DataFrame. When it is 'bounds'
+            the lower and upper energy bounds are used.
 
         summary : None or Summary
             An optional Summary object to be used to construct columns for

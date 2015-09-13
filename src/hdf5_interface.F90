@@ -236,6 +236,9 @@ contains
     integer :: hdf5_err ! HDF5 error code
 
     call h5gclose_f(group_id, hdf5_err)
+    if (hdf5_err < 0) then
+      call fatal_error("Unable to close HDF5 group.")
+    end if
   end subroutine close_group
 
 !===============================================================================

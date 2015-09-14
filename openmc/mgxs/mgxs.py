@@ -392,7 +392,7 @@ class MultiGroupXS(object):
         # Overwrite tallies with new subdomain-averaged versions
         avg_xs._tallies = {}
         for tally_type, tally in self.tallies.items():
-            tally_sum = tally.summation(filter=self.domain_type,
+            tally_sum = tally.summation(filter_type=self.domain_type,
                                         filter_bins=subdomains)
             tally_sum /= len(subdomains)
             avg_xs.tallies[tally_type] = tally_sum
@@ -1305,7 +1305,7 @@ class Chi(MultiGroupXS):
         for group in range(1, self.num_groups+1):
             energy_bins.append(self.energy_groups.get_group_bounds(group))
 
-        sum_nu_fission_in = nu_fission_in.summation(filter='energy',
+        sum_nu_fission_in = nu_fission_in.summation(filter_type='energy',
                                                     filter_bins=energy_bins)
 
         # FIXME: CrossFilter for energy + energy messes up tally arithmetic
@@ -1314,7 +1314,7 @@ class Chi(MultiGroupXS):
         self._xs_tally = nu_fission_out / sum_nu_fission_in
 
         # Normalize chi to 1.0
-        norm = self.xs_tally.summation(filter='energyout',
+        norm = self.xs_tally.summation(filter_type='energyout',
                                        filter_bins=energy_bins)
 
         # FIXME: CrossFilter for energy + energy messes up tally arithmetic

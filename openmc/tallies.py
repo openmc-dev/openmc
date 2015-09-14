@@ -1405,34 +1405,10 @@ class Tally(object):
             match_filters = self.filters[:match]
             cross_filters = [self.filters[match:], other.filters[match:]]
 
-            '''
-            # FIXME:
-            self_filters = set(self.filters)
-            other_filters = set(other.filters)
-            diff1 = list(self_filters.difference(other_filters))
-            diff2 = list(other_filters.difference(self_filters))
-            symm_diff = list(other_filters.symmetric_difference(self_filters))
-            '''
-
             # FIXME: This must be the common longest sequence of tallies at the beginning
 
             for filter in match_filters:
                 new_tally.add_filter(filter)
-
-            '''
-            #
-            if len(self_filters) == 0:
-                for filter in self.filters:
-                    new_tally.add_filter(filter)
-                for filter in self_filters:
-                    new_tally.add_filter(filter)
-            #
-            elif len(diff2) == 0:
-                for filter in other.filters:
-                    new_tally.add_filter(filter)
-                for filter in diff2:
-                    new_tally.add_filter(filter)
-            '''
 
             if len(self.filters) != match and len(other.filters) == match:
                 for filter in cross_filters[0]:
@@ -1444,19 +1420,6 @@ class Tally(object):
                 for self_filter, other_filter in itertools.product(*cross_filters):
                     new_filter = CrossFilter(self_filter, other_filter, binary_op)
                     new_tally.add_filter(new_filter)
-
-            #
-#            else:
-#                all_filters = list(set([self.filters, other.filters]
-            '''
-            if len(symm_diff) <= 1:
-                for filter in symm_diff:
-                    new_tally.add_filter(filter)
-            else:
-                for self_filter, other_filter in itertools.product(*symm_diff):
-                    new_filter = CrossFilter(self_filter, other_filter, binary_op)
-                    new_tally.add_filter(new_filter)
-            '''
 
         # Generate score "outer products"
         if self.scores == other.scores:
@@ -2294,7 +2257,8 @@ class Tally(object):
 
         return new_tally
 
-    def summation(self, scores=[], filter=None, filter_bins=[], nuclides=[]):
+    def summation(self, scores=[], filter_type=None,
+                  filter_bins=[], nuclides=[]):
         """Build a sliced tally for the specified filter bins, nuclides, scores.
 
         This method constructs a new tally to encapsulate a subset of the data
@@ -2308,7 +2272,7 @@ class Tally(object):
             A list of one or more score strings to sum across
             (e.g., ['absorption', 'nu-fission']; default is [])
 
-        filter : str
+        filter_type : str
             A filter type string (e.g., 'cell', 'energy') corresponding to the
             filter bins to sum across
 
@@ -2348,19 +2312,13 @@ class Tally(object):
             nuclides = [[nuclide] for nuclide in nuclides]
 
         # Sum across any filter bins specified by the user
-        if filter in FILTER_TYPES.values():
+        if filter_type in FILTER_TYPES.values():
             filter_bins = [[(filter_bin,)] for filter_bin in filter_bins]
-            filters = [[filter]]
+            filters = [[filter_type]]
         # If user did not specify a filter type, do not sum across filter bins
         else:
             filter_bins = [[]]
             filters = [[]]
-        '''
-        else:
-#            filter_bins = list(itertools.product(*filter_bins))
-            filter_bins = [[filter_bin] for filter_bin in filter_bins]
-            filters = [[filter]]
-        '''
 
         # Initialize Tally sum
         tally_sum = 0
@@ -2372,10 +2330,10 @@ class Tally(object):
             tally_slice = self.get_slice(scores, filters, filter_bins, nuclides)
 
             # Remove filters summed across to avoid bulky CrossFilters
-            for filter in reversed(tally_slice.filters):
-                if filter.type in filters:
-                    tally_slice.remove_filter(filter)
-                    summed_filters[filter.type].append(filter)
+            if filter_type:
+                filter = tally_slice.find_filter(filter_type)
+                tally_slice.remove_filter(filter)
+                summed_filters[filter_type].append(filter)
 
             # Accumulate this Tally slice into the Tally sum
             tally_sum += tally_slice
@@ -2386,9 +2344,6 @@ class Tally(object):
             for i in range(1, len(filters)):
                 filters[i] = CrossFilter(filters[i-1], filters[i], '+')
             tally_sum.add_filter(filters[-1])
-
-#        for filter in removed_filters:
-#            tally_sum.add_filter(filter)
 
         return tally_sum
 

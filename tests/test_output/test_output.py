@@ -14,8 +14,8 @@ class OutputTestHarness(TestHarness):
         # Check for the summary.
         summary = glob.glob(os.path.join(os.getcwd(), 'summary.*'))
         assert len(summary) == 1, 'Either multiple or no summary file exists.'
-        assert summary[0].endswith('out') or summary[0].endswith('h5'),\
-            'Summary file is not a binary or hdf5 file.'
+        assert summary[0].endswith('h5'),\
+            'Summary file is not a HDF5 file.'
 
         # Check for the cross sections.
         assert os.path.exists(os.path.join(os.getcwd(), 'cross_sections.out')),\

@@ -262,6 +262,11 @@ else()
   target_compile_options(${program} PUBLIC ${f90flags})
 endif()
 
+# Add HDF5 library directories to link line with -L
+foreach(LIBDIR ${HDF5_LIBRARY_DIRS})
+  list(APPEND ldflags "-L${LIBDIR}")
+endforeach()
+
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom)

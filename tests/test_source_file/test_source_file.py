@@ -66,15 +66,13 @@ class SourceFileTestHarness(TestHarness):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
         assert len(statepoint) == 1, 'Either multiple or no statepoint files ' \
              'exist.'
-        assert statepoint[0].endswith('binary') \
-             or statepoint[0].endswith('h5'), \
-             'Statepoint file is not a binary or hdf5 file.'
+        assert statepoint[0].endswith('h5'), \
+             'Statepoint file is not a HDF5 file.'
 
         source = glob.glob(os.path.join(os.getcwd(), 'source.10.*'))
         assert len(source) == 1, 'Either multiple or no source files exist.'
-        assert source[0].endswith('binary') \
-             or source[0].endswith('h5'), \
-             'Source file is not a binary or hdf5 file.'
+        assert source[0].endswith('h5'), \
+             'Source file is not a HDF5 file.'
 
     def _run_openmc_restart(self):
         # Get the name of the source file.

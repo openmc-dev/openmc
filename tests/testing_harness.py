@@ -82,9 +82,8 @@ class TestHarness(object):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
         assert len(statepoint) == 1, 'Either multiple or no statepoint files ' \
              'exist.'
-        assert statepoint[0].endswith('binary') \
-             or statepoint[0].endswith('h5'), \
-             'Statepoint file is not a binary or hdf5 file.'
+        assert statepoint[0].endswith('h5'), \
+             'Statepoint file is not a HDF5 file.'
         if self._tallies:
             assert os.path.exists(os.path.join(os.getcwd(), 'tallies.out')), \
                  'Tally output file does not exist.'
@@ -155,7 +154,7 @@ class HashedTestHarness(TestHarness):
 
 
 class PlotTestHarness(TestHarness):
-    """Specialized TestHarness for running OpenMC plotting tests.""" 
+    """Specialized TestHarness for running OpenMC plotting tests."""
     def __init__(self, plot_names):
         self._plot_names = plot_names
         self._opts = None
@@ -199,7 +198,7 @@ class PlotTestHarness(TestHarness):
 
 
 class CMFDTestHarness(TestHarness):
-    """Specialized TestHarness for running OpenMC CMFD tests.""" 
+    """Specialized TestHarness for running OpenMC CMFD tests."""
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
@@ -233,15 +232,14 @@ class CMFDTestHarness(TestHarness):
 
 
 class ParticleRestartTestHarness(TestHarness):
-    """Specialized TestHarness for running OpenMC particle restart tests.""" 
+    """Specialized TestHarness for running OpenMC particle restart tests."""
     def _test_output_created(self):
         """Make sure the restart file has been created."""
         particle = glob.glob(os.path.join(os.getcwd(), self._sp_name))
         assert len(particle) == 1, 'Either multiple or no particle restart ' \
              'files exist.'
-        assert particle[0].endswith('binary') \
-             or particle[0].endswith('h5'), \
-             'Particle restart file is not a binary or hdf5 file.'
+        assert particle[0].endswith('h5'), \
+             'Particle restart file is not a HDF5 file.'
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""

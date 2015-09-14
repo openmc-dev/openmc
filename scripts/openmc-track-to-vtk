@@ -18,6 +18,7 @@ Usage information can be obtained by running 'track.py --help':
 
 import os
 import argparse
+import h5py
 import struct
 import vtk
 
@@ -39,23 +40,11 @@ def main():
     # Parse commandline arguments.
     args = _parse_args()
 
-    # Check input file extensions.
-    for fname in args.input:
-        if not (fname.endswith('.h5') or fname.endswith('.binary')):
-            raise ValueError("Input file names must either end with '.h5' or"
-                             "'.binary'.")
-
     # Make sure that the output filename ends with '.pvtp'.
     if not args.out:
         args.out = 'tracks.pvtp'
     elif not args.out.endswith('.pvtp'):
         args.out += '.pvtp'
-
-    # Import HDF library if HDF files are present
-    for fname in args.input:
-        if fname.endswith('.h5'):
-            import h5py
-            break
 
     # Initialize data arrays and offset.
     points = vtk.vtkPoints()
@@ -63,32 +52,14 @@ def main():
     point_offset = 0
     for fname in args.input:
         # Write coordinate values to points array.
-        if fname.endswith('.binary'):
-            track = open(fname, 'rb')
-
-            # Determine number of particles and tracks/particle
-            n_particles = struct.unpack('i', track.read(4))[0]
-            n_coords = struct.unpack('i'*n_particles, track.read(4*n_particles))
-
-            coords = []
-            for i in range(n_particles):
-                # Read coordinates for each particle
-                coords.append([struct.unpack('ddd', track.read(24))
-                               for j in range(n_coords[i])])
-
-                # Add coordinates to points data
-                for triplet in coords[i]:
-                    points.InsertNextPoint(triplet)
-
-        else:
-            track = h5py.File(fname)
-            n_particles = track['n_particles'].value[0]
-            n_coords = track['n_coords']
-            coords = []
-            for i in range(n_particles):
-                coords.append(track['coordinates_' + str(i + 1)].value)
-                for j in range(n_coords[i]):
-                    points.InsertNextPoint(coords[i][j,:])
+        track = h5py.File(fname)
+        n_particles = track['n_particles'].value
+        n_coords = track['n_coords']
+        coords = []
+        for i in range(n_particles):
+            coords.append(track['coordinates_' + str(i + 1)].value)
+            for j in range(n_coords[i]):
+                points.InsertNextPoint(coords[i][j,:])
 
         for i in range(n_particles):
             # Create VTK line and assign points to line.

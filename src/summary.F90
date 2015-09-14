@@ -191,7 +191,7 @@ contains
     ! WRITE INFORMATION ON SURFACES
 
     ! Create surfaces group
-    surfaces_group = create_group(file_id, "surfaces")
+    surfaces_group = create_group(geom_group, "surfaces")
 
     ! Write information on each surface
     SURFACE_LOOP: do i = 1, n_surfaces

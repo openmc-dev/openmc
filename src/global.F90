@@ -16,9 +16,6 @@ module global
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
 
-#ifdef HDF5
-  use hdf5_interface,  only: HID_T
-#endif
 #ifdef MPIF08
   use mpi_f08
 #endif
@@ -266,16 +263,6 @@ module global
   logical :: survival_biasing = .false.
   real(8) :: weight_cutoff = 0.25_8
   real(8) :: weight_survive = ONE
-
-  ! ============================================================================
-  ! HDF5 VARIABLES
-
-#ifdef HDF5
-  integer(HID_T) :: hdf5_output_file   ! identifier for output file
-  integer(HID_T) :: hdf5_tallyresult_t ! Compound type for TallyResult
-  integer(HID_T) :: hdf5_bank_t        ! Compound type for Bank
-  integer(HID_T) :: hdf5_integer8_t    ! type for integer(8)
-#endif
 
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES

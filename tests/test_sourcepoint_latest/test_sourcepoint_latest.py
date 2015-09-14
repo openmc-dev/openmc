@@ -12,9 +12,8 @@ class SourcepointTestHarness(TestHarness):
         source = glob.glob(os.path.join(os.getcwd(), 'source.*'))
         assert len(source) == 1, 'Either multiple or no source files ' \
              'exist.'
-        assert source[0].endswith('binary') \
-             or source[0].endswith('h5'), \
-             'Source file is not a binary or hdf5 file.'
+        assert source[0].endswith('h5'), \
+             'Source file is not a HDF5 file.'
 
 
 if __name__ == '__main__':

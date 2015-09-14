@@ -2,6 +2,7 @@ module tally_header
 
   use constants,          only: NONE, N_FILTER_TYPES
   use trigger_header,     only: TriggerObject
+  use, intrinsic :: ISO_C_BINDING
 
   implicit none
 
@@ -39,10 +40,10 @@ module tally_header
 ! TALLYRESULT provides accumulation of results in a particular tally bin
 !===============================================================================
 
-  type TallyResult
-    real(8) :: value    = 0.
-    real(8) :: sum      = 0.
-    real(8) :: sum_sq   = 0.
+  type, bind(C) :: TallyResult
+    real(C_DOUBLE) :: value    = 0.
+    real(C_DOUBLE) :: sum      = 0.
+    real(C_DOUBLE) :: sum_sq   = 0.
   end type TallyResult
 
 !===============================================================================

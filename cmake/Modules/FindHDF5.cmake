@@ -292,12 +292,8 @@ if( NOT HDF5_FOUND )
         mark_as_advanced( HDF5_${LANGUAGE}_INCLUDE_DIR )
         list( APPEND HDF5_INCLUDE_DIRS ${HDF5_${LANGUAGE}_INCLUDE_DIR} )
 
-        set( HDF5_${LANGUAGE}_LIBRARY_NAMES
-            ${HDF5_${LANGUAGE}_LIBRARY_NAMES_INIT}
-            ${HDF5_${LANGUAGE}_LIBRARY_NAMES} )
-
         # find the HDF5 libraries
-        foreach( LIB ${HDF5_${LANGUAGE}_LIBRARY_NAMES} )
+        foreach( LIB ${HDF5_${LANGUAGE}_LIBRARY_NAMES_INIT} )
             if( UNIX AND HDF5_USE_STATIC_LIBRARIES )
                 # According to bug 1643 on the CMake bug tracker, this is the
                 # preferred method for searching for a static library.
@@ -324,6 +320,14 @@ if( NOT HDF5_FOUND )
             list(APPEND HDF5_${LANGUAGE}_LIBRARIES ${HDF5_${LIB}_LIBRARY})
         endforeach()
         list( APPEND HDF5_LIBRARY_DIRS ${HDF5_${LANGUAGE}_LIBRARY_DIRS} )
+
+        # When the wrapper lists a library with -l, e.g. -lz, simply use it as
+        # is. If find_library is called for these libraries, you end up with
+        # local libraries that will not be suitable when cross-compiling for the
+        # Intel Xeon Phi.
+        foreach(LIBNAME ${HDF5_${LANGUAGE}_LIBRARY_NAMES})
+          list(APPEND HDF5_${LANGUAGE}_LIBRARIES "-l${LIBNAME}")
+        endforeach()
 
         # Append the libraries for this language binding to the list of all
         # required libraries.

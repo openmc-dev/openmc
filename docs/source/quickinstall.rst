@@ -35,7 +35,7 @@ Installing from Source on Linux or Mac OS X
 -------------------------------------------
 
 All OpenMC source code is hosted on GitHub_. If you have git_, the gfortran_
-compiler, CMake_, and HDF_ installed, you can download and install OpenMC be
+compiler, CMake_, and HDF5_ installed, you can download and install OpenMC be
 entering the following commands in a terminal:
 
 .. code-block:: sh

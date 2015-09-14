@@ -318,6 +318,25 @@ This will build an executable named ``openmc``.
 .. _MinGW: http://www.mingw.org
 .. _SourceForge: http://sourceforge.net/projects/mingw
 
+Compiling for the Intel Xeon Phi
+--------------------------------
+
+In order to build OpenMC for the Intel Xeon Phi using the Intel Fortran
+compiler, it is necessary to specify that all objects be compiled with the
+``-mmic`` flag as follows:
+
+.. code-block:: sh
+
+    mkdir build && cd build
+    FC=ifort FFLAGS=-mmic cmake -Dopenmp=on ..
+    make
+
+Note that unless an HDF5 build for the Intel Xeon Phi is already on your target
+machine, you will need to cross-compile HDF5 for the Xeon Phi. An `example
+script`_ to build zlib and HDF5 provides several necessary workarounds.
+
+.. _example script: https://github.com/paulromano/install-scripts/blob/master/install-hdf5-mic
+
 Testing Build
 -------------
 

@@ -930,7 +930,7 @@ contains
     integer :: i, j       ! Tally, filter loop counters
     integer :: n_filt     ! Number of filters originally in tally
     logical :: count_all  ! Count all cells
-    type(TallyObject),    pointer :: tally            ! Current tally
+    type(TallyObject),    pointer :: t                ! Current tally
     type(Universe),       pointer :: univ             ! Pointer to universe
     type(Cell),           pointer :: c                ! Pointer to cell
     integer, allocatable :: univ_list(:)              ! Target offsets
@@ -943,18 +943,18 @@ contains
     do i = 1, n_tallies
 
       ! Get pointer to tally
-      tally => tallies(i)
+      t => tallies(i)
 
-      n_filt = tally%n_filters
+      n_filt = t%n_filters
 
       ! Loop over the filters to determine how many additional filters
       ! need to be added to this tally
-      do j = 1, tally%n_filters
+      do j = 1, t%n_filters
 
         ! Determine type of filter
-        if (tally%filters(j)%type == FILTER_DISTRIBCELL) then
+        if (t%filters(j)%type == FILTER_DISTRIBCELL) then
           count_all = .true.
-          if (size(tally%filters(j)%int_bins) > 1) then
+          if (size(t%filters(j)%int_bins) > 1) then
             call fatal_error("A distribcell filter was specified with &
                              &multiple bins. This feature is not supported.")
           end if
@@ -975,15 +975,15 @@ contains
       do i = 1, n_tallies
 
         ! Get pointer to tally
-        tally => tallies(i)
+        t => tallies(i)
 
         ! Initialize the filters
-        do j = 1, tally%n_filters
+        do j = 1, t%n_filters
 
           ! Set the number of bins to the number of instances of the cell
-          if (tally%filters(j)%type == FILTER_DISTRIBCELL) then
-            c => cells(tally%filters(j)%int_bins(1))
-            tally%filters(j)%n_bins = c%instances
+          if (t%filters(j)%type == FILTER_DISTRIBCELL) then
+            c => cells(t%filters(j)%int_bins(1))
+            t%filters(j)%n_bins = c%instances
           end if
 
         end do
@@ -1024,7 +1024,7 @@ contains
     type(SetInt)               :: cell_list     ! distribells to track
     type(Universe),    pointer :: univ          ! pointer to universe
     class(Lattice),    pointer :: lat           ! pointer to lattice
-    type(TallyObject), pointer :: tally         ! pointer to tally
+    type(TallyObject), pointer :: t             ! pointer to tally
     type(TallyFilter), pointer :: filter        ! pointer to filter
 
     ! Begin gathering list of cells in distribcell tallies
@@ -1032,10 +1032,10 @@ contains
 
     ! Populate list of distribcells to track
     do i = 1, n_tallies
-      tally => tallies(i)
+      t => tallies(i)
 
-      do j = 1, tally%n_filters
-        filter => tally%filters(j)
+      do j = 1, t%n_filters
+        filter => t%filters(j)
 
         if (filter%type == FILTER_DISTRIBCELL) then
           if (.not. cell_list%contains(filter%int_bins(1))) then
@@ -1079,10 +1079,10 @@ contains
 
             ! Loop over all tallies
             do l = 1, n_tallies
-              tally => tallies(l)
+              t => tallies(l)
 
-              do m = 1, tally%n_filters
-                filter => tally%filters(m)
+              do m = 1, t%n_filters
+                filter => t%filters(m)
 
                 ! Loop over only distribcell filters
                 ! If filter points to cell we just found, set offset index

@@ -52,7 +52,7 @@ contains
     integer(HID_T) :: filter_group, moments_group
     character(8)                  :: moment_name  ! name of moment (e.g, P3)
     character(MAX_FILE_LEN)       :: filename
-    type(StructuredMesh), pointer :: mesh
+    type(StructuredMesh), pointer :: meshp
     type(TallyObject), pointer    :: tally
     type(ElemKeyValueII), pointer :: current
     type(ElemKeyValueII), pointer :: next
@@ -166,16 +166,16 @@ contains
 
         ! Write information for meshes
         MESH_LOOP: do i = 1, n_meshes
-          mesh => meshes(id_array(i))
-          mesh_group = create_group(meshes_group, "mesh " // trim(to_str(mesh%id)))
+          meshp => meshes(id_array(i))
+          mesh_group = create_group(meshes_group, "mesh " // trim(to_str(meshp%id)))
 
-          call write_dataset(mesh_group, "id", mesh%id)
-          call write_dataset(mesh_group, "type", mesh%type)
-          call write_dataset(mesh_group, "n_dimension", mesh%n_dimension)
-          call write_dataset(mesh_group, "dimension", mesh%dimension)
-          call write_dataset(mesh_group, "lower_left", mesh%lower_left)
-          call write_dataset(mesh_group, "upper_right", mesh%upper_right)
-          call write_dataset(mesh_group, "width", mesh%width)
+          call write_dataset(mesh_group, "id", meshp%id)
+          call write_dataset(mesh_group, "type", meshp%type)
+          call write_dataset(mesh_group, "n_dimension", meshp%n_dimension)
+          call write_dataset(mesh_group, "dimension", meshp%dimension)
+          call write_dataset(mesh_group, "lower_left", meshp%lower_left)
+          call write_dataset(mesh_group, "upper_right", meshp%upper_right)
+          call write_dataset(mesh_group, "width", meshp%width)
 
           call close_group(mesh_group)
         end do MESH_LOOP
@@ -600,7 +600,7 @@ contains
     character(MAX_FILE_LEN)    :: path_temp
     character(19)              :: current_time
     character(8)               :: moment_name  ! name of moment (e.g, P3, Y-1,1)
-    type(StructuredMesh), pointer :: mesh
+    type(StructuredMesh), pointer :: meshp
     type(TallyObject), pointer :: tally
 
     ! Write message
@@ -718,18 +718,18 @@ contains
       ! Read and overwrite mesh information
       MESH_LOOP: do i = 1, n_meshes
 
-        mesh => meshes(id_array(i))
+        meshp => meshes(id_array(i))
         curr_key = key_array(id_array(i))
 
         mesh_group = open_group(meshes_group, "mesh " // &
              trim(to_str(curr_key)))
-        call read_dataset(mesh_group, "id", mesh%id)
-        call read_dataset(mesh_group, "type", mesh%type)
-        call read_dataset(mesh_group, "n_dimension", mesh%n_dimension)
-        call read_dataset(mesh_group, "dimension", mesh%dimension)
-        call read_dataset(mesh_group, "lower_left", mesh%lower_left)
-        call read_dataset(mesh_group, "upper_right", mesh%upper_right)
-        call read_dataset(mesh_group, "width", mesh%width)
+        call read_dataset(mesh_group, "id", meshp%id)
+        call read_dataset(mesh_group, "type", meshp%type)
+        call read_dataset(mesh_group, "n_dimension", meshp%n_dimension)
+        call read_dataset(mesh_group, "dimension", meshp%dimension)
+        call read_dataset(mesh_group, "lower_left", meshp%lower_left)
+        call read_dataset(mesh_group, "upper_right", meshp%upper_right)
+        call read_dataset(mesh_group, "width", meshp%width)
         call close_group(mesh_group)
       end do MESH_LOOP
 

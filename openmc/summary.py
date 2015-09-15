@@ -261,20 +261,20 @@ class Summary(object):
             cell = openmc.Cell(cell_id=cell_id, name=name)
 
             if fill_type == 'universe':
-                maps = self._f['geometry/cells'][key]['maps'][0]
+                maps = self._f['geometry/cells'][key]['maps'].value
 
                 if maps > 0:
                     offset = self._f['geometry/cells'][key]['offset'][...]
                     cell.offsets = offset
 
-                translated = self._f['geometry/cells'][key]['translated'][0]
+                translated = self._f['geometry/cells'][key]['translated'].value
                 if translated:
                     translation = \
                       self._f['geometry/cells'][key]['translation'][...]
                     translation = np.asarray(translation, dtype=np.float64)
                     cell.translation = translation
 
-                rotated = self._f['geometry/cells'][key]['rotated'][0]
+                rotated = self._f['geometry/cells'][key]['rotated'].value
                 if rotated:
                     rotation = \
                       self._f['geometry/cells'][key]['rotation'][...]

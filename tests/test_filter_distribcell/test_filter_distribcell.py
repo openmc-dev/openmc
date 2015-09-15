@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+import glob
 import hashlib
+import os
 import sys
 
 sys.path.insert(0, '..')

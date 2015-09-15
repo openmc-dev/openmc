@@ -15,6 +15,13 @@ class SourcepointTestHarness(TestHarness):
         assert source[0].endswith('h5'), \
              'Source file is not a HDF5 file.'
 
+    def _cleanup(self):
+        TestHarness._cleanup(self)
+        output = glob.glob(os.path.join(os.getcwd(), 'source.*'))
+        for f in output:
+            if os.path.exists(f):
+                os.remove(f)
+
 
 if __name__ == '__main__':
     harness = SourcepointTestHarness('statepoint.10.*')

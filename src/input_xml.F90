@@ -3138,6 +3138,18 @@ contains
           ! Set estimator to track-length estimator
           t % estimator = ESTIMATOR_TRACKLENGTH
 
+        case ('collision')
+          ! If the estimator was set to an analog estimator, this means the
+          ! tally needs post-collision information
+          if (t % estimator == ESTIMATOR_ANALOG) then
+            call fatal_error("Cannot use collision estimator for tally " &
+                 &// to_str(t % id))
+          end if
+
+          ! Set estimator to collision estimator
+          t % estimator = ESTIMATOR_COLLISION
+          write(*, *) t % estimator
+
         case default
           call fatal_error("Invalid estimator '" // trim(temp_str) &
                &// "' on tally " // to_str(t % id))

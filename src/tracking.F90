@@ -13,7 +13,7 @@ module tracking
   use random_lcg,      only: prn
   use string,          only: to_str
   use tally,           only: score_analog_tally, score_tracklength_tally, &
-                             score_surface_current
+                             score_collision_tally, score_surface_current
   use track_output,    only: initialize_particle_track, write_particle_track, &
                              add_particle_track, finalize_particle_track
 
@@ -157,6 +157,7 @@ contains
         ! has occurred rather than before because we need information on the
         ! outgoing energy for any tallies with an outgoing energy filter
 
+        if (active_collision_tallies % size() > 0) call score_collision_tally(p)
         if (active_analog_tallies % size() > 0) call score_analog_tally(p)
 
         ! Reset banked weight during collision

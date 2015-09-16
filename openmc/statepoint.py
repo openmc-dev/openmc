@@ -314,7 +314,7 @@ class StatePoint(object):
 
     @property
     def source_present(self):
-        return self._f['source_present'] > 0
+        return self._f['source_present'].value > 0
 
     @property
     def tallies(self):

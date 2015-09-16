@@ -532,18 +532,11 @@ class Summary(object):
 
         # Iterate over all Tallies
         for tally_key in tally_keys:
-
             tally_id = int(tally_key.strip('tally '))
             subbase = '{0}{1}'.format(base, tally_id)
 
             # Read Tally name metadata
-            name_size = self._f['{0}/name_size'.format(subbase)][...]
-            if (name_size > 0):
-                tally_name = self._f['{0}/name'.format(subbase)][...][0]
-                tally_name = tally_name.lstrip('[\'')
-                tally_name = tally_name.rstrip('\']')
-            else:
-                tally_name = ''
+            tally_name = self._f['{0}/name'.format(subbase)].value.decode()
 
             # Create Tally object and assign basic properties
             tally = openmc.Tally(tally_id, tally_name)
@@ -560,7 +553,6 @@ class Summary(object):
 
             # Initialize all Filters
             for j in range(1, num_filters+1):
-
                 subsubbase = '{0}/filter {1}'.format(subbase, j)
 
                 # Read filter type (e.g., "cell", "energy", etc.)

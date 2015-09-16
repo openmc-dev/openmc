@@ -93,7 +93,6 @@ class TestHarness(object):
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)
-        sp.read_results()
 
         # Write out k-combined.
         outstr = 'k-combined:\n'
@@ -103,11 +102,11 @@ class TestHarness(object):
         # Write out tally data.
         if self._tallies:
             tally_num = 1
-            for tally_ind in sp._tallies:
-                tally = sp._tallies[tally_ind]
-                results = np.zeros((tally._sum.size*2, ))
-                results[0::2] = tally._sum.ravel()
-                results[1::2] = tally._sum_sq.ravel()
+            for tally_ind in sp.tallies:
+                tally = sp.tallies[tally_ind]
+                results = np.zeros((tally.sum.size*2, ))
+                results[0::2] = tally.sum.ravel()
+                results[1::2] = tally.sum_sq.ravel()
                 results = ['{0:12.6E}'.format(x) for x in results]
 
                 outstr += 'tally ' + str(tally_num) + ':\n'
@@ -204,7 +203,6 @@ class CMFDTestHarness(TestHarness):
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)
-        sp.read_results()
 
         # Write out the eigenvalue and tallies.
         outstr = TestHarness._get_results(self)

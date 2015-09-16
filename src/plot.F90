@@ -305,25 +305,26 @@ contains
 
     integer :: i ! loop index for height
     integer :: j ! loop index for width
+    integer :: unit_plot
 
     ! Open PPM file for writing
-    open(UNIT=UNIT_PLOT, FILE=pl % path_plot)
+    open(NEWUNIT=unit_plot, FILE=pl % path_plot)
 
     ! Write header
-    write(UNIT_PLOT, '(A2)') 'P6'
-    write(UNIT_PLOT, '(I0,'' '',I0)') img%width, img%height
-    write(UNIT_PLOT, '(A)') '255'
+    write(unit_plot, '(A2)') 'P6'
+    write(unit_plot, '(I0,'' '',I0)') img%width, img%height
+    write(unit_plot, '(A)') '255'
 
     ! Write color for each pixel
     do j = 1, img % height
       do i = 1, img % width
-        write(UNIT_PLOT, '(3A1)', advance='no') achar(img%red(i,j)), &
+        write(unit_plot, '(3A1)', advance='no') achar(img%red(i,j)), &
              achar(img%green(i,j)), achar(img%blue(i,j))
       end do
     end do
 
     ! Close plot file
-    close(UNIT=UNIT_PLOT)
+    close(UNIT=unit_plot)
 
   end subroutine output_ppm
 
@@ -346,6 +347,7 @@ contains
     integer :: x, y, z      ! voxel location indices
     integer :: rgb(3)       ! colors (red, green, blue) from 0-255
     integer :: id           ! id of cell or material
+    integer :: unit_plot    ! voxel file unit
     real(8) :: vox(3)       ! x, y, and z voxel widths
     real(8) :: ll(3)        ! lower left starting point for each sweep direction
     type(Particle)    :: p
@@ -364,11 +366,11 @@ contains
     p % coord(1) % universe = BASE_UNIVERSE
 
     ! Open binary plot file for writing
-    open(UNIT=UNIT_PLOT, FILE=pl % path_plot, STATUS='replace', &
+    open(NEWUNIT=unit_plot, FILE=pl % path_plot, STATUS='replace', &
          ACCESS='stream')
 
     ! write plot header info
-    write(UNIT_PLOT) pl % pixels, vox, ll
+    write(unit_plot) pl % pixels, vox, ll
 
     ! move to center of voxels
     ll = ll + vox / TWO
@@ -382,7 +384,7 @@ contains
           call position_rgb(p, pl, rgb, id)
 
           ! write to plot file
-          write(UNIT_PLOT) id
+          write(unit_plot) id
 
           ! advance particle in z direction
           p % coord(1) % xyz(3) = p % coord(1) % xyz(3) + vox(3)
@@ -402,7 +404,7 @@ contains
 
     end do
 
-    close(UNIT_PLOT)
+    close(unit_plot)
 
   end subroutine create_3d_dump
 

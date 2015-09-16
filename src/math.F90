@@ -181,7 +181,6 @@ contains
     if (uvw(1) == ZERO) then
       phi = ZERO
     else
-!       phi = atan(uvw(2) / uvw(1))
       phi = atan2(uvw(2), uvw(1))
     end if
 
@@ -555,6 +554,8 @@ contains
     case default
       rn = ONE
     end select
+
+    ! rn = rn * sin(phi)
 
   end function calc_rn
 

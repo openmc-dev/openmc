@@ -1282,17 +1282,17 @@ The ``<tally>`` element accepts the following sub-elements:
 
         :azimuthal:
           A monotonically increasing list of bounding particle azimuthal angles
-          which represents a portion of the possible values of :math:'\[-\pi,\pi\]'.
-          For example, spanning all of :math:'\[-\pi,\pi\]' with five equi-width
+          which represents a portion of the possible values of :math:'\[0,2\pi\]'.
+          For example, spanning all of :math:'\[0,2\pi\]' with two equi-width
           bins can be specified as:
-          ``<filter type="azimuthal" bins="-3.1416 -1.8850 -0.6283 0.6283 1.8850 3.1416" />``
+          ``<filter type="azimuthal" bins="0.0 3.1416 6.2832" />``
 
           Alternatively, if only one value is provided as a bin, OpenMC will
-          interpret this to mean the complete range of :math:'\[-\pi,\pi\]' should
+          interpret this to mean the complete range of :math:'\[0,2\pi\]' should
           be automatically subdivided in to the provided value for the bin.
           That is, the above example of five equi-width bins spanning
-          :math:'\[-\pi,\pi\]' can be instead written as:
-          ``<filter type="azimuthal" bins="5" />``.
+          :math:'\[0,2\pi\]' can be instead written as:
+          ``<filter type="azimuthal" bins="2" />``.
 
         :mesh:
           The ``id`` of a structured mesh to be tallied over.

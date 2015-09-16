@@ -310,7 +310,7 @@ class StatePoint(object):
         # Iterate over all Tallies
         for tally_key in self._tally_keys:
 
-            # Read integer Tally estimator type code (analog or tracklength)
+            # Read integer Tally estimator type code (analog, tracklength, or collision)
             estimator_type = self._f['{0}{1}/estimator'.format(base, tally_key)].value
 
             # Read the Tally size specifications

@@ -823,10 +823,10 @@ class Tally(object):
             A list of filter type strings
             (e.g., ['mesh', 'energy']; default is [])
 
-        filter_bins : list
+        filter_bins : list of Iterables
             A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-            the list is the integer ID for 'material', 'surface', 'cell',
+            parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
+            in the list is the integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. Each bin is an integer for the
             cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
             floats for 'energy' and 'energyout' filters corresponding to the
@@ -2116,10 +2116,10 @@ class Tally(object):
             A list of filter type strings
             (e.g., ['mesh', 'energy']; default is [])
 
-        filter_bins : list
+        filter_bins : list of Iterables
             A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-            the list is the integer ID for 'material', 'surface', 'cell',
+            parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
+            in the list is the integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. Each bin is an integer for the
             cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
             floats for 'energy' and 'energyout' filters corresponding to the

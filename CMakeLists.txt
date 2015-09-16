@@ -7,6 +7,12 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include)
 
+# Set module path
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
+
+# Make sure Fortran module directory is included when building
+include_directories(${CMAKE_BINARY_DIR}/include)
+
 #===============================================================================
 # Architecture specific definitions
 #===============================================================================
@@ -23,37 +29,23 @@ option(openmp   "Enable shared-memory parallelism with OpenMP"   OFF)
 option(profile  "Compile with profiling flags"                   OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
-option(verbose  "Create verbose Makefiles"                       OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
 
-if (verbose)
-  set(CMAKE_VERBOSE_MAKEFILE on)
-endif()
 
 # Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
 add_definitions(-DMAX_COORD=${maxcoord})
 
 #===============================================================================
-# MPI for distributed-memory parallelism / HDF5 for binary output
+# MPI for distributed-memory parallelism
 #===============================================================================
 
 set(MPI_ENABLED FALSE)
-set(HDF5_ENABLED FALSE)
 if($ENV{FC} MATCHES "mpi[^/]*$")
   message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DMPI)
   set(MPI_ENABLED TRUE)
-elseif($ENV{FC} MATCHES "h5fc$")
-  message("-- Detected HDF5 wrapper: $ENV{FC}")
-  add_definitions(-DHDF5)
-  set(HDF5_ENABLED TRUE)
-elseif($ENV{FC} MATCHES "h5pfc$")
-  message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
-  add_definitions(-DMPI -DHDF5)
-  set(MPI_ENABLED TRUE)
-  set(HDF5_ENABLED TRUE)
 endif()
 
 # Check for Fortran 2008 MPI interface
@@ -63,10 +55,51 @@ if(MPI_ENABLED AND mpif08)
 endif()
 
 #===============================================================================
+# HDF5 for binary output
+#===============================================================================
+
+# Unfortunately FindHDF5.cmake will always prefer a serial HDF5 installation
+# over a parallel installation if both appear on the user's PATH. To get around
+# this, we check for the environment variable HDF5_ROOT and if it exists, use it
+# to check whether its a parallel version.
+
+if(DEFINED ENV{HDF5_ROOT} AND EXISTS $ENV{HDF5_ROOT}/bin/h5pcc)
+  set(HDF5_PREFER_PARALLEL TRUE)
+else()
+  set(HDF5_PREFER_PARALLEL FALSE)
+endif()
+
+find_package(HDF5 COMPONENTS Fortran_HL)
+if(NOT HDF5_FOUND)
+  message(FATAL_ERROR "Could not find HDF5")
+endif()
+if(HDF5_IS_PARALLEL)
+  if(NOT MPI_ENABLED)
+    message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
+  endif()
+  add_definitions(-DPHDF5)
+  message("-- Using parallel HDF5")
+endif()
+
+#===============================================================================
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
-if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+# Support for Fortran in FindOpenMP was added in CMake 3.1. To support lower
+# versions, we manually add the flags. However, at some point in time, the
+# manual logic can be removed in favor of the block below
+
+#if(NOT (CMAKE_VERSION VERSION_LESS 3.1))
+#  if(openmp)
+#    find_package(OpenMP)
+#    if(OPENMP_FOUND)
+#      list(APPEND f90flags ${OpenMP_Fortran_FLAGS})
+#      list(APPEND ldflags ${OpenMP_Fortran_FLAGS})
+#    endif()
+#  endif()
+#endif()
+
+if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   # Make sure version is sufficient
   execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
     OUTPUT_VARIABLE GCC_VERSION)
@@ -75,88 +108,93 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   endif()
 
   # GNU Fortran compiler options
-  set(f90flags  "-cpp -std=f2008 -fbacktrace")
+  list(APPEND f90flags -cpp -std=f2008 -fbacktrace)
   if(debug)
-    set(f90flags  "-g -Wall -pedantic -fbounds-check -ffpe-trap=invalid,overflow,underflow ${f90flags}")
-    set(ldflags   "-g")
+    if(NOT (GCC_VERSION VERSION_LESS 4.7))
+      list(APPEND f90flags -Wall)
+    endif()
+    list(APPEND f90flags -g -pedantic -fbounds-check
+      -ffpe-trap=invalid,overflow,underflow)
+    list(APPEND ldflags -g)
   endif()
   if(profile)
-    set(f90flags  "-pg ${f90flags}")
-    set(ldflags   "-pg ${ldflags}")
+    list(APPEND f90flags -pg)
+    list(APPEND ldflags -pg)
   endif()
   if(optimize)
-    set(f90flags  "-O3 ${f90flags}")
+    list(APPEND f90flags -O3)
   endif()
   if(openmp)
-    set(f90flags  "-fopenmp ${f90flags}")
-    set(ldflags   "-fopenmp ${ldflags}")
+    list(APPEND f90flags -fopenmp)
+    list(APPEND ldflags -fopenmp)
   endif()
   if(coverage)
-    set(f90flags "-coverage ${f90flags}")
-    set(ldflags  "-coverage ${ldflags}")
+    list(APPEND f90flags -coverage)
+    list(APPEND ldflags -coverage)
   endif()
 
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
   # Intel Fortran compiler options
-  set(f90flags  "-fpp -std08 -assume byterecl -traceback")
+  list(APPEND f90flags -fpp -std08 -assume byterecl -traceback)
   if(debug)
-    set(f90flags "-g -warn -ftrapuv -fp-stack-check -check all -fpe0 ${f90flags}")
-    set(ldflags  "-g")
+    list(APPEND f90flags -g -warn -ftrapuv -fp-stack-check
+      "-check all" -fpe0)
+    list(APPEND ldflags -g)
   endif()
   if(profile)
-    set(f90flags  "-pg ${f90flags}")
-    set(ldflags   "-pg ${ldflags}")
+    list(APPEND f90flags -pg)
+    list(APPEND ldflags -pg)
   endif()
   if(optimize)
-    set(f90flags  "-O3 ${f90flags}")
+    list(APPEND f90flags -O3)
   endif()
   if(openmp)
-    set(f90flags  "-openmp ${f90flags}")
-    set(ldflags   "-openmp ${ldflags}")
+    list(APPEND f90flags -openmp)
+    list(APPEND ldflags -openmp)
   endif()
 
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "PGI")
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL PGI)
   # PGI Fortran compiler options
-  set(f90flags  "-Mpreprocess -Minform=inform -traceback")
+  list(APPEND f90flags -Mpreprocess -Minform=inform -traceback)
   add_definitions(-DNO_F2008)
   if(debug)
-    set(f90flags  "-g -Mbounds -Mchkptr -Mchkstk ${f90flags}")
-    set(ldflags   "-g")
+    list(APPEND f90flags -g -Mbounds -Mchkptr -Mchkstk)
+    list(APPEND ldflags -g)
   endif()
   if(profile)
-    set(f90flags  "-pg ${f90flags}")
-    set(ldflags   "-pg ${ldflags}")
+    list(APPEND f90flags -pg)
+    list(APPEND ldflags -pg)
   endif()
   if(optimize)
-    set(f90flags  "-fast -Mipa ${f90flags}")
+    list(APPEND f90flags -fast -Mipa)
   endif()
 
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "XL")
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL XL)
   # IBM XL compiler options
-  set(f90flags  "-O2")
+  list(APPEND f90flags -O2)
   add_definitions(-DNO_F2008)
   if(debug)
-    set(f90flags  "-g -C -qflag=i:i -u")
-    set(ldflags   "-g")
+    list(APPEND f90flags -g -C -qflag=i:i -u)
+    list(APPEND ldflags -g)
   endif()
   if(profile)
-    set(f90flags  "-p ${f90flags}")
-    set(ldflags   "-p ${ldflags}")
+    list(APPEND f90flags -p)
+    list(APPEND ldflags -p)
   endif()
   if(optimize)
-    set(f90flags  "-O3 ${f90flags}")
+    list(APPEND f90flags -O3)
   endif()
   if(openmp)
-    set(f90flags  "-qsmp=omp ${f90flags}")
-    set(ldflags   "-qsmp=omp ${ldflags}")
+    list(APPEND f90flags -qsmp=omp)
+    list(APPEND ldflags -qsmp=omp)
   endif()
 
-elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Cray")
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Cray)
   # Cray Fortran compiler options
-  set(f90flags  "-e Z -m 0")
+  list(APPEND f90flags -e Z -m 0)
   if(debug)
-    set(f90flags  "-g -R abcnsp -O0 ${f90flags}")
-    set(ldflags   "-g")
+    list(APPEND f90flags -g -R abcnsp -O0)
+    list(APPEND ldflags -g)
   endif()
 
 endif()
@@ -204,10 +242,34 @@ add_subdirectory(src/xml/fox)
 set(program "openmc")
 file(GLOB source src/*.F90 src/xml/openmc_fox.F90)
 add_executable(${program} ${source})
-target_link_libraries(${program} ${libraries} fox_dom)
-set_target_properties(${program} PROPERTIES
-  COMPILE_FLAGS "${f90flags}"
-  LINK_FLAGS "${ldflags}")
+
+# target_include_directories was added in CMake 2.8.11 and is the recommended
+# way to set include directories. For lesser versions, we revert to set_property
+if(CMAKE_VERSION VERSION_LESS 2.8.11)
+  include_directories(${HDF5_INCLUDE_DIRS})
+else()
+  target_include_directories(${program} PUBLIC ${HDF5_INCLUDE_DIRS})
+endif()
+
+# target_compile_options was added in CMake 2.8.12 and is the recommended way to
+# set compile flags. Note that this sets the COMPILE_OPTIONS property (also
+# available only in 2.8.12+) rather than the COMPILE_FLAGS property, which is
+# deprecated. The former can handle lists whereas the latter cannot.
+if(CMAKE_VERSION VERSION_LESS 4.8.12)
+  string(REPLACE ";" " " f90flags "${f90flags}")
+  set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
+else()
+  target_compile_options(${program} PUBLIC ${f90flags})
+endif()
+
+# Add HDF5 library directories to link line with -L
+foreach(LIBDIR ${HDF5_LIBRARY_DIRS})
+  list(APPEND ldflags "-L${LIBDIR}")
+endforeach()
+
+# target_link_libraries treats any arguments starting with - but not -l as
+# linker flags. Thus, we can pass both linker flags and libraries together.
+target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom)
 
 #===============================================================================
 # Install executable, scripts, manpage, license
@@ -306,38 +368,18 @@ foreach(test ${TESTS})
     # If a restart test is encounted, need to run with -r and restart file(s)
     elseif(${test} MATCHES "restart")
 
-      # Set restart file names
-      if (${HDF5_ENABLED})
-
-        # Handle restart tests separately
-        if(${test} MATCHES "test_statepoint_restart")
-          set(RESTART_FILE statepoint.07.h5)
-        elseif(${test} MATCHES "test_sourcepoint_restart")
-          set(RESTART_FILE statepoint.07.h5 source.07.h5)
-        elseif(${test} MATCHES "test_particle_restart_eigval")
-          set(RESTART_FILE particle_9_555.h5)
-        elseif(${test} MATCHES "test_particle_restart_fixed")
-          set(RESTART_FILE particle_7_928.h5)
-        else(${test} MATCHES "test_statepoint_restart")
-          message(FATAL_ERROR "Restart test ${test} not recognized")
-        endif(${test} MATCHES "test_statepoint_restart")
-
-      else(${HDF5_ENABLED})
-
-        # Handle restart tests separately
-        if(${test} MATCHES "test_statepoint_restart")
-          set(RESTART_FILE statepoint.07.binary)
-        elseif(${test} MATCHES "test_sourcepoint_restart")
-          set(RESTART_FILE statepoint.07.binary source.07.binary)
-        elseif(${test} MATCHES "test_particle_restart_eigval")
-          set(RESTART_FILE particle_9_555.binary)
-        elseif(${test} MATCHES "test_particle_restart_fixed")
-          set(RESTART_FILE particle_7_6144.binary)
-        else(${test} MATCHES "test_statepoint_restart")
-          message(FATAL_ERROR "Restart test ${test} not recognized")
-        endif(${test} MATCHES "test_statepoint_restart")
-
-      endif(${HDF5_ENABLED})
+      # Handle restart tests separately
+      if(${test} MATCHES "test_statepoint_restart")
+        set(RESTART_FILE statepoint.07.h5)
+      elseif(${test} MATCHES "test_sourcepoint_restart")
+        set(RESTART_FILE statepoint.07.h5 source.07.h5)
+      elseif(${test} MATCHES "test_particle_restart_eigval")
+        set(RESTART_FILE particle_9_555.h5)
+      elseif(${test} MATCHES "test_particle_restart_fixed")
+        set(RESTART_FILE particle_7_928.h5)
+      else(${test} MATCHES "test_statepoint_restart")
+        message(FATAL_ERROR "Restart test ${test} not recognized")
+      endif(${test} MATCHES "test_statepoint_restart")
 
       # Perform serial valgrind and coverage test
       add_test(NAME ${TEST_NAME}

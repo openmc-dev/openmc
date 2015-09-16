@@ -1,5 +1,10 @@
 """Dictionaries of integer-to-string mappings from openmc/src/constants.F90"""
 
+RUN_TYPES = {1: 'fixed source',
+             2: 'k-eigenvalue',
+             3: 'plot',
+             4: 'particle restart'}
+
 SURFACE_TYPES = {1: 'x-plane',
                  2: 'y-plane',
                  3: 'z-plane',

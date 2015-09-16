@@ -23,7 +23,7 @@ class EntropyTestHarness(TestHarness):
 
         # Write out entropy data.
         outstr += 'entropy:\n'
-        results = ['{0:12.6E}'.format(x) for x in sp._entropy]
+        results = ['{0:12.6E}'.format(x) for x in sp.entropy]
         outstr += '\n'.join(results) + '\n'
 
         return outstr

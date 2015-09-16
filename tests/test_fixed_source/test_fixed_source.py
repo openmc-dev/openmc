@@ -32,8 +32,8 @@ class FixedSourceTestHarness(TestHarness):
                 tally_num += 1
 
         outstr += 'leakage:\n'
-        outstr += '{0:12.6E}'.format(sp._global_tallies[3][0]) + '\n'
-        outstr += '{0:12.6E}'.format(sp._global_tallies[3][1]) + '\n'
+        outstr += '{0:12.6E}'.format(sp.global_tallies[3][0]) + '\n'
+        outstr += '{0:12.6E}'.format(sp.global_tallies[3][1]) + '\n'
 
         return outstr
 

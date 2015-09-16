@@ -29,7 +29,7 @@ The current revision of the statepoint file format is 13.
 
     Release version number for OpenMC
 
-**/time_stamp** (*char[]*)
+**/date_and_time** (*char[]*)
 
     Date and time the state point was written.
 

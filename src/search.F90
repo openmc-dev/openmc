@@ -34,8 +34,6 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-write(*,*) val
-write(*,*) array
       call fatal_error("Value outside of array during binary search")
     end if
 

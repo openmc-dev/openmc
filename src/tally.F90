@@ -906,6 +906,8 @@ contains
     logical :: found_bin            ! was a scoring bin found?
     logical :: start_in_mesh        ! starting coordinates inside mesh?
     logical :: end_in_mesh          ! ending coordinates inside mesh?
+    real(8) :: theta
+    real(8) :: phi
     type(TallyObject),    pointer :: t
     type(StructuredMesh), pointer :: m
     type(Material),       pointer :: mat
@@ -990,6 +992,41 @@ contains
           matching_bins(i) = binary_search(t % filters(i) % real_bins, &
                k + 1, p % E)
         end if
+
+      case (FILTER_POLAR)
+        ! Get theta value
+        theta = acos(p % coord(1) % uvw(3))
+
+        ! determine polar angle bin
+        k = t % filters(i) % n_bins
+
+        ! check if particle is within polar angle bins
+        if (theta < t % filters(i) % real_bins(1) .or. &
+             theta > t % filters(i) % real_bins(k + 1)) then
+          matching_bins(i) = NO_BIN_FOUND
+        else
+          ! search to find polar angle bin
+          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+               k + 1, theta)
+        end if
+
+      case (FILTER_AZIMUTHAL)
+      ! make sure the correct direction vector is used
+        phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
+
+        ! determine mu bin
+        k = t % filters(i) % n_bins
+
+        ! check if particle is within azimuthal angle bins
+        if (phi < t % filters(i) % real_bins(1) .or. &
+             phi > t % filters(i) % real_bins(k + 1)) then
+          matching_bins(i) = NO_BIN_FOUND
+        else
+          ! search to find azimuthal angle bin
+          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+               k + 1, phi)
+        end if
+
       end select
 
       ! Check if no matching bin was found

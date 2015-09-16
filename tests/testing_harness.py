@@ -256,7 +256,7 @@ class ParticleRestartTestHarness(TestHarness):
         outstr += 'particle id:\n'
         outstr += "{0:12.6E}\n".format(p.id)
         outstr += 'run mode:\n'
-        outstr += "{0:12.6E}\n".format(p.run_mode)
+        outstr += "{0}\n".format(p.run_mode)
         outstr += 'particle weight:\n'
         outstr += "{0:12.6E}\n".format(p.weight)
         outstr += 'particle energy:\n'

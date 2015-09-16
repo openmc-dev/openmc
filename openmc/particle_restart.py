@@ -1,5 +1,7 @@
 import struct
 
+from openmc.constants import RUN_TYPES
+
 
 class Particle(object):
     """Information used to restart a specific particle that caused a simulation to
@@ -12,10 +14,6 @@ class Particle(object):
 
     Attributes
     ----------
-    filetype : int
-        Integer indicating the file type
-    revision : int
-        Revision of the particle restart format
     current_batch : int
         The batch containing the particle
     gen_per_batch : int
@@ -43,28 +41,48 @@ class Particle(object):
         import h5py
         self._f = h5py.File(filename, 'r')
 
-        # Read all metadata
-        self._read_data()
+        # Ensure filetype and revision are correct
+        if 'filetype' not in self._f or self._f['filetype'].value != -2:
+            raise IOError('{} is not a particle restart file.'.format(filename))
+        if self._f['revision'].value != 1:
+            raise IOError('Particle restart file revision is not consistent.')
 
-    def _read_data(self):
-        # Read filetype
-        self.filetype = self._f['filetype'].value
+    @property
+    def current_batch(self):
+        return self._f['current_batch'].value
 
-        # Read statepoint revision
-        self.revision = self._f['revision'].value
+    @property
+    def current_gen(self):
+        return self._f['current_gen'].value
 
-        # Read current batch
-        self.current_batch = self._f['current_batch'].value
+    @property
+    def energy(self):
+        return self._f['energy'].value
 
-        # Read run information
-        self.gen_per_batch = self._f['gen_per_batch'].value
-        self.current_gen = self._f['current_gen'].value
-        self.n_particles = self._f['n_particles'].value
-        self.run_mode = self._f['run_mode'].value
+    @property
+    def gen_per_batch(self):
+        return self._f['gen_per_batch'].value
 
-        # Read particle properties
-        self.id = self._f['id'].value
-        self.weight = self._f['weight'].value
-        self.energy = self._f['energy'].value
-        self.xyz = self._f['xyz'].value
-        self.uvw = self._f['uvw'].value
+    @property
+    def id(self):
+        return self._f['id'].value
+
+    @property
+    def n_particles(self):
+        return self._f['n_particles'].value
+
+    @property
+    def run_mode(self):
+        return RUN_TYPES[self._f['run_mode'].value]
+
+    @property
+    def uvw(self):
+        return self._f['uvw'].value
+
+    @property
+    def weight(self):
+        return self._f['weight'].value
+
+    @property
+    def xyz(self):
+        return self._f['xyz'].value

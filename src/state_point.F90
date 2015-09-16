@@ -49,8 +49,8 @@ contains
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group, tally_group
     integer(HID_T) :: meshes_group, mesh_group
-    integer(HID_T) :: filter_group, moments_group
-    character(8)                  :: moment_name  ! name of moment (e.g, P3)
+    integer(HID_T) :: filter_group
+    character(8), allocatable :: moment_names(:) ! names of moments (e.g, P3)
     character(MAX_FILE_LEN)       :: filename
     type(StructuredMesh), pointer :: meshp
     type(TallyObject), pointer    :: tally
@@ -257,40 +257,36 @@ contains
           call write_dataset(tally_group, "n_user_score_bins", tally%n_user_score_bins)
 
           ! Write explicit moment order strings for each score bin
-          moments_group = create_group(tally_group, "moments")
           k = 1
+          allocate(moment_names(tally%n_score_bins))
           MOMENT_LOOP: do j = 1, tally%n_user_score_bins
             select case(tally%score_bins(k))
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-              moment_name = 'P' // trim(to_str(tally%moment_order(k)))
-              call write_dataset(moments_group, "order" // trim(to_str(k)), moment_name)
+              moment_names(k) = 'P' // trim(to_str(tally%moment_order(k)))
               k = k + 1
             case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
               do n_order = 0, tally%moment_order(k)
-                moment_name = 'P' // trim(to_str(n_order))
-                call write_dataset(moments_group, "order" // trim(to_str(k)), moment_name)
+                moment_names(k) = 'P' // trim(to_str(n_order))
                 k = k + 1
               end do
             case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
-                  SCORE_TOTAL_YN)
+                 SCORE_TOTAL_YN)
               do n_order = 0, tally%moment_order(k)
                 do nm_order = -n_order, n_order
-                  moment_name = 'Y' // trim(to_str(n_order)) // ',' // &
+                  moment_names(k) = 'Y' // trim(to_str(n_order)) // ',' // &
                        trim(to_str(nm_order))
-                  call write_dataset(moments_group, "order" // &
-                       trim(to_str(k)), moment_name)
-                    k = k + 1
+                  k = k + 1
                 end do
               end do
             case default
-              moment_name = ''
-              call write_dataset(moments_group, "order" // trim(to_str(k)), &
-                   moment_name)
+              moment_names(k) = ''
               k = k + 1
             end select
           end do MOMENT_LOOP
 
-          call close_group(moments_group)
+          call write_dataset(tally_group, "moment_orders", moment_names)
+          deallocate(moment_names)
+
           call close_group(tally_group)
         end do TALLY_METADATA
 
@@ -582,11 +578,9 @@ contains
 
   subroutine load_state_point()
 
-    integer                    :: i, j, k
+    integer                    :: i, j
     integer                    :: int_array(3)
     integer                    :: curr_key
-    integer                    :: n_order      ! loop index for moment orders
-    integer                    :: nm_order     ! loop index for Ynm moment orders
     integer, allocatable       :: id_array(:)
     integer, allocatable       :: key_array(:)
     integer, allocatable       :: temp_array(:)
@@ -594,12 +588,11 @@ contains
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group, tally_group
     integer(HID_T) :: meshes_group, mesh_group
-    integer(HID_T) :: filter_group, moments_group
+    integer(HID_T) :: filter_group
     real(8)                    :: real_array(3)
     logical                    :: source_present
     character(MAX_FILE_LEN)    :: path_temp
     character(19)              :: current_time
-    character(8)               :: moment_name  ! name of moment (e.g, P3, Y-1,1)
     type(StructuredMesh), pointer :: meshp
     type(TallyObject), pointer :: tally
 
@@ -800,41 +793,7 @@ contains
       call read_dataset(tally_group, "score_bins", tally%score_bins)
       call read_dataset(tally_group, "n_user_score_bins", tally%n_user_score_bins)
 
-      ! Read explicit moment order strings for each score bin
-      k = 1
-      moments_group = open_group(tally_group, "moments")
-      MOMENT_LOOP: do j = 1, tally%n_user_score_bins
-        select case(tally%score_bins(k))
-        case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-          call read_dataset(moments_group, "order" // trim(to_str(k)), &
-               moment_name)
-          k = k + 1
-        case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-          do n_order = 0, tally%moment_order(k)
-            call read_dataset(moments_group, "order" // trim(to_str(k)), &
-                 moment_name)
-            k = k + 1
-          end do
-        case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
-              SCORE_TOTAL_YN)
-          do n_order = 0, tally%moment_order(k)
-            do nm_order = -n_order, n_order
-              call read_dataset(moments_group, "order" // trim(to_str(k)), &
-                   moment_name)
-              k = k + 1
-            end do
-          end do
-        case default
-          call read_dataset(moments_group, "order" // trim(to_str(k)), &
-               moment_name)
-          k = k + 1
-        end select
-
-      end do MOMENT_LOOP
-
-      call close_group(moments_group)
       call close_group(tally_group)
-
     end do TALLY_METADATA
 
     ! Check to make sure source bank is present

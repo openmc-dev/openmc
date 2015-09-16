@@ -146,7 +146,6 @@ class StatePoint(object):
         # Set flags for what data has been read
         self._meshes_read = False
         self._tallies_read = False
-        self._results_read = False
         self._source_read = False
         self._with_summary = False
 
@@ -317,6 +316,8 @@ class StatePoint(object):
                 # Add mesh to the global dictionary of all Meshes
                 self._meshes[mesh_id] = mesh
 
+            self._meshes_read = True
+
         return self._meshes
 
     @property
@@ -401,6 +402,7 @@ class StatePoint(object):
 
                 # Create Tally object and assign basic properties
                 tally = openmc.Tally(tally_key)
+                tally._statepoint = self
                 tally.estimator = ESTIMATOR_TYPES[estimator_type]
                 tally.num_realizations = n_realizations
 
@@ -497,6 +499,8 @@ class StatePoint(object):
                 # Add Tally to the global dictionary of all Tallies
                 self._tallies[tally_key] = tally
 
+            self._tallies_read = True
+
         return self._tallies
 
     @property
@@ -512,47 +516,6 @@ class StatePoint(object):
     @property
     def with_summary(self):
         return self._with_summary
-
-    def read_results(self):
-        """Read tally results and store them in the ``tallies`` attribute. No results
-        are read when the statepoint is instantiated.
-
-        """
-
-        base = 'tallies/tally '
-
-        # Read Tally results
-        if self.tallies_present:
-
-            # Iterate over and extract the results for all Tallies
-            for tally_key, tally in self.tallies.items():
-
-                # Compute the total number of bins for this Tally
-                num_tot_bins = tally.num_bins
-
-                # Extract Tally data from the file
-                data = self._f['{0}{1}/results'.format(base, tally_key)].value
-                sum = data['sum']
-                sum_sq = data['sum_sq']
-
-                # Define a routine to convert 0 to 1
-                def nonzero(val):
-                    return 1 if not val else val
-
-                # Reshape the results arrays
-                new_shape = (nonzero(tally.num_filter_bins),
-                             nonzero(tally.num_nuclides),
-                             nonzero(tally.num_score_bins))
-
-                sum = np.reshape(sum, new_shape)
-                sum_sq = np.reshape(sum_sq, new_shape)
-
-                # Set the data for this Tally
-                tally.sum = sum
-                tally.sum_sq = sum_sq
-
-        # Indicate that Tally results have been read
-        self._results_read = True
 
     def compute_ci(self, confidence=0.95):
         """Computes confidence intervals for each Tally bin.

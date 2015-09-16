@@ -1469,10 +1469,9 @@ contains
   subroutine write_string(group_id, name, buffer, indep)
     integer(HID_T), intent(in) :: group_id
     character(*), intent(in)           :: name    ! name for data
-    character(*), intent(in)           :: buffer  ! read data to here
+    character(*), intent(in), target   :: buffer  ! read data to here
     logical,      intent(in), optional :: indep ! independent I/O
 
-    integer :: n
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
@@ -1480,9 +1479,10 @@ contains
 #endif
     integer(HID_T) :: dset    ! data set handle
     integer(HID_T) :: dspace  ! data or file space handle
-    integer(HSIZE_T) :: dims1(1)
-    integer(HSIZE_T) :: dims2(2)
-    character(len=len_trim(buffer)), dimension(1) :: str_tmp
+    integer(HID_T) :: filetype
+    integer(HID_T) :: memtype
+    integer(HSIZE_T) :: n
+    type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
     data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
@@ -1490,37 +1490,37 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    ! Insert null character at end of string when writing
-    call h5tset_strpad_f(H5T_STRING, H5T_STR_NULLPAD_F, hdf5_err)
-
-    ! Create the dataspace and dataset
-    dims1(1) = 1
-    call h5screate_simple_f(1, dims1, dspace, hdf5_err)
-    call h5dcreate_f(group_id, trim(name), H5T_STRING, dspace, dset, hdf5_err)
-
-    ! Set up dimesnions of string to write
+    ! Create datatype for HDF5 file based on C char
     n = len_trim(buffer)
-    dims2(:) = [n, 1] ! full array of strings to write
-    dims1(1) = n      ! length of string
+    call h5tcopy_f(H5T_C_S1, filetype, hdf5_err)
+    call h5tset_size_f(filetype, n + 1, hdf5_err)
 
-    ! Copy over string buffer to a rank 1 array
-    str_tmp(1) = buffer
+    ! Create datatype in memory based on Fortran character
+    call h5tcopy_f(H5T_FORTRAN_S1, memtype, hdf5_err)
+    if (n > 0) call h5tset_size_f(memtype, n, hdf5_err)
+
+    ! Create dataspace/dataset
+    call h5screate_f(H5S_SCALAR_F, dspace, hdf5_err)
+    call h5dcreate_f(group_id, trim(name), filetype, dspace, dset, hdf5_err)
+
+    ! Get pointer to start of string
+    f_ptr = c_loc(buffer(1:1))
 
     if (using_mpio_device(group_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dwrite_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, &
-           mem_space_id=dspace, xfer_prp=plist)
+      if (n > 0) call h5dwrite_f(dset, memtype, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dwrite_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, &
-           mem_space_id=dspace)
+      if (n > 0) call h5dwrite_f(dset, memtype, f_ptr, hdf5_err)
     end if
 
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
+    call h5tclose_f(memtype, hdf5_err)
+    call h5tclose_f(filetype, hdf5_err)
   end subroutine write_string
 
 !===============================================================================
@@ -1529,11 +1529,10 @@ contains
 
   subroutine read_string(group_id, name, buffer, indep)
     integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name    ! name for data
-    character(*), intent(inout)        :: buffer  ! read data to here
-    logical,      intent(in), optional :: indep ! independent I/O
+    character(*), intent(in)            :: name    ! name for data
+    character(*), intent(inout), target :: buffer  ! read data to here
+    logical,      intent(in), optional  :: indep ! independent I/O
 
-    integer :: n
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
@@ -1541,9 +1540,11 @@ contains
 #endif
     integer(HID_T) :: dset    ! data set handle
     integer(HID_T) :: dspace  ! data or file space handle
-    integer(HSIZE_T) :: dims1(1)
-    integer(HSIZE_T) :: dims2(2)
-    character(len=len_trim(buffer)), dimension(1) :: str_tmp
+    integer(HID_T) :: filetype
+    integer(HID_T) :: memtype
+    integer(HSIZE_T) :: size
+    integer(HSIZE_T) :: n
+    type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
     data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
@@ -1551,32 +1552,42 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    ! Set up dimesnions of string to write
-    n = len_trim(buffer)
-    dims2(:) = [n, 1] ! full array of strings to write
-    dims1(1) = n      ! length of string
-
+    ! Get dataset and dataspace
     call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     call h5dget_space_f(dset, dspace, hdf5_err)
+
+    ! Make sure buffer is large enough
+    call h5dget_type_f(dset, filetype, hdf5_err)
+    call h5tget_size_f(filetype, size, hdf5_err)
+    if (size > len(buffer) + 1) then
+      call fatal_error("Character buffer is not long enough to &
+           &read HDF5 string.")
+    end if
+
+    ! Get datatype in memory based on Fortran character
+    n = len(buffer)
+    call h5tcopy_f(H5T_FORTRAN_S1, memtype, hdf5_err)
+    call h5tset_size_f(memtype, n, hdf5_err)
+
+    ! Get pointer to start of string
+    f_ptr = c_loc(buffer(1:1))
 
     if (using_mpio_device(group_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, &
-           mem_space_id=dspace, xfer_prp=plist)
+      call h5dread_f(dset, memtype, f_ptr, hdf5_err, mem_space_id=dspace, &
+           xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, &
-           mem_space_id=dspace)
+      call h5dread_f(dset, memtype, f_ptr, hdf5_err, mem_space_id=dspace)
     end if
 
-    ! Copy over buffer
-    buffer = str_tmp(1)
-
-    ! Close dataset
     call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+    call h5tclose_f(filetype, hdf5_err)
+    call h5tclose_f(memtype, hdf5_err)
   end subroutine read_string
 
 !===============================================================================

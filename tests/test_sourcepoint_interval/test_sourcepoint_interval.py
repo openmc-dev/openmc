@@ -26,7 +26,7 @@ class SourcepointTestHarness(TestHarness):
         outstr = TestHarness._get_results(self)
 
         # Add the source information.
-        xyz = sp.source[0].xyz
+        xyz = sp.source[0]['xyz']
         outstr += ' '.join(['{0:12.6E}'.format(x) for x in xyz])
         outstr += "\n"
 

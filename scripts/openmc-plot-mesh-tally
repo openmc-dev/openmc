@@ -33,7 +33,7 @@ class MeshPlotter(tk.Frame):
 
         self.labels = {'cell': 'Cell:', 'cellborn': 'Cell born:',
                        'surface': 'Surface:', 'material': 'Material:',
-                       'universe': 'Universe:', 'energyin': 'Energy in:',
+                       'universe': 'Universe:', 'energy': 'Energy in:',
                        'energyout': 'Energy out:'}
 
         self.filterBoxes = {}
@@ -133,7 +133,11 @@ class MeshPlotter(tk.Frame):
         self.mesh = selectedTally.filters_by_name['mesh'].mesh
 
         # Get mesh dimensions
-        self.nx, self.ny, self.nz = self.mesh.dimension
+        if len(self.mesh.dimension) == 2:
+            self.nx, self.ny = self.mesh.dimension
+            self.nz = 1
+        else:
+            self.nx, self.ny, self.nz = self.mesh.dimension
 
         # Repopulate comboboxes baesd on current basis selection
         text = self.basisBox.get()
@@ -176,9 +180,9 @@ class MeshPlotter(tk.Frame):
             self.filterBoxes[filterType] = combobox
 
             # Set combobox items
-            if filterType in ['energyin', 'energyout']:
+            if filterType in ['energy', 'energyout']:
                 combobox['values'] = ['{0} to {1}'.format(*f.bins[i:i+2])
-                                      for i in range(f.length)]
+                                      for i in range(len(f.bins) - 1)]
             else:
                 combobox['values'] = [str(i) for i in f.bins]
 
@@ -209,8 +213,13 @@ class MeshPlotter(tk.Frame):
             if f.type == 'mesh':
                 mesh_filter = f
                 continue
-            index = self.filterBoxes[f.type].current()
-            spec_list.append((f, index))
+            elif f.type in ['energy', 'energyout']:
+                index = self.filterBoxes[f.type].current()
+                ebin = (f.bins[index], f.bins[index + 1])
+                spec_list.append((f.type, (ebin,)))
+            else:
+                index = self.filterBoxes[f.type].current()
+                spec_list.append((f.type, (index,)))
 
         text = self.basisBox.get()
         if text == 'xy':
@@ -229,11 +238,11 @@ class MeshPlotter(tk.Frame):
                 else:
                     meshtuple = (i + 1, axial_level, j + 1)
                 filters, filter_bins = zip(*spec_list + [
-                    (mesh_filter, meshtuple)])
-                mean = selectedTally.get_value(
-                    self.scoreBox.get(), filters, filter_bins)
-                stdev = selectedTally.get_value(
-                    self.scoreBox.get(), filters, filter_bins,
+                    (mesh_filter.type, (meshtuple,))])
+                mean = selectedTally.get_values(
+                    [self.scoreBox.get()], filters, filter_bins)
+                stdev = selectedTally.get_values(
+                    [self.scoreBox.get()], filters, filter_bins,
                     value='std_dev')
                 if mbvalue == 'Mean':
                     matrix[i, j] = mean

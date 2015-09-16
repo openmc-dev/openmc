@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import glob
+import os
 import shutil
 import sys
 
@@ -16,8 +18,8 @@ class TrackTestHarness(TestHarness):
         outputs.append(glob.glob(''.join((os.getcwd(), '/track_1_1_2.*'))))
         for files in outputs:
             assert len(files) == 1, 'Multiple or no track files detected.'
-            assert files[0].endswith('binary') or files[0].endswith('h5'),\
-            'Track files are not binary or hdf5 files'
+            assert files[0].endswith('h5'),\
+                'Track files are not HDF5 files'
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""

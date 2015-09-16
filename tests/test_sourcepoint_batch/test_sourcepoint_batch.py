@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
+import glob
+import os
 import sys
+
 sys.path.insert(0, '..')
 from testing_harness import *
 
@@ -9,10 +12,9 @@ class SourcepointTestHarness(TestHarness):
     def _test_output_created(self):
         """Make sure statepoint.* files have been created."""
         statepoint = glob.glob(os.path.join(os.getcwd(), 'statepoint.*'))
-        assert len(statepoint) == 5, '5 statepoint files must exist.' 
-        assert statepoint[0].endswith('binary') \
-             or statepoint[0].endswith('h5'), \
-             'Statepoint file is not a binary or hdf5 file.'
+        assert len(statepoint) == 5, '5 statepoint files must exist.'
+        assert statepoint[0].endswith('h5'), \
+             'Statepoint file is not a HDF5 file.'
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""

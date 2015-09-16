@@ -1,5 +1,4 @@
 import copy
-import struct
 import sys
 
 import numpy as np
@@ -92,13 +91,8 @@ class StatePoint(object):
     """
 
     def __init__(self, filename):
-        if filename.endswith('.h5'):
-            import h5py
-            self._f = h5py.File(filename, 'r')
-            self._hdf5 = True
-        else:
-            self._f = open(filename, 'rb')
-            self._hdf5 = False
+        import h5py
+        self._f = h5py.File(filename, 'r')
 
         # Set flags for what data has been read
         self._results = False
@@ -163,40 +157,37 @@ class StatePoint(object):
 
     def _read_metadata(self):
         # Read filetype
-        self._filetype = self._get_int(path='filetype')[0]
+        self._filetype = self._f['filetype'].value
 
         # Read statepoint revision
-        self._revision = self._get_int(path='revision')[0]
+        self._revision = self._f['revision'].value
         if self._revision != 13:
             raise Exception('Statepoint Revision is not consistent.')
 
         # Read OpenMC version
-        if self._hdf5:
-            self._version = [self._get_int(path='version_major')[0],
-                             self._get_int(path='version_minor')[0],
-                             self._get_int(path='version_release')[0]]
-        else:
-            self._version = self._get_int(3)
+        self._version = [self._f['version_major'].value,
+                         self._f['version_minor'].value,
+                         self._f['version_release'].value]
 
         # Read date and time
-        self._date_and_time = self._get_string(19, path='date_and_time')
+        self._date_and_time = self._f['date_and_time'].value[0]
 
         # Read path
-        self._path = self._get_string(255, path='path').strip()
+        self._path = self._f['path'].value[0].strip()
 
         # Read random number seed
-        self._seed = self._get_long(path='seed')[0]
+        self._seed = self._f['seed'].value
 
         # Read run information
-        self._run_mode = self._get_int(path='run_mode')[0]
-        self._n_particles = self._get_long(path='n_particles')[0]
-        self._n_batches = self._get_int(path='n_batches')[0]
+        self._run_mode = self._f['run_mode'].value
+        self._n_particles = self._f['n_particles'].value
+        self._n_batches = self._f['n_batches'].value
 
         # Read current batch
-        self._current_batch = self._get_int(path='current_batch')[0]
+        self._current_batch = self._f['current_batch'].value
 
         # Read whether or not the source site distribution is present
-        self._source_present = self._get_int(path='source_present')[0]
+        self._source_present = self._f['source_present'].value
 
         # Read criticality information
         if self._run_mode == 2:
@@ -206,18 +197,15 @@ class StatePoint(object):
         # Read criticality information
         if self._run_mode == 2:
 
-            self._n_inactive = self._get_int(path='n_inactive')[0]
-            self._gen_per_batch = self._get_int(path='gen_per_batch')[0]
-            self._k_batch = self._get_double(
-                 self._current_batch*self._gen_per_batch,
-                 path='k_generation')
-            self._entropy = self._get_double(
-                 self._current_batch*self._gen_per_batch, path='entropy')
+            self._n_inactive = self._f['n_inactive'].value
+            self._gen_per_batch = self._f['gen_per_batch'].value
+            self._k_generation = self._f['k_generation'].value
+            self._entropy = self._f['entropy'].value
 
-            self._k_col_abs = self._get_double(path='k_col_abs')[0]
-            self._k_col_tra = self._get_double(path='k_col_tra')[0]
-            self._k_abs_tra = self._get_double(path='k_abs_tra')[0]
-            self._k_combined = self._get_double(2, path='k_combined')
+            self._k_col_abs = self._f['k_col_abs'].value
+            self._k_col_tra = self._f['k_col_tra'].value
+            self._k_abs_tra = self._f['k_abs_tra'].value
+            self._k_combined = self._f['k_combined'].value
 
             # Read CMFD information (if used)
             self._read_cmfd()
@@ -226,25 +214,18 @@ class StatePoint(object):
         base = 'cmfd'
 
         # Read CMFD information
-        self._cmfd_on = self._get_int(path='cmfd_on')[0]
+        self._cmfd_on = self._f['cmfd_on'].value
 
         if self._cmfd_on == 1:
-
-            self._cmfd_indices = self._get_int(4, path='{0}/indices'.format(base))
-            self._k_cmfd = self._get_double(self._current_batch,
-                 path='{0}/k_cmfd'.format(base))
-            self._cmfd_src = self._get_double_array(np.product(self._cmfd_indices),
-                 path='{0}/cmfd_src'.format(base))
+            self._cmfd_indices = self._f['{0}/indices'.format(base)].value
+            self._k_cmfd = self._f['{0}/k_cmfd'.format(base)].value
+            self._cmfd_src = self._f['{0}/cmfd_src'.format(base)].value
             self._cmfd_src = np.reshape(self._cmfd_src, tuple(self._cmfd_indices),
                   order='F')
-            self._cmfd_entropy = self._get_double(self._current_batch,
-                  path='{0}/cmfd_entropy'.format(base))
-            self._cmfd_balance = self._get_double(self._current_batch,
-                  path='{0}/cmfd_balance'.format(base))
-            self._cmfd_dominance = self._get_double(self._current_batch,
-                  path='{0}/cmfd_dominance'.format(base))
-            self._cmfd_srccmp = self._get_double(self._current_batch,
-                  path='{0}/cmfd_srccmp'.format(base))
+            self._cmfd_entropy = self._f['{0}/cmfd_entropy'.format(base)].value
+            self._cmfd_balance = self._f['{0}/cmfd_balance'.format(base)].value
+            self._cmfd_dominance = self._f['{0}/cmfd_dominance'.format(base)].value
+            self._cmfd_srccmp = self._f['{0}/cmfd_srccmp'.format(base)].value
 
     def _read_meshes(self):
         # Initialize dictionaries for the Meshes
@@ -253,18 +234,16 @@ class StatePoint(object):
         self._meshes = {}
 
         # Read the number of Meshes
-        self._n_meshes = self._get_int(path='tallies/meshes/n_meshes')[0]
+        self._n_meshes = self._f['tallies/meshes/n_meshes'].value
 
         # Read a list of the IDs for each Mesh
         if self._n_meshes > 0:
 
             # OpenMC Mesh IDs (redefined internally from user definitions)
-            self._mesh_ids = self._get_int(self._n_meshes,
-                 path='tallies/meshes/ids')
+            self._mesh_ids = self._f['tallies/meshes/ids'].value
 
             # User-defined Mesh IDs
-            self._mesh_keys = self._get_int(self._n_meshes,
-                 path='tallies/meshes/keys')
+            self._mesh_keys = self._f['tallies/meshes/keys'].value
 
         else:
             self._mesh_keys = []
@@ -277,23 +256,18 @@ class StatePoint(object):
         for mesh_key in self._mesh_keys:
 
             # Read the user-specified Mesh ID and type
-            mesh_id = self._get_int(path='{0}{1}/id'.format(base, mesh_key))[0]
-            mesh_type = self._get_int(path='{0}{1}/type'.format(base, mesh_key))[0]
+            mesh_id = self._f['{0}{1}/id'.format(base, mesh_key)].value
+            mesh_type = self._f['{0}{1}/type'.format(base, mesh_key)].value
 
             # Get the Mesh dimension
-            n_dimension = self._get_int(
-                 path='{0}{1}/n_dimension'.format(base, mesh_key))[0]
+            n_dimension = self._f['{0}{1}/n_dimension'.format(base, mesh_key)].value
 
             # Read the mesh dimensions, lower-left coordinates,
             # upper-right coordinates, and width of each mesh cell
-            dimension = self._get_int(
-                 n_dimension, path='{0}{1}/dimension'.format(base, mesh_key))
-            lower_left = self._get_double(
-                 n_dimension, path='{0}{1}/lower_left'.format(base, mesh_key))
-            upper_right = self._get_double(
-                 n_dimension, path='{0}{1}/upper_right'.format(base, mesh_key))
-            width = self._get_double(
-                 n_dimension, path='{0}{1}/width'.format(base, mesh_key))
+            dimension = self._f['{0}{1}/dimension'.format(base, mesh_key)].value
+            lower_left = self._f['{0}{1}/lower_left'.format(base, mesh_key)].value
+            upper_right = self._f['{0}{1}/upper_right'.format(base, mesh_key)].value
+            width = self._f['{0}{1}/width'.format(base, mesh_key)].value
 
             # Create the Mesh and assign properties to it
             mesh = openmc.Mesh(mesh_id)
@@ -316,18 +290,16 @@ class StatePoint(object):
         self._tallies = {}
 
         # Read the number of tallies
-        self._n_tallies = self._get_int(path='/tallies/n_tallies')[0]
+        self._n_tallies = self._f['/tallies/n_tallies'].value
 
         # Read a list of the IDs for each Tally
         if self._n_tallies > 0:
 
             # OpenMC Tally IDs (redefined internally from user definitions)
-            self._tally_ids = self._get_int(
-                 self._n_tallies, path='tallies/ids')
+            self._tally_ids = self._f['tallies/ids'].value
 
             # User-defined Tally IDs
-            self._tally_keys = self._get_int(
-                 self._n_tallies, path='tallies/keys')
+            self._tally_keys = self._f['tallies/keys'].value
 
         else:
             self._tally_keys = []
@@ -339,12 +311,10 @@ class StatePoint(object):
         for tally_key in self._tally_keys:
 
             # Read integer Tally estimator type code (analog or tracklength)
-            estimator_type = self._get_int(
-                 path='{0}{1}/estimator'.format(base, tally_key))[0]
+            estimator_type = self._f['{0}{1}/estimator'.format(base, tally_key)].value
 
             # Read the Tally size specifications
-            n_realizations = self._get_int(
-                 path='{0}{1}/n_realizations'.format(base, tally_key))[0]
+            n_realizations = self._f['{0}{1}/n_realizations'.format(base, tally_key)].value
 
             # Create Tally object and assign basic properties
             tally = openmc.Tally(tally_key)
@@ -352,8 +322,7 @@ class StatePoint(object):
             tally.num_realizations = n_realizations
 
             # Read the number of Filters
-            n_filters = self._get_int(
-                 path='{0}{1}/n_filters'.format(base, tally_key))[0]
+            n_filters = self._f['{0}{1}/n_filters'.format(base, tally_key)].value
 
             subbase = '{0}{1}/filter '.format(base, tally_key)
 
@@ -361,15 +330,12 @@ class StatePoint(object):
             for j in range(1, n_filters+1):
 
                 # Read the integer Filter type code
-                filter_type = self._get_int(
-                     path='{0}{1}/type'.format(subbase, j))[0]
+                filter_type = self._f['{0}{1}/type'.format(subbase, j)].value
 
                 # Read the Filter offset
-                offset = self._get_int(
-                     path='{0}{1}/offset'.format(subbase, j))[0]
+                offset = self._f['{0}{1}/offset'.format(subbase, j)].value
 
-                n_bins = self._get_int(
-                     path='{0}{1}/n_bins'.format(subbase, j))[0]
+                n_bins = self._f['{0}{1}/n_bins'.format(subbase, j)].value
 
                 if n_bins <= 0:
                     msg = 'Unable to create Filter "{0}" for Tally ID="{1}" ' \
@@ -377,18 +343,14 @@ class StatePoint(object):
                     raise ValueError(msg)
 
                 # Read the bin values
-                if FILTER_TYPES[filter_type] in ['energy', 'energyout', 'mu',
-                                                 'polar', 'azimuthal']:
-                    bins = self._get_double(
-                         n_bins+1, path='{0}{1}/bins'.format(subbase, j))
+                if FILTER_TYPES[filter_type] in ['energy', 'energyout']:
+                    bins = self._f['{0}{1}/bins'.format(subbase, j)].value
 
                 elif FILTER_TYPES[filter_type] in ['mesh', 'distribcell']:
-                    bins = self._get_int(
-                         path='{0}{1}/bins'.format(subbase, j))[0]
+                    bins = self._f['{0}{1}/bins'.format(subbase, j)].value
 
                 else:
-                    bins = self._get_int(
-                         n_bins, path='{0}{1}/bins'.format(subbase, j))
+                    bins = self._f['{0}{1}/bins'.format(subbase, j)].value
 
                 # Create Filter object
                 filter = openmc.Filter(FILTER_TYPES[filter_type], bins)
@@ -396,32 +358,31 @@ class StatePoint(object):
                 filter.num_bins = n_bins
 
                 if FILTER_TYPES[filter_type] == 'mesh':
-                    key = self._mesh_keys[self._mesh_ids.index(bins)]
+                    key = self._mesh_keys[self._mesh_ids == bins][0]
                     filter.mesh = self._meshes[key]
 
                 # Add Filter to the Tally
                 tally.add_filter(filter)
 
             # Read Nuclide bins
-            n_nuclides = self._get_int(
-                 path='{0}{1}/n_nuclides'.format(base, tally_key))[0]
+            n_nuclides = self._f['{0}{1}/n_nuclides'.format(base, tally_key)].value
 
-            nuclide_zaids = self._get_int(
-                 n_nuclides, path='{0}{1}/nuclides'.format(base, tally_key))
+            nuclide_zaids = self._f['{0}{1}/nuclides'.format(base, tally_key)].value
 
             # Add all Nuclides to the Tally
             for nuclide_zaid in nuclide_zaids:
                 tally.add_nuclide(nuclide_zaid)
 
             # Read score bins
-            n_score_bins = self._get_int(
-                 path='{0}{1}/n_score_bins'.format(base, tally_key))[0]
+            n_score_bins = self._f['{0}{1}/n_score_bins'.format(base, tally_key)].value
 
             tally.num_score_bins = n_score_bins
-            scores = [SCORE_TYPES[j] for j in self._get_int(
-                 n_score_bins, path='{0}{1}/score_bins'.format(base, tally_key))]
-            n_user_scores = self._get_int(
-                 path='{0}{1}/n_user_score_bins'.format(base, tally_key))[0]
+
+            score_bins = self._f['{0}{1}/score_bins'.format(
+                base, tally_key)].value
+            scores = [SCORE_TYPES[score] for score in score_bins]
+            n_user_scores = self._f['{0}{1}/n_user_score_bins'
+                                    .format(base, tally_key)].value
 
             # Compute and set the filter strides
             for i in range(n_filters):
@@ -437,8 +398,8 @@ class StatePoint(object):
 
             # Extract the moment order string for each score
             for k in range(len(scores)):
-                moment = self._get_string(8,
-                     path='{0}order{1}'.format(subbase, k+1))
+                moment = str(self._f['{0}order{1}'.format(
+                    subbase, k+1)].value[0])
                 moment = moment.lstrip('[\'')
                 moment = moment.rstrip('\']')
 
@@ -468,21 +429,16 @@ class StatePoint(object):
         """
 
         # Number of realizations for global Tallies
-        self._n_realizations = self._get_int(path='n_realizations')[0]
+        self._n_realizations = self._f['n_realizations'].value
 
         # Read global Tallies
-        n_global_tallies = self._get_int(path='n_global_tallies')[0]
+        n_global_tallies = self._f['n_global_tallies'].value
 
-        if self._hdf5:
-            data = self._f['global_tallies'].value
-            self._global_tallies = np.column_stack((data['sum'], data['sum_sq']))
-
-        else:
-            self._global_tallies = np.array(self._get_double(2*n_global_tallies))
-            self._global_tallies.shape = (n_global_tallies, 2)
+        data = self._f['global_tallies'].value
+        self._global_tallies = np.column_stack((data['sum'], data['sum_sq']))
 
         # Flag indicating if Tallies are present
-        self._tallies_present = self._get_int(path='tallies/tallies_present')[0]
+        self._tallies_present = self._f['tallies/tallies_present'].value
 
         base = 'tallies/tally '
 
@@ -499,15 +455,9 @@ class StatePoint(object):
                 num_tot_bins = tally.num_bins
 
                 # Extract Tally data from the file
-                if self._hdf5:
-                    data = self._f['{0}{1}/results'.format(base, tally_key)].value
-                    sum = data['sum']
-                    sum_sq = data['sum_sq']
-
-                else:
-                    results = np.array(self._get_double(2*num_tot_bins))
-                    sum = results[0::2]
-                    sum_sq = results[1::2]
+                data = self._f['{0}{1}/results'.format(base, tally_key)].value
+                sum = data['sum']
+                sum_sq = data['sum_sq']
 
                 # Define a routine to convert 0 to 1
                 def nonzero(val):
@@ -547,8 +497,7 @@ class StatePoint(object):
         self._source = np.empty(self._n_particles, dtype=SourceSite)
 
         # For HDF5 state points, copy entire bank
-        if self._hdf5:
-            source_sites = self._f['source_bank'].value
+        source_sites = self._f['source_bank'].value
 
         # Initialize SourceSite object for each particle
         for i in range(self._n_particles):
@@ -556,13 +505,7 @@ class StatePoint(object):
             site = SourceSite()
 
             # Read position, angle, and energy
-            if self._hdf5:
-                site._weight, site._xyz, site._uvw, site._E = source_sites[i]
-            else:
-                site._weight = self._get_double()[0]
-                site._xyz = self._get_double(3)
-                site._uvw = self._get_double(3)
-                site._E = self._get_double()[0]
+            site._weight, site._xyz, site._uvw, site._E = source_sites[i]
 
             # Store the source site in the NumPy array
             self._source[i] = site
@@ -792,43 +735,3 @@ class StatePoint(object):
                     filter.bins = material_ids
 
         self._with_summary = True
-
-    def _get_data(self, n, typeCode, size):
-        return list(struct.unpack('={0}{1}'.format(n, typeCode),
-                    self._f.read(n*size)))
-
-    def _get_int(self, n=1, path=None):
-        if self._hdf5:
-            return [int(v) for v in self._f[path].value]
-        else:
-            return [int(v) for v in self._get_data(n, 'i', 4)]
-
-    def _get_long(self, n=1, path=None):
-        if self._hdf5:
-            return [long(v) for v in self._f[path].value]
-        else:
-            return [long(v) for v in self._get_data(n, 'q', 8)]
-
-    def _get_float(self, n=1, path=None):
-        if self._hdf5:
-            return [float(v) for v in self._f[path].value]
-        else:
-            return [float(v) for v in self._get_data(n, 'f', 4)]
-
-    def _get_double(self, n=1, path=None):
-        if self._hdf5:
-            return [float(v) for v in self._f[path].value]
-        else:
-            return [float(v) for v in self._get_data(n, 'd', 8)]
-
-    def _get_double_array(self, n=1, path=None):
-        if self._hdf5:
-            return self._f[path].value
-        else:
-            return self._get_data(n, 'd', 8)
-
-    def _get_string(self, n=1, path=None):
-        if self._hdf5:
-            return str(self._f[path].value)
-        else:
-            return str(self._get_data(n, 's', 1)[0])

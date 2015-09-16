@@ -31,18 +31,18 @@ class Summary(object):
 
     def _read_metadata(self):
         # Read OpenMC version
-        self.version = [self._f['version_major'][0],
-                         self._f['version_minor'][0],
-                         self._f['version_release'][0]]
+        self.version = [self._f['version_major'].value,
+                         self._f['version_minor'].value,
+                         self._f['version_release'].value]
         # Read date and time
         self.date_and_time = self._f['date_and_time'][...]
 
-        self.n_batches = self._f['n_batches'][0]
-        self.n_particles = self._f['n_particles'][0]
-        self.n_active = self._f['n_active'][0]
-        self.n_inactive = self._f['n_inactive'][0]
-        self.gen_per_batch = self._f['gen_per_batch'][0]
-        self.n_procs = self._f['n_procs'][0]
+        self.n_batches = self._f['n_batches'].value
+        self.n_particles = self._f['n_particles'].value
+        self.n_active = self._f['n_active'].value
+        self.n_inactive = self._f['n_inactive'].value
+        self.gen_per_batch = self._f['gen_per_batch'].value
+        self.n_procs = self._f['n_procs'].value
 
     def _read_geometry(self):
         # Read in and initialize the Materials and Geometry
@@ -55,7 +55,7 @@ class Summary(object):
         self._finalize_geometry()
 
     def _read_nuclides(self):
-        self.n_nuclides = self._f['nuclides/n_nuclides'][0]
+        self.n_nuclides = self._f['nuclides/n_nuclides']
 
         # Initialize dictionary for each Nuclide
         # Keys   - Nuclide ZAIDs
@@ -66,9 +66,9 @@ class Summary(object):
             if key == 'n_nuclides':
                 continue
 
-            index = self._f['nuclides'][key]['index'][0]
+            index = self._f['nuclides'][key]['index'].value
             alias = self._f['nuclides'][key]['alias'][0]
-            zaid = self._f['nuclides'][key]['zaid'][0]
+            zaid = self._f['nuclides'][key]['zaid'].value
 
             # Read the Nuclide's name (e.g., 'H-1' or 'U-235')
             name = alias.split('.')[0]
@@ -84,7 +84,7 @@ class Summary(object):
                 self.nuclides[zaid].zaid = zaid
 
     def _read_materials(self):
-        self.n_materials = self._f['materials/n_materials'][0]
+        self.n_materials = self._f['n_materials'].value
 
         # Initialize dictionary for each Material
         # Keys     - Material keys
@@ -96,19 +96,20 @@ class Summary(object):
                 continue
 
             material_id = int(key.lstrip('material '))
-            index = self._f['materials'][key]['index'][0]
+            index = self._f['materials'][key]['index'].value
             name = self._f['materials'][key]['name'][0]
-            density = self._f['materials'][key]['atom_density'][0]
+            density = self._f['materials'][key]['atom_density'].value
             nuc_densities = self._f['materials'][key]['nuclide_densities'][...]
             nuclides = self._f['materials'][key]['nuclides'][...]
-            n_sab = self._f['materials'][key]['n_sab'][0]
+            n_sab = self._f['materials'][key]['n_sab'].value
 
             sab_names = []
             sab_xs = []
 
             # Read the names of the S(a,b) tables for this Material
             for i in range(1, n_sab+1):
-                sab_table = self._f['materials'][key]['sab_tables'][str(i)][0]
+                sab_table = \
+                    self._f['materials'][key]['sab_tables'][str(i)].value
 
                 # Read the cross-section identifiers for each S(a,b) table
                 sab_names.append(sab_table.split('.')[0])
@@ -140,7 +141,7 @@ class Summary(object):
             self.materials[index] = material
 
     def _read_surfaces(self):
-        self.n_surfaces = self._f['geometry/n_surfaces'][0]
+        self.n_surfaces = self._f['geometry/n_surfaces'].value
 
         # Initialize dictionary for each Surface
         # Keys     - Surface keys
@@ -152,9 +153,9 @@ class Summary(object):
                 continue
 
             surface_id = int(key.lstrip('surface '))
-            index = self._f['geometry/surfaces'][key]['index'][0]
+            index = self._f['geometry/surfaces'][key]['index'].value
             name = self._f['geometry/surfaces'][key]['name'][0]
-            surf_type = self._f['geometry/surfaces'][key]['type'][...][0]
+            surf_type = self._f['geometry/surfaces'][key]['type'][...]
             bc = self._f['geometry/surfaces'][key]['boundary_condition'][...][0]
             coeffs = self._f['geometry/surfaces'][key]['coefficients'][...]
 
@@ -220,7 +221,7 @@ class Summary(object):
             self.surfaces[index] = surface
 
     def _read_cells(self):
-        self.n_cells = self._f['geometry/n_cells'][0]
+        self.n_cells = self._f['geometry/n_cells'].value
 
         # Initialize dictionary for each Cell
         # Keys     - Cell keys
@@ -240,16 +241,16 @@ class Summary(object):
                 continue
 
             cell_id = int(key.lstrip('cell '))
-            index = self._f['geometry/cells'][key]['index'][0]
+            index = self._f['geometry/cells'][key]['index'].value
             name = self._f['geometry/cells'][key]['name'][0]
             fill_type = self._f['geometry/cells'][key]['fill_type'][...][0]
 
             if fill_type == 'normal':
-                fill = self._f['geometry/cells'][key]['material'][0]
+                fill = self._f['geometry/cells'][key]['material'].value
             elif fill_type == 'universe':
-                fill = self._f['geometry/cells'][key]['fill'][0]
+                fill = self._f['geometry/cells'][key]['fill'].value
             else:
-                fill = self._f['geometry/cells'][key]['lattice'][0]
+                fill = self._f['geometry/cells'][key]['lattice'].value
 
             if 'surfaces' in self._f['geometry/cells'][key].keys():
                 surfaces = self._f['geometry/cells'][key]['surfaces'][...]
@@ -260,20 +261,20 @@ class Summary(object):
             cell = openmc.Cell(cell_id=cell_id, name=name)
 
             if fill_type == 'universe':
-                maps = self._f['geometry/cells'][key]['maps'][0]
+                maps = self._f['geometry/cells'][key]['maps'].value
 
                 if maps > 0:
                     offset = self._f['geometry/cells'][key]['offset'][...]
-                    cell.set_offset(offset)
+                    cell.offsets = offset
 
-                translated = self._f['geometry/cells'][key]['translated'][0]
+                translated = self._f['geometry/cells'][key]['translated'].value
                 if translated:
                     translation = \
                       self._f['geometry/cells'][key]['translation'][...]
                     translation = np.asarray(translation, dtype=np.float64)
                     cell.translation = translation
 
-                rotated = self._f['geometry/cells'][key]['rotated'][0]
+                rotated = self._f['geometry/cells'][key]['rotated'].value
                 if rotated:
                     rotation = \
                       self._f['geometry/cells'][key]['rotation'][...]
@@ -295,7 +296,7 @@ class Summary(object):
             self.cells[index] = cell
 
     def _read_universes(self):
-        self.n_universes = self._f['geometry/n_universes'][0]
+        self.n_universes = self._f['geometry/n_universes'].value
 
         # Initialize dictionary for each Universe
         # Keys     - Universe keys
@@ -307,7 +308,7 @@ class Summary(object):
                 continue
 
             universe_id = int(key.lstrip('universe '))
-            index = self._f['geometry/universes'][key]['index'][0]
+            index = self._f['geometry/universes'][key]['index'].value
             cells = self._f['geometry/universes'][key]['cells'][...]
 
             # Create this Universe
@@ -322,7 +323,7 @@ class Summary(object):
             self.universes[index] = universe
 
     def _read_lattices(self):
-        self.n_lattices = self._f['geometry/n_lattices'][0]
+        self.n_lattices = self._f['geometry/n_lattices'].value
 
         # Initialize lattices for each Lattice
         # Keys     - Lattice keys
@@ -334,11 +335,11 @@ class Summary(object):
                 continue
 
             lattice_id = int(key.lstrip('lattice '))
-            index = self._f['geometry/lattices'][key]['index'][0]
-            name = self._f['geometry/lattices'][key]['name'][0]
+            index = self._f['geometry/lattices'][key]['index'].value
+            name = self._f['geometry/lattices'][key]['name'][...][0]
             lattice_type = self._f['geometry/lattices'][key]['type'][...][0]
-            maps = self._f['geometry/lattices'][key]['maps'][0]
-            offset_size = self._f['geometry/lattices'][key]['offset_size'][0]
+            maps = self._f['geometry/lattices'][key]['maps'].value
+            offset_size = self._f['geometry/lattices'][key]['offset_size'].value
 
             if offset_size > 0:
                 offsets = self._f['geometry/lattices'][key]['offsets'][...]
@@ -348,7 +349,7 @@ class Summary(object):
                 lower_left = \
                      self._f['geometry/lattices'][key]['lower_left'][...]
                 pitch = self._f['geometry/lattices'][key]['pitch'][...]
-                outer = self._f['geometry/lattices'][key]['outer'][0]
+                outer = self._f['geometry/lattices'][key]['outer'].value
 
                 universe_ids = \
                      self._f['geometry/lattices'][key]['universes'][...]
@@ -521,7 +522,7 @@ class Summary(object):
             self.n_tallies = 0
             return
 
-        self.n_tallies = self._f['tallies/n_tallies'][0]
+        self.n_tallies = self._f['tallies/n_tallies'].value
 
         # OpenMC Tally keys
         all_keys = self._f['tallies/'].keys()
@@ -536,9 +537,9 @@ class Summary(object):
             subbase = '{0}{1}'.format(base, tally_id)
 
             # Read Tally name metadata
-            name_size = self._f['{0}/name_size'.format(subbase)][0]
+            name_size = self._f['{0}/name_size'.format(subbase)][...]
             if (name_size > 0):
-                tally_name = self._f['{0}/name'.format(subbase)][0]
+                tally_name = self._f['{0}/name'.format(subbase)][...][0]
                 tally_name = tally_name.lstrip('[\'')
                 tally_name = tally_name.rstrip('\']')
             else:
@@ -555,7 +556,7 @@ class Summary(object):
             tally.num_score_bins = num_score_bins
 
             # Read filter metadata
-            num_filters = self._f['{0}/n_filters'.format(subbase)][0]
+            num_filters = self._f['{0}/n_filters'.format(subbase)].value
 
             # Initialize all Filters
             for j in range(1, num_filters+1):
@@ -563,11 +564,11 @@ class Summary(object):
                 subsubbase = '{0}/filter {1}'.format(subbase, j)
 
                 # Read filter type (e.g., "cell", "energy", etc.)
-                filter_type_code = self._f['{0}/type'.format(subsubbase)][0]
+                filter_type_code = self._f['{0}/type'.format(subsubbase)].value
                 filter_type = openmc.FILTER_TYPES[filter_type_code]
 
                 # Read the filter bins
-                num_bins = self._f['{0}/n_bins'.format(subsubbase)][0]
+                num_bins = self._f['{0}/n_bins'.format(subsubbase)].value
                 bins = self._f['{0}/bins'.format(subsubbase)][...]
 
                 # Create Filter object

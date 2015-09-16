@@ -211,19 +211,19 @@ class CMFDTestHarness(TestHarness):
 
         # Write out CMFD data.
         outstr += 'cmfd indices\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_indices])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_indices])
         outstr += '\nk cmfd\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._k_cmfd])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.k_cmfd])
         outstr += '\ncmfd entropy\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_entropy])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_entropy])
         outstr += '\ncmfd balance\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_balance])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_balance])
         outstr += '\ncmfd dominance ratio\n'
-        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in sp._cmfd_dominance])
+        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in sp.cmfd_dominance])
         outstr += '\ncmfd openmc source comparison\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_srccmp])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_srccmp])
         outstr += '\ncmfd source\n'
-        cmfdsrc = np.reshape(sp._cmfd_src, np.product(sp._cmfd_indices),
+        cmfdsrc = np.reshape(sp.cmfd_src, np.product(sp.cmfd_indices),
                              order='F')
         outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
         outstr += '\n'

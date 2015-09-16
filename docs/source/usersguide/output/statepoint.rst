@@ -29,11 +29,11 @@ The current revision of the statepoint file format is 13.
 
     Release version number for OpenMC
 
-**/time_stamp** (*char[19]*)
+**/time_stamp** (*char[]*)
 
     Date and time the state point was written.
 
-**/path** (*char[255]*)
+**/path** (*char[]*)
 
     Absolute path to directory containing input files.
 
@@ -228,17 +228,15 @@ if (run_mode == MODE_EIGENVALUE)
 
         Values of specified scoring bins (e.g. SCORE_FLUX).
 
-    **/tallies/tally i/n_user_score_bins**
+    **/tallies/tally i/n_user_score_bins** (*int*)
 
         Number of scoring bins without accounting for those added by
         expansions, e.g. scatter-PN.
 
-    *do J = 1, total number of moments*
+    **/tallies/tally i/moment_orders** (*char[][]*)
 
-        **/tallies/tally i/moments/orderJ** (*char[8]*)
-
-            Tallying moment order for Legendre and spherical
-            harmonic tally expansions (*e.g.*, 'P2', 'Y1,2', etc.).
+        Tallying moment orders for Legendre and spherical harmonic tally
+        expansions (*e.g.*, 'P2', 'Y1,2', etc.).
 
 **/source_present** (*int*)
 

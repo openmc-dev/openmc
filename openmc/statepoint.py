@@ -161,7 +161,7 @@ class StatePoint(object):
 
         # Read statepoint revision
         self._revision = self._f['revision'].value
-        if self._revision != 13:
+        if self._revision != 14:
             raise Exception('Statepoint Revision is not consistent.')
 
         # Read OpenMC version
@@ -393,27 +393,18 @@ class StatePoint(object):
                     filter.stride *= tally.filters[j].num_bins
 
             # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
-            moments = []
-            subbase = '{0}{1}/moments/'.format(base, tally_key)
-
-            # Extract the moment order string for each score
-            for k in range(len(scores)):
-                moment = self._f['{0}order{1}'.format(
-                    subbase, k+1)].value.decode()
-
-                # Remove extra whitespace
-                moment.replace(" ", "")
-                moments.append(moment)
+            moments = self._f['{0}{1}/moment_orders'.format(
+                base, tally_key)].value
 
             # Add the scores to the Tally
             for j, score in enumerate(scores):
                 # If this is a scattering moment, insert the scattering order
                 if '-n' in score:
-                    score = score.replace('-n', '-' + str(moments[j]))
+                    score = score.replace('-n', '-' + moments[j].decode())
                 elif '-pn' in score:
-                    score = score.replace('-pn', '-' + str(moments[j]))
+                    score = score.replace('-pn', '-' + moments[j].decode())
                 elif '-yn' in score:
-                    score = score.replace('-yn', '-' + str(moments[j]))
+                    score = score.replace('-yn', '-' + moments[j].decode())
 
                 tally.add_score(score)
 

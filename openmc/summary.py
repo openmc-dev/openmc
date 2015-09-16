@@ -67,7 +67,7 @@ class Summary(object):
                 continue
 
             index = self._f['nuclides'][key]['index'].value
-            alias = self._f['nuclides'][key]['alias'][0]
+            alias = self._f['nuclides'][key]['alias'].value.decode()
             zaid = self._f['nuclides'][key]['zaid'].value
 
             # Read the Nuclide's name (e.g., 'H-1' or 'U-235')
@@ -97,7 +97,7 @@ class Summary(object):
 
             material_id = int(key.lstrip('material '))
             index = self._f['materials'][key]['index'].value
-            name = self._f['materials'][key]['name'][0]
+            name = self._f['materials'][key]['name'].value.decode()
             density = self._f['materials'][key]['atom_density'].value
             nuc_densities = self._f['materials'][key]['nuclide_densities'][...]
             nuclides = self._f['materials'][key]['nuclides'][...]
@@ -154,9 +154,9 @@ class Summary(object):
 
             surface_id = int(key.lstrip('surface '))
             index = self._f['geometry/surfaces'][key]['index'].value
-            name = self._f['geometry/surfaces'][key]['name'][0]
-            surf_type = self._f['geometry/surfaces'][key]['type'][...]
-            bc = self._f['geometry/surfaces'][key]['boundary_condition'][...][0]
+            name = self._f['geometry/surfaces'][key]['name'].value.decode()
+            surf_type = self._f['geometry/surfaces'][key]['type'].value.decode()
+            bc = self._f['geometry/surfaces'][key]['boundary_condition'].value.decode()
             coeffs = self._f['geometry/surfaces'][key]['coefficients'][...]
 
             # Create the Surface based on its type
@@ -242,8 +242,8 @@ class Summary(object):
 
             cell_id = int(key.lstrip('cell '))
             index = self._f['geometry/cells'][key]['index'].value
-            name = self._f['geometry/cells'][key]['name'][0]
-            fill_type = self._f['geometry/cells'][key]['fill_type'][...][0]
+            name = self._f['geometry/cells'][key]['name'].value.decode()
+            fill_type = self._f['geometry/cells'][key]['fill_type'].value.decode()
 
             if fill_type == 'normal':
                 fill = self._f['geometry/cells'][key]['material'].value
@@ -336,8 +336,8 @@ class Summary(object):
 
             lattice_id = int(key.lstrip('lattice '))
             index = self._f['geometry/lattices'][key]['index'].value
-            name = self._f['geometry/lattices'][key]['name'][...][0]
-            lattice_type = self._f['geometry/lattices'][key]['type'][...][0]
+            name = self._f['geometry/lattices'][key]['name'].value.decode()
+            lattice_type = self._f['geometry/lattices'][key]['type'].value.decode()
             maps = self._f['geometry/lattices'][key]['maps'].value
             offset_size = self._f['geometry/lattices'][key]['offset_size'].value
 

@@ -170,10 +170,10 @@ class StatePoint(object):
                          self._f['version_release'].value]
 
         # Read date and time
-        self._date_and_time = self._f['date_and_time'].value[0]
+        self._date_and_time = self._f['date_and_time'].value.decode()
 
         # Read path
-        self._path = self._f['path'].value[0].strip()
+        self._path = self._f['path'].value.decode()
 
         # Read random number seed
         self._seed = self._f['seed'].value
@@ -398,10 +398,8 @@ class StatePoint(object):
 
             # Extract the moment order string for each score
             for k in range(len(scores)):
-                moment = str(self._f['{0}order{1}'.format(
-                    subbase, k+1)].value[0])
-                moment = moment.lstrip('[\'')
-                moment = moment.rstrip('\']')
+                moment = self._f['{0}order{1}'.format(
+                    subbase, k+1)].value.decode()
 
                 # Remove extra whitespace
                 moment.replace(" ", "")

@@ -11,53 +11,6 @@ if sys.version > '3':
     long = int
 
 
-class SourceSite(object):
-    """A single source site produced from fission.
-
-    Attributes
-    ----------
-    weight : float
-        Weight of the particle arising from the site
-    xyz : list of float
-        Cartesian coordinates of the site
-    uvw : list of float
-        Directional cosines for particles emerging from the site
-    E : float
-        Energy of the emerging particle in MeV
-
-    """
-
-    def __init__(self):
-        self._weight = None
-        self._xyz = None
-        self._uvw = None
-        self._E = None
-
-    def __repr__(self):
-        string = 'SourceSite\n'
-        string += '{0: <16}{1}{2}\n'.format('\tweight', '=\t', self._weight)
-        string += '{0: <16}{1}{2}\n'.format('\tE', '=\t', self._E)
-        string += '{0: <16}{1}{2}\n'.format('\t(x,y,z)', '=\t', self._xyz)
-        string += '{0: <16}{1}{2}\n'.format('\t(u,v,w)', '=\t', self._uvw)
-        return string
-
-    @property
-    def weight(self):
-        return self._weight
-
-    @property
-    def xyz(self):
-        return self._xyz
-
-    @property
-    def uvw(self):
-        return self._uvw
-
-    @property
-    def E(self):
-        return self._E
-
-
 class StatePoint(object):
     """State information on a simulation at a certain point in time (at the end of a
     given batch). Statepoints can be used to analyze tally results as well as
@@ -118,8 +71,10 @@ class StatePoint(object):
         Simulation run mode, e.g. 'k-eigenvalue'
     seed : int
         Pseudorandom number generator seed
-    source : ndarray of SourceSite
-        Array of source sites
+    source : ndarray of compound datatype
+        Array of source sites. The compound datatype has fields 'wgt', 'xyz',
+        'uvw', and 'E' corresponding to the weight, position, direction, and
+        energy of the source site.
     source_present : bool
         Indicate whether source sites are present
     tallies : dict
@@ -146,7 +101,6 @@ class StatePoint(object):
         # Set flags for what data has been read
         self._meshes_read = False
         self._tallies_read = False
-        self._source_read = False
         self._with_summary = False
 
     def close(self):
@@ -354,18 +308,7 @@ class StatePoint(object):
     @property
     def source(self):
         if self.source_present:
-            if not self._source_read:
-                # Initialize a NumPy array for the source sites
-                source_sites = self._f['source_bank'].value
-                self._source = np.empty_like(source_sites, dtype=SourceSite)
-
-                # Create SourceSite objects for each particle
-                for i, site in enumerate(source_sites):
-                    s = SourceSite()
-                    s._weight, s._xyz, s._uvw, s._E = site
-                    self._source[i] = s
-                self._source_read = True
-            return self._source
+            return self._f['source_bank'].value
         else:
             return None
 

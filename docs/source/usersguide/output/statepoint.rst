@@ -6,11 +6,9 @@ State Point File Format
 
 The current revision of the statepoint file format is 13.
 
-**/filetype** (*int*)
+**/filetype** (*char[]*)
 
-    Flags what type of file this is. A value of -1 indicates a statepoint file,
-    a value of -2 indicates a particle restart file, a value of -3 indicates a
-    source file, and a value of -4 indicates a track file.
+    String indicating the type of file.
 
 **/revision** (*int*)
 

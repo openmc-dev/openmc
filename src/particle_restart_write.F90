@@ -40,7 +40,7 @@ contains
     src => source_bank(current_work)
 
     ! Write data to file
-    call write_dataset(file_id, 'filetype', FILETYPE_PARTICLE_RESTART)
+    call write_dataset(file_id, 'filetype', 'particle restart')
     call write_dataset(file_id, 'revision', REVISION_PARTICLE_RESTART)
     call write_dataset(file_id, 'current_batch', current_batch)
     call write_dataset(file_id, 'gen_per_batch', gen_per_batch)

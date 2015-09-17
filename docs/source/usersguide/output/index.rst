@@ -12,3 +12,4 @@ Output File Formats
    source
    particle_restart
    track
+   voxel

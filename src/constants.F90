@@ -20,7 +20,8 @@ module constants
        FILETYPE_STATEPOINT       = -1, &
        FILETYPE_PARTICLE_RESTART = -2, &
        FILETYPE_SOURCE           = -3, &
-       FILETYPE_TRACK            = -4
+       FILETYPE_TRACK            = -4, &
+       FILETYPE_VOXEL            = -5
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS

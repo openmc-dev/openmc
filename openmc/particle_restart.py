@@ -42,7 +42,8 @@ class Particle(object):
         self._f = h5py.File(filename, 'r')
 
         # Ensure filetype and revision are correct
-        if 'filetype' not in self._f or self._f['filetype'].value != -2:
+        if 'filetype' not in self._f or self._f[
+                'filetype'].value.decode() != 'particle restart':
             raise IOError('{} is not a particle restart file.'.format(filename))
         if self._f['revision'].value != 1:
             raise IOError('Particle restart file revision is not consistent.')

@@ -94,7 +94,8 @@ class StatePoint(object):
         self._f = h5py.File(filename, 'r')
 
         # Ensure filetype and revision are correct
-        if 'filetype' not in self._f or self._f['filetype'].value != -1:
+        if 'filetype' not in self._f or self._f[
+                'filetype'].value.decode() != 'statepoint':
             raise IOError('{} is not a statepoint file.'.format(filename))
         if self._f['revision'].value != 14:
             raise IOError('Statepoint revision is not consistent.')

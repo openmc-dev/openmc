@@ -32,8 +32,8 @@ contains
 
     integer(8) :: i          ! loop index over bank sites
     integer(8) :: id         ! particle id
-    integer(4) :: itmp       ! temporary integer
     integer(HID_T) :: file_id
+    character(MAX_WORD_LEN) :: filetype
     character(MAX_FILE_LEN) :: filename
     type(Bank), pointer :: src ! source bank site
 
@@ -50,10 +50,10 @@ contains
       file_id = file_open(path_source, 'r', parallel=.true.)
 
       ! Read the file type
-      call read_dataset(file_id, "filetype", itmp)
+      call read_dataset(file_id, "filetype", filetype)
 
       ! Check to make sure this is a source file
-      if (itmp /= FILETYPE_SOURCE) then
+      if (filetype /= 'source') then
         call fatal_error("Specified starting source file not a source file &
              &type.")
       end if

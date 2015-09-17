@@ -381,7 +381,7 @@ contains
     file_id = file_create(pl%path_plot)
 
     ! write plot header info
-    call write_dataset(file_id, "filetype", FILETYPE_VOXEL)
+    call write_dataset(file_id, "filetype", 'voxel')
     call write_dataset(file_id, "num_voxels", pl%pixels)
     call write_dataset(file_id, "voxel_width", vox)
     call write_dataset(file_id, "lower_left", ll)

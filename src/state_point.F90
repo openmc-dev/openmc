@@ -70,7 +70,7 @@ contains
       file_id = file_create(filename)
 
       ! Write file type
-      call write_dataset(file_id, "filetype", FILETYPE_STATEPOINT)
+      call write_dataset(file_id, "filetype", 'statepoint')
 
       ! Write revision number for state point file
       call write_dataset(file_id, "revision", REVISION_STATEPOINT)
@@ -375,7 +375,7 @@ contains
         ! Create separate source file
         if (master .or. parallel) then
           file_id = file_create(filename, parallel=.true.)
-          call write_dataset(file_id, "filetype", FILETYPE_SOURCE)
+          call write_dataset(file_id, "filetype", 'source')
         end if
       else
         filename = trim(path_output) // 'statepoint.' // &
@@ -397,7 +397,7 @@ contains
       call write_message("Creating source file " // trim(filename) // "...", 1)
       if (master .or. parallel) then
         file_id = file_create(filename, parallel=.true.)
-        call write_dataset(file_id, "filetype", FILETYPE_SOURCE)
+        call write_dataset(file_id, "filetype", 'source')
       end if
 
       call write_source_bank(file_id)

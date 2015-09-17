@@ -1278,14 +1278,16 @@ The ``<tally>`` element accepts the following sub-elements:
     *Default*: total
 
   :estimator:
-    The estimator element is used to force the use of either ``analog`` or
-    ``tracklength`` tally estimation.  ''analog'' is generally less efficient
-    though it can be used with every score type.  ''tracklength'' is generally
-    the most efficient, though its usage is restricted to tallies that do not
-    score particle information which requires a collision to have occured, such
-    as a scattering tally which utilizes outgoing energy filters.
+    The estimator element is used to force the use of either ``analog``,
+    ``collision``, or ``tracklength`` tally estimation.  ``analog`` is generally
+    the least efficient though it can be used with every score type.
+    ``tracklength`` is generally the most efficient, but neither ``tracklength``
+    nor ``collision`` can be used to score a tally that requires post-collision
+    information.  For example, a scattering tally with outgoing energy filters
+    cannot be used with ``tracklength`` or ``collision`` because the code will
+    not know the outgoing energy distribution.
 
-    *Default*: ``tracklength`` but will revert to analog if necessary.
+    *Default*: ``tracklength`` but will revert to ``analog`` if necessary.
 
   :scores:
     A space-separated list of the desired responses to be accumulated. Accepted

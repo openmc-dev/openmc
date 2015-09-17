@@ -43,8 +43,9 @@ class StatePoint(object):
         Shannon entropy of fission source at each batch
     gen_per_batch : int
         Number of fission generations per batch
-    global_tallies : ndarray
-        Global tallies and their uncertainties
+    global_tallies : ndarray of compound datatype
+        Global tallies for k-effective estimates and leakage. The compound
+        datatype has fields 'name', 'sum', 'sum_sq', 'mean', and 'std_dev'.
     k_combined : list
         Combined estimator for k-effective and its uncertainty
     k_col_abs : float
@@ -102,6 +103,7 @@ class StatePoint(object):
         self._meshes_read = False
         self._tallies_read = False
         self._with_summary = False
+        self._global_tallies = None
 
     def close(self):
         self._f.close()
@@ -177,8 +179,24 @@ class StatePoint(object):
 
     @property
     def global_tallies(self):
-        data = self._f['global_tallies'].value
-        return np.column_stack((data['sum'], data['sum_sq']))
+        if self._global_tallies is None:
+            data = self._f['global_tallies'].value
+            gt = np.zeros_like(data, dtype=[
+                ('name', 'a14'), ('sum', 'f8'), ('sum_sq', 'f8'),
+                ('mean', 'f8'), ('std_dev', 'f8')])
+            gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
+                          'leakage']
+            gt['sum'] = data['sum']
+            gt['sum_sq'] = data['sum_sq']
+
+            # Calculate mean and sample standard deviation of mean
+            n = self.n_realizations
+            gt['mean'] = gt['sum']/n
+            gt['std_dev'] = np.sqrt((gt['sum_sq']/n - gt['mean']**2)/(n - 1))
+
+            self._global_tallies = gt
+
+        return self._global_tallies
 
     @property
     def k_cmfd(self):
@@ -459,60 +477,6 @@ class StatePoint(object):
     @property
     def with_summary(self):
         return self._with_summary
-
-    def compute_ci(self, confidence=0.95):
-        """Computes confidence intervals for each Tally bin.
-
-        This method is equivalent to calling compute_stdev(...) when the
-        confidence is known as opposed to its corresponding t value.
-
-        Parameters
-        ----------
-        confidence : float, optional
-            Confidence level. Defaults to 0.95.
-
-        """
-
-        # Determine significance level and percentile for two-sided CI
-        alpha = 1 - confidence
-        percentile = 1 - alpha/2
-
-        # Calculate t-value
-        t_value = scipy.stats.t.ppf(percentile, self._n_realizations - 1)
-        self.compute_stdev(t_value)
-
-    def compute_stdev(self, t_value=1.0):
-        """Computes the sample mean and the standard deviation of the mean
-        for each Tally bin.
-
-        Parameters
-        ----------
-        t_value : float, optional
-            Student's t-value applied to the uncertainty. Defaults to 1.0,
-            meaning the reported value is the sample standard deviation.
-
-        """
-
-        # Determine number of realizations
-        n = self._n_realizations
-
-        # Calculate the standard deviation for each global tally
-        for i in range(len(self._global_tallies)):
-
-            # Get sum and sum of squares
-            s, s2 = self._global_tallies[i]
-
-            # Calculate sample mean and replace value
-            s /= n
-            self._global_tallies[i, 0] = s
-
-            # Calculate standard deviation
-            if s != 0.0:
-                self._global_tallies[i, 1] = t_value * np.sqrt((s2 / n - s**2) / (n-1))
-
-        # Calculate sample mean and standard deviation for user-defined Tallies
-        for tally_id, tally in self.tallies.items():
-            tally.compute_std_dev(t_value)
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None):

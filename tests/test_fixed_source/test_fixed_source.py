@@ -30,9 +30,10 @@ class FixedSourceTestHarness(TestHarness):
                 outstr += '\n'.join(results) + '\n'
                 tally_num += 1
 
+        gt = sp.global_tallies
         outstr += 'leakage:\n'
-        outstr += '{0:12.6E}'.format(sp.global_tallies[3][0]) + '\n'
-        outstr += '{0:12.6E}'.format(sp.global_tallies[3][1]) + '\n'
+        outstr += '{0:12.6E}'.format(gt[gt['name'] == b'leakage'][0]['sum']) + '\n'
+        outstr += '{0:12.6E}'.format(gt[gt['name'] == b'leakage'][0]['sum_sq']) + '\n'
 
         return outstr
 

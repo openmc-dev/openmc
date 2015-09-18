@@ -1298,7 +1298,9 @@ The ``<tally>`` element accepts the following sub-elements:
     physical quantities:
 
     :flux:
-      Total flux in particle-cm per source particle.
+      Total flux in particle-cm per source particle.  Note: The ``analog``
+      estimator is actually identical to the ``collision`` estimator for the
+      flux score.
 
     :total:
       Total reaction rate in reactions per source particle.

@@ -92,8 +92,7 @@ contains
           end if
           score = score / material_xs % total
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH .or. &
-                 t % estimator == ESTIMATOR_COLLISION) then
+        else
           ! For flux, we need no cross section
           score = flux
         end if
@@ -112,8 +111,7 @@ contains
             score = p % last_wgt
           end if
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH .or. &
-                 t % estimator == ESTIMATOR_COLLISION) then
+        else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % total * atom_density * flux
           else
@@ -131,8 +129,7 @@ contains
           ! reaction rate
           score = p % last_wgt
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH .or. &
-                 t % estimator == ESTIMATOR_COLLISION) then
+        else
           ! Note SCORE_SCATTER_N not available for tracklength/collision.
           if (i_nuclide > 0) then
             score = (micro_xs(i_nuclide) % total &
@@ -243,8 +240,7 @@ contains
             score = p % last_wgt
           end if
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH .or. &
-                 t % estimator == ESTIMATOR_COLLISION) then
+        else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % absorption * atom_density * flux
           else
@@ -275,8 +271,7 @@ contains
                  / micro_xs(p % event_nuclide) % absorption
           end if
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH .or. &
-                 t % estimator == ESTIMATOR_COLLISION) then
+        else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % fission * atom_density * flux
           else
@@ -319,8 +314,7 @@ contains
             score = keff * p % wgt_bank
           end if
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH .or. &
-                 t % estimator == ESTIMATOR_COLLISION) then
+        else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
           else
@@ -353,8 +347,7 @@ contains
                  micro_xs(p % event_nuclide) % absorption
           end if
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH .or. &
-                 t % estimator == ESTIMATOR_COLLISION) then
+        else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % kappa_fission * atom_density * flux
           else
@@ -375,8 +368,7 @@ contains
           if (p % event_MT /= score_bin) cycle SCORE_LOOP
           score = p % last_wgt
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH .or. &
-                 t % estimator == ESTIMATOR_COLLISION) then
+        else
           ! Any other cross section has to be calculated on-the-fly. For
           ! cross sections that are used often (e.g. n2n, ngamma, etc. for
           ! depletion), it might make sense to optimize this section or

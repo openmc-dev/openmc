@@ -1,8 +1,8 @@
 .. _usersguide_voxel:
 
-=================
-Voxel File Format
-=================
+======================
+Voxel Plot File Format
+======================
 
 **/filetype** (*char[]*)
 

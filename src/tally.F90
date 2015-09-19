@@ -81,8 +81,8 @@ contains
       case (SCORE_FLUX, SCORE_FLUX_YN)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events score to a flux bin. We actually use a collision
-          ! estimator since there is no way to count 'events' exactly for
-          ! the flux
+          ! estimator in place of an analog one since there is no way to count
+          ! 'events' exactly for the flux
           if (survival_biasing) then
             ! We need to account for the fact that some weight was already
             ! absorbed
@@ -92,7 +92,7 @@ contains
           end if
           score = score / material_xs % total
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+        else
           ! For flux, we need no cross section
           score = flux
         end if
@@ -111,7 +111,7 @@ contains
             score = p % last_wgt
           end if
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+        else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % total * atom_density * flux
           else
@@ -129,8 +129,8 @@ contains
           ! reaction rate
           score = p % last_wgt
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          ! Note SCORE_SCATTER_N not available for tracklength.
+        else
+          ! Note SCORE_SCATTER_N not available for tracklength/collision.
           if (i_nuclide > 0) then
             score = (micro_xs(i_nuclide) % total &
                  - micro_xs(i_nuclide) % absorption) * atom_density * flux
@@ -240,7 +240,7 @@ contains
             score = p % last_wgt
           end if
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+        else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % absorption * atom_density * flux
           else
@@ -271,7 +271,7 @@ contains
                  / micro_xs(p % event_nuclide) % absorption
           end if
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+        else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % fission * atom_density * flux
           else
@@ -314,7 +314,7 @@ contains
             score = keff * p % wgt_bank
           end if
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+        else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
           else
@@ -347,7 +347,7 @@ contains
                  micro_xs(p % event_nuclide) % absorption
           end if
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+        else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % kappa_fission * atom_density * flux
           else
@@ -368,7 +368,7 @@ contains
           if (p % event_MT /= score_bin) cycle SCORE_LOOP
           score = p % last_wgt
 
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+        else
           ! Any other cross section has to be calculated on-the-fly. For
           ! cross sections that are used often (e.g. n2n, ngamma, etc. for
           ! depletion), it might make sense to optimize this section or
@@ -484,7 +484,8 @@ contains
       case(SCORE_FLUX_YN, SCORE_TOTAL_YN)
         score_index = score_index - 1
         num_nm = 1
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator == ESTIMATOR_ANALOG .or. &
+             t % estimator == ESTIMATOR_COLLISION) then
           uvw = p % last_uvw
         else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
           uvw = p % coord(1) % uvw
@@ -535,6 +536,59 @@ contains
       end select
     end do SCORE_LOOP
   end subroutine score_general
+
+!===============================================================================
+! SCORE_ALL_NUCLIDES tallies individual nuclide reaction rates specifically when
+! the user requests <nuclides>all</nuclides>.
+!===============================================================================
+
+  subroutine score_all_nuclides(p, i_tally, flux, filter_index)
+
+    type(Particle), intent(in) :: p
+    integer,        intent(in) :: i_tally
+    real(8),        intent(in) :: flux
+    integer,        intent(in) :: filter_index
+
+    integer :: i             ! loop index for nuclides in material
+    integer :: i_nuclide     ! index in nuclides array
+    real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
+    type(TallyObject), pointer :: t
+    type(Material),    pointer :: mat
+
+    ! Get pointer to tally
+    t => tallies(i_tally)
+
+    ! Get pointer to current material. We need this in order to determine what
+    ! nuclides are in the material
+    mat => materials(p % material)
+
+    ! ==========================================================================
+    ! SCORE ALL INDIVIDUAL NUCLIDE REACTION RATES
+
+    NUCLIDE_LOOP: do i = 1, mat % n_nuclides
+
+      ! Determine index in nuclides array and atom density for i-th nuclide in
+      ! current material
+      i_nuclide = mat % nuclide(i)
+      atom_density = mat % atom_density(i)
+
+      ! Determine score for each bin
+      call score_general(p, t, (i_nuclide-1)*t % n_score_bins, filter_index, &
+           i_nuclide, atom_density, flux)
+
+    end do NUCLIDE_LOOP
+
+    ! ==========================================================================
+    ! SCORE TOTAL MATERIAL REACTION RATES
+
+    i_nuclide = -1
+    atom_density = ZERO
+
+    ! Determine score for each bin
+    call score_general(p, t, n_nuclides_total*t % n_score_bins, filter_index, &
+         i_nuclide, atom_density, flux)
+
+  end subroutine score_all_nuclides
 
 !===============================================================================
 ! SCORE_ANALOG_TALLY keeps track of how many events occur in a specified cell,
@@ -820,59 +874,6 @@ contains
   end subroutine score_tracklength_tally
 
 !===============================================================================
-! SCORE_ALL_NUCLIDES tallies individual nuclide reaction rates specifically when
-! the user requests <nuclides>all</nuclides>.
-!===============================================================================
-
-  subroutine score_all_nuclides(p, i_tally, flux, filter_index)
-
-    type(Particle), intent(in) :: p
-    integer,        intent(in) :: i_tally
-    real(8),        intent(in) :: flux
-    integer,        intent(in) :: filter_index
-
-    integer :: i             ! loop index for nuclides in material
-    integer :: i_nuclide     ! index in nuclides array
-    real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
-    type(TallyObject), pointer :: t
-    type(Material),    pointer :: mat
-
-    ! Get pointer to tally
-    t => tallies(i_tally)
-
-    ! Get pointer to current material. We need this in order to determine what
-    ! nuclides are in the material
-    mat => materials(p % material)
-
-    ! ==========================================================================
-    ! SCORE ALL INDIVIDUAL NUCLIDE REACTION RATES
-
-    NUCLIDE_LOOP: do i = 1, mat % n_nuclides
-
-      ! Determine index in nuclides array and atom density for i-th nuclide in
-      ! current material
-      i_nuclide = mat % nuclide(i)
-      atom_density = mat % atom_density(i)
-
-      ! Determine score for each bin
-      call score_general(p, t, (i_nuclide-1)*t % n_score_bins, filter_index, &
-           i_nuclide, atom_density, flux)
-
-    end do NUCLIDE_LOOP
-
-    ! ==========================================================================
-    ! SCORE TOTAL MATERIAL REACTION RATES
-
-    i_nuclide = -1
-    atom_density = ZERO
-
-    ! Determine score for each bin
-    call score_general(p, t, n_nuclides_total*t % n_score_bins, filter_index, &
-         i_nuclide, atom_density, flux)
-
-  end subroutine score_all_nuclides
-
-!===============================================================================
 ! SCORE_TL_ON_MESH calculate fluxes and reaction rates based on the track-length
 ! estimate of the flux specifically for tallies that have mesh filters. For
 ! these tallies, it is possible to score to multiple mesh cells for each track.
@@ -1118,6 +1119,118 @@ contains
     end do MESH_LOOP
 
   end subroutine score_tl_on_mesh
+
+!===============================================================================
+! SCORE_COLLISION_TALLY calculates fluxes and reaction rates based on the
+! 1/Sigma_t estimate of the flux.  This is triggered after every collision.  It
+! is invalid for tallies that require post-collison information because it can
+! score reactions that didn't actually occur, and we don't a priori know what
+! the outcome will be for reactions that we didn't sample.
+!===============================================================================
+
+  subroutine score_collision_tally(p)
+
+    type(Particle), intent(in) :: p
+
+    integer :: i
+    integer :: i_tally
+    integer :: j                    ! loop index for scoring bins
+    integer :: k                    ! loop index for nuclide bins
+    integer :: filter_index         ! single index for single bin
+    integer :: i_nuclide            ! index in nuclides array (from bins)
+    real(8) :: flux                 ! collision estimate of flux
+    real(8) :: atom_density         ! atom density of single nuclide
+                                    !   in atom/b-cm
+    logical :: found_bin            ! scoring bin found?
+    type(TallyObject), pointer :: t
+    type(Material),    pointer :: mat
+
+    ! Determine collision estimate of flux
+    if (survival_biasing) then
+      ! We need to account for the fact that some weight was already absorbed
+      flux = (p % last_wgt + p % absorb_wgt) / material_xs % total
+    else
+      flux = p % last_wgt / material_xs % total
+    end if
+
+    ! A loop over all tallies is necessary because we need to simultaneously
+    ! determine different filter bins for the same tally in order to score to it
+
+    TALLY_LOOP: do i = 1, active_collision_tallies % size()
+      ! Get index of tally and pointer to tally
+      i_tally = active_collision_tallies % get_item(i)
+      t => tallies(i_tally)
+
+      ! =======================================================================
+      ! DETERMINE SCORING BIN COMBINATION
+
+      call get_scoring_bins(p, i_tally, found_bin)
+      if (.not. found_bin) cycle
+
+      ! =======================================================================
+      ! CALCULATE RESULTS AND ACCUMULATE TALLY
+
+      ! If we have made it here, we have a scoring combination of bins for this
+      ! tally -- now we need to determine where in the results array we should
+      ! be accumulating the tally values
+
+      ! Determine scoring index for this filter combination
+      filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+
+      if (t % all_nuclides) then
+        if (p % material /= MATERIAL_VOID) then
+          call score_all_nuclides(p, i_tally, flux, filter_index)
+        end if
+      else
+
+        NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
+          ! Get index of nuclide in nuclides array
+          i_nuclide = t % nuclide_bins(k)
+
+          if (i_nuclide > 0) then
+            if (p % material /= MATERIAL_VOID) then
+              ! Get pointer to current material
+              mat => materials(p % material)
+
+              ! Determine if nuclide is actually in material
+              NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
+                ! If index of nuclide matches the j-th nuclide listed in the
+                ! material, break out of the loop
+                if (i_nuclide == mat % nuclide(j)) exit
+
+                ! If we've reached the last nuclide in the material, it means
+                ! the specified nuclide to be tallied is not in this material
+                if (j == mat % n_nuclides) then
+                  cycle NUCLIDE_BIN_LOOP
+                end if
+              end do NUCLIDE_MAT_LOOP
+
+              atom_density = mat % atom_density(j)
+            else
+              atom_density = ZERO
+            end if
+          end if
+
+          ! Determine score for each bin
+          call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
+               i_nuclide, atom_density, flux)
+
+        end do NUCLIDE_BIN_LOOP
+      end if
+
+      ! If the user has specified that we can assume all tallies are spatially
+      ! separate, this implies that once a tally has been scored to, we needn't
+      ! check the others. This cuts down on overhead when there are many
+      ! tallies specified
+
+      if (assume_separate) exit TALLY_LOOP
+
+    end do TALLY_LOOP
+
+    ! Reset tally map positioning
+    position = 0
+
+  end subroutine score_collision_tally
 
 !===============================================================================
 ! GET_SCORING_BINS determines a combination of filter bins that should be scored
@@ -1873,6 +1986,8 @@ contains
           call active_analog_tallies % add(i_user_tallies + i)
         elseif (user_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
           call active_tracklength_tallies % add(i_user_tallies + i)
+        elseif (user_tallies(i) % estimator == ESTIMATOR_COLLISION) then
+          call active_collision_tallies % add(i_user_tallies + i)
         end if
       elseif (user_tallies(i) % type == TALLY_SURFACE_CURRENT) then
         call active_current_tallies % add(i_user_tallies + i)

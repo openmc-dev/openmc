@@ -134,7 +134,7 @@ class Surface(object):
 
         element.set("type", self._type)
         element.set("boundary", self._boundary_type)
-        element.set("coeffs", ' '.join([str(self._coeffs[key])
+        element.set("coeffs", ' '.join([str(self._coeffs.setdefault(key, 0.0))
                                         for key in self._coeff_keys]))
 
         return element

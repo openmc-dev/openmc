@@ -245,7 +245,8 @@ module constants
   ! Tally estimator types
   integer, parameter :: &
        ESTIMATOR_ANALOG      = 1, &
-       ESTIMATOR_TRACKLENGTH = 2
+       ESTIMATOR_TRACKLENGTH = 2, &
+       ESTIMATOR_COLLISION   = 3
 
   ! Event types for tallies
   integer, parameter :: &

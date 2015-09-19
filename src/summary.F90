@@ -400,7 +400,6 @@ contains
     integer, allocatable :: zaids(:)
     integer(HID_T) :: materials_group
     integer(HID_T) :: material_group
-    integer(HID_T) :: sab_group
     type(Material), pointer :: m
 
     materials_group = create_group(file_id, "materials")

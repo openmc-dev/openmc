@@ -30,7 +30,8 @@ LATTICE_TYPES = {1: 'rectangular',
                  2: 'hexagonal'}
 
 ESTIMATOR_TYPES = {1: 'analog',
-                   2: 'tracklength'}
+                   2: 'tracklength',
+                   3: 'collision'}
 
 FILTER_TYPES = {1: 'universe',
                 2: 'material',

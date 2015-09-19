@@ -103,17 +103,15 @@ class Summary(object):
             nuclides = self._f['materials'][key]['nuclides'][...]
             n_sab = self._f['materials'][key]['n_sab'].value
 
-            sab_names = []
-            sab_xs = []
-
             # Read the names of the S(a,b) tables for this Material
-            for i in range(1, n_sab+1):
-                sab_table = \
-                    self._f['materials'][key]['sab_tables'][str(i)].value
-
-                # Read the cross-section identifiers for each S(a,b) table
-                sab_names.append(sab_table.split('.')[0])
-                sab_xs.append(sab_table.split('.')[1])
+            if n_sab > 0:
+                sab_tables = self._f['materials'][key]['sab_names'].value
+                sab_names = []
+                sab_xs = []
+                for sab_table in sab_tables:
+                    name, xs = sab_table.decode().split('.')
+                    sab_names.append(name)
+                    sab_xs.append(xs)
 
             # Create the Material
             material = openmc.Material(material_id=material_id, name=name)

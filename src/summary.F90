@@ -79,6 +79,10 @@ contains
   subroutine write_header(file_id)
     integer(HID_T), intent(in) :: file_id
 
+    ! Write filetype and revision
+    call write_dataset(file_id, "filetype", "summary")
+    call write_dataset(file_id, "revision", REVISION_SUMMARY)
+
     ! Write version information
     call write_dataset(file_id, "version_major", VERSION_MAJOR)
     call write_dataset(file_id, "version_minor", VERSION_MINOR)
@@ -442,12 +446,7 @@ contains
       if (m%n_sab > 0) then
         call write_dataset(material_group, "i_sab_nuclides", m%i_sab_nuclides)
         call write_dataset(material_group, "i_sab_tables", m%i_sab_tables)
-
-        sab_group = create_group(material_group, "sab_tables")
-        do j = 1, m%n_sab
-          call write_dataset(sab_group, to_str(j), m%sab_names(j))
-        end do
-        call close_group(sab_group)
+        call write_dataset(material_group, "sab_names", m%sab_names)
       end if
 
       call close_group(material_group)
@@ -483,6 +482,9 @@ contains
       m => meshes(i)
       mesh_group = create_group(tallies_group, "mesh " // trim(to_str(m%id)))
 
+      ! Write internal OpenMC index for this mesh
+      call write_dataset(mesh_group, "index", i)
+
       ! Write type and number of dimensions
       call write_dataset(mesh_group, "type", m%type)
       call write_dataset(mesh_group, "n_dimension", m%n_dimension)
@@ -504,11 +506,11 @@ contains
       t => tallies(i)
       tally_group = create_group(tallies_group, "tally " // trim(to_str(t%id)))
 
+      ! Write internal OpenMC index for this tally
+      call write_dataset(tally_group, "index", i)
+
       ! Write the name for this tally
-      call write_dataset(tally_group, "name_size", len(t%name))
-      if (len(t%name) > 0) then
-        call write_dataset(tally_group, "name", t%name)
-      endif
+      call write_dataset(tally_group, "name", t%name)
 
       ! Write size of each tally
       call write_dataset(tally_group, "total_score_bins", t%total_score_bins)

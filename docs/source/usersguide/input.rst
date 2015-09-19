@@ -79,14 +79,13 @@ Message                   Description
 [VALID]                   XML file matches RelaxNG.
 ========================  ===================================
 
-As an example, if OpenMC is installed in the directory
-``/opt/openmc/0.6.2`` and the current working directory is where
-OpenMC XML input files are located, they can be validated using
-the following command:
+As an example, if OpenMC is installed in the directory ``/opt/openmc/`` and the
+current working directory is where OpenMC XML input files are located, they can
+be validated using the following command:
 
 .. code-block:: bash
 
-   /opt/openmc/0.6.2/bin/xml_validate
+   /opt/openmc/bin/openmc-validate-xml
 
 --------------------------------------
 Settings Specification -- settings.xml

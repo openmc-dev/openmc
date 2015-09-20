@@ -106,6 +106,7 @@ contains
 
     integer          :: i, j, k, m
     integer, allocatable :: lattice_universes(:,:,:)
+    integer, allocatable :: surface_ids(:)
     integer(HID_T) :: geom_group
     integer(HID_T) :: cells_group, cell_group
     integer(HID_T) :: surfaces_group, surface_group
@@ -182,7 +183,13 @@ contains
 
       ! Write list of bounding surfaces
       if (c%n_surfaces > 0) then
-        call write_dataset(cell_group, "surfaces", c%surfaces)
+        allocate(surface_ids(c%n_surfaces))
+        do j = 1, c%n_surfaces
+          k = c%surfaces(j)
+          surface_ids(j) = sign(surfaces(abs(k))%id, k)
+        end do
+        call write_dataset(cell_group, "surfaces", surface_ids)
+        deallocate(surface_ids)
       end if
 
       call close_group(cell_group)

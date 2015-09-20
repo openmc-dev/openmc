@@ -46,42 +46,12 @@ class Summary(object):
 
     def _read_geometry(self):
         # Read in and initialize the Materials and Geometry
-        self._read_nuclides()
         self._read_materials()
         self._read_surfaces()
         self._read_cells()
         self._read_universes()
         self._read_lattices()
         self._finalize_geometry()
-
-    def _read_nuclides(self):
-        self.n_nuclides = self._f['nuclides/n_nuclides']
-
-        # Initialize dictionary for each Nuclide
-        # Keys   - Nuclide ZAIDs
-        # Values - Nuclide objects
-        self.nuclides = {}
-
-        for key in self._f['nuclides'].keys():
-            if key == 'n_nuclides':
-                continue
-
-            index = self._f['nuclides'][key]['index'].value
-            alias = self._f['nuclides'][key]['alias'].value.decode()
-            zaid = self._f['nuclides'][key]['zaid'].value
-
-            # Read the Nuclide's name (e.g., 'H-1' or 'U-235')
-            name = alias.split('.')[0]
-
-            # Read the Nuclide's cross-section identifier (e.g., '70c')
-            xs = alias.split('.')[1]
-
-            # Initialize this Nuclide and add to global dictionary of Nuclides
-            if 'nat' in name:
-                self.nuclides[zaid] = openmc.Element(name=name, xs=xs)
-            else:
-                self.nuclides[zaid] = openmc.Nuclide(name=name, xs=xs)
-                self.nuclides[zaid].zaid = zaid
 
     def _read_materials(self):
         self.n_materials = self._f['n_materials'].value
@@ -100,18 +70,14 @@ class Summary(object):
             name = self._f['materials'][key]['name'].value.decode()
             density = self._f['materials'][key]['atom_density'].value
             nuc_densities = self._f['materials'][key]['nuclide_densities'][...]
-            nuclides = self._f['materials'][key]['nuclides'][...]
-            n_sab = self._f['materials'][key]['n_sab'].value
+            nuclides = self._f['materials'][key]['nuclides'].value
 
-            # Read the names of the S(a,b) tables for this Material
-            if n_sab > 0:
+            # Read the names of the S(a,b) tables for this Material and add them
+            if 'sab_names' in self._f['materials'][key]:
                 sab_tables = self._f['materials'][key]['sab_names'].value
-                sab_names = []
-                sab_xs = []
                 for sab_table in sab_tables:
                     name, xs = sab_table.decode().split('.')
-                    sab_names.append(name)
-                    sab_xs.append(xs)
+                    material.add_s_alpha_beta(name, xs)
 
             # Create the Material
             material = openmc.Material(material_id=material_id, name=name)
@@ -119,21 +85,20 @@ class Summary(object):
             # Set the Material's density to g/cm3 - this is what is used in OpenMC
             material.set_density(density=density, units='g/cm3')
 
-            # Add all Nuclides to the Material
-            for i, zaid in enumerate(nuclides):
-                nuclide = self.get_nuclide_by_zaid(zaid)
-                density = nuc_densities[i]
+            # Add all nuclides to the Material
+            for fullname, density in zip(nuclides, nuc_densities):
+                fullname = fullname.decode().strip()
+                name, xs = fullname.split('.')
+
+                if 'nat' in name:
+                    nuclide = openmc.Element(name=name, xs=xs)
+                else:
+                    nuclide = openmc.Nuclide(name=name, xs=xs)
 
                 if isinstance(nuclide, openmc.Nuclide):
                     material.add_nuclide(nuclide, percent=density, percent_type='ao')
                 elif isinstance(nuclide, openmc.Element):
                     material.add_element(nuclide, percent=density, percent_type='ao')
-
-            # Add S(a,b) table(s?) to the Material
-            for i in range(n_sab):
-                name = sab_names[i]
-                xs = sab_xs[i]
-                material.add_s_alpha_beta(name, xs)
 
             # Add the Material to the global dictionary of all Materials
             self.materials[index] = material
@@ -540,9 +505,9 @@ class Summary(object):
             tally = openmc.Tally(tally_id, tally_name)
 
             # Read score metadata
-            score_bins = self._f['{0}/score_bins'.format(subbase)][...]
-            for score_bin in score_bins:
-                tally.add_score(openmc.SCORE_TYPES[score_bin])
+            scores = self._f['{0}/scores'.format(subbase)].value
+            for score in scores:
+                tally.add_score(score.decode())
             num_score_bins = self._f['{0}/n_score_bins'.format(subbase)][...]
             tally.num_score_bins = num_score_bins
 
@@ -554,8 +519,7 @@ class Summary(object):
                 subsubbase = '{0}/filter {1}'.format(subbase, j)
 
                 # Read filter type (e.g., "cell", "energy", etc.)
-                filter_type_code = self._f['{0}/type'.format(subsubbase)].value
-                filter_type = openmc.FILTER_TYPES[filter_type_code]
+                filter_type = self._f['{0}/type'.format(subsubbase)].value.decode()
 
                 # Read the filter bins
                 num_bins = self._f['{0}/n_bins'.format(subsubbase)].value
@@ -586,29 +550,6 @@ class Summary(object):
 
         if self.opencg_geometry is None:
             self.opencg_geometry = get_opencg_geometry(self.openmc_geometry)
-
-    def get_nuclide_by_zaid(self, zaid):
-        """Return a Nuclide object given the 'zaid' identifier for the nuclide.
-
-        Parameters
-        ----------
-        zaid : int
-            1000*Z + A, where Z is the atomic number of the nuclide and A is the
-            mass number. For example, the zaid for U-235 is 92235.
-
-        Returns
-        -------
-        nuclide : openmc.nuclide.Nuclide or None
-            Nuclide matching the specified zaid, or None if no matching object
-            is found.
-
-        """
-
-        for index, nuclide in self.nuclides.items():
-            if nuclide._zaid == zaid:
-                return nuclide
-
-        return None
 
     def get_material_by_id(self, material_id):
         """Return a Material object given the material id

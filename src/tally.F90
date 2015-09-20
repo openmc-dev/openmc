@@ -9,7 +9,7 @@ module tally
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
                               get_mesh_indices, mesh_indices_to_bin, &
                               mesh_intersects_2d, mesh_intersects_3d
-  use mesh_header,      only: StructuredMesh
+  use mesh_header,      only: RegularMesh
   use output,           only: header
   use particle_header,  only: LocalCoord, Particle
   use search,           only: binary_search
@@ -908,7 +908,7 @@ contains
     logical :: start_in_mesh        ! starting coordinates inside mesh?
     logical :: end_in_mesh          ! ending coordinates inside mesh?
     type(TallyObject),    pointer :: t
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
     type(Material),       pointer :: mat
 
     t => tallies(i_tally)
@@ -1249,7 +1249,7 @@ contains
     integer :: offset ! offset for distribcell
     real(8) :: E ! particle energy
     type(TallyObject),    pointer :: t
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
 
     found_bin = .true.
     t => tallies(i_tally)
@@ -1402,7 +1402,7 @@ contains
     logical :: y_same               ! same starting/ending y index (j)
     logical :: z_same               ! same starting/ending z index (k)
     type(TallyObject),    pointer :: t
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
 
     TALLY_LOOP: do i = 1, active_current_tallies % size()
       ! Copy starting and ending location of particle

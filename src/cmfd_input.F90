@@ -247,7 +247,7 @@ contains
 
     use constants,        only: MAX_LINE_LEN
     use error,            only: fatal_error, warning
-    use mesh_header,      only: StructuredMesh
+    use mesh_header,      only: RegularMesh
     use string
     use tally,            only: setup_active_cmfdtallies
     use tally_header,     only: TallyObject, TallyFilter
@@ -264,10 +264,10 @@ contains
     integer :: i_filter_mesh ! index for mesh filter
     integer :: iarray3(3) ! temp integer array
     real(8) :: rarray3(3) ! temp double array
-    type(TallyObject),    pointer :: t => null()
-    type(StructuredMesh), pointer :: m => null()
+    type(TallyObject),    pointer :: t
+    type(RegularMesh), pointer :: m
     type(TallyFilter) :: filters(N_FILTER_TYPES) ! temporary filters
-    type(Node), pointer :: node_mesh => null()
+    type(Node), pointer :: node_mesh
 
     ! Set global variables if they are 0 (this can happen if there is no tally
     ! file)

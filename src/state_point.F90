@@ -182,7 +182,6 @@ contains
 
           call write_dataset(mesh_group, "id", meshp%id)
           call write_dataset(mesh_group, "type", "regular")
-          call write_dataset(mesh_group, "n_dimension", meshp%n_dimension)
           call write_dataset(mesh_group, "dimension", meshp%dimension)
           call write_dataset(mesh_group, "lower_left", meshp%lower_left)
           call write_dataset(mesh_group, "upper_right", meshp%upper_right)

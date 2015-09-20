@@ -327,7 +327,7 @@ module constants
        RELATIVE_ERROR     = 2, &
        STANDARD_DEVIATION = 3
 
-  ! Global tallY parameters
+  ! Global tally parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &
        K_COLLISION   = 1, &

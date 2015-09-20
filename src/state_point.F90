@@ -20,7 +20,7 @@ module state_point
   use output,             only: write_message, time_stamp
   use string,             only: to_str, zero_padded, count_digits
   use tally_header,       only: TallyObject
-  use mesh_header,        only: StructuredMesh
+  use mesh_header,        only: RegularMesh
   use dict_header,        only: ElemKeyValueII, ElemKeyValueCI
 
 #ifdef MPI
@@ -54,7 +54,7 @@ contains
     character(20), allocatable :: scores(:)
     character(8), allocatable :: moment_names(:) ! names of moments (e.g, P3)
     character(MAX_FILE_LEN)       :: filename
-    type(StructuredMesh), pointer :: meshp
+    type(RegularMesh), pointer :: meshp
     type(TallyObject), pointer    :: tally
     type(ElemKeyValueII), pointer :: current
     type(ElemKeyValueII), pointer :: next
@@ -181,7 +181,7 @@ contains
           mesh_group = create_group(meshes_group, "mesh " // trim(to_str(meshp%id)))
 
           call write_dataset(mesh_group, "id", meshp%id)
-          call write_dataset(mesh_group, "type", meshp%type)
+          call write_dataset(mesh_group, "type", "regular")
           call write_dataset(mesh_group, "n_dimension", meshp%n_dimension)
           call write_dataset(mesh_group, "dimension", meshp%dimension)
           call write_dataset(mesh_group, "lower_left", meshp%lower_left)

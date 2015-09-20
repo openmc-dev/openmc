@@ -7,6 +7,7 @@ module plot
   use global
   use hdf5_interface
   use mesh,            only: get_mesh_indices
+  use mesh_header,     only: RegularMesh
   use output,          only: write_message
   use particle_header, only: Particle, LocalCoord
   use plot_header
@@ -215,7 +216,7 @@ contains
     real(8) :: xyz_ur_plot(3)  ! upper right xyz of plot image
     real(8) :: xyz_ll(3)  ! lower left xyz
     real(8) :: xyz_ur(3)  ! upper right xyz
-    type(StructuredMesh), pointer :: m => null()
+    type(RegularMesh), pointer :: m
 
     m => pl % meshlines_mesh
 

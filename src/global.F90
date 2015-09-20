@@ -8,7 +8,7 @@ module global
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer, Surface
   use material_header,  only: Material
-  use mesh_header,      only: StructuredMesh
+  use mesh_header,      only: RegularMesh
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
@@ -90,7 +90,7 @@ module global
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
-  type(StructuredMesh), allocatable, target :: meshes(:)
+  type(RegularMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
   integer, allocatable :: matching_bins(:)
 
@@ -203,11 +203,11 @@ module global
   logical :: entropy_on = .false.
   real(8), allocatable :: entropy(:)         ! shannon entropy at each generation
   real(8), allocatable :: entropy_p(:,:,:,:) ! % of source sites in each cell
-  type(StructuredMesh), pointer :: entropy_mesh
+  type(RegularMesh), pointer :: entropy_mesh
 
   ! Uniform fission source weighting
   logical :: ufs = .false.
-  type(StructuredMesh), pointer :: ufs_mesh => null()
+  type(RegularMesh), pointer :: ufs_mesh => null()
   real(8), allocatable :: source_frac(:,:,:,:)
 
   ! Write source at end of simulation

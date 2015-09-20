@@ -10,7 +10,7 @@ module output
                              HexLattice, BASE_UNIVERSE
   use global
   use math,            only: t_percentile
-  use mesh_header,     only: StructuredMesh
+  use mesh_header,     only: RegularMesh
   use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
   use particle_header, only: LocalCoord, Particle
   use plot_header
@@ -1194,7 +1194,7 @@ contains
     integer :: filter_index         ! index in results array for filters
     logical :: print_ebin           ! should incoming energy bin be displayed?
     character(MAX_LINE_LEN) :: string
-    type(StructuredMesh), pointer :: m => null()
+    type(RegularMesh), pointer :: m
 
     ! Get pointer to mesh
     i_filter_mesh = t % find_filter(FILTER_MESH)
@@ -1361,8 +1361,8 @@ contains
     integer, allocatable :: ijk(:) ! indices in mesh
     real(8)              :: E0     ! lower bound for energy bin
     real(8)              :: E1     ! upper bound for energy bin
-    type(StructuredMesh), pointer :: m => null()
-    type(Universe), pointer :: univ => null()
+    type(RegularMesh), pointer :: m
+    type(Universe), pointer :: univ
 
     bin = matching_bins(i_filter)
 

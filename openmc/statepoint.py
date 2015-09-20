@@ -264,7 +264,7 @@ class StatePoint(object):
             for mesh_key in mesh_keys:
                 # Read the user-specified Mesh ID and type
                 mesh_id = self._f['{0}{1}/id'.format(base, mesh_key)].value
-                mesh_type = self._f['{0}{1}/type'.format(base, mesh_key)].value
+                mesh_type = self._f['{0}{1}/type'.format(base, mesh_key)].value.decode()
 
                 # Read the mesh dimensions, lower-left coordinates,
                 # upper-right coordinates, and width of each mesh cell
@@ -275,14 +275,11 @@ class StatePoint(object):
 
                 # Create the Mesh and assign properties to it
                 mesh = openmc.Mesh(mesh_id)
-
                 mesh.dimension = dimension
                 mesh.width = width
                 mesh.lower_left = lower_left
                 mesh.upper_right = upper_right
-
-                #FIXME: Set the mesh type to 'rectangular' by default
-                mesh.type = 'rectangular'
+                mesh.type = mesh_type
 
                 # Add mesh to the global dictionary of all Meshes
                 self._meshes[mesh_id] = mesh

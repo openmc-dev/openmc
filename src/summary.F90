@@ -8,7 +8,7 @@ module summary
   use global
   use hdf5_interface
   use material_header, only: Material
-  use mesh_header,     only: StructuredMesh
+  use mesh_header,     only: RegularMesh
   use output,          only: time_stamp
   use string,          only: to_str
   use tally_header,    only: TallyObject
@@ -462,7 +462,7 @@ contains
     integer(HID_T) :: tally_group
     integer(HID_T) :: filter_group
     character(20), allocatable :: scores(:)
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
     type(TallyObject), pointer :: t
 
     tallies_group = create_group(file_id, "tallies")
@@ -479,7 +479,7 @@ contains
       call write_dataset(mesh_group, "index", i)
 
       ! Write type and number of dimensions
-      call write_dataset(mesh_group, "type", m%type)
+      call write_dataset(mesh_group, "type", "regular")
 
       ! Write mesh information
       call write_dataset(mesh_group, "dimension", m%dimension)

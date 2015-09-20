@@ -8,7 +8,7 @@ module input_xml
   use geometry_header,  only: Cell, Surface, Lattice, RectLattice, HexLattice
   use global
   use list_header,      only: ListChar, ListReal
-  use mesh_header,      only: StructuredMesh
+  use mesh_header,      only: RegularMesh
   use output,           only: write_message
   use plot_header
   use random_lcg,       only: prn
@@ -2091,9 +2091,9 @@ contains
     character(MAX_WORD_LEN) :: temp_str
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     type(DictCharInt) :: trigger_scores
-    type(ElemKeyValueCI), pointer :: pair_list => null()
-    type(TallyObject),    pointer :: t => null()
-    type(StructuredMesh), pointer :: m => null()
+    type(ElemKeyValueCI), pointer :: pair_list
+    type(TallyObject),    pointer :: t
+    type(RegularMesh), pointer :: m
     type(TallyFilter), allocatable :: filters(:) ! temporary filters
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mesh => null()

@@ -62,7 +62,6 @@ contains
 
     call write_geometry(file_id)
     call write_materials(file_id)
-    call write_nuclides(file_id)
     if (n_tallies > 0) then
       call write_tallies(file_id)
     end if
@@ -238,16 +237,6 @@ contains
       ! Write coefficients for surface
       call write_dataset(surface_group, "coefficients", s%coeffs)
 
-      ! Write positive neighbors
-      if (allocated(s%neighbor_pos)) then
-        call write_dataset(surface_group, "neighbors_positive", s%neighbor_pos)
-      end if
-
-      ! Write negative neighbors
-      if (allocated(s%neighbor_neg)) then
-        call write_dataset(surface_group, "neighbors_negative", s%neighbor_neg)
-      end if
-
       ! Write boundary condition
       select case (s%bc)
       case (BC_TRANSMIT)
@@ -395,9 +384,10 @@ contains
   subroutine write_materials(file_id)
     integer(HID_T), intent(in) :: file_id
 
-    integer          :: i
-    integer          :: j
-    integer, allocatable :: zaids(:)
+    integer :: i
+    integer :: j
+    integer :: i_list
+    character(12), allocatable :: nucnames(:)
     integer(HID_T) :: materials_group
     integer(HID_T) :: material_group
     type(Material), pointer :: m
@@ -425,26 +415,22 @@ contains
            "atom/b-cm")
 
       ! Copy ZAID for each nuclide to temporary array
-      allocate(zaids(m%n_nuclides))
+      allocate(nucnames(m%n_nuclides))
       do j = 1, m%n_nuclides
-        zaids(j) = nuclides(m%nuclide(j))%zaid
+        i_list = nuclides(m%nuclide(j))%listing
+        nucnames(j) = xs_listings(i_list)%alias
       end do
 
       ! Write temporary array to 'nuclides'
-      call write_dataset(material_group, "nuclides", zaids)
+      call write_dataset(material_group, "nuclides", nucnames)
 
       ! Deallocate temporary array
-      deallocate(zaids)
+      deallocate(nucnames)
 
       ! Write atom densities
       call write_dataset(material_group, "nuclide_densities", m%atom_density)
 
-      ! Write S(a,b) information if present
-      call write_dataset(material_group, "n_sab", m%n_sab)
-
       if (m%n_sab > 0) then
-        call write_dataset(material_group, "i_sab_nuclides", m%i_sab_nuclides)
-        call write_dataset(material_group, "i_sab_tables", m%i_sab_tables)
         call write_dataset(material_group, "sab_names", m%sab_names)
       end if
 
@@ -462,12 +448,13 @@ contains
   subroutine write_tallies(file_id)
     integer(HID_T), intent(in) :: file_id
 
-    integer           :: i, j
+    integer :: i, j
     integer, allocatable :: temp_array(:) ! nuclide bin array
     integer(HID_T) :: tallies_group
     integer(HID_T) :: mesh_group
     integer(HID_T) :: tally_group
     integer(HID_T) :: filter_group
+    character(20), allocatable :: scores(:)
     type(StructuredMesh), pointer :: m
     type(TallyObject), pointer :: t
 
@@ -486,7 +473,6 @@ contains
 
       ! Write type and number of dimensions
       call write_dataset(mesh_group, "type", m%type)
-      call write_dataset(mesh_group, "n_dimension", m%n_dimension)
 
       ! Write mesh information
       call write_dataset(mesh_group, "dimension", m%dimension)
@@ -521,9 +507,6 @@ contains
       FILTER_LOOP: do j = 1, t%n_filters
         filter_group = create_group(tally_group, "filter " // trim(to_str(j)))
 
-        ! Write type of filter
-        call write_dataset(filter_group, "type", t%filters(j)%type)
-
         ! Write number of bins for this filter
         call write_dataset(filter_group, "n_bins", t%filters(j)%n_bins)
 
@@ -538,21 +521,23 @@ contains
         ! Write name of type
         select case (t%filters(j)%type)
         case(FILTER_UNIVERSE)
-          call write_dataset(filter_group, "type_name", "universe")
+          call write_dataset(filter_group, "type", "universe")
         case(FILTER_MATERIAL)
-          call write_dataset(filter_group, "type_name", "material")
+          call write_dataset(filter_group, "type", "material")
         case(FILTER_CELL)
-          call write_dataset(filter_group, "type_name", "cell")
+          call write_dataset(filter_group, "type", "cell")
         case(FILTER_CELLBORN)
-          call write_dataset(filter_group, "type_name", "cellborn")
+          call write_dataset(filter_group, "type", "cellborn")
         case(FILTER_SURFACE)
-          call write_dataset(filter_group, "type_name", "surface")
+          call write_dataset(filter_group, "type", "surface")
         case(FILTER_MESH)
-          call write_dataset(filter_group, "type_name", "mesh")
+          call write_dataset(filter_group, "type", "mesh")
         case(FILTER_ENERGYIN)
-          call write_dataset(filter_group, "type_name", "energy")
+          call write_dataset(filter_group, "type", "energy")
         case(FILTER_ENERGYOUT)
-          call write_dataset(filter_group, "type_name", "energyout")
+          call write_dataset(filter_group, "type", "energyout")
+        case(FILTER_DISTRIBCELL)
+          call write_dataset(filter_group, "type", "distribcell")
         end select
 
         call close_group(filter_group)
@@ -577,7 +562,57 @@ contains
 
       ! Write number of score bins
       call write_dataset(tally_group, "n_score_bins", t%n_score_bins)
+      allocate(scores(size(t%score_bins)))
+      do j = 1, size(t%score_bins)
+        select case(t%score_bins(j))
+        case (SCORE_FLUX)
+          scores(j) = "flux"
+        case (SCORE_TOTAL)
+          scores(j) = "total"
+        case (SCORE_SCATTER)
+          scores(j) = "scatter"
+        case (SCORE_NU_SCATTER)
+          scores(j) = "nu-scatter"
+        case (SCORE_SCATTER_N)
+          scores(j) = "scatter-n"
+        case (SCORE_SCATTER_PN)
+          scores(j) = "scatter-pn"
+        case (SCORE_NU_SCATTER_N)
+          scores(j) = "nu-scatter-n"
+        case (SCORE_NU_SCATTER_PN)
+          scores(j) = "nu-scatter-pn"
+        case (SCORE_TRANSPORT)
+          scores(j) = "transport"
+        case (SCORE_N_1N)
+          scores(j) = "n1n"
+        case (SCORE_ABSORPTION)
+          scores(j) = "absorption"
+        case (SCORE_FISSION)
+          scores(j) = "fission"
+        case (SCORE_NU_FISSION)
+          scores(j) = "nu-fission"
+        case (SCORE_KAPPA_FISSION)
+          scores(j) = "kappa-fission"
+        case (SCORE_CURRENT)
+          scores(j) = "current"
+        case (SCORE_FLUX_YN)
+          scores(j) = "flux-yn"
+        case (SCORE_TOTAL_YN)
+          scores(j) = "total-yn"
+        case (SCORE_SCATTER_YN)
+          scores(j) = "scatter-yn"
+        case (SCORE_NU_SCATTER_YN)
+          scores(j) = "nu-scatter-yn"
+        case (SCORE_EVENTS)
+          scores(j) = "events"
+        case default
+          scores(j) = reaction_name(t%score_bins(j))
+        end select
+      end do
+      call write_dataset(tally_group, "scores", scores)
       call write_dataset(tally_group, "score_bins", t%score_bins)
+
+      deallocate(scores)
 
       call close_group(tally_group)
     end do TALLY_METADATA
@@ -585,115 +620,6 @@ contains
     call close_group(tallies_group)
 
   end subroutine write_tallies
-
-!===============================================================================
-! WRITE_NUCLIDES
-!===============================================================================
-
-  subroutine write_nuclides(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer        :: i, j
-    integer        :: size_total
-    integer        :: size_xs
-    integer        :: size_angle
-    integer        :: size_energy
-    integer(HID_T) :: nuclides_group, nuclide_group
-    integer(HID_T) :: reactions_group, rxn_group
-    type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
-    type(UrrData),  pointer :: urr
-
-    nuclides_group = create_group(file_id, "nuclides")
-
-    ! write number of nuclides
-    call write_dataset(nuclides_group, "n_nuclides", n_nuclides_total)
-
-    ! Write information on each nuclide
-    NUCLIDE_LOOP: do i = 1, n_nuclides_total
-      nuc => nuclides(i)
-      nuclide_group = create_group(nuclides_group, nuc%name)
-
-      ! Write internal OpenMC index for this nuclide
-      call write_dataset(nuclide_group, "index", i)
-
-      ! Determine size of cross-sections
-      size_xs = (5 + nuc%n_reaction) * nuc%n_grid * 8
-      size_total = size_xs
-
-      ! Write some basic attributes
-      call write_dataset(nuclide_group, "zaid", nuc%zaid)
-      call write_dataset(nuclide_group, "alias", xs_listings(nuc%listing)%alias)
-      call write_dataset(nuclide_group, "awr", nuc%awr)
-      call write_dataset(nuclide_group, "kT", nuc%kT)
-      call write_dataset(nuclide_group, "n_grid", nuc%n_grid)
-      call write_dataset(nuclide_group, "n_reactions", nuc%n_reaction)
-      call write_dataset(nuclide_group, "n_fission", nuc%n_fission)
-      call write_dataset(nuclide_group, "size_xs", size_xs)
-
-      ! =======================================================================
-      ! WRITE INFORMATION ON EACH REACTION
-
-      ! Create overall group for reactions and close it
-      reactions_group = create_group(nuclide_group, "reactions")
-
-      RXN_LOOP: do j = 1, nuc%n_reaction
-        ! Information on each reaction
-        rxn => nuc%reactions(j)
-        rxn_group = create_group(reactions_group, trim(reaction_name(rxn%MT)))
-
-        ! Determine size of angle distribution
-        if (rxn%has_angle_dist) then
-          size_angle = rxn%adist%n_energy * 16 + size(rxn%adist%data) * 8
-        else
-          size_angle = 0
-        end if
-
-        ! Determine size of energy distribution
-        if (rxn%has_energy_dist) then
-          size_energy = size(rxn%edist%data) * 8
-        else
-          size_energy = 0
-        end if
-
-        ! Write information on reaction
-        call write_dataset(rxn_group, "Q_value", rxn%Q_value)
-        call write_dataset(rxn_group, "multiplicity", rxn%multiplicity)
-        call write_dataset(rxn_group, "threshold", rxn%threshold)
-        call write_dataset(rxn_group, "size_angle", size_angle)
-        call write_dataset(rxn_group, "size_energy", size_energy)
-
-        ! Accumulate data size
-        size_total = size_total + size_angle + size_energy
-
-        call close_group(rxn_group)
-      end do RXN_LOOP
-
-      call close_group(reactions_group)
-
-      ! =======================================================================
-      ! WRITE INFORMATION ON URR PROBABILITY TABLES
-
-      if (nuc%urr_present) then
-        urr => nuc%urr_data
-        call write_dataset(nuclide_group, "urr_n_energy", urr%n_energy)
-        call write_dataset(nuclide_group, "urr_n_prob", urr%n_prob)
-        call write_dataset(nuclide_group, "urr_interp", urr%interp)
-        call write_dataset(nuclide_group, "urr_inelastic", urr%inelastic_flag)
-        call write_dataset(nuclide_group, "urr_absorption", urr%absorption_flag)
-        call write_dataset(nuclide_group, "urr_min_E", urr%energy(1))
-        call write_dataset(nuclide_group, "urr_max_E", urr%energy(urr%n_energy))
-      end if
-
-      ! Write total memory used
-      call write_dataset(nuclide_group, "size_total", size_total)
-
-      call close_group(nuclide_group)
-    end do NUCLIDE_LOOP
-
-    call close_group(nuclides_group)
-
-  end subroutine write_nuclides
 
 !===============================================================================
 ! WRITE_TIMING

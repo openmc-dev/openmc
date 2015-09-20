@@ -1,7 +1,5 @@
 import struct
 
-from openmc.constants import RUN_TYPES
-
 
 class Particle(object):
     """Information used to restart a specific particle that caused a simulation to
@@ -74,7 +72,7 @@ class Particle(object):
 
     @property
     def run_mode(self):
-        return RUN_TYPES[self._f['run_mode'].value]
+        return self._f['run_mode'].value.decode()
 
     @property
     def uvw(self):

@@ -4,7 +4,6 @@ import sys
 import numpy as np
 
 import openmc
-from openmc.constants import *
 
 if sys.version > '3':
     long = int
@@ -317,7 +316,7 @@ class StatePoint(object):
 
     @property
     def run_mode(self):
-        return RUN_TYPES[self._f['run_mode'].value]
+        return self._f['run_mode'].value.decode()
 
     @property
     def seed(self):
@@ -355,16 +354,14 @@ class StatePoint(object):
             # Iterate over all Tallies
             for tally_key in tally_keys:
 
-                # Read integer Tally estimator type code (analog, tracklength, or collision)
-                estimator_type = self._f['{0}{1}/estimator'.format(base, tally_key)].value
-
                 # Read the Tally size specifications
                 n_realizations = self._f['{0}{1}/n_realizations'.format(base, tally_key)].value
 
                 # Create Tally object and assign basic properties
                 tally = openmc.Tally(tally_key)
                 tally._statepoint = self
-                tally.estimator = ESTIMATOR_TYPES[estimator_type]
+                tally.estimator = self._f['{0}{1}/estimator'.format(
+                    base, tally_key)].value.decode()
                 tally.num_realizations = n_realizations
 
                 # Read the number of Filters
@@ -375,8 +372,8 @@ class StatePoint(object):
                 # Initialize all Filters
                 for j in range(1, n_filters+1):
 
-                    # Read the integer Filter type code
-                    filter_type = self._f['{0}{1}/type'.format(subbase, j)].value
+                    # Read the Filter type
+                    filter_type = self._f['{0}{1}/type'.format(subbase, j)].value.decode()
 
                     # Read the Filter offset
                     offset = self._f['{0}{1}/offset'.format(subbase, j)].value
@@ -389,21 +386,21 @@ class StatePoint(object):
                         raise ValueError(msg)
 
                     # Read the bin values
-                    if FILTER_TYPES[filter_type] in ['energy', 'energyout']:
+                    if filter_type in ['energy', 'energyout']:
                         bins = self._f['{0}{1}/bins'.format(subbase, j)].value
 
-                    elif FILTER_TYPES[filter_type] in ['mesh', 'distribcell']:
+                    elif filter_type in ['mesh', 'distribcell']:
                         bins = self._f['{0}{1}/bins'.format(subbase, j)].value
 
                     else:
                         bins = self._f['{0}{1}/bins'.format(subbase, j)].value
 
                     # Create Filter object
-                    filter = openmc.Filter(FILTER_TYPES[filter_type], bins)
+                    filter = openmc.Filter(filter_type, bins)
                     filter.offset = offset
                     filter.num_bins = n_bins
 
-                    if FILTER_TYPES[filter_type] == 'mesh':
+                    if filter_type == 'mesh':
                         mesh_ids = self._f['tallies/meshes/ids'].value
                         mesh_keys = self._f['tallies/meshes/keys'].value
 
@@ -427,9 +424,8 @@ class StatePoint(object):
 
                 tally.num_score_bins = n_score_bins
 
-                score_bins = self._f['{0}{1}/score_bins'.format(
+                scores = self._f['{0}{1}/scores'.format(
                     base, tally_key)].value
-                scores = [SCORE_TYPES[score] for score in score_bins]
                 n_user_scores = self._f['{0}{1}/n_user_score_bins'
                                         .format(base, tally_key)].value
 
@@ -447,6 +443,7 @@ class StatePoint(object):
 
                 # Add the scores to the Tally
                 for j, score in enumerate(scores):
+                    score = score.decode()
                     # If this is a scattering moment, insert the scattering order
                     if '-n' in score:
                         score = score.replace('-n', '-' + moments[j].decode())

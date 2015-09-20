@@ -360,6 +360,19 @@ contains
         ! Simply count number of scoring events
         score = ONE
 
+      case (ELASTIC)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          ! Check if event MT matches
+          if (p % event_MT /= ELASTIC) cycle SCORE_LOOP
+          score = p % last_wgt
+
+        else
+          if (i_nuclide > 0) then
+            score = micro_xs(i_nuclide) % elastic * atom_density * flux
+          else
+            score = material_xs % elastic * flux
+          end if
+        end if
 
       case default
         if (t % estimator == ESTIMATOR_ANALOG) then

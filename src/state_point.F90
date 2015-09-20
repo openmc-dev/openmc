@@ -41,19 +41,19 @@ contains
 
   subroutine write_state_point()
 
-    integer                       :: i, j, k
-    integer                       :: n_order      ! loop index for moment orders
-    integer                       :: nm_order     ! loop index for Ynm moment orders
-    integer, allocatable          :: id_array(:)
-    integer, allocatable          :: key_array(:)
+    integer :: i, j, k
+    integer :: i_list
+    integer :: n_order      ! loop index for moment orders
+    integer :: nm_order     ! loop index for Ynm moment orders
+    integer, allocatable :: id_array(:)
+    integer, allocatable :: key_array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group, tally_group
     integer(HID_T) :: meshes_group, mesh_group
     integer(HID_T) :: filter_group
-    character(20), allocatable :: scores(:)
-    character(8), allocatable :: moment_names(:) ! names of moments (e.g, P3)
-    character(MAX_FILE_LEN)       :: filename
+    character(20), allocatable :: str_array(:)
+    character(MAX_FILE_LEN)    :: filename
     type(RegularMesh), pointer :: meshp
     type(TallyObject), pointer    :: tally
     type(ElemKeyValueII), pointer :: current
@@ -280,101 +280,102 @@ contains
           call write_dataset(tally_group, "n_nuclides", tally%n_nuclide_bins)
 
           ! Set up nuclide bin array and then write
-          allocate(key_array(tally%n_nuclide_bins))
+          allocate(str_array(tally%n_nuclide_bins))
           NUCLIDE_LOOP: do j = 1, tally%n_nuclide_bins
             if (tally%nuclide_bins(j) > 0) then
-              key_array(j) = nuclides(tally%nuclide_bins(j))%zaid
+              i_list = nuclides(tally%nuclide_bins(j))%listing
+              str_array(j) = xs_listings(i_list)%alias
             else
-              key_array(j) = tally%nuclide_bins(j)
+              str_array(j) = 'total'
             end if
           end do NUCLIDE_LOOP
-          call write_dataset(tally_group, "nuclides", key_array)
-          deallocate(key_array)
+          call write_dataset(tally_group, "nuclides", str_array)
+          deallocate(str_array)
 
           call write_dataset(tally_group, "n_score_bins", tally%n_score_bins)
-          allocate(scores(size(tally%score_bins)))
+          allocate(str_array(size(tally%score_bins)))
           do j = 1, size(tally%score_bins)
             select case(tally%score_bins(j))
             case (SCORE_FLUX)
-              scores(j) = "flux"
+              str_array(j) = "flux"
             case (SCORE_TOTAL)
-              scores(j) = "total"
+              str_array(j) = "total"
             case (SCORE_SCATTER)
-              scores(j) = "scatter"
+              str_array(j) = "scatter"
             case (SCORE_NU_SCATTER)
-              scores(j) = "nu-scatter"
+              str_array(j) = "nu-scatter"
             case (SCORE_SCATTER_N)
-              scores(j) = "scatter-n"
+              str_array(j) = "scatter-n"
             case (SCORE_SCATTER_PN)
-              scores(j) = "scatter-pn"
+              str_array(j) = "scatter-pn"
             case (SCORE_NU_SCATTER_N)
-              scores(j) = "nu-scatter-n"
+              str_array(j) = "nu-scatter-n"
             case (SCORE_NU_SCATTER_PN)
-              scores(j) = "nu-scatter-pn"
+              str_array(j) = "nu-scatter-pn"
             case (SCORE_TRANSPORT)
-              scores(j) = "transport"
+              str_array(j) = "transport"
             case (SCORE_N_1N)
-              scores(j) = "n1n"
+              str_array(j) = "n1n"
             case (SCORE_ABSORPTION)
-              scores(j) = "absorption"
+              str_array(j) = "absorption"
             case (SCORE_FISSION)
-              scores(j) = "fission"
+              str_array(j) = "fission"
             case (SCORE_NU_FISSION)
-              scores(j) = "nu-fission"
+              str_array(j) = "nu-fission"
             case (SCORE_KAPPA_FISSION)
-              scores(j) = "kappa-fission"
+              str_array(j) = "kappa-fission"
             case (SCORE_CURRENT)
-              scores(j) = "current"
+              str_array(j) = "current"
             case (SCORE_FLUX_YN)
-              scores(j) = "flux-yn"
+              str_array(j) = "flux-yn"
             case (SCORE_TOTAL_YN)
-              scores(j) = "total-yn"
+              str_array(j) = "total-yn"
             case (SCORE_SCATTER_YN)
-              scores(j) = "scatter-yn"
+              str_array(j) = "scatter-yn"
             case (SCORE_NU_SCATTER_YN)
-              scores(j) = "nu-scatter-yn"
+              str_array(j) = "nu-scatter-yn"
             case (SCORE_EVENTS)
-              scores(j) = "events"
+              str_array(j) = "events"
             case default
-              scores(j) = reaction_name(tally%score_bins(j))
+              str_array(j) = reaction_name(tally%score_bins(j))
             end select
           end do
-          call write_dataset(tally_group, "scores", scores)
+          call write_dataset(tally_group, "scores", str_array)
           call write_dataset(tally_group, "score_bins", tally%score_bins)
           call write_dataset(tally_group, "n_user_score_bins", tally%n_user_score_bins)
 
-          deallocate(scores)
+          deallocate(str_array)
 
           ! Write explicit moment order strings for each score bin
           k = 1
-          allocate(moment_names(tally%n_score_bins))
+          allocate(str_array(tally%n_score_bins))
           MOMENT_LOOP: do j = 1, tally%n_user_score_bins
             select case(tally%score_bins(k))
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-              moment_names(k) = 'P' // trim(to_str(tally%moment_order(k)))
+              str_array(k) = 'P' // trim(to_str(tally%moment_order(k)))
               k = k + 1
             case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
               do n_order = 0, tally%moment_order(k)
-                moment_names(k) = 'P' // trim(to_str(n_order))
+                str_array(k) = 'P' // trim(to_str(n_order))
                 k = k + 1
               end do
             case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
                  SCORE_TOTAL_YN)
               do n_order = 0, tally%moment_order(k)
                 do nm_order = -n_order, n_order
-                  moment_names(k) = 'Y' // trim(to_str(n_order)) // ',' // &
+                  str_array(k) = 'Y' // trim(to_str(n_order)) // ',' // &
                        trim(to_str(nm_order))
                   k = k + 1
                 end do
               end do
             case default
-              moment_names(k) = ''
+              str_array(k) = ''
               k = k + 1
             end select
           end do MOMENT_LOOP
 
-          call write_dataset(tally_group, "moment_orders", moment_names)
-          deallocate(moment_names)
+          call write_dataset(tally_group, "moment_orders", str_array)
+          deallocate(str_array)
 
           call close_group(tally_group)
         end do TALLY_METADATA

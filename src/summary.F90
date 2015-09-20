@@ -456,12 +456,13 @@ contains
     integer(HID_T), intent(in) :: file_id
 
     integer :: i, j
+    integer :: i_list
     integer, allocatable :: temp_array(:) ! nuclide bin array
     integer(HID_T) :: tallies_group
     integer(HID_T) :: mesh_group
     integer(HID_T) :: tally_group
     integer(HID_T) :: filter_group
-    character(20), allocatable :: scores(:)
+    character(20), allocatable :: str_array(:)
     type(RegularMesh), pointer :: m
     type(TallyObject), pointer :: t
 
@@ -551,75 +552,76 @@ contains
       end do FILTER_LOOP
 
       ! Write number of nuclide bins
-      call write_dataset(tally_group, "n_nuclide_bins", t%n_nuclide_bins)
+      call write_dataset(tally_group, "n_nuclides", t%n_nuclide_bins)
 
       ! Create temporary array for nuclide bins
-      allocate(temp_array(t%n_nuclide_bins))
+      allocate(str_array(t%n_nuclide_bins))
       NUCLIDE_LOOP: do j = 1, t%n_nuclide_bins
         if (t%nuclide_bins(j) > 0) then
-          temp_array(j) = nuclides(t%nuclide_bins(j))%zaid
+          i_list = nuclides(t%nuclide_bins(j))%listing
+          str_array(j) = xs_listings(i_list)%alias
         else
-          temp_array(j) = t%nuclide_bins(j)
+          str_array(j) = 'total'
         end if
       end do NUCLIDE_LOOP
 
       ! Write and deallocate nuclide bins
-      call write_dataset(tally_group, "nuclide_bins", temp_array)
-      deallocate(temp_array)
+      call write_dataset(tally_group, "nuclides", str_array)
+      deallocate(str_array)
 
       ! Write number of score bins
       call write_dataset(tally_group, "n_score_bins", t%n_score_bins)
-      allocate(scores(size(t%score_bins)))
+      allocate(str_array(size(t%score_bins)))
       do j = 1, size(t%score_bins)
         select case(t%score_bins(j))
         case (SCORE_FLUX)
-          scores(j) = "flux"
+          str_array(j) = "flux"
         case (SCORE_TOTAL)
-          scores(j) = "total"
+          str_array(j) = "total"
         case (SCORE_SCATTER)
-          scores(j) = "scatter"
+          str_array(j) = "scatter"
         case (SCORE_NU_SCATTER)
-          scores(j) = "nu-scatter"
+          str_array(j) = "nu-scatter"
         case (SCORE_SCATTER_N)
-          scores(j) = "scatter-n"
+          str_array(j) = "scatter-n"
         case (SCORE_SCATTER_PN)
-          scores(j) = "scatter-pn"
+          str_array(j) = "scatter-pn"
         case (SCORE_NU_SCATTER_N)
-          scores(j) = "nu-scatter-n"
+          str_array(j) = "nu-scatter-n"
         case (SCORE_NU_SCATTER_PN)
-          scores(j) = "nu-scatter-pn"
+          str_array(j) = "nu-scatter-pn"
         case (SCORE_TRANSPORT)
-          scores(j) = "transport"
+          str_array(j) = "transport"
         case (SCORE_N_1N)
-          scores(j) = "n1n"
+          str_array(j) = "n1n"
         case (SCORE_ABSORPTION)
-          scores(j) = "absorption"
+          str_array(j) = "absorption"
         case (SCORE_FISSION)
-          scores(j) = "fission"
+          str_array(j) = "fission"
         case (SCORE_NU_FISSION)
-          scores(j) = "nu-fission"
+          str_array(j) = "nu-fission"
         case (SCORE_KAPPA_FISSION)
-          scores(j) = "kappa-fission"
+          str_array(j) = "kappa-fission"
         case (SCORE_CURRENT)
-          scores(j) = "current"
+          str_array(j) = "current"
         case (SCORE_FLUX_YN)
-          scores(j) = "flux-yn"
+          str_array(j) = "flux-yn"
         case (SCORE_TOTAL_YN)
-          scores(j) = "total-yn"
+          str_array(j) = "total-yn"
         case (SCORE_SCATTER_YN)
-          scores(j) = "scatter-yn"
+          str_array(j) = "scatter-yn"
         case (SCORE_NU_SCATTER_YN)
-          scores(j) = "nu-scatter-yn"
+          str_array(j) = "nu-scatter-yn"
         case (SCORE_EVENTS)
-          scores(j) = "events"
+          str_array(j) = "events"
         case default
-          scores(j) = reaction_name(t%score_bins(j))
+          str_array(j) = reaction_name(t%score_bins(j))
         end select
       end do
-      call write_dataset(tally_group, "scores", scores)
+      call write_dataset(tally_group, "scores", str_array)
       call write_dataset(tally_group, "score_bins", t%score_bins)
 
-      deallocate(scores)
+      deallocate(str_array)
 
       call close_group(tally_group)
     end do TALLY_METADATA

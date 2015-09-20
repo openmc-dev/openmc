@@ -410,11 +410,11 @@ class StatePoint(object):
                 # Read Nuclide bins
                 n_nuclides = self._f['{0}{1}/n_nuclides'.format(base, tally_key)].value
 
-                nuclide_zaids = self._f['{0}{1}/nuclides'.format(base, tally_key)].value
+                nuclide_names = self._f['{0}{1}/nuclides'.format(base, tally_key)].value
 
                 # Add all Nuclides to the Tally
-                for nuclide_zaid in nuclide_zaids:
-                    tally.add_nuclide(nuclide_zaid)
+                for name in nuclide_names:
+                    tally.add_nuclide(name.decode())
 
                 # Read score bins
                 n_score_bins = self._f['{0}{1}/n_score_bins'.format(base, tally_key)].value

@@ -2730,7 +2730,7 @@ contains
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins  - 1
 
-          case ('total')
+          case ('total', '(n,total)')
             t % score_bins(j) = SCORE_TOTAL
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               call fatal_error("Cannot tally total reaction rate with an &
@@ -2816,13 +2816,13 @@ contains
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
-          case ('n2n')
+          case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
 
-          case ('n3n')
+          case ('n3n', '(n,3n)')
             t % score_bins(j) = N_3N
 
-          case ('n4n')
+          case ('n4n', '(n,4n)')
             t % score_bins(j) = N_4N
 
           case ('absorption')
@@ -2902,6 +2902,79 @@ contains
 
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
+
+          case ('elastic', '(n,elastic)')
+            t % score_bins(j) = ELASTIC
+          case ('(n,2nd)')
+            t % score_bins(j) = N_2ND
+          case ('(n,na)')
+            t % score_bins(j) = N_2NA
+          case ('(n,n3a)')
+            t % score_bins(j) = N_N3A
+          case ('(n,2na)')
+            t % score_bins(j) = N_2NA
+          case ('(n,3na)')
+            t % score_bins(j) = N_3NA
+          case ('(n,np)')
+            t % score_bins(j) = N_NP
+          case ('(n,n2a)')
+            t % score_bins(j) = N_N2A
+          case ('(n,2n2a)')
+            t % score_bins(j) = N_2N2A
+          case ('(n,nd)')
+            t % score_bins(j) = N_ND
+          case ('(n,nt)')
+            t % score_bins(j) = N_NT
+          case ('(n,nHe-3)')
+            t % score_bins(j) = N_N3HE
+          case ('(n,nd2a)')
+            t % score_bins(j) = N_ND2A
+          case ('(n,nt2a)')
+            t % score_bins(j) = N_NT2A
+          case ('(n,3nf)')
+            t % score_bins(j) = N_3NF
+          case ('(n,2np)')
+            t % score_bins(j) = N_2NP
+          case ('(n,3np)')
+            t % score_bins(j) = N_3NP
+          case ('(n,n2p)')
+            t % score_bins(j) = N_N2P
+          case ('(n,npa)')
+            t % score_bins(j) = N_NPA
+          case ('(n,n1)')
+            t % score_bins(j) = N_N1
+          case ('(n,nc)')
+            t % score_bins(j) = N_NC
+          case ('(n,gamma)')
+            t % score_bins(j) = N_GAMMA
+          case ('(n,p)')
+            t % score_bins(j) = N_P
+          case ('(n,d)')
+            t % score_bins(j) = N_D
+          case ('(n,t)')
+            t % score_bins(j) = N_T
+          case ('(n,3He)')
+            t % score_bins(j) = N_3HE
+          case ('(n,a)')
+            t % score_bins(j) = N_A
+          case ('(n,2a)')
+            t % score_bins(j) = N_2A
+          case ('(n,3a)')
+            t % score_bins(j) = N_3A
+          case ('(n,2p)')
+            t % score_bins(j) = N_2P
+          case ('(n,pa)')
+            t % score_bins(j) = N_PA
+          case ('(n,t2a)')
+            t % score_bins(j) = N_T2A
+          case ('(n,d2a)')
+            t % score_bins(j) = N_D2A
+          case ('(n,pd)')
+            t % score_bins(j) = N_PD
+          case ('(n,pt)')
+            t % score_bins(j) = N_PT
+          case ('(n,da)')
+            t % score_bins(j) = N_DA
 
           case default
             ! Assume that user has specified an MT number

@@ -251,8 +251,8 @@ class Summary(object):
             for surface_halfspace in surfaces:
 
                 halfspace = np.sign(surface_halfspace)
-                surface_id = np.abs(surface_halfspace)
-                surface = self.surfaces[surface_id]
+                surface_id = abs(surface_halfspace)
+                surface = self.get_surface_by_id(surface_id)
                 cell.add_surface(surface, halfspace)
 
             # Add the Cell to the global dictionary of all Cells

@@ -11,6 +11,7 @@ import sys
 
 import numpy as np
 
+from input_set import InputSet
 sys.path.insert(0, '../..')
 from openmc.statepoint import StatePoint
 from openmc.executor import Executor
@@ -124,7 +125,7 @@ class TestHarness(object):
 
     def _write_results(self, results_string):
         """Write the results to an ASCII file."""
-        with open('results_test.dat','w') as fh:
+        with open('results_test.dat', 'w') as fh:
             fh.write(results_string)
 
     def _overwrite_results(self):
@@ -132,12 +133,14 @@ class TestHarness(object):
         shutil.copyfile('results_test.dat', 'results_true.dat')
 
     def _compare_results(self):
+        """Make sure the current results agree with the _true standard."""
         compare = filecmp.cmp('results_test.dat', 'results_true.dat')
         if not compare:
             os.rename('results_test.dat', 'results_error.dat')
         assert compare, 'Results do not agree.'
 
     def _cleanup(self):
+        """Delete statepoints, tally, and test files."""
         output = glob.glob(os.path.join(os.getcwd(), 'statepoint.*.*'))
         output.append(os.path.join(os.getcwd(), 'tallies.out'))
         output.append(os.path.join(os.getcwd(), 'results_test.dat'))
@@ -269,3 +272,83 @@ class ParticleRestartTestHarness(TestHarness):
                                                            p.uvw[2])
 
         return outstr
+
+
+class PyAPITestHarness(TestHarness):
+    def __init__(self, statepoint_name, tallies_present=False):
+        TestHarness.__init__(self, statepoint_name, tallies_present)
+        self._input_set = InputSet()
+
+    def execute_test(self):
+        """Build input XMLs, run OpenMC, and verify correct results."""
+        try:
+            self._build_inputs()
+            inputs = self._get_inputs()
+            self._write_inputs(inputs)
+            self._compare_inputs()
+            self._run_openmc()
+            self._test_output_created()
+            results = self._get_results()
+            self._write_results(results)
+            self._compare_results()
+        finally:
+            self._cleanup()
+
+    def update_results(self):
+        """Update results_true.dat and inputs_true.dat"""
+        try:
+            self._build_inputs()
+            inputs = self._get_inputs()
+            self._write_inputs(inputs)
+            self._overwrite_inputs()
+            self._run_openmc()
+            self._test_output_created()
+            results = self._get_results()
+            self._write_results(results)
+            self._overwrite_results()
+        finally:
+            self._cleanup()
+
+    def _build_inputs(self):
+        """Write input XML files."""
+        self._input_set.build_default_materials_and_geometry()
+        self._input_set.build_default_settings()
+        self._input_set.export()
+
+    def _get_inputs(self):
+        """Return a hash digest of the input XML files."""
+        xmls = glob.glob(os.path.join(os.getcwd(), '*.xml'))
+        outstr = '\n'.join([open(fin).read() for fin in xmls])
+
+        sha512 = hashlib.sha512()
+        sha512.update(outstr.encode('utf-8'))
+        outstr = sha512.hexdigest()
+
+        return outstr
+
+    def _write_inputs(self, input_digest):
+        """Write the digest of the input XMLs to an ASCII file."""
+        with open('inputs_test.dat', 'w') as fh:
+            fh.write(input_digest)
+
+    def _overwrite_inputs(self):
+        """Overwrite inputs_true.dat with inputs_test.dat"""
+        shutil.copyfile('inputs_test.dat', 'inputs_true.dat')
+
+    def _compare_inputs(self):
+        """Make sure the current inputs agree with the _true standard."""
+        compare = filecmp.cmp('inputs_test.dat', 'inputs_true.dat')
+        if not compare:
+            os.rename('inputs_test.dat', 'inputs_error.dat')
+        assert compare, 'Input files are broken.'
+
+    def _cleanup(self):
+        """Delete XMLs, statepoints, tally, and test files."""
+        TestHarness._cleanup(self)
+        output = [os.path.join(os.getcwd(), 'materials.xml')]
+        output.append(os.path.join(os.getcwd(), 'geometry.xml'))
+        output.append(os.path.join(os.getcwd(), 'settings.xml'))
+        output.append(os.path.join(os.getcwd(), 'inputs_test.dat'))
+        for f in output:
+            if os.path.exists(f):
+                os.remove(f)

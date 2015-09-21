@@ -52,7 +52,7 @@ class Tally(object):
         List of nuclides to score results for
     scores : list of str
         List of defined scores, e.g. 'flux', 'fission', etc.
-    estimator : {'analog', 'tracklength'}
+    estimator : {'analog', 'tracklength', 'collision'}
         Type of estimator for the tally
     triggers : list of openmc.trigger.Trigger
         List of tally triggers
@@ -289,7 +289,8 @@ class Tally(object):
 
     @estimator.setter
     def estimator(self, estimator):
-        check_value('estimator', estimator, ['analog', 'tracklength'])
+        check_value('estimator', estimator,
+                    ['analog', 'tracklength', 'collision'])
         self._estimator = estimator
 
     def add_trigger(self, trigger):

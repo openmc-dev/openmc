@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<tallies>
-
-  <tally id="1">
-    <filter type="cellborn" bins="10 21 22 23" />
-    <scores>total</scores>
-  </tally>
-
-</tallies>

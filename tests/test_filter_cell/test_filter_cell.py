@@ -9,9 +9,9 @@ import os
 
 class FilterCellTestHarness(PyAPITestHarness):
     def _build_inputs(self):
-        cell_filter = openmc.Filter(type='cell', bins=(10, 21, 22, 23))
+        filt = openmc.Filter(type='cell', bins=(10, 21, 22, 23))
         tally = openmc.Tally(tally_id=1)
-        tally.add_filter(cell_filter)
+        tally.add_filter(filt)
         tally.add_score('total')
         self._input_set.tallies = openmc.TalliesFile()
         self._input_set.tallies.add_tally(tally)

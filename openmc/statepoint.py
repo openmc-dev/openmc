@@ -414,7 +414,8 @@ class StatePoint(object):
 
                 # Add all Nuclides to the Tally
                 for name in nuclide_names:
-                    tally.add_nuclide(name.decode())
+                    nuclide = openmc.Nuclide(name.decode().strip())
+                    tally.add_nuclide(nuclide)
 
                 # Read score bins
                 n_score_bins = self._f['{0}{1}/n_score_bins'.format(base, tally_key)].value

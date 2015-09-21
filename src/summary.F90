@@ -623,8 +623,7 @@ contains
           str_array(j) = reaction_name(t%score_bins(j))
         end select
       end do
-      call write_dataset(tally_group, "scores", str_array)
-      call write_dataset(tally_group, "score_bins", t%score_bins)
+      call write_dataset(tally_group, "score_bins", str_array)
 
       deallocate(str_array)
 

@@ -505,7 +505,7 @@ class Summary(object):
             tally = openmc.Tally(tally_id, tally_name)
 
             # Read score metadata
-            scores = self._f['{0}/scores'.format(subbase)].value
+            scores = self._f['{0}/score_bins'.format(subbase)].value
             for score in scores:
                 tally.add_score(score.decode())
             num_score_bins = self._f['{0}/n_score_bins'.format(subbase)][...]

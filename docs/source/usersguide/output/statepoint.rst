@@ -39,7 +39,7 @@ The current revision of the statepoint file format is 13.
 
     Pseudo-random number generator seed.
 
-**/run_mode** (*int*)
+**/run_mode** (*char[]*)
 
     Run mode used. A value of 1 indicates a fixed-source run and a value of 2
     indicates an eigenvalue run.
@@ -142,13 +142,9 @@ if (run_mode == MODE_EIGENVALUE)
 
         Unique identifier of the mesh.
 
-    **/tallies/meshes/mesh i/type** (*int*)
+    **/tallies/meshes/mesh i/type** (*char[]*)
 
         Type of mesh.
-
-    **/tallies/meshes/mesh i/n_dimension** (*int*)
-
-        Number of dimensions for mesh (2 or 3).
 
     **/tallies/meshes/mesh i/dimension** (*int*)
 
@@ -180,9 +176,9 @@ if (run_mode == MODE_EIGENVALUE)
 
 *do i = 1, n_tallies*
 
-    **/tallies/tally i/estimator** (*int*)
+    **/tallies/tally i/estimator** (*char[]*)
 
-        Type of tally estimator: analog (1) or tracklength (2).
+        Type of tally estimator.
 
     **/tallies/tally i/n_realizations** (*int*)
 
@@ -194,7 +190,7 @@ if (run_mode == MODE_EIGENVALUE)
 
     *do j = 1, tallies(i) % n_filters*
 
-        **/tallies/tally i/filter j/type** (*int*)
+        **/tallies/tally i/filter j/type** (*char[]*)
 
             Type of tally filter.
 
@@ -214,27 +210,31 @@ if (run_mode == MODE_EIGENVALUE)
 
         Number of nuclide bins. If none are specified, this is just one.
 
-    **/tallies/tally i/nuclides** (*int[]*)
+    **/tallies/tally i/nuclides** (*char[][]*)
 
-        Values of specified nuclide bins (ZAID identifiers)
+        Values of specified nuclide bins.
 
     **/tallies/tally i/n_score_bins** (*int*)
 
-        Number of scoring bins.
+        Number of scores.
 
-    **/tallies/tally i/score_bins** (*int*)
+    **/tallies/tally i/score_bins** (*char[][]*)
 
-        Values of specified scoring bins (e.g. SCORE_FLUX).
+        Values of specified scores.
 
-    **/tallies/tally i/n_user_score_bins** (*int*)
+    **/tallies/tally i/n_user_scores** (*int*)
 
-        Number of scoring bins without accounting for those added by
-        expansions, e.g. scatter-PN.
+        Number of scores without accounting for those added by expansions,
+        e.g. scatter-PN.
 
     **/tallies/tally i/moment_orders** (*char[][]*)
 
         Tallying moment orders for Legendre and spherical harmonic tally
         expansions (*e.g.*, 'P2', 'Y1,2', etc.).
+
+    **/tallies/tally i/results** (Compound type)
+
+        Accumulated sum and sum-of-squares for each bin of the i-th tally.
 
 **/source_present** (*int*)
 
@@ -257,13 +257,7 @@ if (run_mode == MODE_EIGENVALUE)
 
     Flag indicated if tallies are present in the file.
 
-*do i = 1, n_tallies*
-
-**/tallies/tally i/results** (Compound type)
-
-    Accumulated sum and sum-of-squares for each bin of the tally i-th tally
-
-if (run_mode == MODE_EIGENVALUE and source_present)
+if (run_mode == 'k-eigenvalue' and source_present > 0)
 
     **/source_bank** (Compound type)
 

@@ -75,11 +75,9 @@ do i = 1, n_cells
 
     **/geometry/cells/cell <uid>/universe** (*int*)
 
-    **/geometry/cells/cell <uid>/fill_type** (*int*)
+    **/geometry/cells/cell <uid>/fill_type** (*char[]*)
 
     **/geometry/cells/cell <uid>/material** (*int*)
-
-    **/geometry/cells/cell <uid>/fill** (*int*)
 
     **/geometry/cells/cell <uid>/maps** (*int*)
 
@@ -108,10 +106,6 @@ do i = 1, n_surfaces
     **/geometry/surfaces/surface <uid>/type** (*char[]*)
 
     **/geometry/surfaces/surface <uid>/coefficients** (*double[]*)
-
-    **/geometry/surfaces/surface <uid>/neighbors_positive** (*int[]*)
-
-    **/geometry/surfaces/surface <uid>/neighbors_negative** (*int[]*)
 
     **/geometry/surfaces/surface <uid>/boundary_condition** (*char[]*)
 
@@ -177,12 +171,6 @@ do i = 1, n_materials
 
     **/materials/material <uid>/nuclide_densities** (*double[]*)
 
-    **/materials/material <uid>/n_sab** (*int*)
-
-    **/materials/material <uid>/i_sab_nuclides** (*int*)
-
-    **/materials/material <uid>/i_sab_tables** (*int*)
-
     **/materials/material <uid>/sab_names** (*char[][]*)
 
 end do
@@ -195,9 +183,7 @@ do i = 1, n_meshes
 
    **/tallies/mesh <uid>/index** (*int*)
 
-   **/tallies/mesh <uid>/type** (*int*)
-
-   **/tallies/mesh <uid>/n_dimension** (*int*)
+   **/tallies/mesh <uid>/type** (*char[]*)
 
    **/tallies/mesh <uid>/dimension** (*int[]*)
 
@@ -223,7 +209,7 @@ do i = 1, n_tallies
 
     do j = 1, n_filters
 
-        **/tallies/tally <uid>/filter j/type** (*int*)
+        **/tallies/tally <uid>/filter j/type** (*char[]*)
 
         **/tallies/tally <uid>/filter j/n_bins** (*int*)
 
@@ -233,66 +219,12 @@ do i = 1, n_tallies
 
     end do
 
-    **/tallies/tally <uid>/n_nuclide_bins** (*int*)
+    **/tallies/tally <uid>/n_nuclides** (*int*)
 
-    **/tallies/tally <uid>/nuclide_bins** (*int[]*)
+    **/tallies/tally <uid>/nuclides** (*char[][]*)
 
     **/tallies/tally <uid>/n_score_bins** (*int*)
 
-    **/tallies/tally <uid>/score_bins** (*int[]*)
-
-end do
-
-**/nuclides/n_nuclides** (*int*)
-
-do i = 1, n_nuclides
-
-    **/nuclides/<name>/index** (*int*)
-
-    **/nuclides/<name>/zaid** (*int*)
-
-    **/nuclides/<name>/alias** (*char[]*)
-
-    **/nuclides/<name>/awr** (*double*)
-
-    **/nuclides/<name>/kT** (*double*)
-
-    **/nuclides/<name>/n_grid** (*int*)
-
-    **/nuclides/<name>/n_reactions** (*int*)
-
-    **/nuclides/<name>/n_fission** (*int*)
-
-    **/nuclides/<name>/size_xs** (*int*)
-
-    do j = 1, n_reactions
-
-        **/nuclides/<name>/reactions/<reaction_name>/Q_value** (*double*)
-
-        **/nuclides/<name>/reactions/<reaction_name>/multiplicity** (*int*)
-
-        **/nuclides/<name>/reactions/<reaction_name>/threshold** (*double*)
-
-        **/nuclides/<name>/reactions/<reaction_name>/size_angle** (*int*)
-
-        **/nuclides/<name>/reactions/<reaction_name>/size_energy** (*int*)
-
-    end do
-
-    **/nuclides/<name>/urr_n_energy** (*int*)
-
-    **/nuclides/<name>/urr_n_prob** (*int*)
-
-    **/nuclides/<name>/urr_interp** (*int*)
-
-    **/nuclides/<name>/urr_inelastic** (*int*)
-
-    **/nuclides/<name>/urr_absorption** (*int*)
-
-    **/nuclides/<name>/urr_min_E** (*double*)
-
-    **/nuclides/<name>/urr_max_E** (*double*)
-
-    **/nuclides/<name>/size_total** (*int*)
+    **/tallies/tally <uid>/score_bins** (*char[][]*)
 
 end do

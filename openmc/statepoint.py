@@ -408,8 +408,6 @@ class StatePoint(object):
                     tally.add_filter(filter)
 
                 # Read Nuclide bins
-                n_nuclides = self._f['{0}{1}/n_nuclides'.format(base, tally_key)].value
-
                 nuclide_names = self._f['{0}{1}/nuclides'.format(base, tally_key)].value
 
                 # Add all Nuclides to the Tally
@@ -430,7 +428,7 @@ class StatePoint(object):
                 # Compute and set the filter strides
                 for i in range(n_filters):
                     filter = tally.filters[i]
-                    filter.stride = n_score_bins * n_nuclides
+                    filter.stride = n_score_bins * len(nuclide_names)
 
                     for j in range(i+1, n_filters):
                         filter.stride *= tally.filters[j].num_bins

@@ -206,10 +206,6 @@ if (run_mode == MODE_EIGENVALUE)
 
             Value for each filter bin of this type.
 
-    **/tallies/tally i/n_nuclides** (*int*)
-
-        Number of nuclide bins. If none are specified, this is just one.
-
     **/tallies/tally i/nuclides** (*char[][]*)
 
         Values of specified nuclide bins.

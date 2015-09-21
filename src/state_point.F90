@@ -276,8 +276,6 @@ contains
             call close_group(filter_group)
           end do FILTER_LOOP
 
-          call write_dataset(tally_group, "n_nuclides", tally%n_nuclide_bins)
-
           ! Set up nuclide bin array and then write
           allocate(str_array(tally%n_nuclide_bins))
           NUCLIDE_LOOP: do j = 1, tally%n_nuclide_bins

@@ -219,8 +219,6 @@ do i = 1, n_tallies
 
     end do
 
-    **/tallies/tally <uid>/n_nuclides** (*int*)
-
     **/tallies/tally <uid>/nuclides** (*char[][]*)
 
     **/tallies/tally <uid>/n_score_bins** (*int*)

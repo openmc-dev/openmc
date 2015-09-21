@@ -608,15 +608,6 @@ class StatePoint(object):
             tally.name = summary.tallies[tally_id].name
             tally.with_summary = True
 
-            nuclide_zaids = copy.deepcopy(tally.nuclides)
-
-            for nuclide_zaid in nuclide_zaids:
-                tally.remove_nuclide(nuclide_zaid)
-                if nuclide_zaid == -1:
-                    tally.add_nuclide(openmc.Nuclide('total'))
-                else:
-                    tally.add_nuclide(summary.nuclides[nuclide_zaid])
-
             for filter in tally.filters:
                 if filter.type == 'surface':
                     surface_ids = []

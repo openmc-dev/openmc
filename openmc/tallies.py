@@ -322,7 +322,7 @@ class Tally(object):
                 return None
 
             n = self.num_realizations
-            nonzero = self.mean > 0
+            nonzero = np.abs(self.mean) > 0
             self._std_dev = np.zeros_like(self.mean)
             self._std_dev[nonzero] = np.sqrt((self.sum_sq[nonzero]/n -
                                               self.mean[nonzero]**2)/(n - 1))

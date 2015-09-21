@@ -2188,9 +2188,11 @@ contains
            call get_node_value(node_mesh, "type", temp_str)
       select case (to_lower(temp_str))
       case ('rect', 'rectangle', 'rectangular')
-        m % type = LATTICE_RECT
-      case ('hex', 'hexagon', 'hexagonal')
-        m % type = LATTICE_HEX
+        call warning("Mesh type '" // trim(temp_str) // "' is deprecated. &
+             &Please use 'regular' instead.")
+        m % type = MESH_REGULAR
+      case ('regular')
+        m % type = MESH_REGULAR
       case default
         call fatal_error("Invalid mesh type: " // trim(temp_str))
       end select

@@ -312,6 +312,10 @@ module constants
        FILTER_ENERGYOUT   = 8, &
        FILTER_DISTRIBCELL = 9
 
+  ! Mesh types
+  integer, parameter :: &
+       MESH_REGULAR = 1
+
   ! Tally surface current directions
   integer, parameter :: &
        IN_RIGHT  = 1,   &

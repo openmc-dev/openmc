@@ -317,8 +317,10 @@ class PyAPITestHarness(TestHarness):
 
     def _get_inputs(self):
         """Return a hash digest of the input XML files."""
-        xmls = glob.glob(os.path.join(os.getcwd(), '*.xml'))
-        outstr = '\n'.join([open(fin).read() for fin in xmls])
+        xmls = ('geometry.xml', 'tallies.xml', 'materials.xml', 'settings.xml')
+        xmls = [os.path.join(os.getcwd(), fname) for fname in xmls]
+        outstr = '\n'.join([open(fname).read() for fname in xmls
+                            if os.path.exists(fname)])
 
         sha512 = hashlib.sha512()
         sha512.update(outstr.encode('utf-8'))

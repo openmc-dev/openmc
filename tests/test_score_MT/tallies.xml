@@ -6,4 +6,16 @@
     <scores>n2n 16 51 102</scores>
   </tally>
 
+  <tally id="2">
+    <filter type="cell" bins="10 21 22 23" />
+    <scores>n2n 16 51 102</scores>
+    <estimator>analog</estimator>
+  </tally>
+
+  <tally id="3">
+    <filter type="cell" bins="10 21 22 23" />
+    <scores>n2n 16 51 102</scores>
+    <estimator>collision</estimator>
+  </tally>
+
 </tallies>

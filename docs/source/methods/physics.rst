@@ -1028,8 +1028,8 @@ Let us call the normalization factor in the denominator of equation
 :eq:`target-pdf-1` :math:`C`.
 
 
-Contant Cross Section Model
----------------------------
+Constant Cross Section Model
+----------------------------
 
 It is often assumed that :math:`\sigma (v_r)` is constant over the range of
 relative velocities of interest. This is a good assumption for almost all cases

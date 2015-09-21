@@ -456,7 +456,7 @@ contains
     integer(HID_T), intent(in) :: file_id
 
     integer :: i, j
-    integer :: i_list
+    integer :: i_list, i_xs
     integer, allocatable :: temp_array(:) ! nuclide bin array
     integer(HID_T) :: tallies_group
     integer(HID_T) :: mesh_group
@@ -559,7 +559,12 @@ contains
       NUCLIDE_LOOP: do j = 1, t%n_nuclide_bins
         if (t%nuclide_bins(j) > 0) then
           i_list = nuclides(t%nuclide_bins(j))%listing
-          str_array(j) = xs_listings(i_list)%alias
+          i_xs = index(xs_listings(i_list)%alias, '.')
+          if (i_xs > 0) then
+            str_array(j) = xs_listings(i_list)%alias(1:i_xs - 1)
+          else
+            str_array(j) = xs_listings(i_list)%alias
+          end if
         else
           str_array(j) = 'total'
         end if

@@ -12,6 +12,7 @@ module input_xml
   use output,           only: write_message
   use plot_header
   use random_lcg,       only: prn
+  use surface_header
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
@@ -987,13 +988,14 @@ contains
     integer :: coeffs_reqd
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
+    real(8), allocatable :: coeffs(:)
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    type(Cell),     pointer :: c => null()
-    type(Surface),  pointer :: s => null()
-    class(Lattice), pointer :: lat => null()
+    type(Cell),     pointer :: c
+    type(Surface),  pointer :: s
+    class(Lattice), pointer :: lat
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_cell => null()
     type(Node), pointer :: node_surf => null()
@@ -1220,6 +1222,7 @@ contains
 
     ! Allocate cells array
     allocate(surfaces(n_surfaces))
+    allocate(surfaces_c(n_surfaces))
 
     do i = 1, n_surfaces
       s => surfaces(i)
@@ -1253,39 +1256,51 @@ contains
       case ('x-plane')
         s % type = SURF_PX
         coeffs_reqd  = 1
+        allocate(SurfaceXPlane :: surfaces_c(i)%obj)
       case ('y-plane')
         s % type = SURF_PY
         coeffs_reqd  = 1
+        allocate(SurfaceYPlane :: surfaces_c(i)%obj)
       case ('z-plane')
         s % type = SURF_PZ
         coeffs_reqd  = 1
+        allocate(SurfaceZPlane :: surfaces_c(i)%obj)
       case ('plane')
         s % type = SURF_PLANE
         coeffs_reqd  = 4
+        allocate(SurfacePlane :: surfaces_c(i)%obj)
       case ('x-cylinder')
         s % type = SURF_CYL_X
         coeffs_reqd  = 3
+        allocate(SurfaceXCylinder :: surfaces_c(i)%obj)
       case ('y-cylinder')
         s % type = SURF_CYL_Y
         coeffs_reqd  = 3
+        allocate(SurfaceYCylinder :: surfaces_c(i)%obj)
       case ('z-cylinder')
         s % type = SURF_CYL_Z
         coeffs_reqd  = 3
+        allocate(SurfaceZCylinder :: surfaces_c(i)%obj)
       case ('sphere')
         s % type = SURF_SPHERE
         coeffs_reqd  = 4
+        allocate(SurfaceSphere :: surfaces_c(i)%obj)
       case ('x-cone')
         s % type = SURF_CONE_X
         coeffs_reqd  = 4
+        allocate(SurfaceXCone :: surfaces_c(i)%obj)
       case ('y-cone')
         s % type = SURF_CONE_Y
         coeffs_reqd  = 4
+        allocate(SurfaceYCone :: surfaces_c(i)%obj)
       case ('z-cone')
         s % type = SURF_CONE_Z
         coeffs_reqd  = 4
+        allocate(SurfaceZCone :: surfaces_c(i)%obj)
       case default
         call fatal_error("Invalid surface type: " // trim(word))
       end select
+      surfaces_c(i)%obj%id = s%id
 
       ! Check to make sure that the proper number of coefficients
       ! have been specified for the given type of surface. Then copy
@@ -1298,10 +1313,61 @@ contains
       elseif (n > coeffs_reqd) then
         call fatal_error("Too many coefficients specified for surface: " &
              &// trim(to_str(s % id)))
-      else
-        allocate(s % coeffs(n))
-        call get_node_array(node_surf, "coeffs", s % coeffs)
       end if
+
+      allocate(coeffs(n))
+      allocate(s%coeffs(n))
+      call get_node_array(node_surf, "coeffs", coeffs)
+      s%coeffs(:) = coeffs(:)
+
+      select type(sp => surfaces_c(i)%obj)
+      type is (SurfaceXPlane)
+        sp%x0 = coeffs(1)
+      type is (SurfaceYPlane)
+        sp%y0 = coeffs(1)
+      type is (SurfaceZPlane)
+        sp%z0 = coeffs(1)
+      type is (SurfacePlane)
+        sp%A = coeffs(1)
+        sp%B = coeffs(2)
+        sp%C = coeffs(3)
+        sp%D = coeffs(4)
+      type is (SurfaceXCylinder)
+        sp%y0 = coeffs(1)
+        sp%z0 = coeffs(2)
+        sp%r = coeffs(3)
+      type is (SurfaceYCylinder)
+        sp%x0 = coeffs(1)
+        sp%z0 = coeffs(2)
+        sp%r = coeffs(3)
+      type is (SurfaceZCylinder)
+        sp%x0 = coeffs(1)
+        sp%y0 = coeffs(2)
+        sp%r = coeffs(3)
+      type is (SurfaceSphere)
+        sp%x0 = coeffs(1)
+        sp%y0 = coeffs(2)
+        sp%z0 = coeffs(3)
+        sp%r = coeffs(4)
+      type is (SurfaceXCone)
+        sp%x0 = coeffs(1)
+        sp%y0 = coeffs(2)
+        sp%z0 = coeffs(3)
+        sp%r2 = coeffs(4)
+      type is (SurfaceYCone)
+        sp%x0 = coeffs(1)
+        sp%y0 = coeffs(2)
+        sp%z0 = coeffs(3)
+        sp%r2 = coeffs(4)
+      type is (SurfaceZCone)
+        sp%x0 = coeffs(1)
+        sp%y0 = coeffs(2)
+        sp%z0 = coeffs(3)
+        sp%r2 = coeffs(4)
+      end select
+
+      ! No longer need coefficients
+      deallocate(coeffs)
 
       ! Boundary conditions
       word = ''
@@ -1320,6 +1386,8 @@ contains
         call fatal_error("Unknown boundary condition '" // trim(word) // &
              &"' specified on surface " // trim(to_str(s % id)))
       end select
+
+      surfaces_c(i)%obj%bc = s%bc
 
       ! Add surface to dictionary
       call surface_dict % add_key(s % id, i)

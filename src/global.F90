@@ -11,6 +11,7 @@ module global
   use mesh_header,      only: RegularMesh
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
+  use surface_header,   only: SurfaceContainer
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use trigger_header,   only: KTrigger
@@ -31,6 +32,7 @@ module global
   type(Universe),          allocatable, target :: universes(:)
   type(LatticeContainer),  allocatable, target :: lattices(:)
   type(Surface),           allocatable, target :: surfaces(:)
+  type(SurfaceContainer), allocatable, target :: surfaces_c(:)
   type(Material),          allocatable, target :: materials(:)
   type(ObjectPlot),        allocatable, target :: plots(:)
 

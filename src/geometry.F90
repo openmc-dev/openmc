@@ -8,6 +8,7 @@ module geometry
   use output,                 only: write_message
   use particle_header,        only: LocalCoord, Particle
   use particle_restart_write, only: write_particle_restart
+  use surface_header
   use string,                 only: to_str
   use tally,                  only: score_surface_current
 
@@ -21,10 +22,9 @@ contains
 !===============================================================================
 
   function simple_cell_contains(c, p) result(in_cell)
-
-    type(Cell),     pointer       :: c
+    type(Cell), intent(in) :: c
     type(Particle), intent(inout) :: p
-    logical                       :: in_cell
+    logical :: in_cell
 
     integer :: i               ! index of surfaces in cell
     integer :: i_surface       ! index in surfaces array (with sign)
@@ -62,9 +62,7 @@ contains
     ! If we've reached here, then the sense matched on every surface or there
     ! are no surfaces.
     in_cell = .true.
-
   end function simple_cell_contains
-
 
 !===============================================================================
 ! CHECK_CELL_OVERLAP checks for overlapping cells at the current particle's
@@ -553,6 +551,163 @@ contains
     end if
 
   end subroutine cross_surface
+
+  subroutine cross_surface_new(p, last_cell)
+    type(Particle), intent(inout) :: p
+    integer,        intent(in)    :: last_cell  ! last cell particle was in
+
+    real(8) :: u         ! x-component of direction
+    real(8) :: v         ! y-component of direction
+    real(8) :: w         ! z-component of direction
+    real(8) :: norm      ! "norm" of surface normal
+    integer :: i_surface ! index in surfaces
+    logical :: found     ! particle found in universe?
+    class(Surface2), pointer :: surf
+
+    i_surface = abs(p % surface)
+    surf => surfaces_c(i_surface)%obj
+    if (verbosity >= 10 .or. trace) then
+      call write_message("    Crossing surface " // trim(to_str(surf % id)))
+    end if
+
+    if (surf % bc == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
+      ! =======================================================================
+      ! PARTICLE LEAKS OUT OF PROBLEM
+
+      ! Kill particle
+      p % alive = .false.
+
+      ! Score any surface current tallies -- note that the particle is moved
+      ! forward slightly so that if the mesh boundary is on the surface, it is
+      ! still processed
+
+      if (active_current_tallies % size() > 0) then
+        ! TODO: Find a better solution to score surface currents than
+        ! physically moving the particle forward slightly
+
+        p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
+        call score_surface_current(p)
+      end if
+
+      ! Score to global leakage tally
+      if (tallies_on) then
+        global_tally_leakage = global_tally_leakage + p % wgt
+      end if
+
+      ! Display message
+      if (verbosity >= 10 .or. trace) then
+        call write_message("    Leaked out of surface " &
+             &// trim(to_str(surf % id)))
+      end if
+      return
+
+    elseif (surf % bc == BC_REFLECT .and. (run_mode /= MODE_PLOTTING)) then
+      ! =======================================================================
+      ! PARTICLE REFLECTS FROM SURFACE
+
+      ! Do not handle reflective boundary conditions on lower universes
+      if (p % n_coord /= 1) then
+        call handle_lost_particle(p, "Cannot reflect particle " &
+             &// trim(to_str(p % id)) // " off surface in a lower universe.")
+        return
+      end if
+
+      ! Score surface currents since reflection causes the direction of the
+      ! particle to change -- artificially move the particle slightly back in
+      ! case the surface crossing in coincident with a mesh boundary
+
+      if (active_current_tallies % size() > 0) then
+        p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
+        call score_surface_current(p)
+        p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
+      end if
+
+      ! Reflect particle off surface
+      call surf%reflect(p%coord(1)%xyz, p%coord(1)%uvw)
+
+      ! Make sure new particle direction is normalized
+      u = p%coord(1)%uvw(1)
+      v = p%coord(1)%uvw(2)
+      w = p%coord(1)%uvw(3)
+      norm = sqrt(u*u + v*v + w*w)
+      p%coord(1)%uvw(:) = [u, v, w] / norm
+
+      ! Reassign particle's cell and surface
+      p % coord(1) % cell = last_cell
+      p % surface = -p % surface
+
+      ! If a reflective surface is coincident with a lattice or universe
+      ! boundary, it is necessary to redetermine the particle's coordinates in
+      ! the lower universes.
+
+      p % n_coord = 1
+      call find_cell(p, found)
+      if (.not. found) then
+        call handle_lost_particle(p, "Couldn't find particle after reflecting&
+             & from surface.")
+        return
+      end if
+
+      ! Set previous coordinate going slightly past surface crossing
+      p % last_xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
+
+      ! Diagnostic message
+      if (verbosity >= 10 .or. trace) then
+        call write_message("    Reflected from surface " &
+             &// trim(to_str(surf%id)))
+      end if
+      return
+    end if
+
+    ! ==========================================================================
+    ! SEARCH NEIGHBOR LISTS FOR NEXT CELL
+
+    if (p % surface > 0 .and. allocated(surf%neighbor_pos)) then
+      ! If coming from negative side of surface, search all the neighboring
+      ! cells on the positive side
+
+      call find_cell(p, found, surf%neighbor_pos)
+      if (found) return
+
+    elseif (p % surface < 0  .and. allocated(surf%neighbor_neg)) then
+      ! If coming from positive side of surface, search all the neighboring
+      ! cells on the negative side
+
+      call find_cell(p, found, surf%neighbor_neg)
+      if (found) return
+
+    end if
+
+    ! ==========================================================================
+    ! COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
+
+    ! Remove lower coordinate levels and assignment of surface
+    p % surface = NONE
+    p % n_coord = 1
+    call find_cell(p, found)
+
+    if (run_mode /= MODE_PLOTTING .and. (.not. found)) then
+      ! If a cell is still not found, there are two possible causes: 1) there is
+      ! a void in the model, and 2) the particle hit a surface at a tangent. If
+      ! the particle is really traveling tangent to a surface, if we move it
+      ! forward a tiny bit it should fix the problem.
+
+      p % n_coord = 1
+      p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
+      call find_cell(p, found)
+
+      ! Couldn't find next cell anywhere! This probably means there is an actual
+      ! undefined region in the geometry.
+
+      if (.not. found) then
+        call handle_lost_particle(p, "After particle " // trim(to_str(p % id)) &
+             // " crossed surface " // trim(to_str(surf%id)) &
+             // " it could not be located in any cell and it did not leak.")
+        return
+      end if
+    end if
+
+  end subroutine cross_surface_new
 
 !===============================================================================
 ! CROSS_LATTICE moves a particle into a new lattice element
@@ -1329,6 +1484,293 @@ contains
 
   end subroutine distance_to_boundary
 
+  subroutine distance_to_boundary_new(p, dist, surface_crossed, lattice_translation, &
+       next_level)
+    type(Particle), intent(inout) :: p
+    real(8),        intent(out)   :: dist
+    integer,        intent(out)   :: surface_crossed
+    integer,        intent(out)   :: lattice_translation(3)
+    integer,        intent(out)   :: next_level
+
+    integer :: i                  ! index for surface in cell
+    integer :: j
+    integer :: index_surf         ! index in surfaces array (with sign)
+    integer :: i_xyz(3)           ! lattice indices
+    integer :: level_surf_cross   ! surface crossed on current level
+    integer :: level_lat_trans(3) ! lattice translation on current level
+    real(8) :: x,y,z              ! particle coordinates
+    real(8) :: xyz_t(3)           ! local particle coordinates
+    real(8) :: beta, gama         ! skewed particle coordiantes
+    real(8) :: u,v,w              ! particle directions
+    real(8) :: beta_dir           ! skewed particle direction
+    real(8) :: gama_dir           ! skewed particle direction
+    real(8) :: edge               ! distance to oncoming edge
+    real(8) :: d                  ! evaluated distance
+    real(8) :: d_lat              ! distance to lattice boundary
+    real(8) :: d_surf             ! distance to surface
+    real(8) :: x0,y0,z0           ! coefficients for surface
+    type(Cell),       pointer :: cl
+    class(Surface2),   pointer :: surf
+    class(Lattice),   pointer :: lat
+
+    ! inialize distance to infinity (huge)
+    dist = INFINITY
+    d_lat = INFINITY
+    d_surf = INFINITY
+    lattice_translation(:) = [0, 0, 0]
+
+    next_level = 0
+
+    ! Loop over each universe level
+    LEVEL_LOOP: do j = 1, p % n_coord
+
+      ! get pointer to cell on this level
+      cl => cells(p % coord(j) % cell)
+
+      ! copy directional cosines
+      u = p % coord(j) % uvw(1)
+      v = p % coord(j) % uvw(2)
+      w = p % coord(j) % uvw(3)
+
+      ! =======================================================================
+      ! FIND MINIMUM DISTANCE TO SURFACE IN THIS CELL
+
+      SURFACE_LOOP: do i = 1, cl % n_surfaces
+        ! check for operators
+        index_surf = abs(index_surf)
+        if (index_surf >= OP_DIFFERENCE) cycle
+
+        ! Calculate distance to surface
+        surf => surfaces_c(index_surf)%obj
+        d = surf%distance(p%coord(j)%xyz, p%coord(j)%uvw)
+
+        ! Check is calculated distance is new minimum
+        if (d < d_surf) then
+          if (abs(d - d_surf)/d_surf >= FP_PRECISION) then
+            d_surf = d
+            level_surf_cross = -cl % surfaces(i)
+          end if
+        end if
+      end do SURFACE_LOOP
+
+      ! =======================================================================
+      ! FIND MINIMUM DISTANCE TO LATTICE SURFACES
+
+      LAT_COORD: if (p % coord(j) % lattice /= NONE) then
+        lat => lattices(p % coord(j) % lattice) % obj
+
+        LAT_TYPE: select type(lat)
+
+        type is (RectLattice)
+          ! copy local coordinates
+          x = p % coord(j) % xyz(1)
+          y = p % coord(j) % xyz(2)
+          z = p % coord(j) % xyz(3)
+
+          ! determine oncoming edge
+          x0 = sign(lat % pitch(1) * HALF, u)
+          y0 = sign(lat % pitch(2) * HALF, v)
+
+          ! left and right sides
+          if (abs(x - x0) < FP_PRECISION) then
+            d = INFINITY
+          elseif (u == ZERO) then
+            d = INFINITY
+          else
+            d = (x0 - x)/u
+          end if
+
+          d_lat = d
+          if (u > 0) then
+            level_lat_trans(:) = [1, 0, 0]
+          else
+            level_lat_trans(:) = [-1, 0, 0]
+          end if
+
+          ! front and back sides
+          if (abs(y - y0) < FP_PRECISION) then
+            d = INFINITY
+          elseif (v == ZERO) then
+            d = INFINITY
+          else
+            d = (y0 - y)/v
+          end if
+
+          if (d < d_lat) then
+            d_lat = d
+            if (v > 0) then
+              level_lat_trans(:) = [0, 1, 0]
+            else
+              level_lat_trans(:) = [0, -1, 0]
+            end if
+          end if
+
+          if (lat % is_3d) then
+            z0 = sign(lat % pitch(3) * HALF, w)
+
+            ! top and bottom sides
+            if (abs(z - z0) < FP_PRECISION) then
+              d = INFINITY
+            elseif (w == ZERO) then
+              d = INFINITY
+            else
+              d = (z0 - z)/w
+            end if
+
+            if (d < d_lat) then
+              d_lat = d
+              if (w > 0) then
+                level_lat_trans(:) = [0, 0, 1]
+              else
+                level_lat_trans(:) = [0, 0, -1]
+              end if
+            end if
+          end if
+
+        type is (HexLattice) LAT_TYPE
+          ! Copy local coordinates.
+          z = p % coord(j) % xyz(3)
+          i_xyz(1) = p % coord(j) % lattice_x
+          i_xyz(2) = p % coord(j) % lattice_y
+          i_xyz(3) = p % coord(j) % lattice_z
+
+          ! Compute velocities along the hexagonal axes.
+          beta_dir = u*sqrt(THREE)/TWO + v/TWO
+          gama_dir = u*sqrt(THREE)/TWO - v/TWO
+
+          ! Note that hexagonal lattice distance calculations are performed
+          ! using the particle's coordinates relative to the neighbor lattice
+          ! cells, not relative to the particle's current cell.  This is done
+          ! because there is significant disagreement between neighboring cells
+          ! on where the lattice boundary is due to the worse finite precision
+          ! of hex lattices.
+
+          ! Upper right and lower left sides.
+          edge = -sign(lat % pitch(1)/TWO, beta_dir)  ! Oncoming edge
+          if (beta_dir > ZERO) then
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[1, 0, 0])
+          else
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[-1, 0, 0])
+          end if
+          beta = xyz_t(1)*sqrt(THREE)/TWO + xyz_t(2)/TWO
+          if (abs(beta - edge) < FP_PRECISION) then
+            d = INFINITY
+          else if (beta_dir == ZERO) then
+            d = INFINITY
+          else
+            d = (edge - beta)/beta_dir
+          end if
+
+          d_lat = d
+          if (beta_dir > 0) then
+            level_lat_trans(:) = [1, 0, 0]
+          else
+            level_lat_trans(:) = [-1, 0, 0]
+          end if
+
+          ! Lower right and upper left sides.
+          edge = -sign(lat % pitch(1)/TWO, gama_dir)  ! Oncoming edge
+          if (gama_dir > ZERO) then
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[1, -1, 0])
+          else
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[-1, 1, 0])
+          end if
+          gama = xyz_t(1)*sqrt(THREE)/TWO - xyz_t(2)/TWO
+          if (abs(gama - edge) < FP_PRECISION) then
+            d = INFINITY
+          else if (gama_dir == ZERO) then
+            d = INFINITY
+          else
+            d = (edge - gama)/gama_dir
+          end if
+
+          if (d < d_lat) then
+            d_lat = d
+            if (gama_dir > 0) then
+              level_lat_trans(:) = [1, -1, 0]
+            else
+              level_lat_trans(:) = [-1, 1, 0]
+            end if
+          end if
+
+          ! Upper and lower sides.
+          edge = -sign(lat % pitch(1)/TWO, v)  ! Oncoming edge
+          if (v > ZERO) then
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[0, 1, 0])
+          else
+            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[0, -1, 0])
+          end if
+          if (abs(xyz_t(2) - edge) < FP_PRECISION) then
+            d = INFINITY
+          else if (v == ZERO) then
+            d = INFINITY
+          else
+            d = (edge - xyz_t(2))/v
+          end if
+
+          if (d < d_lat) then
+            d_lat = d
+            if (v > 0) then
+              level_lat_trans(:) = [0, 1, 0]
+            else
+              level_lat_trans(:) = [0, -1, 0]
+            end if
+          end if
+
+          ! Top and bottom sides.
+          if (lat % is_3d) then
+            z0 = sign(lat % pitch(2) * HALF, w)
+
+            if (abs(z - z0) < FP_PRECISION) then
+              d = INFINITY
+            elseif (w == ZERO) then
+              d = INFINITY
+            else
+              d = (z0 - z)/w
+            end if
+
+            if (d < d_lat) then
+              d_lat = d
+              if (w > 0) then
+                level_lat_trans(:) = [0, 0, 1]
+              else
+                level_lat_trans(:) = [0, 0, -1]
+              end if
+            end if
+          end if
+        end select LAT_TYPE
+
+        if (d_lat < ZERO) then
+          call handle_lost_particle(p, "Particle " // trim(to_str(p % id)) &
+               //" had a negative distance to a lattice boundary. d = " &
+               //trim(to_str(d_lat)))
+        end if
+      end if LAT_COORD
+
+      ! If the boundary on this lattice level is coincident with a boundary on
+      ! a higher level then we need to make sure that the higher level boundary
+      ! is selected.  This logic must include consideration of floating point
+      ! precision.
+      if (d_surf < d_lat) then
+        if ((dist - d_surf)/dist >= FP_REL_PRECISION) then
+          dist = d_surf
+          surface_crossed = level_surf_cross
+          lattice_translation(:) = [0, 0, 0]
+          next_level = j
+        end if
+      else
+        if ((dist - d_lat)/dist >= FP_REL_PRECISION) then
+          dist = d_lat
+          surface_crossed = None
+          lattice_translation(:) = level_lat_trans
+          next_level = j
+        end if
+      end if
+
+    end do LEVEL_LOOP
+
+  end subroutine distance_to_boundary_new
+
 !===============================================================================
 ! SENSE determines whether a point is on the 'positive' or 'negative' side of a
 ! surface. This routine is crucial for determining what cell a particular point
@@ -1456,6 +1898,34 @@ contains
 
   end function sense
 
+  recursive function sense_new(p, surf) result(s)
+    type(Particle), intent(inout) :: p
+    class(Surface2), intent(in) :: surf  ! surface
+    logical :: s  ! sense of particle
+
+    integer :: j
+    real(8) :: func  ! surface function evaluated at point
+
+    j = p%n_coord
+
+    ! Evaluate the surface equation at the particle's coordinates to determine
+    ! which side the particle is on
+    func = surf%evaluate(p%coord(j)%xyz)
+
+    ! Check which side of surface the point is on
+    if (abs(func) < FP_COINCIDENT) then
+      ! Particle may be coincident with this surface. Artifically move the
+      ! particle forward a tiny bit.
+      p%coord(j)%xyz = p%coord(j)%xyz + TINY_BIT * p%coord(j)%uvw
+      s = sense_new(p, surf)
+    elseif (func > 0) then
+      s = .true.
+    else
+      s = .false.
+    end if
+
+  end function sense_new
+
 !===============================================================================
 ! NEIGHBOR_LISTS builds a list of neighboring cells to each surface to speed up
 ! searches when a cell boundary is crossed.
@@ -1501,9 +1971,11 @@ contains
       surf => surfaces(i)
       if (count_positive(i) > 0) then
         allocate(surf%neighbor_pos(count_positive(i)))
+        allocate(surfaces_c(i)%obj%neighbor_pos(count_positive(i)))
       end if
       if (count_negative(i) > 0) then
         allocate(surf%neighbor_neg(count_negative(i)))
+        allocate(surfaces_c(i)%obj%neighbor_neg(count_negative(i)))
       end if
     end do
 
@@ -1524,9 +1996,11 @@ contains
         if (positive) then
           count_positive(i_surface) = count_positive(i_surface) + 1
           surf%neighbor_pos(count_positive(i_surface)) = i
+          surfaces_c(i_surface)%obj%neighbor_pos(count_positive(i_surface)) = i
         else
           count_negative(i_surface) = count_negative(i_surface) + 1
           surf%neighbor_neg(count_negative(i_surface)) = i
+          surfaces_c(i_surface)%obj%neighbor_neg(count_negative(i_surface)) = i
         end if
       end do
     end do

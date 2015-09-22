@@ -635,8 +635,15 @@ class StatePoint(object):
                 contains_filters = True
 
                 # Iterate over the Filters requested by the user
-                for filter, test_filter in zip(filters, test_tally.filters):
-                    if not test_filter.is_subset(filter):
+                for filter in filters:
+                    contains_filter = False
+
+                    for test_filter in test_tally.filters:
+                        if test_filter.is_subset(filter):
+                            contains_filter = True
+                            break
+
+                    if not contains_filter:
                         contains_filters = False
                         break
 

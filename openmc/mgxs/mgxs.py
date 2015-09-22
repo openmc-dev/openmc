@@ -1287,9 +1287,8 @@ class Chi(MultiGroupXS):
 
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
         energyout_filter = openmc.Filter('energyout', group_edges)
-        filters = [[energy_filter], [energyout_filter]]
+        filters = [[], [energyout_filter]]
 
         # Intialize the Tallies
         super(Chi, self).create_tallies(scores, filters, keys, estimator)
@@ -1299,31 +1298,6 @@ class Chi(MultiGroupXS):
 
         nu_fission_in = self.tallies['nu-fission-in']
         nu_fission_out = self.tallies['nu-fission-out']
-
-        # Construct energy group filter bins to sum across
-        energy_bins = []
-        for group in range(1, self.num_groups+1):
-            energy_bins.append(self.energy_groups.get_group_bounds(group))
-
-        sum_nu_fission_in = nu_fission_in.summation(filter_type='energy',
-                                                    filter_bins=energy_bins)
-
-        # FIXME: CrossFilter for energy + energy messes up tally arithmetic
-        sum_nu_fission_in.remove_filter(sum_nu_fission_in.filters[-1])
-
-        self._xs_tally = nu_fission_out / sum_nu_fission_in
-
-        # Normalize chi to 1.0
-        norm = self.xs_tally.summation(filter_type='energyout',
-                                       filter_bins=energy_bins)
-
-        # FIXME: CrossFilter for energy + energy messes up tally arithmetic
-        norm.remove_filter(norm.filters[-1])
-
-        energy_filter = openmc.Filter(type='energyout')
-        energy_filter.bins = self.energy_groups.group_edges
-        norm = norm.tile_filter(energy_filter)
-
-        self._xs_tally /= norm
+        self._xs_tally = nu_fission_out / nu_fission_in
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
         self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)

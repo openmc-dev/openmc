@@ -1354,26 +1354,22 @@ class Tally(object):
             new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 +
                                          data['other']['std. dev.']**2)
         elif binary_op == '-':
-            data = self._align_tally_data(other)
             new_tally._mean = data['self']['mean'] - data['other']['mean']
             new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 +
                                          data['other']['std. dev.']**2)
         elif binary_op == '*':
-            data = self._align_tally_data(other)
             self_rel_err = data['self']['std. dev.'] / data['self']['mean']
             other_rel_err = data['other']['std. dev.'] / data['other']['mean']
             new_tally._mean = data['self']['mean'] * data['other']['mean']
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
         elif binary_op == '/':
-            data = self._align_tally_data(other)
             self_rel_err = data['self']['std. dev.'] / data['self']['mean']
             other_rel_err = data['other']['std. dev.'] / data['other']['mean']
             new_tally._mean = data['self']['mean'] / data['other']['mean']
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
         elif binary_op == '^':
-            data = self._align_tally_data(other)
             mean_ratio = data['other']['mean'] / data['self']['mean']
             first_term = mean_ratio * data['self']['std. dev.']
             second_term = \
@@ -1562,7 +1558,6 @@ class Tally(object):
             A dictionary of dictionaries to "aligned" 'mean' and 'std. dev'
             NumPy arrays for each tally's data.
 
-
         """
 
         self_mean = copy.deepcopy(self.mean)
@@ -1572,44 +1567,12 @@ class Tally(object):
 
         if self.filters != other.filters:
 
-            # FIXME: Note that this makes the assumption that common filters
-            # are at the beginning of each Tally's list of filters
-
-#            match = 0
-#            for i, filter_pair in enumerate(zip(self.filters, other.filters)):
-#                self_filter, other_filter = filter_pair
-#                if self_filter == other_filter:
-#                    match += 1
-#                else:
-#                    break
-
-#            match_filters = self.filters[:match]
-#            cross_filters = [self.filters[match:], other.filters[match:]]
-#            cross_filters.extend(other.filters[match:])
-
-#            other_tile_factor = 1
-#            self_repeat_factor = 1
-
-            # FIXME: If one or the other tally has not cross filters
-#            repeat_factor = 1
-#            for self_filter, other_filter in itertools.product(*cross_filters):
-#                repeat_factor *= self_filter.num_bins * other_filter.num_bins
-
-#            other_tile_factor = repeat_factor / other.num_filter_bins
-#            self_repeat_factor = repeat_factor / self.num_filter_bins
-
-#            other_tile_factor = repeat_factor
-#            self_repeat_factor = repeat_factor
-
-            #
-#            for filter in self.filters[match:]:
-#                other_tile_factor *= filter.num_bins
-
-#            for filter in other.filters[match:]:
-#                self_repeat_factor *= filter.num_bins
-
+            self_shape = list(self.mean.shape)
+            other_shape = list(other.mean.shape)
 
             # FIXME:
+            # Determine the number of paired combinations of filter bins
+            # between the two tallies and repeat arrays along filter axes
             diff1 = list(set(self.filters).difference(set(other.filters)))
             diff2 = list(set(other.filters).difference(set(self.filters)))
 
@@ -1623,16 +1586,23 @@ class Tally(object):
             for filter in diff2:
                 self_repeat_factor *= filter.num_bins
 
-            # Determine the number of paired combinations of filter bins
-            # between the two tallies and repeat arrays along filter axes
-#            self_repeat_factor = other.num_filter_bins
-#            other_tile_factor = self.num_filter_bins
-
             # Replicate the data
-            self_mean = np.repeat(self_mean, self_repeat_factor, axis=0)
-            other_mean = np.tile(other_mean, (other_tile_factor, 1, 1))
-            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=0)
-            other_std_dev = np.tile(other_std_dev, (other_tile_factor, 1, 1))
+            self_shape[0] *= self_repeat_factor
+            self_mean = np.repeat(self_mean, self_repeat_factor)
+            self_std_dev = np.repeat(self_std_dev, self_repeat_factor)
+
+            if self_repeat_factor == 1:
+                other_shape[0] *= other_tile_factor
+                other_mean = np.repeat(other_mean, other_tile_factor)
+                other_std_dev = np.repeat(other_std_dev, other_tile_factor)
+            else:
+                other_mean = np.tile(other_mean, (other_tile_factor, 1, 1))
+                other_std_dev = np.tile(other_std_dev, (other_tile_factor, 1, 1))
+
+            self_mean.shape = tuple(self_shape)
+            self_std_dev.shape = tuple(self_shape)
+            other_mean.shape = tuple(other_shape)
+            other_std_dev.shape = tuple(other_shape)
 
         if self.nuclides != other.nuclides:
 
@@ -1641,11 +1611,19 @@ class Tally(object):
             self_repeat_factor = other.num_nuclides
             other_tile_factor = self.num_nuclides
 
+            self_shape = list(self.mean.shape)
+
             # Replicate the data
-            self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
+            self_mean = np.repeat(self_mean, self_repeat_factor)
+#            self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
             other_mean = np.tile(other_mean, (1, other_tile_factor, 1))
-            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=1)
+#            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=1)
+            self_std_dev = np.repeat(self_std_dev, self_repeat_factor)
             other_std_dev = np.tile(other_std_dev, (1, other_tile_factor, 1))
+
+            self_shape[1] *= self_repeat_factor
+            self_mean.shape = tuple(self_shape)
+            self_std_dev.shape = tuple(self_shape)
 
         if self.scores != other.scores:
 
@@ -1654,11 +1632,19 @@ class Tally(object):
             self_repeat_factor = other.num_score_bins
             other_tile_factor = self.num_score_bins
 
+            self_shape = list(self.mean.shape)
+
             # Replicate the data
-            self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)
+            self_mean = np.repeat(self_mean, self_repeat_factor)
+#            self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)
             other_mean = np.tile(other_mean, (1, 1, other_tile_factor))
-            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=2)
+            self_std_dev = np.repeat(self_std_dev, self_repeat_factor)
+#            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=2)
             other_std_dev = np.tile(other_std_dev, (1, 1, other_tile_factor))
+
+            self_shape[2] *= self_repeat_factor
+            self_mean.shape = tuple(self_shape)
+            self_std_dev.shape = tuple(self_shape)
 
         data = {}
         data['self'] = {}

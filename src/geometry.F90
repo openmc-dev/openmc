@@ -30,7 +30,6 @@ contains
     integer :: i_surface       ! index in surfaces array (with sign)
     logical :: specified_sense ! specified sense of surface in list
     logical :: actual_sense    ! sense of particle wrt surface
-    type(Surface), pointer :: s
 
     SURFACE_LOOP: do i = 1, c % n_surfaces
       ! Lookup surface
@@ -48,8 +47,7 @@ contains
 
       ! Determine the specified sense of the surface in the cell and the actual
       ! sense of the particle with respect to the surface
-      s => surfaces(abs(i_surface))
-      actual_sense = sense(p, s)
+      actual_sense = sense_new(p, surfaces_c(abs(i_surface))%obj)
       specified_sense = (c % surfaces(i) > 0)
 
       ! Compare sense of point to specified sense
@@ -1537,7 +1535,7 @@ contains
 
       SURFACE_LOOP: do i = 1, cl % n_surfaces
         ! check for operators
-        index_surf = abs(index_surf)
+        index_surf = abs(cl%surfaces(i))
         if (index_surf >= OP_DIFFERENCE) cycle
 
         ! Calculate distance to surface

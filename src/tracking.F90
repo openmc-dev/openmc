@@ -3,7 +3,7 @@ module tracking
   use constants,       only: MODE_EIGENVALUE
   use cross_section,   only: calculate_xs
   use error,           only: fatal_error, warning
-  use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
+  use geometry,        only: find_cell, distance_to_boundary, cross_surface_new, &
                              cross_lattice, check_cell_overlap
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
@@ -129,7 +129,7 @@ contains
         else
           ! Particle crosses surface
           p % surface = surface_crossed
-          call cross_surface(p, last_cell)
+          call cross_surface_new(p, last_cell)
           p % event = EVENT_SURFACE
         end if
       else

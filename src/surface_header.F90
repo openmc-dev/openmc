@@ -203,10 +203,13 @@ contains
     real(8), intent(in) :: uvw(3)
     real(8) :: d
 
-    if (uvw(1) == ZERO) then
+    real(8) :: f
+
+    f = this%x0 - xyz(1)
+    if (abs(f) < FP_COINCIDENT .or. uvw(1) == ZERO) then
       d = INFINITY
     else
-      d = (this%x0 - xyz(1))/uvw(1)
+      d = f/uvw(1)
       if (d < ZERO) d = INFINITY
     end if
   end function x_plane_distance
@@ -245,10 +248,13 @@ contains
     real(8), intent(in) :: uvw(3)
     real(8) :: d
 
-    if (uvw(2) == ZERO) then
+    real(8) :: f
+
+    f = this%y0 - xyz(2)
+    if (abs(f) < FP_COINCIDENT .or. uvw(2) == ZERO) then
       d = INFINITY
     else
-      d = (this%y0 - xyz(2))/uvw(2)
+      d = f/uvw(2)
       if (d < ZERO) d = INFINITY
     end if
   end function y_plane_distance
@@ -289,10 +295,13 @@ contains
     real(8), intent(in) :: uvw(3)
     real(8) :: d
 
-    if (uvw(3) == ZERO) then
+    real(8) :: f
+
+    f = this%z0 - xyz(3)
+    if (abs(f) < FP_COINCIDENT .or. uvw(3) == ZERO) then
       d = INFINITY
     else
-      d = (this%z0 - xyz(3))/uvw(3)
+      d = f/uvw(3)
       if (d < ZERO) d = INFINITY
     end if
   end function z_plane_distance
@@ -331,13 +340,15 @@ contains
     real(8), intent(in) :: uvw(3)
     real(8) :: d
 
+    real(8) :: f
     real(8) :: tmp
 
+    f = this%A*xyz(1) + this%B*xyz(2) + this%C*xyz(3) - this%D
     tmp = this%A*uvw(1) + this%B*uvw(2) + this%C*uvw(3)
-    if (tmp == ZERO) then
+    if (abs(f) < FP_COINCIDENT .or. tmp == ZERO) then
       d = INFINITY
     else
-      d = -(this%A*xyz(1) + this%B*xyz(2) + this%C*xyz(3) - this%D)/tmp
+      d = -f/tmp
       if (d < ZERO) d = INFINITY
     end if
   end function plane_distance
@@ -722,13 +733,16 @@ contains
     real(8),        intent(in)    :: xyz(3)
     real(8),        intent(inout) :: uvw(3)
 
-    real(8) :: n(3)
+    real(8) :: x, y, z, dot_prod
 
-    ! Determine surface surface normal
-    n(:) = xyz - [this%x0, this%y0, this%z0]
+    x = xyz(1) - this%x0
+    y = xyz(2) - this%y0
+    z = xyz(3) - this%z0
+    dot_prod = uvw(1)*x + uvw(2)*y + uvw(3)*z
 
-    ! Reflect direction according to normal
-    uvw = uvw - TWO*dot_product(uvw, n)/(this%r*this%r) * n
+    uvw(1) = uvw(1) - TWO*dot_prod*x/(this%r*this%r)
+    uvw(2) = uvw(2) - TWO*dot_prod*y/(this%r*this%r)
+    uvw(3) = uvw(3) - TWO*dot_prod*z/(this%r*this%r)
   end subroutine sphere_reflect
 
   pure function sphere_normal(this, xyz) result(uvw)

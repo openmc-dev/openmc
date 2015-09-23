@@ -4,12 +4,18 @@ module surface_header
 
   implicit none
 
+!===============================================================================
+! SURFACE type defines a first- or second-order surface that can be used to
+! construct closed volumes (cells)
+!===============================================================================
+
   type, abstract :: Surface2
     integer :: id                     ! Unique ID
     integer, allocatable :: &
          neighbor_pos(:), &           ! List of cells on positive side
          neighbor_neg(:)              ! List of cells on negative side
     integer :: bc                     ! Boundary condition
+    character(len=52) :: name = ""    ! User-defined name
   contains
     procedure(iEvaluate), deferred :: evaluate
     procedure(iDistance), deferred :: distance

@@ -3,13 +3,14 @@ module summary
   use ace_header,      only: Reaction, UrrData, Nuclide
   use constants
   use endf,            only: reaction_name
-  use geometry_header, only: Cell, Surface, Universe, Lattice, RectLattice, &
+  use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
                              &HexLattice
   use global
   use hdf5_interface
   use material_header, only: Material
   use mesh_header,     only: RegularMesh
   use output,          only: time_stamp
+  use surface_header
   use string,          only: to_str
   use tally_header,    only: TallyObject
 
@@ -112,8 +113,9 @@ contains
     integer(HID_T) :: surfaces_group, surface_group
     integer(HID_T) :: universes_group, univ_group
     integer(HID_T) :: lattices_group, lattice_group
+    real(8), allocatable :: coeffs(:)
     type(Cell),     pointer :: c
-    type(Surface),  pointer :: s
+    class(Surface2), pointer :: s
     type(Universe), pointer :: u
     class(Lattice), pointer :: lat
 
@@ -178,7 +180,7 @@ contains
         allocate(surface_ids(c%n_surfaces))
         do j = 1, c%n_surfaces
           k = c%surfaces(j)
-          surface_ids(j) = sign(surfaces(abs(k))%id, k)
+          surface_ids(j) = sign(surfaces_c(abs(k))%obj%id, k)
         end do
         call write_dataset(cell_group, "surfaces", surface_ids)
         deallocate(surface_ids)
@@ -197,7 +199,7 @@ contains
 
     ! Write information on each surface
     SURFACE_LOOP: do i = 1, n_surfaces
-      s => surfaces(i)
+      s => surfaces_c(i)%obj
       surface_group = create_group(surfaces_group, "surface " // &
            trim(to_str(s%id)))
 
@@ -208,33 +210,65 @@ contains
       call write_dataset(surface_group, "name", s%name)
 
       ! Write surface type
-      select case (s%type)
-      case (SURF_PX)
+      select type (s)
+      type is (SurfaceXPlane)
         call write_dataset(surface_group, "type", "x-plane")
-      case (SURF_PY)
-        call write_dataset(surface_group, "type", "y-plane")
-      case (SURF_PZ)
-        call write_dataset(surface_group, "type", "z-plane")
-      case (SURF_PLANE)
-        call write_dataset(surface_group, "type", "plane")
-      case (SURF_CYL_X)
-        call write_dataset(surface_group, "type", "x-cylinder")
-      case (SURF_CYL_Y)
-        call write_dataset(surface_group, "type", "y-cylinder")
-      case (SURF_CYL_Z)
-        call write_dataset(surface_group, "type", "z-cylinder")
-      case (SURF_SPHERE)
-        call write_dataset(surface_group, "type", "sphere")
-      case (SURF_CONE_X)
-        call write_dataset(surface_group, "type", "x-cone")
-      case (SURF_CONE_Y)
-        call write_dataset(surface_group, "type", "y-cone")
-      case (SURF_CONE_Z)
-        call write_dataset(surface_group, "type", "z-cone")
-      end select
+        allocate(coeffs(1))
+        coeffs(1) = s%x0
 
-      ! Write coefficients for surface
-      call write_dataset(surface_group, "coefficients", s%coeffs)
+      type is (SurfaceYPlane)
+        call write_dataset(surface_group, "type", "y-plane")
+        allocate(coeffs(1))
+        coeffs(1) = s%y0
+
+      type is (SurfaceZPlane)
+        call write_dataset(surface_group, "type", "z-plane")
+        allocate(coeffs(1))
+        coeffs(1) = s%z0
+
+      type is (SurfacePlane)
+        call write_dataset(surface_group, "type", "plane")
+        allocate(coeffs(4))
+        coeffs(:) = [s%A, s%B, s%C, s%D]
+
+      type is (SurfaceXCylinder)
+        call write_dataset(surface_group, "type", "x-cylinder")
+        allocate(coeffs(3))
+        coeffs(:) = [s%y0, s%z0, s%r]
+
+      type is (SurfaceYCylinder)
+        call write_dataset(surface_group, "type", "y-cylinder")
+        allocate(coeffs(3))
+        coeffs(:) = [s%x0, s%z0, s%r]
+
+      type is (SurfaceZCylinder)
+        call write_dataset(surface_group, "type", "z-cylinder")
+        allocate(coeffs(3))
+        coeffs(:) = [s%x0, s%y0, s%r]
+
+      type is (SurfaceSphere)
+        call write_dataset(surface_group, "type", "sphere")
+        allocate(coeffs(4))
+        coeffs(:) = [s%x0, s%y0, s%z0, s%r]
+
+      type is (SurfaceXCone)
+        call write_dataset(surface_group, "type", "x-cone")
+        allocate(coeffs(4))
+        coeffs(:) = [s%x0, s%y0, s%z0, s%r2]
+
+      type is (SurfaceYCone)
+        call write_dataset(surface_group, "type", "y-cone")
+        allocate(coeffs(4))
+        coeffs(:) = [s%x0, s%y0, s%z0, s%r2]
+
+      type is (SurfaceZCone)
+        call write_dataset(surface_group, "type", "z-cone")
+        allocate(coeffs(4))
+        coeffs(:) = [s%x0, s%y0, s%z0, s%r2]
+
+      end select
+      call write_dataset(surface_group, "coefficients", coeffs)
+      deallocate(coeffs)
 
       ! Write boundary condition
       select case (s%bc)

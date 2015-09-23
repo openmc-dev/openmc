@@ -6,7 +6,7 @@ module global
   use cmfd_header
   use constants
   use dict_header,      only: DictCharInt, DictIntInt
-  use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer, Surface
+  use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
   use material_header,  only: Material
   use mesh_header,      only: RegularMesh
   use plot_header,      only: ObjectPlot
@@ -31,7 +31,6 @@ module global
   type(Cell),              allocatable, target :: cells(:)
   type(Universe),          allocatable, target :: universes(:)
   type(LatticeContainer),  allocatable, target :: lattices(:)
-  type(Surface),           allocatable, target :: surfaces(:)
   type(SurfaceContainer), allocatable, target :: surfaces_c(:)
   type(Material),          allocatable, target :: materials(:)
   type(ObjectPlot),        allocatable, target :: plots(:)
@@ -420,7 +419,7 @@ contains
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)
     if (allocated(lattices)) deallocate(lattices)
-    if (allocated(surfaces)) deallocate(surfaces)
+    if (allocated(surfaces_c)) deallocate(surfaces_c)
     if (allocated(materials)) deallocate(materials)
     if (allocated(plots)) deallocate(plots)
 

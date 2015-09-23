@@ -5,7 +5,7 @@ module input_xml
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
-  use geometry_header,  only: Cell, Surface, Lattice, RectLattice, HexLattice
+  use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
   use global
   use list_header,      only: ListChar, ListReal
   use mesh_header,      only: RegularMesh
@@ -994,7 +994,6 @@ contains
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     type(Cell),     pointer :: c
-    type(Surface),  pointer :: s
     class(Lattice), pointer :: lat
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_cell => null()
@@ -1221,32 +1220,11 @@ contains
     end if
 
     ! Allocate cells array
-    allocate(surfaces(n_surfaces))
     allocate(surfaces_c(n_surfaces))
 
     do i = 1, n_surfaces
-      s => surfaces(i)
-
       ! Get pointer to i-th surface node
       call get_list_item(node_surf_list, i, node_surf)
-
-      ! Copy data into cells
-      if (check_for_node(node_surf, "id")) then
-        call get_node_value(node_surf, "id", s % id)
-      else
-        call fatal_error("Must specify id of surface in geometry XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (surface_dict % has_key(s % id)) then
-        call fatal_error("Two or more surfaces use the same unique ID: " &
-             &// to_str(s % id))
-      end if
-
-      ! Copy surface name
-      if (check_for_node(node_surf, "name")) then
-        call get_node_value(node_surf, "name", s % name)
-      end if
 
       ! Copy and interpret surface type
       word = ''
@@ -1254,53 +1232,59 @@ contains
            call get_node_value(node_surf, "type", word)
       select case(to_lower(word))
       case ('x-plane')
-        s % type = SURF_PX
         coeffs_reqd  = 1
         allocate(SurfaceXPlane :: surfaces_c(i)%obj)
       case ('y-plane')
-        s % type = SURF_PY
         coeffs_reqd  = 1
         allocate(SurfaceYPlane :: surfaces_c(i)%obj)
       case ('z-plane')
-        s % type = SURF_PZ
         coeffs_reqd  = 1
         allocate(SurfaceZPlane :: surfaces_c(i)%obj)
       case ('plane')
-        s % type = SURF_PLANE
         coeffs_reqd  = 4
         allocate(SurfacePlane :: surfaces_c(i)%obj)
       case ('x-cylinder')
-        s % type = SURF_CYL_X
         coeffs_reqd  = 3
         allocate(SurfaceXCylinder :: surfaces_c(i)%obj)
       case ('y-cylinder')
-        s % type = SURF_CYL_Y
         coeffs_reqd  = 3
         allocate(SurfaceYCylinder :: surfaces_c(i)%obj)
       case ('z-cylinder')
-        s % type = SURF_CYL_Z
         coeffs_reqd  = 3
         allocate(SurfaceZCylinder :: surfaces_c(i)%obj)
       case ('sphere')
-        s % type = SURF_SPHERE
         coeffs_reqd  = 4
         allocate(SurfaceSphere :: surfaces_c(i)%obj)
       case ('x-cone')
-        s % type = SURF_CONE_X
         coeffs_reqd  = 4
         allocate(SurfaceXCone :: surfaces_c(i)%obj)
       case ('y-cone')
-        s % type = SURF_CONE_Y
         coeffs_reqd  = 4
         allocate(SurfaceYCone :: surfaces_c(i)%obj)
       case ('z-cone')
-        s % type = SURF_CONE_Z
         coeffs_reqd  = 4
         allocate(SurfaceZCone :: surfaces_c(i)%obj)
       case default
         call fatal_error("Invalid surface type: " // trim(word))
       end select
-      surfaces_c(i)%obj%id = s%id
+
+      ! Copy data into cells
+      if (check_for_node(node_surf, "id")) then
+        call get_node_value(node_surf, "id", surfaces_c(i)%obj%id)
+      else
+        call fatal_error("Must specify id of surface in geometry XML file.")
+      end if
+
+      ! Check to make sure 'id' hasn't been used
+      if (surface_dict % has_key(surfaces_c(i)%obj%id)) then
+        call fatal_error("Two or more surfaces use the same unique ID: " &
+             &// to_str(surfaces_c(i)%obj%id))
+      end if
+
+      ! Copy surface name
+      if (check_for_node(node_surf, "name")) then
+        call get_node_value(node_surf, "name", surfaces_c(i)%obj%name)
+      end if
 
       ! Check to make sure that the proper number of coefficients
       ! have been specified for the given type of surface. Then copy
@@ -1309,16 +1293,14 @@ contains
       n = get_arraysize_double(node_surf, "coeffs")
       if (n < coeffs_reqd) then
         call fatal_error("Not enough coefficients specified for surface: " &
-             &// trim(to_str(s % id)))
+             &// trim(to_str(surfaces_c(i)%obj%id)))
       elseif (n > coeffs_reqd) then
         call fatal_error("Too many coefficients specified for surface: " &
-             &// trim(to_str(s % id)))
+             &// trim(to_str(surfaces_c(i)%obj%id)))
       end if
 
       allocate(coeffs(n))
-      allocate(s%coeffs(n))
       call get_node_array(node_surf, "coeffs", coeffs)
-      s%coeffs(:) = coeffs(:)
 
       select type(sp => surfaces_c(i)%obj)
       type is (SurfaceXPlane)
@@ -1375,23 +1357,20 @@ contains
            call get_node_value(node_surf, "boundary", word)
       select case (to_lower(word))
       case ('transmission', 'transmit', '')
-        s % bc = BC_TRANSMIT
+        surfaces_c(i)%obj%bc = BC_TRANSMIT
       case ('vacuum')
-        s % bc = BC_VACUUM
+        surfaces_c(i)%obj%bc = BC_VACUUM
         boundary_exists = .true.
       case ('reflective', 'reflect', 'reflecting')
-        s % bc = BC_REFLECT
+        surfaces_c(i)%obj%bc = BC_REFLECT
         boundary_exists = .true.
       case default
         call fatal_error("Unknown boundary condition '" // trim(word) // &
-             &"' specified on surface " // trim(to_str(s % id)))
+             &"' specified on surface " // trim(to_str(surfaces_c(i)%obj%id)))
       end select
 
-      surfaces_c(i)%obj%bc = s%bc
-
       ! Add surface to dictionary
-      call surface_dict % add_key(s % id, i)
-
+      call surface_dict % add_key(surfaces_c(i)%obj%id, i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one

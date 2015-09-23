@@ -3,7 +3,7 @@ module tracking
   use constants,       only: MODE_EIGENVALUE
   use cross_section,   only: calculate_xs
   use error,           only: fatal_error, warning
-  use geometry,        only: find_cell, distance_to_boundary_new, cross_surface_new, &
+  use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
                              cross_lattice, check_cell_overlap
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
@@ -86,7 +86,7 @@ contains
       if (p % material /= p % last_material) call calculate_xs(p)
 
       ! Find the distance to the nearest boundary
-      call distance_to_boundary_new(p, d_boundary, surface_crossed, &
+      call distance_to_boundary(p, d_boundary, surface_crossed, &
            lattice_translation, next_level)
 
       ! Sample a distance to collision
@@ -129,7 +129,7 @@ contains
         else
           ! Particle crosses surface
           p % surface = surface_crossed
-          call cross_surface_new(p, last_cell)
+          call cross_surface(p, last_cell)
           p % event = EVENT_SURFACE
         end if
       else

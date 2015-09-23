@@ -1,6 +1,6 @@
 module surface_header
 
-  use constants, only: ONE, TWO, ZERO, INFINITY, FP_COINCIDENT, TINY_BIT
+  use constants, only: ONE, TWO, ZERO, INFINITY, FP_COINCIDENT
 
   implicit none
 
@@ -178,12 +178,13 @@ contains
 !===============================================================================
 ! SENSE determines whether a point is on the 'positive' or 'negative' side of a
 ! surface. This routine is crucial for determining what cell a particular point
-! is in.
+! is in. The positive side is indicated by a returned value of .true. and the
+! negative side is indicated by a returned value of .false.
 !===============================================================================
 
-  recursive function sense(this, xyz, uvw) result(s)
+  pure function sense(this, xyz, uvw) result(s)
     class(Surface), intent(in) :: this  ! surface
-    real(8), intent(inout) :: xyz(3)
+    real(8), intent(in) :: xyz(3)
     real(8), intent(in) :: uvw(3)
     logical :: s  ! sense of particle
 
@@ -195,16 +196,13 @@ contains
 
     ! Check which side of surface the point is on
     if (abs(f) < FP_COINCIDENT) then
-      ! Particle may be coincident with this surface. Artifically move the
-      ! particle forward a tiny bit.
-      xyz(:) = xyz + TINY_BIT * uvw
-      s = this%sense(xyz, uvw)
-    elseif (f > 0) then
-      s = .true.
+      ! Particle may be coincident with this surface. To determine the sense, we
+      ! look at the direction of the particle relative to the surface normal (by
+      ! default in the positive direction) via their dot product.
+      s = (dot_product(uvw, this%normal(xyz)) > ZERO)
     else
-      s = .false.
+      s = (f > ZERO)
     end if
-
   end function sense
 
   subroutine reflect(this, xyz, uvw)

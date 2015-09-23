@@ -457,7 +457,6 @@ contains
 
     integer :: i, j
     integer :: i_list, i_xs
-    integer, allocatable :: temp_array(:) ! nuclide bin array
     integer(HID_T) :: tallies_group
     integer(HID_T) :: mesh_group
     integer(HID_T) :: tally_group

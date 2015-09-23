@@ -1,6 +1,6 @@
 module surface_header
 
-  use constants, only: ONE, TWO, ZERO, INFINITY, FP_COINCIDENT
+  use constants, only: ONE, TWO, ZERO, INFINITY, FP_COINCIDENT, TINY_BIT
 
   implicit none
 
@@ -17,6 +17,7 @@ module surface_header
     integer :: bc                     ! Boundary condition
     character(len=52) :: name = ""    ! User-defined name
   contains
+    procedure :: sense
     procedure(iEvaluate), deferred :: evaluate
     procedure(iDistance), deferred :: distance
     procedure(iReflect),  deferred :: reflect
@@ -191,6 +192,38 @@ module surface_header
   end interface
 
 contains
+
+!===============================================================================
+! SENSE determines whether a point is on the 'positive' or 'negative' side of a
+! surface. This routine is crucial for determining what cell a particular point
+! is in.
+!===============================================================================
+
+  recursive function sense(this, xyz, uvw) result(s)
+    class(Surface), intent(in) :: this  ! surface
+    real(8), intent(inout) :: xyz(3)
+    real(8), intent(in) :: uvw(3)
+    logical :: s  ! sense of particle
+
+    real(8) :: f  ! surface function evaluated at point
+
+    ! Evaluate the surface equation at the particle's coordinates to determine
+    ! which side the particle is on
+    f = this%evaluate(xyz)
+
+    ! Check which side of surface the point is on
+    if (abs(f) < FP_COINCIDENT) then
+      ! Particle may be coincident with this surface. Artifically move the
+      ! particle forward a tiny bit.
+      xyz(:) = xyz + TINY_BIT * uvw
+      s = this%sense(xyz, uvw)
+    elseif (f > 0) then
+      s = .true.
+    else
+      s = .false.
+    end if
+
+  end function sense
 
 !===============================================================================
 ! SurfaceXPlane Implementation

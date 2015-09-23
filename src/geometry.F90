@@ -30,6 +30,7 @@ contains
     integer :: i_surface       ! index in surfaces array (with sign)
     logical :: specified_sense ! specified sense of surface in list
     logical :: actual_sense    ! sense of particle wrt surface
+    class(Surface), pointer :: s
 
     SURFACE_LOOP: do i = 1, c % n_surfaces
       ! Lookup surface
@@ -47,7 +48,8 @@ contains
 
       ! Determine the specified sense of the surface in the cell and the actual
       ! sense of the particle with respect to the surface
-      actual_sense = sense(p, surfaces(abs(i_surface))%obj)
+      s => surfaces(abs(i_surface))%obj
+      actual_sense = s%sense(p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
       specified_sense = (c % surfaces(i) > 0)
 
       ! Compare sense of point to specified sense
@@ -793,40 +795,6 @@ contains
     end do LEVEL_LOOP
 
   end subroutine distance_to_boundary
-
-!===============================================================================
-! SENSE determines whether a point is on the 'positive' or 'negative' side of a
-! surface. This routine is crucial for determining what cell a particular point
-! is in.
-!===============================================================================
-
-  recursive function sense(p, surf) result(s)
-    type(Particle), intent(inout) :: p
-    class(Surface), intent(in) :: surf  ! surface
-    logical :: s  ! sense of particle
-
-    integer :: j
-    real(8) :: func  ! surface function evaluated at point
-
-    j = p%n_coord
-
-    ! Evaluate the surface equation at the particle's coordinates to determine
-    ! which side the particle is on
-    func = surf%evaluate(p%coord(j)%xyz)
-
-    ! Check which side of surface the point is on
-    if (abs(func) < FP_COINCIDENT) then
-      ! Particle may be coincident with this surface. Artifically move the
-      ! particle forward a tiny bit.
-      p%coord(j)%xyz = p%coord(j)%xyz + TINY_BIT * p%coord(j)%uvw
-      s = sense(p, surf)
-    elseif (func > 0) then
-      s = .true.
-    else
-      s = .false.
-    end if
-
-  end function sense
 
 !===============================================================================
 ! NEIGHBOR_LISTS builds a list of neighboring cells to each surface to speed up

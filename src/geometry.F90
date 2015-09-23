@@ -1507,6 +1507,7 @@ contains
     real(8) :: d_lat              ! distance to lattice boundary
     real(8) :: d_surf             ! distance to surface
     real(8) :: x0,y0,z0           ! coefficients for surface
+    logical :: coincident         ! is particle on surface?
     type(Cell),       pointer :: cl
     class(Surface2),   pointer :: surf
     class(Lattice),   pointer :: lat
@@ -1535,12 +1536,16 @@ contains
 
       SURFACE_LOOP: do i = 1, cl % n_surfaces
         ! check for operators
-        index_surf = abs(cl%surfaces(i))
+        index_surf = cl%surfaces(i)
+        coincident = (index_surf == p % surface)
+
+        ! check for operators
+        index_surf = abs(index_surf)
         if (index_surf >= OP_DIFFERENCE) cycle
 
         ! Calculate distance to surface
         surf => surfaces_c(index_surf)%obj
-        d = surf%distance(p%coord(j)%xyz, p%coord(j)%uvw)
+        d = surf%distance(p%coord(j)%xyz, p%coord(j)%uvw, coincident)
 
         ! Check is calculated distance is new minimum
         if (d < d_surf) then

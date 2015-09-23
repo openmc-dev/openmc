@@ -573,7 +573,7 @@ contains
       c => cells(i)
       do j = 1, c%n_surfaces
         id = c%surfaces(j)
-        if (id < OP_DIFFERENCE) then
+        if (id < OP_UNION) then
           if (surface_dict%has_key(abs(id))) then
             i_array = surface_dict%get_key(abs(id))
             c%surfaces(j) = sign(i_array, id)

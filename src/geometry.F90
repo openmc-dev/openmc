@@ -563,7 +563,7 @@ contains
 
         ! check for operators
         index_surf = abs(index_surf)
-        if (index_surf >= OP_DIFFERENCE) cycle
+        if (index_surf >= OP_UNION) cycle
 
         ! Calculate distance to surface
         surf => surfaces(index_surf)%obj

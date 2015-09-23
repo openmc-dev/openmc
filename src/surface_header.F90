@@ -156,23 +156,24 @@ module surface_header
     pure function iEvaluate(this, xyz) result(f)
       import Surface2
       class(Surface2), intent(in) :: this
-      real(8),        intent(in) :: xyz(3)
-      real(8)                    :: f
+      real(8), intent(in) :: xyz(3)
+      real(8) :: f
     end function iEvaluate
 
-    pure function iDistance(this, xyz, uvw) result(d)
+    pure function iDistance(this, xyz, uvw, coincident) result(d)
       import Surface2
       class(Surface2), intent(in) :: this
-      real(8),        intent(in) :: xyz(3)
-      real(8),        intent(in) :: uvw(3)
-      real(8)                    :: d
+      real(8), intent(in) :: xyz(3)
+      real(8), intent(in) :: uvw(3)
+      logical, intent(in) :: coincident
+      real(8) :: d
     end function iDistance
 
     subroutine iReflect(this, xyz, uvw)
       import Surface2
-      class(Surface2), intent(in)    :: this
-      real(8),        intent(in)    :: xyz(3)
-      real(8),        intent(inout) :: uvw(3)
+      class(Surface2), intent(in) :: this
+      real(8), intent(in) :: xyz(3)
+      real(8), intent(inout) :: uvw(3)
     end subroutine iReflect
 
     pure function iNormal(this, xyz) result(uvw)
@@ -197,16 +198,17 @@ contains
     f = xyz(1) - this%x0
   end function x_plane_evaluate
 
-  pure function x_plane_distance(this, xyz, uvw) result(d)
+  pure function x_plane_distance(this, xyz, uvw, coincident) result(d)
     class(SurfaceXPlane), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
     real(8) :: d
 
     real(8) :: f
 
     f = this%x0 - xyz(1)
-    if (abs(f) < FP_COINCIDENT .or. uvw(1) == ZERO) then
+    if (coincident .or. abs(f) < FP_COINCIDENT .or. uvw(1) == ZERO) then
       d = INFINITY
     else
       d = f/uvw(1)
@@ -242,16 +244,17 @@ contains
     f = xyz(2) - this%y0
   end function y_plane_evaluate
 
-  pure function y_plane_distance(this, xyz, uvw) result(d)
+  pure function y_plane_distance(this, xyz, uvw, coincident) result(d)
     class(SurfaceYPlane), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
     real(8) :: d
 
     real(8) :: f
 
     f = this%y0 - xyz(2)
-    if (abs(f) < FP_COINCIDENT .or. uvw(2) == ZERO) then
+    if (coincident .or. abs(f) < FP_COINCIDENT .or. uvw(2) == ZERO) then
       d = INFINITY
     else
       d = f/uvw(2)
@@ -289,16 +292,17 @@ contains
 
   end function z_plane_evaluate
 
-  pure function z_plane_distance(this, xyz, uvw) result(d)
+  pure function z_plane_distance(this, xyz, uvw, coincident) result(d)
     class(SurfaceZPlane), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
     real(8) :: d
 
     real(8) :: f
 
     f = this%z0 - xyz(3)
-    if (abs(f) < FP_COINCIDENT .or. uvw(3) == ZERO) then
+    if (coincident .or. abs(f) < FP_COINCIDENT .or. uvw(3) == ZERO) then
       d = INFINITY
     else
       d = f/uvw(3)
@@ -334,10 +338,11 @@ contains
     f = this%A*xyz(1) + this%B*xyz(2) + this%C*xyz(3) - this%D
   end function plane_evaluate
 
-  pure function plane_distance(this, xyz, uvw) result(d)
+  pure function plane_distance(this, xyz, uvw, coincident) result(d)
     class(SurfacePlane), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
     real(8) :: d
 
     real(8) :: f
@@ -345,7 +350,7 @@ contains
 
     f = this%A*xyz(1) + this%B*xyz(2) + this%C*xyz(3) - this%D
     tmp = this%A*uvw(1) + this%B*uvw(2) + this%C*uvw(3)
-    if (abs(f) < FP_COINCIDENT .or. tmp == ZERO) then
+    if (coincident .or. abs(f) < FP_COINCIDENT .or. tmp == ZERO) then
       d = INFINITY
     else
       d = -f/tmp
@@ -391,11 +396,12 @@ contains
     f = y*y + z*z - this%r*this%r
   end function x_cylinder_evaluate
 
-  pure function x_cylinder_distance(this, xyz, uvw) result(d)
+  pure function x_cylinder_distance(this, xyz, uvw, coincident) result(d)
     class(SurfaceXCylinder), intent(in) :: this
-    real(8),        intent(in) :: xyz(3)
-    real(8),        intent(in) :: uvw(3)
-    real(8)                    :: d
+    real(8), intent(in) :: xyz(3)
+    real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
+    real(8) :: d
 
     real(8) :: y, z, k, a, c, quad
 
@@ -414,7 +420,7 @@ contains
 
         d = INFINITY
 
-      elseif (abs(c) < FP_COINCIDENT) then
+      elseif (coincident .or. abs(c) < FP_COINCIDENT) then
         ! particle is on the cylinder, thus one distance is positive/negative
         ! and the other is zero. The sign of k determines if we are facing in or
         ! out
@@ -487,10 +493,11 @@ contains
     f = x*x + z*z - this%r*this%r
   end function y_cylinder_evaluate
 
-  pure function y_cylinder_distance(this, xyz, uvw) result(d)
+  pure function y_cylinder_distance(this, xyz, uvw, coincident) result(d)
     class(SurfaceYCylinder), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
     real(8) :: d
 
     real(8) :: x, z, k, a, c, quad
@@ -510,7 +517,7 @@ contains
 
         d = INFINITY
 
-      elseif (abs(c) < FP_COINCIDENT) then
+      elseif (coincident .or. abs(c) < FP_COINCIDENT) then
         ! particle is on the cylinder, thus one distance is positive/negative
         ! and the other is zero. The sign of k determines if we are facing in or
         ! out
@@ -583,11 +590,12 @@ contains
     f = x*x + y*y - this%r*this%r
   end function z_cylinder_evaluate
 
-  pure function z_cylinder_distance(this, xyz, uvw) result(d)
+  pure function z_cylinder_distance(this, xyz, uvw, coincident) result(d)
     class(SurfaceZCylinder), intent(in) :: this
-    real(8),        intent(in) :: xyz(3)
-    real(8),        intent(in) :: uvw(3)
-    real(8)                    :: d
+    real(8), intent(in) :: xyz(3)
+    real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
+    real(8) :: d
 
     real(8) :: x, y, k, a, c, quad
 
@@ -606,7 +614,7 @@ contains
 
         d = INFINITY
 
-      elseif (abs(c) < FP_COINCIDENT) then
+      elseif (coincident .or. abs(c) < FP_COINCIDENT) then
         ! particle is on the cylinder, thus one distance is positive/negative
         ! and the other is zero. The sign of k determines if we are facing in or
         ! out
@@ -680,10 +688,11 @@ contains
     f = x*x + y*y + z*z - this%r*this%r
   end function sphere_evaluate
 
-  pure function sphere_distance(this, xyz, uvw) result(d)
+  pure function sphere_distance(this, xyz, uvw, coincident) result(d)
     class(SurfaceSphere), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
     real(8) :: d
 
     real(8) :: x, y, z, k, c, quad
@@ -700,7 +709,7 @@ contains
 
       d = INFINITY
 
-    elseif (abs(c) < FP_COINCIDENT) then
+    elseif (coincident .or. abs(c) < FP_COINCIDENT) then
       ! particle is on the sphere, thus one distance is positive/negative and
       ! the other is zero. The sign of k determines if we are facing in or out
 
@@ -770,10 +779,11 @@ contains
     f = y*y + z*z - this%r2*x*x
   end function x_cone_evaluate
 
-  pure function x_cone_distance(this, xyz, uvw) result(d)
+  pure function x_cone_distance(this, xyz, uvw, coincident) result(d)
     class(SurfaceXCone), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
     real(8) :: d
 
     real(8) :: x, y, z, k, a, b, c, quad
@@ -791,7 +801,7 @@ contains
 
       d = INFINITY
 
-    elseif (abs(c) < FP_COINCIDENT) then
+    elseif (coincident .or. abs(c) < FP_COINCIDENT) then
       ! particle is on the cone, thus one distance is positive/negative and the
       ! other is zero. The sign of k determines which distance is zero and which
       ! is not.
@@ -869,10 +879,11 @@ contains
     f = x*x + z*z - this%r2*y*y
   end function y_cone_evaluate
 
-  pure function y_cone_distance(this, xyz, uvw) result(d)
+  pure function y_cone_distance(this, xyz, uvw, coincident) result(d)
     class(SurfaceYCone), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
     real(8) :: d
 
     real(8) :: x, y, z, k, a, b, c, quad
@@ -890,7 +901,7 @@ contains
 
       d = INFINITY
 
-    elseif (abs(c) < FP_COINCIDENT) then
+    elseif (coincident .or. abs(c) < FP_COINCIDENT) then
       ! particle is on the cone, thus one distance is positive/negative and the
       ! other is zero. The sign of k determines which distance is zero and which
       ! is not.
@@ -968,10 +979,11 @@ contains
     f = x*x + y*y - this%r2*z*z
   end function z_cone_evaluate
 
-  pure function z_cone_distance(this, xyz, uvw) result(d)
+  pure function z_cone_distance(this, xyz, uvw, coincident) result(d)
     class(SurfaceZCone), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
     real(8) :: d
 
     real(8) :: x, y, z, k, a, b, c, quad
@@ -989,7 +1001,7 @@ contains
 
       d = INFINITY
 
-    elseif (abs(c) < FP_COINCIDENT) then
+    elseif (coincident .or. abs(c) < FP_COINCIDENT) then
       ! particle is on the cone, thus one distance is positive/negative and the
       ! other is zero. The sign of k determines which distance is zero and which
       ! is not.

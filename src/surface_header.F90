@@ -9,7 +9,7 @@ module surface_header
 ! construct closed volumes (cells)
 !===============================================================================
 
-  type, abstract :: Surface2
+  type, abstract :: Surface
     integer :: id                     ! Unique ID
     integer, allocatable :: &
          neighbor_pos(:), &           ! List of cells on positive side
@@ -21,13 +21,13 @@ module surface_header
     procedure(iDistance), deferred :: distance
     procedure(iReflect),  deferred :: reflect
     procedure(iNormal),   deferred :: normal
-  end type Surface2
+  end type Surface
 
   type :: SurfaceContainer
-    class(Surface2), allocatable :: obj
+    class(Surface), allocatable :: obj
   end type SurfaceContainer
 
-  type, extends(Surface2) :: SurfaceXPlane
+  type, extends(Surface) :: SurfaceXPlane
     ! x = x0
     real(8) :: x0
   contains
@@ -37,7 +37,7 @@ module surface_header
     procedure :: normal => x_plane_normal
   end type SurfaceXPlane
 
-  type, extends(Surface2) :: SurfaceYPlane
+  type, extends(Surface) :: SurfaceYPlane
     ! y = y0
     real(8) :: y0
   contains
@@ -47,7 +47,7 @@ module surface_header
     procedure :: normal => y_plane_normal
   end type SurfaceYPlane
 
-  type, extends(Surface2) :: SurfaceZPlane
+  type, extends(Surface) :: SurfaceZPlane
     ! z = z0
     real(8) :: z0
   contains
@@ -57,7 +57,7 @@ module surface_header
     procedure :: normal => z_plane_normal
   end type SurfaceZPlane
 
-  type, extends(Surface2) :: SurfacePlane
+  type, extends(Surface) :: SurfacePlane
     ! Ax + By + Cz = D
     real(8) :: A
     real(8) :: B
@@ -70,7 +70,7 @@ module surface_header
     procedure :: normal => plane_normal
   end type SurfacePlane
 
-  type, extends(Surface2) :: SurfaceXCylinder
+  type, extends(Surface) :: SurfaceXCylinder
     ! (y - y0)^2 + (z - z0)^2 = R^2
     real(8) :: y0
     real(8) :: z0
@@ -82,7 +82,7 @@ module surface_header
     procedure :: normal => x_cylinder_normal
   end type SurfaceXCylinder
 
-  type, extends(Surface2) :: SurfaceYCylinder
+  type, extends(Surface) :: SurfaceYCylinder
     ! (x - x0)^2 + (z - z0)^2 = R^2
     real(8) :: x0
     real(8) :: z0
@@ -94,7 +94,7 @@ module surface_header
     procedure :: normal => y_cylinder_normal
   end type SurfaceYCylinder
 
-  type, extends(Surface2) :: SurfaceZCylinder
+  type, extends(Surface) :: SurfaceZCylinder
     ! (x - x0)^2 + (y - y0)^2 = R^2
     real(8) :: x0
     real(8) :: y0
@@ -106,7 +106,7 @@ module surface_header
     procedure :: normal => z_cylinder_normal
   end type SurfaceZCylinder
 
-  type, extends(Surface2) :: SurfaceSphere
+  type, extends(Surface) :: SurfaceSphere
     ! (x - x0)^2 + (y - y0)^2 + (z - z0)^2 = R^2
     real(8) :: x0
     real(8) :: y0
@@ -119,7 +119,7 @@ module surface_header
     procedure :: normal => sphere_normal
   end type SurfaceSphere
 
-  type, extends(Surface2) :: SurfaceXCone
+  type, extends(Surface) :: SurfaceXCone
     ! (y - y0)^2 + (z - z0)^2 = R^2*(x - x0)^2
     real(8) :: x0
     real(8) :: y0
@@ -132,7 +132,7 @@ module surface_header
     procedure :: normal => x_cone_normal
   end type SurfaceXCone
 
-  type, extends(Surface2) :: SurfaceYCone
+  type, extends(Surface) :: SurfaceYCone
     ! (x - x0)^2 + (z - z0)^2 = R^2*(y - y0)^2
     real(8) :: x0
     real(8) :: y0
@@ -145,7 +145,7 @@ module surface_header
     procedure :: normal => y_cone_normal
   end type SurfaceYCone
 
-  type, extends(Surface2) :: SurfaceZCone
+  type, extends(Surface) :: SurfaceZCone
     ! (x - x0)^2 + (y - y0)^2 = R^2*(z - z0)^2
     real(8) :: x0
     real(8) :: y0
@@ -160,15 +160,15 @@ module surface_header
 
   abstract interface
     pure function iEvaluate(this, xyz) result(f)
-      import Surface2
-      class(Surface2), intent(in) :: this
+      import Surface
+      class(Surface), intent(in) :: this
       real(8), intent(in) :: xyz(3)
       real(8) :: f
     end function iEvaluate
 
     pure function iDistance(this, xyz, uvw, coincident) result(d)
-      import Surface2
-      class(Surface2), intent(in) :: this
+      import Surface
+      class(Surface), intent(in) :: this
       real(8), intent(in) :: xyz(3)
       real(8), intent(in) :: uvw(3)
       logical, intent(in) :: coincident
@@ -176,15 +176,15 @@ module surface_header
     end function iDistance
 
     subroutine iReflect(this, xyz, uvw)
-      import Surface2
-      class(Surface2), intent(in) :: this
+      import Surface
+      class(Surface), intent(in) :: this
       real(8), intent(in) :: xyz(3)
       real(8), intent(inout) :: uvw(3)
     end subroutine iReflect
 
     pure function iNormal(this, xyz) result(uvw)
-      import Surface2
-      class(Surface2), intent(in) :: this
+      import Surface
+      class(Surface), intent(in) :: this
       real(8), intent(in) :: xyz(3)
       real(8) :: uvw(3)
     end function iNormal

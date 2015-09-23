@@ -994,6 +994,7 @@ contains
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     type(Cell),     pointer :: c
+    class(Surface), pointer :: s
     class(Lattice), pointer :: lat
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_cell => null()
@@ -1220,7 +1221,7 @@ contains
     end if
 
     ! Allocate cells array
-    allocate(surfaces_c(n_surfaces))
+    allocate(surfaces(n_surfaces))
 
     do i = 1, n_surfaces
       ! Get pointer to i-th surface node
@@ -1233,57 +1234,59 @@ contains
       select case(to_lower(word))
       case ('x-plane')
         coeffs_reqd  = 1
-        allocate(SurfaceXPlane :: surfaces_c(i)%obj)
+        allocate(SurfaceXPlane :: surfaces(i)%obj)
       case ('y-plane')
         coeffs_reqd  = 1
-        allocate(SurfaceYPlane :: surfaces_c(i)%obj)
+        allocate(SurfaceYPlane :: surfaces(i)%obj)
       case ('z-plane')
         coeffs_reqd  = 1
-        allocate(SurfaceZPlane :: surfaces_c(i)%obj)
+        allocate(SurfaceZPlane :: surfaces(i)%obj)
       case ('plane')
         coeffs_reqd  = 4
-        allocate(SurfacePlane :: surfaces_c(i)%obj)
+        allocate(SurfacePlane :: surfaces(i)%obj)
       case ('x-cylinder')
         coeffs_reqd  = 3
-        allocate(SurfaceXCylinder :: surfaces_c(i)%obj)
+        allocate(SurfaceXCylinder :: surfaces(i)%obj)
       case ('y-cylinder')
         coeffs_reqd  = 3
-        allocate(SurfaceYCylinder :: surfaces_c(i)%obj)
+        allocate(SurfaceYCylinder :: surfaces(i)%obj)
       case ('z-cylinder')
         coeffs_reqd  = 3
-        allocate(SurfaceZCylinder :: surfaces_c(i)%obj)
+        allocate(SurfaceZCylinder :: surfaces(i)%obj)
       case ('sphere')
         coeffs_reqd  = 4
-        allocate(SurfaceSphere :: surfaces_c(i)%obj)
+        allocate(SurfaceSphere :: surfaces(i)%obj)
       case ('x-cone')
         coeffs_reqd  = 4
-        allocate(SurfaceXCone :: surfaces_c(i)%obj)
+        allocate(SurfaceXCone :: surfaces(i)%obj)
       case ('y-cone')
         coeffs_reqd  = 4
-        allocate(SurfaceYCone :: surfaces_c(i)%obj)
+        allocate(SurfaceYCone :: surfaces(i)%obj)
       case ('z-cone')
         coeffs_reqd  = 4
-        allocate(SurfaceZCone :: surfaces_c(i)%obj)
+        allocate(SurfaceZCone :: surfaces(i)%obj)
       case default
         call fatal_error("Invalid surface type: " // trim(word))
       end select
 
+      s => surfaces(i)%obj
+
       ! Copy data into cells
       if (check_for_node(node_surf, "id")) then
-        call get_node_value(node_surf, "id", surfaces_c(i)%obj%id)
+        call get_node_value(node_surf, "id", s%id)
       else
         call fatal_error("Must specify id of surface in geometry XML file.")
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (surface_dict % has_key(surfaces_c(i)%obj%id)) then
+      if (surface_dict % has_key(s%id)) then
         call fatal_error("Two or more surfaces use the same unique ID: " &
-             &// to_str(surfaces_c(i)%obj%id))
+             &// to_str(s%id))
       end if
 
       ! Copy surface name
       if (check_for_node(node_surf, "name")) then
-        call get_node_value(node_surf, "name", surfaces_c(i)%obj%name)
+        call get_node_value(node_surf, "name", s%name)
       end if
 
       ! Check to make sure that the proper number of coefficients
@@ -1293,59 +1296,59 @@ contains
       n = get_arraysize_double(node_surf, "coeffs")
       if (n < coeffs_reqd) then
         call fatal_error("Not enough coefficients specified for surface: " &
-             &// trim(to_str(surfaces_c(i)%obj%id)))
+             &// trim(to_str(s%id)))
       elseif (n > coeffs_reqd) then
         call fatal_error("Too many coefficients specified for surface: " &
-             &// trim(to_str(surfaces_c(i)%obj%id)))
+             &// trim(to_str(s%id)))
       end if
 
       allocate(coeffs(n))
       call get_node_array(node_surf, "coeffs", coeffs)
 
-      select type(sp => surfaces_c(i)%obj)
+      select type(s)
       type is (SurfaceXPlane)
-        sp%x0 = coeffs(1)
+        s%x0 = coeffs(1)
       type is (SurfaceYPlane)
-        sp%y0 = coeffs(1)
+        s%y0 = coeffs(1)
       type is (SurfaceZPlane)
-        sp%z0 = coeffs(1)
+        s%z0 = coeffs(1)
       type is (SurfacePlane)
-        sp%A = coeffs(1)
-        sp%B = coeffs(2)
-        sp%C = coeffs(3)
-        sp%D = coeffs(4)
+        s%A = coeffs(1)
+        s%B = coeffs(2)
+        s%C = coeffs(3)
+        s%D = coeffs(4)
       type is (SurfaceXCylinder)
-        sp%y0 = coeffs(1)
-        sp%z0 = coeffs(2)
-        sp%r = coeffs(3)
+        s%y0 = coeffs(1)
+        s%z0 = coeffs(2)
+        s%r = coeffs(3)
       type is (SurfaceYCylinder)
-        sp%x0 = coeffs(1)
-        sp%z0 = coeffs(2)
-        sp%r = coeffs(3)
+        s%x0 = coeffs(1)
+        s%z0 = coeffs(2)
+        s%r = coeffs(3)
       type is (SurfaceZCylinder)
-        sp%x0 = coeffs(1)
-        sp%y0 = coeffs(2)
-        sp%r = coeffs(3)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%r = coeffs(3)
       type is (SurfaceSphere)
-        sp%x0 = coeffs(1)
-        sp%y0 = coeffs(2)
-        sp%z0 = coeffs(3)
-        sp%r = coeffs(4)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r = coeffs(4)
       type is (SurfaceXCone)
-        sp%x0 = coeffs(1)
-        sp%y0 = coeffs(2)
-        sp%z0 = coeffs(3)
-        sp%r2 = coeffs(4)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r2 = coeffs(4)
       type is (SurfaceYCone)
-        sp%x0 = coeffs(1)
-        sp%y0 = coeffs(2)
-        sp%z0 = coeffs(3)
-        sp%r2 = coeffs(4)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r2 = coeffs(4)
       type is (SurfaceZCone)
-        sp%x0 = coeffs(1)
-        sp%y0 = coeffs(2)
-        sp%z0 = coeffs(3)
-        sp%r2 = coeffs(4)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r2 = coeffs(4)
       end select
 
       ! No longer need coefficients
@@ -1357,20 +1360,20 @@ contains
            call get_node_value(node_surf, "boundary", word)
       select case (to_lower(word))
       case ('transmission', 'transmit', '')
-        surfaces_c(i)%obj%bc = BC_TRANSMIT
+        s%bc = BC_TRANSMIT
       case ('vacuum')
-        surfaces_c(i)%obj%bc = BC_VACUUM
+        s%bc = BC_VACUUM
         boundary_exists = .true.
       case ('reflective', 'reflect', 'reflecting')
-        surfaces_c(i)%obj%bc = BC_REFLECT
+        s%bc = BC_REFLECT
         boundary_exists = .true.
       case default
         call fatal_error("Unknown boundary condition '" // trim(word) // &
-             &"' specified on surface " // trim(to_str(surfaces_c(i)%obj%id)))
+             &"' specified on surface " // trim(to_str(s%id)))
       end select
 
       ! Add surface to dictionary
-      call surface_dict % add_key(surfaces_c(i)%obj%id, i)
+      call surface_dict % add_key(s%id, i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one

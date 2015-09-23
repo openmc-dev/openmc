@@ -303,7 +303,7 @@ contains
 
     ! Print surface
     if (p % surface /= NONE) then
-      write(ou,*) '  Surface = ' // to_str(sign(surfaces_c(i)%obj%id, p % surface))
+      write(ou,*) '  Surface = ' // to_str(sign(surfaces(i)%obj%id, p % surface))
     end if
 
     ! Display weight, energy, grid index, and interpolation factor
@@ -1383,7 +1383,7 @@ contains
            univ, bin-1, offset, label)
     case (FILTER_SURFACE)
       i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(surfaces_c(i)%obj%id)
+      label = to_str(surfaces(i)%obj%id)
     case (FILTER_MESH)
       m => meshes(t % filters(i_filter) % int_bins(1))
       allocate(ijk(m % n_dimension))

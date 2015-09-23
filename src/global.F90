@@ -28,12 +28,12 @@ module global
   ! GEOMETRY-RELATED VARIABLES
 
   ! Main arrays
-  type(Cell),              allocatable, target :: cells(:)
-  type(Universe),          allocatable, target :: universes(:)
-  type(LatticeContainer),  allocatable, target :: lattices(:)
-  type(SurfaceContainer), allocatable, target :: surfaces_c(:)
-  type(Material),          allocatable, target :: materials(:)
-  type(ObjectPlot),        allocatable, target :: plots(:)
+  type(Cell),             allocatable, target :: cells(:)
+  type(Universe),         allocatable, target :: universes(:)
+  type(LatticeContainer), allocatable, target :: lattices(:)
+  type(SurfaceContainer), allocatable, target :: surfaces(:)
+  type(Material),         allocatable, target :: materials(:)
+  type(ObjectPlot),       allocatable, target :: plots(:)
 
   ! Size of main arrays
   integer :: n_cells     ! # of cells
@@ -419,7 +419,7 @@ contains
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)
     if (allocated(lattices)) deallocate(lattices)
-    if (allocated(surfaces_c)) deallocate(surfaces_c)
+    if (allocated(surfaces)) deallocate(surfaces)
     if (allocated(materials)) deallocate(materials)
     if (allocated(plots)) deallocate(plots)
 

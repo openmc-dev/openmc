@@ -2,7 +2,7 @@ module geometry
 
   use constants
   use error,                  only: fatal_error, warning
-  use geometry_header,        only: Cell, Surface, Universe, Lattice, &
+  use geometry_header,        only: Cell, Universe, Lattice, &
                                     &RectLattice, HexLattice
   use global
   use output,                 only: write_message
@@ -841,8 +841,7 @@ contains
     integer, allocatable :: count_positive(:) ! # of cells on positive side
     integer, allocatable :: count_negative(:) ! # of cells on negative side
     logical :: positive   ! positive side specified in surface list
-    type(Cell),    pointer  :: c
-    type(Surface), pointer  :: surf
+    type(Cell), pointer  :: c
 
     call write_message("Building neighboring cells lists for each surface...", &
          &4)
@@ -870,13 +869,10 @@ contains
 
     ! allocate neighbor lists for each surface
     do i = 1, n_surfaces
-      surf => surfaces(i)
       if (count_positive(i) > 0) then
-        allocate(surf%neighbor_pos(count_positive(i)))
         allocate(surfaces_c(i)%obj%neighbor_pos(count_positive(i)))
       end if
       if (count_negative(i) > 0) then
-        allocate(surf%neighbor_neg(count_negative(i)))
         allocate(surfaces_c(i)%obj%neighbor_neg(count_negative(i)))
       end if
     end do
@@ -894,14 +890,11 @@ contains
         positive = (i_surface > 0)
         i_surface = abs(i_surface)
 
-        surf => surfaces(i_surface)
         if (positive) then
           count_positive(i_surface) = count_positive(i_surface) + 1
-          surf%neighbor_pos(count_positive(i_surface)) = i
           surfaces_c(i_surface)%obj%neighbor_pos(count_positive(i_surface)) = i
         else
           count_negative(i_surface) = count_negative(i_surface) + 1
-          surf%neighbor_neg(count_negative(i_surface)) = i
           surfaces_c(i_surface)%obj%neighbor_neg(count_negative(i_surface)) = i
         end if
       end do

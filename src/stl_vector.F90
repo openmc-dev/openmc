@@ -1,0 +1,319 @@
+module stl_vector
+
+  ! This module provides derived types that are meant to mimic the
+  ! std::vector<T> type in C++
+
+  implicit none
+  private
+
+  real(8), parameter :: GROWTH_FACTOR = 1.5
+
+  type, public :: VectorInt
+    integer, private :: size_ = 0
+    integer, private :: capacity_ = 0
+    integer, allocatable :: data(:)
+  contains
+    procedure :: capacity => capacity_int
+    procedure :: clear => clear_int
+    generic :: initialize => &
+         initialize_fill_int
+    procedure, private :: initialize_fill_int
+    procedure :: pop_back => pop_back_int
+    procedure :: push_back => push_back_int
+    procedure :: reserve => reserve_int
+    procedure :: resize => resize_int
+    procedure :: shrink_to_fit => shrink_to_fit_int
+    procedure :: size => size_int
+  end type VectorInt
+
+  type, public :: VectorReal
+    integer, private :: size_ = 0
+    integer, private :: capacity_ = 0
+    real(8), allocatable :: data(:)
+  contains
+    procedure :: capacity => capacity_real
+    procedure :: clear => clear_real
+    generic :: initialize => &
+         initialize_fill_real
+    procedure, private :: initialize_fill_real
+    procedure :: pop_back => pop_back_real
+    procedure :: push_back => push_back_real
+    procedure :: reserve => reserve_real
+    procedure :: resize => resize_real
+    procedure :: shrink_to_fit => shrink_to_fit_real
+    procedure :: size => size_real
+  end type VectorReal
+
+contains
+
+!===============================================================================
+! Implementation of VectorInt
+!===============================================================================
+
+  pure function capacity_int(this) result(capacity)
+    class(VectorInt), intent(in) :: this
+    integer :: capacity
+
+    capacity = this%capacity_
+  end function capacity_int
+
+  subroutine clear_int(this)
+    class(VectorInt), intent(inout) :: this
+
+    ! Since integer is trivially destructible, we only need to set size to zero
+    ! and can leave capacity as is
+    this%size_ = 0
+  end subroutine clear_int
+
+  subroutine initialize_fill_int(this, n, val)
+    class(VectorInt), intent(inout) :: this
+    integer, intent(in) :: n
+    integer, optional, intent(in) :: val
+
+    integer :: val_
+
+    ! If no value given, fill the vector with zeros
+    if (present(val)) then
+      val_ = val
+    else
+      val_ = 0
+    end if
+
+    if (allocated(this%data)) deallocate(this%data)
+
+    allocate(this%data(n), SOURCE=val_)
+    this%size_ = n
+    this%capacity_ = n
+  end subroutine initialize_fill_int
+
+  subroutine pop_back_int(this)
+    class(VectorInt), intent(inout) :: this
+    if (this%size_ > 0) this%size_ = this%size_ - 1
+  end subroutine pop_back_int
+
+  subroutine push_back_int(this, val)
+    class(VectorInt), intent(inout) :: this
+    integer, intent(in) :: val
+
+    integer :: capacity
+    integer, allocatable :: data(:)
+
+    if (this%capacity_ == this%size_) then
+      ! Create new data array that is GROWTH_FACTOR larger. Note that
+      if (this%capacity_ == 0) then
+        capacity = 8
+      else
+        capacity = int(GROWTH_FACTOR*this%capacity_)
+      end if
+      allocate(data(capacity))
+
+      ! Copy existing elements
+      if (this%size_ > 0) data(1:this%size_) = this%data
+
+      ! Move allocation
+      call move_alloc(FROM=data, TO=this%data)
+      this%capacity_ = capacity
+    end if
+
+    ! Increase size of vector by one and set new element
+    this%size_ = this%size_ + 1
+    this%data(this%size_) = val
+  end subroutine push_back_int
+
+  subroutine reserve_int(this, n)
+    class(VectorInt), intent(inout) :: this
+    integer, intent(in) :: n
+
+    integer, allocatable :: data(:)
+
+    if (n > this%capacity_) then
+      allocate(data(n))
+
+      ! Copy existing elements
+      if (this%size_ > 0) data(1:this%size_) = this%data(1:this%size_)
+
+      ! Move allocation
+      call move_alloc(FROM=data, TO=this%data)
+      this%capacity_ = n
+    end if
+  end subroutine reserve_int
+
+  subroutine resize_int(this, n, val)
+    class(VectorInt), intent(inout) :: this
+    integer, intent(in) :: n
+    integer, intent(in), optional :: val
+
+    if (n < this%size_) then
+      this%size_ = n
+    elseif (n > this%size_) then
+      ! If requested size is greater than capacity, first reserve that many
+      ! elements
+      if (n > this%capacity_) call this%reserve(n)
+
+      ! Fill added elements with specified value and increase size
+      if (present(val)) this%data(this%size_ + 1 : n) = val
+      this%size_ = n
+    end if
+
+  end subroutine resize_int
+
+  subroutine shrink_to_fit_int(this)
+    class(VectorInt), intent(inout) :: this
+
+    integer, allocatable :: data(:)
+
+    if (this%capacity_ > this%size_) then
+      if (this%size_ > 0) then
+        allocate(data(this%size_))
+        data(:) = this%data(1:this%size_)
+        call move_alloc(FROM=data, TO=this%data)
+        this%capacity_ = this%size_
+      else
+        if (allocated(this%data)) deallocate(this%data)
+      end if
+    end if
+  end subroutine shrink_to_fit_int
+
+  pure function size_int(this) result(size)
+    class(VectorInt), intent(in) :: this
+    integer :: size
+
+    size = this%size_
+  end function size_int
+
+!===============================================================================
+! Implementation of VectorReal
+!===============================================================================
+
+  pure function capacity_real(this) result(capacity)
+    class(VectorReal), intent(in) :: this
+    integer :: capacity
+
+    capacity = this%capacity_
+  end function capacity_real
+
+  subroutine clear_real(this)
+    class(VectorReal), intent(inout) :: this
+
+    ! Since integer is trivially destructible, we only need to set size to zero
+    ! and can leave capacity as is
+    this%size_ = 0
+  end subroutine clear_real
+
+  subroutine initialize_fill_real(this, n, val)
+    class(VectorReal), intent(inout) :: this
+    integer, intent(in) :: n
+    real(8), optional, intent(in) :: val
+
+    real(8) :: val_
+
+    ! If no value given, fill the vector with zeros
+    if (present(val)) then
+      val_ = val
+    else
+      val_ = 0
+    end if
+
+    if (allocated(this%data)) deallocate(this%data)
+
+    allocate(this%data(n), SOURCE=val_)
+    this%size_ = n
+    this%capacity_ = n
+  end subroutine initialize_fill_real
+
+  subroutine pop_back_real(this)
+    class(VectorReal), intent(inout) :: this
+    if (this%size_ > 0) this%size_ = this%size_ - 1
+  end subroutine pop_back_real
+
+  subroutine push_back_real(this, val)
+    class(VectorReal), intent(inout) :: this
+    real(8), intent(in) :: val
+
+    integer :: capacity
+    real(8), allocatable :: data(:)
+
+    if (this%capacity_ == this%size_) then
+      ! Create new data array that is GROWTH_FACTOR larger. Note that
+      if (this%capacity_ == 0) then
+        capacity = 8
+      else
+        capacity = int(GROWTH_FACTOR*this%capacity_)
+      end if
+      allocate(data(capacity))
+
+      ! Copy existing elements
+      if (this%size_ > 0) data(1:this%size_) = this%data
+
+      ! Move allocation
+      call move_alloc(FROM=data, TO=this%data)
+      this%capacity_ = capacity
+    end if
+
+    ! Increase size of vector by one and set new element
+    this%size_ = this%size_ + 1
+    this%data(this%size_) = val
+  end subroutine push_back_real
+
+  subroutine reserve_real(this, n)
+    class(VectorReal), intent(inout) :: this
+    integer, intent(in) :: n
+
+    real(8), allocatable :: data(:)
+
+    if (n > this%capacity_) then
+      allocate(data(n))
+
+      ! Copy existing elements
+      if (this%size_ > 0) data(1:this%size_) = this%data(1:this%size_)
+
+      ! Move allocation
+      call move_alloc(FROM=data, TO=this%data)
+      this%capacity_ = n
+    end if
+  end subroutine reserve_real
+
+  subroutine resize_real(this, n, val)
+    class(VectorReal), intent(inout) :: this
+    integer, intent(in) :: n
+    real(8), intent(in), optional :: val
+
+    if (n < this%size_) then
+      this%size_ = n
+    elseif (n > this%size_) then
+      ! If requested size is greater than capacity, first reserve that many
+      ! elements
+      if (n > this%capacity_) call this%reserve(n)
+
+      ! Fill added elements with specified value and increase size
+      if (present(val)) this%data(this%size_ + 1 : n) = val
+      this%size_ = n
+    end if
+
+  end subroutine resize_real
+
+  subroutine shrink_to_fit_real(this)
+    class(VectorReal), intent(inout) :: this
+
+    real(8), allocatable :: data(:)
+
+    if (this%capacity_ > this%size_) then
+      if (this%size_ > 0) then
+        allocate(data(this%size_))
+        data(:) = this%data(1:this%size_)
+        call move_alloc(FROM=data, TO=this%data)
+        this%capacity_ = this%size_
+      else
+        if (allocated(this%data)) deallocate(this%data)
+      end if
+    end if
+  end subroutine shrink_to_fit_real
+
+  pure function size_real(this) result(size)
+    class(VectorReal), intent(in) :: this
+    integer :: size
+
+    size = this%size_
+  end function size_real
+
+end module stl_vector

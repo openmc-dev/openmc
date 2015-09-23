@@ -47,7 +47,7 @@ contains
 
       ! Determine the specified sense of the surface in the cell and the actual
       ! sense of the particle with respect to the surface
-      actual_sense = sense(p, surfaces_c(abs(i_surface))%obj)
+      actual_sense = sense(p, surfaces(abs(i_surface))%obj)
       specified_sense = (c % surfaces(i) > 0)
 
       ! Compare sense of point to specified sense
@@ -278,10 +278,10 @@ contains
     real(8) :: norm      ! "norm" of surface normal
     integer :: i_surface ! index in surfaces
     logical :: found     ! particle found in universe?
-    class(Surface2), pointer :: surf
+    class(Surface), pointer :: surf
 
     i_surface = abs(p % surface)
-    surf => surfaces_c(i_surface)%obj
+    surf => surfaces(i_surface)%obj
     if (verbosity >= 10 .or. trace) then
       call write_message("    Crossing surface " // trim(to_str(surf % id)))
     end if
@@ -529,7 +529,7 @@ contains
     real(8) :: x0,y0,z0           ! coefficients for surface
     logical :: coincident         ! is particle on surface?
     type(Cell),       pointer :: cl
-    class(Surface2),   pointer :: surf
+    class(Surface),   pointer :: surf
     class(Lattice),   pointer :: lat
 
     ! inialize distance to infinity (huge)
@@ -564,7 +564,7 @@ contains
         if (index_surf >= OP_DIFFERENCE) cycle
 
         ! Calculate distance to surface
-        surf => surfaces_c(index_surf)%obj
+        surf => surfaces(index_surf)%obj
         d = surf%distance(p%coord(j)%xyz, p%coord(j)%uvw, coincident)
 
         ! Check is calculated distance is new minimum
@@ -802,7 +802,7 @@ contains
 
   recursive function sense(p, surf) result(s)
     type(Particle), intent(inout) :: p
-    class(Surface2), intent(in) :: surf  ! surface
+    class(Surface), intent(in) :: surf  ! surface
     logical :: s  ! sense of particle
 
     integer :: j
@@ -870,10 +870,10 @@ contains
     ! allocate neighbor lists for each surface
     do i = 1, n_surfaces
       if (count_positive(i) > 0) then
-        allocate(surfaces_c(i)%obj%neighbor_pos(count_positive(i)))
+        allocate(surfaces(i)%obj%neighbor_pos(count_positive(i)))
       end if
       if (count_negative(i) > 0) then
-        allocate(surfaces_c(i)%obj%neighbor_neg(count_negative(i)))
+        allocate(surfaces(i)%obj%neighbor_neg(count_negative(i)))
       end if
     end do
 
@@ -892,10 +892,10 @@ contains
 
         if (positive) then
           count_positive(i_surface) = count_positive(i_surface) + 1
-          surfaces_c(i_surface)%obj%neighbor_pos(count_positive(i_surface)) = i
+          surfaces(i_surface)%obj%neighbor_pos(count_positive(i_surface)) = i
         else
           count_negative(i_surface) = count_negative(i_surface) + 1
-          surfaces_c(i_surface)%obj%neighbor_neg(count_negative(i_surface)) = i
+          surfaces(i_surface)%obj%neighbor_neg(count_negative(i_surface)) = i
         end if
       end do
     end do

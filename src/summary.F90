@@ -115,7 +115,7 @@ contains
     integer(HID_T) :: lattices_group, lattice_group
     real(8), allocatable :: coeffs(:)
     type(Cell),     pointer :: c
-    class(Surface2), pointer :: s
+    class(Surface), pointer :: s
     type(Universe), pointer :: u
     class(Lattice), pointer :: lat
 
@@ -180,7 +180,7 @@ contains
         allocate(surface_ids(c%n_surfaces))
         do j = 1, c%n_surfaces
           k = c%surfaces(j)
-          surface_ids(j) = sign(surfaces_c(abs(k))%obj%id, k)
+          surface_ids(j) = sign(surfaces(abs(k))%obj%id, k)
         end do
         call write_dataset(cell_group, "surfaces", surface_ids)
         deallocate(surface_ids)
@@ -199,7 +199,7 @@ contains
 
     ! Write information on each surface
     SURFACE_LOOP: do i = 1, n_surfaces
-      s => surfaces_c(i)%obj
+      s => surfaces(i)%obj
       surface_group = create_group(surfaces_group, "surface " // &
            trim(to_str(s%id)))
 

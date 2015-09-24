@@ -13,8 +13,9 @@ module input_xml
   use plot_header
   use random_lcg,       only: prn
   use surface_header
+  use stl_vector,       only: VectorInt
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
-                              starts_with, ends_with
+                              starts_with, ends_with, tokenize
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
   use xml_interface
@@ -993,6 +994,7 @@ contains
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
+    character(MAX_LINE_LEN) :: surface_spec
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
     class(Lattice), pointer :: lat
@@ -1004,6 +1006,8 @@ contains
     type(NodeList), pointer :: node_surf_list => null()
     type(NodeList), pointer :: node_rlat_list => null()
     type(NodeList), pointer :: node_hlat_list => null()
+    type(VectorInt) :: tokens
+    type(VectorInt) :: rpn
 
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
@@ -1116,16 +1120,26 @@ contains
 
       ! Allocate array for surfaces and copy
       if (check_for_node(node_cell, "surfaces")) then
-        n = get_arraysize_integer(node_cell, "surfaces")
-      else
-        n = 0
-      end if
-      c % n_surfaces = n
+        call get_node_value(node_cell, "surfaces", surface_spec)
+        if (len_trim(surface_spec) > 0) then
+          ! Create surfaces array from string
+          call tokenize(surface_spec, tokens)
 
-      if (n > 0) then
-        allocate(c % surfaces(n))
-        call get_node_array(node_cell, "surfaces", c % surfaces)
+          ! Use shunting-yard algorithm to determine RPN for surface algorithm
+          call generate_rpn(tokens, rpn)
+
+          ! Copy surface spec and RPN form to cell arrays
+          allocate(c % surfaces(tokens%size()))
+          allocate(c % rpn(rpn%size()))
+          c % surfaces(:) = tokens%data(1:tokens%size())
+          c % rpn(:) = rpn%data(1:rpn%size())
+
+          call tokens%clear()
+          call rpn%clear()
+        end if
       end if
+      if (.not. allocated(c%surfaces)) allocate(c%surfaces(0))
+      if (.not. allocated(c%rpn)) allocate(c%rpn(0))
 
       ! Rotation matrix
       if (check_for_node(node_cell, "rotation")) then
@@ -4765,5 +4779,89 @@ contains
     end select
 
   end subroutine expand_natural_element
+
+!===============================================================================
+! GENERATE_RPN implements the shunting-yard algorithm to generate a Reverse
+! polish notation (RPN) expression for the surface specification of a cell given
+! the infix notation.
+!===============================================================================
+
+  subroutine generate_rpn(tokens, output)
+    type(VectorInt), intent(in) :: tokens    ! infix notation
+    type(VectorInt), intent(inout) :: output ! RPN notation
+
+    integer :: i
+    integer :: token
+    integer :: op
+    type(VectorInt) :: stack
+
+    do i = 1, tokens%size()
+      token = tokens%data(i)
+
+      if (token < OP_UNION) then
+        ! If token is not an operator, add it to output
+        call output%push_back(token)
+
+      elseif (token < OP_RIGHT_PAREN) then
+        ! Regular operators union, intersection, complement
+        do while (stack%size() > 0)
+          op = stack%data(stack%size())
+
+          if (op < OP_RIGHT_PAREN .and. &
+               ((token == OP_COMPLEMENT .and. token < op) .or. &
+               (token /= OP_COMPLEMENT .and. token <= op))) then
+            ! While there is an operator, op, on top of the stack, if the token
+            ! is left-associative and its precedence is less than or equal to
+            ! that of op or if the token is right-associative and its precedence
+            ! is less than that of op, move op to the output queue and push the
+            ! token on to the stack. Note that only complement is
+            ! right-associative.
+            call output%push_back(op)
+            call stack%pop_back()
+          else
+            exit
+          end if
+        end do
+
+        call stack%push_back(token)
+
+      elseif (token == OP_LEFT_PAREN) then
+        ! If the token is a left parenthesis, push it onto the stack
+        call stack%push_back(token)
+
+      else
+        ! If the token is a right parenthesis, move operators from the stack to
+        ! the output queue until reaching the left parenthesis.
+        do
+          ! If we run out of operators without finding a left parenthesis, it
+          ! means there are mismatched parentheses.
+          if (stack%size() == 0) then
+            call fatal_error('Mimatched parentheses in surface specification')
+          end if
+
+          op = stack%data(stack%size())
+          if (op == OP_LEFT_PAREN) exit
+          call output%push_back(op)
+          call stack%pop_back()
+        end do
+
+        ! Pop the left parenthesis.
+        call stack%pop_back()
+      end if
+    end do
+
+    ! While there are operators on the stack, move them to the output queue
+    do while (stack%size() > 0)
+      op = stack%data(stack%size())
+
+      ! If the operator is a parenthesis, it is mismatched
+      if (op >= OP_RIGHT_PAREN) then
+        call fatal_error('Mimatched parentheses in surface specification')
+      end if
+
+      call output%push_back(op)
+      call stack%pop_back()
+    end do
+  end subroutine generate_rpn
 
 end module input_xml

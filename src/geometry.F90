@@ -17,56 +17,77 @@ module geometry
 contains
 
 !===============================================================================
-! SIMPLE_CELL_CONTAINS determines whether a given the current coordinates of the
-! particle are inside a cell defined as the intersection of a series of surfaces
+! CELL_CONTAINS determines if a cell contains the particle at a given
+! location. The bounds of the cell are detemined by a logical expression
+! involving surface half-spaces. At initialization, the expression was converted
+! to RPN notation. In cell_contains, we evaluate the RPN expression using a
+! stack, similar to how a RPN calculator would work.
 !===============================================================================
 
-  function simple_cell_contains(c, p) result(in_cell)
+  pure function cell_contains(c, p) result(in_cell)
     type(Cell), intent(in) :: c
-    type(Particle), intent(inout) :: p
+    type(Particle), intent(in) :: p
     logical :: in_cell
 
-    integer :: i               ! index of surfaces in cell
-    integer :: i_surface       ! index in surfaces array (with sign)
-    logical :: specified_sense ! specified sense of surface in list
+    integer :: i
+    integer :: token
+    logical :: b1, b2
+    integer :: i_stack
     logical :: actual_sense    ! sense of particle wrt surface
-    class(Surface), pointer :: s
+    logical :: stack(size(c%rpn))
 
-    SURFACE_LOOP: do i = 1, c % n_surfaces
-      ! Lookup surface
-      i_surface = c % surfaces(i)
-
-      ! Check if the particle is currently on the specified surface
-      if (i_surface == p % surface) then
-        ! Particle is heading into the cell
-        cycle
-      elseif (i_surface == -p % surface) then
-        ! Particle is heading out of the cell
-        in_cell = .false.
-        return
+    i_stack = 0
+    do i = 1, size(c%rpn)
+      token = c%rpn(i)
+      if (token < OP_UNION) then
+        ! If the token is not an operator, evaluate the sense of particle with
+        ! respect to the surface and see if the token matches the sense. If the
+        ! particle's surface attribute is set and matches the token, that
+        ! overrides the determination based on sense().
+        i_stack = i_stack + 1
+        if (token == p%surface) then
+          stack(i_stack) = .true.
+        elseif (-token == p%surface) then
+          stack(i_stack) = .false.
+        else
+          actual_sense = surfaces(abs(token))%obj%sense(&
+               p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
+          stack(i_stack) = (actual_sense .eqv. (token > 0))
+        end if
+      else
+        ! If the token is a binary operator (intersection/union), apply it to
+        ! the last two items on the stack. If the token is a unary operator
+        ! (complement), apply it to the last item on the stack.
+        b1 = stack(i_stack)
+        select case (token)
+        case (OP_UNION)
+          b2 = stack(i_stack - 1)
+          stack(i_stack - 1) = b1 .or. b2
+          i_stack = i_stack - 1
+        case (OP_INTERSECTION)
+          b2 = stack(i_stack - 1)
+          stack(i_stack - 1) = b1 .and. b2
+          i_stack = i_stack - 1
+        case (OP_COMPLEMENT)
+          stack(i_stack) = .not. b1
+        end select
       end if
+    end do
 
-      ! Determine the specified sense of the surface in the cell and the actual
-      ! sense of the particle with respect to the surface
-      s => surfaces(abs(i_surface))%obj
-      actual_sense = s%sense(p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
-      specified_sense = (c % surfaces(i) > 0)
-
-      ! Compare sense of point to specified sense
-      if (actual_sense .neqv. specified_sense) then
-        in_cell = .false.
-        return
-      end if
-    end do SURFACE_LOOP
-
-    ! If we've reached here, then the sense matched on every surface or there
-    ! are no surfaces.
-    in_cell = .true.
-  end function simple_cell_contains
+    if (i_stack == 1) then
+      ! The one remaining logical on the stack indicates whether the particle is
+      ! in the cell.
+      in_cell = stack(i_stack)
+    else
+      ! This case occurs if there is no surface specification since i_stack will
+      ! still be zero.
+      in_cell = .true.
+    end if
+  end function cell_contains
 
 !===============================================================================
 ! CHECK_CELL_OVERLAP checks for overlapping cells at the current particle's
-! position using simple_cell_contains and the LocalCoord's built up by find_cell
+! position using cell_contains and the LocalCoord's built up by find_cell
 !===============================================================================
 
   subroutine check_cell_overlap(p)
@@ -93,7 +114,7 @@ contains
         index_cell = univ % cells(i)
         c => cells(index_cell)
 
-        if (simple_cell_contains(c, p)) then
+        if (cell_contains(c, p)) then
           ! the particle should only be contained in one cell per level
           if (index_cell /= p % coord(j) % cell) then
             call fatal_error("Overlapping cells detected: " &
@@ -162,7 +183,7 @@ contains
       c => cells(index_cell)
 
       ! Move on to the next cell if the particle is not inside this cell
-      if (.not. simple_cell_contains(c, p)) cycle
+      if (.not. cell_contains(c, p)) cycle
 
       ! Set cell on this level
       p % coord(j) % cell = index_cell
@@ -556,7 +577,7 @@ contains
       ! =======================================================================
       ! FIND MINIMUM DISTANCE TO SURFACE IN THIS CELL
 
-      SURFACE_LOOP: do i = 1, cl % n_surfaces
+      SURFACE_LOOP: do i = 1, size(cl%surfaces)
         ! check for operators
         index_surf = cl%surfaces(i)
         coincident = (index_surf == p % surface)
@@ -823,10 +844,11 @@ contains
       c => cells(i)
 
       ! loop over each surface specification
-      do j = 1, c % n_surfaces
+      do j = 1, size(c%surfaces)
         i_surface = c % surfaces(j)
         positive = (i_surface > 0)
         i_surface = abs(i_surface)
+        if (i_surface >= OP_UNION) cycle
         if (positive) then
           count_positive(i_surface) = count_positive(i_surface) + 1
         else
@@ -853,10 +875,11 @@ contains
       c => cells(i)
 
       ! loop over each surface specification
-      do j = 1, c % n_surfaces
+      do j = 1, size(c%surfaces)
         i_surface = c % surfaces(j)
         positive = (i_surface > 0)
         i_surface = abs(i_surface)
+        if (i_surface >= OP_UNION) cycle
 
         if (positive) then
           count_positive(i_surface) = count_positive(i_surface) + 1

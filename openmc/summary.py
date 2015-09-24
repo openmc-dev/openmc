@@ -213,7 +213,7 @@ class Summary(object):
                 fill = self._f['geometry/cells'][key]['lattice'].value
 
             if 'surfaces' in self._f['geometry/cells'][key].keys():
-                surfaces = self._f['geometry/cells'][key]['surfaces'][...]
+                surfaces = self._f['geometry/cells'][key]['surfaces'].value.decode()
             else:
                 surfaces = []
 
@@ -241,12 +241,15 @@ class Summary(object):
             self._cell_fills[index] = (fill_type, fill)
 
             # Iterate over all Surfaces and add them to the Cell
-            for surface_halfspace in surfaces:
-
-                halfspace = np.sign(surface_halfspace)
-                surface_id = abs(surface_halfspace)
-                surface = self.get_surface_by_id(surface_id)
-                cell.add_surface(surface, halfspace)
+            for token in surfaces.split():
+                try:
+                    surface_halfspace = int(token)
+                    halfspace = np.sign(surface_halfspace)
+                    surface_id = abs(surface_halfspace)
+                    surface = self.get_surface_by_id(surface_id)
+                    cell.add_surface(surface, halfspace)
+                except ValueError:
+                    pass
 
             # Add the Cell to the global dictionary of all Cells
             self.cells[index] = cell

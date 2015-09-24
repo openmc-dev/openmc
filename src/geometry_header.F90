@@ -128,14 +128,13 @@ module geometry_header
                                            !  the geom
     integer :: material                    ! Material within cell (0 for
                                            !  universe)
-    integer :: n_surfaces                  ! Number of surfaces within
     integer, allocatable :: offset (:)     ! Distribcell offset for tally
                                            !  counter
-    integer, allocatable :: &
-         & surfaces(:)                     ! List of surfaces bounding cell
-                                           !  -- note that parentheses, union,
-                                           !  etc operators will be listed here
-                                           !  too
+    integer, allocatable :: surfaces(:)    ! List of surfaces bounding cell --
+                                           ! note that parentheses, union, etc
+                                           ! operators will be listed here too
+    integer, allocatable :: rpn(:)         ! Reverse Polish notation for surface
+                                           ! expression
 
     ! Rotation matrix and translation vector
     real(8), allocatable :: translation(:)

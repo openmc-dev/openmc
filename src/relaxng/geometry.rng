@@ -63,18 +63,10 @@
           <optional>
             <choice>
               <element name="surfaces">
-                <list>
-                  <zeroOrMore>
-                    <data type="int"/>
-                  </zeroOrMore>
-                </list>
+                <data type="string"/>
               </element>
               <attribute name="surfaces">
-                <list>
-                  <zeroOrMore>
-                    <data type="int"/>
-                  </zeroOrMore>
-                </list>
+                <data type="string"/>
               </attribute>
             </choice>
           </optional>

@@ -18,9 +18,9 @@ module surface_header
     character(len=52) :: name = ""    ! User-defined name
   contains
     procedure :: sense
+    procedure :: reflect
     procedure(iEvaluate), deferred :: evaluate
     procedure(iDistance), deferred :: distance
-    procedure(iReflect),  deferred :: reflect
     procedure(iNormal),   deferred :: normal
   end type Surface
 
@@ -33,7 +33,6 @@ module surface_header
     real(8) :: x0
   contains
     procedure :: evaluate => x_plane_evaluate
-    procedure :: reflect  => x_plane_reflect
     procedure :: distance => x_plane_distance
     procedure :: normal => x_plane_normal
   end type SurfaceXPlane
@@ -43,7 +42,6 @@ module surface_header
     real(8) :: y0
   contains
     procedure :: evaluate => y_plane_evaluate
-    procedure :: reflect  => y_plane_reflect
     procedure :: distance => y_plane_distance
     procedure :: normal => y_plane_normal
   end type SurfaceYPlane
@@ -53,7 +51,6 @@ module surface_header
     real(8) :: z0
   contains
     procedure :: evaluate => z_plane_evaluate
-    procedure :: reflect  => z_plane_reflect
     procedure :: distance => z_plane_distance
     procedure :: normal => z_plane_normal
   end type SurfaceZPlane
@@ -66,7 +63,6 @@ module surface_header
     real(8) :: D
   contains
     procedure :: evaluate => plane_evaluate
-    procedure :: reflect  => plane_reflect
     procedure :: distance => plane_distance
     procedure :: normal => plane_normal
   end type SurfacePlane
@@ -78,7 +74,6 @@ module surface_header
     real(8) :: r
   contains
     procedure :: evaluate => x_cylinder_evaluate
-    procedure :: reflect  => x_cylinder_reflect
     procedure :: distance => x_cylinder_distance
     procedure :: normal => x_cylinder_normal
   end type SurfaceXCylinder
@@ -90,7 +85,6 @@ module surface_header
     real(8) :: r
   contains
     procedure :: evaluate => y_cylinder_evaluate
-    procedure :: reflect  => y_cylinder_reflect
     procedure :: distance => y_cylinder_distance
     procedure :: normal => y_cylinder_normal
   end type SurfaceYCylinder
@@ -102,7 +96,6 @@ module surface_header
     real(8) :: r
   contains
     procedure :: evaluate => z_cylinder_evaluate
-    procedure :: reflect  => z_cylinder_reflect
     procedure :: distance => z_cylinder_distance
     procedure :: normal => z_cylinder_normal
   end type SurfaceZCylinder
@@ -115,7 +108,6 @@ module surface_header
     real(8) :: r
   contains
     procedure :: evaluate => sphere_evaluate
-    procedure :: reflect  => sphere_reflect
     procedure :: distance => sphere_distance
     procedure :: normal => sphere_normal
   end type SurfaceSphere
@@ -128,7 +120,6 @@ module surface_header
     real(8) :: r2
   contains
     procedure :: evaluate => x_cone_evaluate
-    procedure :: reflect  => x_cone_reflect
     procedure :: distance => x_cone_distance
     procedure :: normal => x_cone_normal
   end type SurfaceXCone
@@ -141,7 +132,6 @@ module surface_header
     real(8) :: r2
   contains
     procedure :: evaluate => y_cone_evaluate
-    procedure :: reflect  => y_cone_reflect
     procedure :: distance => y_cone_distance
     procedure :: normal => y_cone_normal
   end type SurfaceYCone
@@ -154,7 +144,6 @@ module surface_header
     real(8) :: r2
   contains
     procedure :: evaluate => z_cone_evaluate
-    procedure :: reflect  => z_cone_reflect
     procedure :: distance => z_cone_distance
     procedure :: normal => z_cone_normal
   end type SurfaceZCone
@@ -175,13 +164,6 @@ module surface_header
       logical, intent(in) :: coincident
       real(8) :: d
     end function iDistance
-
-    subroutine iReflect(this, xyz, uvw)
-      import Surface
-      class(Surface), intent(in) :: this
-      real(8), intent(in) :: xyz(3)
-      real(8), intent(inout) :: uvw(3)
-    end subroutine iReflect
 
     pure function iNormal(this, xyz) result(uvw)
       import Surface
@@ -225,6 +207,27 @@ contains
 
   end function sense
 
+  subroutine reflect(this, xyz, uvw)
+    class(Surface), intent(in) :: this
+    real(8), intent(in) :: xyz(3)
+    real(8), intent(inout) :: uvw(3)
+
+    real(8) :: projection
+    real(8) :: magnitude
+    real(8) :: n(3)
+
+    ! Construct normal vector
+    n(:) = this%normal(xyz)
+
+    ! Determine projection of direction onto normal and squared magnitude of
+    ! normal
+    projection = n(1)*uvw(1) + n(2)*uvw(2) + n(3)*uvw(3)
+    magnitude = n(1)*n(1) + n(2)*n(2) + n(3)*n(3)
+
+    ! Reflect direction according to normal
+    uvw(:) = uvw - TWO*projection/magnitude * n
+  end subroutine reflect
+
 !===============================================================================
 ! SurfaceXPlane Implementation
 !===============================================================================
@@ -255,20 +258,12 @@ contains
     end if
   end function x_plane_distance
 
-  subroutine x_plane_reflect(this, xyz, uvw)
-    class(SurfaceXPlane), intent(in) :: this
-    real(8), intent(in)    :: xyz(3)
-    real(8), intent(inout) :: uvw(3)
-
-    uvw(1) = -uvw(1)
-  end subroutine x_plane_reflect
-
   pure function x_plane_normal(this, xyz) result(uvw)
     class(SurfaceXPlane), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8) :: uvw(3)
 
-    uvw(:) = [1, 0, 0]
+    uvw(:) = [ONE, ZERO, ZERO]
   end function x_plane_normal
 
 !===============================================================================
@@ -301,20 +296,12 @@ contains
     end if
   end function y_plane_distance
 
-  subroutine y_plane_reflect(this, xyz, uvw)
-    class(SurfaceYPlane), intent(in)    :: this
-    real(8), intent(in)    :: xyz(3)
-    real(8), intent(inout) :: uvw(3)
-
-    uvw(2) = -uvw(2)
-  end subroutine y_plane_reflect
-
   pure function y_plane_normal(this, xyz) result(uvw)
     class(SurfaceYPlane), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8) :: uvw(3)
 
-    uvw(:) = [0, 1, 0]
+    uvw(:) = [ZERO, ONE, ZERO]
   end function y_plane_normal
 
 !===============================================================================
@@ -349,20 +336,12 @@ contains
     end if
   end function z_plane_distance
 
-  subroutine z_plane_reflect(this, xyz, uvw)
-    class(SurfaceZPlane), intent(in) :: this
-    real(8), intent(in)    :: xyz(3)
-    real(8), intent(inout) :: uvw(3)
-
-    uvw(3) = -uvw(3)
-  end subroutine z_plane_reflect
-
   pure function z_plane_normal(this, xyz) result(uvw)
     class(SurfaceZPlane), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8) :: uvw(3)
 
-    uvw(:) = [0, 0, 1]
+    uvw(:) = [ZERO, ZERO, ONE]
   end function z_plane_normal
 
 !===============================================================================
@@ -396,20 +375,6 @@ contains
       if (d < ZERO) d = INFINITY
     end if
   end function plane_distance
-
-  subroutine plane_reflect(this, xyz, uvw)
-    class(SurfacePlane), intent(in)    :: this
-    real(8),        intent(in)    :: xyz(3)
-    real(8),        intent(inout) :: uvw(3)
-
-    real(8) :: n(3)
-
-    ! Construct normal vector
-    n(:) = [this%A, this%B, this%C]
-
-    ! Reflect direction according to normal
-    uvw = uvw - TWO*dot_product(n, uvw)/dot_product(n, n) * n
-  end subroutine plane_reflect
 
   pure function plane_normal(this, xyz) result(uvw)
     class(SurfacePlane), intent(in) :: this
@@ -488,23 +453,6 @@ contains
       end if
     end if
   end function x_cylinder_distance
-
-  subroutine x_cylinder_reflect(this, xyz, uvw)
-    class(SurfaceXCylinder), intent(in)    :: this
-    real(8),        intent(in)    :: xyz(3)
-    real(8),        intent(inout) :: uvw(3)
-
-    real(8) :: y, z, dot_prod
-
-    ! Find y-y0, z-z0 and dot product of direction and surface normal
-    y = xyz(2) - this%y0
-    z = xyz(3) - this%z0
-    dot_prod = uvw(2)*y + uvw(3)*z
-
-    ! Reflect direction according to normal
-    uvw(2) = uvw(2) - TWO*dot_prod*y/(this%r*this%r)
-    uvw(3) = uvw(3) - TWO*dot_prod*z/(this%r*this%r)
-  end subroutine x_cylinder_reflect
 
   pure function x_cylinder_normal(this, xyz) result(uvw)
     class(SurfaceXCylinder), intent(in) :: this
@@ -586,23 +534,6 @@ contains
     end if
   end function y_cylinder_distance
 
-  subroutine y_cylinder_reflect(this, xyz, uvw)
-    class(SurfaceYCylinder), intent(in) :: this
-    real(8), intent(in)    :: xyz(3)
-    real(8), intent(inout) :: uvw(3)
-
-    real(8) :: x, z, dot_prod
-
-    ! Find x-x0, z-z0 and dot product of direction and surface normal
-    x = xyz(1) - this%x0
-    z = xyz(3) - this%z0
-    dot_prod = uvw(1)*x + uvw(3)*z
-
-    ! Reflect direction according to normal
-    uvw(1) = uvw(1) - TWO*dot_prod*x/(this%r*this%r)
-    uvw(3) = uvw(3) - TWO*dot_prod*z/(this%r*this%r)
-  end subroutine y_cylinder_reflect
-
   pure function y_cylinder_normal(this, xyz) result(uvw)
     class(SurfaceYCylinder), intent(in) :: this
     real(8), intent(in) :: xyz(3)
@@ -683,23 +614,6 @@ contains
     end if
   end function z_cylinder_distance
 
-  subroutine z_cylinder_reflect(this, xyz, uvw)
-    class(SurfaceZCylinder), intent(in) :: this
-    real(8), intent(in)    :: xyz(3)
-    real(8), intent(inout) :: uvw(3)
-
-    real(8) :: x, y, dot_prod
-
-    ! Find x-x0, y-y0 and dot product of direction and surface normal
-    x = xyz(1) - this%x0
-    y = xyz(2) - this%y0
-    dot_prod = uvw(1)*x + uvw(2)*y
-
-    ! Reflect direction according to normal
-    uvw(1) = uvw(1) - TWO*dot_prod*x/(this%r*this%r)
-    uvw(2) = uvw(2) - TWO*dot_prod*y/(this%r*this%r)
-  end subroutine z_cylinder_reflect
-
   pure function z_cylinder_normal(this, xyz) result(uvw)
     class(SurfaceZCylinder), intent(in) :: this
     real(8), intent(in) :: xyz(3)
@@ -775,23 +689,6 @@ contains
 
     end if
   end function sphere_distance
-
-  subroutine sphere_reflect(this, xyz, uvw)
-    class(SurfaceSphere), intent(in)    :: this
-    real(8),        intent(in)    :: xyz(3)
-    real(8),        intent(inout) :: uvw(3)
-
-    real(8) :: x, y, z, dot_prod
-
-    x = xyz(1) - this%x0
-    y = xyz(2) - this%y0
-    z = xyz(3) - this%z0
-    dot_prod = uvw(1)*x + uvw(2)*y + uvw(3)*z
-
-    uvw(1) = uvw(1) - TWO*dot_prod*x/(this%r*this%r)
-    uvw(2) = uvw(2) - TWO*dot_prod*y/(this%r*this%r)
-    uvw(3) = uvw(3) - TWO*dot_prod*z/(this%r*this%r)
-  end subroutine sphere_reflect
 
   pure function sphere_normal(this, xyz) result(uvw)
     class(SurfaceSphere), intent(in) :: this
@@ -870,26 +767,6 @@ contains
     ! If the distance was negative, set boundary distance to infinity
     if (d <= ZERO) d = INFINITY
   end function x_cone_distance
-
-  subroutine x_cone_reflect(this, xyz, uvw)
-    class(SurfaceXCone), intent(in)    :: this
-    real(8),        intent(in)    :: xyz(3)
-    real(8),        intent(inout) :: uvw(3)
-
-    real(8) :: x, y, z, r, dot_prod
-
-    ! Find x-x0, y-y0, z-z0 and dot product of direction and surface normal
-    x = xyz(1) - this%x0
-    y = xyz(2) - this%y0
-    z = xyz(3) - this%z0
-    r = this%r2
-    dot_prod = (uvw(2)*y + uvw(3)*z - r*uvw(1)*x)/((r + ONE)*r*x*x)
-
-    ! Reflect direction according to normal
-    uvw(1) = uvw(1) + TWO*dot_prod*r*x
-    uvw(2) = uvw(2) - TWO*dot_prod*y
-    uvw(3) = uvw(3) - TWO*dot_prod*z
-  end subroutine x_cone_reflect
 
   pure function x_cone_normal(this, xyz) result(uvw)
     class(SurfaceXCone), intent(in) :: this
@@ -971,26 +848,6 @@ contains
     if (d <= ZERO) d = INFINITY
   end function y_cone_distance
 
-  subroutine y_cone_reflect(this, xyz, uvw)
-    class(SurfaceYCone), intent(in) :: this
-    real(8), intent(in)    :: xyz(3)
-    real(8), intent(inout) :: uvw(3)
-
-    real(8) :: x, y, z, r, dot_prod
-
-    ! Find x-x0, y-y0, z-z0 and dot product of direction and surface normal
-    x = xyz(1) - this%x0
-    y = xyz(2) - this%y0
-    z = xyz(3) - this%z0
-    r = this%r2
-    dot_prod = (uvw(1)*x + uvw(3)*z - r*uvw(2)*y)/((r + ONE)*r*y*y)
-
-    ! Reflect direction according to normal
-    uvw(1) = uvw(1) - TWO*dot_prod*x
-    uvw(2) = uvw(2) + TWO*dot_prod*r*y
-    uvw(3) = uvw(3) - TWO*dot_prod*z
-  end subroutine y_cone_reflect
-
   pure function y_cone_normal(this, xyz) result(uvw)
     class(SurfaceYCone), intent(in) :: this
     real(8), intent(in) :: xyz(3)
@@ -1070,26 +927,6 @@ contains
     ! If the distance was negative, set boundary distance to infinity
     if (d <= ZERO) d = INFINITY
   end function z_cone_distance
-
-  subroutine z_cone_reflect(this, xyz, uvw)
-    class(SurfaceZCone), intent(in) :: this
-    real(8), intent(in)    :: xyz(3)
-    real(8), intent(inout) :: uvw(3)
-
-    real(8) :: x, y, z, r, dot_prod
-
-    ! Find x-x0, y-y0, z-z0 and dot product of direction and surface normal
-    x = xyz(1) - this%x0
-    y = xyz(2) - this%y0
-    z = xyz(3) - this%z0
-    r = this%r2
-    dot_prod = (uvw(1)*x + uvw(2)*y - r*uvw(3)*z)/((r + ONE)*r*z*z)
-
-    ! Reflect direction according to normal
-    uvw(1) = uvw(1) - TWO*dot_prod*x
-    uvw(2) = uvw(2) - TWO*dot_prod*y
-    uvw(3) = uvw(3) + TWO*dot_prod*r*z
-  end subroutine z_cone_reflect
 
   pure function z_cone_normal(this, xyz) result(uvw)
     class(SurfaceZCone), intent(in) :: this

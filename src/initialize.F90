@@ -571,7 +571,7 @@ contains
       ! ADJUST SURFACE LIST FOR EACH CELL
 
       c => cells(i)
-      do j = 1, c%n_surfaces
+      do j = 1, size(c%surfaces)
         id = c%surfaces(j)
         if (id < OP_UNION) then
           if (surface_dict%has_key(abs(id))) then
@@ -581,6 +581,14 @@ contains
             call fatal_error("Could not find surface " // trim(to_str(abs(id)))&
                  &// " specified on cell " // trim(to_str(c%id)))
           end if
+        end if
+      end do
+
+      do j = 1, size(c%rpn)
+        id = c%rpn(j)
+        if (id < OP_UNION) then
+          i_array = surface_dict%get_key(abs(id))
+          c%rpn(j) = sign(i_array, id)
         end if
       end do
 

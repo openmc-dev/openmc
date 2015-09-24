@@ -578,10 +578,14 @@ class MultiGroupXS(object):
             msg = 'The h5py Python package must be installed on your system'
             raise ImportError(msg)
 
+        # Make directory if it does not exist
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
         filename = directory + '/' + filename + '.h5'
         filename = filename.replace(' ', '-')
 
-        if append:
+        if append and os.path.isfile(filename):
             xs_results = h5py.File(filename, 'a')
         else:
             xs_results = h5py.File(filename, 'w')

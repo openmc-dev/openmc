@@ -243,7 +243,7 @@ The current revision of the summary file format is 1.
 
 **/tallies/mesh <uid>/index** (*int*)
 
-    Index in the meshes array used internally in OpenMC
+    Index in the meshes array used internally in OpenMC.
 
 **/tallies/mesh <uid>/type** (*char[]*)
 

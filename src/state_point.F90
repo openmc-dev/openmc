@@ -176,7 +176,6 @@ contains
           meshp => meshes(id_array(i))
           mesh_group = create_group(meshes_group, "mesh " // trim(to_str(meshp%id)))
 
-          call write_dataset(mesh_group, "id", meshp%id)
           select case (meshp%type)
           case (MESH_REGULAR)
             call write_dataset(mesh_group, "type", "regular")

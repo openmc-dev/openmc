@@ -4,6 +4,7 @@ from xml.etree import ElementTree as ET
 import sys
 
 from openmc.checkvalue import check_type, check_value, check_greater_than
+from openmc.region import Region
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -38,17 +39,23 @@ class Surface(object):
 
     Attributes
     ----------
-    id : int
-        Unique identifier for the surface
-    name : str
-        Name of the surface
-    type : str
-        Type of the surface, e.g. 'x-plane'
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     coeffs : dict
         Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    negative : Halfspace
+        Negative half-space of the surface, i.e., if :math:`f(x,y,z) = 0` is the
+        equation for the sufrace, the region for which :math:`f(x,y,z) < 0`.
+    positive : Halfspace
+        Positive half-space of the surface, i.e., if :math:`f(x,y,z) = 0` is the
+        equation for the sufrace, the region for which :math:`f(x,y,z) > 0`.
+    type : str
+        Type of the surface, e.g. 'x-plane'
 
     """
 
@@ -87,6 +94,14 @@ class Surface(object):
     @property
     def coeffs(self):
         return self._coeffs
+
+    @property
+    def negative(self):
+        return Halfspace(self, '-')
+
+    @property
+    def positive(self):
+        return Halfspace(self, '+')
 
     @id.setter
     def id(self, surface_id):
@@ -937,3 +952,55 @@ class ZCone(Cone):
                                     R2, name=name)
 
         self._type = 'z-cone'
+
+
+class Halfspace(Region):
+    """A positive or negative half-space region.
+
+    A half-space is either of the two parts into which a two-dimension surface
+    divides the three-dimensional Euclidean space. If the equation of the
+    surface is :math:`f(x,y,z) = 0`, the region for which :math:`f(x,y,z) < 0`
+    is referred to as the negative half-space and the region for which
+    :math:`f(x,y,z) > 0` is referred to as the positive half-space.
+
+    Parameters
+    ----------
+    surface : Surface
+        Surface which divides Euclidean space.
+    side : {'+', '-'}
+        Indicates whether the positive or negative half-space is used.
+
+    Attributes
+    ----------
+    surface : Surface
+        Surface which divides Euclidean space.
+    side : {'+', '-'}
+        Indicates whether the positive or negative half-space is used.
+
+    """
+
+    def __init__(self, surface, side):
+        self.surface = surface
+        self.side = side
+
+    @property
+    def surface(self):
+        return self._surface
+
+    @surface.setter
+    def surface(self, surface):
+        check_type('surface', surface, Surface)
+        self._surface = surface
+
+    @property
+    def side(self):
+        return self._side
+
+    @side.setter
+    def side(self, side):
+        check_value('side', side, ('+', '-'))
+        self._side = side
+
+    def __str__(self):
+        return '-' + str(self.surface.id) if self.side == '-' \
+            else str(self.surface.id)

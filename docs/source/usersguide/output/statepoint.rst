@@ -134,11 +134,7 @@ if run_mode == 'k-eigenvalue':
 
 **/tally/meshes/keys** (*int[]*)
 
-    User-identified unique ID of each mesh
-
-**/tallies/meshes/mesh <uid>/id** (*int*)
-
-    Unique identifier of the mesh.
+    User-identified unique ID of each mesh.
 
 **/tallies/meshes/mesh <uid>/type** (*char[]*)
 

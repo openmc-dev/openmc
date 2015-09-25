@@ -97,10 +97,6 @@ contains
         call write_dataset(file_id, "run_mode", "fixed source")
       case (MODE_EIGENVALUE)
         call write_dataset(file_id, "run_mode", "k-eigenvalue")
-      case (MODE_PLOTTING)
-        call write_dataset(file_id, "run_mode", "plot")
-      case (MODE_PARTICLE)
-        call write_dataset(file_id, "run_mode", "particle restart")
       end select
       call write_dataset(file_id, "n_particles", n_particles)
       call write_dataset(file_id, "n_batches", n_batches)
@@ -181,7 +177,10 @@ contains
           mesh_group = create_group(meshes_group, "mesh " // trim(to_str(meshp%id)))
 
           call write_dataset(mesh_group, "id", meshp%id)
-          call write_dataset(mesh_group, "type", "regular")
+          select case (meshp%type)
+          case (MESH_REGULAR)
+            call write_dataset(mesh_group, "type", "regular")
+          end select
           call write_dataset(mesh_group, "dimension", meshp%dimension)
           call write_dataset(mesh_group, "lower_left", meshp%lower_left)
           call write_dataset(mesh_group, "upper_right", meshp%upper_right)
@@ -280,7 +279,11 @@ contains
           allocate(str_array(tally%n_nuclide_bins))
           NUCLIDE_LOOP: do j = 1, tally%n_nuclide_bins
             if (tally%nuclide_bins(j) > 0) then
+              ! Get index in cross section listings for this nuclide
               i_list = nuclides(tally%nuclide_bins(j))%listing
+
+              ! Determine position of . in alias string (e.g. "U-235.71c"). If
+              ! no . is found, just use the entire string.
               i_xs = index(xs_listings(i_list)%alias, '.')
               if (i_xs > 0) then
                 str_array(j) = xs_listings(i_list)%alias(1:i_xs - 1)

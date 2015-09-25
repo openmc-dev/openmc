@@ -96,7 +96,10 @@ class StatePoint(object):
                 'filetype'].value.decode() != 'statepoint':
             raise IOError('{} is not a statepoint file.'.format(filename))
         if self._f['revision'].value != 14:
-            raise IOError('Statepoint revision is not consistent.')
+            raise IOError('Statepoint file has a file revision of {} '
+                          'which is not consistent with the revision this '
+                          'version of OpenMC expects ({}).'.format(
+                              self._f['revision'].value, 14))
 
         # Set flags for what data has been read
         self._meshes_read = False
@@ -207,7 +210,7 @@ class StatePoint(object):
     @property
     def k_generation(self):
         if self.run_mode == 'k-eigenvalue':
-            return self._f['k_generation']/value
+            return self._f['k_generation'].value
         else:
             return None
 
@@ -355,7 +358,7 @@ class StatePoint(object):
                 n_realizations = self._f['{0}{1}/n_realizations'.format(base, tally_key)].value
 
                 # Create Tally object and assign basic properties
-                tally = openmc.Tally(tally_key)
+                tally = openmc.Tally(tally_id=tally_key)
                 tally._statepoint = self
                 tally.estimator = self._f['{0}{1}/estimator'.format(
                     base, tally_key)].value.decode()
@@ -377,20 +380,8 @@ class StatePoint(object):
 
                     n_bins = self._f['{0}{1}/n_bins'.format(subbase, j)].value
 
-                    if n_bins <= 0:
-                        msg = 'Unable to create Filter "{0}" for Tally ID="{1}" ' \
-                              'since no bins were specified'.format(j, tally_key)
-                        raise ValueError(msg)
-
                     # Read the bin values
-                    if filter_type in ['energy', 'energyout']:
-                        bins = self._f['{0}{1}/bins'.format(subbase, j)].value
-
-                    elif filter_type in ['mesh', 'distribcell']:
-                        bins = self._f['{0}{1}/bins'.format(subbase, j)].value
-
-                    else:
-                        bins = self._f['{0}{1}/bins'.format(subbase, j)].value
+                    bins = self._f['{0}{1}/bins'.format(subbase, j)].value
 
                     # Create Filter object
                     filter = openmc.Filter(filter_type, bins)

@@ -51,8 +51,6 @@ contains
       call write_dataset(file_id, 'run_mode', 'fixed source')
     case (MODE_EIGENVALUE)
       call write_dataset(file_id, 'run_mode', 'k-eigenvalue')
-    case (MODE_PLOTTING)
-      call write_dataset(file_id, 'run_mode', 'plot')
     case (MODE_PARTICLE)
       call write_dataset(file_id, 'run_mode', 'particle restart')
     end select

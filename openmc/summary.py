@@ -91,14 +91,11 @@ class Summary(object):
                 name, xs = fullname.split('.')
 
                 if 'nat' in name:
-                    nuclide = openmc.Element(name=name, xs=xs)
+                    material.add_element(openmc.Element(name=name, xs=xs),
+                                         percent=density, percent_type='ao')
                 else:
-                    nuclide = openmc.Nuclide(name=name, xs=xs)
-
-                if isinstance(nuclide, openmc.Nuclide):
-                    material.add_nuclide(nuclide, percent=density, percent_type='ao')
-                elif isinstance(nuclide, openmc.Element):
-                    material.add_element(nuclide, percent=density, percent_type='ao')
+                    material.add_nuclide(openmc.Nuclide(name=name, xs=xs),
+                                         percent=density, percent_type='ao')
 
             # Add the Material to the global dictionary of all Materials
             self.materials[index] = material
@@ -342,7 +339,7 @@ class Summary(object):
                 universes = universes[:, ::-1, :]
                 lattice.universes = universes
 
-                if offsets:
+                if offsets is not None:
                     offsets = np.swapaxes(offsets, 0, 1)
                     offsets = np.swapaxes(offsets, 1, 2)
                     lattice.offsets = offsets
@@ -436,7 +433,7 @@ class Summary(object):
                     # Lattice is 2D; extract the only axial level
                     lattice.universes = universes[0]
 
-                if offsets:
+                if offsets is not None:
                     lattice.offsets = offsets
 
                 # Add the Lattice to the global dictionary of all Lattices

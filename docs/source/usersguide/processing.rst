@@ -14,17 +14,18 @@ third-party Python packages, including:
 * [1]_ `NumPy <http://www.numpy.org/>`_
 * [2]_ `h5py <http://www.h5py.org>`_
 * [3]_ `pandas <http://pandas.pydata.org>`_
-* [3]_ `matplotlib <http://matplotlib.org/>`_
-* [3]_ `Silomesh <https://github.com/nhorelik/silomesh>`_
-* [3]_ `VTK <http://www.vtk.org/>`_
-* [3]_ `lxml <http://lxml.de>`_
+* [4]_ `matplotlib <http://matplotlib.org/>`_
+* [4]_ `Silomesh <https://github.com/nhorelik/silomesh>`_
+* [4]_ `VTK <http://www.vtk.org/>`_
+* [4]_ `lxml <http://lxml.de>`_
 
 Most of these are can easily be installed with `pip <https://pip.pypa.io>`_
 or alternatively obtaining through a package manager.
 
 .. [1] Required for most post-processing tasks
 .. [2] Required for reading HDF5 output files
-.. [3] Not used directly by the Python API, but are optional dependencies for a
+.. [3] Optional dependency for advanced features in Python API
+.. [4] Not used directly by the Python API, but are optional dependencies for a
        number of scripts.
 
 ----------------------
@@ -187,7 +188,7 @@ Tally results are saved in both a text file (tallies.out) as well as an HDF5
 statepoint file. While the tallies.out file may be fine for simple tallies, in
 many cases the user requires more information about the tally or the run, or has
 to deal with a large number of result values (e.g. for mesh tallies).  In these
-cases, extracting data from the statepoint file via the Python API is the
+cases, extracting data from the statepoint file via the :ref:`pythonapi` is the
 preferred method of data analysis and visualization.
 
 Data Extraction
@@ -209,8 +210,8 @@ Plotting in 2D
 The :ref:`IPython notebook example <notebook_post_processing>` also demonstrates
 how to plot a mesh tally in two dimensions using the Python API. Note, however,
 that there is also a script distributed with OpenMC, ``openmc-plot-mesh-tally``,
-that interactive GUI to explore and plot mesh tallies for any scores and filter
-bins.
+that provides an interactive GUI to explore and plot mesh tallies for any scores
+and filter bins.
 
 .. image:: ../_images/plotmeshtally.png
    :height: 200px

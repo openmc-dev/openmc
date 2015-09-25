@@ -273,8 +273,6 @@ class MeshPlotter(tk.Frame):
     def get_file_data(self, filename):
         # Create StatePoint object and read in data
         self.datafile = StatePoint(filename)
-        self.datafile.read_results()
-        self.datafile.compute_stdev()
 
         # Find which tallies are mesh tallies
         self.meshTallies = []

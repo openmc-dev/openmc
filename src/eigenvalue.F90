@@ -9,7 +9,7 @@ module eigenvalue
   use global
   use math,         only: t_percentile
   use mesh,         only: count_bank_sites
-  use mesh_header,  only: StructuredMesh
+  use mesh_header,  only: RegularMesh
   use particle_header, only: Particle
   use random_lcg,   only: prn, set_particle_seed, prn_skip
   use search,       only: binary_search
@@ -304,7 +304,7 @@ contains
     integer :: i, j, k        ! index for bank sites
     integer :: n              ! # of boxes in each dimension
     logical :: sites_outside  ! were there sites outside entropy box?
-    type(StructuredMesh), pointer :: m => null()
+    type(RegularMesh), pointer :: m
 
     ! Get pointer to entropy mesh
     m => entropy_mesh

@@ -273,16 +273,6 @@ The current revision of the summary file format is 1.
 
     Name of the tally.
 
-**/tallies/tally <uid>/total_score_bins** (*int*)
-
-    Total number of scoring bins for all nuclides. This is used as the size of
-    second dimension of the tally results array.
-
-**/tallies/tally <uid>/total_filter_bins** (*int*)
-
-    Total number of filter bins accounting for all filters. This is used as the
-    size of first dimension of the tally results array.
-
 **/tallies/tally <uid>/n_filters** (*int*)
 
     Number of filters applied to the tally.

@@ -1426,8 +1426,7 @@ a separate element with the tag name ``<mesh>``. This element has the following
 attributes/sub-elements:
 
   :type:
-    The type of structured mesh. Valid options include "rectangular" and
-    "hexagonal".
+    The type of structured mesh. The only valid option is "regular".
 
   :dimension:
     The number of mesh cells in each direction.

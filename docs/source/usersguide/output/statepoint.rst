@@ -56,7 +56,7 @@ The current revision of the statepoint file format is 13.
 
     The number of batches already simulated.
 
-if (run_mode == MODE_EIGENVALUE)
+if run_mode == 'k-eigenvalue':
 
     **/n_inactive** (*int*)
 
@@ -136,31 +136,29 @@ if (run_mode == MODE_EIGENVALUE)
 
     User-identified unique ID of each mesh
 
-*do i = 1, n_meshes*
+**/tallies/meshes/mesh <uid>/id** (*int*)
 
-    **/tallies/meshes/mesh i/id** (*int*)
+    Unique identifier of the mesh.
 
-        Unique identifier of the mesh.
+**/tallies/meshes/mesh <uid>/type** (*char[]*)
 
-    **/tallies/meshes/mesh i/type** (*char[]*)
+    Type of mesh.
 
-        Type of mesh.
+**/tallies/meshes/mesh <uid>/dimension** (*int*)
 
-    **/tallies/meshes/mesh i/dimension** (*int*)
+    Number of mesh cells in each dimension.
 
-        Number of mesh cells in each dimension.
+**/tallies/meshes/mesh <uid>/lower_left** (*double[]*)
 
-    **/tallies/meshes/mesh i/lower_left** (*double[]*)
+    Coordinates of lower-left corner of mesh.
 
-        Coordinates of lower-left corner of mesh.
+**/tallies/meshes/mesh <uid>/upper_right** (*double[]*)
 
-    **/tallies/meshes/mesh i/upper_right** (*double[]*)
+    Coordinates of upper-right corner of mesh.
 
-        Coordinates of upper-right corner of mesh.
+**/tallies/meshes/mesh <uid>/width** (*double[]*)
 
-    **/tallies/meshes/mesh i/width** (*double[]*)
-
-        Width of each mesh cell in each dimension.
+    Width of each mesh cell in each dimension.
 
 **/tallies/n_tallies** (*int*)
 
@@ -174,63 +172,66 @@ if (run_mode == MODE_EIGENVALUE)
 
     User-identified unique ID of each tally.
 
-*do i = 1, n_tallies*
+**/tallies/tally <uid>/estimator** (*char[]*)
 
-    **/tallies/tally i/estimator** (*char[]*)
+    Type of tally estimator, either 'analog', 'tracklength', or 'collision'.
 
-        Type of tally estimator.
+**/tallies/tally <uid>/n_realizations** (*int*)
 
-    **/tallies/tally i/n_realizations** (*int*)
+    Number of realizations.
 
-        Number of realizations.
+**/tallies/tally <uid>/n_filters** (*int*)
 
-    **/tallies/tally i/n_filters** (*int*)
+    Number of filters used.
 
-        Number of filters used.
+**/tallies/tally <uid>/filter <j>/type** (*char[]*)
 
-    *do j = 1, tallies(i) % n_filters*
+    Type of the j-th filter. Can be 'universe', 'material', 'cell', 'cellborn',
+    'surface', 'mesh', 'energy', 'energyout', or 'distribcell'.
 
-        **/tallies/tally i/filter j/type** (*char[]*)
+**/tallies/tally <uid>/filter <j>/offset** (*int*)
 
-            Type of tally filter.
+    Filter offset (used for distribcell filter).
 
-        **/tallies/tally i/filter j/offset** (*int*)
+**/tallies/tally <uid>/filter <j>/n_bins** (*int*)
 
-            Filter offset (used for distribcell).
+    Number of bins for the j-th filter.
 
-        **/tallies/tally i/filter j/n_bins** (*int*)
+**/tallies/tally <uid>/filter <j>/bins** (*int[]* or *double[]*)
 
-            Number of bins for filter.
+    Value for each filter bin of this type.
 
-        **/tallies/tally i/filter j/bins** (*int[]* or *double[]*)
+**/tallies/tally <uid>/nuclides** (*char[][]*)
 
-            Value for each filter bin of this type.
+    Array of nuclides to tally. Note that if no nuclide is specified in the user
+    input, a single 'total' nuclide appears here.
 
-    **/tallies/tally i/nuclides** (*char[][]*)
+**/tallies/tally <uid>/n_score_bins** (*int*)
 
-        Values of specified nuclide bins.
+    Number of scoring bins for a single nuclide. In general, this can be greater
+    than the number of user-specified scores since each score might have
+    multiple scoring bins, e.g., scatter-PN.
 
-    **/tallies/tally i/n_score_bins** (*int*)
+**/tallies/tally <uid>/score_bins** (*char[][]*)
 
-        Number of scores.
+    Values of specified scores.
 
-    **/tallies/tally i/score_bins** (*char[][]*)
+**/tallies/tally <uid>/n_user_scores** (*int*)
 
-        Values of specified scores.
+    Number of scores without accounting for those added by expansions,
+    e.g. scatter-PN.
 
-    **/tallies/tally i/n_user_scores** (*int*)
+**/tallies/tally <uid>/moment_orders** (*char[][]*)
 
-        Number of scores without accounting for those added by expansions,
-        e.g. scatter-PN.
+    Tallying moment orders for Legendre and spherical harmonic tally expansions
+    (*e.g.*, 'P2', 'Y1,2', etc.).
 
-    **/tallies/tally i/moment_orders** (*char[][]*)
+**/tallies/tally <uid>/results** (Compound type)
 
-        Tallying moment orders for Legendre and spherical harmonic tally
-        expansions (*e.g.*, 'P2', 'Y1,2', etc.).
-
-    **/tallies/tally i/results** (Compound type)
-
-        Accumulated sum and sum-of-squares for each bin of the i-th tally.
+    Accumulated sum and sum-of-squares for each bin of the i-th tally. This is a
+    two-dimensional array, the first dimension of which represents combinations
+    of filter bins and the second dimensions of which represents scoring
+    bins. Each element of the array has fields 'sum' and 'sum_sq'.
 
 **/source_present** (*int*)
 

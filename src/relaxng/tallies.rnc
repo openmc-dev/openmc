@@ -1,8 +1,8 @@
 element tallies {
   element mesh {
     (element id { xsd:int } | attribute id { xsd:int }) &
-    (element type { ( "rectangular" | "hexagonal" ) } |
-      attribute type { ( "rectangular" | "hexagonal" ) }) &
+    (element type { ( "regular" ) } |
+      attribute type { ( "regular" ) }) &
     (element dimension { list { xsd:positiveInteger+ } } |
       attribute dimension { list { xsd:positiveInteger+ } }) &
     (element lower_left { list { xsd:double+ } } |
@@ -32,7 +32,7 @@ element tallies {
     element nuclides {
       list { xsd:string { maxLength = "12" }+ }
     }? &
-    element scores { 
+    element scores {
       list { xsd:string { maxLength = "20" }+ }
     } &
     element trigger {

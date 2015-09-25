@@ -14,7 +14,6 @@ class EntropyTestHarness(TestHarness):
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)
-        sp.read_results()
 
         # Write out k-combined.
         outstr = 'k-combined:\n'
@@ -23,7 +22,7 @@ class EntropyTestHarness(TestHarness):
 
         # Write out entropy data.
         outstr += 'entropy:\n'
-        results = ['{0:12.6E}'.format(x) for x in sp._entropy]
+        results = ['{0:12.6E}'.format(x) for x in sp.entropy]
         outstr += '\n'.join(results) + '\n'
 
         return outstr

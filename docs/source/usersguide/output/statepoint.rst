@@ -6,11 +6,9 @@ State Point File Format
 
 The current revision of the statepoint file format is 13.
 
-**/filetype** (*int*)
+**/filetype** (*char[]*)
 
-    Flags what type of file this is. A value of -1 indicates a statepoint file,
-    a value of -2 indicates a particle restart file, a value of -3 indicates a
-    source file, and a value of -4 indicates a track file.
+    String indicating the type of file.
 
 **/revision** (*int*)
 
@@ -29,11 +27,11 @@ The current revision of the statepoint file format is 13.
 
     Release version number for OpenMC
 
-**/time_stamp** (*char[19]*)
+**/date_and_time** (*char[]*)
 
     Date and time the state point was written.
 
-**/path** (*char[255]*)
+**/path** (*char[]*)
 
     Absolute path to directory containing input files.
 
@@ -41,7 +39,7 @@ The current revision of the statepoint file format is 13.
 
     Pseudo-random number generator seed.
 
-**/run_mode** (*int*)
+**/run_mode** (*char[]*)
 
     Run mode used. A value of 1 indicates a fixed-source run and a value of 2
     indicates an eigenvalue run.
@@ -58,7 +56,7 @@ The current revision of the statepoint file format is 13.
 
     The number of batches already simulated.
 
-if (run_mode == MODE_EIGENVALUE)
+if run_mode == 'k-eigenvalue':
 
     **/n_inactive** (*int*)
 
@@ -136,37 +134,27 @@ if (run_mode == MODE_EIGENVALUE)
 
 **/tally/meshes/keys** (*int[]*)
 
-    User-identified unique ID of each mesh
+    User-identified unique ID of each mesh.
 
-*do i = 1, n_meshes*
+**/tallies/meshes/mesh <uid>/type** (*char[]*)
 
-    **/tallies/meshes/mesh i/id** (*int*)
+    Type of mesh.
 
-        Unique identifier of the mesh.
+**/tallies/meshes/mesh <uid>/dimension** (*int*)
 
-    **/tallies/meshes/mesh i/type** (*int*)
+    Number of mesh cells in each dimension.
 
-        Type of mesh.
+**/tallies/meshes/mesh <uid>/lower_left** (*double[]*)
 
-    **/tallies/meshes/mesh i/n_dimension** (*int*)
+    Coordinates of lower-left corner of mesh.
 
-        Number of dimensions for mesh (2 or 3).
+**/tallies/meshes/mesh <uid>/upper_right** (*double[]*)
 
-    **/tallies/meshes/mesh i/dimension** (*int*)
+    Coordinates of upper-right corner of mesh.
 
-        Number of mesh cells in each dimension.
+**/tallies/meshes/mesh <uid>/width** (*double[]*)
 
-    **/tallies/meshes/mesh i/lower_left** (*double[]*)
-
-        Coordinates of lower-left corner of mesh.
-
-    **/tallies/meshes/mesh i/upper_right** (*double[]*)
-
-        Coordinates of upper-right corner of mesh.
-
-    **/tallies/meshes/mesh i/width** (*double[]*)
-
-        Width of each mesh cell in each dimension.
+    Width of each mesh cell in each dimension.
 
 **/tallies/n_tallies** (*int*)
 
@@ -180,65 +168,66 @@ if (run_mode == MODE_EIGENVALUE)
 
     User-identified unique ID of each tally.
 
-*do i = 1, n_tallies*
+**/tallies/tally <uid>/estimator** (*char[]*)
 
-    **/tallies/tally i/estimator** (*int*)
+    Type of tally estimator, either 'analog', 'tracklength', or 'collision'.
 
-        Type of tally estimator: analog (1) or tracklength (2).
+**/tallies/tally <uid>/n_realizations** (*int*)
 
-    **/tallies/tally i/n_realizations** (*int*)
+    Number of realizations.
 
-        Number of realizations.
+**/tallies/tally <uid>/n_filters** (*int*)
 
-    **/tallies/tally i/n_filters** (*int*)
+    Number of filters used.
 
-        Number of filters used.
+**/tallies/tally <uid>/filter <j>/type** (*char[]*)
 
-    *do j = 1, tallies(i) % n_filters*
+    Type of the j-th filter. Can be 'universe', 'material', 'cell', 'cellborn',
+    'surface', 'mesh', 'energy', 'energyout', or 'distribcell'.
 
-        **/tallies/tally i/filter j/type** (*int*)
+**/tallies/tally <uid>/filter <j>/offset** (*int*)
 
-            Type of tally filter.
+    Filter offset (used for distribcell filter).
 
-        **/tallies/tally i/filter j/offset** (*int*)
+**/tallies/tally <uid>/filter <j>/n_bins** (*int*)
 
-            Filter offset (used for distribcell).
+    Number of bins for the j-th filter.
 
-        **/tallies/tally i/filter j/n_bins** (*int*)
+**/tallies/tally <uid>/filter <j>/bins** (*int[]* or *double[]*)
 
-            Number of bins for filter.
+    Value for each filter bin of this type.
 
-        **/tallies/tally i/filter j/bins** (*int[]* or *double[]*)
+**/tallies/tally <uid>/nuclides** (*char[][]*)
 
-            Value for each filter bin of this type.
+    Array of nuclides to tally. Note that if no nuclide is specified in the user
+    input, a single 'total' nuclide appears here.
 
-    **/tallies/tally i/n_nuclides** (*int*)
+**/tallies/tally <uid>/n_score_bins** (*int*)
 
-        Number of nuclide bins. If none are specified, this is just one.
+    Number of scoring bins for a single nuclide. In general, this can be greater
+    than the number of user-specified scores since each score might have
+    multiple scoring bins, e.g., scatter-PN.
 
-    **/tallies/tally i/nuclides** (*int[]*)
+**/tallies/tally <uid>/score_bins** (*char[][]*)
 
-        Values of specified nuclide bins (ZAID identifiers)
+    Values of specified scores.
 
-    **/tallies/tally i/n_score_bins** (*int*)
+**/tallies/tally <uid>/n_user_scores** (*int*)
 
-        Number of scoring bins.
+    Number of scores without accounting for those added by expansions,
+    e.g. scatter-PN.
 
-    **/tallies/tally i/score_bins** (*int*)
+**/tallies/tally <uid>/moment_orders** (*char[][]*)
 
-        Values of specified scoring bins (e.g. SCORE_FLUX).
+    Tallying moment orders for Legendre and spherical harmonic tally expansions
+    (*e.g.*, 'P2', 'Y1,2', etc.).
 
-    **/tallies/tally i/n_user_score_bins**
+**/tallies/tally <uid>/results** (Compound type)
 
-        Number of scoring bins without accounting for those added by
-        expansions, e.g. scatter-PN.
-
-    *do J = 1, total number of moments*
-
-        **/tallies/tally i/moments/orderJ** (*char[8]*)
-
-            Tallying moment order for Legendre and spherical
-            harmonic tally expansions (*e.g.*, 'P2', 'Y1,2', etc.).
+    Accumulated sum and sum-of-squares for each bin of the i-th tally. This is a
+    two-dimensional array, the first dimension of which represents combinations
+    of filter bins and the second dimensions of which represents scoring
+    bins. Each element of the array has fields 'sum' and 'sum_sq'.
 
 **/source_present** (*int*)
 
@@ -261,13 +250,7 @@ if (run_mode == MODE_EIGENVALUE)
 
     Flag indicated if tallies are present in the file.
 
-*do i = 1, n_tallies*
-
-**/tallies/tally i/results** (Compound type)
-
-    Accumulated sum and sum-of-squares for each bin of the tally i-th tally
-
-if (run_mode == MODE_EIGENVALUE and source_present)
+if (run_mode == 'k-eigenvalue' and source_present > 0)
 
     **/source_bank** (Compound type)
 

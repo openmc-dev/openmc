@@ -1,9 +1,11 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 from __future__ import division, print_function
 import struct
 import sys
 
+import numpy as np
+import h5py
 
 def parse_options():
     """Process command line arguments"""
@@ -22,14 +24,16 @@ def parse_options():
     return parsed
 
 
-def main(file_, o):
-    print(file_)
-    fh = open(file_, 'rb')
-    header = get_header(fh)
-    meshparms = (header['dimension'] + header['lower_left'] +
-                 header['upper_right'])
-    nx, ny, nz = meshparms[:3]
-    ll = header['lower_left']
+def main(filename, o):
+    # Read data from voxel file
+    fh = h5py.File(filename, 'r')
+    dimension = fh['num_voxels'].value
+    width = fh['voxel_width'].value
+    lower_left = fh['lower_left'].value
+    voxel_data = fh['data'].value
+
+    nx, ny, nz = dimension
+    upper_right = lower_left + width*dimension
 
     if o.vtk:
         try:
@@ -40,13 +44,10 @@ def main(file_, o):
                   'See: http://www.vtk.org/')
             return
 
-        origin = [(l + w*n/2.) for n, l, w in
-                  zip((nx, ny, nz), ll, header['width'])]
-
         grid = vtk.vtkImageData()
         grid.SetDimensions(nx+1, ny+1, nz+1)
-        grid.SetOrigin(*ll)
-        grid.SetSpacing(*header['width'])
+        grid.SetOrigin(*lower_left)
+        grid.SetSpacing(*width)
 
         data = vtk.vtkDoubleArray()
         data.SetName("id")
@@ -57,8 +58,7 @@ def main(file_, o):
             for y in range(ny):
                 for z in range(nz):
                     i = z*nx*ny + y*nx + x
-                    id_ = get_int(fh)[0]
-                    data.SetValue(i, id_)
+                    data.SetValue(i, voxel_data[x,y,z])
         grid.GetCellData().AddArray(data)
 
         writer = vtk.vtkXMLImageDataWriter()
@@ -81,42 +81,21 @@ def main(file_, o):
         if not o.output.endswith(".silo"):
             o.output += ".silo"
         silomesh.init_silo(o.output)
-        silomesh.init_mesh('plot', *meshparms)
+        meshparams = list(map(int, dimension)) + list(map(float, lower_left)) + \
+                     list(map(float, upper_right))
+        silomesh.init_mesh('plot', *meshparams)
         silomesh.init_var("id")
-        for x in range(1, nx+1):
+        for x in range(nx):
             sys.stdout.write(" {0}%\r".format(int(x/nx*100)))
             sys.stdout.flush()
-            for y in range(1, ny+1):
-                for z in range(1, nz+1):
-                    id_ = get_int(fh)[0]
-                    silomesh.set_value(float(id_), x, y, z)
+            for y in range(ny):
+                for z in range(nz):
+                    silomesh.set_value(float(voxel_data[x,y,z]),
+                                       x + 1, y + 1, z + 1)
         print()
         silomesh.finalize_var()
         silomesh.finalize_mesh()
         silomesh.finalize_silo()
-
-
-def get_header(file_):
-    nx, ny, nz = get_int(file_, 3)
-    wx, wy, wz = get_double(file_, 3)
-    lx, ly, lz = get_double(file_, 3)
-    header = {'dimension': [nx, ny, nz], 'width': [wx, wy, wz],
-              'lower_left': [lx, ly, lz],
-              'upper_right': [lx+wx*nx, ly+wy*ny, lz+wz*nz]}
-    return header
-
-
-def get_data(file_, n, typeCode, size):
-    return list(struct.unpack('={0}{1}'.format(n, typeCode),
-                              file_.read(n*size)))
-
-
-def get_int(file_, n=1, path=None):
-    return get_data(file_, n, 'i', 4)
-
-
-def get_double(file_, n=1, path=None):
-    return get_data(file_, n, 'd', 8)
 
 
 if __name__ == '__main__':

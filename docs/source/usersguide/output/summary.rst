@@ -29,7 +29,7 @@ The current revision of the summary file format is 1.
 
 **/date_and_time** (*char[]*)
 
-    Date and time the state point was written.
+    Date and time the summary was written.
 
 **/n_procs** (*int*)
 
@@ -43,186 +43,302 @@ The current revision of the summary file format is 1.
 
     Number of batches to simulate.
 
-if (run_mode == MODE_EIGENVALUE)
+**/n_inactive** (*int*)
 
-    **/n_inactive** (*int*)
+    Number of inactive batches. Only present if /run_mode is set to
+    'k-eigenvalue'.
 
-        Number of inactive batches.
+**/n_active** (*int*)
 
-    **/n_active** (*int*)
+    Number of active batches. Only present if /run_mode is set to
+    'k-eigenvalue'.
 
-        Number of active batches.
+**/gen_per_batch** (*int*)
 
-    **/gen_per_batch** (*int*)
-
-        Number of generations per batch.
-
-end if
+    Number of generations per batch. Only present if /run_mode is set to
+    'k-eigenvalue'.
 
 **/geometry/n_cells** (*int*)
 
+    Number of cells in the problem.
+
 **/geometry/n_surfaces** (*int*)
+
+    Number of surfaces in the problem.
 
 **/geometry/n_universes** (*int*)
 
+    Number of unique universes in the problem.
+
 **/geometry/n_lattices** (*int*)
 
-do i = 1, n_cells
+    Number of lattices in the problem.
 
-    **/geometry/cells/cell <uid>/index** (*int*)
+**/geometry/cells/cell <uid>/index** (*int*)
 
-    **/geometry/cells/cell <uid>/name** (*char[]*)
+    Index in cells array used internally in OpenMC.
 
-    **/geometry/cells/cell <uid>/universe** (*int*)
+**/geometry/cells/cell <uid>/name** (*char[]*)
 
-    **/geometry/cells/cell <uid>/fill_type** (*char[]*)
+    Name of the cell.
 
-    **/geometry/cells/cell <uid>/material** (*int*)
+**/geometry/cells/cell <uid>/universe** (*int*)
 
-    **/geometry/cells/cell <uid>/maps** (*int*)
+    Universe assigned to the cell. If none is specified, the default
+    universe (0) is assigned.
 
-    **/geometry/cells/cell <uid>/offset** (*int[]*)
+**/geometry/cells/cell <uid>/fill_type** (*char[]*)
 
-    **/geometry/cells/cell <uid>/translated** (*int*)
+    Type of fill for the cell. Can be 'normal', 'universe', or 'lattice'.
 
-    **/geometry/cells/cell <uid>/translation** (*double[]*)
+**/geometry/cells/cell <uid>/material** (*int*)
 
-    **/geometry/cells/cell <uid>/rotated** (*int*)
+    Unique ID of the material assigned to the cell. This dataset is present only
+    if fill_type is set to 'normal'.
 
-    **/geometry/cells/cell <uid>/rotation** (*double[]*)
+**/geometry/cells/cell <uid>/maps** (*int*)
 
-    **/geometry/cells/cell <uid>/lattice** (*int*)
+    TODO: Add description.
 
-    **/geometry/cells/cell <uid>/surfaces** (*int[]*)
+**/geometry/cells/cell <uid>/offset** (*int[]*)
 
-end do
+    Offset used for distribcell tally filter. This dataset is present only if
+    fill_type is set to 'universe'.
 
-do i = 1, n_surfaces
+**/geometry/cells/cell <uid>/translated** (*int*)
 
-    **/geometry/surfaces/surface <uid>/index** (*int*)
+    Indicates if a translation is to be applied to the fill universe if one is
+    present. Note that this dataset assumes values of 0 or 1. This dataset is
+    present only if fill_type is set to 'universe'.
 
-    **/geometry/surfaces/surface <uid>/name** (*char[]*)
+**/geometry/cells/cell <uid>/translation** (*double[3]*)
 
-    **/geometry/surfaces/surface <uid>/type** (*char[]*)
+    Translation applied to the fill universe. This dataset is present only if
+    fill_type is set to 'universe'.
 
-    **/geometry/surfaces/surface <uid>/coefficients** (*double[]*)
+**/geometry/cells/cell <uid>/rotated** (*int*)
 
-    **/geometry/surfaces/surface <uid>/boundary_condition** (*char[]*)
+    Indicates if a rotation is to be applied to the fill universe if one is
+    present. Note that this dataset assumes values of 0 or 1. This dataset is
+    present only if fill_type is set to 'universe'.
 
-end do
+**/geometry/cells/cell <uid>/rotation** (*double[3]*)
 
-do i = 1, n_universes
+    Angles in degrees about the x-, y-, and z-axes for which the fill universe
+    should be rotated. This dataset is present only if fill_type is set to
+    'universe'.
 
-    **/geometry/universes/universe <uid>/index** (*int*)
+**/geometry/cells/cell <uid>/lattice** (*int*)
 
-    **/geometry/universes/universe <uid>/cells** (*int[]*)
+    Unique ID of the lattice which fills the cell. Only present if fill_type is
+    set to 'lattice'.
 
-end do
+**/geometry/cells/cell <uid>/surfaces** (*int[]*)
 
-do i = 1, n_lattices
+    Surface specification for the cell.
 
-    **/geometry/lattices/lattice <uid>/index** (*int*)
+**/geometry/surfaces/surface <uid>/index** (*int*)
 
-    **/geometry/lattices/lattice <uid>/name** (*char[]*)
+    Index in surfaces array used internally in OpenMC.
 
-    **/geometry/lattices/lattice <uid>/type** (*char[]*)
+**/geometry/surfaces/surface <uid>/name** (*char[]*)
 
-    **/geometry/lattices/lattice <uid>/pitch** (*double[]*)
+    Name of the surface.
 
-    **/geometry/lattices/lattice <uid>/outer** (*int*)
+**/geometry/surfaces/surface <uid>/type** (*char[]*)
 
-    **/geometry/lattices/lattice <uid>/offset_size** (*int[]*)
+    Type of the surface. Can be 'X Plane', 'Y Plane', 'Z Plane', 'Plane', 'X
+    Cylinder', 'Y Cylinder', 'Sphere', 'X Cone', 'Y Cone', or 'Z Cone'.
 
-    **/geometry/lattices/lattice <uid>/maps** (*int*)
+**/geometry/surfaces/surface <uid>/coefficients** (*double[]*)
 
-    **/geometry/lattices/lattice <uid>/offsets** (*int[]*)
+    Array of coefficients that define the surface. See :ref:`surface_element`
+    for what coefficients are defined for each surface type.
 
-    **/geometry/lattices/lattice <uid>/universes** (*int[]*)
+**/geometry/surfaces/surface <uid>/boundary_condition** (*char[]*)
 
-    if (rectangular lattice)
+    Boundary condition applied to the surface. Can be 'transmission', 'vacuum',
+    'reflective', or 'periodic'.
 
-        **/geometry/lattices/lattice <uid>/dimension** (*int[]*)
+**/geometry/universes/universe <uid>/index** (*int*)
 
-        **/geometry/lattices/lattice <uid>/lower_left** (*double[]*)
+    Index in the universes array used internally in OpenMC.
 
-    elseif (hexagonal lattice)
+**/geometry/universes/universe <uid>/cells** (*int[]*)
 
-        **/geometry/lattices/lattice <uid>/n_rings** (*int*)
+    Array of unique IDs of cells that appear in the universe.
 
-        **/geometry/lattices/lattice <uid>/n_axial** (*int*)
+**/geometry/lattices/lattice <uid>/index** (*int*)
 
-        **/geometry/lattices/lattice <uid>/center** (*double[]*)
+    Index in the lattices array used internally in OpenMC.
 
-    end if
+**/geometry/lattices/lattice <uid>/name** (*char[]*)
 
-end do
+    Name of the lattice.
+
+**/geometry/lattices/lattice <uid>/type** (*char[]*)
+
+    Type of the lattice, either 'rectangular' or 'hexagonal'.
+
+**/geometry/lattices/lattice <uid>/pitch** (*double[]*)
+
+    Pitch of the lattice.
+
+**/geometry/lattices/lattice <uid>/outer** (*int*)
+
+    Outer universe assigned to lattice cells outside the defined range.
+
+**/geometry/lattices/lattice <uid>/offset_size** (*int[]*)
+
+    TODO: Explain offset_size
+
+**/geometry/lattices/lattice <uid>/maps** (*int*)
+
+    TODO: Explain maps
+
+**/geometry/lattices/lattice <uid>/offsets** (*int[]*)
+
+    Offsets used for distribcell tally filter.
+
+**/geometry/lattices/lattice <uid>/universes** (*int[]*)
+
+    Three-dimensional array of universes assigned to each cell of the lattice.
+
+**/geometry/lattices/lattice <uid>/dimension** (*int[]*)
+
+    The number of lattice cells in each direction. This dataset is present only
+    when the 'type' dataset is set to 'rectangular'.
+
+**/geometry/lattices/lattice <uid>/lower_left** (*double[]*)
+
+    The coordinates of the lower-left corner of the lattice. This dataset is
+    present only when the 'type' dataset is set to 'rectangular'.
+
+**/geometry/lattices/lattice <uid>/n_rings** (*int*)
+
+    Number of radial ring positions in the xy-plane. This dataset is present
+    only when the 'type' dataset is set to 'hexagonal'.
+
+**/geometry/lattices/lattice <uid>/n_axial** (*int*)
+
+    Number of lattice positions along the z-axis. This dataset is present only
+    when the 'type' dataset is set to 'hexagonal'.
+
+**/geometry/lattices/lattice <uid>/center** (*double[]*)
+
+    Coordinates of the center of the lattice. This dataset is present only when
+    the 'type' dataset is set to 'hexagonal'.
 
 **/n_materials** (*int*)
 
-do i = 1, n_materials
+    Number of materials in the problem.
 
-    **/materials/material <uid>/index** (*int*)
+**/materials/material <uid>/index** (*int*)
 
-    **/materials/material <uid>/name** (*char[]*)
+    Index in materials array used internally in OpenMC.
 
-    **/materials/material <uid>/atom_density** (*double[]*)
+**/materials/material <uid>/name** (*char[]*)
 
-    **/materials/material <uid>/nuclides** (*int[]*)
+    Name of the material.
 
-    **/materials/material <uid>/nuclide_densities** (*double[]*)
+**/materials/material <uid>/atom_density** (*double[]*)
 
-    **/materials/material <uid>/sab_names** (*char[][]*)
+    Total atom density of the material in atom/b-cm.
 
-end do
+**/materials/material <uid>/nuclides** (*char[][]*)
+
+    Array of nuclides present in the material, e.g., 'U-235.71c'.
+
+**/materials/material <uid>/nuclide_densities** (*double[]*)
+
+    Atom density of each nuclide.
+
+**/materials/material <uid>/sab_names** (*char[][]*)
+
+    Names of S(:math:`\alpha`,:math:`\beta`) tables assigned to the material.
 
 **/tallies/n_tallies** (*int*)
 
+    Number of tallies in the problem.
+
 **/tallies/n_meshes** (*int*)
 
-do i = 1, n_meshes
+    Number of meshes in the problem.
 
-   **/tallies/mesh <uid>/index** (*int*)
+**/tallies/mesh <uid>/index** (*int*)
 
-   **/tallies/mesh <uid>/type** (*char[]*)
+    Index in the meshes array used internally in OpenMC
 
-   **/tallies/mesh <uid>/dimension** (*int[]*)
+**/tallies/mesh <uid>/type** (*char[]*)
 
-   **/tallies/mesh <uid>/lower_left** (*double[]*)
+    Type of the mesh. The only valid option is currently 'regular'.
 
-   **/tallies/mesh <uid>/upper_right** (*double[]*)
+**/tallies/mesh <uid>/dimension** (*int[]*)
 
-   **/tallies/mesh <uid>/width** (*double[]*)
+    Number of mesh cells in each direction.
 
-end do
+**/tallies/mesh <uid>/lower_left** (*double[]*)
 
-do i = 1, n_tallies
+    Coordinates of the lower-left corner of the mesh.
 
-    **/tallies/tally <uid>/index** (*int*)
+**/tallies/mesh <uid>/upper_right** (*double[]*)
 
-    **/tallies/tally <uid>/name** (*char[]*)
+    Coordinates of the upper-right corner of the mesh.
 
-    **/tallies/tally <uid>/total_score_bins** (*int*)
+**/tallies/mesh <uid>/width** (*double[]*)
 
-    **/tallies/tally <uid>/total_filter_bins** (*int*)
+    Width of a single mesh cell in each direction.
 
-    **/tallies/tally <uid>/n_filters** (*int*)
+**/tallies/tally <uid>/index** (*int*)
 
-    do j = 1, n_filters
+    Index in tallies array used internally in OpenMC.
 
-        **/tallies/tally <uid>/filter j/type** (*char[]*)
+**/tallies/tally <uid>/name** (*char[]*)
 
-        **/tallies/tally <uid>/filter j/n_bins** (*int*)
+    Name of the tally.
 
-        **/tallies/tally <uid>/filter j/bins** (*int[]* or *double[]*)
+**/tallies/tally <uid>/total_score_bins** (*int*)
 
-        **/tallies/tally <uid>/filter j/type_name** (*char[]*)
+    Total number of scoring bins for all nuclides. This is used as the size of
+    second dimension of the tally results array.
 
-    end do
+**/tallies/tally <uid>/total_filter_bins** (*int*)
 
-    **/tallies/tally <uid>/nuclides** (*char[][]*)
+    Total number of filter bins accounting for all filters. This is used as the
+    size of first dimension of the tally results array.
 
-    **/tallies/tally <uid>/n_score_bins** (*int*)
+**/tallies/tally <uid>/n_filters** (*int*)
 
-    **/tallies/tally <uid>/score_bins** (*char[][]*)
+    Number of filters applied to the tally.
 
-end do
+**/tallies/tally <uid>/filter <j>/type** (*char[]*)
+
+    Type of the j-th filter. Can be 'universe', 'material', 'cell', 'cellborn',
+    'surface', 'mesh', 'energy', 'energyout', or 'distribcell'.
+
+**/tallies/tally <uid>/filter <j>/offset** (*int*)
+
+    Filter offset (used for distribcell filter).
+
+**/tallies/tally <uid>/filter <j>/n_bins** (*int*)
+
+    Number of bins for the j-th filter.
+
+**/tallies/tally <uid>/filter <j>/bins** (*int[]* or *double[]*)
+
+    Value for each filter bin of this type.
+
+**/tallies/tally <uid>/nuclides** (*char[][]*)
+
+    Array of nuclides to tally. Note that if no nuclide is specified in the user
+    input, a single 'total' nuclide appears here.
+
+**/tallies/tally <uid>/n_score_bins** (*int*)
+
+    Number of scoring bins for a single nuclide. In general, this can be greater
+    than the number of user-specified scores since each score might have
+    multiple scoring bins, e.g., scatter-PN.
+
+**/tallies/tally <uid>/score_bins** (*char[][]*)
+
+    Scoring bins for the tally.

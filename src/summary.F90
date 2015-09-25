@@ -484,10 +484,6 @@ contains
       ! Write the name for this tally
       call write_dataset(tally_group, "name", t%name)
 
-      ! Write size of each tally
-      call write_dataset(tally_group, "total_score_bins", t%total_score_bins)
-      call write_dataset(tally_group, "total_filter_bins", t%total_filter_bins)
-
       ! Write number of filters
       call write_dataset(tally_group, "n_filters", t%n_filters)
 

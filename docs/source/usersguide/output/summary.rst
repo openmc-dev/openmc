@@ -96,31 +96,15 @@ The current revision of the summary file format is 1.
     Unique ID of the material assigned to the cell. This dataset is present only
     if fill_type is set to 'normal'.
 
-**/geometry/cells/cell <uid>/maps** (*int*)
-
-    TODO: Add description.
-
 **/geometry/cells/cell <uid>/offset** (*int[]*)
 
-    Offset used for distribcell tally filter. This dataset is present only if
+    Offsets used for distribcell tally filter. This dataset is present only if
     fill_type is set to 'universe'.
-
-**/geometry/cells/cell <uid>/translated** (*int*)
-
-    Indicates if a translation is to be applied to the fill universe if one is
-    present. Note that this dataset assumes values of 0 or 1. This dataset is
-    present only if fill_type is set to 'universe'.
 
 **/geometry/cells/cell <uid>/translation** (*double[3]*)
 
     Translation applied to the fill universe. This dataset is present only if
     fill_type is set to 'universe'.
-
-**/geometry/cells/cell <uid>/rotated** (*int*)
-
-    Indicates if a rotation is to be applied to the fill universe if one is
-    present. Note that this dataset assumes values of 0 or 1. This dataset is
-    present only if fill_type is set to 'universe'.
 
 **/geometry/cells/cell <uid>/rotation** (*double[3]*)
 
@@ -187,14 +171,6 @@ The current revision of the summary file format is 1.
 **/geometry/lattices/lattice <uid>/outer** (*int*)
 
     Outer universe assigned to lattice cells outside the defined range.
-
-**/geometry/lattices/lattice <uid>/offset_size** (*int[]*)
-
-    TODO: Explain offset_size
-
-**/geometry/lattices/lattice <uid>/maps** (*int*)
-
-    TODO: Explain maps
 
 **/geometry/lattices/lattice <uid>/offsets** (*int[]*)
 

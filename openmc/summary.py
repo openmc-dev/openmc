@@ -224,21 +224,17 @@ class Summary(object):
             cell = openmc.Cell(cell_id=cell_id, name=name)
 
             if fill_type == 'universe':
-                maps = self._f['geometry/cells'][key]['maps'].value
-
-                if maps > 0:
+                if 'offset' in self._f['geometry/cells'][key]:
                     offset = self._f['geometry/cells'][key]['offset'][...]
                     cell.offsets = offset
 
-                translated = self._f['geometry/cells'][key]['translated'].value
-                if translated:
+                if 'translation' in self._f['geometry/cells'][key]:
                     translation = \
                       self._f['geometry/cells'][key]['translation'][...]
                     translation = np.asarray(translation, dtype=np.float64)
                     cell.translation = translation
 
-                rotated = self._f['geometry/cells'][key]['rotated'].value
-                if rotated:
+                if 'rotation' in self._f['geometry/cells'][key]:
                     rotation = \
                       self._f['geometry/cells'][key]['rotation'][...]
                     rotation = np.asarray(rotation, dtype=np.int)
@@ -301,11 +297,11 @@ class Summary(object):
             index = self._f['geometry/lattices'][key]['index'].value
             name = self._f['geometry/lattices'][key]['name'].value.decode()
             lattice_type = self._f['geometry/lattices'][key]['type'].value.decode()
-            maps = self._f['geometry/lattices'][key]['maps'].value
-            offset_size = self._f['geometry/lattices'][key]['offset_size'].value
 
-            if offset_size > 0:
+            if 'offsets' in self._f['geometry/lattices'][key]:
                 offsets = self._f['geometry/lattices'][key]['offsets'][...]
+            else:
+                offsets = None
 
             if lattice_type == 'rectangular':
                 dimension = self._f['geometry/lattices'][key]['dimension'][...]
@@ -346,7 +342,7 @@ class Summary(object):
                 universes = universes[:, ::-1, :]
                 lattice.universes = universes
 
-                if offset_size > 0:
+                if offsets:
                     offsets = np.swapaxes(offsets, 0, 1)
                     offsets = np.swapaxes(offsets, 1, 2)
                     lattice.offsets = offsets
@@ -440,7 +436,7 @@ class Summary(object):
                     # Lattice is 2D; extract the only axial level
                     lattice.universes = universes[0]
 
-                if offset_size > 0:
+                if offsets:
                     lattice.offsets = offsets
 
                 # Add the Lattice to the global dictionary of all Lattices

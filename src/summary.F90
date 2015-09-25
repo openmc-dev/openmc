@@ -157,23 +157,15 @@ contains
       case (CELL_FILL)
         call write_dataset(cell_group, "fill_type", "universe")
         call write_dataset(cell_group, "fill", universes(c%fill)%id)
-        call write_dataset(cell_group, "maps", size(c%offset))
         if (size(c%offset) > 0) then
           call write_dataset(cell_group, "offset", c%offset)
         end if
 
         if (allocated(c%translation)) then
-          call write_dataset(cell_group, "translated", 1)
           call write_dataset(cell_group, "translation", c%translation)
-        else
-          call write_dataset(cell_group, "translated", 0)
         end if
-
         if (allocated(c%rotation)) then
-          call write_dataset(cell_group, "rotated", 1)
           call write_dataset(cell_group, "rotation", c%rotation)
-        else
-          call write_dataset(cell_group, "rotated", 0)
         end if
 
       case (CELL_LATTICE)
@@ -298,10 +290,16 @@ contains
       ! Write internal OpenMC index for this lattice
       call write_dataset(lattice_group, "index", i)
 
-      ! Write name for this lattice
+      ! Write name, pitch, and outer universe
       call write_dataset(lattice_group, "name", lat%name)
+      call write_dataset(lattice_group, "pitch", lat%pitch)
+      call write_dataset(lattice_group, "outer", lat%outer)
 
-      ! Write lattice type
+      ! Write distribcell offsets if present
+      if (size(lat%offset) > 0) then
+        call write_dataset(lattice_group, "offsets", lat%offset)
+      end if
+
       select type (lat)
       type is (RectLattice)
         ! Write lattice type.
@@ -310,15 +308,6 @@ contains
         ! Write lattice dimensions, lower left corner, and pitch
         call write_dataset(lattice_group, "dimension", lat%n_cells)
         call write_dataset(lattice_group, "lower_left", lat%lower_left)
-        call write_dataset(lattice_group, "pitch", lat%pitch)
-
-        call write_dataset(lattice_group, "outer", lat%outer)
-        call write_dataset(lattice_group, "offset_size", size(lat%offset))
-        call write_dataset(lattice_group, "maps", size(lat%offset,1))
-
-        if (size(lat%offset) > 0) then
-          call write_dataset(lattice_group, "offsets", lat%offset)
-        end if
 
         ! Write lattice universes.
         allocate(lattice_universes(lat%n_cells(1), lat%n_cells(2), &
@@ -330,8 +319,6 @@ contains
             end do
           end do
         end do
-        call write_dataset(lattice_group, "universes", lattice_universes)
-        deallocate(lattice_universes)
 
       type is (HexLattice)
         ! Write lattice type.
@@ -341,17 +328,8 @@ contains
         call write_dataset(lattice_group, "n_rings", lat%n_rings)
         call write_dataset(lattice_group, "n_axial", lat%n_axial)
 
-        ! Write lattice center, pitch and outer universe.
+        ! Write lattice center
         call write_dataset(lattice_group, "center", lat%center)
-        call write_dataset(lattice_group, "pitch", lat%pitch)
-
-        call write_dataset(lattice_group, "outer", lat%outer)
-        call write_dataset(lattice_group, "offset_size", size(lat%offset))
-        call write_dataset(lattice_group, "maps", size(lat%offset,1))
-
-        if (size(lat%offset) > 0) then
-          call write_dataset(lattice_group, "offsets", lat%offset)
-        end if
 
         ! Write lattice universes.
         allocate(lattice_universes(2*lat%n_rings - 1, 2*lat%n_rings - 1, &
@@ -372,9 +350,11 @@ contains
             end do
           end do
         end do
-        call write_dataset(lattice_group, "universes", lattice_universes)
-        deallocate(lattice_universes)
       end select
+
+      ! Write lattice universes
+      call write_dataset(lattice_group, "universes", lattice_universes)
+      deallocate(lattice_universes)
 
       call close_group(lattice_group)
     end do LATTICE_LOOP

@@ -21,14 +21,12 @@ class SourcepointTestHarness(TestHarness):
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)
-        sp.read_results()
-        sp.read_source()
 
         # Get the eigenvalue information.
         outstr = TestHarness._get_results(self)
 
         # Add the source information.
-        xyz = sp._source[0]._xyz
+        xyz = sp.source[0]['xyz']
         outstr += ' '.join(['{0:12.6E}'.format(x) for x in xyz])
         outstr += "\n"
 

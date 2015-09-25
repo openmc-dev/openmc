@@ -52,7 +52,7 @@ class Tally(object):
         List of nuclides to score results for
     scores : list of str
         List of defined scores, e.g. 'flux', 'fission', etc.
-    estimator : {'analog', 'tracklength'}
+    estimator : {'analog', 'tracklength', 'collision'}
         Type of estimator for the tally
     triggers : list of openmc.trigger.Trigger
         List of tally triggers
@@ -103,6 +103,9 @@ class Tally(object):
         self._with_batch_statistics = False
         self._derived = False
 
+        self._statepoint = None
+        self._results_read = False
+
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
 
@@ -121,6 +124,8 @@ class Tally(object):
             clone._with_summary = self.with_summary
             clone._with_batch_statistics = self.with_batch_statistics
             clone._derived = self.derived
+            clone._statepoint = self._statepoint
+            clone._results_read = self._results_read
 
             clone._filters = []
             for filter in self.filters:
@@ -265,24 +270,69 @@ class Tally(object):
 
     @property
     def sum(self):
+        if not self._statepoint:
+            return None
+
+        if not self._results_read:
+            # Extract Tally data from the file
+            data = self._statepoint._f['tallies/tally {0}/results'.format(
+                self.id)].value
+            sum = data['sum']
+            sum_sq = data['sum_sq']
+
+            # Define a routine to convert 0 to 1
+            def nonzero(val):
+                return 1 if not val else val
+
+            # Reshape the results arrays
+            new_shape = (nonzero(self.num_filter_bins),
+                         nonzero(self.num_nuclides),
+                         nonzero(self.num_score_bins))
+
+            sum = np.reshape(sum, new_shape)
+            sum_sq = np.reshape(sum_sq, new_shape)
+
+            # Set the data for this Tally
+            self._sum = sum
+            self._sum_sq = sum_sq
+
+            # Indicate that Tally results have been read
+            self._results_read = True
+
         return self._sum
 
     @property
     def sum_sq(self):
+        if not self._statepoint:
+            return None
+
+        if not self._results_read:
+            # Force reading of sum and sum_sq
+            self.sum
+
         return self._sum_sq
 
     @property
     def mean(self):
-        # Compute the mean if needed
         if self._mean is None:
-            self.compute_mean()
+            if not self._statepoint:
+                return None
+
+            self._mean = self.sum / self.num_realizations
         return self._mean
 
     @property
     def std_dev(self):
-        # Compute the standard deviation if needed
         if self._std_dev is None:
-            self.compute_std_dev()
+            if not self._statepoint:
+                return None
+
+            n = self.num_realizations
+            nonzero = np.abs(self.mean) > 0
+            self._std_dev = np.zeros_like(self.mean)
+            self._std_dev[nonzero] = np.sqrt((self.sum_sq[nonzero]/n -
+                                              self.mean[nonzero]**2)/(n - 1))
+            self.with_batch_statistics = True
         return self._std_dev
 
     @property
@@ -295,7 +345,8 @@ class Tally(object):
 
     @estimator.setter
     def estimator(self, estimator):
-        cv.check_value('estimator', estimator, ['analog', 'tracklength'])
+        cv.check_value('estimator', estimator,
+                    ['analog', 'tracklength', 'collision'])
         self._estimator = estimator
 
     def add_trigger(self, trigger):
@@ -461,30 +512,6 @@ class Tally(object):
             ValueError(msg)
 
         self._nuclides.remove(nuclide)
-
-    def compute_mean(self):
-        """Compute the sample mean for each bin in the tally"""
-
-        # Calculate sample mean
-        self._mean = self.sum / self.num_realizations
-
-    def compute_std_dev(self, t_value=1.0):
-        """Compute the sample standard deviation for each bin in the tally
-
-        Parameters
-        ----------
-        t_value : float, optional
-            Student's t-value applied to the uncertainty. Defaults to 1.0,
-            meaning the reported value is the sample standard deviation.
-
-        """
-
-        # Calculate sample standard deviation
-        self.compute_mean()
-        self._std_dev = np.sqrt((self.sum_sq / self.num_realizations -
-                                 self.mean**2) / (self.num_realizations - 1))
-        self._std_dev *= t_value
-        self.with_batch_statistics = True
 
     def __repr__(self):
         string = 'Tally\n'

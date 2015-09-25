@@ -41,6 +41,7 @@ module hdf5_interface
     module procedure write_integer_4D
     module procedure write_long
     module procedure write_string
+    module procedure write_string_1D
     module procedure write_tally_result_1D
     module procedure write_tally_result_2D
   end interface write_dataset
@@ -58,6 +59,7 @@ module hdf5_interface
     module procedure read_integer_4D
     module procedure read_long
     module procedure read_string
+    module procedure read_string_1D
     module procedure read_tally_result_1D
     module procedure read_tally_result_2D
   end interface read_dataset
@@ -329,7 +331,7 @@ contains
   end subroutine read_double
 
 !===============================================================================
-! WRITE_DOUBLE_1DARRAY writes double precision 1-D array data
+! WRITE_DOUBLE_1D writes double precision 1-D array data
 !===============================================================================
 
   subroutine write_double_1D(group_id, name, buffer, indep)
@@ -391,7 +393,7 @@ contains
   end subroutine write_double_1D_explicit
 
 !===============================================================================
-! READ_DOUBLE_1DARRAY reads double precision 1-D array data
+! READ_DOUBLE_1D reads double precision 1-D array data
 !===============================================================================
 
   subroutine read_double_1D(group_id, name, buffer, indep)
@@ -449,7 +451,7 @@ contains
   end subroutine read_double_1D_explicit
 
 !===============================================================================
-! WRITE_DOUBLE_2DARRAY writes double precision 2-D array data
+! WRITE_DOUBLE_2D writes double precision 2-D array data
 !===============================================================================
 
   subroutine write_double_2D(group_id, name, buffer, indep)
@@ -511,7 +513,7 @@ contains
   end subroutine write_double_2D_explicit
 
 !===============================================================================
-! READ_DOUBLE_2DARRAY reads double precision 2-D array data
+! READ_DOUBLE_2D reads double precision 2-D array data
 !===============================================================================
 
   subroutine read_double_2D(group_id, name, buffer, indep)
@@ -569,7 +571,7 @@ contains
   end subroutine read_double_2D_explicit
 
 !===============================================================================
-! WRITE_DOUBLE_3DARRAY writes double precision 3-D array data
+! WRITE_DOUBLE_3D writes double precision 3-D array data
 !===============================================================================
 
   subroutine write_double_3D(group_id, name, buffer, indep)
@@ -631,7 +633,7 @@ contains
   end subroutine write_double_3D_explicit
 
 !===============================================================================
-! READ_DOUBLE_3DARRAY reads double precision 3-D array data
+! READ_DOUBLE_3D reads double precision 3-D array data
 !===============================================================================
 
   subroutine read_double_3D(group_id, name, buffer, indep)
@@ -689,7 +691,7 @@ contains
   end subroutine read_double_3D_explicit
 
 !===============================================================================
-! WRITE_DOUBLE_4DARRAY writes double precision 4-D array data
+! WRITE_DOUBLE_4D writes double precision 4-D array data
 !===============================================================================
 
   subroutine write_double_4D(group_id, name, buffer, indep)
@@ -751,7 +753,7 @@ contains
   end subroutine write_double_4D_explicit
 
 !===============================================================================
-! READ_DOUBLE_4DARRAY reads double precision 4-D array data
+! READ_DOUBLE_4D reads double precision 4-D array data
 !===============================================================================
 
   subroutine read_double_4D(group_id, name, buffer, indep)
@@ -896,7 +898,7 @@ contains
   end subroutine read_integer
 
 !===============================================================================
-! WRITE_INTEGER_1DARRAY writes integer precision 1-D array data
+! WRITE_INTEGER_1D writes integer precision 1-D array data
 !===============================================================================
 
   subroutine write_integer_1D(group_id, name, buffer, indep)
@@ -958,7 +960,7 @@ contains
   end subroutine write_integer_1D_explicit
 
 !===============================================================================
-! READ_INTEGER_1DARRAY reads integer precision 1-D array data
+! READ_INTEGER_1D reads integer precision 1-D array data
 !===============================================================================
 
   subroutine read_integer_1D(group_id, name, buffer, indep)
@@ -1016,7 +1018,7 @@ contains
   end subroutine read_integer_1D_explicit
 
 !===============================================================================
-! WRITE_INTEGER_2DARRAY writes integer precision 2-D array data
+! WRITE_INTEGER_2D writes integer precision 2-D array data
 !===============================================================================
 
   subroutine write_integer_2D(group_id, name, buffer, indep)
@@ -1078,7 +1080,7 @@ contains
   end subroutine write_integer_2D_explicit
 
 !===============================================================================
-! READ_INTEGER_2DARRAY reads integer precision 2-D array data
+! READ_INTEGER_2D reads integer precision 2-D array data
 !===============================================================================
 
   subroutine read_integer_2D(group_id, name, buffer, indep)
@@ -1136,7 +1138,7 @@ contains
   end subroutine read_integer_2D_explicit
 
 !===============================================================================
-! WRITE_INTEGER_3DARRAY writes integer precision 3-D array data
+! WRITE_INTEGER_3D writes integer precision 3-D array data
 !===============================================================================
 
   subroutine write_integer_3D(group_id, name, buffer, indep)
@@ -1198,7 +1200,7 @@ contains
   end subroutine write_integer_3D_explicit
 
 !===============================================================================
-! READ_INTEGER_3DARRAY reads integer precision 3-D array data
+! READ_INTEGER_3D reads integer precision 3-D array data
 !===============================================================================
 
   subroutine read_integer_3D(group_id, name, buffer, indep)
@@ -1256,7 +1258,7 @@ contains
   end subroutine read_integer_3D_explicit
 
 !===============================================================================
-! WRITE_INTEGER_4DARRAY writes integer precision 4-D array data
+! WRITE_INTEGER_4D writes integer precision 4-D array data
 !===============================================================================
 
   subroutine write_integer_4D(group_id, name, buffer, indep)
@@ -1318,7 +1320,7 @@ contains
   end subroutine write_integer_4D_explicit
 
 !===============================================================================
-! READ_INTEGER_4DARRAY reads integer precision 4-D array data
+! READ_INTEGER_4D reads integer precision 4-D array data
 !===============================================================================
 
   subroutine read_integer_4D(group_id, name, buffer, indep)
@@ -1469,10 +1471,9 @@ contains
   subroutine write_string(group_id, name, buffer, indep)
     integer(HID_T), intent(in) :: group_id
     character(*), intent(in)           :: name    ! name for data
-    character(*), intent(in)           :: buffer  ! read data to here
+    character(*), intent(in), target   :: buffer  ! read data to here
     logical,      intent(in), optional :: indep ! independent I/O
 
-    integer :: n
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
@@ -1480,9 +1481,10 @@ contains
 #endif
     integer(HID_T) :: dset    ! data set handle
     integer(HID_T) :: dspace  ! data or file space handle
-    integer(HSIZE_T) :: dims1(1)
-    integer(HSIZE_T) :: dims2(2)
-    character(len=len_trim(buffer)), dimension(1) :: str_tmp
+    integer(HID_T) :: filetype
+    integer(HID_T) :: memtype
+    integer(HSIZE_T) :: n
+    type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
     data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
@@ -1490,37 +1492,37 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    ! Insert null character at end of string when writing
-    call h5tset_strpad_f(H5T_STRING, H5T_STR_NULLPAD_F, hdf5_err)
-
-    ! Create the dataspace and dataset
-    dims1(1) = 1
-    call h5screate_simple_f(1, dims1, dspace, hdf5_err)
-    call h5dcreate_f(group_id, trim(name), H5T_STRING, dspace, dset, hdf5_err)
-
-    ! Set up dimesnions of string to write
+    ! Create datatype for HDF5 file based on C char
     n = len_trim(buffer)
-    dims2(:) = [n, 1] ! full array of strings to write
-    dims1(1) = n      ! length of string
+    call h5tcopy_f(H5T_C_S1, filetype, hdf5_err)
+    call h5tset_size_f(filetype, n + 1, hdf5_err)
 
-    ! Copy over string buffer to a rank 1 array
-    str_tmp(1) = buffer
+    ! Create datatype in memory based on Fortran character
+    call h5tcopy_f(H5T_FORTRAN_S1, memtype, hdf5_err)
+    if (n > 0) call h5tset_size_f(memtype, n, hdf5_err)
+
+    ! Create dataspace/dataset
+    call h5screate_f(H5S_SCALAR_F, dspace, hdf5_err)
+    call h5dcreate_f(group_id, trim(name), filetype, dspace, dset, hdf5_err)
+
+    ! Get pointer to start of string
+    f_ptr = c_loc(buffer(1:1))
 
     if (using_mpio_device(group_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dwrite_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, &
-           mem_space_id=dspace, xfer_prp=plist)
+      if (n > 0) call h5dwrite_f(dset, memtype, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dwrite_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, &
-           mem_space_id=dspace)
+      if (n > 0) call h5dwrite_f(dset, memtype, f_ptr, hdf5_err)
     end if
 
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
+    call h5tclose_f(memtype, hdf5_err)
+    call h5tclose_f(filetype, hdf5_err)
   end subroutine write_string
 
 !===============================================================================
@@ -1529,11 +1531,10 @@ contains
 
   subroutine read_string(group_id, name, buffer, indep)
     integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name    ! name for data
-    character(*), intent(inout)        :: buffer  ! read data to here
-    logical,      intent(in), optional :: indep ! independent I/O
+    character(*), intent(in)            :: name    ! name for data
+    character(*), intent(inout), target :: buffer  ! read data to here
+    logical,      intent(in), optional  :: indep ! independent I/O
 
-    integer :: n
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
@@ -1541,9 +1542,11 @@ contains
 #endif
     integer(HID_T) :: dset    ! data set handle
     integer(HID_T) :: dspace  ! data or file space handle
-    integer(HSIZE_T) :: dims1(1)
-    integer(HSIZE_T) :: dims2(2)
-    character(len=len_trim(buffer)), dimension(1) :: str_tmp
+    integer(HID_T) :: filetype
+    integer(HID_T) :: memtype
+    integer(HSIZE_T) :: size
+    integer(HSIZE_T) :: n
+    type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
     data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
@@ -1551,33 +1554,205 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    ! Set up dimesnions of string to write
-    n = len_trim(buffer)
-    dims2(:) = [n, 1] ! full array of strings to write
-    dims1(1) = n      ! length of string
-
+    ! Get dataset and dataspace
     call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     call h5dget_space_f(dset, dspace, hdf5_err)
+
+    ! Make sure buffer is large enough
+    call h5dget_type_f(dset, filetype, hdf5_err)
+    call h5tget_size_f(filetype, size, hdf5_err)
+    if (size > len(buffer) + 1) then
+      call fatal_error("Character buffer is not long enough to &
+           &read HDF5 string.")
+    end if
+
+    ! Get datatype in memory based on Fortran character
+    n = len(buffer)
+    call h5tcopy_f(H5T_FORTRAN_S1, memtype, hdf5_err)
+    call h5tset_size_f(memtype, n, hdf5_err)
+
+    ! Get pointer to start of string
+    f_ptr = c_loc(buffer(1:1))
 
     if (using_mpio_device(group_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, &
-           mem_space_id=dspace, xfer_prp=plist)
+      call h5dread_f(dset, memtype, f_ptr, hdf5_err, mem_space_id=dspace, &
+           xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, &
-           mem_space_id=dspace)
+      call h5dread_f(dset, memtype, f_ptr, hdf5_err, mem_space_id=dspace)
     end if
 
-    ! Copy over buffer
-    buffer = str_tmp(1)
-
-    ! Close dataset
     call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+    call h5tclose_f(filetype, hdf5_err)
+    call h5tclose_f(memtype, hdf5_err)
   end subroutine read_string
+
+!===============================================================================
+! WRITE_STRING_1D writes string 1-D array data
+!===============================================================================
+
+  subroutine write_string_1D(group_id, name, buffer, indep)
+    integer(HID_T), intent(in) :: group_id
+    character(*), intent(in)           :: name    ! name for data
+    character(*), intent(in), target   :: buffer(:)  ! read data to here
+    logical,      intent(in), optional :: indep ! independent I/O
+
+    integer(HSIZE_T) :: dims(1)
+
+    dims(:) = shape(buffer)
+    if (present(indep)) then
+      call write_string_1D_explicit(group_id, dims, name, buffer, indep)
+    else
+      call write_string_1D_explicit(group_id, dims, name, buffer)
+    end if
+  end subroutine write_string_1D
+
+  subroutine write_string_1D_explicit(group_id, dims, name, buffer, indep)
+    integer(HID_T), intent(in) :: group_id
+    integer(HSIZE_T), intent(in) :: dims(1)
+    character(*), intent(in)           :: name
+    character(*), intent(in), target   :: buffer(dims(1))
+    logical,      intent(in), optional :: indep ! independent I/O
+
+    integer :: hdf5_err
+    integer :: data_xfer_mode
+#ifdef PHDF5
+    integer(HID_T) :: plist   ! property list
+#endif
+    integer(HID_T) :: dset    ! data set handle
+    integer(HID_T) :: dspace  ! data or file space handle
+    integer(HID_T) :: filetype
+    integer(HID_T) :: memtype
+    integer(HSIZE_T) :: n
+    type(c_ptr) :: f_ptr
+
+    ! Set up collective vs. independent I/O
+    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
+    if (present(indep)) then
+      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
+    end if
+
+    ! Create datatype for HDF5 file based on C char
+    n = maxval(len_trim(buffer))
+    call h5tcopy_f(H5T_C_S1, filetype, hdf5_err)
+    call h5tset_size_f(filetype, n + 1, hdf5_err)
+
+    ! Create datatype in memory based on Fortran character
+    call h5tcopy_f(H5T_FORTRAN_S1, memtype, hdf5_err)
+    call h5tset_size_f(memtype, int(len(buffer(1)), HSIZE_T), hdf5_err)
+
+    ! Create dataspace/dataset
+    call h5screate_simple_f(1, dims, dspace, hdf5_err)
+    call h5dcreate_f(group_id, trim(name), filetype, dspace, dset, hdf5_err)
+
+    ! Get pointer to start of string
+    f_ptr = c_loc(buffer(1)(1:1))
+
+    if (using_mpio_device(group_id)) then
+#ifdef PHDF5
+      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
+      call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
+      if (n > 0) call h5dwrite_f(dset, memtype, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5pclose_f(plist, hdf5_err)
+#endif
+    else
+      if (n > 0) call h5dwrite_f(dset, memtype, f_ptr, hdf5_err)
+    end if
+
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+    call h5tclose_f(memtype, hdf5_err)
+    call h5tclose_f(filetype, hdf5_err)
+  end subroutine write_string_1D_explicit
+
+!===============================================================================
+! READ_STRING_1D reads string 1-D array data
+!===============================================================================
+
+  subroutine read_string_1D(group_id, name, buffer, indep)
+    integer(HID_T), intent(in) :: group_id
+    character(*), intent(in)            :: name
+    character(*), intent(inout), target :: buffer(:)
+    logical,      intent(in), optional  :: indep ! independent I/O
+
+    integer(HSIZE_T) :: dims(1)
+
+    dims(:) = shape(buffer)
+    if (present(indep)) then
+      call read_string_1D_explicit(group_id, dims, name, buffer, indep)
+    else
+      call read_string_1D_explicit(group_id, dims, name, buffer)
+    end if
+  end subroutine read_string_1D
+
+  subroutine read_string_1D_explicit(group_id, dims, name, buffer, indep)
+    integer(HID_T), intent(in) :: group_id
+    integer(HSIZE_T), intent(in) :: dims(1)
+    character(*), intent(in)            :: name
+    character(*), intent(inout), target :: buffer(dims(1))
+    logical,      intent(in), optional  :: indep ! independent I/O
+
+    integer :: hdf5_err
+    integer :: data_xfer_mode
+#ifdef PHDF5
+    integer(HID_T) :: plist   ! property list
+#endif
+    integer(HID_T) :: dset    ! data set handle
+    integer(HID_T) :: dspace  ! data or file space handle
+    integer(HID_T) :: filetype
+    integer(HID_T) :: memtype
+    integer(HSIZE_T) :: size
+    integer(HSIZE_T) :: n
+    type(c_ptr) :: f_ptr
+
+    ! Set up collective vs. independent I/O
+    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
+    if (present(indep)) then
+      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
+    end if
+
+    ! Get dataset and dataspace
+    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
+    call h5dget_space_f(dset, dspace, hdf5_err)
+
+    ! Make sure buffer is large enough
+    call h5dget_type_f(dset, filetype, hdf5_err)
+    call h5tget_size_f(filetype, size, hdf5_err)
+    if (size > len(buffer(1)) + 1) then
+      call fatal_error("Character buffer is not long enough to &
+           &read HDF5 string array.")
+    end if
+
+    ! Get datatype in memory based on Fortran character
+    n = len(buffer(1))
+    call h5tcopy_f(H5T_FORTRAN_S1, memtype, hdf5_err)
+    call h5tset_size_f(memtype, n, hdf5_err)
+
+    ! Get pointer to start of string
+    f_ptr = c_loc(buffer(1)(1:1))
+
+    if (using_mpio_device(group_id)) then
+#ifdef PHDF5
+      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
+      call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
+      call h5dread_f(dset, memtype, f_ptr, hdf5_err, mem_space_id=dspace, &
+           xfer_prp=plist)
+      call h5pclose_f(plist, hdf5_err)
+#endif
+    else
+      call h5dread_f(dset, memtype, f_ptr, hdf5_err, mem_space_id=dspace)
+    end if
+
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+    call h5tclose_f(filetype, hdf5_err)
+    call h5tclose_f(memtype, hdf5_err)
+  end subroutine read_string_1D_explicit
 
 !===============================================================================
 ! WRITE_ATTRIBUTE_STRING

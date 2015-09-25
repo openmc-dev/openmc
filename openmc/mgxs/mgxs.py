@@ -246,9 +246,6 @@ class MultiGroupXS(object):
 
         cv.check_type('statepoint', statepoint, openmc.statepoint.StatePoint)
 
-        # Ensure that tally metadata has been loaded from the statepoint file
-        statepoint.read_results()
-
         # Create Tallies to search for in StatePoint
         self.create_tallies()
 

@@ -4,13 +4,14 @@ from xml.etree import ElementTree as ET
 import sys
 
 from openmc.checkvalue import check_type, check_value, check_greater_than
-from openmc.constants import BC_TYPES
 
 if sys.version_info[0] >= 3:
     basestring = str
 
 # A static variable for auto-generated Surface IDs
 AUTO_SURFACE_ID = 10000
+
+_BC_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic']
 
 
 def reset_auto_surface_id():
@@ -106,7 +107,7 @@ class Surface(object):
     @boundary_type.setter
     def boundary_type(self, boundary_type):
         check_type('boundary type', boundary_type, basestring)
-        check_value('boundary type', boundary_type, BC_TYPES.values())
+        check_value('boundary type', boundary_type, _BC_TYPES)
         self._boundary_type = boundary_type
 
     def __repr__(self):
@@ -134,7 +135,7 @@ class Surface(object):
 
         element.set("type", self._type)
         element.set("boundary", self._boundary_type)
-        element.set("coeffs", ' '.join([str(self._coeffs[key])
+        element.set("coeffs", ' '.join([str(self._coeffs.setdefault(key, 0.0))
                                         for key in self._coeff_keys]))
 
         return element

@@ -321,7 +321,7 @@ contains
     integer :: i         ! loop index
     integer :: argc      ! number of command line arguments
     integer :: last_flag ! index of last flag
-    integer :: filetype
+    character(MAX_WORD_LEN) :: filetype
     integer(HID_T) :: file_id
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
 
@@ -366,10 +366,10 @@ contains
 
           ! Set path and flag for type of run
           select case (filetype)
-          case (FILETYPE_STATEPOINT)
+          case ('statepoint')
             path_state_point = argv(i)
             restart_run = .true.
-          case (FILETYPE_PARTICLE_RESTART)
+          case ('particle restart')
             path_particle_restart = argv(i)
             particle_restart_run = .true.
           case default
@@ -389,7 +389,7 @@ contains
               file_id = file_open(argv(i), 'r', parallel=.true.)
               call read_dataset(file_id, 'filetype', filetype)
               call file_close(file_id)
-              if (filetype /= FILETYPE_SOURCE) then
+              if (filetype /= 'source') then
                 call fatal_error("Second file after restart flag must be a &
                      &source file")
               end if

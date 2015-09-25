@@ -15,6 +15,9 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
+_FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
+                 'mesh', 'energy', 'energyout', 'distribcell']
+
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only
     tally events when the particle is in a certain cell and energy range.
@@ -135,7 +138,9 @@ class Filter(object):
 
     @type.setter
     def type(self, type):
-        if type not in FILTER_TYPES.values():
+        if type is None:
+            self._type = type
+        elif type not in _FILTER_TYPES:
             msg = 'Unable to set Filter type to "{0}" since it is not one ' \
                   'of the supported types'.format(type)
             raise ValueError(msg)

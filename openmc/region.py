@@ -28,7 +28,7 @@ class Intersection(Region):
     """
 
     def __init__(self, *nodes):
-        self.nodes = nodes
+        self.nodes = list(nodes)
 
     @property
     def nodes(self):
@@ -59,7 +59,7 @@ class Union(Region):
     """
 
     def __init__(self, *nodes):
-        self.nodes = nodes
+        self.nodes = list(nodes)
 
     @property
     def nodes(self):

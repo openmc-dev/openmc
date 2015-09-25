@@ -8,6 +8,8 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+from openmc.surface import Halfspace
+from openmc.region import Region, Intersection, Complement
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -45,10 +47,8 @@ class Cell(object):
         Name of the cell
     fill : Material or Universe or Lattice or 'void'
         Indicates what the region of space is filled with
-    surfaces : dict
-        Dictionary whose keys are surface IDs and values are 2-tuples of a
-        Surface object and an integer identify whether the positive or negative
-        half-space is to be used
+    region : openmc.region.Region
+        Region of space that is assigned to the cell.
     rotation : ndarray
         If the cell is filled with a universe, this array specifies the angles
         in degrees about the x, y, and z axes that the filled universe should be
@@ -67,7 +67,7 @@ class Cell(object):
         self.name = name
         self._fill = None
         self._type = None
-        self._surfaces = {}
+        self._region = None
         self._rotation = None
         self._translation = None
         self._offsets = None
@@ -89,8 +89,8 @@ class Cell(object):
         return self._fill
 
     @property
-    def surfaces(self):
-        return self._surfaces
+    def region(self):
+        return self._region
 
     @property
     def rotation(self):
@@ -163,6 +163,11 @@ class Cell(object):
         cv.check_type('cell offsets', offsets, Iterable)
         self._offsets = offsets
 
+    @region.setter
+    def region(self, region):
+        cv.check_type('cell region', region, Region)
+        self._region = region
+
     def add_surface(self, surface, halfspace):
         """Add a half-space to the list of half-spaces whose intersection defines the
         cell.
@@ -186,28 +191,17 @@ class Cell(object):
                   '"{2}" since it is not +/-1'.format(surface, self._id, halfspace)
             raise ValueError(msg)
 
-        # If the Cell does not already contain the Surface, add it
-        if surface._id not in self._surfaces:
-            self._surfaces[surface._id] = (surface, halfspace)
-
-    def remove_surface(self, surface):
-        """Remove the half-space associated with a particular surface.
-
-        Parameters
-        ----------
-        surface : openmc.surface.Surface
-            Surface to remove from definition
-
-        """
-
-        if not isinstance(surface, openmc.Surface):
-            msg = 'Unable to remove Surface "{0}" from Cell ID="{1}" since it is ' \
-                        'not a Surface object'.format(surface, self._id)
-            raise ValueError(msg)
-
-        # If the Cell contains the Surface, delete it
-        if surface._id in self._surfaces:
-            del self._surfaces[surface._id]
+        # If no region has been assigned, simply use the half-space. Otherwise,
+        # take the intersection of the current region and the half-space
+        # specified
+        region = surface.positive if halfspace == 1 else surface.negative
+        if self.region is None:
+            self.region = region
+        else:
+            if isinstance(self.region, Intersection):
+                self.region.nodes.append(region)
+            else:
+                self.region = Intersection(self.region, region)
 
     def get_offset(self, path, filter_offset):
         # Get the current element and remove it from the list
@@ -301,13 +295,7 @@ class Cell(object):
         else:
             string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t', self._fill)
 
-        string += '{0: <16}{1}\n'.format('\tSurfaces', '=\t')
-
-        for surface_id in self._surfaces:
-            halfspace = self._surfaces[surface_id][1]
-            string += '{0} '.format(halfspace * surface_id)
-
-        string = string.rstrip(' ') + '\n'
+        string += '{0: <16}{1}{2}\n'.format('\tRegion', '=\t', self._region)
 
         string += '{0: <16}{1}{2}\n'.format('\tRotation', '=\t',
                                             self._rotation)
@@ -338,26 +326,30 @@ class Cell(object):
             element.set("fill", str(self._fill))
             self._fill.create_xml_subelement(xml_element)
 
-        if self._surfaces is not None:
-            surfaces = ''
+        if self.region is not None:
+            # Set the surfaces attribute with the region specification
+            element.set("surfaces", str(self.region))
 
-            for surface_id in self._surfaces:
-                # Determine if XML element already includes this Surface
-                path = './surface[@id=\'{0}\']'.format(surface_id)
-                test = xml_element.find(path)
+            # Only surfaces that appear in a region are added to the geometry
+            # file, so the appropriate check is performed here. First we create
+            # a function which is called recursively to navigate through the CSG
+            # tree. When it reaches a leaf (a Halfspace), it creates a <surface>
+            # element for the corresponding surface if none has been created
+            # thus far.
+            def create_surface_elements(node, element):
+                if isinstance(node, Halfspace):
+                    path = './surface[@id=\'{0}\']'.format(node.surface.id)
+                    if xml_element.find(path) is None:
+                        surface_subelement = node.surface.create_xml_subelement()
+                        xml_element.append(surface_subelement)
+                elif isinstance(node, Complement):
+                    create_surface_elements(node.node, element)
+                else:
+                    for subnode in node.nodes:
+                        create_surface_elements(subnode, element)
 
-                # If the element does not contain the Surface subelement
-                if test is None:
-                    # Create the XML subelement for this Surface
-                    surface = self._surfaces[surface_id][0]
-                    surface_subelement = surface.create_xml_subelement()
-                    xml_element.append(surface_subelement)
-
-                # Append the halfspace and Surface ID
-                halfspace = self._surfaces[surface_id][1]
-                surfaces += '{0} '.format(halfspace * surface_id)
-
-            element.set("surfaces", surfaces.rstrip(' '))
+            # Call the recursive function from the top node
+            create_surface_elements(self.region, xml_element)
 
         if self._translation is not None:
             element.set("translation", ' '.join(map(str, self._translation)))

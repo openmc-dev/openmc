@@ -120,61 +120,61 @@ class Summary(object):
             coeffs = self._f['geometry/surfaces'][key]['coefficients'][...]
 
             # Create the Surface based on its type
-            if surf_type == 'X Plane':
+            if surf_type == 'x-plane':
                 x0 = coeffs[0]
                 surface = openmc.XPlane(surface_id, bc, x0, name)
 
-            elif surf_type == 'Y Plane':
+            elif surf_type == 'y-plane':
                 y0 = coeffs[0]
                 surface = openmc.YPlane(surface_id, bc, y0, name)
 
-            elif surf_type == 'Z Plane':
+            elif surf_type == 'z-plane':
                 z0 = coeffs[0]
                 surface = openmc.ZPlane(surface_id, bc, z0, name)
 
-            elif surf_type == 'Plane':
+            elif surf_type == 'plane':
                 A = coeffs[0]
                 B = coeffs[1]
                 C = coeffs[2]
                 D = coeffs[3]
                 surface = openmc.Plane(surface_id, bc, A, B, C, D, name)
 
-            elif surf_type == 'X Cylinder':
+            elif surf_type == 'x-cylinder':
                 y0 = coeffs[0]
                 z0 = coeffs[1]
                 R = coeffs[2]
                 surface = openmc.XCylinder(surface_id, bc, y0, z0, R, name)
 
-            elif surf_type == 'Y Cylinder':
+            elif surf_type == 'y-cylinder':
                 x0 = coeffs[0]
                 z0 = coeffs[1]
                 R = coeffs[2]
                 surface = openmc.YCylinder(surface_id, bc, x0, z0, R, name)
 
-            elif surf_type == 'Z Cylinder':
+            elif surf_type == 'z-cylinder':
                 x0 = coeffs[0]
                 y0 = coeffs[1]
                 R = coeffs[2]
                 surface = openmc.ZCylinder(surface_id, bc, x0, y0, R, name)
 
-            elif surf_type == 'Sphere':
+            elif surf_type == 'sphere':
                 x0 = coeffs[0]
                 y0 = coeffs[1]
                 z0 = coeffs[2]
                 R = coeffs[3]
                 surface = openmc.Sphere(surface_id, bc, x0, y0, z0, R, name)
 
-            elif surf_type in ['X Cone', 'Y Cone', 'Z Cone']:
+            elif surf_type in ['x-cone', 'y-cone', 'z-cone']:
                 x0 = coeffs[0]
                 y0 = coeffs[1]
                 z0 = coeffs[2]
                 R2 = coeffs[3]
 
-                if surf_type == 'X Cone':
+                if surf_type == 'x-cone':
                     surface = openmc.XCone(surface_id, bc, x0, y0, z0, R2, name)
-                if surf_type == 'Y Cone':
+                if surf_type == 'y-cone':
                     surface = openmc.YCone(surface_id, bc, x0, y0, z0, R2, name)
-                if surf_type == 'Z Cone':
+                if surf_type == 'z-cone':
                     surface = openmc.ZCone(surface_id, bc, x0, y0, z0, R2, name)
 
             # Add Surface to global dictionary of all Surfaces

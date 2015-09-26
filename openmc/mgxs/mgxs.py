@@ -364,35 +364,40 @@ class MultiGroupXS(object):
             low_index = np.where(self.energy_groups.group_edges == low)[0][0]
             energy_indices.append(low_index)
 
-        # FIXME: This won't work for scattering matrices
-        # Overwrite tallies with new energy-condensed versions
-        # NOTE: This assumes that the tallies were loaded such with a single
-        # domain filter and energy filter in that order
+        fine_edges = self.energy_groups.group_edges
+
+        # Condense each of the tallies to the coarse group structure
         for tally_type, tally in condensed_xs.tallies.items():
 
-            try:
-                # Find the tally's energy filter and update to coarse groups
-                energy_filter = tally.find_filter('energy')
-                energy_filter.bins = coarse_groups.group_edges
+            # Make condensed tally derived and null out sum, sum_sq
+            tally._derived = True
+            tally._sum = None
+            tally._sum_sq = None
 
-                # Make the condensed tally derived and ull out sum, sum_sq
-                tally._derived = True
-                tally._sum = None
-                tally._sum_sq = None
+            # Get tally data arrays reshaped with one dimension per filter
+            mean = tally.get_reshaped_data(value='mean')
+            std_dev = tally.get_reshaped_data(value='std_dev')
 
-                # Sum up mean, std. dev fine groups within each coarse group
-                tally._mean = np.add.reduceat(tally.mean, energy_indices)
-                tally._std_dev = tally.std_dev**2
-                tally._std_dev = np.add.reduceat(tally.std_dev, energy_indices)
-                tally._std_dev = np.sqrt(tally.std_dev)
+            # Sum across all applicable fine energy group filters
+            for i, filter in enumerate(tally.filters):
+                if 'energy' in filter.type and all(filter.bins == fine_edges):
+                    filter.bins = coarse_groups.group_edges
+                    mean = np.add.reduceat(mean, energy_indices, axis=i)
+                    std_dev = np.add.reduceat(std_dev**2, energy_indices, axis=i)
+                    std_dev = np.sqrt(std_dev)
 
-            # If the tally had no energy filter, then pass
-            except ValueError:
-                pass
+            # Reshape condensed data arrays with one dimension for all filters
+            new_shape = \
+                (tally.num_filter_bins, tally.num_nuclides, tally.num_score_bins,)
+            mean = np.reshape(mean, new_shape)
+            std_dev = np.reshape(std_dev, new_shape)
+
+            # Override tally's data with the new condensed data
+            tally._mean = mean
+            tally._std_dev = std_dev
 
         # Compute the energy condensed multi-group cross-section
         condensed_xs.compute_xs()
-
         return condensed_xs
 
     def get_subdomain_avg_xs(self, subdomains='all'):
@@ -432,7 +437,7 @@ class MultiGroupXS(object):
         else:
             cv.check_iterable_type('subdomains', subdomains, Integral)
 
-        # Clone this MultiGroupXS to initialize the condensed version
+        # Clone this MultiGroupXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
 
         # Reset subdomain indices and offsets for distribcell domains
@@ -1115,7 +1120,7 @@ class ScatterMatrixXS(MultiGroupXS):
         # Initialize the Tallies
         super(ScatterMatrixXS, self).create_tallies(scores, filters, keys, estimator)
 
-    def compute_xs(self, correction='P0'):
+    def compute_xs(self, correction=None):
         """Computes the multi-group scattering matrix using OpenMC
         tally arithmetic.
 
@@ -1146,8 +1151,8 @@ class ScatterMatrixXS(MultiGroupXS):
                subdomains='all', value='mean'):
         """Returns an array of multi-group cross-sections.
 
-        This method constructs a 2D NumPy array for the requested multi-group
-        cross-section data data for one or more energy groups and subdomains.
+        This method constructs a 2D NumPy array for the requested scattering
+        matrix data data for one or more energy groups and subdomains.
 
         Parameters
         ----------
@@ -1299,7 +1304,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         # Intialize the Tallies
         super(ScatterMatrixXS, self).create_tallies(scores, filters, keys, estimator)
 
-    def compute_xs(self, correction='P0'):
+    def compute_xs(self, correction=None):
         """Computes the multi-group nu-scattering matrix using OpenMC
         tally arithmetic.
 
@@ -1342,9 +1347,9 @@ class Chi(MultiGroupXS):
 
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
-        energyout_filter1 = openmc.Filter('energyout', group_edges)
-        energyout_filter2 = openmc.Filter('energyout', [group_edges[0], group_edges[-1]])
-        filters = [[energyout_filter2], [energyout_filter1]]
+        fine_energyout = openmc.Filter('energyout', group_edges)
+        coarse_energyout = openmc.Filter('energyout', [group_edges[0], group_edges[-1]])
+        filters = [[coarse_energyout], [fine_energyout]]
 
         # Intialize the Tallies
         super(Chi, self).create_tallies(scores, filters, keys, estimator)

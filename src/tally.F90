@@ -175,21 +175,25 @@ contains
         ! For scattering production, we need to use the pre-collision
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
-
-        do m = 1, nuclides(i_nuclide) % n_reaction
-          ! Check if this is the desired MT
-          if (p % event_MT == nuclides(i_nuclide) % reactions(m) % MT) then
-            ! Found the reaction, set our pointer and move on with life
-            rxn => nuclides(i_nuclide) % reactions(m)
-            exit
-          end if
-        end do
-
-        ! Get multiplicity
-        if (rxn % multiplicity_with_E) then
-          multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+            (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          multiplicity = ONE
         else
-          multiplicity = real(rxn % multiplicity,8)
+          do m = 1, nuclides(p % event_nuclide) % n_reaction
+            ! Check if this is the desired MT
+            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+              ! Found the reaction, set our pointer and move on with life
+              rxn => nuclides(p % event_nuclide) % reactions(m)
+              exit
+            end if
+          end do
+
+          ! Get multiplicity
+          if (rxn % multiplicity_with_E) then
+            multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+          else
+            multiplicity = real(rxn % multiplicity,8)
+          end if
         end if
 
         ! Apply multiplicity to the last weight
@@ -206,21 +210,25 @@ contains
         ! For scattering production, we need to use the pre-collision
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
-
-        do m = 1, nuclides(i_nuclide) % n_reaction
-          ! Check if this is the desired MT
-          if (p % event_MT == nuclides(i_nuclide) % reactions(m) % MT) then
-            ! Found the reaction, set our pointer and move on with life
-            rxn => nuclides(i_nuclide) % reactions(m)
-            exit
-          end if
-        end do
-
-        ! Get multiplicity
-        if (rxn % multiplicity_with_E) then
-          multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+            (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          multiplicity = ONE
         else
-          multiplicity = real(rxn % multiplicity,8)
+          do m = 1, nuclides(p % event_nuclide) % n_reaction
+            ! Check if this is the desired MT
+            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+              ! Found the reaction, set our pointer and move on with life
+              rxn => nuclides(p % event_nuclide) % reactions(m)
+              exit
+            end if
+          end do
+
+          ! Get multiplicity
+          if (rxn % multiplicity_with_E) then
+            multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+          else
+            multiplicity = real(rxn % multiplicity,8)
+          end if
         end if
 
         ! Apply multiplicity to the last weight
@@ -237,21 +245,25 @@ contains
         ! For scattering production, we need to use the pre-collision
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
-
-        do m = 1, nuclides(i_nuclide) % n_reaction
-          ! Check if this is the desired MT
-          if (p % event_MT == nuclides(i_nuclide) % reactions(m) % MT) then
-            ! Found the reaction, set our pointer and move on with life
-            rxn => nuclides(i_nuclide) % reactions(m)
-            exit
-          end if
-        end do
-
-        ! Get multiplicity
-        if (rxn % multiplicity_with_E) then
-          multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+            (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          multiplicity = ONE
         else
-          multiplicity = real(rxn % multiplicity,8)
+          do m = 1, nuclides(p % event_nuclide) % n_reaction
+            ! Check if this is the desired MT
+            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+              ! Found the reaction, set our pointer and move on with life
+              rxn => nuclides(p % event_nuclide) % reactions(m)
+              exit
+            end if
+          end do
+
+          ! Get multiplicity
+          if (rxn % multiplicity_with_E) then
+            multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+          else
+            multiplicity = real(rxn % multiplicity,8)
+          end if
         end if
 
         ! Apply multiplicity to the last weight

@@ -30,12 +30,12 @@ DOMAINS = [openmc.Cell,
 
 
 class MultiGroupXS(object):
-    """A multi-group cross-section for some energy group structure within
+    """A multi-group cross section for some energy group structure within
     some spatial domain.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross-sections for deterministic neutronics calculations.
+    multi-group cross sections for deterministic neutronics calculations.
 
     Parameters
     ----------
@@ -46,15 +46,15 @@ class MultiGroupXS(object):
     energy_groups : EnergyGroups
         The energy group structure for energy condensation
     name : str, optional
-        Name of the multi-group cross-section. Used as a label to identify
+        Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC tallies.xml file.
 
     Attributes
     ----------
     name : str, optional
-        Name of the multi-group cross-section
-    xs_type : str
-        Cross-section type (e.g., 'total', 'nu-fission', etc.)
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
     domain : Material or Cell or Universe
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe'}
@@ -64,10 +64,10 @@ class MultiGroupXS(object):
     num_groups : Integral
         Number of energy groups
     tallies : dict
-        OpenMC tallies needed to compute the multi-group cross-section
+        OpenMC tallies needed to compute the multi-group cross section
     xs_tally : Tally
-        Derived tally for the multi-group cross-section. This attribute
-        is None unless the multi-group cross-section has been computed.
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
 
     """
 
@@ -78,7 +78,7 @@ class MultiGroupXS(object):
                  energy_groups=None, name=''):
 
         self._name = ''
-        self._xs_type = None
+        self._rxn_type = None
         self._domain = None
         self._domain_type = None
         self._energy_groups = None
@@ -101,7 +101,7 @@ class MultiGroupXS(object):
         if existing is None:
             clone = type(self).__new__(type(self))
             clone._name = self.name
-            clone._xs_type = self.xs_type
+            clone._rxn_type = self.rxn_type
             clone._domain = self.domain
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
@@ -125,8 +125,8 @@ class MultiGroupXS(object):
         return self._name
 
     @property
-    def xs_type(self):
-        return self._xs_type
+    def rxn_type(self):
+        return self._rxn_type
 
     @property
     def domain(self):
@@ -181,7 +181,7 @@ class MultiGroupXS(object):
 
     @abc.abstractmethod
     def create_tallies(self, scores, all_filters, keys, estimator):
-        """Instantiates tallies needed to compute the multi-group cross-section.
+        """Instantiates tallies needed to compute the multi-group cross section.
 
         This is a helper method for MultiGroupXS subclasses to create tallies
         for input file generation. The tallies are stored in the tallies dict.
@@ -224,15 +224,15 @@ class MultiGroupXS(object):
 
     @abc.abstractmethod
     def compute_xs(self):
-        """Computes multi-group cross-sections using OpenMC tally arithmetic."""
+        """Computes multi-group cross sections using OpenMC tally arithmetic."""
 
         return
 
     def load_from_statepoint(self, statepoint):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
-        compute multi-group cross-sections.
+        compute multi-group cross sections.
 
-        This method is needed to compute cross-section data from tallies
+        This method is needed to compute cross section data from tallies
         in an OpenMC StatePoint object.
 
         Parameters
@@ -265,10 +265,10 @@ class MultiGroupXS(object):
             self.tallies[tally_type] = sp_tally
 
     def get_xs(self, groups='all', subdomains='all', value='mean'):
-        """Returns an array of multi-group cross-sections.
+        """Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested multi-group
-        cross-section data data for one or more energy groups and subdomains.
+        cross section data data for one or more energy groups and subdomains.
 
         Parameters
         ----------
@@ -285,19 +285,19 @@ class MultiGroupXS(object):
         Returns
         -------
         xs : ndarray
-            A NumPy array of the multi-group cross-section indexed in the order
+            A NumPy array of the multi-group cross section indexed in the order
             each group and subdomain is listed in the parameters.
 
         Raises
         ------
         ValueError
-            When this method is called before the multi-group cross-section is
+            When this method is called before the multi-group cross section is
             computed from tally data.
 
         """
 
         if self.xs_tally is None:
-            msg = 'Unable to get cross-section since it has not been computed'
+            msg = 'Unable to get cross section since it has not been computed'
             raise ValueError(msg)
 
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
@@ -319,13 +319,13 @@ class MultiGroupXS(object):
                 filters.append('energy')
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
-        # Query the multi-group cross-section tally for the data
+        # Query the multi-group cross section tally for the data
         xs = self.xs_tally.get_values(filters=filters,
                                       filter_bins=filter_bins, value=value)
         return xs
 
     def get_condensed_xs(self, coarse_groups):
-        """Construct an energy-condensed version of this cross-section.
+        """Construct an energy-condensed version of this cross section.
 
         Parameters
         ----------
@@ -340,8 +340,8 @@ class MultiGroupXS(object):
         """
 
         if self.xs_tally is None:
-            msg = 'Unable to get a condensed coarse group cross-section ' \
-                  'since the fine group cross-section has not been computed'
+            msg = 'Unable to get a condensed coarse group cross section ' \
+                  'since the fine group cross section has not been computed'
             raise ValueError(msg)
 
         cv.check_type('coarse_groups', coarse_groups, EnergyGroups)
@@ -394,16 +394,16 @@ class MultiGroupXS(object):
             tally._mean = mean
             tally._std_dev = std_dev
 
-        # Compute the energy condensed multi-group cross-section
+        # Compute the energy condensed multi-group cross section
         condensed_xs.compute_xs()
         return condensed_xs
 
     def get_subdomain_avg_xs(self, subdomains='all'):
-        """Construct a subdomain-averaged version of this cross-section.
+        """Construct a subdomain-averaged version of this cross section.
 
         This is primarily useful for averaging across distribcell instances.
         This routine performs spatial homogenization to compute the
-        scalar flux-weighted average cross-section across the subdomains.
+        scalar flux-weighted average cross section across the subdomains.
 
         Parameters
         ----------
@@ -418,14 +418,14 @@ class MultiGroupXS(object):
         Raises
         ------
         ValueError
-            When this method is called before the multi-group cross-section is
+            When this method is called before the multi-group cross section is
             computed from tally data.
 
         """
 
         if self.xs_tally is None:
-            msg = 'Unable to get subdomain-averaged cross-section since the ' \
-                  'subdomain-distributed cross-section has not been computed'
+            msg = 'Unable to get subdomain-averaged cross section since the ' \
+                  'subdomain-distributed cross section has not been computed'
             raise ValueError(msg)
 
         # Construct a collection of the subdomain filter bins to average across
@@ -478,18 +478,18 @@ class MultiGroupXS(object):
             tally._mean = mean
             tally._std_dev = std_dev
 
-        # Compute the subdomain-averaged multi-group cross-section
+        # Compute the subdomain-averaged multi-group cross section
         avg_xs.compute_xs()
 
         return avg_xs
 
     def print_xs(self, subdomains='all'):
-        """Prints a string representation for the multi-group cross-section.
+        """Prints a string representation for the multi-group cross section.
 
         Parameters
         ----------
         subdomains : Iterable of Integral or 'all'
-            The subdomain IDs of the cross-sections to include in the report
+            The subdomain IDs of the cross sections to include in the report
 
         """
 
@@ -498,11 +498,11 @@ class MultiGroupXS(object):
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tType', self.xs_type)
+        string += '{0: <16}=\t{1}\n'.format('\tType', self.rxn_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
-        # Append cross-section data if it has been computed
+        # Append cross section data if it has been computed
         if self.xs_tally is not None:
             if subdomains == 'all':
                 if self.domain_type == 'distribcell':
@@ -516,7 +516,7 @@ class MultiGroupXS(object):
                 if self.domain_type == 'distribcell':
                     string += '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
 
-                string += '{0: <16}\n'.format('\tCross-Sections [cm^-1]:')
+                string += '{0: <16}\n'.format('\tCross Sections [cm^-1]:')
                 template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]:\t'
 
                 # Loop over energy groups ranges
@@ -558,7 +558,7 @@ class MultiGroupXS(object):
 
         # Store all of this MultiGroupXS' class attributes in the dictionary
         xs_results['name'] = self.name
-        xs_results['xs_type'] = self.xs_type
+        xs_results['rxn_type'] = self.rxn_type
         xs_results['domain_type'] = self.domain_type
         xs_results['domain'] = self.domain
         xs_results['energy_groups'] = self.energy_groups
@@ -606,7 +606,7 @@ class MultiGroupXS(object):
 
         # Store the MultiGroupXS class attributes
         self.name = xs_results['name']
-        self._xs_type = xs_results['xs_type']
+        self._rxn_type = xs_results['rxn_type']
         self.domain_type = xs_results['domain_type']
         self.domain = xs_results['domain']
         self.energy_groups = xs_results['energy_groups']
@@ -615,12 +615,12 @@ class MultiGroupXS(object):
         self._offset = xs_results['offset']
 
     def build_hdf5_store(self, filename='mgxs', directory='mgxs', append=True):
-        """Export the multi-group cross-section data into an HDF5 binary file.
+        """Export the multi-group cross section data into an HDF5 binary file.
 
         This routine constructs an HDF5 file which stores the multi-group
-        cross-section data. The data is be stored in a hierarchy of HDF5 groups
+        cross section data. The data is be stored in a hierarchy of HDF5 groups
         from the domain type, domain id, subdomain id (for distribcell domains),
-        and cross-section type. Two datasets for the mean and standard deviation
+        and cross section type. Two datasets for the mean and standard deviation
         are stored for each subddomain entry in the HDF5 file.
 
         NOTE: This requires the h5py Python package.
@@ -640,7 +640,7 @@ class MultiGroupXS(object):
         Raises
         ------
         ValueError
-            When this method is called before the multi-group cross-section is
+            When this method is called before the multi-group cross section is
             computed from tally data.
         ImportError
             When h5py is not installed.
@@ -649,7 +649,7 @@ class MultiGroupXS(object):
 
         if self.xs_tally is None:
             msg = 'Unable to get build HDF5 store since the ' \
-                  'cross-section has not been computed'
+                  'cross section has not been computed'
             raise ValueError(msg)
 
         # Attempt to import h5py
@@ -694,10 +694,10 @@ class MultiGroupXS(object):
             else:
                 subdomain_group = domain_group
 
-            # Create a separate HDF5 group for the xs type
-            xs_group = subdomain_group.require_group(self.xs_type)
+            # Create a separate HDF5 group for the rxn type
+            xs_group = subdomain_group.require_group(self.rxn_type)
 
-            # Extract the cross-section for this
+            # Extract the cross section for this
             average = self.get_xs(subdomains=[subdomain], value='mean')
             std_dev = self.get_xs(subdomains=[subdomain], value='std_dev')
             average = average.squeeze()
@@ -713,10 +713,10 @@ class MultiGroupXS(object):
         xs_results.close()
 
     def export_xs_data(self, filename='mgxs', directory='mgxs', format='csv'):
-        """Export the multi-group cross-section data to a file.
+        """Export the multi-group cross section data to a file.
 
         This routine leverages the functionality in the Pandas library to
-        export the multi-group cross-section data in a variety of output
+        export the multi-group cross section data in a variety of output
         file formats for storage and/or post-processing.
 
         Parameters
@@ -771,7 +771,7 @@ class MultiGroupXS(object):
             df.to_pickle(filename + '.pkl')
         elif format == 'latex':
             if self.domain_type == 'distribcell':
-                msg = 'Unable to export distribcell multi-group cross-section' \
+                msg = 'Unable to export distribcell multi-group cross section' \
                       'data to a LaTeX table'
                 raise NotImplementedError(msg)
 
@@ -796,7 +796,7 @@ class MultiGroupXS(object):
         """Build a Pandas DataFrame for the MultiGroupXS data.
 
         This routine leverages the Tally.get_pandas_dataframe(...) routine, but
-        renames the columns with terminology appropriate for cross-section data.
+        renames the columns with terminology appropriate for cross section data.
 
         Parameters
         ----------
@@ -815,19 +815,19 @@ class MultiGroupXS(object):
         Returns
         -------
         pandas.DataFrame
-            A Pandas DataFrame for the cross-section data.
+            A Pandas DataFrame for the cross section data.
 
         Raises
         ------
         ValueError
-            When this method is called before the multi-group cross-section is
+            When this method is called before the multi-group cross section is
             computed from tally data.
 
         """
 
         if self.xs_tally is None:
             msg = 'Unable to get Pandas DataFrame since the ' \
-                  'cross-section has not been computed'
+                  'cross section has not been computed'
             raise ValueError(msg)
 
         # Get a Pandas DataFrame from the derived xs tally
@@ -871,10 +871,10 @@ class TotalXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(TotalXS, self).__init__(domain, domain_type, groups, name)
-        self._xs_type = 'total'
+        self._rxn_type = 'total'
 
     def create_tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross-section."""
+        """Construct the OpenMC tallies needed to compute this cross section."""
 
         # Create a list of scores for each Tally to be created
         scores = ['flux', 'total']
@@ -890,7 +890,7 @@ class TotalXS(MultiGroupXS):
         super(TotalXS, self).create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        """Computes the multi-group total cross-sections using OpenMC
+        """Computes the multi-group total cross sections using OpenMC
         tally arithmetic."""
 
         self._xs_tally = self.tallies['total'] / self.tallies['flux']
@@ -902,10 +902,10 @@ class TransportXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(TransportXS, self).__init__(domain, domain_type, groups, name)
-        self._xs_type = 'transport'
+        self._rxn_type = 'transport'
 
     def create_tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross-section."""
+        """Construct the OpenMC tallies needed to compute this cross section."""
 
         # Create a list of scores for each Tally to be created
         scores = ['flux', 'total', 'scatter-P1']
@@ -928,7 +928,7 @@ class TransportXS(MultiGroupXS):
         self.tallies['scatter-P1'].filters[-1].type = 'energy'
 
     def compute_xs(self):
-        """Computes the multi-group transport cross-sections using OpenMC
+        """Computes the multi-group transport cross sections using OpenMC
         tally arithmetic."""
 
         self._xs_tally = self.tallies['total'] - self.tallies['scatter-P1']
@@ -941,10 +941,10 @@ class AbsorptionXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(AbsorptionXS, self).__init__(domain, domain_type, groups, name)
-        self._xs_type = 'absorption'
+        self._rxn_type = 'absorption'
 
     def create_tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross-section."""
+        """Construct the OpenMC tallies needed to compute this cross section."""
 
         # Create a list of scores for each Tally to be created
         scores = ['flux', 'absorption']
@@ -960,7 +960,7 @@ class AbsorptionXS(MultiGroupXS):
         super(AbsorptionXS, self).create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        """Computes the multi-group absorption cross-sections using OpenMC
+        """Computes the multi-group absorption cross sections using OpenMC
         tally arithmetic."""
 
         self._xs_tally = self.tallies['absorption'] / self.tallies['flux']
@@ -972,10 +972,10 @@ class CaptureXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(CaptureXS, self).__init__(domain, domain_type, groups, name)
-        self._xs_type = 'capture'
+        self._rxn_type = 'capture'
 
     def create_tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross-section."""
+        """Construct the OpenMC tallies needed to compute this cross section."""
 
         # Create a list of scores for each Tally to be created
         scores = ['flux', 'absorption', 'fission']
@@ -991,7 +991,7 @@ class CaptureXS(MultiGroupXS):
         super(CaptureXS, self).create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        """Computes the multi-group capture cross-sections using OpenMC
+        """Computes the multi-group capture cross sections using OpenMC
         tally arithmetic."""
 
         self._xs_tally = self.tallies['absorption'] - self.tallies['fission']
@@ -1004,10 +1004,10 @@ class FissionXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(FissionXS, self).__init__(domain, domain_type, groups, name)
-        self._xs_type = 'fission'
+        self._rxn_type = 'fission'
 
     def create_tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross-section."""
+        """Construct the OpenMC tallies needed to compute this cross section."""
 
         # Create a list of scores for each Tally to be created
         scores = ['flux', 'fission']
@@ -1023,7 +1023,7 @@ class FissionXS(MultiGroupXS):
         super(FissionXS, self).create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        """Computes the multi-group fission cross-sections using OpenMC
+        """Computes the multi-group fission cross sections using OpenMC
         tally arithmetic."""
 
         self._xs_tally = self.tallies['fission'] / self.tallies['flux']
@@ -1035,10 +1035,10 @@ class NuFissionXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(NuFissionXS, self).__init__(domain, domain_type, groups, name)
-        self._xs_type = 'nu-fission'
+        self._rxn_type = 'nu-fission'
 
     def create_tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross-section."""
+        """Construct the OpenMC tallies needed to compute this cross section."""
 
         # Create a list of scores for each Tally to be created
         scores = ['flux', 'nu-fission']
@@ -1054,7 +1054,7 @@ class NuFissionXS(MultiGroupXS):
         super(NuFissionXS, self).create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        """Computes the multi-group nu-fission cross-sections using OpenMC
+        """Computes the multi-group nu-fission cross sections using OpenMC
         tally arithmetic."""
 
         self._xs_tally = self.tallies['nu-fission'] / self.tallies['flux']
@@ -1066,10 +1066,10 @@ class ScatterXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(ScatterXS, self).__init__(domain, domain_type, groups, name)
-        self._xs_type = 'scatter'
+        self._rxn_type = 'scatter'
 
     def create_tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross-section."""
+        """Construct the OpenMC tallies needed to compute this cross section."""
 
         # Create a list of scores for each Tally to be created
         scores = ['flux', 'scatter']
@@ -1085,7 +1085,7 @@ class ScatterXS(MultiGroupXS):
         super(ScatterXS, self).create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        """Computes the scattering multi-group cross-sections using
+        """Computes the scattering multi-group cross sections using
         OpenMC tally arithmetic."""
 
         self._xs_tally = self.tallies['scatter'] / self.tallies['flux']
@@ -1097,10 +1097,10 @@ class NuScatterXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(NuScatterXS, self).__init__(domain, domain_type, groups, name)
-        self._xs_type = 'nu-scatter'
+        self._rxn_type = 'nu-scatter'
 
     def create_tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross-section."""
+        """Construct the OpenMC tallies needed to compute this cross section."""
 
         # Create a list of scores for each Tally to be created
         scores = ['flux', 'nu-scatter']
@@ -1116,7 +1116,7 @@ class NuScatterXS(MultiGroupXS):
         super(NuScatterXS, self).create_tallies(scores, filters, keys, estimator)
 
     def compute_xs(self):
-        """Computes the nu-scattering multi-group cross-section using OpenMC
+        """Computes the nu-scattering multi-group cross section using OpenMC
         tally arithmetic."""
 
         self._xs_tally = self.tallies['nu-scatter'] / self.tallies['flux']
@@ -1128,10 +1128,10 @@ class ScatterMatrixXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(ScatterMatrixXS, self).__init__(domain, domain_type, groups, name)
-        self._xs_type = 'scatter matrix'
+        self._rxn_type = 'scatter matrix'
 
     def create_tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross-section."""
+        """Construct the OpenMC tallies needed to compute this cross section."""
 
         group_edges = self.energy_groups.group_edges
         energy = openmc.Filter('energy', group_edges)
@@ -1176,7 +1176,7 @@ class ScatterMatrixXS(MultiGroupXS):
 
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', value='mean'):
-        """Returns an array of multi-group cross-sections.
+        """Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested scattering
         matrix data data for one or more energy groups and subdomains.
@@ -1199,19 +1199,19 @@ class ScatterMatrixXS(MultiGroupXS):
         Returns
         -------
         xs : ndarray
-            A NumPy array of the multi-group cross-section indexed in the order
+            A NumPy array of the multi-group cross section indexed in the order
             each group and subdomain is listed in the parameters.
 
         Raises
         ------
         ValueError
-            When this method is called before the multi-group cross-section is
+            When this method is called before the multi-group cross section is
             computed from tally data.
 
         """
 
         if self.xs_tally is None:
-            msg = 'Unable to get cross-section since it has not been computed'
+            msg = 'Unable to get cross section since it has not been computed'
             raise ValueError(msg)
 
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
@@ -1240,19 +1240,19 @@ class ScatterMatrixXS(MultiGroupXS):
                 filters.append('energyout')
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
-        # Query the multi-group cross-section tally for the data
+        # Query the multi-group cross section tally for the data
         xs = self.xs_tally.get_values(filters=filters,
                                       filter_bins=filter_bins, value=value)
         xs = np.nan_to_num(xs)
         return xs
 
     def print_xs(self, subdomains='all'):
-        """Prints a string representation for the multi-group cross-section.
+        """Prints a string representation for the multi-group cross section.
 
         Parameters
         ----------
         subdomains : Iterable of Integral or 'all'
-            The subdomain IDs of the cross-sections to include in the report
+            The subdomain IDs of the cross sections to include in the report
 
         """
 
@@ -1261,11 +1261,11 @@ class ScatterMatrixXS(MultiGroupXS):
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tType', self.xs_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
-        # Append cross-section data if it has been computed
+        # Append cross section data if it has been computed
         if self.xs_tally is not None:
             string += '{0: <16}\n'.format('\tEnergy Groups:')
             template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]\n'
@@ -1288,7 +1288,7 @@ class ScatterMatrixXS(MultiGroupXS):
                     string += \
                         '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
 
-                string += '{0: <16}\n'.format('\tCross-Sections [cm^-1]:')
+                string += '{0: <16}\n'.format('\tCross Sections [cm^-1]:')
                 template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
                 # Loop over incoming/outgoing energy groups ranges
@@ -1312,10 +1312,10 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None,  name=''):
         super(NuScatterMatrixXS, self).__init__(domain, domain_type, groups, name)
-        self._xs_type = 'nu-scatter matrix'
+        self._rxn_type = 'nu-scatter matrix'
 
     def create_tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross-section."""
+        """Construct the OpenMC tallies needed to compute this cross section."""
 
         # Create a list of scores for each Tally to be created
         scores = ['flux', 'nu-scatter', 'scatter-P1']
@@ -1362,10 +1362,10 @@ class Chi(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, name=''):
         super(Chi, self).__init__(domain, domain_type, groups, name)
-        self._xs_type = 'chi'
+        self._rxn_type = 'chi'
 
     def create_tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross-section."""
+        """Construct the OpenMC tallies needed to compute this cross section."""
 
         # Create a list of scores for each Tally to be created
         scores = ['nu-fission', 'nu-fission']

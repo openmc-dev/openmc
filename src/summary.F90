@@ -113,7 +113,7 @@ contains
     integer(HID_T) :: universes_group, univ_group
     integer(HID_T) :: lattices_group, lattice_group
     real(8), allocatable :: coeffs(:)
-    character(MAX_LINE_LEN) :: surface_spec
+    character(MAX_LINE_LEN) :: region_spec
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
     type(Universe), pointer :: u
@@ -176,26 +176,26 @@ contains
       end select
 
       ! Write list of bounding surfaces
-      surface_spec = ""
-      do j = 1, size(c%surfaces)
-        k = c%surfaces(j)
+      region_spec = ""
+      do j = 1, size(c%region)
+        k = c%region(j)
         if (k < OP_UNION) then
-          surface_spec = trim(surface_spec) // " " // to_str(&
+          region_spec = trim(region_spec) // " " // to_str(&
                sign(surfaces(abs(k))%obj%id, k))
         else
           select case(k)
           case (OP_LEFT_PAREN)
-            surface_spec = trim(surface_spec) // " ("
+            region_spec = trim(region_spec) // " ("
           case (OP_RIGHT_PAREN)
-            surface_spec = trim(surface_spec) // " ("
+            region_spec = trim(region_spec) // " )"
           case (OP_COMPLEMENT)
-            surface_spec = trim(surface_spec) // " ~"
+            region_spec = trim(region_spec) // " ~"
           case (OP_UNION)
-            surface_spec = trim(surface_spec) // " ^"
+            region_spec = trim(region_spec) // " ^"
           end select
         end if
       end do
-      call write_dataset(cell_group, "surfaces", adjustl(surface_spec))
+      call write_dataset(cell_group, "region", adjustl(region_spec))
 
       call close_group(cell_group)
     end do CELL_LOOP

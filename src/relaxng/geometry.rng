@@ -62,10 +62,10 @@
           </choice>
           <optional>
             <choice>
-              <element name="surfaces">
+              <element name="region">
                 <data type="string"/>
               </element>
-              <attribute name="surfaces">
+              <attribute name="region">
                 <data type="string"/>
               </attribute>
             </choice>

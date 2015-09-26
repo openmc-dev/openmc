@@ -9,7 +9,7 @@ element geometry {
       (element material { ( xsd:int | "void" ) } |
         attribute material { ( xsd:int | "void" ) })
     ) &
-    (element surfaces { xsd:string } | attribute surfaces { xsd:string })? &
+    (element region { xsd:string } | attribute region { xsd:string })? &
     (element rotation { list { xsd:double+ } } | attribute rotation { list { xsd:double+ } })? &
     (element translation { list { xsd:double+ } } | attribute translation { list { xsd:double+ } })?
   }*

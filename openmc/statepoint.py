@@ -343,7 +343,8 @@ class StatePoint(object):
                     raise ValueError(msg)
 
                 # Read the bin values
-                if FILTER_TYPES[filter_type] in ['energy', 'energyout']:
+                if FILTER_TYPES[filter_type] in ['energy', 'energyout',
+                                                 'mu', 'polar', 'azimuthal']:
                     bins = self._f['{0}{1}/bins'.format(subbase, j)].value
 
                 elif FILTER_TYPES[filter_type] in ['mesh', 'distribcell']:

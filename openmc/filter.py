@@ -322,6 +322,8 @@ class Filter(object):
             return False
         elif self.type != other.type:
             return False
+        elif self.type in ['energy', 'energyout']:
+            return np.all(self.bins == other.bins)
 
         for bin in other.bins:
             if bin not in self.bins:

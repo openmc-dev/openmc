@@ -840,6 +840,7 @@ class TransportXS(MultiGroupXS):
         super(TransportXS, self).load_from_statepoint(statepoint)
         scatter_p1 = self.tallies['scatter-P1']
         self.tallies['scatter-P1'] = scatter_p1.get_slice(scores=['scatter-P1'])
+        self.tallies['scatter-P1'].filters[-1].type = 'energy'
 
     def compute_xs(self):
         """Computes the multi-group transport cross-sections using OpenMC
@@ -1061,7 +1062,7 @@ class ScatterMatrixXS(MultiGroupXS):
         # Initialize the Tallies
         super(ScatterMatrixXS, self).create_tallies(scores, filters, keys, estimator)
 
-    def compute_xs(self, correction='None'):
+    def compute_xs(self, correction='P0'):
         """Computes the multi-group scattering matrix using OpenMC
         tally arithmetic.
 
@@ -1075,7 +1076,7 @@ class ScatterMatrixXS(MultiGroupXS):
 
         # If using P0 correction subtract scatter-P1 from the diagonal
         if correction == 'P0':
-            scatter_p1 = self.tallies['scatter-1']
+            scatter_p1 = self.tallies['scatter-P1']
             scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
             energy_filter = openmc.Filter(type='energy')
             energy_filter.bins = self.energy_groups.group_edges
@@ -1245,7 +1246,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         # Intialize the Tallies
         super(ScatterMatrixXS, self).create_tallies(scores, filters, keys, estimator)
 
-    def compute_xs(self, correction='None'):
+    def compute_xs(self, correction='P0'):
         """Computes the multi-group nu-scattering matrix using OpenMC
         tally arithmetic.
 
@@ -1259,7 +1260,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
         # If using P0 correction subtract scatter-P1 from the diagonal
         if correction == 'P0':
-            scatter_p1 = self.tallies['scatter-1']
+            scatter_p1 = self.tallies['scatter-P1']
             scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
             energy_filter = openmc.Filter(type='energy')
             energy_filter.bins = self.energy_groups.group_edges
@@ -1288,8 +1289,9 @@ class Chi(MultiGroupXS):
 
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
-        energyout_filter = openmc.Filter('energyout', group_edges)
-        filters = [[], [energyout_filter]]
+        energyout_filter1 = openmc.Filter('energyout', group_edges)
+        energyout_filter2 = openmc.Filter('energyout', [group_edges[0], group_edges[-1]])
+        filters = [[energyout_filter2], [energyout_filter1]]
 
         # Intialize the Tallies
         super(Chi, self).create_tallies(scores, filters, keys, estimator)
@@ -1299,6 +1301,7 @@ class Chi(MultiGroupXS):
 
         nu_fission_in = self.tallies['nu-fission-in']
         nu_fission_out = self.tallies['nu-fission-out']
+        nu_fission_in.remove_filter(nu_fission_in.filters[-1])
         self._xs_tally = nu_fission_out / nu_fission_in
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
         self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)

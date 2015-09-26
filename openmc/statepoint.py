@@ -466,7 +466,7 @@ class StatePoint(object):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
-        found it finds which satisfies all of the input parameters.
+        found which satisfies all of the input parameters.
         NOTE: The input parameters do not need to match the complete Tally
         specification and may only represent a subset of the Tally's properties.
 
@@ -534,15 +534,14 @@ class StatePoint(object):
 
                 # Iterate over the Filters requested by the user
                 for filter in filters:
-                    contains_filter = False
+                    contains_filters = False
 
                     for test_filter in test_tally.filters:
-                        if test_filter.is_subset(filter):
-                            contains_filter = True
+                        if filter.is_subset(test_filter):
+                            contains_filters = True
                             break
 
-                    if not contains_filter:
-                        contains_filters = False
+                    if not contains_filters:
                         break
 
                 if not contains_filters:

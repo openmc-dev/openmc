@@ -5,6 +5,7 @@ module tally
   use error,            only: fatal_error
   use geometry_header
   use global
+  use interpolation
   use math,             only: t_percentile, calc_pn, calc_rn
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
                               get_mesh_indices, mesh_indices_to_bin, &
@@ -61,6 +62,7 @@ contains
     real(8) :: uvw(3)               ! particle direction
     type(Material),    pointer :: mat
     type(Reaction),    pointer :: rxn
+    real(8) :: multiplicity
 
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins
@@ -170,10 +172,28 @@ contains
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-        ! For scattering production, we need to use the post-collision
-        ! weight as the estimate for the number of neutrons exiting a
-        ! reaction with neutrons in the exit channel
-        score = p % wgt
+        ! For scattering production, we need to use the pre-collision
+        ! weight times the multiplicity as the estimate for the number of
+        ! neutrons exiting a reaction with neutrons in the exit channel
+
+        do m = 1, nuclides(i_nuclide) % n_reaction
+          ! Check if this is the desired MT
+          if (p % event_MT == nuclides(i_nuclide) % reactions(m) % MT) then
+            ! Found the reaction, set our pointer and move on with life
+            rxn => nuclides(i_nuclide) % reactions(m)
+            exit
+          end if
+        end do
+
+        ! Get multiplicity
+        if (rxn % multiplicity_with_E) then
+          multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+        else
+          multiplicity = real(rxn % multiplicity,8)
+        end if
+
+        ! Apply multiplicity to the last weight
+        score = p % last_wgt * multiplicity
 
 
       case (SCORE_NU_SCATTER_PN)
@@ -183,10 +203,28 @@ contains
           i = i + t % moment_order(i)
           cycle SCORE_LOOP
         end if
-        ! For scattering production, we need to use the post-collision
-        ! weight as the estimate for the number of neutrons exiting a
-        ! reaction with neutrons in the exit channel
-        score = p % wgt
+        ! For scattering production, we need to use the pre-collision
+        ! weight times the multiplicity as the estimate for the number of
+        ! neutrons exiting a reaction with neutrons in the exit channel
+
+        do m = 1, nuclides(i_nuclide) % n_reaction
+          ! Check if this is the desired MT
+          if (p % event_MT == nuclides(i_nuclide) % reactions(m) % MT) then
+            ! Found the reaction, set our pointer and move on with life
+            rxn => nuclides(i_nuclide) % reactions(m)
+            exit
+          end if
+        end do
+
+        ! Get multiplicity
+        if (rxn % multiplicity_with_E) then
+          multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+        else
+          multiplicity = real(rxn % multiplicity,8)
+        end if
+
+        ! Apply multiplicity to the last weight
+        score = p % last_wgt * multiplicity
 
 
       case (SCORE_NU_SCATTER_YN)
@@ -196,10 +234,28 @@ contains
           i = i + (t % moment_order(i) + 1)**2 - 1
           cycle SCORE_LOOP
         end if
-        ! For scattering production, we need to use the post-collision
-        ! weight as the estimate for the number of neutrons exiting a
-        ! reaction with neutrons in the exit channel
-        score = p % wgt
+        ! For scattering production, we need to use the pre-collision
+        ! weight times the multiplicity as the estimate for the number of
+        ! neutrons exiting a reaction with neutrons in the exit channel
+
+        do m = 1, nuclides(i_nuclide) % n_reaction
+          ! Check if this is the desired MT
+          if (p % event_MT == nuclides(i_nuclide) % reactions(m) % MT) then
+            ! Found the reaction, set our pointer and move on with life
+            rxn => nuclides(i_nuclide) % reactions(m)
+            exit
+          end if
+        end do
+
+        ! Get multiplicity
+        if (rxn % multiplicity_with_E) then
+          multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+        else
+          multiplicity = real(rxn % multiplicity,8)
+        end if
+
+        ! Apply multiplicity to the last weight
+        score = p % last_wgt * multiplicity
 
 
       case (SCORE_TRANSPORT)

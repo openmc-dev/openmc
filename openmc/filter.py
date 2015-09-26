@@ -318,6 +318,7 @@ class Filter(object):
         boolean
             Whether or not the other filter is a subset of this filter
         """
+
         if not isinstance(other, Filter):
             return False
         elif self.type != other.type:
@@ -325,8 +326,8 @@ class Filter(object):
         elif self.type in ['energy', 'energyout']:
             return np.all(self.bins == other.bins)
 
-        for bin in other.bins:
-            if bin not in self.bins:
+        for bin in self.bins:
+            if bin not in other.bins:
                 return False
 
         return True

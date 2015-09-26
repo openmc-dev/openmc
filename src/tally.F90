@@ -176,7 +176,7 @@ contains
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
-            (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
           multiplicity = ONE
         else
           do m = 1, nuclides(p % event_nuclide) % n_reaction
@@ -211,7 +211,7 @@ contains
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
-            (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
           multiplicity = ONE
         else
           do m = 1, nuclides(p % event_nuclide) % n_reaction
@@ -246,7 +246,7 @@ contains
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
-            (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
           multiplicity = ONE
         else
           do m = 1, nuclides(p % event_nuclide) % n_reaction

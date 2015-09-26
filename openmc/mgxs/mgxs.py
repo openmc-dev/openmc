@@ -21,14 +21,12 @@ if sys.version_info[0] >= 3:
 DOMAIN_TYPES = ['cell',
                 'distribcell',
                 'universe',
-                'material',
-                'mesh']
+                'material']
 
 # Supported domain objects
 DOMAINS = [openmc.Cell,
            openmc.Universe,
-           openmc.Material,
-           openmc.Mesh]
+           openmc.Material]
 
 
 class MultiGroupXS(object):
@@ -41,9 +39,9 @@ class MultiGroupXS(object):
 
     Parameters
     ----------
-    domain : Material or Cell or Universe or Mesh
+    domain : Material or Cell or Universe
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe' or 'mesh'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
         The domain type for spatial homogenization
     energy_groups : EnergyGroups
         The energy group structure for energy condensation
@@ -57,9 +55,9 @@ class MultiGroupXS(object):
         Name of the multi-group cross-section
     xs_type : str
         Cross-section type (e.g., 'total', 'nu-fission', etc.)
-    domain : Material or Cell or Universe or Mesh
+    domain : Material or Cell or Universe
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe' or 'mesh'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
         Domain type for spatial homogenization
     energy_groups : EnergyGroups
         Energy group structure for energy condensation
@@ -403,8 +401,8 @@ class MultiGroupXS(object):
     def get_subdomain_avg_xs(self, subdomains='all'):
         """Construct a subdomain-averaged version of this cross-section.
 
-        This is primarily useful for averaging across distribcell instances or
-        mesh cells. This routine performs spatial homogenization to compute the
+        This is primarily useful for averaging across distribcell instances.
+        This routine performs spatial homogenization to compute the
         scalar flux-weighted average cross-section across the subdomains.
 
         Parameters
@@ -446,9 +444,6 @@ class MultiGroupXS(object):
         if self.domain_type == 'distribcell':
             avg_xs.domain_type = 'cell'
             avg_xs._offset = 0
-        # TODO: Implement this for mesh tallies
-        elif self.domain_type == 'mesh':
-            raise NotImplementedError('Average mesh xs are not yet implemented')
 
         # Average each of the tallies across subdomains
         for tally_type, tally in avg_xs.tallies.items():
@@ -472,9 +467,6 @@ class MultiGroupXS(object):
             if domain_filter.type == 'distribcell':
                 domain_filter.type = 'cell'
                 domain_filter.num_bins = 1
-            # TODO: Implement this for mesh tallies
-            elif domain_filter.type == 'mesh':
-                raise NotImplementedError('Average mesh xs are not yet implemented')
 
             # Reshape averaged data arrays with one dimension for all filters
             new_shape = \

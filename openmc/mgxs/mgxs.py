@@ -403,7 +403,9 @@ class MultiGroupXS(object):
     def get_subdomain_avg_xs(self, subdomains='all'):
         """Construct a subdomain-averaged version of this cross-section.
 
-        This is primarily useful for averaging across distribcell instances.
+        This is primarily useful for averaging across distribcell instances or
+        mesh cells. This routine performs spatial homogenization to compute the
+        scalar flux-weighted average cross-section across the subdomains.
 
         Parameters
         ----------
@@ -440,17 +442,49 @@ class MultiGroupXS(object):
         # Clone this MultiGroupXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
 
-        # Reset subdomain indices and offsets for distribcell domains
+        # If domain is distribcell, make subdomain-averaged a 'cell' domain
         if self.domain_type == 'distribcell':
+            avg_xs.domain_type = 'cell'
             avg_xs._offset = 0
+        # TODO: Implement this for mesh tallies
+        elif self.domain_type == 'mesh':
+            raise NotImplementedError('Average mesh xs are not yet implemented')
 
-        # Overwrite tallies with new subdomain-averaged versions
-        avg_xs._tallies = {}
-        for tally_type, tally in self.tallies.items():
-            tally_sum = tally.summation(filter_type=self.domain_type,
-                                        filter_bins=subdomains)
-            tally_sum /= len(subdomains)
-            avg_xs.tallies[tally_type] = tally_sum
+        # Average each of the tallies across subdomains
+        for tally_type, tally in avg_xs.tallies.items():
+
+            # Make condensed tally derived and null out sum, sum_sq
+            tally._derived = True
+            tally._sum = None
+            tally._sum_sq = None
+
+            # Get tally data arrays reshaped with one dimension per filter
+            mean = tally.get_reshaped_data(value='mean')
+            std_dev = tally.get_reshaped_data(value='std_dev')
+
+            # Get the mean of the mean, std. dev. across requested subdomains
+            mean = np.mean(mean[subdomains, ...], axis=0)
+            std_dev = np.mean(std_dev[subdomains, ...]**2, axis=0)
+            std_dev = np.sqrt(std_dev)
+
+            # If domain is distribcell, make subdomain-averaged a 'cell' domain
+            domain_filter = tally.find_filter(self._domain_type)
+            if domain_filter.type == 'distribcell':
+                domain_filter.type = 'cell'
+                domain_filter.num_bins = 1
+            # TODO: Implement this for mesh tallies
+            elif domain_filter.type == 'mesh':
+                raise NotImplementedError('Average mesh xs are not yet implemented')
+
+            # Reshape averaged data arrays with one dimension for all filters
+            new_shape = \
+                (tally.num_filter_bins, tally.num_nuclides, tally.num_score_bins,)
+            mean = np.reshape(mean, new_shape)
+            std_dev = np.reshape(std_dev, new_shape)
+
+            # Override tally's data with the new condensed data
+            tally._mean = mean
+            tally._std_dev = std_dev
 
         # Compute the subdomain-averaged multi-group cross-section
         avg_xs.compute_xs()
@@ -733,6 +767,7 @@ class MultiGroupXS(object):
         df = self.get_pandas_dataframe()
 
         # Capitalize column label strings
+        df.columns = df.columns.astype(str)
         df.columns = map(str.title, df.columns)
 
         # Export the data using Pandas IO API

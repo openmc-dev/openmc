@@ -577,9 +577,9 @@ contains
       ! =======================================================================
       ! FIND MINIMUM DISTANCE TO SURFACE IN THIS CELL
 
-      SURFACE_LOOP: do i = 1, size(cl%surfaces)
+      SURFACE_LOOP: do i = 1, size(cl%region)
         ! check for operators
-        index_surf = cl%surfaces(i)
+        index_surf = cl%region(i)
         coincident = (index_surf == p % surface)
 
         ! check for operators
@@ -594,7 +594,7 @@ contains
         if (d < d_surf) then
           if (abs(d - d_surf)/d_surf >= FP_PRECISION) then
             d_surf = d
-            level_surf_cross = -cl % surfaces(i)
+            level_surf_cross = -cl % region(i)
           end if
         end if
       end do SURFACE_LOOP
@@ -843,9 +843,9 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
-      ! loop over each surface specification
-      do j = 1, size(c%surfaces)
-        i_surface = c % surfaces(j)
+      ! loop over each region specification
+      do j = 1, size(c%region)
+        i_surface = c % region(j)
         positive = (i_surface > 0)
         i_surface = abs(i_surface)
         if (i_surface >= OP_UNION) cycle
@@ -875,8 +875,8 @@ contains
       c => cells(i)
 
       ! loop over each surface specification
-      do j = 1, size(c%surfaces)
-        i_surface = c % surfaces(j)
+      do j = 1, size(c%region)
+        i_surface = c % region(j)
         positive = (i_surface > 0)
         i_surface = abs(i_surface)
         if (i_surface >= OP_UNION) cycle

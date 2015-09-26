@@ -212,10 +212,10 @@ class Summary(object):
             else:
                 fill = self._f['geometry/cells'][key]['lattice'].value
 
-            if 'surfaces' in self._f['geometry/cells'][key].keys():
-                surfaces = self._f['geometry/cells'][key]['surfaces'].value.decode()
+            if 'region' in self._f['geometry/cells'][key].keys():
+                region = self._f['geometry/cells'][key]['region'].value.decode()
             else:
-                surfaces = []
+                region = []
 
             # Create this Cell
             cell = openmc.Cell(cell_id=cell_id, name=name)
@@ -241,7 +241,7 @@ class Summary(object):
             self._cell_fills[index] = (fill_type, fill)
 
             # Iterate over all Surfaces and add them to the Cell
-            for token in surfaces.split():
+            for token in region.split():
                 try:
                     surface_halfspace = int(token)
                     halfspace = np.sign(surface_halfspace)

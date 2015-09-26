@@ -130,10 +130,9 @@ module geometry_header
                                            !  universe)
     integer, allocatable :: offset (:)     ! Distribcell offset for tally
                                            !  counter
-    integer, allocatable :: surfaces(:)    ! List of surfaces bounding cell --
-                                           ! note that parentheses, union, etc
-                                           ! operators will be listed here too
-    integer, allocatable :: rpn(:)         ! Reverse Polish notation for surface
+    integer, allocatable :: region(:)      ! Definition of spatial region as
+                                           ! Boolean expression of half-spaces
+    integer, allocatable :: rpn(:)         ! Reverse Polish notation for region
                                            ! expression
 
     ! Rotation matrix and translation vector

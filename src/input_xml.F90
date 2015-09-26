@@ -994,7 +994,7 @@ contains
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    character(MAX_LINE_LEN) :: surface_spec
+    character(MAX_LINE_LEN) :: region_spec
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
     class(Lattice), pointer :: lat
@@ -1118,27 +1118,35 @@ contains
         call fatal_error("Cannot specify material and fill simultaneously")
       end if
 
-      ! Allocate array for surfaces and copy
+      ! Check for region specification (also under deprecated name surfaces)
+      region_spec = ''
       if (check_for_node(node_cell, "surfaces")) then
-        call get_node_value(node_cell, "surfaces", surface_spec)
-        if (len_trim(surface_spec) > 0) then
-          ! Create surfaces array from string
-          call tokenize(surface_spec, tokens)
-
-          ! Use shunting-yard algorithm to determine RPN for surface algorithm
-          call generate_rpn(tokens, rpn)
-
-          ! Copy surface spec and RPN form to cell arrays
-          allocate(c % surfaces(tokens%size()))
-          allocate(c % rpn(rpn%size()))
-          c % surfaces(:) = tokens%data(1:tokens%size())
-          c % rpn(:) = rpn%data(1:rpn%size())
-
-          call tokens%clear()
-          call rpn%clear()
-        end if
+        call warning("The use of 'surfaces' is deprecated and will be &
+             &disallowed in a future release.  Use 'region' instead. The &
+             &openmc-update-inputs utility can be used to automatically &
+             &update geometry.xml files.")
+        call get_node_value(node_cell, "surfaces", region_spec)
+      elseif (check_for_node(node_cell, "region")) then
+        call get_node_value(node_cell, "region", region_spec)
       end if
-      if (.not. allocated(c%surfaces)) allocate(c%surfaces(0))
+
+      if (len_trim(region_spec) > 0) then
+        ! Create surfaces array from string
+        call tokenize(region_spec, tokens)
+
+        ! Use shunting-yard algorithm to determine RPN for surface algorithm
+        call generate_rpn(tokens, rpn)
+
+        ! Copy surface spec and RPN form to cell arrays
+        allocate(c % region(tokens%size()))
+        allocate(c % rpn(rpn%size()))
+        c % region(:) = tokens%data(1:tokens%size())
+        c % rpn(:) = rpn%data(1:rpn%size())
+
+        call tokens%clear()
+        call rpn%clear()
+      end if
+      if (.not. allocated(c%region)) allocate(c%region(0))
       if (.not. allocated(c%rpn)) allocate(c%rpn(0))
 
       ! Rotation matrix

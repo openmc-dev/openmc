@@ -568,15 +568,15 @@ contains
 
     do i = 1, n_cells
       ! =======================================================================
-      ! ADJUST SURFACE LIST FOR EACH CELL
+      ! ADJUST REGION SPECIFICATION FOR EACH CELL
 
       c => cells(i)
-      do j = 1, size(c%surfaces)
-        id = c%surfaces(j)
+      do j = 1, size(c%region)
+        id = c%region(j)
         if (id < OP_UNION) then
           if (surface_dict%has_key(abs(id))) then
             i_array = surface_dict%get_key(abs(id))
-            c%surfaces(j) = sign(i_array, id)
+            c%region(j) = sign(i_array, id)
           else
             call fatal_error("Could not find surface " // trim(to_str(abs(id)))&
                  &// " specified on cell " // trim(to_str(c%id)))

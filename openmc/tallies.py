@@ -1174,6 +1174,52 @@ class Tally(object):
 
         return df
 
+    def get_reshaped_data(self, value='mean'):
+        """Returns an array of tally data with one dimension per filter.
+
+        The tally data in OpenMC is stored as a 3D array with the dimensions
+        corresponding to filters, nuclides and scores. As a result, tally data
+        can be opaque for a user to directly index (i.e., without use of the
+        Tally.get_values(...) routine) since one must know how to properly use
+        the number of bins and strides for each filter to index into the first
+        (filter) dimension.
+
+        This builds and returns a reshaped version of the tally data array with
+        unique dimensions corresponding to each tally filter. For example,
+        suppose this tally has arrays of data with shape (8,5,5) corresponding
+        to two filters (2 and 4 bins, respectively), five nuclides and five
+        scores. This routine will return a version of the data array with the
+        with a new shape of (2,4,5,5) such that the first two dimensions now
+        correspond directly to the two filters with two and four bins.
+
+        Parameters
+        ---------
+        value : str
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+        float or ndarray
+            A scalar or NumPy array of the Tally data indexed in the order
+            each filter, nuclide and score is listed in the parameters.
+
+        """
+
+        # Get the 3D array of data in filters, nuclides and scores
+        data = self.get_values(value=value)
+
+        # Build a new array shape with one dimension per filter
+        new_shape = ()
+        for filter in self.filters:
+            new_shape += (filter.num_bins, )
+        new_shape += (self.num_nuclides,)
+        new_shape += (self.num_score_bins,)
+
+        # Reshape the data with one dimension for each filter
+        data = np.reshape(data, new_shape)
+        return data
+
     def export_results(self, filename='tally-results', directory='.',
                       format='hdf5', append=True):
         """Exports tallly results to an HDF5 or Python pickle binary file.

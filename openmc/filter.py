@@ -118,7 +118,7 @@ class Filter(object):
         if self.bins is None:
             return 0
         elif self.type in ['energy', 'energyout']:
-            return len(self.bins)-1
+            return len(self.bins) - 1
         elif self.type in ['cell', 'cellborn', 'surface', 'universe', 'material']:
             return len(self.bins)
         else:

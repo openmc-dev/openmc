@@ -923,8 +923,7 @@ class Tally(object):
                         bins = list(itertools.product(*xyz))
 
                     # Create list of 2-tuples for energy boundary bins
-                    elif filter.type in ['energy', 'energyout', 'mu', 'polar',
-                                         'azimuthal']:
+                    elif filter.type in ['energy', 'energyout']:
                         bins = []
                         for k in range(filter.num_bins):
                             bins.append((filter.bins[k], filter.bins[k+1]))
@@ -1279,6 +1278,7 @@ class Tally(object):
                     filter_bins = np.tile(filter_bins, tile_factor)
                     df[filter.type + ' [MeV]'] = filter_bins
 
+                # mu, polar, and azimuthal
                 elif filter.type in ['mu', 'polar', 'azimuthal']:
                     bins = filter.bins
                     num_bins = filter.num_bins

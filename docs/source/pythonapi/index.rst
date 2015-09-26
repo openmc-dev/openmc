@@ -62,6 +62,7 @@ on a given module or class.
 .. toctree::
     :maxdepth: 1
 
+    examples/post-processing
     examples/pandas-dataframes
     examples/tally-arithmetic
 

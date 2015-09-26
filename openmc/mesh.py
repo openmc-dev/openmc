@@ -54,7 +54,7 @@ class Mesh(object):
         # Initialize Mesh class attributes
         self.id = mesh_id
         self.name = name
-        self._type = 'rectangular'
+        self._type = 'regular'
         self._dimension = None
         self._lower_left = None
         self._upper_right = None
@@ -156,7 +156,7 @@ class Mesh(object):
         check_type('type for mesh ID="{0}"'.format(self._id),
                    meshtype, basestring)
         check_value('type for mesh ID="{0}"'.format(self._id),
-                    meshtype, ['rectangular', 'hexagonal'])
+                    meshtype, ['regular'])
         self._type = meshtype
 
     @dimension.setter

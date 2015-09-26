@@ -11,16 +11,10 @@ module constants
   integer, parameter :: VERSION_RELEASE = 0
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 13
+  integer, parameter :: REVISION_STATEPOINT       = 14
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
   integer, parameter :: REVISION_TRACK            = 1
-
-  ! Binary file types
-  integer, parameter :: &
-       FILETYPE_STATEPOINT       = -1, &
-       FILETYPE_PARTICLE_RESTART = -2, &
-       FILETYPE_SOURCE           = -3, &
-       FILETYPE_TRACK            = -4
+  integer, parameter :: REVISION_SUMMARY          = 1
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS
@@ -251,7 +245,8 @@ module constants
   ! Tally estimator types
   integer, parameter :: &
        ESTIMATOR_ANALOG      = 1, &
-       ESTIMATOR_TRACKLENGTH = 2
+       ESTIMATOR_TRACKLENGTH = 2, &
+       ESTIMATOR_COLLISION   = 3
 
   ! Event types for tallies
   integer, parameter :: &
@@ -320,6 +315,10 @@ module constants
        FILTER_POLAR       = 11, &
        FILTER_AZIMUTHAL   = 12
 
+  ! Mesh types
+  integer, parameter :: &
+       MESH_REGULAR = 1
+
   ! Tally surface current directions
   integer, parameter :: &
        IN_RIGHT  = 1,   &
@@ -335,7 +334,7 @@ module constants
        RELATIVE_ERROR     = 2, &
        STANDARD_DEVIATION = 3
 
-  ! Global tallY parameters
+  ! Global tally parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &
        K_COLLISION   = 1, &
@@ -396,14 +395,6 @@ module constants
        MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
        MODE_PLOTTING    = 3, & ! Plotting mode
        MODE_PARTICLE    = 4    ! Particle restart mode
-
-  ! Unit numbers
-  integer, parameter :: UNIT_SUMMARY  = 11 ! unit # for writing summary file
-  integer, parameter :: UNIT_TALLY    = 12 ! unit # for writing tally file
-  integer, parameter :: UNIT_PLOT     = 13 ! unit # for writing plot file
-  integer, parameter :: UNIT_XS       = 14 ! unit # for writing xs summary file
-  integer, parameter :: UNIT_PARTICLE = 15 ! unit # for writing particle restart
-  integer, parameter :: UNIT_OUTPUT   = 16 ! unit # for writing output
 
   !=============================================================================
   ! CMFD CONSTANTS

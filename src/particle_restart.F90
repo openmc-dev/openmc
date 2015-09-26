@@ -71,6 +71,7 @@ contains
 
     integer :: int_scalar
     integer(HID_T) :: file_id
+    character(MAX_WORD_LEN) :: mode
 
     ! Write meessage
     call write_message("Loading particle restart file " &
@@ -86,7 +87,13 @@ contains
     call read_dataset(file_id, 'gen_per_batch', gen_per_batch)
     call read_dataset(file_id, 'current_gen', current_gen)
     call read_dataset(file_id, 'n_particles', n_particles)
-    call read_dataset(file_id, 'run_mode', previous_run_mode)
+    call read_dataset(file_id, 'run_mode', mode)
+    select case (mode)
+    case ('k-eigenvalue')
+      previous_run_mode = MODE_EIGENVALUE
+    case ('fixed source')
+      previous_run_mode = MODE_FIXEDSOURCE
+    end select
     call read_dataset(file_id, 'id', p%id)
     call read_dataset(file_id, 'weight', p%wgt)
     call read_dataset(file_id, 'energy', p%E)

@@ -1278,6 +1278,23 @@ class Tally(object):
                     filter_bins = np.tile(filter_bins, tile_factor)
                     df[filter.type + ' [MeV]'] = filter_bins
 
+                # mu, polar, and azimuthal
+                elif filter.type in ['mu', 'polar', 'azimuthal']:
+                    bins = filter.bins
+                    num_bins = filter.num_bins
+
+                    # Create strings for
+                    template = '{0:1.2f} - {1:1.2f}'
+                    filter_bins = []
+                    for i in range(num_bins):
+                        filter_bins.append(template.format(bins[i], bins[i+1]))
+
+                    # Tile the mu bins into a DataFrame column
+                    filter_bins = np.repeat(filter_bins, filter.stride)
+                    tile_factor = data_size / len(filter_bins)
+                    filter_bins = np.tile(filter_bins, tile_factor)
+                    df[filter.type] = filter_bins
+
                 # universe, material, surface, cell, and cellborn filters
                 else:
                     filter_bins = np.repeat(filter.bins, filter.stride)

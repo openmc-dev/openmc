@@ -341,7 +341,59 @@ class MultiGroupXS(object):
 
         """
 
-        raise NotImplementedError('Energy condensation is not yet implemented')
+        if self.xs_tally is None:
+            msg = 'Unable to get a condensed coarse group cross-section ' \
+                  'since the fine group cross-section has not been computed'
+            raise ValueError(msg)
+
+        cv.check_type('coarse_groups', coarse_groups, EnergyGroups)
+        cv.check_less_than('coarse groups', coarse_groups.num_groups, self.num_groups)
+        cv.check_value('upper coarse energy', coarse_groups.group_edges[-1],
+                       [self.energy_groups.group_edges[-1]])
+        cv.check_value('lower coarse energy', coarse_groups.group_edges[0],
+                       [self.energy_groups.group_edges[0]])
+
+        # Clone this MultiGroupXS to initialize the condensed version
+        condensed_xs = copy.deepcopy(self)
+        condensed_xs.energy_groups = coarse_groups
+
+        # Build indices to sum up over
+        energy_indices = []
+        for group in range(coarse_groups.num_groups, 0, -1):
+            low, high = coarse_groups.get_group_bounds(group)
+            low_index = np.where(self.energy_groups.group_edges == low)[0][0]
+            energy_indices.append(low_index)
+
+        # FIXME: This won't work for scattering matrices
+        # Overwrite tallies with new energy-condensed versions
+        # NOTE: This assumes that the tallies were loaded such with a single
+        # domain filter and energy filter in that order
+        for tally_type, tally in condensed_xs.tallies.items():
+
+            try:
+                # Find the tally's energy filter and update to coarse groups
+                energy_filter = tally.find_filter('energy')
+                energy_filter.bins = coarse_groups.group_edges
+
+                # Make the condensed tally derived and ull out sum, sum_sq
+                tally._derived = True
+                tally._sum = None
+                tally._sum_sq = None
+
+                # Sum up mean, std. dev fine groups within each coarse group
+                tally._mean = np.add.reduceat(tally.mean, energy_indices)
+                tally._std_dev = tally.std_dev**2
+                tally._std_dev = np.add.reduceat(tally.std_dev, energy_indices)
+                tally._std_dev = np.sqrt(tally.std_dev)
+
+            # If the tally had no energy filter, then pass
+            except ValueError:
+                pass
+
+        # Compute the energy condensed multi-group cross-section
+        condensed_xs.compute_xs()
+
+        return condensed_xs
 
     def get_subdomain_avg_xs(self, subdomains='all'):
         """Construct a subdomain-averaged version of this cross-section.
@@ -367,7 +419,8 @@ class MultiGroupXS(object):
         """
 
         if self.xs_tally is None:
-            msg = 'Unable to get cross-section since it has not been computed'
+            msg = 'Unable to get subdomain-averaged cross-section since the ' \
+                  'subdomain-distributed cross-section has not been computed'
             raise ValueError(msg)
 
         # Construct a collection of the subdomain filter bins to average across
@@ -394,7 +447,7 @@ class MultiGroupXS(object):
             tally_sum /= len(subdomains)
             avg_xs.tallies[tally_type] = tally_sum
 
-        # Compute the condensed single group cross-section
+        # Compute the subdomain-averaged multi-group cross-section
         avg_xs.compute_xs()
 
         return avg_xs

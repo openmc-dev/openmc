@@ -14,16 +14,10 @@
           </choice>
           <choice>
             <element name="type">
-              <choice>
-                <value>rectangular</value>
-                <value>hexagonal</value>
-              </choice>
+              <value>regular</value>
             </element>
             <attribute name="type">
-              <choice>
-                <value>rectangular</value>
-                <value>hexagonal</value>
-              </choice>
+              <value>regular</value>
             </attribute>
           </choice>
           <choice>

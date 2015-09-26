@@ -57,7 +57,7 @@ contains
     use global,       only: cmfd, n_cmfd_tallies, cmfd_tallies, meshes,&
                             matching_bins
     use mesh,         only: mesh_indices_to_bin
-    use mesh_header,  only: StructuredMesh
+    use mesh_header,  only: RegularMesh
     use string,       only: to_str
     use tally_header, only: TallyObject
 
@@ -79,8 +79,8 @@ contains
     integer :: i_filter_eout ! index for outgoing energy filter
     integer :: i_filter_surf ! index for surface filter
     real(8) :: flux          ! temp variable for flux
-    type(TallyObject),    pointer :: t => null() ! pointer for tally object
-    type(StructuredMesh), pointer :: m => null() ! pointer for mesh object
+    type(TallyObject), pointer :: t ! pointer for tally object
+    type(RegularMesh), pointer :: m ! pointer for mesh object
 
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)

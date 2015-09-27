@@ -190,6 +190,96 @@ class MultiGroupXS(object):
         self._energy_groups = energy_groups
         self._num_groups = energy_groups.num_groups
 
+    def get_all_nuclides(self):
+        """Get all nuclides in the cross section's spatial domain.
+
+        Returns
+        -------
+        nuclides : list of str
+            A list of the string names for each nuclide in the problem domain
+            (e.g., ['U-235', 'U-238', 'O-16'])
+
+        Raises
+        ------
+        ValueError
+            When this method is called before the spatial domain has been set.
+
+        """
+
+        if self.domain is None:
+            raise ValueError('Unable to get all nuclides without a domain')
+
+        nuclides = self.domain.get_all_nuclides()
+        return nuclides.keys()
+
+    def get_nuclide_density(self, nuclide):
+        """Get the atomic number density for a nuclide in the cross section's
+        spatial domain.
+
+        nuclide : str
+            A nuclide name string (e.g., 'U-235')
+
+        Returns
+        -------
+        density : Real
+            The atomic number density for the nuclide of interest
+
+        Raises
+        ------
+        ValueError
+            When the density is requested for a nuclide which is not found in
+            the spatial domain.
+
+        """
+
+        cv.check_type('nuclide', nuclide, basestring)
+
+        # Get list of all nuclides in the spatial domain
+        nuclides = self.domain.get_all_nuclides()
+
+        if nuclide not in nuclides:
+            msg = 'Unable to get density for nuclide "{0}" which is not in ' \
+                  '{1} "{2}"'.format(nuclide, self.domain_type, self.domain.id)
+            ValueError(msg)
+
+        density = nuclides[nuclide][1]
+        return density
+
+    def get_nuclide_densities(self, nuclides='all'):
+        """Get all atomic number densities in the cross section's spatial domain.
+
+        nuclides : Iterable of str or 'all'
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is 'all')
+
+        Returns
+        -------
+        densities : ndarray of float
+            The atomic number densities corresponding to each of the nuclides
+            in the problem domain
+
+        Raises
+        ------
+        ValueError
+            When this method is called before the spatial domain has been set.
+
+        """
+
+        if self.domain is None:
+            raise ValueError('Unable to get nuclide densities without a domain')
+
+        # If the user requested the densities for all nuclides, get a list of
+        # all of the nuclide name strings
+        if nuclides == 'all':
+            nuclides =self.domain.get_all_nuclides()
+
+        # Loop over each nuclide and find and store its atomic number density
+        densities = np.zeros(len(nuclides), dtype=np.float)
+        for i, nuclide in enumerate(nuclides):
+            densities[i] = self.get_nuclide_density(nuclide)
+
+        return densities
+
     @abc.abstractmethod
     def create_tallies(self, scores, all_filters, keys, estimator):
         """Instantiates tallies needed to compute the multi-group cross section.
@@ -243,7 +333,15 @@ class MultiGroupXS(object):
     def compute_xs(self):
         """Computes multi-group cross sections using OpenMC tally arithmetic."""
 
-        return
+        # If a microscopic cross-section, replace CrossNuclides with originals
+        if self.xs_type == 'micro':
+            self.xs_tally._nuclides = []
+            nuclides = self.domain.get_all_nuclides()
+            for nuclide in nuclides:
+                self.xs_tally.add_nuclide(nuclide)
+
+        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
+        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
 
     def load_from_statepoint(self, statepoint):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
@@ -321,8 +419,6 @@ class MultiGroupXS(object):
 
         """
 
-        # TODO: Multiply by densities
-
         if self.xs_tally is None:
             msg = 'Unable to get cross section since it has not been computed'
             raise ValueError(msg)
@@ -355,6 +451,13 @@ class MultiGroupXS(object):
         # Query the multi-group cross section tally for the data
         xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
                                       nuclides=nuclides, value=value)
+
+        # If user requested microscopic cross sections from an object with
+        #  microscopic cross sections, divide by atom number densities
+        if self.xs_type == 'micro' and xs_type == 'micro':
+            densities = self.get_nuclide_densities(nuclides)
+            if value == 'mean' or value == 'std_dev':
+                xs /= densities[np.newaxis, :, np.newaxis]
         return xs
 
     def get_condensed_xs(self, coarse_groups):
@@ -512,7 +615,7 @@ class MultiGroupXS(object):
 
         return avg_xs
 
-    def print_xs(self, subdomains='all', nuclides='all'):
+    def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
         """Prints a string representation for the multi-group cross section.
 
         Parameters
@@ -522,6 +625,9 @@ class MultiGroupXS(object):
 
         nuclides : Iterable of str or 'all'
             The nuclides of the cross-sections to include in the report
+
+        xs_type: {'macro' or 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns
 
         """
 
@@ -561,11 +667,14 @@ class MultiGroupXS(object):
             # Loop over all Nuclides
             for nuclide in nuclides:
 
-                # Build header for cross section type based on the nuclide
-                if nuclide == 'total':
+                # Build header for nuclide type
+                if xs_type != 'total':
+                    string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
+
+                # Build header for cross section type
+                if xs_type == 'macro':
                     string += '{0: <16}\n'.format('\tCross Sections [cm^-1]:')
                 else:
-                    string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
                     string += '{0: <16}\n'.format('\tCross Sections [barns]:')
 
                 template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]:\t'
@@ -575,9 +684,9 @@ class MultiGroupXS(object):
                     bounds = self.energy_groups.get_group_bounds(group)
                     string += template.format('', group, bounds[0], bounds[1])
                     average = self.get_xs([group], [subdomain],
-                                          [nuclide], 'mean')
+                                          [nuclide], xs_type, 'mean')
                     rel_err = self.get_xs([group], [subdomain],
-                                          [nuclide], 'rel_err') * 100.
+                                          [nuclide], xs_type, 'rel_err') * 100
                     average = np.nan_to_num(average.flatten())[0]
                     rel_err = np.nan_to_num(rel_err.flatten())[0]
                     string += '{:.2e} +/- {:1.2e}%'.format(average, rel_err)
@@ -646,9 +755,9 @@ class MultiGroupXS(object):
 
         if self.xs_type == 'micro':
             nuclides = self.domain.get_all_nuclides()
-            densities = []
-            for nuclide in nuclides:
-                densities.append(nuclides[nuclide][1])
+            densities = np.zeros(len(nuclides), dtype=np.float)
+            for i, nuclide in enumerate(nuclides):
+                densities[i] = nuclides[nuclide][1]
         else:
             nuclides = ['total']
 
@@ -887,8 +996,7 @@ class TotalXS(MultiGroupXS):
         tally arithmetic."""
 
         self._xs_tally = self.tallies['total'] / self.tallies['flux']
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        super(TotalXS, self).compute_xs()
 
 
 class TransportXS(MultiGroupXS):
@@ -927,8 +1035,7 @@ class TransportXS(MultiGroupXS):
 
         self._xs_tally = self.tallies['total'] - self.tallies['scatter-P1']
         self._xs_tally /= self.tallies['flux']
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        super(TotalXS, self).compute_xs()
 
 
 class AbsorptionXS(MultiGroupXS):
@@ -959,8 +1066,7 @@ class AbsorptionXS(MultiGroupXS):
         tally arithmetic."""
 
         self._xs_tally = self.tallies['absorption'] / self.tallies['flux']
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        super(AbsorptionXS, self).compute_xs()
 
 
 class CaptureXS(MultiGroupXS):
@@ -992,8 +1098,7 @@ class CaptureXS(MultiGroupXS):
 
         self._xs_tally = self.tallies['absorption'] - self.tallies['fission']
         self._xs_tally /= self.tallies['flux']
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        super(CaptureXS, self).compute_xs()
 
 
 class FissionXS(MultiGroupXS):
@@ -1024,8 +1129,7 @@ class FissionXS(MultiGroupXS):
         tally arithmetic."""
 
         self._xs_tally = self.tallies['fission'] / self.tallies['flux']
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        super(FissionXS, self).compute_xs()
 
 
 class NuFissionXS(MultiGroupXS):
@@ -1056,8 +1160,7 @@ class NuFissionXS(MultiGroupXS):
         tally arithmetic."""
 
         self._xs_tally = self.tallies['nu-fission'] / self.tallies['flux']
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        super(NuFissionXS, self).compute_xs()
 
 
 class ScatterXS(MultiGroupXS):
@@ -1088,8 +1191,7 @@ class ScatterXS(MultiGroupXS):
         OpenMC tally arithmetic."""
 
         self._xs_tally = self.tallies['scatter'] / self.tallies['flux']
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        super(ScatterXS, self).compute_xs()
 
 
 class NuScatterXS(MultiGroupXS):
@@ -1120,8 +1222,7 @@ class NuScatterXS(MultiGroupXS):
         tally arithmetic."""
 
         self._xs_tally = self.tallies['nu-scatter'] / self.tallies['flux']
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        super(NuScatterXS, self).compute_xs()
 
 
 class ScatterMatrixXS(MultiGroupXS):
@@ -1172,8 +1273,7 @@ class ScatterMatrixXS(MultiGroupXS):
             rxn_tally = self.tallies['scatter']
 
         self._xs_tally = rxn_tally / self.tallies['flux']
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        super(ScatterMatrixXS, self).compute_xs()
 
     def get_xs(self, in_groups='all', out_groups='all', subdomains='all',
                nuclides='all', xs_type='macro', value='mean'):
@@ -1218,8 +1318,6 @@ class ScatterMatrixXS(MultiGroupXS):
 
         """
 
-        # TODO: Deal with xs_type and micros
-
         if self.xs_tally is None:
             msg = 'Unable to get cross section since it has not been computed'
             raise ValueError(msg)
@@ -1260,9 +1358,17 @@ class ScatterMatrixXS(MultiGroupXS):
         xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
                                       nuclides=nuclides, value=value)
         xs = np.nan_to_num(xs)
+
+        # If user requested microscopic cross sections from an object with
+        #  microscopic cross sections, divide by atom number densities
+        if self.xs_type == 'micro' and xs_type == 'micro':
+            densities = self.get_nuclide_densities(nuclides)
+            if value == 'mean' or value == 'std_dev':
+                xs /= densities[np.newaxis, :, np.newaxis]
+
         return xs
 
-    def print_xs(self, subdomains='all', nuclides='all'):
+    def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
         """Prints a string representation for the multi-group cross section.
 
         Parameters
@@ -1272,6 +1378,9 @@ class ScatterMatrixXS(MultiGroupXS):
 
         nuclides : Iterable of str or 'all'
             The nuclides of the cross-sections to include in the report
+
+        xs_type: {'macro' or 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns
 
         """
 
@@ -1320,11 +1429,14 @@ class ScatterMatrixXS(MultiGroupXS):
             # Loop over all Nuclides
             for nuclide in nuclides:
 
-                # Build header for cross section type based on the nuclide
-                if nuclide == 'total':
+                # Build header for nuclide type
+                if xs_type != 'total':
+                    string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
+
+                # Build header for cross section type
+                if xs_type == 'macro':
                     string += '{0: <16}\n'.format('\tCross Sections [cm^-1]:')
                 else:
-                    string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
                     string += '{0: <16}\n'.format('\tCross Sections [barns]:')
 
                 template = '{0: <12}Group {1} -> Group {2}:\t\t'
@@ -1334,11 +1446,11 @@ class ScatterMatrixXS(MultiGroupXS):
                     for out_group in range(1, self.num_groups+1):
                         string += template.format('', in_group, out_group)
                         average = \
-                            self.get_xs([in_group], [out_group],
-                                        [subdomain], [nuclide], 'mean')
+                            self.get_xs([in_group], [out_group], [subdomain],
+                                        [nuclide], xs_type, 'mean')
                         rel_err = \
-                            self.get_xs([in_group], [out_group],
-                                        [subdomain], [nuclide],'rel_err') * 100
+                            self.get_xs([in_group], [out_group], [subdomain],
+                                        [nuclide], xs_type, 'rel_err') * 100
                         average = np.nan_to_num(average.flatten())[0]
                         rel_err = np.nan_to_num(rel_err.flatten())[0]
                         string += '{:1.2e} +/- {:1.2e}%'.format(average, rel_err)
@@ -1398,8 +1510,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
             rxn_tally = self.tallies['nu-scatter']
 
         self._xs_tally = rxn_tally / self.tallies['flux']
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        super(ScatterMatrixXS, self).compute_xs()
 
 class Chi(MultiGroupXS):
 
@@ -1434,8 +1545,7 @@ class Chi(MultiGroupXS):
         nu_fission_out = self.tallies['nu-fission-out']
         nu_fission_in.remove_filter(nu_fission_in.filters[-1])
         self._xs_tally = nu_fission_out / nu_fission_in
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        super(Chi, self).compute_xs()
 
     def get_xs(self, groups='all', subdomains='all',
                nuclides='all', xs_type='macro', value='mean'):

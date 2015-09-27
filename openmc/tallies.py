@@ -1,4 +1,4 @@
-from collections import Iterable, defaultdict
+from collections import Iterable
 import copy
 import os
 import pickle
@@ -9,9 +9,8 @@ import sys
 
 import numpy as np
 
-from openmc import Mesh, Filter, Trigger, Nuclide, FILTER_TYPES
+from openmc import Mesh, Filter, Trigger, Nuclide
 from openmc.cross import CrossScore, CrossNuclide, CrossFilter
-from openmc.summary import Summary
 import openmc.checkvalue as cv
 from openmc.clean_xml import *
 

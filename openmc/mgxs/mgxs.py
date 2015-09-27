@@ -359,6 +359,25 @@ class MultiGroupXS(object):
 
         cv.check_type('statepoint', statepoint, openmc.statepoint.StatePoint)
 
+        if not statepoint.with_summary:
+            msg = 'Unable to load data from a statepoint which has not been ' \
+                  'linked with a summary file'
+            raise ValueError(msg)
+
+        # Override the domain object that loaded from an OpenMC summary file
+        # NOTE: This is necessary for micro cross-sections which require
+        # the isotopic number densities as computed by OpenMC
+        if self.domain_type == 'cell':
+            self.domain = statepoint.summary.get_cell_by_id(self.domain.id)
+        elif self.domain_type == 'universe':
+            self.domain = statepoint.summary.get_universe_by_id(self.domain.id)
+        elif self.domain_type == 'material':
+            self.domain = statepoint.summary.get_material_by_id(self.domain.id)
+        else:
+            msg = 'Unable to load data from a statepoint for domain type {} ' \
+                  'which is not yet supported'.format(self.domain_type)
+            raise ValueError(msg)
+
         # Create Tallies to search for in StatePoint
         self.create_tallies()
 
@@ -424,6 +443,7 @@ class MultiGroupXS(object):
             raise ValueError(msg)
 
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         filters = []
         filter_bins = []
@@ -630,6 +650,8 @@ class MultiGroupXS(object):
             Return the macro or micro cross section in units of cm^-1 or barns
 
         """
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         if subdomains != 'all':
             cv.check_iterable_type('subdomains', subdomains, Integral)
@@ -1323,6 +1345,7 @@ class ScatterMatrixXS(MultiGroupXS):
             raise ValueError(msg)
 
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         filters = []
         filter_bins = []
@@ -1383,6 +1406,8 @@ class ScatterMatrixXS(MultiGroupXS):
             Return the macro or micro cross section in units of cm^-1 or barns
 
         """
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         if subdomains != 'all':
             cv.check_iterable_type('subdomains', subdomains, Integral)
@@ -1586,6 +1611,8 @@ class Chi(MultiGroupXS):
             computed from tally data.
 
         """
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         if self.xs_type == 'micro' and xs_type == 'macro':
             raise NotImplementedError('Unable to compute macro Chi from micros')

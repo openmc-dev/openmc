@@ -84,13 +84,26 @@ class Region(object):
             r2 = output.pop()
             if operator == ' ':
                 r1 = output.pop()
-                output.append(Intersection(r1, r2))
+                if isinstance(r1, Intersection) and hasattr(r2, 'surface'):
+                    r1.nodes.append(r2)
+                    output.append(r1)
+                elif isinstance(r2, Intersection) and hasattr(r1, 'surface'):
+                    r2.nodes.insert(0, r1)
+                    output.append(r2)
+                else:
+                    output.append(Intersection(r1, r2))
             elif operator == '^':
                 r1 = output.pop()
-                output.append(Union(r1, r2))
+                if isinstance(r1, Union) and hasattr(r2, 'surface'):
+                    r1.nodes.append(r2)
+                    output.append(r1)
+                elif isinstance(r2, Union) and hasattr(r1, 'surface'):
+                    r2.nodes.insert(0, r1)
+                    output.append(r2)
+                else:
+                    output.append(Union(r1, r2))
             elif operator == '~':
                 output.append(Complement(r2))
-
 
         # The following is an implementation of the shunting yard algorithm to
         # generate an abstract syntax tree for the region expression.

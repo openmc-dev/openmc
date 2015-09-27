@@ -1,7 +1,7 @@
 import sys
 
 from openmc import Filter, Nuclide
-from openmc.constants import FILTER_TYPES
+from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
 
 
@@ -345,7 +345,7 @@ class CrossFilter(object):
 
     @type.setter
     def type(self, filter_type):
-        if filter_type not in FILTER_TYPES.values():
+        if filter_type not in _FILTER_TYPES.values():
             msg = 'Unable to set Filter type to "{0}" since it is not one ' \
                   'of the supported types'.format(type)
             raise ValueError(msg)

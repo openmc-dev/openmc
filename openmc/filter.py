@@ -7,7 +7,6 @@ import numpy as np
 
 from openmc import Mesh
 from openmc.summary import Summary
-from openmc.constants import *
 import openmc.checkvalue as cv
 
 

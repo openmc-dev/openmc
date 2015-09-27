@@ -82,8 +82,8 @@ class StatePoint(object):
         Indicate whether user-defined tallies are present
     version: tuple of int
         Version of OpenMC
-    with_summary : bool
-        Indicate whether statepoint data has been linked against a summary file
+    summary : None or openmc.summary.Summary
+        A summary object if the statepoint has been linked with a summary file
 
     """
 
@@ -104,7 +104,7 @@ class StatePoint(object):
         # Set flags for what data has been read
         self._meshes_read = False
         self._tallies_read = False
-        self._with_summary = False
+        self._summary = False
         self._global_tallies = None
 
     def close(self):
@@ -458,8 +458,15 @@ class StatePoint(object):
                 self._f['version_release'].value)
 
     @property
+    def summary(self):
+        return self._summary
+
+    @property
     def with_summary(self):
-        return self._with_summary
+        if self.summary is None:
+            return False
+        else:
+            return True
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None):
@@ -628,4 +635,4 @@ class StatePoint(object):
                         material_ids.append(summary.materials[bin].id)
                     filter.bins = material_ids
 
-        self._with_summary = True
+        self._summary = summary

@@ -62,7 +62,6 @@ contains
     real(8) :: uvw(3)               ! particle direction
     type(Material),    pointer :: mat
     type(Reaction),    pointer :: rxn
-    real(8) :: multiplicity
 
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins
@@ -176,8 +175,10 @@ contains
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
-            (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          multiplicity = ONE
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          ! Don't waste time on very common reactions we know have multiplicities
+          ! of one.
+          score = p % last_wgt
         else
           do m = 1, nuclides(p % event_nuclide) % n_reaction
             ! Check if this is the desired MT
@@ -188,16 +189,16 @@ contains
             end if
           end do
 
-          ! Get multiplicity
+          ! Get multiplicity and apply to score
           if (rxn % multiplicity_with_E) then
-            multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+            ! Then the multiplicity was already incorporated in to p % wgt
+            ! per the scattering routine,
+            score = p % wgt
           else
-            multiplicity = real(rxn % multiplicity,8)
+            ! Grab the multiplicity from the rxn
+            score = p % last_wgt * real(rxn % multiplicity,8)
           end if
         end if
-
-        ! Apply multiplicity to the last weight
-        score = p % last_wgt * multiplicity
 
 
       case (SCORE_NU_SCATTER_PN)
@@ -211,8 +212,10 @@ contains
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
-            (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          multiplicity = ONE
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          ! Don't waste time on very common reactions we know have multiplicities
+          ! of one.
+          score = p % last_wgt
         else
           do m = 1, nuclides(p % event_nuclide) % n_reaction
             ! Check if this is the desired MT
@@ -223,16 +226,16 @@ contains
             end if
           end do
 
-          ! Get multiplicity
+          ! Get multiplicity and apply to score
           if (rxn % multiplicity_with_E) then
-            multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+            ! Then the multiplicity was already incorporated in to p % wgt
+            ! per the scattering routine,
+            score = p % wgt
           else
-            multiplicity = real(rxn % multiplicity,8)
+            ! Grab the multiplicity from the rxn
+            score = p % last_wgt * real(rxn % multiplicity,8)
           end if
         end if
-
-        ! Apply multiplicity to the last weight
-        score = p % last_wgt * multiplicity
 
 
       case (SCORE_NU_SCATTER_YN)
@@ -246,8 +249,10 @@ contains
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
-            (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          multiplicity = ONE
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          ! Don't waste time on very common reactions we know have multiplicities
+          ! of one.
+          score = p % last_wgt
         else
           do m = 1, nuclides(p % event_nuclide) % n_reaction
             ! Check if this is the desired MT
@@ -258,16 +263,16 @@ contains
             end if
           end do
 
-          ! Get multiplicity
+          ! Get multiplicity and apply to score
           if (rxn % multiplicity_with_E) then
-            multiplicity = interpolate_tab1(rxn % multiplicity_E, p % last_E)
+            ! Then the multiplicity was already incorporated in to p % wgt
+            ! per the scattering routine,
+            score = p % wgt
           else
-            multiplicity = real(rxn % multiplicity,8)
+            ! Grab the multiplicity from the rxn
+            score = p % last_wgt * real(rxn % multiplicity,8)
           end if
         end if
-
-        ! Apply multiplicity to the last weight
-        score = p % last_wgt * multiplicity
 
 
       case (SCORE_TRANSPORT)

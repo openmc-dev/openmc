@@ -74,7 +74,7 @@ class MultiGroupXS(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, energy_groups=None, name=''):
+                 energy_groups=None, xs_type='macro', name=''):
 
         self._name = ''
         self._rxn_type = None
@@ -87,8 +87,7 @@ class MultiGroupXS(object):
         self._xs_tally = None
 
         self.name = name
-        if xs_type is not None:
-            self.xs_type = xs_type
+        self.xs_type = xs_type
         if domain_type is not None:
             self.domain_type = domain_type
         if domain is not None:
@@ -321,6 +320,8 @@ class MultiGroupXS(object):
             computed from tally data.
 
         """
+
+        # TODO: Multiply by densities
 
         if self.xs_tally is None:
             msg = 'Unable to get cross section since it has not been computed'
@@ -688,10 +689,10 @@ class MultiGroupXS(object):
                     nuclide_group = rxn_group
 
                 # Extract the cross section for this subdomain and nuclide
-                average = self.get_xs(subdomains=[subdomain],
-                                      nuclides=[nuclide], value='mean')
-                std_dev = self.get_xs(subdomains=[subdomain],
-                                      nuclides=[nuclide], value='std_dev')
+                average = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
+                                      xs_type=self.xs_type, value='mean')
+                std_dev = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
+                                      xs_type=self.xs_type, value='std_dev')
                 average = average.squeeze()
                 std_dev = std_dev.squeeze()
 
@@ -861,8 +862,8 @@ class MultiGroupXS(object):
 class TotalXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, groups=None, name=''):
-        super(TotalXS, self).__init__(domain, domain_type, xs_type, groups, name)
+                 groups=None, xs_type='macro', name=''):
+        super(TotalXS, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'total'
 
     def create_tallies(self):
@@ -893,8 +894,8 @@ class TotalXS(MultiGroupXS):
 class TransportXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, groups=None, name=''):
-        super(TransportXS, self).__init__(domain, domain_type, xs_type, groups, name)
+                 groups=None, xs_type='macro', name=''):
+        super(TransportXS, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'transport'
 
     def create_tallies(self):
@@ -933,8 +934,8 @@ class TransportXS(MultiGroupXS):
 class AbsorptionXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, groups=None, name=''):
-        super(AbsorptionXS, self).__init__(domain, domain_type, xs_type, groups, name)
+                 groups=None, xs_type='macro', name=''):
+        super(AbsorptionXS, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'absorption'
 
     def create_tallies(self):
@@ -965,8 +966,8 @@ class AbsorptionXS(MultiGroupXS):
 class CaptureXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, groups=None, name=''):
-        super(CaptureXS, self).__init__(domain, domain_type, xs_type, groups, name)
+                 groups=None, xs_type='macro', name=''):
+        super(CaptureXS, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'capture'
 
     def create_tallies(self):
@@ -998,8 +999,8 @@ class CaptureXS(MultiGroupXS):
 class FissionXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, groups=None, name=''):
-        super(FissionXS, self).__init__(domain, domain_type, xs_type, groups, name)
+                 groups=None, xs_type='macro', name=''):
+        super(FissionXS, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'fission'
 
     def create_tallies(self):
@@ -1030,8 +1031,8 @@ class FissionXS(MultiGroupXS):
 class NuFissionXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, groups=None, name=''):
-        super(NuFissionXS, self).__init__(domain, domain_type, xs_type, groups, name)
+                 groups=None, xs_type='macro', name=''):
+        super(NuFissionXS, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'nu-fission'
 
     def create_tallies(self):
@@ -1062,8 +1063,8 @@ class NuFissionXS(MultiGroupXS):
 class ScatterXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, groups=None, name=''):
-        super(ScatterXS, self).__init__(domain, domain_type, xs_type, groups, name)
+                 groups=None, xs_type='macro', name=''):
+        super(ScatterXS, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'scatter'
 
     def create_tallies(self):
@@ -1094,8 +1095,8 @@ class ScatterXS(MultiGroupXS):
 class NuScatterXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, groups=None, name=''):
-        super(NuScatterXS, self).__init__(domain, domain_type, xs_type, groups, name)
+                 groups=None, xs_type='macro', name=''):
+        super(NuScatterXS, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'nu-scatter'
 
     def create_tallies(self):
@@ -1126,8 +1127,8 @@ class NuScatterXS(MultiGroupXS):
 class ScatterMatrixXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, groups=None, name=''):
-        super(ScatterMatrixXS, self).__init__(domain, domain_type, xs_type, groups, name)
+                 groups=None, xs_type='macro', name=''):
+        super(ScatterMatrixXS, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'scatter matrix'
 
     def create_tallies(self):
@@ -1174,8 +1175,8 @@ class ScatterMatrixXS(MultiGroupXS):
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
         self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
 
-    def get_xs(self, in_groups='all', out_groups='all',
-               subdomains='all', nuclides='all', value='mean'):
+    def get_xs(self, in_groups='all', out_groups='all', subdomains='all',
+               nuclides='all', xs_type='macro', value='mean'):
         """Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested scattering
@@ -1196,6 +1197,9 @@ class ScatterMatrixXS(MultiGroupXS):
             A list of nuclide name strings
             (e.g., ['U-235', 'U-238']; default is 'all')
 
+        xs_type: {'macro' or 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns
+
         value : str
             A string for the type of value to return - 'mean' (default),
             'std_dev' or 'rel_err' are accepted
@@ -1213,6 +1217,8 @@ class ScatterMatrixXS(MultiGroupXS):
             computed from tally data.
 
         """
+
+        # TODO: Deal with xs_type and micros
 
         if self.xs_tally is None:
             msg = 'Unable to get cross section since it has not been computed'
@@ -1332,7 +1338,7 @@ class ScatterMatrixXS(MultiGroupXS):
                                         [subdomain], [nuclide], 'mean')
                         rel_err = \
                             self.get_xs([in_group], [out_group],
-                                        [subdomain], [nuclide], 'rel_err') * 100
+                                        [subdomain], [nuclide],'rel_err') * 100
                         average = np.nan_to_num(average.flatten())[0]
                         rel_err = np.nan_to_num(rel_err.flatten())[0]
                         string += '{:1.2e} +/- {:1.2e}%'.format(average, rel_err)
@@ -1347,8 +1353,8 @@ class ScatterMatrixXS(MultiGroupXS):
 class NuScatterMatrixXS(ScatterMatrixXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, groups=None,  name=''):
-        super(NuScatterMatrixXS, self).__init__(domain, domain_type, xs_type, groups, name)
+                 groups=None, xs_type='macro', name=''):
+        super(NuScatterMatrixXS, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'nu-scatter matrix'
 
     def create_tallies(self):
@@ -1398,8 +1404,8 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 class Chi(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 xs_type=None, groups=None, name=''):
-        super(Chi, self).__init__(domain, domain_type, xs_type, groups, name)
+                 groups=None, xs_type='macro', name=''):
+        super(Chi, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'chi'
 
         # FIXME: Make this work for micros!!!

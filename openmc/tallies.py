@@ -1666,8 +1666,8 @@ class Tally(object):
 
             if self_repeat_factor == 1:
                 other_shape[0] *= other_tile_factor
-                other_mean = np.repeat(other_mean, other_tile_factor)
-                other_std_dev = np.repeat(other_std_dev, other_tile_factor)
+                other_mean = np.repeat(other_mean, other_tile_factor, axis=0)
+                other_std_dev = np.repeat(other_std_dev, other_tile_factor, axis=0)
             else:
                 other_mean = np.tile(other_mean, (other_tile_factor, 1, 1))
                 other_std_dev = np.tile(other_std_dev, (other_tile_factor, 1, 1))
@@ -1687,11 +1687,9 @@ class Tally(object):
             self_shape = list(self.mean.shape)
 
             # Replicate the data
-            self_mean = np.repeat(self_mean, self_repeat_factor)
-#            self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
+            self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
             other_mean = np.tile(other_mean, (1, other_tile_factor, 1))
-#            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=1)
-            self_std_dev = np.repeat(self_std_dev, self_repeat_factor)
+            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=1)
             other_std_dev = np.tile(other_std_dev, (1, other_tile_factor, 1))
 
             self_shape[1] *= self_repeat_factor
@@ -1708,11 +1706,9 @@ class Tally(object):
             self_shape = list(self.mean.shape)
 
             # Replicate the data
-            self_mean = np.repeat(self_mean, self_repeat_factor)
-#            self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)
+            self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)
             other_mean = np.tile(other_mean, (1, 1, other_tile_factor))
-            self_std_dev = np.repeat(self_std_dev, self_repeat_factor)
-#            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=2)
+            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=2)
             other_std_dev = np.tile(other_std_dev, (1, 1, other_tile_factor))
 
             self_shape[2] *= self_repeat_factor

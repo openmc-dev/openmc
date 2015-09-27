@@ -41,21 +41,18 @@ class Nuclide(object):
         if xs is not None:
             self.xs = xs
 
-    def __eq__(self, nuclide2):
-        # Check type
-        if not isinstance(nuclide2, Nuclide):
-            return False
-
-        # Check name
-        elif self._name != nuclide2._name:
-            return False
-
-        # Check xs
-        elif self._xs != nuclide2._xs:
-            return False
-
-        else:
+    def __eq__(self, other):
+        if isinstance(other, Nuclide):
+            if self._name != other._name:
+                return False
+            elif self._xs != other._xs:
+                return False
+            else:
+                return True
+        elif isinstance(other, basestring) and other == self.name:
             return True
+        else:
+            return False
 
     def __hash__(self):
         return hash((self._name, self._xs))

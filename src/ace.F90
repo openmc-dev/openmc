@@ -482,6 +482,15 @@ contains
       ! Continue reading elastic scattering and heating
       nuc % elastic = get_real(NE)
 
+      ! Determine if minimum/maximum energy for this nuclide is greater/less
+      ! than the previous
+      energy_min_neutron = max(energy_min_neutron, nuc%energy(1))
+      energy_max_neutron = min(energy_max_neutron, nuc%energy(NE))
+      if (nuc%energy(NE) < 20.0_8) then
+        call warning("Maximum energy for " // trim(adjustl(nuc%name)) // &
+             " is " // trim(to_str(nuc%energy(NE))) // " MeV. Neutrons will &
+             &not be allowed to go above this energy.")
+      end if
     end if
 
   end subroutine read_esz

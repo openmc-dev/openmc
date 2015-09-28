@@ -108,10 +108,10 @@ contains
             i = i + 1
           end do
 
-          ! If previous token is not an operator and next token is not a left
-          ! parenthese or union operator, that implies that the whitespace is to
-          ! be interpreted as an intersection operator
-          if (i_start > 0) then
+          ! If previous token is a halfspace or right parenthesis and next token
+          ! is not a left parenthese or union operator, that implies that the
+          ! whitespace is to be interpreted as an intersection operator
+          if (i_start > 0 .or. tokens%data(tokens%size()) == OP_RIGHT_PAREN) then
             if (index(')^', string_(i+1:i+1)) == 0) then
               call tokens%push_back(OP_INTERSECTION)
             end if

@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 """Update OpenMC's input XML files to the latest format.
 
-Usage information can be obtained by running 'update_inputs.py --help':
+Usage information can be obtained by running 'openmc-update-inputs --help':
 
-usage: update_lattices.py [-h] IN [IN ...]
+usage: openmc-update-inputs [-h] IN [IN ...]
 
-Update lattices in geometry.xml files to the latest format. This will remove
-'outside' attributes/elements and replace them with 'outer' attributes. Note
-that this script will not delete the given files; it will append '.original'
-to the given files and write new ones.
+Update geometry.xml files to the latest format. This will remove 'outside'
+attributes/elements from lattices and replace them with 'outer' attributes. For
+'cell' elements, any 'surfaces' attributes/elements will be renamed
+'region'. Note that this script will not delete the given files; it will append
+'.original' to the given files and write new ones.
 
 positional arguments:
   IN          Input geometry.xml file(s).
@@ -173,9 +174,6 @@ def update_geometry(geometry_root):
     root = geometry_root
     was_updated = False
 
-    # Ignore files that do not contain lattices.
-    if all([child.tag != 'lattice' for child in root]): return False
-
     # Get a set of already-used universe and cell ids.
     uids = get_universe_ids(root)
     cids = get_cell_ids(root)
@@ -231,6 +229,17 @@ def update_geometry(geometry_root):
         if 'width' in lat.attrib:
             lat.attrib['pitch'] = lat.attrib['width']
             del lat.attrib['width']
+            was_updated = True
+
+    # Change 'surfaces' to 'region' in cell definitions
+    for cell in root.iter('cell'):
+        elem = cell.find('surfaces')
+        if elem is not None:
+            elem.tag = 'region'
+            was_updated = True
+        if 'surfaces' in cell.attrib:
+            cell.attrib['region'] = cell.attrib['surfaces']
+            del cell.attrib['surfaces']
             was_updated = True
 
     return was_updated

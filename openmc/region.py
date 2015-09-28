@@ -27,6 +27,9 @@ class Region(object):
 
         """
 
+        # Strip leading and trailing whitespace
+        expression = expression.strip()
+
         # Convert the string expression into a list of tokens, i.e., operators
         # and surface half-spaces, representing the expression in infix
         # notation.
@@ -49,13 +52,15 @@ class Region(object):
                     # to the list of tokens
                     tokens.append(expression[i])
                 else:
-                    # For spaces, we need to check the context further. If it
-                    # doesn't appear before a right parentheses or union, it is
-                    # interpreted to be as an intersection operator
+                    # Find next non-space character
                     while expression[i+1] == ' ':
                         i += 1
 
-                    if i_start >= 0 and expression[i+1] not in ')^':
+                    # If previous token is a halfspace or right parenthesis and next token
+                    # is not a left parenthese or union operator, that implies that the
+                    # whitespace is to be interpreted as an intersection operator
+                    if (i_start >= 0 or tokens[-1] == ')') and \
+                       expression[i+1] not in ')^':
                         tokens.append(' ')
 
                 i_start = -1

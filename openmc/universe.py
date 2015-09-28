@@ -327,8 +327,8 @@ class Cell(object):
             self._fill.create_xml_subelement(xml_element)
 
         if self.region is not None:
-            # Set the surfaces attribute with the region specification
-            element.set("surfaces", str(self.region))
+            # Set the region attribute with the region specification
+            element.set("region", str(self.region))
 
             # Only surfaces that appear in a region are added to the geometry
             # file, so the appropriate check is performed here. First we create

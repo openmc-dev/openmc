@@ -74,6 +74,10 @@ module global
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
   integer :: n_listings       ! Number of listings in cross_sections.xml
 
+  ! Minimum/maximum energies
+  real(8) :: energy_min_neutron = ZERO
+  real(8) :: energy_max_neutron = INFINITY
+
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: sab_dict

@@ -1,5 +1,5 @@
 import openmc
-
+from openmc.region import Intersection
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -133,16 +133,11 @@ clad = openmc.Cell(cell_id=3, name='cell 3')
 water = openmc.Cell(cell_id=4, name='cell 4')
 
 # Register Surfaces with Cells
-fuel.add_surface(fuel_or, halfspace=-1)
-gap.add_surface(fuel_or, halfspace=+1)
-gap.add_surface(clad_ir, halfspace=-1)
-clad.add_surface(clad_ir, halfspace=+1)
-clad.add_surface(clad_or, halfspace=-1)
-water.add_surface(clad_or, halfspace=+1)
-water.add_surface(left, halfspace=+1)
-water.add_surface(right, halfspace=-1)
-water.add_surface(bottom, halfspace=+1)
-water.add_surface(top, halfspace=-1)
+fuel.region = fuel_or.negative
+gap.region = Intersection(fuel_or.positive, clad_ir.negative)
+clad.region = Intersection(clad_ir.positive, clad_or.negative)
+water.region = Intersection(clad_or.positive, left.positive, right.negative,
+                            bottom.positive, top.negative)
 
 # Register Materials with Cells
 fuel.fill = uo2

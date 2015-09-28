@@ -1137,7 +1137,7 @@ contains
         ! Use shunting-yard algorithm to determine RPN for surface algorithm
         call generate_rpn(tokens, rpn)
 
-        ! Copy surface spec and RPN form to cell arrays
+        ! Copy region spec and RPN form to cell arrays
         allocate(c % region(tokens%size()))
         allocate(c % rpn(rpn%size()))
         c % region(:) = tokens%data(1:tokens%size())
@@ -4790,7 +4790,7 @@ contains
 
 !===============================================================================
 ! GENERATE_RPN implements the shunting-yard algorithm to generate a Reverse
-! polish notation (RPN) expression for the surface specification of a cell given
+! Polish notation (RPN) expression for the region specification of a cell given
 ! the infix notation.
 !===============================================================================
 
@@ -4844,7 +4844,7 @@ contains
           ! If we run out of operators without finding a left parenthesis, it
           ! means there are mismatched parentheses.
           if (stack%size() == 0) then
-            call fatal_error('Mimatched parentheses in surface specification')
+            call fatal_error('Mimatched parentheses in region specification')
           end if
 
           op = stack%data(stack%size())
@@ -4864,7 +4864,7 @@ contains
 
       ! If the operator is a parenthesis, it is mismatched
       if (op >= OP_RIGHT_PAREN) then
-        call fatal_error('Mimatched parentheses in surface specification')
+        call fatal_error('Mimatched parentheses in region specification')
       end if
 
       call output%push_back(op)

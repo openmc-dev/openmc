@@ -123,7 +123,7 @@ contains
         ! Check for invalid characters
         if (index('-0123456789', string_(i:i)) == 0) then
           call fatal_error("Invalid character '" // string_(i:i) // "' in &
-               &surface specification.")
+               &region specification.")
         end if
 
         ! If we haven't yet reached the start of a word, start a new word

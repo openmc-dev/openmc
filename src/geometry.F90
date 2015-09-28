@@ -79,7 +79,7 @@ contains
       ! in the cell.
       in_cell = stack(i_stack)
     else
-      ! This case occurs if there is no surface specification since i_stack will
+      ! This case occurs if there is no region specification since i_stack will
       ! still be zero.
       in_cell = .true.
     end if
@@ -874,7 +874,7 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
-      ! loop over each surface specification
+      ! loop through the region specification
       do j = 1, size(c%region)
         i_surface = c % region(j)
         positive = (i_surface > 0)

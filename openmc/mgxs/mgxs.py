@@ -44,6 +44,8 @@ class MultiGroupXS(object):
         The domain type for spatial homogenization
     energy_groups : EnergyGroups
         The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes multi-group cross sections for each nuclide in domain
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC tallies.xml file.
@@ -54,6 +56,8 @@ class MultiGroupXS(object):
         Name of the multi-group cross section
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes multi-group cross sections for each nuclide in domain
     domain : Material or Cell or Universe
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe'}
@@ -74,11 +78,11 @@ class MultiGroupXS(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, domain=None, domain_type=None,
-                 energy_groups=None, xs_type='macro', name=''):
+                 energy_groups=None, by_nuclide=False, name=''):
 
         self._name = ''
         self._rxn_type = None
-        self._xs_type = None
+        self._by_nuclide = None
         self._domain = None
         self._domain_type = None
         self._energy_groups = None
@@ -87,7 +91,7 @@ class MultiGroupXS(object):
         self._xs_tally = None
 
         self.name = name
-        self.xs_type = xs_type
+        self.by_nuclide = by_nuclide
         if domain_type is not None:
             self.domain_type = domain_type
         if domain is not None:
@@ -103,7 +107,7 @@ class MultiGroupXS(object):
             clone = type(self).__new__(type(self))
             clone._name = self.name
             clone._rxn_type = self.rxn_type
-            clone._xs_type = self.xs_type
+            clone._by_nuclide = self.by_nuclide
             clone._domain = self.domain
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
@@ -131,8 +135,8 @@ class MultiGroupXS(object):
         return self._rxn_type
 
     @property
-    def xs_type(self):
-        return self._xs_type
+    def by_nuclide(self):
+        return self._by_nuclide
 
     @property
     def domain(self):
@@ -169,10 +173,10 @@ class MultiGroupXS(object):
         cv.check_type('name', name, basestring)
         self._name = name
 
-    @xs_type.setter
-    def xs_type(self, xs_type):
-        cv.check_value('xs_type', xs_type, ('macro', 'micro'))
-        self._xs_type = xs_type
+    @by_nuclide.setter
+    def by_nuclide(self, by_nuclide):
+        cv.check_type('by_nuclide', by_nuclide, bool)
+        self._by_nuclide = by_nuclide
 
     @domain.setter
     def domain(self, domain):
@@ -213,16 +217,18 @@ class MultiGroupXS(object):
         return nuclides.keys()
 
     def get_nuclide_density(self, nuclide):
-        """Get the atomic number density for a nuclide in the cross section's
-        spatial domain.
+        """Get the atomic number density in units of atoms/b-cm for a nuclide
+        in the cross section's spatial domain.
 
+        Paramters
+        ---------
         nuclide : str
             A nuclide name string (e.g., 'U-235')
 
         Returns
         -------
         density : Real
-            The atomic number density for the nuclide of interest
+            The atomic number density (atom/b-cm) for the nuclide of interest
 
         Raises
         ------
@@ -246,17 +252,22 @@ class MultiGroupXS(object):
         return density
 
     def get_nuclide_densities(self, nuclides='all'):
-        """Get all atomic number densities in the cross section's spatial domain.
+        """Get an array of atomic number densities in units of atom/b-cm for all
+        nuclides in the cross section's spatial domain.
 
-        nuclides : Iterable of str or 'all'
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is 'all')
+        Paramters
+        ---------
+        nuclides : Iterable of str or 'all' or 'sum'
+            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            special string 'all' will return the atom densities for all nuclides
+            in the spatial domain. The special string 'sum' will return the atom
+            density summed across all nuclides in the spatial domain.
 
         Returns
         -------
         densities : ndarray of float
-            The atomic number densities corresponding to each of the nuclides
-            in the problem domain
+            An array of the atomic number densities (atom/b-cm) for each of the
+            nuclides in the problem domain
 
         Raises
         ------
@@ -268,15 +279,21 @@ class MultiGroupXS(object):
         if self.domain is None:
             raise ValueError('Unable to get nuclide densities without a domain')
 
-        # If the user requested the densities for all nuclides, get a list of
-        # all of the nuclide name strings
         if nuclides == 'all':
-            nuclides =self.domain.get_all_nuclides()
+            nuclides = self.domain.get_all_nuclides()
 
-        # Loop over each nuclide and find and store its atomic number density
-        densities = np.zeros(len(nuclides), dtype=np.float)
-        for i, nuclide in enumerate(nuclides):
-            densities[i] = self.get_nuclide_density(nuclide)
+        # Sum the atomic number densities for all nuclides
+        elif nuclides == 'sum':
+            nuclides = self.get_all_nuclides()
+            densities = np.zeros(1, dtype=np.float)
+            for i, nuclide in enumerate(nuclides):
+                densities[0] += self.get_nuclide_density(nuclide)
+
+        # Store each nuclide's atomic number density in an array
+        else:
+            densities = np.zeros(len(nuclides), dtype=np.float)
+            for i, nuclide in enumerate(nuclides):
+                densities[i] = self.get_nuclide_density(nuclide)
 
         return densities
 
@@ -323,23 +340,25 @@ class MultiGroupXS(object):
             for filter in filters:
                 self.tallies[key].add_filter(filter)
 
-            # If this is a microscopic cross-section, add all nuclides to tally
-            if self.xs_type == 'micro' and score != 'flux':
+            # If this is a by nuclide cross-section, add all nuclides to Tally
+            if self.by_nuclide and score != 'flux':
                 all_nuclides = self.domain.get_all_nuclides()
                 for nuclide in all_nuclides:
                     self.tallies[key].add_nuclide(nuclide)
 
     @abc.abstractmethod
     def compute_xs(self):
-        """Computes multi-group cross sections using OpenMC tally arithmetic."""
+        """Performs generic cleanup after a subclass' uses tally arithmetic to
+        compute a multi-group cross section as a derived tally."""
 
-        # If a microscopic cross-section, replace CrossNuclides with originals
-        if self.xs_type == 'micro':
+        # If computing xs for each nuclide, replace CrossNuclides with originals
+        if self.by_nuclide:
             self.xs_tally._nuclides = []
             nuclides = self.domain.get_all_nuclides()
             for nuclide in nuclides:
-                self.xs_tally.add_nuclide(nuclide)
+                self.xs_tally.add_nuclide(openmc.Nuclide(nuclide))
 
+        # Remove NaNs which may have resulted from divide-by-zero operations
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
         self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
 
@@ -349,6 +368,8 @@ class MultiGroupXS(object):
 
         This method is needed to compute cross section data from tallies
         in an OpenMC StatePoint object.
+
+        NOTE: The statepoint must first be linked with an OpenMC Summary object.
 
         Parameters
         ----------
@@ -413,9 +434,11 @@ class MultiGroupXS(object):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest
 
-        nuclides : Iterable of str or 'all'
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is 'all')
+        nuclides : Iterable of str or 'all' or 'sum'
+            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            special string 'all' (default) will return the cross sections for
+            all nuclides in the spatial domain. The special string 'sum' will
+            return the cross section summed over all nuclides.
 
         xs_type: {'macro' or 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns
@@ -462,20 +485,32 @@ class MultiGroupXS(object):
                 filters.append('energy')
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
-        # Construct list of nuclides for all requested nuclides
-        if nuclides != 'all' and nuclides != ['total']:
-            cv.check_iterable_type('nuclides', nuclides, basestring)
+        # Construct a collection of the nuclides to retrieve from the xs tally
+        # NOTE: We must not override the "nuclides" parameter since it is used
+        # to retrieve atomic number densities for micro xs
+        if self.by_nuclide:
+            if nuclides == 'all' or nuclides == 'sum':
+                query_nuclides = self.get_all_nuclides()
+            else:
+                query_nuclides = nuclides
         else:
-            nuclides = []
+            query_nuclides = ['total']
 
-        # Query the multi-group cross section tally for the data
-        xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
-                                      nuclides=nuclides, value=value)
+        # Use tally summation if user requested the sum for all nuclides
+        if nuclides == 'sum' or nuclides == ['sum']:
+            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            xs = xs_tally.get_values(filters=filters,
+                                     filter_bins=filter_bins, value=value)
+        else:
+            xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
+                                     nuclides=query_nuclides, value=value)
 
-        # If user requested microscopic cross sections from an object with
-        #  microscopic cross sections, divide by atom number densities
-        if self.xs_type == 'micro' and xs_type == 'micro':
-            densities = self.get_nuclide_densities(nuclides)
+        # Divide by atom number densities for microscopic cross sections
+        if xs_type == 'micro':
+            if self.by_nuclide:
+                densities = self.get_nuclide_densities(nuclides)
+            else:
+                densities = self.get_nuclide_densities('sum')
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
 
@@ -559,8 +594,8 @@ class MultiGroupXS(object):
         """Construct a subdomain-averaged version of this cross section.
 
         This is primarily useful for averaging across distribcell instances.
-        This routine performs spatial homogenization to compute the
-        scalar flux-weighted average cross section across the subdomains.
+        This routine performs spatial homogenization to compute the scalar
+        flux-weighted average cross section across the subdomains.
 
         Parameters
         ----------
@@ -586,13 +621,12 @@ class MultiGroupXS(object):
             raise ValueError(msg)
 
         # Construct a collection of the subdomain filter bins to average across
-        if subdomains == 'all':
-            if self.domain_type == 'distribcell':
-                subdomains = np.arange(self.num_subdomains)
-            else:
-                subdomains = [self.domain.id]
-        else:
+        if subdomains != 'all':
             cv.check_iterable_type('subdomains', subdomains, Integral)
+        elif self.domain_type == 'distribcell':
+            subdomains = np.arange(self.num_subdomains)
+        else:
+            subdomains = [self.domain.id]
 
         # Clone this MultiGroupXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
@@ -644,25 +678,38 @@ class MultiGroupXS(object):
         subdomains : Iterable of Integral or 'all'
             The subdomain IDs of the cross sections to include in the report
 
-        nuclides : Iterable of str or 'all'
-            The nuclides of the cross-sections to include in the report
+        nuclides : Iterable of str or 'all' or 'sum'
+            The nuclides of the cross-sections to include in the report. This
+            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            The special string 'all' (default) will report the cross sections
+            for all nuclides in the spatial domain. The special string 'sum'
+            will report the cross sections summed over all nuclides.
 
         xs_type: {'macro' or 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns
 
         """
 
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-
+        # Construct a collection of the subdomains to report
         if subdomains != 'all':
             cv.check_iterable_type('subdomains', subdomains, Integral)
-        if nuclides != 'all':
-            cv.check_iterable_type('nuclides', nuclides, basestring)
+        elif self.domain_type == 'distribcell':
+            subdomains = np.arange(self.num_subdomains, dtype=np.int)
         else:
-            if self.xs_type == 'micro':
-                nuclides = self.domain.get_all_nuclides()
+            subdomains = [self.domain.id]
+
+        # Construct a collection of the nuclides to report
+        if self.by_nuclide:
+            if nuclides == 'all':
+                nuclides = self.get_all_nuclides()
+            if nuclides == 'sum':
+                nuclides = ['sum']
             else:
-                nuclides = ['total']
+                cv.check_iterable_type('nuclides', nuclides, basestring)
+        else:
+            nuclides = ['sum']
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
@@ -675,12 +722,6 @@ class MultiGroupXS(object):
             print(string)
             return
 
-        if subdomains == 'all':
-            if self.domain_type == 'distribcell':
-                subdomains = np.arange(self.num_subdomains, dtype=np.int)
-            else:
-                subdomains = [self.domain.id]
-
         # Loop over all subdomains
         for subdomain in subdomains:
 
@@ -691,7 +732,7 @@ class MultiGroupXS(object):
             for nuclide in nuclides:
 
                 # Build header for nuclide type
-                if xs_type != 'total':
+                if nuclide != 'sum':
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
@@ -719,7 +760,8 @@ class MultiGroupXS(object):
 
         print(string)
 
-    def build_hdf5_store(self, filename='mgxs', directory='mgxs', append=True):
+    def build_hdf5_store(self, filename='mgxs', directory='mgxs',
+                         xs_type='macro', append=True):
         """Export the multi-group cross section data into an HDF5 binary file.
 
         This routine constructs an HDF5 file which stores the multi-group
@@ -737,6 +779,9 @@ class MultiGroupXS(object):
 
         directory : str
             Directory for the HDF5 file (default is 'mgxs')
+
+        xs_type: {'macro' or 'micro'}
+            Store the macro or micro cross section in units of cm^-1 or barns
 
         append : boolean
             If true, appends to an existing HDF5 file with the same filename
@@ -776,13 +821,15 @@ class MultiGroupXS(object):
         else:
             xs_results = h5py.File(filename, 'w')
 
-        if self.xs_type == 'micro':
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        if self.by_nuclide:
             nuclides = self.domain.get_all_nuclides()
             densities = np.zeros(len(nuclides), dtype=np.float)
             for i, nuclide in enumerate(nuclides):
                 densities[i] = nuclides[nuclide][1]
         else:
-            nuclides = ['total']
+            nuclides = ['sum']
 
         # Create an HDF5 group within the file for the domain
         domain_type_group = xs_results.require_group(self.domain_type)
@@ -813,7 +860,7 @@ class MultiGroupXS(object):
             # Create a separate HDF5 group for each nuclide
             for j, nuclide in enumerate(nuclides):
 
-                if nuclide != 'total':
+                if nuclide != 'sum':
                     nuclide_group = rxn_group.require_group(nuclide)
                     nuclide_group.require_dataset('density', dtype=np.float64,
                                                   data=[densities[j]], shape=(1,))
@@ -822,9 +869,9 @@ class MultiGroupXS(object):
 
                 # Extract the cross section for this subdomain and nuclide
                 average = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
-                                      xs_type=self.xs_type, value='mean')
+                                      xs_type=xs_type, value='mean')
                 std_dev = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
-                                      xs_type=self.xs_type, value='std_dev')
+                                      xs_type=xs_type, value='std_dev')
                 average = average.squeeze()
                 std_dev = std_dev.squeeze()
 
@@ -837,7 +884,8 @@ class MultiGroupXS(object):
         # Close the MultiGroup results HDF5 file
         xs_results.close()
 
-    def export_xs_data(self, filename='mgxs', directory='mgxs', format='csv'):
+    def export_xs_data(self, filename='mgxs', directory='mgxs',
+                       format='csv', groups='all', xs_type='macro'):
         """Export the multi-group cross section data to a file.
 
         This routine leverages the functionality in the Pandas library to
@@ -855,23 +903,18 @@ class MultiGroupXS(object):
         format : {'csv', 'excel', 'pickle', 'latex'}
             The format for the exported data file
 
-        groups : {'indices' or 'bounds'}
-            When set to 'indices' (default), integer group indices are inserted
-            in the energy in/out column(s) of the DataFrame. When it is 'bounds'
-            the lower and upper energy bounds are used.
+        groups : Iterable of Integral or 'all'
+            Energy groups of interest
 
-        summary : None or Summary
-            An optional Summary object to be used to construct columns for
-            distribcell tally filters (default is None). The geometric
-            information in the Summary object is embedded into a Multi-index
-            column with a geometric "path" to each distribcell intance.
-            NOTE: This option requires the OpenCG Python package.
+        xs_type: {'macro' or 'micro'}
+            Store the macro or micro cross section in units of cm^-1 or barns
 
         """
 
         cv.check_type('filename', filename, basestring)
         cv.check_type('directory', directory, basestring)
         cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
@@ -881,7 +924,7 @@ class MultiGroupXS(object):
         filename = filename.replace(' ', '-')
 
         # Get a Pandas DataFrame for the data
-        df = self.get_pandas_dataframe()
+        df = self.get_pandas_dataframe(groups=groups, xs_type=xs_type)
 
         # Capitalize column label strings
         df.columns = df.columns.astype(str)
@@ -916,7 +959,8 @@ class MultiGroupXS(object):
                 modified.write(data)
                 modified.write('\n\\end{document}')
 
-    def get_pandas_dataframe(self, groups='indices', summary=None):
+    def get_pandas_dataframe(self, groups='all', nuclides='all',
+                             xs_type='macro', summary=None):
         """Build a Pandas DataFrame for the MultiGroupXS data.
 
         This routine leverages the Tally.get_pandas_dataframe(...) routine, but
@@ -924,15 +968,23 @@ class MultiGroupXS(object):
 
         Parameters
         ----------
-        groups : {'indices' or 'bounds'}
-            When set to 'indices' (default), integer group indices are inserted
-            in the energy in/out column(s) of the DataFrame. When it is 'bounds'
-            the lower and upper energy bounds are used.
+        groups : Iterable of Integral or 'all'
+            Energy groups of interest
+
+        nuclides : Iterable of str or 'all' or 'sum'
+            The nuclides of the cross-sections to include in the dataframe. This
+            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            The special string 'all' (default) will include the cross sections
+            for all nuclides in the spatial domain. The special string 'sum'
+            will include the cross sections summed over all nuclides.
+
+        xs_type: {'macro' or 'micro'}
+            Return macro or micro cross section in units of cm^-1 or barns
 
         summary : None or Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
-            information in the Summary object is embedded into a Multi-index
+            information in the Summary object is embedded into a multi-index
             column with a geometric "path" to each distribcell intance.
             NOTE: This option requires the OpenCG Python package.
 
@@ -954,6 +1006,12 @@ class MultiGroupXS(object):
                   'cross section has not been computed'
             raise ValueError(msg)
 
+        if groups != 'all':
+            cv.check_iterable_type('groups', groups, Integral)
+        if nuclides != 'all' and nuclides != 'sum':
+            cv.check_iterable_type('nuclides', nuclides, basestring)
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
         # Get a Pandas DataFrame from the derived xs tally
         df = self.xs_tally.get_pandas_dataframe(summary=summary)
 
@@ -963,30 +1021,51 @@ class MultiGroupXS(object):
         else:
             df = df.drop('score', axis=1)
 
-        # Use group indices in place of energy bounds ("1" for fastest group)
-        if groups == 'indices':
+        # Rename energy(out) columns
+        columns = []
+        if 'energy [MeV]' in df:
+            df.rename(columns={'energy [MeV]': 'group in'}, inplace=True)
+            columns.append('group in')
+        if 'energyout [MeV]' in df:
+            df.rename(columns={'energyout [MeV]': 'group out'}, inplace=True)
+            columns.append('group out')
 
-            # Rename the column label for energy in the dataframe
-            columns = []
-            if 'energy [MeV]' in df:
-                df.rename(columns={'energy [MeV]': 'group in'}, inplace=True)
-                columns.append('group in')
-            if 'energyout [MeV]' in df:
-                df.rename(columns={'energyout [MeV]': 'group out'}, inplace=True)
-                columns.append('group out')
+        # Loop over all energy groups and override the bounds with indices
+        template = '({0:.1e} - {1:.1e})'
+        bins = self.energy_groups.group_edges
+        for column in columns:
+            for i in range(self.num_groups):
+                group = template.format(bins[i], bins[i+1])
+                row_indices = df[column] == group
+                df.loc[row_indices, column] = self.num_groups - i
 
-            # Loop over all energy groups and override the bounds with indices
-            template = '({0:.1e} - {1:.1e})'
-            bins = self.energy_groups.group_edges
-            for column in columns:
-                for i in range(self.num_groups):
-                    group = template.format(bins[i], bins[i+1])
-                    row_indices = df[column] == group
-                    df.loc[row_indices, column] = self.num_groups - i
+        # Select out those groups the user requested
+        if groups != 'all':
+            if 'group in' in df:
+                df = df[df['group in'].isin(groups)]
+            if 'group out' in df:
+                df = df[df['group out'].isin(groups)]
 
-            # Sort the dataframe by domain type id (e.g., distribcell id) and
-            # energy groups such that data is from fast to thermal
-            df.sort([self.domain_type] + columns, inplace=True)
+        # Sum up cross sections across nuclides if requested
+        if self.by_nuclide and nuclides == 'sum':
+            non_nuclide_cols = list(df.columns[df.columns != 'nuclide'])
+            df = df.groupby(non_nuclide_cols, as_index=False)['nuclide'].sum()
+        # If the user requested specific nuclides, remove others from dataframe
+        elif nuclides != 'all' and nuclides != 'sum':
+            df = df[df.nuclide.isin(nuclides)]
+
+        # If user requested micro cross sections, divide out the atom densities
+        if xs_type == 'micro':
+            if self.by_nuclide:
+                densities = self.get_nuclide_densities(nuclides)
+            else:
+                densities = self.get_nuclide_densities('sum')
+            df['mean'] /= densities
+            df['std. dev.'] /= densities
+
+        # Sort the dataframe by domain type id (e.g., distribcell id) and
+        # energy groups such that data is from fast to thermal
+        df.sort([self.domain_type] + columns, inplace=True)
 
         return df
 
@@ -994,8 +1073,8 @@ class MultiGroupXS(object):
 class TotalXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, xs_type='macro', name=''):
-        super(TotalXS, self).__init__(domain, domain_type, groups, xs_type, name)
+                 groups=None, by_nuclide=False, name=''):
+        super(TotalXS, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'total'
 
     def create_tallies(self):
@@ -1025,8 +1104,8 @@ class TotalXS(MultiGroupXS):
 class TransportXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, xs_type='macro', name=''):
-        super(TransportXS, self).__init__(domain, domain_type, groups, xs_type, name)
+                 groups=None, by_nuclide=False, name=''):
+        super(TransportXS, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'transport'
 
     def create_tallies(self):
@@ -1064,8 +1143,8 @@ class TransportXS(MultiGroupXS):
 class AbsorptionXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, xs_type='macro', name=''):
-        super(AbsorptionXS, self).__init__(domain, domain_type, groups, xs_type, name)
+                 groups=None, by_nuclide=False, name=''):
+        super(AbsorptionXS, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'absorption'
 
     def create_tallies(self):
@@ -1095,8 +1174,8 @@ class AbsorptionXS(MultiGroupXS):
 class CaptureXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, xs_type='macro', name=''):
-        super(CaptureXS, self).__init__(domain, domain_type, groups, xs_type, name)
+                 groups=None, by_nuclide=False, name=''):
+        super(CaptureXS, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'capture'
 
     def create_tallies(self):
@@ -1127,8 +1206,8 @@ class CaptureXS(MultiGroupXS):
 class FissionXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, xs_type='macro', name=''):
-        super(FissionXS, self).__init__(domain, domain_type, groups, xs_type, name)
+                 groups=None, by_nuclide=False, name=''):
+        super(FissionXS, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'fission'
 
     def create_tallies(self):
@@ -1158,8 +1237,8 @@ class FissionXS(MultiGroupXS):
 class NuFissionXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, xs_type='macro', name=''):
-        super(NuFissionXS, self).__init__(domain, domain_type, groups, xs_type, name)
+                 groups=None, by_nuclide=False, name=''):
+        super(NuFissionXS, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'nu-fission'
 
     def create_tallies(self):
@@ -1189,8 +1268,8 @@ class NuFissionXS(MultiGroupXS):
 class ScatterXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, xs_type='macro', name=''):
-        super(ScatterXS, self).__init__(domain, domain_type, groups, xs_type, name)
+                 groups=None, by_nuclide=False, name=''):
+        super(ScatterXS, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'scatter'
 
     def create_tallies(self):
@@ -1220,8 +1299,8 @@ class ScatterXS(MultiGroupXS):
 class NuScatterXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, xs_type='macro', name=''):
-        super(NuScatterXS, self).__init__(domain, domain_type, groups, xs_type, name)
+                 groups=None, by_nuclide=False, name=''):
+        super(NuScatterXS, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'nu-scatter'
 
     def create_tallies(self):
@@ -1251,8 +1330,8 @@ class NuScatterXS(MultiGroupXS):
 class ScatterMatrixXS(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, xs_type='macro', name=''):
-        super(ScatterMatrixXS, self).__init__(domain, domain_type, groups, xs_type, name)
+                 groups=None, by_nuclide=False, name=''):
+        super(ScatterMatrixXS, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'scatter matrix'
 
     def create_tallies(self):
@@ -1316,9 +1395,11 @@ class ScatterMatrixXS(MultiGroupXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest
 
-        nuclides : Iterable of str or 'all'
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is 'all')
+        nuclides : Iterable of str or 'all' or 'sum'
+            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            special string 'all' (default) will return the cross sections for
+            all nuclides in the spatial domain. The special string 'sum' will
+            return the cross section summed over all nuclides.
 
         xs_type: {'macro' or 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns
@@ -1372,21 +1453,34 @@ class ScatterMatrixXS(MultiGroupXS):
                 filters.append('energyout')
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
-        # Construct list of nuclides for all requested nuclides
-        if nuclides != 'all' and nuclides != ['total']:
-            cv.check_iterable_type('nuclides', nuclides, basestring)
+        # Construct a collection of the nuclides to retrieve from the xs tally
+        # NOTE: We must not override the "nuclides" parameter since it is used
+        # to retrieve atomic number densities for micro xs
+        if self.by_nuclide:
+            if nuclides == 'all' or nuclides == 'sum':
+                query_nuclides = self.get_all_nuclides()
+            else:
+                query_nuclides = nuclides
         else:
-            nuclides = []
+            query_nuclides = ['total']
 
-        # Query the multi-group cross section tally for the data
-        xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
-                                      nuclides=nuclides, value=value)
+        # Use tally summation if user requested the sum for all nuclides
+        if nuclides == 'sum' or nuclides == ['sum']:
+            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            xs = xs_tally.get_values(filters=filters,
+                                     filter_bins=filter_bins, value=value)
+        else:
+            xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
+                                     nuclides=query_nuclides, value=value)
+
         xs = np.nan_to_num(xs)
 
-        # If user requested microscopic cross sections from an object with
-        #  microscopic cross sections, divide by atom number densities
-        if self.xs_type == 'micro' and xs_type == 'micro':
-            densities = self.get_nuclide_densities(nuclides)
+        # Divide by atom number densities for microscopic cross sections
+        if xs_type == 'micro':
+            if self.by_nuclide:
+                densities = self.get_nuclide_densities(nuclides)
+            else:
+                densities = self.get_nuclide_densities('sum')
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
 
@@ -1400,25 +1494,38 @@ class ScatterMatrixXS(MultiGroupXS):
         subdomains : Iterable of Integral or 'all'
             The subdomain IDs of the cross sections to include in the report
 
-        nuclides : Iterable of str or 'all'
-            The nuclides of the cross-sections to include in the report
+        nuclides : Iterable of str or 'all' or 'sum'
+            The nuclides of the cross-sections to include in the report. This
+            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            The special string 'all' (default) will report the cross sections
+            for all nuclides in the spatial domain. The special string 'sum'
+            will report the cross sections summed over all nuclides.
 
         xs_type: {'macro' or 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns
 
         """
 
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-
+        # Construct a collection of the subdomains to report
         if subdomains != 'all':
             cv.check_iterable_type('subdomains', subdomains, Integral)
-        if nuclides != 'all':
-            cv.check_iterable_type('nuclides', nuclides, basestring)
+        elif self.domain_type == 'distribcell':
+            subdomains = np.arange(self.num_subdomains, dtype=np.int)
         else:
-            if self.xs_type == 'micro':
-                nuclides = self.domain.get_all_nuclides()
+            subdomains = [self.domain.id]
+
+        # Construct a collection of the nuclides to report
+        if self.by_nuclide:
+            if nuclides == 'all':
+                nuclides = self.get_all_nuclides()
+            if nuclides == 'sum':
+                nuclides = ['sum']
             else:
-                nuclides = ['total']
+                cv.check_iterable_type('nuclides', nuclides, basestring)
+        else:
+            nuclides = ['sum']
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
@@ -1456,7 +1563,7 @@ class ScatterMatrixXS(MultiGroupXS):
             for nuclide in nuclides:
 
                 # Build header for nuclide type
-                if xs_type != 'total':
+                if xs_type != 'sum':
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
@@ -1491,8 +1598,8 @@ class ScatterMatrixXS(MultiGroupXS):
 class NuScatterMatrixXS(ScatterMatrixXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, xs_type='macro', name=''):
-        super(NuScatterMatrixXS, self).__init__(domain, domain_type, groups, xs_type, name)
+                 groups=None, by_nuclide=False, name=''):
+        super(NuScatterMatrixXS, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'nu-scatter matrix'
 
     def create_tallies(self):
@@ -1541,8 +1648,8 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 class Chi(MultiGroupXS):
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, xs_type='macro', name=''):
-        super(Chi, self).__init__(domain, domain_type, groups, xs_type, name)
+                 groups=None, by_nuclide=False, name=''):
+        super(Chi, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'chi'
 
     def create_tallies(self):
@@ -1593,9 +1700,9 @@ class Chi(MultiGroupXS):
 
         nuclides : Iterable of str or 'all' or 'sum'
             A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
-            special string 'all' will return the cross-section for all nuclides
-            in the spatial domain. The special string 'sum' will return the sum
-            across all nuclides weighted by the isotope-specific fission source.
+            special string 'all' (default) will return the cross sections for
+            all nuclides in the spatial domain. The special string 'sum' will
+            return the cross section summed over all nuclides.
 
         xs_type: {'macro' or 'micro'}
             This parameter is not relevant for chi but is included here to
@@ -1624,6 +1731,7 @@ class Chi(MultiGroupXS):
             raise ValueError(msg)
 
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         filters = []
         filter_bins = []
@@ -1642,33 +1750,43 @@ class Chi(MultiGroupXS):
                 filters.append('energyout')
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
-        # Construct list of nuclides for all requested nuclides
-        if nuclides != 'all' and nuclides != ['total']:
-            cv.check_iterable_type('nuclides', nuclides, basestring)
+        # If chi was computed for each nuclide in the domain
+        if self.by_nuclide:
+
+            # Get the sum as the fission source weighted average chi for all
+            # nuclides in the domain
+            if nuclides == 'sum':
+
+                # Retrieve the fission production tallies
+                nu_fission_in = self.tallies['nu-fission-in']
+                nu_fission_out = self.tallies['nu-fission-out']
+
+                # Sum out all nuclides
+                nuclides = self.get_all_nuclides()
+                nu_fission_in = nu_fission_in.summation(nuclides=nuclides)
+                nu_fission_out = nu_fission_out.summation(nuclides=nuclides)
+
+                # Compute chi and store it as the xs_tally attribute so we can use
+                # the generic get_xs routine
+                xs_tally = nu_fission_out / nu_fission_in
+                xs = xs_tally.get_values(filters=filters,
+                                         filter_bins=filter_bins, value=value)
+
+            # Get chi for all nuclides in the domain
+            elif nuclides == 'all':
+                nuclides = self.get_all_nuclides()
+                xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
+                                              nuclides=nuclides, value=value)
+
+            # Get chi for user-specified nuclides in the domain
+            else:
+                cv.check_iterable_type('nuclides', nuclides, basestring)
+                xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
+                                              nuclides=nuclides, value=value)
+
+        # If chi was computed as an average of nuclides in the domain
         else:
-            nuclides = []
-
-        # Special case for the "macroscopic-from-microscopic" chi
-        # This is needed since chi is fission source rather than flux-weighted
-        if nuclides == 'sum' and self.xs_type == 'micro':
-
-            # Retrieve the fission production tallies
-            nu_fission_in = self.tallies['nu-fission-in']
-            nu_fission_out = self.tallies['nu-fission-out']
-
-            # Sum out all nuclides
-            nuclides = self.get_all_nuclides()
-            nu_fission_in = nu_fission_in.summation(nuclides=nuclides)
-            nu_fission_out = nu_fission_out.summation(nuclides=nuclides)
-
-            # Compute chi and store it as the xs_tally attribute so we can use
-            # the generic get_xs routine
-            xs_tally = nu_fission_out / nu_fission_in
-            xs = xs_tally.get_values(filters=filters,
-                                     filter_bins=filter_bins, value=value)
-
-        else:
-            xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
-                                          nuclides=nuclides, value=value)
+            xs = self.xs_tally.get_values(filters=filters,
+                                          filter_bins=filter_bins, value=value)
 
         return xs

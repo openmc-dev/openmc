@@ -5,7 +5,6 @@ module tally
   use error,            only: fatal_error
   use geometry_header
   use global
-  use interpolation
   use math,             only: t_percentile, calc_pn, calc_rn
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
                               get_mesh_indices, mesh_indices_to_bin, &
@@ -196,7 +195,7 @@ contains
             score = p % wgt
           else
             ! Grab the multiplicity from the rxn
-            score = p % last_wgt * real(rxn % multiplicity,8)
+            score = p % last_wgt * rxn % multiplicity
           end if
         end if
 
@@ -233,7 +232,7 @@ contains
             score = p % wgt
           else
             ! Grab the multiplicity from the rxn
-            score = p % last_wgt * real(rxn % multiplicity,8)
+            score = p % last_wgt * rxn % multiplicity
           end if
         end if
 
@@ -270,7 +269,7 @@ contains
             score = p % wgt
           else
             ! Grab the multiplicity from the rxn
-            score = p % last_wgt * real(rxn % multiplicity,8)
+            score = p % last_wgt * rxn % multiplicity
           end if
         end if
 

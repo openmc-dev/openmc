@@ -3,7 +3,7 @@
 
   <eigenvalue>
     <batches>10</batches>
-    <inactive>5</inactive>
+    <inactive>0</inactive>
     <particles>100</particles>
   </eigenvalue>
 

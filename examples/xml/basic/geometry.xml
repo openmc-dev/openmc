@@ -2,9 +2,9 @@
 <geometry>
 
   <!-- Definition of Cells -->
-  <cell id="1" universe="0" fill="37" surfaces="-2" />
-  <cell id="100" universe="37" material="40" surfaces="-1" />
-  <cell id="101" universe="37" material="41" surfaces="1" />
+  <cell id="1" universe="0" fill="37" region="-2" />
+  <cell id="100" universe="37" material="40" region="-1" />
+  <cell id="101" universe="37" material="41" region="1" />
   <cell id="2" universe="0" material="41" surfaces = "2 -3" />
 
   <!-- Defition of Surfaces -->

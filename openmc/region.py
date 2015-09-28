@@ -95,6 +95,9 @@ class Region(object):
                 elif isinstance(r2, Intersection) and hasattr(r1, 'surface'):
                     r2.nodes.insert(0, r1)
                     output.append(r2)
+                elif isinstance(r1, Intersection) and isinstance(r2, Intersection):
+                    r1.nodes += r2.nodes
+                    output.append(r1)
                 else:
                     output.append(Intersection(r1, r2))
             elif operator == '^':
@@ -105,6 +108,9 @@ class Region(object):
                 elif isinstance(r2, Union) and hasattr(r1, 'surface'):
                     r2.nodes.insert(0, r1)
                     output.append(r2)
+                elif isinstance(r1, Union) and isinstance(r2, Union):
+                    r1.nodes += r2.nodes
+                    output.append(r1)
                 else:
                     output.append(Union(r1, r2))
             elif operator == '~':

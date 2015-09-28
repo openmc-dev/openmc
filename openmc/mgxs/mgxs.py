@@ -367,7 +367,7 @@ class MultiGroupXS(object):
         # Override the domain object that loaded from an OpenMC summary file
         # NOTE: This is necessary for micro cross-sections which require
         # the isotopic number densities as computed by OpenMC
-        if self.domain_type == 'cell':
+        if self.domain_type == 'cell' or self.domain_type == 'distribcell':
             self.domain = statepoint.summary.get_cell_by_id(self.domain.id)
         elif self.domain_type == 'universe':
             self.domain = statepoint.summary.get_universe_by_id(self.domain.id)
@@ -478,6 +478,7 @@ class MultiGroupXS(object):
             densities = self.get_nuclide_densities(nuclides)
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
+
         return xs
 
     def get_condensed_xs(self, coarse_groups):
@@ -1544,8 +1545,6 @@ class Chi(MultiGroupXS):
         super(Chi, self).__init__(domain, domain_type, groups, xs_type, name)
         self._rxn_type = 'chi'
 
-        # FIXME: Make this work for micros!!!
-
     def create_tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section."""
 
@@ -1556,9 +1555,9 @@ class Chi(MultiGroupXS):
 
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
-        fine_energyout = openmc.Filter('energyout', group_edges)
-        coarse_energyout = openmc.Filter('energyout', [group_edges[0], group_edges[-1]])
-        filters = [[coarse_energyout], [fine_energyout]]
+        energyout = openmc.Filter('energyout', group_edges)
+        energyin = openmc.Filter('energy', [group_edges[0], group_edges[-1]])
+        filters = [[energyin], [energyout]]
 
         # Intialize the Tallies
         super(Chi, self).create_tallies(scores, filters, keys, estimator)
@@ -1566,9 +1565,14 @@ class Chi(MultiGroupXS):
     def compute_xs(self):
         """Computes chi fission spectrum using OpenMC tally arithmetic."""
 
+        # Retrieve the fission production tallies
         nu_fission_in = self.tallies['nu-fission-in']
         nu_fission_out = self.tallies['nu-fission-out']
+
+        # Remove the coarse energy filter to keep it out of tally arithmetic
         nu_fission_in.remove_filter(nu_fission_in.filters[-1])
+
+        # Compute chi
         self._xs_tally = nu_fission_out / nu_fission_in
         super(Chi, self).compute_xs()
 
@@ -1587,12 +1591,15 @@ class Chi(MultiGroupXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest
 
-        nuclides : Iterable of str or 'all'
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is 'all')
+        nuclides : Iterable of str or 'all' or 'sum'
+            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            special string 'all' will return the cross-section for all nuclides
+            in the spatial domain. The special string 'sum' will return the sum
+            across all nuclides weighted by the isotope-specific fission source.
 
         xs_type: {'macro' or 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns
+            This parameter is not relevant for chi but is included here to
+            mirror the parent MultiGroupXS.get_xs(...) class method
 
         value : str
             A string for the type of value to return - 'mean' (default),
@@ -1612,11 +1619,56 @@ class Chi(MultiGroupXS):
 
         """
 
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        if self.xs_tally is None:
+            msg = 'Unable to get cross section since it has not been computed'
+            raise ValueError(msg)
 
-        if self.xs_type == 'micro' and xs_type == 'macro':
-            raise NotImplementedError('Unable to compute macro Chi from micros')
+        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
 
-        xs = super(Chi, self).get_xs(groups, subdomains,
-                                     nuclides, xs_type, value)
+        filters = []
+        filter_bins = []
+
+        # Construct a collection of the domain filter bins
+        if subdomains != 'all':
+            cv.check_iterable_type('subdomains', subdomains, Integral)
+            for subdomain in subdomains:
+                filters.append(self.domain_type)
+                filter_bins.append((subdomain,))
+
+        # Construct list of energy group bounds tuples for all requested groups
+        if groups != 'all':
+            cv.check_iterable_type('groups', groups, Integral)
+            for group in groups:
+                filters.append('energyout')
+                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+
+        # Construct list of nuclides for all requested nuclides
+        if nuclides != 'all' and nuclides != ['total']:
+            cv.check_iterable_type('nuclides', nuclides, basestring)
+        else:
+            nuclides = []
+
+        # Special case for the "macroscopic-from-microscopic" chi
+        # This is needed since chi is fission source rather than flux-weighted
+        if nuclides == 'sum' and self.xs_type == 'micro':
+
+            # Retrieve the fission production tallies
+            nu_fission_in = self.tallies['nu-fission-in']
+            nu_fission_out = self.tallies['nu-fission-out']
+
+            # Sum out all nuclides
+            nuclides = self.get_all_nuclides()
+            nu_fission_in = nu_fission_in.summation(nuclides=nuclides)
+            nu_fission_out = nu_fission_out.summation(nuclides=nuclides)
+
+            # Compute chi and store it as the xs_tally attribute so we can use
+            # the generic get_xs routine
+            xs_tally = nu_fission_out / nu_fission_in
+            xs = xs_tally.get_values(filters=filters,
+                                     filter_bins=filter_bins, value=value)
+
+        else:
+            xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
+                                          nuclides=nuclides, value=value)
+
         return xs

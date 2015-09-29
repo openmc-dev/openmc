@@ -205,7 +205,14 @@ contains
     end if
   end function sense
 
-  subroutine reflect(this, xyz, uvw)
+!===============================================================================
+! REFLECT determines the direction a particle will travel if it is specularly
+! reflected from the surface at a given position and direction. The position is
+! needed because the reflection is performed using the surface normal, which
+! depends on the position for second-order surfaces.
+!===============================================================================
+
+  pure subroutine reflect(this, xyz, uvw)
     class(Surface), intent(in) :: this
     real(8), intent(in) :: xyz(3)
     real(8), intent(inout) :: uvw(3)

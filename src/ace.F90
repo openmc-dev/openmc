@@ -646,8 +646,8 @@ contains
       ! of delayed groups
       if (NPCR > MAX_DELAYED_GROUPS) then
         call fatal_error("Encountered nuclide with " // trim(to_str(NPCR)) &
-          &// " delayed groups while the maximum number of delayed groups" &
-          &// " set in constants.F90 is " // trim(to_str(MAX_DELAYED_GROUPS)))
+             &// " delayed groups while the maximum number of delayed groups " &
+             &// "set in constants.F90 is " // trim(to_str(MAX_DELAYED_GROUPS)))
       end if
 
       nuc % n_precursor = NPCR

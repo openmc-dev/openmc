@@ -1259,8 +1259,8 @@ contains
       ! ====================================================================
       ! PROMPT NEUTRON SAMPLED
 
-       ! set the delayed group for the particle born from fission to 0
-       p % delayed_group = 0
+      ! set the delayed group for the particle born from fission to 0
+      p % delayed_group = 0
 
       ! sample from prompt neutron energy distribution
       law = rxn % edist % law

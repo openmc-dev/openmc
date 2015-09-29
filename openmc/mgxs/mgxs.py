@@ -178,6 +178,20 @@ class MultiGroupXS(object):
         cv.check_type('by_nuclide', by_nuclide, bool)
         self._by_nuclide = by_nuclide
 
+    @property
+    def num_nuclides(self):
+        if self.by_nuclide:
+            return len(self.get_all_nuclides())
+        else:
+            return 1
+
+    @property
+    def nuclides(self):
+        if self.by_nuclide:
+            return self.get_all_nuclides()
+        else:
+            return 'sum'
+
     @domain.setter
     def domain(self, domain):
         cv.check_type('domain', domain, tuple(DOMAINS))
@@ -279,11 +293,8 @@ class MultiGroupXS(object):
         if self.domain is None:
             raise ValueError('Unable to get nuclide densities without a domain')
 
-        if nuclides == 'all':
-            nuclides = self.domain.get_all_nuclides()
-
         # Sum the atomic number densities for all nuclides
-        elif nuclides == 'sum':
+        if nuclides == 'sum':
             nuclides = self.get_all_nuclides()
             densities = np.zeros(1, dtype=np.float)
             for i, nuclide in enumerate(nuclides):
@@ -321,9 +332,9 @@ class MultiGroupXS(object):
         """
 
         cv.check_iterable_type('scores', scores, basestring)
+        cv.check_length('scores', scores, len(keys))
         cv.check_iterable_type('filters', all_filters, openmc.Filter, 1, 2)
         cv.check_type('keys', keys, Iterable, basestring)
-        cv.check_length('scores', scores, len(keys))
         cv.check_value('estimator', estimator, ['analog', 'tracklength'])
 
         # Create a domain Filter object
@@ -419,8 +430,8 @@ class MultiGroupXS(object):
                                           filter_bins, tally.nuclides)
             self.tallies[tally_type] = sp_tally
 
-    def get_xs(self, groups='all', subdomains='all',
-               nuclides='all', xs_type='macro', value='mean'):
+    def get_xs(self, groups='all', subdomains='all', nuclides='all',
+               xs_type='macro', order_groups='increasing', value='mean'):
         """Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested multi-group
@@ -442,6 +453,10 @@ class MultiGroupXS(object):
 
         xs_type: {'macro' or 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns
+
+        order_groups: {'increasing', 'decreasing'}
+            Return the cross section indexed according to increasing (default)
+            or decreasing energy groups (decreasing or increasing energies)
 
         value : str
             A string for the type of value to return - 'mean' (default),
@@ -513,6 +528,25 @@ class MultiGroupXS(object):
                 densities = self.get_nuclide_densities('sum')
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
+
+        # Reverse data if user requested increasing energy groups since
+        # tally data is stored in order of increasing energies
+        if order_groups == 'increasing':
+            # Reshape tally data array with separate axes for domain and energy
+            if groups == 'all':
+                num_groups = self.num_groups
+            else:
+                num_groups = len(groups)
+            num_subdomains = xs.shape[0] / num_groups
+            new_shape = (num_subdomains, num_groups) + xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
+
+            # Reverse energies to align with increasing energy groups
+            xs = xs[:, ::-1, :]
+
+            # Reshape array to original axes (filters, nuclides, scores)
+            new_shape = (num_subdomains * num_groups,) + xs.shape[2:]
+            xs = np.reshape(xs, new_shape)
 
         return xs
 
@@ -748,10 +782,10 @@ class MultiGroupXS(object):
                 for group in range(1, self.num_groups+1):
                     bounds = self.energy_groups.get_group_bounds(group)
                     string += template.format('', group, bounds[0], bounds[1])
-                    average = self.get_xs([group], [subdomain],
-                                          [nuclide], xs_type, 'mean')
-                    rel_err = self.get_xs([group], [subdomain],
-                                          [nuclide], xs_type, 'rel_err') * 100
+                    average = self.get_xs([group], [subdomain], [nuclide],
+                                          xs_type=xs_type, value='mean')
+                    rel_err = self.get_xs([group], [subdomain], [nuclide],
+                                          xs_type=xs_type, value='rel_err')*100
                     average = np.nan_to_num(average.flatten())[0]
                     rel_err = np.nan_to_num(rel_err.flatten())[0]
                     string += '{:.2e} +/- {:1.2e}%'.format(average, rel_err)
@@ -1138,7 +1172,7 @@ class TransportXS(MultiGroupXS):
 
         self._xs_tally = self.tallies['total'] - self.tallies['scatter-P1']
         self._xs_tally /= self.tallies['flux']
-        super(TotalXS, self).compute_xs()
+        super(TransportXS, self).compute_xs()
 
 
 class AbsorptionXS(MultiGroupXS):
@@ -1352,7 +1386,7 @@ class ScatterMatrixXS(MultiGroupXS):
         # Initialize the Tallies
         super(ScatterMatrixXS, self).create_tallies(scores, filters, keys, estimator)
 
-    def compute_xs(self, correction=None):
+    def compute_xs(self, correction='P0'):
         """Computes the multi-group scattering matrix using OpenMC
         tally arithmetic.
 
@@ -1379,7 +1413,8 @@ class ScatterMatrixXS(MultiGroupXS):
         super(ScatterMatrixXS, self).compute_xs()
 
     def get_xs(self, in_groups='all', out_groups='all', subdomains='all',
-               nuclides='all', xs_type='macro', value='mean'):
+               nuclides='all', order_groups='increasing',
+               xs_type='macro', value='mean'):
         """Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested scattering
@@ -1401,6 +1436,9 @@ class ScatterMatrixXS(MultiGroupXS):
             special string 'all' (default) will return the cross sections for
             all nuclides in the spatial domain. The special string 'sum' will
             return the cross section summed over all nuclides.
+
+        xs_type: {'macro' or 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns
 
         xs_type: {'macro' or 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns
@@ -1484,6 +1522,31 @@ class ScatterMatrixXS(MultiGroupXS):
                 densities = self.get_nuclide_densities('sum')
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
+
+        # Reverse data if user requested increasing energy groups since
+        # tally data is stored in order of increasing energies
+        if order_groups == 'increasing':
+            # Reshape tally data array with separate axes for domain and energy
+            if in_groups == 'all':
+                num_in_groups = self.num_groups
+            else:
+                num_in_groups = len(in_groups)
+            if out_groups == 'all':
+                num_out_groups = self.num_groups
+            else:
+                num_out_groups = len(out_groups)
+            num_subdomains = xs.shape[0] / (num_in_groups * num_out_groups)
+            new_shape = (num_subdomains, num_in_groups, num_out_groups)
+            new_shape += xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
+
+            # Reverse energies to align with increasing energy groups
+            xs = xs[:, ::-1, ::-1, :]
+
+            # Reshape array to original axes (filters, nuclides, scores)
+            new_shape = (num_subdomains * num_in_groups * num_out_groups,)
+            new_shape += xs.shape[3:]
+            xs = np.reshape(xs, new_shape)
 
         return xs
 
@@ -1581,10 +1644,10 @@ class ScatterMatrixXS(MultiGroupXS):
                         string += template.format('', in_group, out_group)
                         average = \
                             self.get_xs([in_group], [out_group], [subdomain],
-                                        [nuclide], xs_type, 'mean')
+                                        [nuclide], xs_type=xs_type, value='mean')
                         rel_err = \
                             self.get_xs([in_group], [out_group], [subdomain],
-                                        [nuclide], xs_type, 'rel_err') * 100
+                                        [nuclide], xs_type=xs_type, value='rel_err') * 100
                         average = np.nan_to_num(average.flatten())[0]
                         rel_err = np.nan_to_num(rel_err.flatten())[0]
                         string += '{:1.2e} +/- {:1.2e}%'.format(average, rel_err)
@@ -1607,7 +1670,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         """Construct the OpenMC tallies needed to compute this cross section."""
 
         # Create a list of scores for each Tally to be created
-        scores = ['flux', 'nu-scatter', 'scatter-P1']
+        scores = ['flux', 'scatter', 'scatter-P1']
         estimator = 'analog'
         keys = scores
 
@@ -1619,32 +1682,6 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
         # Intialize the Tallies
         super(ScatterMatrixXS, self).create_tallies(scores, filters, keys, estimator)
-
-    def compute_xs(self, correction=None):
-        """Computes the multi-group nu-scattering matrix using OpenMC
-        tally arithmetic.
-
-        Parameters
-        ----------
-        correction : {'P0' or None}
-            If 'P0', applies the P0 transport correction to the diagonal of the
-            scattering matrix
-
-        """
-
-        # If using P0 correction subtract scatter-P1 from the diagonal
-        if correction == 'P0':
-            scatter_p1 = self.tallies['scatter-P1']
-            scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
-            energy_filter = openmc.Filter(type='energy')
-            energy_filter.bins = self.energy_groups.group_edges
-            scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
-            rxn_tally = self.tallies['nu-scatter'] - scatter_p1
-        else:
-            rxn_tally = self.tallies['nu-scatter']
-
-        self._xs_tally = rxn_tally / self.tallies['flux']
-        super(ScatterMatrixXS, self).compute_xs()
 
 class Chi(MultiGroupXS):
 
@@ -1684,8 +1721,8 @@ class Chi(MultiGroupXS):
         self._xs_tally = nu_fission_out / nu_fission_in
         super(Chi, self).compute_xs()
 
-    def get_xs(self, groups='all', subdomains='all',
-               nuclides='all', xs_type='macro', value='mean'):
+    def get_xs(self, groups='all', subdomains='all', nuclides='all',
+               order_groups='increasing', xs_type='macro', value='mean'):
         """Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested multi-group
@@ -1704,6 +1741,9 @@ class Chi(MultiGroupXS):
             special string 'all' (default) will return the cross sections for
             all nuclides in the spatial domain. The special string 'sum' will
             return the cross section summed over all nuclides.
+
+        xs_type: {'macro' or 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns
 
         xs_type: {'macro' or 'micro'}
             This parameter is not relevant for chi but is included here to
@@ -1789,5 +1829,24 @@ class Chi(MultiGroupXS):
         else:
             xs = self.xs_tally.get_values(filters=filters,
                                           filter_bins=filter_bins, value=value)
+
+        # Reverse data if user requested increasing energy groups since
+        # tally data is stored in order of increasing energies
+        if order_groups == 'increasing':
+            # Reshape tally data array with separate axes for domain and energy
+            if groups == 'all':
+                num_groups = self.num_groups
+            else:
+                num_groups = len(groups)
+            num_subdomains = xs.shape[0] / num_groups
+            new_shape = (num_subdomains, num_groups) + xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
+
+            # Reverse energies to align with increasing energy groups
+            xs = xs[:, ::-1, :]
+
+            # Reshape array to original axes (filters, nuclides, scores)
+            new_shape = (num_subdomains * num_groups,) + new_shape[2:]
+            xs = np.reshape(xs, new_shape)
 
         return xs

@@ -11,8 +11,8 @@ class Region(object):
     def __str__(self):
         return ''
 
-    @classmethod
-    def from_expression(cls, expression, surfaces):
+    @staticmethod
+    def from_expression(expression, surfaces):
         """Generate a region given an infix expression.
 
         Parameters

@@ -20,11 +20,63 @@ contains
 ! CELL_CONTAINS determines if a cell contains the particle at a given
 ! location. The bounds of the cell are detemined by a logical expression
 ! involving surface half-spaces. At initialization, the expression was converted
-! to RPN notation. In cell_contains, we evaluate the RPN expression using a
-! stack, similar to how a RPN calculator would work.
+! to RPN notation.
+!
+! The function is split into two cases, one for simple cells (those involving
+! only the intersection of half-spaces) and one for complex cells. Simple cells
+! can be evaluated with short circuit evaluation, i.e., as soon as we know that
+! one half-space is not satisfied, we can exit. This provides a performance
+! benefit for the common case. In complex_cell_contains, we evaluate the RPN
+! expression using a stack, similar to how a RPN calculator would work.
 !===============================================================================
 
   pure function cell_contains(c, p) result(in_cell)
+    type(Cell), intent(in) :: c
+    type(Particle), intent(in) :: p
+    logical :: in_cell
+
+    if (c%simple) then
+      in_cell = simple_cell_contains(c, p)
+    else
+      in_cell = complex_cell_contains(c, p)
+    end if
+  end function cell_contains
+
+  pure function simple_cell_contains(c, p) result(in_cell)
+    type(Cell), intent(in) :: c
+    type(Particle), intent(in) :: p
+    logical :: in_cell
+
+    integer :: i
+    integer :: token
+    logical :: actual_sense    ! sense of particle wrt surface
+
+    in_cell = .true.
+    do i = 1, size(c%rpn)
+      token = c%rpn(i)
+      if (token < OP_UNION) then
+        ! If the token is not an operator, evaluate the sense of particle with
+        ! respect to the surface and see if the token matches the sense. If the
+        ! particle's surface attribute is set and matches the token, that
+        ! overrides the determination based on sense().
+        if (token == p%surface) then
+          cycle
+        elseif (-token == p%surface) then
+          in_cell = .false.
+          exit
+        else
+          actual_sense = surfaces(abs(token))%obj%sense(&
+               p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
+          if (actual_sense .neqv. (token > 0)) then
+            in_cell = .false.
+            exit
+          end if
+        end if
+      end if
+    end do
+  end function simple_cell_contains
+
+  pure function complex_cell_contains(c, p) result(in_cell)
     type(Cell), intent(in) :: c
     type(Particle), intent(in) :: p
     logical :: in_cell
@@ -83,7 +135,7 @@ contains
       ! still be zero.
       in_cell = .true.
     end if
-  end function cell_contains
+  end function complex_cell_contains
 
 !===============================================================================
 ! CHECK_CELL_OVERLAP checks for overlapping cells at the current particle's

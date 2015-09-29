@@ -1149,6 +1149,13 @@ contains
       if (.not. allocated(c%region)) allocate(c%region(0))
       if (.not. allocated(c%rpn)) allocate(c%rpn(0))
 
+      ! Check if this is a simple cell
+      if (any(c%rpn == OP_COMPLEMENT) .or. any(c%rpn == OP_UNION)) then
+        c%simple = .false.
+      else
+        c%simple = .true.
+      end if
+
       ! Rotation matrix
       if (check_for_node(node_cell, "rotation")) then
         ! Rotations can only be applied to cells that are being filled with

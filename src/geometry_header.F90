@@ -134,6 +134,7 @@ module geometry_header
                                            ! Boolean expression of half-spaces
     integer, allocatable :: rpn(:)         ! Reverse Polish notation for region
                                            ! expression
+    logical :: simple                      ! Is the region simple (intersections only)
 
     ! Rotation matrix and translation vector
     real(8), allocatable :: translation(:)

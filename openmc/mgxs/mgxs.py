@@ -537,7 +537,8 @@ class MultiGroupXS(object):
             raise ValueError(msg)
 
         cv.check_type('coarse_groups', coarse_groups, EnergyGroups)
-        cv.check_less_than('coarse groups', coarse_groups.num_groups, self.num_groups)
+        cv.check_less_than('coarse groups', coarse_groups.num_groups,
+                           self.num_groups, equality=True)
         cv.check_value('upper coarse energy', coarse_groups.group_edges[-1],
                        [self.energy_groups.group_edges[-1]])
         cv.check_value('lower coarse energy', coarse_groups.group_edges[0],

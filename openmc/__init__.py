@@ -12,6 +12,8 @@ from openmc.trigger import *
 from openmc.tallies import *
 from openmc.cmfd import *
 from openmc.executor import *
+from openmc.statepoint import *
+from openmc.summary import *
 
 try:
     from openmc.opencg_compatible import *

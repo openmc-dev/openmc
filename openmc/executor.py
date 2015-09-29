@@ -30,13 +30,15 @@ class Executor(object):
                              stdout=subprocess.PIPE)
 
         # Capture and re-print OpenMC output in real-time
-        while (True and output):
-            line = p.stdout.readline()
-            print(line, end='')
-
+        while True:
             # If OpenMC is finished, break loop
+            line = p.stdout.readline()
             if not line and p.poll() != None:
                 break
+
+            # If user requested output, print to screen
+            if output:
+                print(line, end='')
 
         # Return the returncode (integer, zero if no problems encountered)
         return p.returncode

@@ -1,7 +1,39 @@
 module stl_vector
 
   ! This module provides derived types that are meant to mimic the
-  ! std::vector<T> type in C++
+  ! std::vector<T> type in C++. The vector type has numerous advantages over
+  ! simple arrays and linked lists in that storage can grow and shrink
+  ! dynamically, yet it is still contiguous in memory. Vectors can be filled
+  ! element-by-element with automatic memory allocation in amortized constant
+  ! time. In the implementation here, we grow the vector by a factor of 1.5 each
+  ! time the capacity is exceed.
+  !
+  ! The member functions which have been implemented here are:
+  !
+  ! capacity -- Returns the size of the storage space currently allocated for
+  !             the vector
+  !
+  ! clear -- Remove all elements from the vector, leaving it with a size of
+  !          0. Note that this doesn't imply that storage is deallocated.
+  !
+  ! initialize -- Set the storage size of the vector and optionally fill it with
+  !               a particular value.
+  !
+  ! pop_back -- Remove the last element of the vector, reducing the size by one.
+  !
+  ! push_back -- Add a new element at the end of the vector. This increases the
+  !              size of the vector by one. Note that the underlying storage is
+  !              reallocated only if the size exceeds the capacity.
+  !
+  ! reserve -- Requests that the capacity of the vector be a certain size.
+  !
+  ! resize -- Resize the vector so it contains n elements. If n is larger than
+  !           the current size, an optional fill value can be used to set the
+  !           extra elements.
+  !
+  ! shrink_to_fit -- Request that the capacity be reduced to fit the size.
+  !
+  ! size -- Returns the number of elements in the vector.
 
   implicit none
   private
@@ -195,8 +227,8 @@ contains
   subroutine clear_real(this)
     class(VectorReal), intent(inout) :: this
 
-    ! Since integer is trivially destructible, we only need to set size to zero
-    ! and can leave capacity as is
+    ! Since real is trivially destructible, we only need to set size to zero and
+    ! can leave capacity as is
     this%size_ = 0
   end subroutine clear_real
 

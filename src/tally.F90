@@ -393,7 +393,7 @@ contains
             ! to get the proper score.
             score = keff * p % wgt_bank
           end if
-          
+
         else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
@@ -422,25 +422,25 @@ contains
             ! nu-fission
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
               if (t % find_filter(FILTER_DELAYGROUP) > 0) then
-                
+
                 !$omp critical
                 lc = 1
                 do d = 1, nuclides(p % event_nuclide) % n_precursor
-                  
+
                   ! determine number of interpolation regions and energies
                   NR = int(nuclides(p % event_nuclide) % nu_d_precursor_data(lc + 1))
                   NE = int(nuclides(p % event_nuclide) % nu_d_precursor_data(lc + 2 + 2*NR))
-                  
+
                   ! determine delayed neutron precursor yield for group d
                   yield = interpolate_tab1(nuclides(p % event_nuclide) % nu_d_precursor_data( &
                     lc+1:lc+2+2*NR+2*NE), p % E)
-                  
+
                   ! advance pointer
                   lc = lc + 2 + 2*NR + 2*NE + 1
-                  
+
                   score = p % absorb_wgt * yield * micro_xs(p % event_nuclide) % &
                     delay_nu_fission / micro_xs(p % event_nuclide) % absorption
-                  
+
                   t % results(score_index, d) % value = &
                     t % results(score_index, d) % value + score
                 end do
@@ -448,10 +448,10 @@ contains
               else
                 score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
                   delay_nu_fission / micro_xs(p % event_nuclide) % absorption
-                
+
                 t % results(score_index, 1) % value = &
                   t % results(score_index, 1) % value + score
-              end if              
+              end if
             else
               score = ZERO
             end if
@@ -477,7 +477,7 @@ contains
             !$omp end critical
             cycle SCORE_LOOP
           end if
-          
+
         else
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
@@ -485,7 +485,7 @@ contains
             score = material_xs % nu_fission * flux
           end if
         end if
-        
+
       case (SCORE_KAPPA_FISSION)
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
@@ -986,7 +986,7 @@ contains
 
         ! check if outgoing energy is within specified range on filter
         if (E_out < t % filters(i) % real_bins(1) .or. &
-          E_out > t % filters(i) % real_bins(n)) cycle
+             E_out > t % filters(i) % real_bins(n)) cycle
 
         ! change outgoing energy bin
         matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
@@ -997,7 +997,7 @@ contains
         ! Add score to tally
         !$omp atomic
         t % results(i_score, i_filter) % value = &
-          t % results(i_score, i_filter) % value + score
+             t % results(i_score, i_filter) % value + score
       end if
     end do
 

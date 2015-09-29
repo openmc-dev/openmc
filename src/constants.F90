@@ -313,7 +313,7 @@ module constants
        FILTER_ENERGYOUT   = 8, &
        FILTER_DISTRIBCELL = 9, &
        FILTER_DELAYGROUP  = 10
-  
+
   ! Mesh types
   integer, parameter :: &
        MESH_REGULAR = 1

@@ -2798,7 +2798,7 @@ contains
 
             if (t % find_filter(FILTER_DELAYGROUP) > 0) then
               call fatal_error("Cannot tally nu scatter with a &
-                  &delaygroup energy filter.")
+                   &delaygroup energy filter.")
             end if
 
             t % score_bins(j) = SCORE_NU_SCATTER

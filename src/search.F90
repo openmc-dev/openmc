@@ -62,7 +62,7 @@ contains
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
         call fatal_error("Reached maximum number of iterations on binary &
-            &search.")
+             &search.")
       end if
     end do
 
@@ -114,7 +114,7 @@ contains
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
         call fatal_error("Reached maximum number of iterations on binary &
-            &search.")
+             &search.")
       end if
     end do
 
@@ -166,7 +166,7 @@ contains
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
         call fatal_error("Reached maximum number of iterations on binary &
-            &search.")
+             &search.")
       end if
     end do
 

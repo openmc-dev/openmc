@@ -17,7 +17,7 @@ contains
 ! SET_UP_CMFD configures cmfd object for a CMFD eigenvalue calculation
 !==============================================================================
 
-  subroutine set_up_cmfd() 
+  subroutine set_up_cmfd()
 
     use cmfd_header,         only: allocate_cmfd
     use constants,           only: CMFD_NOACCEL
@@ -41,7 +41,7 @@ contains
     ! Calculate dhat
     call compute_dhat()
 
-  end subroutine set_up_cmfd 
+  end subroutine set_up_cmfd
 
 !===============================================================================
 ! COMPUTE_XS takes tallies and computes macroscopic cross sections
@@ -57,7 +57,7 @@ contains
     use global,       only: cmfd, n_cmfd_tallies, cmfd_tallies, meshes,&
                             matching_bins
     use mesh,         only: mesh_indices_to_bin
-    use mesh_header,  only: StructuredMesh
+    use mesh_header,  only: RegularMesh
     use string,       only: to_str
     use tally_header, only: TallyObject
 
@@ -79,8 +79,8 @@ contains
     integer :: i_filter_eout ! index for outgoing energy filter
     integer :: i_filter_surf ! index for surface filter
     real(8) :: flux          ! temp variable for flux
-    type(TallyObject),    pointer :: t => null() ! pointer for tally object
-    type(StructuredMesh), pointer :: m => null() ! pointer for mesh object
+    type(TallyObject), pointer :: t ! pointer for tally object
+    type(RegularMesh), pointer :: m ! pointer for mesh object
 
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -104,26 +104,26 @@ contains
 
     cmfd % keff_bal = ZERO
 
-   ! Begin loop around tallies
-   TAL: do ital = 1, n_cmfd_tallies
+    ! Begin loop around tallies
+    TAL: do ital = 1, n_cmfd_tallies
 
-     ! Associate tallies and mesh
-     t => cmfd_tallies(ital)
-     i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
-     m => meshes(i_mesh)
+      ! Associate tallies and mesh
+      t => cmfd_tallies(ital)
+      i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
+      m => meshes(i_mesh)
 
-     i_filter_mesh = t % find_filter(FILTER_MESH)
-     i_filter_ein  = t % find_filter(FILTER_ENERGYIN)
-     i_filter_eout = t % find_filter(FILTER_ENERGYOUT)
-     i_filter_surf = t % find_filter(FILTER_SURFACE)
+      i_filter_mesh = t % find_filter(FILTER_MESH)
+      i_filter_ein  = t % find_filter(FILTER_ENERGYIN)
+      i_filter_eout = t % find_filter(FILTER_ENERGYOUT)
+      i_filter_surf = t % find_filter(FILTER_SURFACE)
 
-     ! Begin loop around space
-     ZLOOP: do k = 1,nz
+      ! Begin loop around space
+      ZLOOP: do k = 1,nz
 
-       YLOOP: do j = 1,ny
+        YLOOP: do j = 1,ny
 
           XLOOP: do i = 1,nx
- 
+
             ! Check for active mesh cell
             if (allocated(cmfd%coremap)) then
               if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) then
@@ -345,8 +345,8 @@ contains
           ! Check for reflector
           if (cmfd % coremap(i,j,k) == 1) then
 
-            ! reset value to CMFD no acceleration constant 
-            cmfd % coremap(i,j,k) = CMFD_NOACCEL 
+            ! reset value to CMFD no acceleration constant
+            cmfd % coremap(i,j,k) = CMFD_NOACCEL
 
           else
 
@@ -368,7 +368,7 @@ contains
   end subroutine set_coremap
 
 !===============================================================================
-! NEUTRON_BALANCE writes a file that contains n. bal. info for all cmfd mesh
+! NEUTRON_BALANCE computes the RMS neutron balance over the CMFD mesh
 !===============================================================================
 
   subroutine neutron_balance()
@@ -506,7 +506,7 @@ contains
     real(8) :: cell_hxyz(3) ! cell dimensions of current ijk cell
     real(8) :: neig_dc      ! diffusion coefficient of neighbor cell
     real(8) :: neig_hxyz(3) ! cell dimensions of neighbor cell
-    real(8) :: dtilde       ! finite difference coupling parameter 
+    real(8) :: dtilde       ! finite difference coupling parameter
     real(8) :: ref_albedo   ! albedo to reflector
 
     ! Get maximum of spatial and group indices
@@ -600,7 +600,7 @@ contains
                   dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc + &
                        cell_hxyz(xyz_idx)*neig_dc)
 
-               end if
+                end if
 
               end if
 
@@ -712,7 +712,7 @@ contains
                 neig_idx = (/i,j,k/)                ! begin with i,j,k
                 neig_idx(xyz_idx) = shift_idx + neig_idx(xyz_idx)
 
-                ! Get neigbor flux 
+                ! Get neigbor flux
                 neig_flux = cmfd%flux(g,neig_idx(1),neig_idx(2),neig_idx(3)) / &
                      product(cmfd%hxyz(:,neig_idx(1),neig_idx(2),neig_idx(3)))
 
@@ -728,7 +728,7 @@ contains
 
                   else ! not a fuel-reflector interface
 
-                    ! Compute dhat 
+                    ! Compute dhat
                     dhat = (net_current + shift_idx*cell_dtilde(l)* &
                          (neig_flux - cell_flux))/(neig_flux + cell_flux)
 
@@ -736,7 +736,7 @@ contains
 
                 else ! not for fuel-reflector case
 
-                  ! Compute dhat 
+                  ! Compute dhat
                   dhat = (net_current + shift_idx*cell_dtilde(l)* &
                        (neig_flux - cell_flux))/(neig_flux + cell_flux)
 
@@ -786,7 +786,7 @@ contains
     integer, intent(in) :: l ! iteration counter for leakages
 
     integer :: shift_idx   ! parameter to shift index by +1 or -1
-    real(8) :: current(12) ! partial currents for all faces of mesh cell            
+    real(8) :: current(12) ! partial currents for all faces of mesh cell
     real(8) :: albedo      ! the albedo
 
     ! Get partial currents from object
@@ -797,7 +797,7 @@ contains
 
     ! Calculate albedo
     if ((shift_idx ==  1 .and. current(2*l  ) < 1.0e-10_8) .or. &
-        (shift_idx == -1 .and. current(2*l-1) < 1.0e-10_8)) then
+         (shift_idx == -1 .and. current(2*l-1) < 1.0e-10_8)) then
       albedo = ONE
     else
       albedo = (current(2*l-1)/current(2*l))**(shift_idx)
@@ -872,12 +872,12 @@ contains
           siga2 = sigt2 - sigs22 - sigs21
 
           ! Compute effective downscatter xs
-          sigs12_eff = sigs12 - sigs21*flux2/flux1 
+          sigs12_eff = sigs12 - sigs21*flux2/flux1
 
           ! Recompute total cross sections (use effective and no upscattering)
           sigt1 = siga1 + sigs11 + sigs12_eff
           sigt2 = siga2 + sigs22
-    
+
           ! Record total xs
           cmfd % totalxs(1,i,j,k) = sigt1
           cmfd % totalxs(2,i,j,k) = sigt2
@@ -886,14 +886,14 @@ contains
           cmfd % scattxs(1,2,i,j,k) = sigs12_eff
 
           ! Zero out upscatter cross section
-          cmfd % scattxs(2,1,i,j,k) = ZERO 
+          cmfd % scattxs(2,1,i,j,k) = ZERO
 
         end do XLOOP
 
       end do YLOOP
-    
+
     end do ZLOOP
 
-  end subroutine compute_effective_downscatter 
+  end subroutine compute_effective_downscatter
 
 end module cmfd_data

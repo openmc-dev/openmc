@@ -10,7 +10,12 @@ element settings {
       (element particles { xsd:positiveInteger } |
         attribute particles { xsd:positiveInteger }) &
       (element generations_per_batch { xsd:positiveInteger } |
-        attribute generations_per_batch { xsd:positiveInteger })?
+        attribute generations_per_batch { xsd:positiveInteger })? &
+      (element keff_trigger {
+        (element type { xsd:string } | attribute type { xsd:string }) &
+        (element threshold { xsd:double} | attribute threshold { xsd:double })
+        }
+      )?
     } |
     element fixed_source {
       (element batches { xsd:positiveInteger } |
@@ -27,7 +32,7 @@ element settings {
     (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })?
   }? &
 
-  element energy_grid { ( "nuclide" | "log" | "logarithm" | "logarithmic" ) }? &
+  element energy_grid { ( "nuclide" | "log" | "logarithm" | "logarithmic" | "material-union" | "union" ) }? &
 
   element entropy {
     (element dimension { list { xsd:int+ } } |
@@ -122,6 +127,12 @@ element settings {
   element trace { list { xsd:positiveInteger+ } }? &
 
   element track { list { xsd:positiveInteger+ } }? &
+
+  element trigger {
+    (element active { xsd:boolean } | attribute active { xsd:boolean }) &
+    (element max_batches { xsd:positiveInteger } | attribute max_batches { xsd:positiveInteger }) &
+    (element batch_interval { xsd:positiveInteger } | attribute batch_interval { xsd:positiveInteger })?
+  }? &
 
   element verbosity { xsd:positiveInteger }? &
 

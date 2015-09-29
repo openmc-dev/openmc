@@ -6,16 +6,19 @@ module source
   use geometry,         only: find_cell
   use geometry_header,  only: BASE_UNIVERSE
   use global
+  use hdf5_interface,   only: file_create, file_open, file_close, read_dataset
   use math,             only: maxwell_spectrum, watt_spectrum
   use output,           only: write_message
-  use output_interface, only: BinaryOutput
   use particle_header,  only: Particle
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream
+  use state_point,      only: read_source_bank, write_source_bank
   use string,           only: to_str
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
+
+  use hdf5, only: HID_T
 
   implicit none
 
@@ -27,12 +30,12 @@ contains
 
   subroutine initialize_source()
 
-    character(MAX_FILE_LEN) :: filename
     integer(8) :: i          ! loop index over bank sites
     integer(8) :: id         ! particle id
-    integer(4) :: itmp       ! temporary integer
-    type(Bank), pointer :: src => null() ! source bank site
-    type(BinaryOutput) :: sp ! statepoint/source binary file
+    integer(HID_T) :: file_id
+    character(MAX_WORD_LEN) :: filetype
+    character(MAX_FILE_LEN) :: filename
+    type(Bank), pointer :: src ! source bank site
 
     call write_message("Initializing source particles...", 6)
 
@@ -44,22 +47,22 @@ contains
            &// '...', 6)
 
       ! Open the binary file
-      call sp % file_open(path_source, 'r', serial = .false.)
+      file_id = file_open(path_source, 'r', parallel=.true.)
 
       ! Read the file type
-      call sp % read_data(itmp, "filetype")
+      call read_dataset(file_id, "filetype", filetype)
 
       ! Check to make sure this is a source file
-      if (itmp /= FILETYPE_SOURCE) then
+      if (filetype /= 'source') then
         call fatal_error("Specified starting source file not a source file &
              &type.")
       end if
 
       ! Read in the source bank
-      call sp % read_source_bank()
+      call read_source_bank(file_id)
 
       ! Close file
-      call sp % file_close()
+      call file_close(file_id)
 
     else
       ! Generation source sites from specified distribution in user input
@@ -78,21 +81,18 @@ contains
 
     ! Write out initial source
     if (write_initial_source) then
-      call write_message('Writing out initial source guess...', 1)
-#ifdef HDF5
+      call write_message('Writing out initial source...', 1)
       filename = trim(path_output) // 'initial_source.h5'
-#else
-      filename = trim(path_output) // 'initial_source.binary'
-#endif
-      call sp % file_create(filename, serial = .false.)
-      call sp % write_source_bank()
-      call sp % file_close()
+      file_id = file_create(filename, parallel=.true.)
+      call write_source_bank(file_id)
+      call file_close(file_id)
     end if
 
   end subroutine initialize_source
 
 !===============================================================================
-! SAMPLE_EXTERNAL_SOURCE
+! SAMPLE_EXTERNAL_SOURCE samples the user-specified external source and stores
+! the position, angle, and energy in a Bank type.
 !===============================================================================
 
   subroutine sample_external_source(site)
@@ -112,28 +112,28 @@ contains
     integer, save :: num_resamples = 0 ! Number of resamples encountered
 
     ! Set weight to one by default
-    site % wgt = ONE
+    site%wgt = ONE
 
     ! Set the random number generator to the source stream.
     call prn_set_stream(STREAM_SOURCE)
 
     ! Sample position
-    select case (external_source % type_space)
+    select case (external_source%type_space)
     case (SRC_SPACE_BOX)
       ! Set particle defaults
-      call p % initialize()
+      call p%initialize()
       ! Repeat sampling source location until a good site has been found
       found = .false.
       do while (.not.found)
         ! Coordinates sampled uniformly over a box
-        p_min = external_source % params_space(1:3)
-        p_max = external_source % params_space(4:6)
+        p_min = external_source%params_space(1:3)
+        p_max = external_source%params_space(4:6)
         r = (/ (prn(), i = 1,3) /)
-        site % xyz = p_min + r*(p_max - p_min)
+        site%xyz = p_min + r*(p_max - p_min)
 
         ! Fill p with needed data
-        p % coord0 % xyz = site % xyz
-        p % coord0 % uvw = [ ONE, ZERO, ZERO ]
+        p%coord(1)%xyz = site%xyz
+        p%coord(1)%uvw = [ ONE, ZERO, ZERO ]
 
         ! Now search to see if location exists in geometry
         call find_cell(p, found)
@@ -145,24 +145,24 @@ contains
           end if
         end if
       end do
-      call p % clear()
+      call p%clear()
 
     case (SRC_SPACE_FISSION)
       ! Repeat sampling source location until a good site has been found
       found = .false.
       do while (.not.found)
         ! Set particle defaults
-        call p % initialize()
+        call p%initialize()
 
         ! Coordinates sampled uniformly over a box
-        p_min = external_source % params_space(1:3)
-        p_max = external_source % params_space(4:6)
+        p_min = external_source%params_space(1:3)
+        p_max = external_source%params_space(4:6)
         r = (/ (prn(), i = 1,3) /)
-        site % xyz = p_min + r*(p_max - p_min)
+        site%xyz = p_min + r*(p_max - p_min)
 
         ! Fill p with needed data
-        p % coord0 % xyz = site % xyz
-        p % coord0 % uvw = [ ONE, ZERO, ZERO ]
+        p%coord(1)%xyz = site%xyz
+        p%coord(1)%uvw = [ ONE, ZERO, ZERO ]
 
         ! Now search to see if location exists in geometry
         call find_cell(p, found)
@@ -174,66 +174,66 @@ contains
           end if
           cycle
         end if
-        if (p % material == MATERIAL_VOID) then
+        if (p%material == MATERIAL_VOID) then
           found = .false.
           cycle
         end if
-        if (.not. materials(p % material) % fissionable) found = .false.
+        if (.not. materials(p%material)%fissionable) found = .false.
       end do
-      call p % clear()
+      call p%clear()
 
     case (SRC_SPACE_POINT)
       ! Point source
-      site % xyz = external_source % params_space
+      site%xyz = external_source%params_space
 
     end select
 
     ! Sample angle
-    select case (external_source % type_angle)
+    select case (external_source%type_angle)
     case (SRC_ANGLE_ISOTROPIC)
       ! Sample isotropic distribution
       phi = TWO*PI*prn()
       mu = TWO*prn() - ONE
-      site % uvw(1) = mu
-      site % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-      site % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+      site%uvw(1) = mu
+      site%uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+      site%uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
     case (SRC_ANGLE_MONO)
       ! Monodirectional source
-      site % uvw = external_source % params_angle
+      site%uvw = external_source%params_angle
 
     case default
       call fatal_error("No angle distribution specified for external source!")
     end select
 
     ! Sample energy distribution
-    select case (external_source % type_energy)
+    select case (external_source%type_energy)
     case (SRC_ENERGY_MONO)
       ! Monoenergtic source
-      site % E = external_source % params_energy(1)
-      if (site % E >= 20) then
+      site%E = external_source%params_energy(1)
+      if (site%E >= 20) then
         call fatal_error("Source energies above 20 MeV not allowed.")
       end if
 
     case (SRC_ENERGY_MAXWELL)
-      a = external_source % params_energy(1)
+      a = external_source%params_energy(1)
       do
         ! Sample Maxwellian fission spectrum
-        site % E = maxwell_spectrum(a)
+        site%E = maxwell_spectrum(a)
 
         ! resample if energy is >= 20 MeV
-        if (site % E < 20) exit
+        if (site%E < 20) exit
       end do
 
     case (SRC_ENERGY_WATT)
-      a = external_source % params_energy(1)
-      b = external_source % params_energy(2)
+      a = external_source%params_energy(1)
+      b = external_source%params_energy(2)
       do
         ! Sample Watt fission spectrum
-        site % E = watt_spectrum(a, b)
+        site%E = watt_spectrum(a, b)
 
         ! resample if energy is >= 20 MeV
-        if (site % E < 20) exit
+        if (site%E < 20) exit
       end do
 
     case default
@@ -244,76 +244,5 @@ contains
     call prn_set_stream(STREAM_TRACKING)
 
   end subroutine sample_external_source
-
-!===============================================================================
-! GET_SOURCE_PARTICLE returns the next source particle
-!===============================================================================
-
-  subroutine get_source_particle(p, index_source)
-
-    type(Particle), intent(inout) :: p
-    integer(8),     intent(in)    :: index_source
-
-    integer(8) :: particle_seed  ! unique index for particle
-    integer :: i
-    type(Bank), pointer, save :: src => null()
-!$omp threadprivate(src)
-
-    ! set defaults
-    call p % initialize()
-
-    ! Copy attributes from source to particle
-    src => source_bank(index_source)
-    call copy_source_attributes(p, src)
-
-    ! set identifier for particle
-    p % id = work_index(rank) + index_source
-
-    ! set random number seed
-    particle_seed = (overall_gen - 1)*n_particles + p % id
-    call set_particle_seed(particle_seed)
-
-    ! set particle trace
-    trace = .false.
-    if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
-         p % id == trace_particle) trace = .true.
-
-    ! Set particle track.
-    p % write_track = .false.
-    if (write_all_tracks) then
-      p % write_track = .true.
-    else if (allocated(track_identifiers)) then
-      do i=1, size(track_identifiers(1,:))
-        if (current_batch == track_identifiers(1,i) .and. &
-             &current_gen == track_identifiers(2,i) .and. &
-             &p % id == track_identifiers(3,i)) then
-          p % write_track = .true.
-          exit
-        end if
-      end do
-    end if
-
-  end subroutine get_source_particle
-
-!===============================================================================
-! COPY_SOURCE_ATTRIBUTES
-!===============================================================================
-
-  subroutine copy_source_attributes(p, src)
-
-    type(Particle), intent(inout) :: p
-    type(Bank),     pointer       :: src
-
-    ! copy attributes from source bank site
-    p % wgt         = src % wgt
-    p % last_wgt    = src % wgt
-    p % coord % xyz = src % xyz
-    p % coord % uvw = src % uvw
-    p % last_xyz    = src % xyz
-    p % last_uvw    = src % uvw
-    p % E           = src % E
-    p % last_E      = src % E
-
-  end subroutine copy_source_attributes
 
 end module source

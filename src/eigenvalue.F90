@@ -1,242 +1,26 @@
 module eigenvalue
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
-  use cmfd_execute, only: cmfd_init_batch, execute_cmfd
   use constants,    only: ZERO
   use error,        only: fatal_error, warning
   use global
   use math,         only: t_percentile
   use mesh,         only: count_bank_sites
-  use mesh_header,  only: StructuredMesh
-  use output,       only: write_message, header, print_columns,              &
-                          print_batch_keff, print_generation
+  use mesh_header,  only: RegularMesh
   use particle_header, only: Particle
   use random_lcg,   only: prn, set_particle_seed, prn_skip
   use search,       only: binary_search
-  use source,       only: get_source_particle
-  use state_point,  only: write_state_point, write_source_point
   use string,       only: to_str
-  use tally,        only: synchronize_tallies, setup_active_usertallies, &
-                          reset_result
-  use tracking,     only: transport
 
   implicit none
-  private
-  public :: run_eigenvalue
 
-  real(8)                   :: keff_generation ! Single-generation k on each
-                                               ! processor
-  real(8)                   :: k_sum(2) = ZERO ! Used to reduce sum and sum_sq
+  real(8) :: keff_generation ! Single-generation k on each processor
+  real(8) :: k_sum(2) = ZERO ! Used to reduce sum and sum_sq
 
 contains
-
-!===============================================================================
-! RUN_EIGENVALUE encompasses all the main logic where iterations are performed
-! over the batches, generations, and histories in a k-eigenvalue calculation.
-!===============================================================================
-
-  subroutine run_eigenvalue()
-
-    type(Particle) :: p
-    integer(8)     :: i_work
-
-    if (master) call header("K EIGENVALUE SIMULATION", level=1)
-
-    ! Display column titles
-    if(master) call print_columns()
-
-    ! Turn on inactive timer
-    call time_inactive % start()
-
-    ! ==========================================================================
-    ! LOOP OVER BATCHES
-    BATCH_LOOP: do current_batch = 1, n_batches
-
-      call initialize_batch()
-
-      ! Handle restart runs
-      if (restart_run .and. current_batch <= restart_batch) then
-        call replay_batch_history()
-        cycle BATCH_LOOP
-      end if
-
-      ! =======================================================================
-      ! LOOP OVER GENERATIONS
-      GENERATION_LOOP: do current_gen = 1, gen_per_batch
-
-        call initialize_generation()
-
-        ! Start timer for transport
-        call time_transport % start()
-
-        ! ====================================================================
-        ! LOOP OVER PARTICLES
-!$omp parallel do schedule(static) firstprivate(p)
-        PARTICLE_LOOP: do i_work = 1, work
-          current_work = i_work
-
-          ! grab source particle from bank
-          call get_source_particle(p, current_work)
-
-          ! transport particle
-          call transport(p)
-
-        end do PARTICLE_LOOP
-!$omp end parallel do
-
-        ! Accumulate time for transport
-        call time_transport % stop()
-
-        call finalize_generation()
-
-      end do GENERATION_LOOP
-
-      call finalize_batch()
-
-    end do BATCH_LOOP
-
-    call time_active % stop()
-
-    ! ==========================================================================
-    ! END OF RUN WRAPUP
-
-    if (master) call header("SIMULATION FINISHED", level=1)
-
-    ! Clear particle
-    call p % clear()
-
-  end subroutine run_eigenvalue
-
-!===============================================================================
-! INITIALIZE_BATCH
-!===============================================================================
-
-  subroutine initialize_batch()
-
-    call write_message("Simulating batch " // trim(to_str(current_batch)) &
-         &// "...", 8)
-
-    ! Reset total starting particle weight used for normalizing tallies
-    total_weight = ZERO
-
-    if (current_batch == n_inactive + 1) then
-      ! Switch from inactive batch timer to active batch timer
-      call time_inactive % stop()
-      call time_active % start()
-
-      ! Enable active batches (and tallies_on if it hasn't been enabled)
-      active_batches = .true.
-      tallies_on = .true.
-
-      ! Add user tallies to active tallies list
-!$omp parallel
-      call setup_active_usertallies()
-!$omp end parallel
-    end if
-
-    ! check CMFD initialize batch
-    if (cmfd_run) call cmfd_init_batch()
-
-  end subroutine initialize_batch
-
-!===============================================================================
-! INITIALIZE_GENERATION
-!===============================================================================
-
-  subroutine initialize_generation()
-
-    ! set overall generation number
-    overall_gen = gen_per_batch*(current_batch - 1) + current_gen
-
-    ! Reset number of fission bank sites
-    n_bank = 0
-
-    ! Count source sites if using uniform fission source weighting
-    if (ufs) call count_source_for_ufs()
-
-    ! Store current value of tracklength k
-    keff_generation = global_tallies(K_TRACKLENGTH) % value
-
-  end subroutine initialize_generation
-
-!===============================================================================
-! FINALIZE_GENERATION
-!===============================================================================
-
-  subroutine finalize_generation()
-
-#ifdef _OPENMP
-    ! Join the fission bank from each thread into one global fission bank
-    call join_bank_from_threads()
-#endif
-
-    ! Distribute fission bank across processors evenly
-    call time_bank % start()
-    call synchronize_bank()
-    call time_bank % stop()
-
-    ! Calculate shannon entropy
-    if (entropy_on) call shannon_entropy()
-
-    ! Collect results and statistics
-    call calculate_generation_keff()
-    call calculate_average_keff()
-
-    ! Write generation output
-    if (master .and. current_gen /= gen_per_batch) call print_generation()
-
-  end subroutine finalize_generation
-
-!===============================================================================
-! FINALIZE_BATCH handles synchronization and accumulation of tallies,
-! calculation of Shannon entropy, getting single-batch estimate of keff, and
-! turning on tallies when appropriate
-!===============================================================================
-
-  subroutine finalize_batch()
-
-    ! Collect tallies
-    call time_tallies % start()
-    call synchronize_tallies()
-    call time_tallies % stop()
-
-    ! Reset global tally results
-    if (.not. active_batches) then
-      call reset_result(global_tallies)
-      n_realizations = 0
-    end if
-
-    ! Perform CMFD calculation if on
-    if (cmfd_on) call execute_cmfd()
-
-    ! Display output
-    if (master) call print_batch_keff()
-
-    ! Write out state point if it's been specified for this batch
-    if (statepoint_batch % contains(current_batch)) then
-      ! Calculate combined estimate of k-effective
-      if (master) call calculate_combined_keff()
-
-      ! Create state point file
-      call write_state_point()
-    end if
-
-    ! Write out source point if it's been specified for this batch
-    if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
-        source_write) then
-      call write_source_point()
-    end if
-
-    if (master .and. current_batch == n_batches) then
-      ! Make sure combined estimate of k-effective is calculated at the last
-      ! batch in case no state point is written
-      call calculate_combined_keff()
-    end if
-
-  end subroutine finalize_batch
 
 !===============================================================================
 ! SYNCHRONIZE_BANK samples source sites from the fission sites that were
@@ -260,7 +44,11 @@ contains
 #ifdef MPI
     integer(8) :: n            ! number of sites to send/recv
     integer    :: neighbor     ! processor to send/recv data from
+#ifdef MPIF08
+    type(MPI_Request) :: request(20)
+#else
     integer    :: request(20)  ! communication request for send/recving sites
+#endif
     integer    :: n_request    ! number of communication requests
     integer(8) :: index_local  ! index in local source bank
     integer(8), save, allocatable :: &
@@ -491,7 +279,7 @@ contains
     call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
 
     ! Deallocate space for bank_position on the very last generation
-    if (current_batch == n_batches .and. current_gen == gen_per_batch) &
+    if (current_batch == n_max_batches .and. current_gen == gen_per_batch) &
          deallocate(bank_position)
 #else
     source_bank = temp_sites(1:n_particles)
@@ -500,7 +288,7 @@ contains
     call time_bank_sendrecv % stop()
 
     ! Deallocate space for the temporary source bank on the last generation
-    if (current_batch == n_batches .and. current_gen == gen_per_batch) &
+    if (current_batch == n_max_batches .and. current_gen == gen_per_batch) &
          deallocate(temp_sites)
 
   end subroutine synchronize_bank
@@ -516,7 +304,7 @@ contains
     integer :: i, j, k        ! index for bank sites
     integer :: n              ! # of boxes in each dimension
     logical :: sites_outside  ! were there sites outside entropy box?
-    type(StructuredMesh), pointer :: m => null()
+    type(RegularMesh), pointer :: m
 
     ! Get pointer to entropy mesh
     m => entropy_mesh
@@ -531,7 +319,7 @@ contains
         ! If the user did not specify how many mesh cells are to be used in
         ! each direction, we automatically determine an appropriate number of
         ! cells
-        n = ceiling((n_particles/20)**(1.0/3.0))
+        n = ceiling((n_particles/20)**(ONE/THREE))
 
         ! copy dimensions
         m % n_dimension = 3
@@ -793,40 +581,11 @@ contains
 
   end subroutine count_source_for_ufs
 
-!===============================================================================
-! REPLAY_BATCH_HISTORY displays keff and entropy for each generation within a
-! batch using data read from a state point file
-!===============================================================================
-
-  subroutine replay_batch_history
-
-    ! Write message at beginning
-    if (current_batch == 1) then
-      call write_message("Replaying history from state point...", 1)
-    end if
-
-    do current_gen = 1, gen_per_batch
-      overall_gen = overall_gen + 1
-      call calculate_average_keff()
-
-      ! print out batch keff
-      if (current_gen < gen_per_batch) then
-        if (master) call print_generation()
-      else
-        if (master) call print_batch_keff()
-      end if
-    end do
-
-    ! Write message at end
-    if (current_batch == restart_batch) then
-      call write_message("Resuming simulation...", 1)
-    end if
-
-  end subroutine replay_batch_history
-
 #ifdef _OPENMP
 !===============================================================================
-! JOIN_BANK_FROM_THREADS
+! JOIN_BANK_FROM_THREADS joins threadprivate fission banks into a single fission
+! bank that can be sampled. Note that this operation is necessarily sequential
+! to preserve the order of the bank when using varying numbers of threads.
 !===============================================================================
 
   subroutine join_bank_from_threads()
@@ -843,8 +602,8 @@ contains
 !$omp do ordered schedule(static)
     do i = 1, n_threads
 !$omp ordered
-       master_fission_bank(total+1:total+n_bank) = fission_bank(1:n_bank)
-       total = total + n_bank
+      master_fission_bank(total+1:total+n_bank) = fission_bank(1:n_bank)
+      total = total + n_bank
 !$omp end ordered
     end do
 !$omp end do
@@ -854,10 +613,10 @@ contains
 
     ! Now copy the shared fission bank sites back to the master thread's copy.
     if (thread_id == 0) then
-       n_bank = total
-       fission_bank(1:n_bank) = master_fission_bank(1:n_bank)
+      n_bank = total
+      fission_bank(1:n_bank) = master_fission_bank(1:n_bank)
     else
-       n_bank = 0
+      n_bank = 0
     end if
 
 !$omp end parallel

@@ -14,6 +14,20 @@
           </choice>
           <optional>
             <choice>
+              <element name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </element>
+              <attribute name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
               <element name="universe">
                 <data type="int"/>
               </element>
@@ -114,6 +128,20 @@
               <data type="int"/>
             </attribute>
           </choice>
+          <optional>
+            <choice>
+              <element name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </element>
+              <attribute name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
           <choice>
             <element name="type">
               <data type="string">
@@ -174,6 +202,20 @@
               <data type="int"/>
             </attribute>
           </choice>
+          <optional>
+            <choice>
+              <element name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </element>
+              <attribute name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
           <choice>
             <element name="dimension">
               <list>
@@ -240,10 +282,10 @@
           </choice>
           <optional>
             <choice>
-              <element name="outside">
+              <element name="outer">
                 <data type="int"/>
               </element>
-              <attribute name="outside">
+              <attribute name="outer">
                 <data type="int"/>
               </attribute>
             </choice>
@@ -262,6 +304,20 @@
               <data type="int"/>
             </attribute>
           </choice>
+          <optional>
+            <choice>
+              <element name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </element>
+              <attribute name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
           <choice>
             <element name="n_rings">
               <data type="int"/>

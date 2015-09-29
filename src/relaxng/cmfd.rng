@@ -144,21 +144,6 @@
       </element>
     </optional>
     <optional>
-      <element name="solver">
-        <data type="string"/>
-      </element>
-    </optional>
-    <optional>
-      <element name="snes_monitor">
-        <data type="boolean"/>
-      </element>
-    </optional>
-    <optional>
-      <element name="ksp_monitor">
-        <data type="boolean"/>
-      </element>
-    </optional>
-    <optional>
       <element name="power_monitor">
         <data type="boolean"/>
       </element>

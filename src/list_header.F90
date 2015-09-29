@@ -45,7 +45,7 @@ module list_header
     private
     integer :: count = 0 ! Number of elements in list
 
-    ! Used in get_item for fast sequential lookups 
+    ! Used in get_item for fast sequential lookups
     integer :: last_index = huge(0)
     type(ListElemInt), pointer :: last_elem => null()
 
@@ -67,7 +67,7 @@ module list_header
     private
     integer :: count = 0 ! Number of elements in list
 
-    ! Used in get_item for fast sequential lookups 
+    ! Used in get_item for fast sequential lookups
     integer :: last_index = huge(0)
     type(ListElemReal), pointer :: last_elem => null()
 
@@ -89,7 +89,7 @@ module list_header
     private
     integer :: count = 0 ! Number of elements in list
 
-    ! Used in get_item for fast sequential lookups 
+    ! Used in get_item for fast sequential lookups
     integer :: last_index = huge(0)
     type(ListElemChar), pointer :: last_elem => null()
 
@@ -198,7 +198,7 @@ contains
 
     type(ListElemInt), pointer :: current => null()
     type(ListElemInt), pointer :: next => null()
-    
+
     if (this % count > 0) then
       current => this % head
       do while (associated(current))
@@ -224,7 +224,7 @@ contains
 
     type(ListElemReal), pointer :: current => null()
     type(ListElemReal), pointer :: next => null()
-    
+
     if (this % count > 0) then
       current => this % head
       do while (associated(current))
@@ -250,7 +250,7 @@ contains
 
     type(ListElemChar), pointer :: current => null()
     type(ListElemChar), pointer :: next => null()
-    
+
     if (this % count > 0) then
       current => this % head
       do while (associated(current))
@@ -518,7 +518,7 @@ contains
           ! Allocate new element
           allocate(new_elem)
           new_elem % data = data
-          
+
           ! Put it before the i-th element
           new_elem % prev => elem % prev
           new_elem % next => elem
@@ -573,7 +573,7 @@ contains
           ! Allocate new element
           allocate(new_elem)
           new_elem % data = data
-          
+
           ! Put it before the i-th element
           new_elem % prev => elem % prev
           new_elem % next => elem
@@ -628,7 +628,7 @@ contains
           ! Allocate new element
           allocate(new_elem)
           new_elem % data = data
-          
+
           ! Put it before the i-th element
           new_elem % prev => elem % prev
           new_elem % next => elem

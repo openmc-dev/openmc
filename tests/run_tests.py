@@ -43,9 +43,8 @@ parser.add_option("-s", "--script", action="store_true", dest="script",
 # Default compiler paths
 FC='gfortran'
 MPI_DIR='/opt/mpich/3.1.3-gnu'
-HDF5_DIR='/opt/hdf5/1.8.14-gnu'
-PHDF5_DIR='/opt/phdf5/1.8.14-gnu'
-PETSC_DIR='/opt/petsc/3.5.2-gnu'
+HDF5_DIR='/opt/hdf5/1.8.15-gnu'
+PHDF5_DIR='/opt/phdf5/1.8.15-gnu'
 
 # Script mode for extra capability
 script_mode = False
@@ -59,8 +58,6 @@ if 'HDF5_DIR' in os.environ:
     HDF5_DIR = os.environ['HDF5_DIR']
 if 'PHDF5_DIR' in os.environ:
     PHDF5_DIR = os.environ['PHDF5_DIR']
-if 'PETSC_DIR' in os.environ:
-    PETSC_DIR = os.environ['PETSC_DIR']
 
 # CTest script template
 ctest_str = """set (CTEST_SOURCE_DIRECTORY "{source_dir}")
@@ -110,14 +107,13 @@ tests = OrderedDict()
 
 class Test(object):
     def __init__(self, name, debug=False, optimize=False, mpi=False, openmp=False,
-                 hdf5=False, petsc=False, valgrind=False, coverage=False):
+                 phdf5=False, valgrind=False, coverage=False):
         self.name = name
         self.debug = debug
         self.optimize = optimize
         self.mpi = mpi
         self.openmp = openmp
-        self.hdf5 = hdf5
-        self.petsc = petsc
+        self.phdf5 = phdf5
         self.valgrind = valgrind
         self.coverage = coverage
         self.success = True
@@ -125,15 +121,12 @@ class Test(object):
         self.skipped = False
         self.valgrind_cmd = ""
         self.gcov_cmd = ""
-        self.cmake = ['cmake', '-H../src', '-Bbuild']
+        self.cmake = ['cmake', '-H..', '-Bbuild',
+                      '-DPYTHON_EXECUTABLE=' + sys.executable]
 
-        # Check for MPI/HDF5
-        if self.mpi and not self.hdf5:
-            self.fc = MPI_DIR+'/bin/mpif90'
-        elif not self.mpi and self.hdf5:
-            self.fc = HDF5_DIR+'/bin/h5fc'
-        elif self.mpi and self.hdf5:
-            self.fc = PHDF5_DIR+'/bin/h5pfc'
+        # Check for MPI
+        if self.mpi:
+            self.fc = os.path.join(MPI_DIR, 'bin', 'mpifort')
         else:
             self.fc = FC
 
@@ -152,8 +145,6 @@ class Test(object):
             build_str += "-Doptimize=ON "
         if self.openmp:
             build_str += "-Dopenmp=ON "
-        if self.petsc:
-            build_str += "-Dpetsc=ON "
         if self.coverage:
             build_str += "-Dcoverage=ON "
         self.build_opts = build_str
@@ -167,10 +158,12 @@ class Test(object):
     # Runs the ctest script which performs all the cmake/ctest/cdash
     def run_ctest_script(self):
         os.environ['FC'] = self.fc
-        if self.petsc:
-            os.environ['PETSC_DIR'] = PETSC_DIR
         if self.mpi:
             os.environ['MPI_DIR'] = MPI_DIR
+        if self.phdf5:
+            os.environ['HDF5_ROOT'] = PHDF5_DIR
+        else:
+            os.environ['HDF5_ROOT'] = HDF5_DIR
         rc = call(['ctest', '-S', 'ctestscript.run','-V'])
         if rc != 0:
             self.success = False
@@ -179,6 +172,12 @@ class Test(object):
     # Runs cmake when in non-script mode
     def run_cmake(self):
         os.environ['FC'] = self.fc
+        if self.mpi:
+            os.environ['MPI_DIR'] = MPI_DIR
+        if self.phdf5:
+            os.environ['HDF5_ROOT'] = PHDF5_DIR
+        else:
+            os.environ['HDF5_ROOT'] = HDF5_DIR
         build_opts = self.build_opts.split()
         self.cmake += build_opts
         rc = call(self.cmake)
@@ -268,52 +267,29 @@ class Test(object):
 
 # Simple function to add a test to the global tests dictionary
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
-             hdf5=False, petsc=False, valgrind=False, coverage=False):
-    tests.update({name:Test(name, debug, optimize, mpi, openmp, hdf5, petsc,
-    valgrind, coverage)})
+             phdf5=False, valgrind=False, coverage=False):
+    tests.update({name: Test(name, debug, optimize, mpi, openmp, phdf5,
+                             valgrind, coverage)})
 
 # List of all tests that may be run. User can add -C to command line to specify
 # a subset of these configurations
-add_test('basic-normal')
-add_test('basic-debug', debug=True)
-add_test('basic-optimize', optimize=True)
-add_test('omp-normal', openmp=True)
-add_test('omp-debug', openmp=True, debug=True)
-add_test('omp-optimize', openmp=True, optimize=True)
-add_test('hdf5-normal', hdf5=True)
-add_test('hdf5-debug', hdf5=True, debug=True)
-add_test('hdf5-optimize', hdf5=True, optimize=True)
-add_test('omp-hdf5-normal', openmp=True, hdf5=True)
-add_test('omp-hdf5-debug', openmp=True, hdf5=True, debug=True)
-add_test('omp-hdf5-optimize', openmp=True, hdf5=True, optimize=True)
-add_test('mpi-normal', mpi=True)
-add_test('mpi-debug', mpi=True, debug=True)
-add_test('mpi-optimize', mpi=True, optimize=True)
-add_test('mpi-omp-normal', mpi=True, openmp=True)
-add_test('mpi-omp-debug', mpi=True, openmp=True, debug=True)
-add_test('mpi-omp-optimize', mpi=True, openmp=True, optimize=True)
-add_test('phdf5-normal', mpi=True, hdf5=True)
-add_test('phdf5-debug', mpi=True, hdf5=True, debug=True)
-add_test('phdf5-optimize', mpi=True, hdf5=True, optimize=True)
-add_test('phdf5-omp-normal', mpi=True, hdf5=True, openmp=True)
-add_test('phdf5-omp-debug', mpi=True, hdf5=True, openmp=True, debug=True)
-add_test('phdf5-omp-optimize', mpi=True, hdf5=True, openmp=True, optimize=True)
-add_test('petsc-normal', petsc=True, mpi=True)
-add_test('petsc-debug', petsc=True, mpi=True, debug=True)
-add_test('petsc-optimize', petsc=True, mpi=True, optimize=True)
-add_test('phdf5-petsc-normal', mpi=True, hdf5=True, petsc=True)
-add_test('phdf5-petsc-debug', mpi=True, hdf5=True, petsc=True, debug=True)
-add_test('phdf5-petsc-optimize', mpi=True, hdf5=True, petsc=True, optimize=True)
-add_test('omp-phdf5-petsc-normal', openmp=True, mpi=True, hdf5=True, petsc=True)
-add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, debug=True)
-add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
-add_test('basic-debug_valgrind', debug=True, valgrind=True)
-add_test('hdf5-debug_valgrind', hdf5=True, debug=True, valgrind=True)
-add_test('petsc-debug_valgrind', petsc=True, mpi=True, debug=True, valgrind=True)
-add_test('basic-debug_coverage', debug=True, coverage=True)
-add_test('hdf5-debug_coverage', debug=True, hdf5=True, coverage=True)
-add_test('mpi-debug_coverage', debug=True, mpi=True, coverage=True)
-add_test('petsc-debug_coverage', debug=True, petsc=True, mpi=True, coverage=True)
+add_test('hdf5-normal')
+add_test('hdf5-debug', debug=True)
+add_test('hdf5-optimize', optimize=True)
+add_test('omp-hdf5-normal', openmp=True)
+add_test('omp-hdf5-debug', openmp=True, debug=True)
+add_test('omp-hdf5-optimize', openmp=True, optimize=True)
+add_test('mpi-hdf5-normal', mpi=True)
+add_test('mpi-hdf5-debug', mpi=True, debug=True)
+add_test('mpi-hdf5-optimize', mpi=True, optimize=True)
+add_test('phdf5-normal', mpi=True, phdf5=True)
+add_test('phdf5-debug', mpi=True, phdf5=True, debug=True)
+add_test('phdf5-optimize', mpi=True, phdf5=True, optimize=True)
+add_test('phdf5-omp-normal', mpi=True, phdf5=True, openmp=True)
+add_test('phdf5-omp-debug', mpi=True, phdf5=True, openmp=True, debug=True)
+add_test('phdf5-omp-optimize', mpi=True, phdf5=True, openmp=True, optimize=True)
+add_test('hdf5-debug_valgrind', debug=True, valgrind=True)
+add_test('hdf5-debug_coverage', debug=True, coverage=True)
 
 # Check to see if we should just print build configuration information to user
 if options.list_build_configs:
@@ -321,10 +297,8 @@ if options.list_build_configs:
         print('Configuration Name: {0}'.format(key))
         print('  Debug Flags:..........{0}'.format(tests[key].debug))
         print('  Optimization Flags:...{0}'.format(tests[key].optimize))
-        print('  HDF5 Active:..........{0}'.format(tests[key].hdf5))
         print('  MPI Active:...........{0}'.format(tests[key].mpi))
         print('  OpenMP Active:........{0}'.format(tests[key].openmp))
-        print('  PETSc Active:.........{0}'.format(tests[key].petsc))
         print('  Valgrind Test:........{0}'.format(tests[key].valgrind))
         print('  Coverage Test:........{0}\n'.format(tests[key].coverage))
     exit()
@@ -363,15 +337,15 @@ else:
     script_mode = False
 
 # Setup CTest script vars. Not used in non-script mode
-pwd = os.environ['PWD']
+pwd = os.getcwd()
 ctest_vars = {
-'source_dir' : pwd + '/../src',
-'build_dir' :  pwd + '/build',
-'host_name' : socket.gethostname(),
-'dashboard' : dash,
-'submit'    : submit,
-'update'    : update,
-'n_procs'   : options.n_procs
+    'source_dir': os.path.join(pwd, '..'),
+    'build_dir': os.path.join(pwd, 'build'),
+    'host_name': socket.gethostname(),
+    'dashboard': dash,
+    'submit': submit,
+    'update': update,
+    'n_procs': options.n_procs
 }
 
 # Check project name

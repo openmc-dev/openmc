@@ -6,12 +6,11 @@ module finalize
   use tally,          only: tally_statistics
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
-#ifdef HDF5
-  use hdf5_interface,  only: h5tclose_f, h5close_f, hdf5_err
-#endif
+  use hdf5_interface, only: hdf5_bank_t, hdf5_tallyresult_t
+  use hdf5, only: h5tclose_f, h5close_f
 
   implicit none
 
@@ -24,8 +23,10 @@ contains
 
   subroutine finalize_run()
 
+    integer :: hdf5_err
+
     ! Start finalization timer
-    call time_finalize % start()
+    call time_finalize%start()
 
     if (run_mode /= MODE_PLOTTING .and. run_mode /= MODE_PARTICLE) then
       ! Calculate statistics for tallies and write to tallies.out
@@ -38,17 +39,9 @@ contains
       if (check_overlaps) call reduce_overlap_count()
     end if
 
-#ifdef PETSC
-    ! Finalize PETSc
-    if (cmfd_run) then
-      call PetscFinalize(mpi_err)
-      call MPI_COMM_FREE(cmfd_comm, mpi_err)
-    end if
-#endif
-
     ! Stop timers and show timing statistics
-    call time_finalize % stop()
-    call time_total % stop()
+    call time_finalize%stop()
+    call time_total%stop()
     if (master .and. (run_mode /= MODE_PLOTTING .and. &
          run_mode /= MODE_PARTICLE)) then
       call print_runtime()
@@ -59,14 +52,12 @@ contains
     ! Deallocate arrays
     call free_memory()
 
-#ifdef HDF5
     ! Release compound datatypes
     call h5tclose_f(hdf5_tallyresult_t, hdf5_err)
     call h5tclose_f(hdf5_bank_t, hdf5_err)
 
     ! Close FORTRAN interface.
     call h5close_f(hdf5_err)
-#endif
 
 #ifdef MPI
     ! Free all MPI types

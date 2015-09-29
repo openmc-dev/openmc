@@ -153,10 +153,6 @@ variables should be set if the default paths are incorrect:
 
         * Default - */opt/phdf5/1.8.14-gnu*
 
-    * **PETSC_DIR** - The path to the PETSc directory.
-
-        * Default - */opt/petsc/3.5.2-gnu*
-
 To run the full test suite, the following command can be executed in the
 tests directory:
 

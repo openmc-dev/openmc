@@ -7,7 +7,7 @@ module mesh
   use search,          only: binary_search
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   implicit none
@@ -20,7 +20,7 @@ contains
 
   subroutine get_mesh_bin(m, xyz, bin)
 
-    type(StructuredMesh), pointer :: m      ! mesh pointer
+    type(RegularMesh), pointer :: m      ! mesh pointer
     real(8), intent(in)           :: xyz(:) ! coordinates
     integer, intent(out)          :: bin    ! tally bin
 
@@ -73,7 +73,7 @@ contains
 
   subroutine get_mesh_indices(m, xyz, ijk, in_mesh)
 
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
     real(8), intent(in)           :: xyz(:)  ! coordinates to check
     integer, intent(out)          :: ijk(:)  ! indices in mesh
     logical, intent(out)          :: in_mesh ! were given coords in mesh?
@@ -98,7 +98,7 @@ contains
 
   function mesh_indices_to_bin(m, ijk, surface_current) result(bin)
 
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
     integer, intent(in)           :: ijk(:)
     logical, optional             :: surface_current
     integer                       :: bin
@@ -132,7 +132,7 @@ contains
 
   subroutine bin_to_mesh_indices(m, bin, ijk)
 
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
     integer, intent(in)           :: bin
     integer, intent(out)          :: ijk(:)
 
@@ -163,7 +163,7 @@ contains
   subroutine count_bank_sites(m, bank_array, cnt, energies, size_bank, &
        sites_outside)
 
-    type(StructuredMesh), pointer :: m             ! mesh to count sites
+    type(RegularMesh), pointer :: m             ! mesh to count sites
     type(Bank), intent(in)        :: bank_array(:) ! fission or source bank
     real(8),    intent(out)       :: cnt(:,:,:,:)  ! weight of sites in each
     ! cell and energy group
@@ -264,7 +264,7 @@ contains
 
   function mesh_intersects_2d(m, xyz0, xyz1) result(intersects)
 
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
     real(8), intent(in) :: xyz0(2)
     real(8), intent(in) :: xyz1(2)
     logical :: intersects
@@ -330,7 +330,7 @@ contains
 
   function mesh_intersects_3d(m, xyz0, xyz1) result(intersects)
 
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
     real(8), intent(in) :: xyz0(3)
     real(8), intent(in) :: xyz1(3)
     logical :: intersects

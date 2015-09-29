@@ -6,31 +6,34 @@ Data Processing and Visualization
 
 This section is intended to explain in detail the recommended procedures for
 carrying out common post-processing tasks with OpenMC. While several utilities
-of varying complexity are provided to help automate the process, in many cases
-it will be extremely beneficial to do some coding in Python to quickly obtain
-results. In these cases, and for many of the provided utilities, it is necessary
-for your Python installation to contain:
+of varying complexity are provided to help automate the process, the most
+powerful capabilities for post-processing derive from use of the :ref:`Python
+API <pythonapi>`. Both the provided scripts and the Python API rely on a number
+third-party Python packages, including:
 
-* [1]_ `Numpy <http://www.numpy.org/>`_
-* [1]_ `Scipy <http://www.scipy.org/>`_
-* [2]_ `h5py <http://code.google.com/p/h5py/>`_
-* [3]_ `Matplotlib <http://matplotlib.org/>`_
-* [3]_ `Silomesh <https://github.com/nhorelik/silomesh>`_
-* [3]_ `VTK <http://www.vtk.org/>`_
+* [1]_ `NumPy <http://www.numpy.org/>`_
+* [2]_ `h5py <http://www.h5py.org>`_
+* [3]_ `pandas <http://pandas.pydata.org>`_
+* [4]_ `matplotlib <http://matplotlib.org/>`_
+* [4]_ `Silomesh <https://github.com/nhorelik/silomesh>`_
+* [4]_ `VTK <http://www.vtk.org/>`_
+* [4]_ `lxml <http://lxml.de>`_
 
-Most of these are easily obtainable in Ubuntu through the package manager, or
-are easily installed with distutils.
+Most of these are can easily be installed with `pip <https://pip.pypa.io>`_
+or alternatively obtaining through a package manager.
 
-.. [1] Required for tally data extraction from statepoints with statepoint.py
-.. [2] Required only if reading HDF5 statepoint files.
-.. [3] Optional for plotting utilities
+.. [1] Required for most post-processing tasks
+.. [2] Required for reading HDF5 output files
+.. [3] Optional dependency for advanced features in Python API
+.. [4] Not used directly by the Python API, but are optional dependencies for a
+       number of scripts.
 
 ----------------------
 Geometry Visualization
 ----------------------
 
 Geometry plotting is carried out by creating a plots.xml, specifying plots, and
-running OpenMC with the -plot or -p command-line option (See
+running OpenMC with the --plot or -p command-line option (See
 :ref:`usersguide_plotting`).
 
 Plotting in 2D
@@ -128,27 +131,26 @@ capabilities of 3D voxel plots.
 Voxel plots are built the same way 2D slice plots are, by determining the cell
 or material id of a particle at the center of each voxel. In this example, the
 space covered is the cube between the points (-5,-5,-5) and (5,5,5), with voxel
-centers 10/500 = 0.02 cm apart. The binary VOXEL files that are produced do not
+centers 10/500 = 0.02 cm apart. The HDF5 voxel files that are produced do not
 specify any color - instead containing only material or cell ids (material id
 in this example) - and thus the ``background``, ``col_spec``, and ``mask``
 elements are not used. If no cell is found at a voxel center, an id of -1 is
 stored.
 
-The binary VOXEL files output by OpenMC can not be viewed directly by any
-existing viewers. In order to view them, they must be converted into a standard
-mesh format that can be viewed in ParaView, Visit, etc. This typically will
-compress the size of the file significantly. The provided utility voxel.py
-accomplishes this for SILO:
+The voxel plot data is written to an HDF5 file. The voxel file can subsequently
+be converted into a standard mesh format that can be viewed in ParaView, Visit,
+etc. This typically will compress the size of the file significantly. The
+provided utility openmc-voxel-to-silovtk accomplishes this for SILO:
 
 .. code-block:: sh
 
-    <openmc_root>/src/utils/voxel.py myplot.voxel -o output.silo
+    openmc-voxel-to-silovtk myplot.voxel -o output.silo
 
 and VTK file formats:
 
 .. code-block:: sh
 
-    <openmc_root>/src/utils/voxel.py myplot.voxel --vtk -o output.vti
+    openmc-voxel-to-silovtk myplot.voxel --vtk -o output.vti
 
 To use this utility you need either
 
@@ -156,11 +158,10 @@ To use this utility you need either
 
 or
 
-* `VTK <http://www.vtk.org/>`_ with python bindings - On Ubuntu, these are
-  easily obtained with ``sudo apt-get install python-vtk``
+* `VTK <http://www.vtk.org/>`_ with python bindings. On debian derivatives,
+  these are easily obtained with ``sudo apt-get install python-vtk``
 
-Users can process the binary into any other format if desired by following the
-example of voxel.py.  For the binary file structure, see :ref:`devguide_voxel`.
+For the HDF5 file structure, see :ref:`usersguide_voxel`.
 
 Once processed into a standard 3D file format, colors and masks can be defined
 using the stored id numbers to better explore the geometry. The process for
@@ -183,149 +184,37 @@ doing this will depend on the 3D viewer, but should be straightforward.
 Tally Visualization
 -------------------
 
-Tally results are saved in both a text file (tallies.out) as well as a binary
+Tally results are saved in both a text file (tallies.out) as well as an HDF5
 statepoint file. While the tallies.out file may be fine for simple tallies, in
-many cases the user requires more information about the tally or the run, or
-has to deal with a large number of result values (e.g. for mesh tallies).  In
-these cases, extracting data from the statepoint file via Python scripting is
-the preferred method of data analysis and visualization.
+many cases the user requires more information about the tally or the run, or has
+to deal with a large number of result values (e.g. for mesh tallies).  In these
+cases, extracting data from the statepoint file via the :ref:`pythonapi` is the
+preferred method of data analysis and visualization.
 
 Data Extraction
 ---------------
 
 A great deal of information is available in statepoint files (See
-:ref:`devguide_statepoint`), most of which is easily extracted by the provided
-utility statepoint.py. This utility provides a Python class to load statepoints
-and extract data - it is used in many of the provided plotting utilities, and
-can be used in user-created scripts to carry out manipulations of the data. To
-read tallies using this utility, make sure statepoint.py is in your PYTHONPATH,
-and then import the class, instantiate it, and call read_results:
+:ref:`usersguide_statepoint`), all of which is accessible through the Python
+API. The ``openmc.statepoint`` module (see :ref:`pythonapi_statepoint`) provides
+a class to load statepoints and access data as requested; it is used in many of
+the provided plotting utilities, OpenMC's regression test suite, and can be used
+in user-created scripts to carry out manipulations of the data.
 
-.. code-block:: python
-
-    from statepoint import StatePoint
-    sp = StatePoint('statepoint.100.binary')
-    sp.read_results()
-
-At this point the user can extract entire scores from tallies into a data
-dictionary containing numpy arrays:
-
-.. code-block:: python
-
-    tallyid = 1
-    score = 'flux'
-    data = sp.extract_results(tallyid, score)
-    means = data['means']
-    print data.keys()
-
-The results from this function contain all filter bins (all mesh points, all
-energy groups, etc.), which can be reshaped with the bin ordering also contained
-in the output dictionary. This is the best choice of output for easily
-integrating ranges of data.
-
-Alternatively the user can extract specific values for a single score/filter
-combination:
-
-.. code-block:: python
-
-    tallyid = 1
-    score = 'flux'
-    filters = [('mesh', (1, 1, 5)), ('energyin', 0)]
-    value, error = sp.get_value(tallyid, filters, score)
-
-In the future more documentation may become available here for statepoint.py and
-the data extraction functions of StatePoint objects. However, for now it is up
-to the user to explore the classes in statepoint.py to discover what data is
-available in StatePoint objects (we highly recommend interactively exploring
-with `IPython <http://ipython.org/>`_). Many examples can be found by looking
-through the other utilities that use statepoint.py, and a few common
-visualization tasks will be described here in the following sections.
+An :ref:`example IPython notebook <notebook_post_processing>` demonstrates how
+to extract data from a statepoint using the Python API.
 
 Plotting in 2D
 --------------
 
+The :ref:`IPython notebook example <notebook_post_processing>` also demonstrates
+how to plot a mesh tally in two dimensions using the Python API. Note, however,
+that there is also a script distributed with OpenMC, ``openmc-plot-mesh-tally``,
+that provides an interactive GUI to explore and plot mesh tallies for any scores
+and filter bins.
+
 .. image:: ../_images/plotmeshtally.png
    :height: 200px
-
-For simple viewing of 2D slices of a mesh plot, the utility plot_mesh_tally.py
-is provided.  This utility provides an interactive GUI to explore and plot
-mesh tallies for any scores and filter bins.  It requires statepoint.py.
-
-.. image:: ../_images/fluxplot.png
-   :height: 200px
-
-Alternatively, the user can write their own Python script to manipulate the data
-appropriately. Consider a run where the first tally contains a 105x105x20 mesh
-over a small core, with a flux score and two energyin filter bins. To explicitly
-extract the data and create a plot with gnuplot, the following script can be
-used. The script operates in several steps for clarity, and is not necessarily
-the most efficient way to extract data from large mesh tallies. This creates the
-two heatmaps in the previous figure.
-
-.. code-block:: python
-
-    #!/usr/bin/env python
-
-    import os
-
-    import statepoint
-
-    # load and parse the statepoint file
-    sp = statepoint.StatePoint('statepoint.300.binary')
-    sp.read_results()
-
-    tallyid = 0 # This is tally 1
-    score = 0   # This corresponds to flux (see tally.scores)
-
-    # get mesh dimensions
-    meshid = sp.tallies[tallyid].filters['mesh'].bins[0]
-    for i,m in enumerate(sp.meshes):
-        if m.id == meshid:
-          mesh = m
-          break
-    nx,ny,nz = mesh.dimension
-
-    # loop through mesh and extract values to python dictionaries
-    thermal = {}
-    fast = {}
-    for x in range(1,nx+1):
-        for y in range(1,ny+1):
-            for z in range(1,nz+1):
-                val,err = sp.get_value(tallyid,
-                                       [('mesh',(x,y,z)),('energyin',0)],
-                                       score)
-                thermal[(x,y,z)] = val
-                val,err = sp.get_value(tallyid,
-                                       [('mesh',(x,y,z)),('energyin',1)],
-                                       score)
-                fast[(x,y,z)] = val
-
-    # sum up the axial values and write datafile for gnuplot
-    with open('meshdata.dat','w') as fh:
-        for x in range(1,nx+1):
-            for y in range(1,ny+1):
-                thermalval = 0.
-                fastval = 0.
-                for z in range(1,nz+1):
-                  thermalval += thermal[(x,y,z)]
-                  fastval += fast[(x,y,z)]
-                fh.write("{} {} {} {}\n".format(x,y,thermalval,fastval))
-
-    # write gnuplot file
-    with open('tmp.gnuplot','w') as fh:
-      fh.write(r"""set terminal png size 1000 400
-  set output 'fluxplot.png'
-  set nokey
-  set autoscale fix
-  set multiplot layout 1,2 title "Pin Mesh Flux Tally"
-  set title "Thermal"
-  plot 'meshdata.dat' using 1:2:3 with image
-  set title "Fast"
-  plot 'meshdata.dat' using 1:2:4 with image
-  """)
-
-    # make plot
-    os.system("gnuplot < tmp.gnuplot")
 
 Plotting in 3D
 --------------
@@ -334,22 +223,23 @@ Plotting in 3D
    :height: 200px
 
 As with 3D plots of the geometry, meshtally data needs to be put into a standard
-format for viewing. The utility statepoint_3d.py is provided to accomplish this
-for both VTK and SILO. By default statepoint_3d.py processes a statepoint into a
-3D file with all mesh tallies and filter/score combinations,
+format for viewing. The utility ``openmc-statepoint-3d`` is provided to
+accomplish this for both VTK and SILO. By default ``openmc-statepoint-3d``
+processes a statepoint into a 3D file with all mesh tallies and filter/score
+combinations,
 
 .. code-block:: sh
 
-    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> -o output.silo
-    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> --vtk -o output.vtm
+    openmc-statepoint-3d <statepoint_file> -o output.silo
+    openmc-statepoint-3d <statepoint_file> --vtk -o output.vtm
 
 but it also provides several command-line options to selectively process only
 certain data arrays in order to keep file sizes down.
 
 .. code-block:: sh
 
-    statepoint_3d.py <statepoint_file> --tallies 2,4 --scores 4.1,4.3 -o output.silo
-    statepoint_3d.py <statepoint_file> --filters 2.energyin.1 --vtk -o output.vtm
+    openmc-statepoint-3d <statepoint_file> --tallies 2,4 --scores 4.1,4.3 -o output.silo
+    openmc-statepoint-3d <statepoint_file> --filters 2.energyin.1 --vtk -o output.vtm
 
 All available options for specifying a subset of tallies, scores, and filters
 can be listed with the ``--list`` or ``-l`` command line options.
@@ -426,13 +316,11 @@ Getting Data into MATLAB
 ------------------------
 
 There is currently no front-end utility to dump tally data to MATLAB files, but
-the process is straightforward. First extract the data using a custom Python
-script with statepoint.py, put the data into appropriately-shaped numpy arrays,
-and then use the `Scipy MATLAB IO routines
+the process is straightforward. First extract the data using the Python API via
+``openmc.statepoint`` and then use the `Scipy MATLAB IO routines
 <http://docs.scipy.org/doc/scipy/reference/tutorial/io.html>`_ to save to a MAT
-file. Note that the data contained in the output from
-``StatePoint.extract_result`` is already in a Numpy array that can be reshaped
-and dumped to MATLAB in one step.
+file. Note that all arrays that are accessible in a statepoint are already in
+NumPy arrays that can be reshaped and dumped to MATLAB in one step.
 
 ----------------------------
 Particle Track Visualization
@@ -463,15 +351,15 @@ particle numbers, respectively.  For example, to output the tracks for particles
       </track>
 
 After running OpenMC, the directory should contain a file of the form
-"track_(batch #)_(generation #)_(particle #).(binary or h5)" for each particle
-tracked.  These track files can be converted into VTK poly data files with the
-"track.py" utility.  The usage of track.py is of the form "track.py [-o OUT] IN"
-where OUT is the optional output filename and IN is one or more filenames
-describing track files.  The default output name is "track.pvtp".  A common
-usage of track.py is "track.py track*.binary" which will use the data from all
-binary track files in the directory to write a "track.pvtp" VTK output file.
-The .pvtp file can then be read and plotted by 3d visualization programs such as
-ParaView.
+"track_(batch #)_(generation #)_(particle #).h5" for each particle tracked.
+These track files can be converted into VTK poly data files with the
+``openmc-track-to-vtk`` utility.  The usage of ``openmc-track-to-vtk`` is of the
+form "openmc-track-to-vtk [-o OUT] IN" where OUT is the optional output filename
+and IN is one or more filenames describing track files.  The default output name
+is "track.pvtp".  A common usage of track.py is "openmc-track-to-vtk track*.h5"
+which will use the data from all binary track files in the directory to write a
+"track.pvtp" VTK output file.  The .pvtp file can then be read and plotted by 3d
+visualization programs such as ParaView.
 
 ----------------------
 Source Site Processing
@@ -480,43 +368,6 @@ Source Site Processing
 For eigenvalue problems, OpenMC will store information on the fission source
 sites in the statepoint file by default. For each source site, the weight,
 position, sampled direction, and sampled energy are stored. To extract this data
-from a statepoint file, the statepoint.py Python module can be used. Below is an
-example of an interactive ipython session using the statepoint.py Python module:
-
-.. code-block:: python
-
-    In [1]: import statepoint
-
-    In [2]: sp = statepoint.StatePoint('statepoint.100.h5')
-
-    In [3]: sp.read_source()
-
-    In [4]: len(sp.source)
-    Out[4]: 1000
-
-    In [5]: sp.source[0:10]
-    Out[5]:
-    [<SourceSite: xyz=[  2.21980946  -8.92686048  87.93720485] at E=0.932923263566>,
-     <SourceSite: xyz=[  2.21980946  -8.92686048  87.93720485] at E=0.349240220512>,
-     <SourceSite: xyz=[-31.21542213 -30.26762771  72.10845757] at E=3.75843584486>,
-     <SourceSite: xyz=[-31.21542213 -30.26762771  72.10845757] at E=0.80550137267>,
-     <SourceSite: xyz=[   0.18805099  -69.13376508  103.67726838] at E=1.67922461097>,
-     <SourceSite: xyz=[   0.18805099  -69.13376508  103.67726838] at E=1.16304110199>,
-     <SourceSite: xyz=[ -50.42189115   -9.96571672  123.34077905] at E=0.710937974074>,
-     <SourceSite: xyz=[ -32.80427668  -15.49316628  125.26301151] at E=1.61907104162>,
-     <SourceSite: xyz=[  53.20376026  -15.38643708  120.58071044] at E=3.33962024907>,
-     <SourceSite: xyz=[  53.20376026  -15.38643708  120.58071044] at E=1.90185680329>]
-
-    In [6]: site = sp.source[0]
-
-    In [7]: site.weight
-    Out[7]: 1.0
-
-    In [8]: site.xyz
-    Out[8]: array([  2.21980946,  -8.92686048,  87.93720485])
-
-    In [9]: site.uvw
-    Out[9]: array([ 0.06740523,  0.50612814,  0.85982024])
-
-    In [10]: site.E
-    Out[10]: 0.93292326356564159
+from a statepoint file, the ``openmc.statepoint`` module can be used. An
+:ref:`example IPython notebook <notebook_post_processing>` demontrates how to
+analyze and plot source information.

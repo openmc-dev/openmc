@@ -88,16 +88,16 @@ contains
                 nuclides(i_nuclide) % resonant = .true.
                 nuclides(i_nuclide) % name_0K = nuclides_0K(n) % name_0K
                 nuclides(i_nuclide) % name_0K = trim(nuclides(i_nuclide) % &
-                  & name_0K)
+                     & name_0K)
                 nuclides(i_nuclide) % scheme = nuclides_0K(n) % scheme
                 nuclides(i_nuclide) % scheme = trim(nuclides(i_nuclide) % &
-                  & scheme)
+                     & scheme)
                 nuclides(i_nuclide) % E_min = nuclides_0K(n) % E_min
                 nuclides(i_nuclide) % E_max = nuclides_0K(n) % E_max
                 if (.not. already_read % contains(nuclides(i_nuclide) % &
-                  & name_0K)) then
+                     & name_0K)) then
                   i_listing = xs_listing_dict % get_key(nuclides(i_nuclide) % &
-                    & name_0K)
+                       & name_0K)
                   call read_ace_table(i_nuclide, i_listing)
                 end if
                 exit
@@ -190,7 +190,6 @@ contains
 
       ! Deallocate temporary arrays for names of nuclides and S(a,b) tables
       if (allocated(mat % names)) deallocate(mat % names)
-      if (allocated(mat % sab_names)) deallocate(mat % sab_names)
 
     end do MATERIAL_LOOP2
 
@@ -235,7 +234,7 @@ contains
     integer       :: location      ! location of ACE table
     integer       :: entries       ! number of entries on each record
     integer       :: length        ! length of ACE table
-    integer       :: in = 7        ! file unit
+    integer       :: unit_ace      ! file unit
     integer       :: zaids(16)     ! list of ZAIDs (only used for S(a,b))
     integer       :: filetype      ! filetype (ASCII or BINARY)
     real(8)       :: kT            ! temperature of table
@@ -278,14 +277,14 @@ contains
       ! READ ACE TABLE IN ASCII FORMAT
 
       ! Find location of table
-      open(UNIT=in, FILE=filename, STATUS='old', ACTION='read')
-      rewind(UNIT=in)
+      open(NEWUNIT=unit_ace, FILE=filename, STATUS='old', ACTION='read')
+      rewind(UNIT=unit_ace)
       do i = 1, location - 1
-        read(UNIT=in, FMT=*)
+        read(UNIT=unit_ace, FMT=*)
       end do
 
       ! Read first line of header
-      read(UNIT=in, FMT='(A10,2G12.0,1X,A10)') name, awr, kT, date_
+      read(UNIT=unit_ace, FMT='(A10,2G12.0,1X,A10)') name, awr, kT, date_
 
       ! Check that correct xs was found -- if cross_sections.xml is broken, the
       ! location of the table may be wrong
@@ -295,7 +294,7 @@ contains
       end if
 
       ! Read more header and NXS and JXS
-      read(UNIT=in, FMT=100) comment, mat, &
+      read(UNIT=unit_ace, FMT=100) comment, mat, &
            (zaids(i), awrs(i), i=1,16), NXS, JXS
 100   format(A70,A10/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/&
            ,8I9/8I9/8I9/8I9/8I9/8I9)
@@ -305,21 +304,21 @@ contains
       allocate(XSS(length))
 
       ! Read XSS array
-      read(UNIT=in, FMT='(4G20.0)') XSS
+      read(UNIT=unit_ace, FMT='(4G20.0)') XSS
 
       ! Close ACE file
-      close(UNIT=in)
+      close(UNIT=unit_ace)
 
     elseif (filetype == BINARY) then
       ! =======================================================================
       ! READ ACE TABLE IN BINARY FORMAT
 
       ! Open ACE file
-      open(UNIT=in, FILE=filename, STATUS='old', ACTION='read', &
+      open(NEWUNIT=unit_ace, FILE=filename, STATUS='old', ACTION='read', &
            ACCESS='direct', RECL=record_length)
 
       ! Read all header information
-      read(UNIT=in, REC=location) name, awr, kT, date_, &
+      read(UNIT=unit_ace, REC=location) name, awr, kT, date_, &
            comment, mat, (zaids(i), awrs(i), i=1,16), NXS, JXS
 
       ! determine table length
@@ -330,11 +329,11 @@ contains
       do i = 1, (length + entries - 1)/entries
         j1 = 1 + (i-1)*entries
         j2 = min(length, j1 + entries - 1)
-        read(UNIT=IN, REC=location + i) (XSS(j), j=j1,j2)
+        read(UNIT=UNIT_ACE, REC=location + i) (XSS(j), j=j1,j2)
       end do
 
       ! Close ACE file
-      close(UNIT=in)
+      close(UNIT=unit_ace)
     end if
 
     ! ==========================================================================
@@ -451,9 +450,10 @@ contains
         if (nuc % elastic_0K(i) < ZERO) nuc % elastic_0K(i) = ZERO
 
         ! build xs cdf
-        xs_cdf_sum = xs_cdf_sum + (sqrt(nuc % energy_0K(i)) * nuc % elastic_0K(i) &
-          & + sqrt(nuc % energy_0K(i+1)) * nuc % elastic_0K(i+1)) / TWO &
-          & * (nuc % energy_0K(i+1) - nuc % energy_0K(i))
+        xs_cdf_sum = xs_cdf_sum &
+             + (sqrt(nuc % energy_0K(i)) * nuc % elastic_0K(i) &
+             + sqrt(nuc % energy_0K(i+1)) * nuc % elastic_0K(i+1)) / TWO &
+             * (nuc % energy_0K(i+1) - nuc % energy_0K(i))
         nuc % xs_cdf(i) = xs_cdf_sum
       end do
 
@@ -768,31 +768,31 @@ contains
         ! Set flag and allocate space for Tab1 to store yield
         rxn % multiplicity_with_E = .true.
         allocate(rxn % multiplicity_E)
-        
+
         XSS_index = JXS(11) + rxn % multiplicity - 101
         NR = nint(XSS(XSS_index))
         rxn % multiplicity_E % n_regions = NR
-        
+
         ! allocate space for ENDF interpolation parameters
         if (NR > 0) then
           allocate(rxn % multiplicity_E % nbt(NR))
           allocate(rxn % multiplicity_E % int(NR))
         end if
-        
+
         ! read ENDF interpolation parameters
         XSS_index = XSS_index + 1
         if (NR > 0) then
           rxn % multiplicity_E % nbt = get_int(NR)
           rxn % multiplicity_E % int = get_int(NR)
         end if
-        
+
         ! allocate space for yield data
         XSS_index = XSS_index + 2*NR
         NE = nint(XSS(XSS_index))
         rxn % multiplicity_E % n_pairs = NE
         allocate(rxn % multiplicity_E % x(NE))
         allocate(rxn % multiplicity_E % y(NE))
-        
+
         ! read yield data
         XSS_index = XSS_index + 1
         rxn % multiplicity_E % x = get_real(NE)
@@ -1523,7 +1523,7 @@ contains
           table % inelastic_data(i) % e_out_pdf(j) = XSS(XSS_index + 2)
           table % inelastic_data(i) % e_out_cdf(j) = XSS(XSS_index + 3)
           table % inelastic_data(i) % mu(:, j) = &
-            XSS(XSS_index + 4: XSS_index + 4 + NMU - 1)
+               XSS(XSS_index + 4: XSS_index + 4 + NMU - 1)
           XSS_index = XSS_index + 4 + NMU - 1
         end do
       end do

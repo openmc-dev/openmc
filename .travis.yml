@@ -1,16 +1,43 @@
+sudo: false
+language: python
+python:
+  - "2.7"
+  - "3.4"
+addons:
+  apt:
+    packages:
+    - gfortran
+    - g++
+cache:
+  directories:
+  - $HOME/mpich_install
+  - $HOME/hdf5_install
+  - $HOME/phdf5_install
+
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq -y python-numpy
-  - sudo apt-get install -qq -y python-scipy
-  - sudo apt-get install -qq -y python-h5py
-  - sudo apt-get install -qq -y gfortran
-  - sudo apt-get install -qq -y g++
+  # ============== Handle Python third-party packages ==============
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+      wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
+    else
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    fi
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy h5py
+  - source activate test-environment
+
+  # Install GCC, MPICH, HDF5, PHDF5
   - ./tests/travis_install.sh
   - export FC=gfortran
-  - export MPI_DIR=$PWD/mpich_install
-  - export PHDF5_DIR=$PWD/phdf5_install
-  - export HDF5_DIR=$PWD/hdf5_install
-  - export PETSC_DIR=$PWD/petsc_install
+  - export MPI_DIR=$HOME/mpich_install
+  - export PHDF5_DIR=$HOME/phdf5_install
+  - export HDF5_DIR=$HOME/hdf5_install
+
+install: true
 
 before_script:
   - cd data

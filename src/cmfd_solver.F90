@@ -33,7 +33,6 @@ module cmfd_solver
   type(Vector) :: serr_v  ! Error in source
 
   ! CMFD linear solver interface
-  procedure(linsolve), pointer :: cmfd_linsolver => null()
   abstract interface
     subroutine linsolve(A, b, x, tol, i)
       import :: Matrix
@@ -66,7 +65,7 @@ contains
 
     ! Check for physical adjoint
     if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'physical') &
-        physical_adjoint = .true.
+         physical_adjoint = .true.
 
     ! Start timer for build
     call time_cmfdbuild % start()
@@ -76,7 +75,7 @@ contains
 
     ! Check for mathematical adjoint calculation
     if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math') &
-        call compute_adjoint()
+         call compute_adjoint()
 
     ! Stop timer for build
     call time_cmfdbuild % stop()
@@ -101,7 +100,7 @@ contains
   subroutine init_data(adjoint)
 
     use constants, only: ONE, ZERO
-    use global,    only: cmfd, cmfd_shift, keff, cmfd_ktol, cmfd_stol, &
+    use global,    only: cmfd_shift, keff, cmfd_ktol, cmfd_stol, &
                          cmfd_write_matrices
 
     logical, intent(in) :: adjoint
@@ -155,16 +154,6 @@ contains
     norm_n = ZERO
     norm_o = ZERO
 
-    ! Set up solver
-    select case(cmfd % indices(4))
-      case(1)
-        cmfd_linsolver => cmfd_linsolver_1g
-      case(2)
-        cmfd_linsolver => cmfd_linsolver_2g
-      case default
-        cmfd_linsolver => cmfd_linsolver_ng
-    end select
-
     ! Set tolerances
     ktol = cmfd_ktol
     stol = cmfd_stol
@@ -178,23 +167,17 @@ contains
   subroutine compute_adjoint()
 
     use error,   only: fatal_error
-#ifdef PETSC
     use global,  only: cmfd_write_matrices
-#endif
 
-#ifdef PETSC
     ! Transpose matrices
-    call loss % transpose()
-    call prod % transpose()
+    loss = loss % transpose()
+    prod = prod % transpose()
 
     ! Write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
-      call loss % write_petsc_binary('adj_lossmat.bin')
-      call prod % write_petsc_binary('adj_prodmat.bin')
+      call loss % write('adj_loss.dat')
+      call prod % write('adj_prod.dat')
     end if
-#else
-    call fatal_error('Adjoint calculations only allowed with PETSc')
-#endif
 
   end subroutine compute_adjoint
 
@@ -207,7 +190,7 @@ contains
 
     use constants,  only: ONE
     use error,      only: fatal_error
-    use global,     only: cmfd_atoli, cmfd_rtoli
+    use global,     only: cmfd, cmfd_atoli, cmfd_rtoli
 
     integer :: i ! iteration counter
     integer :: innerits ! # of inner iterations
@@ -245,7 +228,14 @@ contains
       s_o % val = s_o % val / k_lo
 
       ! Compute new flux vector
-      call cmfd_linsolver(loss, s_o, phi_n, toli, innerits)
+      select case(cmfd % indices(4))
+      case(1)
+        call cmfd_linsolver_1g(loss, s_o, phi_n, toli, innerits)
+      case(2)
+        call cmfd_linsolver_2g(loss, s_o, phi_n, toli, innerits)
+      case default
+        call cmfd_linsolver_ng(loss, s_o, phi_n, toli, innerits)
+      end select
 
       ! Compute new source vector
       call prod % vector_multiply(phi_n, s_n)
@@ -296,7 +286,7 @@ contains
     ROWS: do irow = 1, loss % n
       COLS: do icol = loss % get_row(irow), loss % get_row(irow + 1) - 1
         if (loss % get_col(icol) == prod % get_col(jcol) .and. &
-            jcol < prod % get_row(irow + 1)) then
+             jcol < prod % get_row(irow + 1)) then
           loss % val(icol) = loss % val(icol) - ONE/k_s*prod % val(jcol)
           jcol = jcol + 1
         end if
@@ -743,13 +733,11 @@ contains
     ! Write out results
     if (cmfd_write_matrices) then
       if (adjoint_calc) then
-        filename = 'adj_fluxvec.bin'
+        filename = 'adj_fluxvec.dat'
       else
-        filename = 'fluxvec.bin'
+        filename = 'fluxvec.dat'
       end if
-#ifdef PETSC
-      call phi_n % write_petsc_binary(filename)
-#endif
+      ! TODO: call phi_n % write(filename)
     end if
 
   end subroutine extract_results

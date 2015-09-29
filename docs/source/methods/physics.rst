@@ -187,11 +187,11 @@ secondary photons from nuclear de-excitation are tracked in OpenMC.
 ------------------------
 
 These types of reactions are just treated as inelastic scattering and as such
-are subject to the same procedure as described in
-:ref:`inelastic-scatter`. Rather than tracking multiple secondary neutrons, the
-weight of the outgoing neutron is multiplied by the number of secondary
-neutrons, e.g. for :math:`(n,2n)`, only one outgoing neutron is tracked but its
-weight is doubled.
+are subject to the same procedure as described in :ref:`inelastic-scatter`. For
+reactions with integral multiplicity, e.g., :math:`(n,2n)`, an appropriate
+number of secondary neutrons are created. For reactions that have a multiplicity
+given as a function of the incoming neutron energy (which occasionally occurs
+for MT=5), the weight of the outgoing neutron is multiplied by the multiplcity.
 
 .. _fission:
 
@@ -1027,14 +1027,19 @@ probability distribution function can be found by integrating equation
 Let us call the normalization factor in the denominator of equation
 :eq:`target-pdf-1` :math:`C`.
 
-It is normally assumed that :math:`\sigma (v_r)` is constant over the range of
+
+Constant Cross Section Model
+----------------------------
+
+It is often assumed that :math:`\sigma (v_r)` is constant over the range of
 relative velocities of interest. This is a good assumption for almost all cases
 since the elastic scattering cross section varies slowly with velocity for light
 nuclei, and for heavy nuclei where large variations can occur due to resonance
 scattering, the moderating effect is rather small. Nonetheless, this assumption
 may cause incorrect answers in systems with low-lying resonances that can cause
 a significant amount of up-scatter that would be ignored by this assumption
-(e.g. U-238 in commercial light-water reactors). Nevertheless, with this
+(e.g. U-238 in commercial light-water reactors). We will revisit this assumption
+later in :ref:`energy_dependent_xs_model`. For now, continuing with the
 assumption, we write :math:`\sigma (v_r) = \sigma_s` which simplifies
 :eq:`target-pdf-1` to
 
@@ -1231,6 +1236,35 @@ on the unit interval. Since the maximum value of :math:`f_1(v_T, \mu)` is
 If is not accepted, then we repeat the process and resample a target speed and
 cosine until a combination is found that satisfies equation
 :eq:`freegas-accept-2`.
+
+.. _energy_dependent_xs_model:
+
+Energy-Dependent Cross Section Model
+------------------------------------
+
+As was noted earlier, assuming that the elastic scattering cross section is
+constant in :eq:`reaction-rate` is not strictly correct, especially when
+low-lying resonances are present in the cross sections for heavy nuclides. To
+correctly account for energy dependence of the scattering cross section entails
+performing another rejection step. The most common method is to sample
+:math:`\mu` and :math:`v_T` as in the constant cross section approximation and
+then perform a rejection on the ratio of the 0 K elastic scattering cross
+section at the relative velocity to the maximum 0 K elastic scattering cross
+section over the range of velocities considered:
+
+.. math::
+    :label: dbrc
+
+    p_{dbrc} = \frac{\sigma_s(v_r)}{\sigma_{s,max}}
+
+where it should be noted that the maximum is taken over the range :math:`[v_n -
+4/\beta, 4_n + 4\beta]`. This method is known as Doppler broadening rejection
+correction (DBRC) and was first introduced by `Becker et al.`_. OpenMC has an
+implementation of DBRC as well as an accelerated sampling method that are
+described fully in `Walsh et al.`_
+
+.. _Becker et al.: http://dx.doi.org/10.1016/j.anucene.2008.12.001
+.. _Walsh et al.: http://dx.doi.org/10.1016/j.anucene.2014.01.017
 
 .. _sab_tables:
 

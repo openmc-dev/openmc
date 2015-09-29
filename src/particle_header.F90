@@ -1,6 +1,9 @@
 module particle_header
 
-  use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_DELAYED_GROUPS
+  use bank_header,     only: Bank
+  use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
+                             MAX_DELAYED_GROUPS
+  use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
 
   implicit none
@@ -26,9 +29,8 @@ module particle_header
 
     ! Is this level rotated?
     logical :: rotated = .false.
-
-    ! Pointer to next (more local) set of coordinates
-    type(LocalCoord), pointer :: next => null()
+  contains
+    procedure :: reset => reset_coord
   end type LocalCoord
 
 !===============================================================================
@@ -42,8 +44,8 @@ module particle_header
     integer    :: type          ! Particle type (n, p, e, etc)
 
     ! Particle coordinates
-    type(LocalCoord), pointer :: coord0 => null() ! coordinates on universe 0
-    type(LocalCoord), pointer :: coord  => null() ! coordinates on lowest universe
+    integer          :: n_coord          ! number of current coordinates
+    type(LocalCoord) :: coord(MAX_COORD) ! coordinates for all levels
 
     ! Other physical data
     real(8)    :: wgt           ! particle weight
@@ -83,32 +85,18 @@ module particle_header
     ! Track output
     logical    :: write_track = .false.
 
+    ! Secondary particles created
+    integer    :: n_secondary = 0
+    type(Bank) :: secondary_bank(MAX_SECONDARY)
+
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle
+    procedure :: initialize_from_source
+    procedure :: create_secondary
   end type Particle
 
 contains
-
-!===============================================================================
-! DEALLOCATE_COORD removes all levels of coordinates below a given level. This
-! is used in distance_to_boundary when the particle moves from a lower universe
-! to a higher universe since the data for the lower one is not needed anymore.
-!===============================================================================
-
-  recursive subroutine deallocate_coord(coord)
-
-    type(LocalCoord), pointer :: coord
-
-    if (associated(coord)) then
-      ! recursively deallocate lower coordinates
-      if (associated(coord % next)) call deallocate_coord(coord%next)
-
-      ! deallocate original coordinate
-      deallocate(coord)
-    end if
-
-  end subroutine deallocate_coord
 
 !===============================================================================
 ! INITIALIZE_PARTICLE sets default attributes for a particle from the source
@@ -146,26 +134,94 @@ contains
     end do
 
     ! Set up base level coordinates
-    allocate(this % coord0)
-    this % coord0 % universe = BASE_UNIVERSE
-    this % coord             => this % coord0
+    this % coord(1) % universe = BASE_UNIVERSE
+    this % n_coord = 1
 
   end subroutine initialize_particle
 
 !===============================================================================
-! CLEAR_PARTICLE
+! CLEAR_PARTICLE resets all coordinate levels for the particle
 !===============================================================================
 
   subroutine clear_particle(this)
 
     class(Particle) :: this
+    integer :: i
 
     ! remove any coordinate levels
-    call deallocate_coord(this % coord0)
-
-    ! Make sure coord pointer is nullified
-    nullify(this % coord)
+    do i = 1, MAX_COORD
+      call this % coord(i) % reset()
+    end do
 
   end subroutine clear_particle
+
+!===============================================================================
+! RESET_COORD clears data from a single coordinate level
+!===============================================================================
+
+  elemental subroutine reset_coord(this)
+    class(LocalCoord), intent(inout) :: this
+
+    this % cell = NONE
+    this % universe = NONE
+    this % lattice = NONE
+    this % lattice_x = NONE
+    this % lattice_y = NONE
+    this % lattice_z = NONE
+    this % rotated = .false.
+
+  end subroutine reset_coord
+
+!===============================================================================
+! INITIALIZE_FROM_SOURCE initializes a particle from data stored in a source
+! site. The source site may have been produced from an external source, from
+! fission, or simply as a secondary particle.
+!===============================================================================
+
+  subroutine initialize_from_source(this, src)
+    class(Particle), intent(inout) :: this
+    type(Bank),      intent(in)    :: src
+
+    ! set defaults
+    call this % initialize()
+
+    ! copy attributes from source bank site
+    this % wgt            = src % wgt
+    this % last_wgt       = src % wgt
+    this % coord(1) % xyz = src % xyz
+    this % coord(1) % uvw = src % uvw
+    this % last_xyz       = src % xyz
+    this % last_uvw       = src % uvw
+    this % E              = src % E
+    this % last_E         = src % E
+
+  end subroutine initialize_from_source
+
+!===============================================================================
+! CREATE_SECONDARY stores the current phase space attributes of the particle in
+! the secondary bank and increments the number of sites in the secondary bank.
+!===============================================================================
+
+  subroutine create_secondary(this, uvw, type)
+    class(Particle), intent(inout) :: this
+    real(8),         intent(in)    :: uvw(3)
+    integer,         intent(in)    :: type
+
+    integer :: n
+
+    ! Check to make sure that the hard-limit on secondary particles is not
+    ! exceeded.
+    if (this % n_secondary == MAX_SECONDARY) then
+      call fatal_error("Too many secondary particles created.")
+    end if
+
+    n = this % n_secondary + 1
+    this % secondary_bank(n) % wgt    = this % wgt
+    this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
+    this % secondary_bank(n) % uvw(:) = uvw
+    this % secondary_bank(n) % E      = this % E
+    this % n_secondary = n
+
+  end subroutine create_secondary
 
 end module particle_header

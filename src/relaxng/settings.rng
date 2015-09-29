@@ -43,6 +43,28 @@
               </attribute>
             </choice>
           </optional>
+          <optional>
+            <element name="keff_trigger">
+              <interleave>
+                <choice>
+                  <element name="type">
+                    <data type="string"/>
+                  </element>
+                  <attribute name="type">
+                    <data type="string"/>
+                  </attribute>
+                </choice>
+                <choice>
+                  <element name="threshold">
+                    <data type="double"/>
+                  </element>
+                  <attribute name="threshold">
+                    <data type="double"/>
+                  </attribute>
+                </choice>
+              </interleave>
+            </element>
+          </optional>
         </interleave>
       </element>
       <element name="fixed_source">
@@ -106,6 +128,8 @@
           <value>log</value>
           <value>logarithm</value>
           <value>logarithmic</value>
+          <value>material-union</value>
+          <value>union</value>
         </choice>
       </element>
     </optional>
@@ -563,6 +587,38 @@
             <data type="positiveInteger"/>
           </oneOrMore>
         </list>
+      </element>
+    </optional>
+    <optional>
+      <element name="trigger">
+        <interleave>
+          <choice>
+            <element name="active">
+              <data type="boolean"/>
+            </element>
+            <attribute name="active">
+              <data type="boolean"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="max_batches">
+              <data type="positiveInteger"/>
+            </element>
+            <attribute name="max_batches">
+              <data type="positiveInteger"/>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="batch_interval">
+                <data type="positiveInteger"/>
+              </element>
+              <attribute name="batch_interval">
+                <data type="positiveInteger"/>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
       </element>
     </optional>
     <optional>

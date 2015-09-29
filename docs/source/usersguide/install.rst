@@ -59,6 +59,31 @@ Prerequisites
 
           sudo apt-get install cmake
 
+    * HDF5_ Library for portable binary output format
+
+      OpenMC uses HDF5 for binary output files. As such, you will need to have
+      HDF5 installed on your computer. The installed version will need to have
+      been compiled with the same compiler you intend to compile OpenMC with. If
+      you are using HDF5 in conjunction with MPI, we recommend that your HDF5
+      installation be built with parallel I/O features. An example of
+      configuring HDF5_ is listed below::
+
+           FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
+           ./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
+                       --enable-fortran2003 --enable-parallel
+
+      You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
+
+      On Debian derivatives, HDF5 and/or parallel HDF5 can be installed through
+      the APT package manager:
+
+      .. code-block:: sh
+
+          sudo apt-get install libhdf5-8 libhdf5-dev hdf5-helpers
+
+      Note that the exact package names may vary depending on your particular
+      distribution and version.
+
 .. admonition:: Optional
 
     * An MPI implementation for distributed-memory parallel runs
@@ -72,35 +97,6 @@ Prerequisites
           sudo apt-get install mpich libmpich-dev
           sudo apt-get install openmpi-bin libopenmpi1.6 libopenmpi-dev
 
-    * HDF5_ Library for portable binary output format
-
-      To compile with support for HDF5_ output (highly recommended), you will
-      need to have HDF5 installed on your computer. The installed version will
-      need to have been compiled with the same compiler you intend to compile
-      OpenMC with. HDF5_ must be built with parallel I/O features if you intend
-      to use HDF5_ with MPI. An example of configuring HDF5_ is listed below::
-
-           FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
-           ./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
-                       --enable-fortran2003 --enable-parallel
-
-      You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
-
-    * PETSc_ for CMFD acceleration
-
-      To enable some features of CMFD acceleration, you will need to have
-      PETSc_ (3.4.2 or higher) installed on your computer. The installed version
-      will need to have been compiled with the same compiler you intend to
-      compile OpenMC with. OpenMC requires PETSc_ to be configured with Fortran
-      datatypes. An example of configuring PETSc_ is listed below::
-
-           ./configure --prefix=/opt/petsc/3.4.4 --download-f-blas-lapack \
-                       --with-mpi-dir=/opt/mpich/3.1 --with-shared-libraries \
-                       --with-fortran-datatypes
-
-      The BLAS/LAPACK library is not required to be downloaded and can be linked
-      explicitly (e.g., Intel MKL library).
-
     * git_ version control software for obtaining source code
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
@@ -108,7 +104,6 @@ Prerequisites
 .. _OpenMPI: http://www.open-mpi.org
 .. _MPICH: http://www.mpich.org
 .. _HDF5: http://www.hdfgroup.org/HDF5/
-.. _PETSc: http://www.mcs.anl.gov/petsc/
 
 Obtaining the Source
 --------------------
@@ -123,12 +118,12 @@ with GitHub since this involves setting up ssh_ keys. With git installed and
 setup, the following command will download the full source code from the GitHub
 repository::
 
-    git clone git://github.com/mit-crpg/openmc.git
+    git clone https://github.com/mit-crpg/openmc.git
 
 By default, the cloned repository will be set to the development branch. To
 switch to the source of the latest stable release, run the following commands::
 
-    cd openmc/src
+    cd openmc
     git checkout master
 
 .. _GitHub: https://github.com/mit-crpg/openmc
@@ -139,23 +134,22 @@ Build Configuration
 -------------------
 
 Compiling OpenMC with CMake is carried out in two steps. First, ``cmake`` is run
-to determine the compiler, whether optional packages (MPI, HDF5, PETSc) are
-available, to generate a list of dependencies between source files so that they
-may be compiled in the correct order, and to generate a normal Makefile. The
-Makefile is then used by ``make`` to actually carry out the compile and linking
+to determine the compiler, whether optional packages (MPI, HDF5) are available,
+to generate a list of dependencies between source files so that they may be
+compiled in the correct order, and to generate a normal Makefile. The Makefile
+is then used by ``make`` to actually carry out the compile and linking
 commands. A typical out-of-source build would thus look something like the
 following
 
 .. code-block:: sh
 
-    mkdir src/build
-    cd src/build
+    mkdir build && cd build
     cmake ..
     make
 
 Note that first a build directory is created as a subdirectory of the source
-directory. The Makefile in ``src/`` will automatically perform an out-of-source
-build with default options.
+directory. The Makefile in the top-level directory will automatically perform an
+out-of-source build with default options.
 
 CMakeLists.txt Options
 ++++++++++++++++++++++
@@ -177,16 +171,21 @@ openmp
   Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
   being used must support OpenMP.
 
-petsc
-  Enables PETSc for use in CMFD acceleration. The PETSC_DIR variable should be
-  set to the base directory of the PETSc installation.
+coverage
+  Compile and link code instrumented for coverage analysis. This is typically
+  used in conjunction with gcov_.
+
+maxcoord
+  Maximum number of nested coordinate levels in geometry. Defaults to 10.
 
 To set any of these options (e.g. turning on debug mode), the following form
 should be used:
 
 .. code-block:: sh
 
-    cmake -Ddebug=on /path/to/src
+    cmake -Ddebug=on /path/to/openmc
+
+.. _gcov: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 
 Compiling with MPI
 ++++++++++++++++++
@@ -197,36 +196,35 @@ the MPI Fortran wrapper. For example, in a bash shell:
 .. code-block:: sh
 
     export FC=mpif90
-    cmake /path/to/src
+    cmake /path/to/openmc
 
 Note that in many shells, an environment variable can be set for a single
 command, i.e.
 
 .. code-block:: sh
 
-    FC=mpif90 cmake /path/to/src
+    FC=mpif90 cmake /path/to/openmc
 
-Compiling with HDF5
-+++++++++++++++++++
+Selecting HDF5 Installation
++++++++++++++++++++++++++++
 
-To compile with MPI, set the :envvar:`FC` environment variable to the path to
-the HDF5 Fortran wrapper. For example, in a bash shell:
+CMakeLists.txt searches for the ``h5fc`` or ``h5pfc`` HDF5 Fortran wrapper on
+your PATH environment variable and subsequently uses it to determine library
+locations and compile flags. If you have multiple installations of HDF5 or one
+that does not appear on your PATH, you can set the HDF5_ROOT environment
+variable to the root directory of the HDF5 installation, e.g.
+.. code-block:: sh
+
+    export HDF5_ROOT=/opt/hdf5/1.8.15
+    cmake /path/to/openmc
+
+This will cause CMake to search first in /opt/hdf5/1.8.15/bin for ``h5fc`` /
+``h5pfc`` before it searches elsewhere. As noted above, an environment variable
+can typically be set for a single command, i.e.
 
 .. code-block:: sh
 
-    export FC=h5fc
-    cmake /path/to/src
-
-As noted above, an environment variable can typically be set for a single
-command, i.e.
-
-.. code-block:: sh
-
-    FC=h5fc cmake /path/to/src
-
-To compile with support for both MPI and HDF5, use the parallel HDF5 wrapper
-``h5pfc`` instead. Note that this requires that your HDF5 installation be
-compiled with ``--enable-parallel``.
+    HDF5_ROOT=/opt/hdf5/1.8.15 cmake /path/to/openmc
 
 Compiling on Linux and Mac OS X
 -------------------------------
@@ -236,8 +234,7 @@ the root directory of the source code:
 
 .. code-block:: sh
 
-    mkdir src/build
-    cd src/build
+    mkdir build && cd build
     cmake ..
     make
     make install
@@ -287,7 +284,8 @@ the source code root directory:
 
 .. code-block:: sh
 
-    cd src
+    mkdir build && cd build
+    cmake ..
     make
 
 This will build an executable named ``openmc``.
@@ -313,13 +311,31 @@ in the root directory of the OpenMC distribution:
 
 .. code-block:: sh
 
-    cd src
     make
 
 This will build an executable named ``openmc``.
 
 .. _MinGW: http://www.mingw.org
 .. _SourceForge: http://sourceforge.net/projects/mingw
+
+Compiling for the Intel Xeon Phi
+--------------------------------
+
+In order to build OpenMC for the Intel Xeon Phi using the Intel Fortran
+compiler, it is necessary to specify that all objects be compiled with the
+``-mmic`` flag as follows:
+
+.. code-block:: sh
+
+    mkdir build && cd build
+    FC=ifort FFLAGS=-mmic cmake -Dopenmp=on ..
+    make
+
+Note that unless an HDF5 build for the Intel Xeon Phi is already on your target
+machine, you will need to cross-compile HDF5 for the Xeon Phi. An `example
+script`_ to build zlib and HDF5 provides several necessary workarounds.
+
+.. _example script: https://github.com/paulromano/install-scripts/blob/master/install-hdf5-mic
 
 Testing Build
 -------------
@@ -332,7 +348,6 @@ the source directory and run the following:
 
 .. code-block:: sh
 
-    cd src
     make test
 
 If you want more options for testing you can use ctest_ command. For example,
@@ -340,7 +355,7 @@ if we wanted to run only the plot tests with 4 processors, we run:
 
 .. code-block:: sh
 
-    cd src/build
+    cd build
     ctest -j 4 -R plot
 
 If you want to run the full test suite with different build options please
@@ -385,12 +400,12 @@ the following steps must be taken:
 2. In the root directory, a file named ``xsdir``, or some variant thereof,
    should be present. This file contains a listing of all the cross sections and
    is used by MCNP. This file should be converted to a ``cross_sections.xml``
-   file for use with OpenMC. A Python script is provided in the OpenMC
-   distribution for this purpose:
+   file for use with OpenMC. A utility is provided in the OpenMC distribution
+   for this purpose:
 
    .. code-block:: sh
 
-       openmc/src/utils/convert_xsdir.py xsdir31 cross_sections.xml
+       openmc/scripts/openmc-xsdir-to-xml xsdir31 cross_sections.xml
 
 3. In the converted ``cross_sections.xml`` file, change the contents of the
    <directory> element to the absolute path of the directory containing the
@@ -436,9 +451,8 @@ Running OpenMC
 Once you have a model built (see :ref:`usersguide_input`), you can either run
 the openmc executable directly from the directory containing your XML input
 files, or you can specify as a command-line argument the directory containing
-the XML input files. For example, if the path of your OpenMC executable is
-``/home/username/openmc/src/openmc`` and your XML input files are in the
-directory ``/home/username/somemodel/``, one way to run the simulation would be:
+the XML input files. For example, if your XML input files are in the directory
+``/home/username/somemodel/``, one way to run the simulation would be:
 
 .. code-block:: sh
 

@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<materials>
+
+  <default_xs>71c</default_xs>
+
+  <!-- Plutonium -->
+  <material id="1">
+    <density value="18.4757" units="g/cm3" />
+    <nuclide name="Pu-239" ao="1.0" />
+  </material>
+
+
+</materials>

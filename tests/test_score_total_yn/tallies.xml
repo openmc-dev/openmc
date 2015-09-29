@@ -9,6 +9,21 @@
   <tally id="2">
     <filter type="cell" bins="10 21 22 23" />
     <scores>total-y4</scores>
+    <nuclides>U-235 total</nuclides>
+  </tally>
+  
+  <tally id="3">
+    <filter type="cell" bins="10 21 22 23" />
+    <scores>total-y4</scores>
+    <nuclides>U-235 total</nuclides>
+    <estimator>analog</estimator>
+  </tally>
+  
+  <tally id="4">
+    <filter type="cell" bins="10 21 22 23" />
+    <scores>total-y4</scores>
+    <nuclides>U-235 total</nuclides>
+    <estimator>collision</estimator>
   </tally>
 
 </tallies>

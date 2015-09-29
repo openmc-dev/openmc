@@ -433,24 +433,24 @@ contains
 
                   ! determine delayed neutron precursor yield for group d
                   yield = interpolate_tab1(nuclides(p % event_nuclide) % nu_d_precursor_data( &
-                    lc+1:lc+2+2*NR+2*NE), p % E)
+                       lc+1:lc+2+2*NR+2*NE), p % E)
 
                   ! advance pointer
                   lc = lc + 2 + 2*NR + 2*NE + 1
 
                   score = p % absorb_wgt * yield * micro_xs(p % event_nuclide) % &
-                    delay_nu_fission / micro_xs(p % event_nuclide) % absorption
+                       delay_nu_fission / micro_xs(p % event_nuclide) % absorption
 
                   t % results(score_index, d) % value = &
-                    t % results(score_index, d) % value + score
+                       t % results(score_index, d) % value + score
                 end do
                 !$omp end critical
               else
                 score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
-                  delay_nu_fission / micro_xs(p % event_nuclide) % absorption
+                     delay_nu_fission / micro_xs(p % event_nuclide) % absorption
 
                 t % results(score_index, 1) % value = &
-                  t % results(score_index, 1) % value + score
+                     t % results(score_index, 1) % value + score
               end if
             else
               score = ZERO
@@ -468,10 +468,10 @@ contains
 
               if (t % find_filter(FILTER_DELAYGROUP) > 0) then
                 t % results(score_index, d) % value = &
-                  t % results(score_index, d) % value + score
+                     t % results(score_index, d) % value + score
               else
                 t % results(score_index, 1) % value = &
-                  t % results(score_index, 1) % value + score
+                     t % results(score_index, 1) % value + score
               end if
             end do
             !$omp end critical

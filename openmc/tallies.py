@@ -2517,16 +2517,16 @@ class Tally(object):
 
         if self.sum is not None:
             new_tally._sum = np.zeros(new_shape, dtype=np.float64)
-            new_tally._sum[diag_indices, :, :] = self.sum
+            new_tally._sum[indices, :self.num_nuclides, :self.num_scores] = self.sum
         if self.sum_sq is not None:
             new_tally._sum_sq = np.zeros(new_shape, dtype=np.float64)
-            new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
+            new_tally._sum_sq[indices, :self.num_nuclides, :self.num_scores] = self.sum_sq
         if self.mean is not None:
             new_tally._mean = np.zeros(new_shape, dtype=np.float64)
-            new_tally._mean[diag_indices, :, :] = self.mean
+            new_tally._mean[indices, :self.num_nuclides, :self.num_scores] = self.mean
         if self.std_dev is not None:
             new_tally._std_dev = np.zeros(new_shape, dtype=np.float64)
-            new_tally._std_dev[diag_indices, :, :] = self.std_dev
+            new_tally._std_dev[indices, :self.num_nuclides, :self.num_scores] = self.std_dev
 
         # Correct each Filter's stride
         stride = new_tally.num_nuclides * new_tally.num_score_bins

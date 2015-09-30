@@ -55,7 +55,6 @@ class Filter(object):
         self._type = None
         self._num_bins = 0
         self._bins = None
-        self._bins = None
         self._mesh = None
         self._offset = -1
         self._stride = None
@@ -314,8 +313,9 @@ class Filter(object):
 
         Returns
         -------
-        boolean
+        bool
             Whether or not the other filter is a subset of this filter
+
         """
 
         if not isinstance(other, Filter):

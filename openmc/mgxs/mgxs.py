@@ -511,7 +511,7 @@ class MultiGroupXS(object):
         # NOTE: We must not override the "nuclides" parameter since it is used
         # to retrieve atomic number densities for micro xs
         if self.by_nuclide:
-            if nuclides == 'all' or nuclides == 'sum':
+            if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
                 query_nuclides = self.get_all_nuclides()
             else:
                 query_nuclides = nuclides
@@ -1513,7 +1513,7 @@ class ScatterMatrixXS(MultiGroupXS):
         # NOTE: We must not override the "nuclides" parameter since it is used
         # to retrieve atomic number densities for micro xs
         if self.by_nuclide:
-            if nuclides == 'all' or nuclides == 'sum':
+            if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
                 query_nuclides = self.get_all_nuclides()
             else:
                 query_nuclides = nuclides
@@ -1813,7 +1813,7 @@ class Chi(MultiGroupXS):
 
             # Get the sum as the fission source weighted average chi for all
             # nuclides in the domain
-            if nuclides == 'sum':
+            if nuclides == 'sum' or nuclides == ['sum']:
 
                 # Retrieve the fission production tallies
                 nu_fission_in = self.tallies['nu-fission-in']
@@ -1850,6 +1850,7 @@ class Chi(MultiGroupXS):
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
+
             # Reshape tally data array with separate axes for domain and energy
             if groups == 'all':
                 num_groups = self.num_groups

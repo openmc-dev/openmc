@@ -668,7 +668,7 @@ class MultiGroupXS(object):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains)
         else:
-            subdomains = [self.domain.id]
+            subdomains = [0]
 
         # Clone this MultiGroupXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)

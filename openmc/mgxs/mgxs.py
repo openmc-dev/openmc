@@ -297,8 +297,15 @@ class MultiGroupXS(object):
         if nuclides == 'sum':
             nuclides = self.get_all_nuclides()
             densities = np.zeros(1, dtype=np.float)
-            for i, nuclide in enumerate(nuclides):
+            for nuclide in nuclides:
                 densities[0] += self.get_nuclide_density(nuclide)
+
+        # Sum the atomic number densities for all nuclides
+        elif nuclides == 'all':
+            nuclides = self.get_all_nuclides()
+            densities = np.zeros(self.num_nuclides, dtype=np.float)
+            for i, nuclide in enumerate(nuclides):
+                densities[i] += self.get_nuclide_density(nuclide)
 
         # Store each nuclide's atomic number density in an array
         else:
@@ -1048,7 +1055,24 @@ class MultiGroupXS(object):
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         # Get a Pandas DataFrame from the derived xs tally
-        df = self.xs_tally.get_pandas_dataframe(summary=summary)
+        if self.by_nuclide and nuclides == 'sum':
+
+            # Use tally summation to sum across all nuclides
+            query_nuclides = self.get_all_nuclides()
+            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            df = xs_tally.get_pandas_dataframe(summary=summary)
+
+            # Remove nuclide column since it is homogeneous and redundant
+            df.drop('nuclide', axis=1, inplace=True)
+
+        # If the user requested a specific set of nuclides
+        elif self.by_nuclide and nuclides != 'all':
+            xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
+            df = xs_tally.get_pandas_dataframe(summary=summary)
+
+        # If the user requested all nuclides, keep nuclide column in dataframe
+        else:
+            df = self.xs_tally.get_pandas_dataframe(summary=summary)
 
         # Remove the score column since it is homogeneous and redundant
         if summary and self.domain_type == 'distribcell':
@@ -1081,22 +1105,15 @@ class MultiGroupXS(object):
             if 'group out' in df:
                 df = df[df['group out'].isin(groups)]
 
-        # Sum up cross sections across nuclides if requested
-        if self.by_nuclide and nuclides == 'sum':
-            non_nuclide_cols = list(df.columns[df.columns != 'nuclide'])
-            df = df.groupby(non_nuclide_cols, as_index=False)['nuclide'].sum()
-        # If the user requested specific nuclides, remove others from dataframe
-        elif nuclides != 'all' and nuclides != 'sum':
-            df = df[df.nuclide.isin(nuclides)]
-
         # If user requested micro cross sections, divide out the atom densities
         if xs_type == 'micro':
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
                 densities = self.get_nuclide_densities('sum')
-            df['mean'] /= densities
-            df['std. dev.'] /= densities
+            tile_factor = df.shape[0] / len(densities)
+            df['mean'] /= np.tile(densities, tile_factor)
+            df['std. dev.'] /= np.tile(densities, tile_factor)
 
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal
@@ -1850,3 +1867,62 @@ class Chi(MultiGroupXS):
             xs = np.reshape(xs, new_shape)
 
         return xs
+
+    def get_pandas_dataframe(self, groups='all', nuclides='all',
+                             xs_type='macro', summary=None):
+        """Build a Pandas DataFrame for the MultiGroupXS data.
+
+        This routine leverages the Tally.get_pandas_dataframe(...) routine, but
+        renames the columns with terminology appropriate for cross section data.
+
+        Parameters
+        ----------
+        groups : Iterable of Integral or 'all'
+            Energy groups of interest
+
+        nuclides : Iterable of str or 'all' or 'sum'
+            The nuclides of the cross-sections to include in the dataframe. This
+            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            The special string 'all' (default) will include the cross sections
+            for all nuclides in the spatial domain. The special string 'sum'
+            will include the cross sections summed over all nuclides.
+
+        xs_type: {'macro' or 'micro'}
+            Return macro or micro cross section in units of cm^-1 or barns
+
+        summary : None or Summary
+            An optional Summary object to be used to construct columns for
+            distribcell tally filters (default is None). The geometric
+            information in the Summary object is embedded into a multi-index
+            column with a geometric "path" to each distribcell intance.
+            NOTE: This option requires the OpenCG Python package.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame for the cross section data.
+
+        Raises
+        ------
+        ValueError
+            When this method is called before the multi-group cross section is
+            computed from tally data.
+
+        """
+
+        # Build the dataframe using the parent class routine
+        df = super(Chi, self).get_pandas_dataframe(groups, nuclides,
+                                                   xs_type, summary)
+
+        # If user requested micro cross sections, multiply by the atom
+        # densities to cancel out division made by the parent class routine
+        if xs_type == 'micro':
+            if self.by_nuclide:
+                densities = self.get_nuclide_densities(nuclides)
+            else:
+                densities = self.get_nuclide_densities('sum')
+            tile_factor = df.shape[0] / len(densities)
+            df['mean'] *= np.tile(densities, tile_factor)
+            df['std. dev.'] *= np.tile(densities, tile_factor)
+
+        return df

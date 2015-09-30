@@ -2507,13 +2507,6 @@ class Tally(object):
         new_shape = (num_filter_bins, num_nuclides, num_score_bins)
 
         indices = np.arange(0, new_filter.num_bins**2, new_filter.num_bins+1)
-        diag_indices = np.zeros(self.num_bins, dtype=np.int)
-        diag_factor = self.num_bins / new_filter.num_bins
-
-        for i in range(diag_factor):
-            start = i * new_filter.num_bins
-            end = (i+1) * new_filter.num_bins
-            diag_indices[start:end] = indices + (i * new_filter.num_bins**2)
 
         if self.sum is not None:
             new_tally._sum = np.zeros(new_shape, dtype=np.float64)

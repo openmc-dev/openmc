@@ -2490,9 +2490,9 @@ contains
             ! Set to analog estimator
             t % estimator = ESTIMATOR_ANALOG
 
-          case ('delaygroup')
+          case ('delayedgroup')
             ! Set type of filter
-            t % filters(j) % type = FILTER_DELAYGROUP
+            t % filters(j) % type = FILTER_DELAYEDGROUP
 
             ! Set number of bins
             t % filters(j) % n_bins = MAX_DELAYED_GROUPS
@@ -2732,9 +2732,9 @@ contains
                    &filter.")
             end if
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally flux with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
           case ('flux-yn')
@@ -2749,9 +2749,9 @@ contains
                    &filter.")
             end if
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally flux with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % score_bins(j : j + n_bins - 1) = SCORE_FLUX_YN
@@ -2765,9 +2765,9 @@ contains
                    &outgoing energy filter.")
             end if
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally total reaction rate with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
           case ('total-yn')
@@ -2776,9 +2776,9 @@ contains
                    &outgoing energy filter.")
             end if
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally total reaction rate with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % score_bins(j : j + n_bins - 1) = SCORE_TOTAL_YN
@@ -2787,18 +2787,18 @@ contains
 
           case ('scatter')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally scatter with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % score_bins(j) = SCORE_SCATTER
 
           case ('nu-scatter')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally nu scatter with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % score_bins(j) = SCORE_NU_SCATTER
@@ -2807,9 +2807,9 @@ contains
             t % estimator = ESTIMATOR_ANALOG
           case ('scatter-n')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally scatter n with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             if (n_order == 0) then
@@ -2823,9 +2823,9 @@ contains
 
           case ('nu-scatter-n')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally nu scatter n with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             ! Set tally estimator to analog
@@ -2839,9 +2839,9 @@ contains
 
           case ('scatter-pn')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally scatter pn with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % estimator = ESTIMATOR_ANALOG
@@ -2852,9 +2852,9 @@ contains
 
           case ('nu-scatter-pn')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally nu scatter pn with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % estimator = ESTIMATOR_ANALOG
@@ -2865,9 +2865,9 @@ contains
 
           case ('scatter-yn')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally scatter yn with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % estimator = ESTIMATOR_ANALOG
@@ -2878,9 +2878,9 @@ contains
 
           case ('nu-scatter-yn')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally nu scatter yn with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % estimator = ESTIMATOR_ANALOG
@@ -2891,9 +2891,9 @@ contains
 
           case('transport')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally transport reaction rate with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % score_bins(j) = SCORE_TRANSPORT
@@ -2905,9 +2905,9 @@ contains
                  &please remove")
           case ('n1n')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally n1n with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % score_bins(j) = SCORE_N_1N
@@ -2925,9 +2925,9 @@ contains
 
           case ('absorption')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally absorption rate with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % score_bins(j) = SCORE_ABSORPTION
@@ -2937,9 +2937,9 @@ contains
             end if
           case ('fission')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally fission rate with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % score_bins(j) = SCORE_FISSION
@@ -2949,9 +2949,9 @@ contains
             end if
           case ('nu-fission')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally nu fission rate with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % score_bins(j) = SCORE_NU_FISSION
@@ -2959,26 +2959,26 @@ contains
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
-          case ('delay-nu-fission')
+          case ('delayed-nu-fission')
 
-            t % score_bins(j) = SCORE_DELAY_NU_FISSION
+            t % score_bins(j) = SCORE_DELAYED_NU_FISSION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
           case ('kappa-fission')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally kappa fission with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % score_bins(j) = SCORE_KAPPA_FISSION
           case ('current')
 
-            if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+            if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
               call fatal_error("Cannot tally current with a &
-                   &delaygroup energy filter.")
+                   &delayedgroup energy filter.")
             end if
 
             t % score_bins(j) = SCORE_CURRENT

@@ -403,7 +403,7 @@ contains
         end if
 
 
-      case (SCORE_DELAY_NU_FISSION)
+      case (SCORE_DELAYED_NU_FISSION)
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
@@ -421,25 +421,28 @@ contains
             ! calculate fraction of absorptions that would have resulted in
             ! nu-fission
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
-              if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+              if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
 
                 !$omp critical
                 lc = 1
                 do d = 1, nuclides(p % event_nuclide) % n_precursor
 
                   ! determine number of interpolation regions and energies
-                  NR = int(nuclides(p % event_nuclide) % nu_d_precursor_data(lc + 1))
-                  NE = int(nuclides(p % event_nuclide) % nu_d_precursor_data(lc + 2 + 2*NR))
+                  NR = int(nuclides(p % event_nuclide) &
+                       % nu_d_precursor_data(lc + 1))
+                  NE = int(nuclides(p % event_nuclide) &
+                       % nu_d_precursor_data(lc + 2 + 2*NR))
 
                   ! determine delayed neutron precursor yield for group d
-                  yield = interpolate_tab1(nuclides(p % event_nuclide) % nu_d_precursor_data( &
-                       lc+1:lc+2+2*NR+2*NE), p % E)
+                  yield = interpolate_tab1(nuclides(p % event_nuclide) &
+                       % nu_d_precursor_data(lc+1:lc+2+2*NR+2*NE), p % E)
 
                   ! advance pointer
                   lc = lc + 2 + 2*NR + 2*NE + 1
 
-                  score = p % absorb_wgt * yield * micro_xs(p % event_nuclide) % &
-                       delay_nu_fission / micro_xs(p % event_nuclide) % absorption
+                  score = p % absorb_wgt * yield * micro_xs(p % event_nuclide) &
+                       % delayed_nu_fission / micro_xs(p % event_nuclide) &
+                       % absorption
 
                   t % results(score_index, d) % value = &
                        t % results(score_index, d) % value + score
@@ -447,7 +450,8 @@ contains
                 !$omp end critical
               else
                 score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
-                     delay_nu_fission / micro_xs(p % event_nuclide) % absorption
+                     delayed_nu_fission / micro_xs(p % event_nuclide) % &
+                     absorption
 
                 t % results(score_index, 1) % value = &
                      t % results(score_index, 1) % value + score
@@ -464,9 +468,9 @@ contains
             ! its contribution to the fission bank to the score.
             !$omp critical
             do d = 1, nuclides(p % event_nuclide) % n_precursor
-              score = keff * p % wgt_bank / p % n_bank * p % n_delay_bank(d)
+              score = keff * p % wgt_bank / p % n_bank * p % n_delayed_bank(d)
 
-              if (t % find_filter(FILTER_DELAYGROUP) > 0) then
+              if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
                 t % results(score_index, d) % value = &
                      t % results(score_index, d) % value + score
               else
@@ -1605,7 +1609,7 @@ contains
                n + 1, p % E)
         end if
 
-      case (FILTER_DELAYGROUP)
+      case (FILTER_DELAYEDGROUP)
 
         if (survival_biasing .and. t % find_filter(FILTER_ENERGYOUT) <= 0) then
           matching_bins(i) = 1

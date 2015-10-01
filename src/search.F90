@@ -41,10 +41,9 @@ contains
     do while (R - L > 1)
       ! Find values at midpoint
       array_index = L + (R - L)/2
-      testval = array(array_index)
-      if (val >= testval) then
+      if (val >= array(array_index)) then
         L = array_index
-      elseif (val < testval) then
+      else
         R = array_index
       end if
 
@@ -83,10 +82,9 @@ contains
     do while (R - L > 1)
       ! Find values at midpoint
       array_index = L + (R - L)/2
-      testval = array(array_index)
-      if (val >= testval) then
+      if (val >= array(array_index)) then
         L = array_index
-      elseif (val < testval) then
+      else
         R = array_index
       end if
 
@@ -125,10 +123,9 @@ contains
     do while (R - L > 1)
       ! Find values at midpoint
       array_index = L + (R - L)/2
-      testval = array(array_index)
-      if (val >= testval) then
+      if (val >= array(array_index)) then
         L = array_index
-      elseif (val < testval) then
+      else
         R = array_index
       end if
 

@@ -1051,16 +1051,16 @@ contains
     integer,        intent(in)    :: i_nuclide
     integer,        intent(in)    :: i_reaction
 
-    integer :: d                            ! delayed group index
-    integer :: nu_delay(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
-    integer :: i                            ! loop index
-    integer :: nu                           ! actual number of neutrons produced
-    integer :: ijk(3)                       ! indices in ufs mesh
-    real(8) :: nu_t                         ! total nu
-    real(8) :: mu                           ! fission neutron angular cosine
-    real(8) :: phi                          ! fission neutron azimuthal angle
-    real(8) :: weight                       ! weight adjustment for ufs method
-    logical :: in_mesh                      ! source site in ufs mesh?
+    integer :: d                              ! delayed group index
+    integer :: nu_delayed(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
+    integer :: i                              ! loop index
+    integer :: nu                             ! actual number of neutrons produced
+    integer :: ijk(3)                         ! indices in ufs mesh
+    real(8) :: nu_t                           ! total nu
+    real(8) :: mu                             ! fission neutron angular cosine
+    real(8) :: phi                            ! fission neutron azimuthal angle
+    real(8) :: weight                         ! weight adjustment for ufs method
+    logical :: in_mesh                        ! source site in ufs mesh?
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
@@ -1114,7 +1114,7 @@ contains
     ! Initialize counter of delayed neutrons encountered for each delayed group
     ! to zero.
     do d = 1, MAX_DELAYED_GROUPS
-      nu_delay(d) = 0
+      nu_delayed(d) = 0
     end do
 
     p % fission = .true. ! Fission neutrons will be banked
@@ -1146,7 +1146,7 @@ contains
 
       ! Increment the number of neutrons born delayed
       if (p % delayed_group > 0) then
-        nu_delay(p % delayed_group) = nu_delay(p % delayed_group) + 1
+        nu_delayed(p % delayed_group) = nu_delayed(p % delayed_group) + 1
       end if
     end do
 
@@ -1157,7 +1157,7 @@ contains
     p % n_bank   = nu
     p % wgt_bank = nu/weight
     do d = 1, MAX_DELAYED_GROUPS
-      p % n_delay_bank(d) = nu_delay(d)
+      p % n_delayed_bank(d) = nu_delayed(d)
     end do
 
   end subroutine create_fission_sites

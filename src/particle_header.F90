@@ -70,8 +70,8 @@ module particle_header
     ! Post-collision physical data
     integer    :: n_bank        ! number of fission sites banked
     real(8)    :: wgt_bank      ! weight of fission sites banked
-    integer    :: n_delay_bank(MAX_DELAYED_GROUPS) ! number of delayed fission
-                                                   ! sites banked
+    integer    :: n_delayed_bank(MAX_DELAYED_GROUPS) ! number of delayed fission
+                                                     ! sites banked
 
     ! Indices for various arrays
     integer    :: surface       ! index for surface particle is on
@@ -130,7 +130,7 @@ contains
     this % delayed_group = 0
 
     do d = 1, MAX_DELAYED_GROUPS
-      this % n_delay_bank(d) = 0
+      this % n_delayed_bank(d) = 0
     end do
 
     ! Set up base level coordinates

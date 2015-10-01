@@ -107,13 +107,13 @@ module ace_header
     real(8), allocatable :: energy(:)     ! energy values corresponding to xs
 
     ! Microscopic cross sections
-    real(8), allocatable :: total(:)      ! total cross section
-    real(8), allocatable :: elastic(:)    ! elastic scattering
-    real(8), allocatable :: fission(:)    ! fission
-    real(8), allocatable :: nu_fission(:) ! neutron production
-    real(8), allocatable :: absorption(:) ! absorption (MT > 100)
-    real(8), allocatable :: heating(:)    ! heating
-    real(8), allocatable :: delay_nu_fission(:) ! delayed neutron production
+    real(8), allocatable :: total(:)              ! total cross section
+    real(8), allocatable :: elastic(:)            ! elastic scattering
+    real(8), allocatable :: fission(:)            ! fission
+    real(8), allocatable :: nu_fission(:)         ! neutron production
+    real(8), allocatable :: absorption(:)         ! absorption (MT > 100)
+    real(8), allocatable :: heating(:)            ! heating
+    real(8), allocatable :: delayed_nu_fission(:) ! delayed neutron production
 
     ! Resonance scattering info
     logical              :: resonant = .false. ! resonant scatterer?
@@ -257,17 +257,17 @@ module ace_header
 !===============================================================================
 
   type NuclideMicroXS
-    integer :: index_grid       ! index on nuclide energy grid
-    integer :: index_temp       ! temperature index for nuclide
-    real(8) :: last_E = ZERO    ! last evaluated energy
-    real(8) :: interp_factor    ! interpolation factor on nuc. energy grid
-    real(8) :: total            ! microscropic total xs
-    real(8) :: elastic          ! microscopic elastic scattering xs
-    real(8) :: absorption       ! microscopic absorption xs
-    real(8) :: fission          ! microscopic fission xs
-    real(8) :: nu_fission       ! microscopic production xs
-    real(8) :: kappa_fission    ! microscopic energy-released from fission
-    real(8) :: delay_nu_fission ! microscopic delayed production xs
+    integer :: index_grid         ! index on nuclide energy grid
+    integer :: index_temp         ! temperature index for nuclide
+    real(8) :: last_E = ZERO      ! last evaluated energy
+    real(8) :: interp_factor      ! interpolation factor on nuc. energy grid
+    real(8) :: total              ! microscropic total xs
+    real(8) :: elastic            ! microscopic elastic scattering xs
+    real(8) :: absorption         ! microscopic absorption xs
+    real(8) :: fission            ! microscopic fission xs
+    real(8) :: nu_fission         ! microscopic production xs
+    real(8) :: kappa_fission      ! microscopic energy-released from fission
+    real(8) :: delayed_nu_fission ! microscopic delayed production xs
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)
@@ -285,13 +285,13 @@ module ace_header
 !===============================================================================
 
   type MaterialMacroXS
-    real(8) :: total            ! macroscopic total xs
-    real(8) :: elastic          ! macroscopic elastic scattering xs
-    real(8) :: absorption       ! macroscopic absorption xs
-    real(8) :: fission          ! macroscopic fission xs
-    real(8) :: nu_fission       ! macroscopic production xs
-    real(8) :: kappa_fission    ! macroscopic energy-released from fission
-    real(8) :: delay_nu_fission ! macroscopic delayed production xs
+    real(8) :: total              ! macroscopic total xs
+    real(8) :: elastic            ! macroscopic elastic scattering xs
+    real(8) :: absorption         ! macroscopic absorption xs
+    real(8) :: fission            ! macroscopic fission xs
+    real(8) :: nu_fission         ! macroscopic production xs
+    real(8) :: kappa_fission      ! macroscopic energy-released from fission
+    real(8) :: delayed_nu_fission ! macroscopic delayed production xs
   end type MaterialMacroXS
 
   contains
@@ -378,7 +378,7 @@ module ace_header
       if (allocated(this % energy)) &
            deallocate(this % energy, this % total, this % elastic, &
            & this % fission, this % nu_fission, this % absorption, &
-           this % delay_nu_fission)
+           this % delayed_nu_fission)
 
       if (allocated(this % energy_0K)) &
            deallocate(this % energy_0K)

@@ -258,27 +258,27 @@ module constants
   ! Tally score type
   integer, parameter :: N_SCORE_TYPES = 21
   integer, parameter :: &
-       SCORE_FLUX             = -1,  & ! flux
-       SCORE_TOTAL            = -2,  & ! total reaction rate
-       SCORE_SCATTER          = -3,  & ! scattering rate
-       SCORE_NU_SCATTER       = -4,  & ! scattering production rate
-       SCORE_SCATTER_N        = -5,  & ! arbitrary scattering moment
-       SCORE_SCATTER_PN       = -6,  & ! system for scoring 0th through nth moment
-       SCORE_NU_SCATTER_N     = -7,  & ! arbitrary nu-scattering moment
-       SCORE_NU_SCATTER_PN    = -8,  & ! system for scoring 0th through nth nu-scatter moment
-       SCORE_TRANSPORT        = -9,  & ! transport reaction rate
-       SCORE_N_1N             = -10, & ! (n,1n) rate
-       SCORE_ABSORPTION       = -11, & ! absorption rate
-       SCORE_FISSION          = -12, & ! fission rate
-       SCORE_NU_FISSION       = -13, & ! neutron production rate
-       SCORE_KAPPA_FISSION    = -14, & ! fission energy production rate
-       SCORE_CURRENT          = -15, & ! partial current
-       SCORE_FLUX_YN          = -16, & ! angular moment of flux
-       SCORE_TOTAL_YN         = -17, & ! angular moment of total reaction rate
-       SCORE_SCATTER_YN       = -18, & ! angular flux-weighted scattering moment (0:N)
-       SCORE_NU_SCATTER_YN    = -19, & ! angular flux-weighted nu-scattering moment (0:N)
-       SCORE_EVENTS           = -20, & ! number of events
-       SCORE_DELAY_NU_FISSION = -21    ! delayed neutron production rate
+       SCORE_FLUX               = -1,  & ! flux
+       SCORE_TOTAL              = -2,  & ! total reaction rate
+       SCORE_SCATTER            = -3,  & ! scattering rate
+       SCORE_NU_SCATTER         = -4,  & ! scattering production rate
+       SCORE_SCATTER_N          = -5,  & ! arbitrary scattering moment
+       SCORE_SCATTER_PN         = -6,  & ! system for scoring 0th through nth moment
+       SCORE_NU_SCATTER_N       = -7,  & ! arbitrary nu-scattering moment
+       SCORE_NU_SCATTER_PN      = -8,  & ! system for scoring 0th through nth nu-scatter moment
+       SCORE_TRANSPORT          = -9,  & ! transport reaction rate
+       SCORE_N_1N               = -10, & ! (n,1n) rate
+       SCORE_ABSORPTION         = -11, & ! absorption rate
+       SCORE_FISSION            = -12, & ! fission rate
+       SCORE_NU_FISSION         = -13, & ! neutron production rate
+       SCORE_KAPPA_FISSION      = -14, & ! fission energy production rate
+       SCORE_CURRENT            = -15, & ! partial current
+       SCORE_FLUX_YN            = -16, & ! angular moment of flux
+       SCORE_TOTAL_YN           = -17, & ! angular moment of total reaction rate
+       SCORE_SCATTER_YN         = -18, & ! angular flux-weighted scattering moment (0:N)
+       SCORE_NU_SCATTER_YN      = -19, & ! angular flux-weighted nu-scattering moment (0:N)
+       SCORE_EVENTS             = -20, & ! number of events
+       SCORE_DELAYED_NU_FISSION = -21    ! delayed neutron production rate
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -303,16 +303,16 @@ module constants
   ! Tally filter and map types
   integer, parameter :: N_FILTER_TYPES = 10
   integer, parameter :: &
-       FILTER_UNIVERSE    = 1, &
-       FILTER_MATERIAL    = 2, &
-       FILTER_CELL        = 3, &
-       FILTER_CELLBORN    = 4, &
-       FILTER_SURFACE     = 5, &
-       FILTER_MESH        = 6, &
-       FILTER_ENERGYIN    = 7, &
-       FILTER_ENERGYOUT   = 8, &
-       FILTER_DISTRIBCELL = 9, &
-       FILTER_DELAYGROUP  = 10
+       FILTER_UNIVERSE      = 1, &
+       FILTER_MATERIAL      = 2, &
+       FILTER_CELL          = 3, &
+       FILTER_CELLBORN      = 4, &
+       FILTER_SURFACE       = 5, &
+       FILTER_MESH          = 6, &
+       FILTER_ENERGYIN      = 7, &
+       FILTER_ENERGYOUT     = 8, &
+       FILTER_DISTRIBCELL   = 9, &
+       FILTER_DELAYEDGROUP  = 10
 
   ! Mesh types
   integer, parameter :: &

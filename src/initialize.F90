@@ -183,22 +183,22 @@ contains
 
   subroutine initialize_mpi()
 
-    integer                   :: bank_blocks(5)  ! Count for each datatype
+    integer                   :: bank_blocks(5)   ! Count for each datatype
 #ifdef MPIF08
     type(MPI_Datatype)        :: bank_types(5)
     type(MPI_Datatype)        :: result_types(1)
     type(MPI_Datatype)        :: temp_type
 #else
-    integer                   :: bank_types(5)   ! Datatypes
+    integer                   :: bank_types(5)    ! Datatypes
     integer                   :: result_types(1)  ! Datatypes
-    integer                   :: temp_type       ! temporary derived type
+    integer                   :: temp_type        ! temporary derived type
 #endif
-    integer(MPI_ADDRESS_KIND) :: bank_disp(5)    ! Displacements
+    integer(MPI_ADDRESS_KIND) :: bank_disp(5)     ! Displacements
     integer                   :: result_blocks(1) ! Count for each datatype
     integer(MPI_ADDRESS_KIND) :: result_disp(1)   ! Displacements
     integer(MPI_ADDRESS_KIND) :: result_base_disp ! Base displacement
-    integer(MPI_ADDRESS_KIND) :: lower_bound     ! Lower bound for TallyResult
-    integer(MPI_ADDRESS_KIND) :: extent          ! Extent for TallyResult
+    integer(MPI_ADDRESS_KIND) :: lower_bound      ! Lower bound for TallyResult
+    integer(MPI_ADDRESS_KIND) :: extent           ! Extent for TallyResult
     type(Bank)       :: b
     type(TallyResult) :: tr
 

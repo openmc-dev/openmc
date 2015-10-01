@@ -375,10 +375,7 @@ contains
 
       if (nuc % fissionable .and. .not. data_0K) then
         call generate_nu_fission(nuc)
-      end if
-
-      if (nuc % fissionable .and. .not. data_0K) then
-        call generate_delay_nu_fission(nuc)
+        call generate_delayed_nu_fission(nuc)
       end if
 
     case (ACE_THERMAL)
@@ -465,7 +462,7 @@ contains
       allocate(nuc % fission(NE))
       allocate(nuc % nu_fission(NE))
       allocate(nuc % absorption(NE))
-      allocate(nuc % delay_nu_fission(NE))
+      allocate(nuc % delayed_nu_fission(NE))
 
       ! initialize cross sections
       nuc % total      = ZERO
@@ -473,7 +470,7 @@ contains
       nuc % fission    = ZERO
       nuc % nu_fission = ZERO
       nuc % absorption = ZERO
-      nuc % delay_nu_fission = ZERO
+      nuc % delayed_nu_fission = ZERO
 
       ! Read data from XSS -- only the energy grid, elastic scattering and heating
       ! cross section values are actually read from here. The total and absorption
@@ -1407,26 +1404,26 @@ contains
 ! function does not need to be called during cross section lookups.
 !===============================================================================
 
-  subroutine generate_delay_nu_fission(nuc)
+  subroutine generate_delayed_nu_fission(nuc)
 
     type(Nuclide), pointer :: nuc
 
-    integer :: i        ! index on nuclide energy grid
-    real(8) :: E        ! energy
-    real(8) :: nu_delay ! # of neutrons per fission
+    integer :: i          ! index on nuclide energy grid
+    real(8) :: E          ! energy
+    real(8) :: nu_d       ! # of neutrons per fission
 
     do i = 1, nuc % n_grid
       ! determine energy
       E = nuc % energy(i)
 
       ! determine total nu at given energy
-      nu_delay = nu_delayed(nuc, E)
+      nu_d = nu_delayed(nuc, E)
 
-      ! determine delay-nu-fission microscopic cross section
-      nuc % delay_nu_fission(i) = nu_delay * nuc % fission(i)
+      ! determine delayed-nu-fission microscopic cross section
+      nuc % delayed_nu_fission(i) = nu_d * nuc % fission(i)
     end do
 
-  end subroutine generate_delay_nu_fission
+  end subroutine generate_delayed_nu_fission
 
 !===============================================================================
 ! READ_THERMAL_DATA reads elastic and inelastic cross sections and corresponding

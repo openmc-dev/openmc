@@ -1869,6 +1869,7 @@ class Chi(MultiGroupXS):
             new_shape = (num_subdomains * num_groups,) + new_shape[2:]
             xs = np.reshape(xs, new_shape)
 
+        xs = np.nan_to_num(xs)
         return xs
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',

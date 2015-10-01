@@ -39,16 +39,6 @@ contains
 
     n_iteration = 0
     do while (R - L > 1)
-
-      ! Check boundaries
-      if (val > array(L) .and. val < array(L+1)) then
-        array_index = L
-        return
-      elseif (val > array(R-1) .and. val < array(R)) then
-        array_index = R - 1
-        return
-      end if
-
       ! Find values at midpoint
       array_index = L + (R - L)/2
       testval = array(array_index)
@@ -91,16 +81,6 @@ contains
 
     n_iteration = 0
     do while (R - L > 1)
-
-      ! Check boundaries
-      if (val > array(L) .and. val < array(L+1)) then
-        array_index = L
-        return
-      elseif (val > array(R-1) .and. val < array(R)) then
-        array_index = R - 1
-        return
-      end if
-
       ! Find values at midpoint
       array_index = L + (R - L)/2
       testval = array(array_index)
@@ -143,16 +123,6 @@ contains
 
     n_iteration = 0
     do while (R - L > 1)
-
-      ! Check boundaries
-      if (val > array(L) .and. val < array(L+1)) then
-        array_index = L
-        return
-      elseif (val > array(R-1) .and. val < array(R)) then
-        array_index = R - 1
-        return
-      end if
-
       ! Find values at midpoint
       array_index = L + (R - L)/2
       testval = array(array_index)

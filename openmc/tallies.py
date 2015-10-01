@@ -2506,20 +2506,27 @@ class Tally(object):
         num_score_bins = new_tally.num_score_bins
         new_shape = (num_filter_bins, num_nuclides, num_score_bins)
 
+        diag_factor = self.num_filter_bins / new_filter.num_bins
         indices = np.arange(0, new_filter.num_bins**2, new_filter.num_bins+1)
+        diag_indices = np.zeros(self.num_filter_bins, dtype=np.int)
+
+        for i in range(diag_factor):
+            start = i * new_filter.num_bins
+            end = (i+1) * new_filter.num_bins
+            diag_indices[start:end] = indices + (i * new_filter.num_bins**2)
 
         if self.sum is not None:
             new_tally._sum = np.zeros(new_shape, dtype=np.float64)
-            new_tally._sum[indices, :self.num_nuclides, :self.num_scores] = self.sum
+            new_tally._sum[diag_indices, :self.num_nuclides, :self.num_scores] = self.sum
         if self.sum_sq is not None:
             new_tally._sum_sq = np.zeros(new_shape, dtype=np.float64)
-            new_tally._sum_sq[indices, :self.num_nuclides, :self.num_scores] = self.sum_sq
+            new_tally._sum_sq[diag_indices, :self.num_nuclides, :self.num_scores] = self.sum_sq
         if self.mean is not None:
             new_tally._mean = np.zeros(new_shape, dtype=np.float64)
-            new_tally._mean[indices, :self.num_nuclides, :self.num_scores] = self.mean
+            new_tally._mean[diag_indices, :self.num_nuclides, :self.num_scores] = self.mean
         if self.std_dev is not None:
             new_tally._std_dev = np.zeros(new_shape, dtype=np.float64)
-            new_tally._std_dev[indices, :self.num_nuclides, :self.num_scores] = self.std_dev
+            new_tally._std_dev[diag_indices, :self.num_nuclides, :self.num_scores] = self.std_dev
 
         # Correct each Filter's stride
         stride = new_tally.num_nuclides * new_tally.num_score_bins

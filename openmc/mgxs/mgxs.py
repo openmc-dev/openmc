@@ -614,7 +614,7 @@ class MultiGroupXS(object):
 
             # Sum across all applicable fine energy group filters
             for i, filter in enumerate(tally.filters):
-                if 'energy' in filter.type and all(filter.bins == fine_edges):
+                if 'energy' in filter.type and np.all(filter.bins == fine_edges):
                     filter.bins = coarse_groups.group_edges
                     mean = np.add.reduceat(mean, energy_indices, axis=i)
                     std_dev = np.add.reduceat(std_dev**2, energy_indices, axis=i)
@@ -1734,9 +1734,12 @@ class Chi(MultiGroupXS):
         nu_fission_out = self.tallies['nu-fission-out']
 
         # Remove the coarse energy filter to keep it out of tally arithmetic
-        nu_fission_in.remove_filter(nu_fission_in.filters[-1])
+        energy_filter = nu_fission_in.find_filter('energy')
+        nu_fission_in.remove_filter(energy_filter)
 
         # Compute chi
+        nu_fission_in.add_filter(energy_filter)
+
         self._xs_tally = nu_fission_out / nu_fission_in
         super(Chi, self).compute_xs()
 

@@ -363,6 +363,8 @@ class MultiGroupXS(object):
                 all_nuclides = self.domain.get_all_nuclides()
                 for nuclide in all_nuclides:
                     self.tallies[key].add_nuclide(nuclide)
+            else:
+                self.tallies[key].add_nuclide('total')
 
     @abc.abstractmethod
     def compute_xs(self):

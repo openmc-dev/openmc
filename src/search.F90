@@ -28,7 +28,6 @@ contains
     integer :: L
     integer :: R
     integer :: n_iteration
-    real(8) :: testval
 
     L = 1
     R = n
@@ -69,7 +68,6 @@ contains
     integer :: L
     integer :: R
     integer :: n_iteration
-    real(8) :: testval
 
     L = 1
     R = n
@@ -110,7 +108,6 @@ contains
     integer :: L
     integer :: R
     integer :: n_iteration
-    real(8) :: testval
 
     L = 1
     R = n

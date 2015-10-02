@@ -467,25 +467,25 @@ def get_opencg_cell(openmc_cell):
 
     fill = openmc_cell.fill
 
-    if (openmc_cell.type == 'normal'):
-        opencg_cell.setFill(get_opencg_material(fill))
-    elif (openmc_cell.type == 'fill'):
-        opencg_cell.setFill(get_opencg_universe(fill))
+    if (openmc_cell.fill_type == 'material'):
+        opencg_cell.fill = get_opencg_material(fill)
+    elif (openmc_cell.fill_type == 'universe'):
+        opencg_cell.fill = get_opencg_universe(fill)
     else:
-        opencg_cell.setFill(get_opencg_lattice(fill))
+        opencg_cell.fill = get_opencg_lattice(fill)
 
     if openmc_cell.rotation is not None:
-        opencg_cell.setRotation(openmc_cell.rotation)
+        opencg_cell.rotation = openmc_cell.rotation
 
     if openmc_cell.translation is not None:
-        opencg_cell.setTranslation(openmc_cell.translation)
+        opencg_cell.translation = openmc_cell.translation
 
     surfaces = openmc_cell.surfaces
 
     for surface_id in surfaces:
         surface = surfaces[surface_id][0]
         halfspace = surfaces[surface_id][1]
-        opencg_cell.addSurface(get_opencg_surface(surface), halfspace)
+        opencg_cell.add_surface(get_opencg_surface(surface), halfspace)
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell
@@ -546,10 +546,10 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
 
         # If Cell is inside SquarePrism, add "inside" of Surface halfspaces
         if halfspace == -1:
-            opencg_cell.addSurface(compatible_surfaces[0], +1)
-            opencg_cell.addSurface(compatible_surfaces[1], -1)
-            opencg_cell.addSurface(compatible_surfaces[2], +1)
-            opencg_cell.addSurface(compatible_surfaces[3], -1)
+            opencg_cell.add_surface(compatible_surfaces[0], +1)
+            opencg_cell.add_surface(compatible_surfaces[1], -1)
+            opencg_cell.add_surface(compatible_surfaces[2], +1)
+            opencg_cell.add_surface(compatible_surfaces[3], -1)
             compatible_cells.append(opencg_cell)
 
         # If Cell is outside SquarePrism, add "outside" of Surface halfspaces
@@ -659,7 +659,7 @@ def make_opencg_cells_compatible(opencg_universe):
                 opencg_universe.removeCell(opencg_cell)
 
                 # Add the compatible OpenCG Cells to the Universe
-                opencg_universe.addCells(cells)
+                opencg_universe.add_cells(cells)
 
                 # Make recursive call to look at the updated state of the
                 # OpenCG Universe and return
@@ -715,7 +715,7 @@ def get_openmc_cell(opencg_cell):
 
     if opencg_cell.translation:
         translation = np.asarray(opencg_cell.translation, dtype=np.float64)
-        openmc_cell.setTranslation(translation)
+        openmc_cell.translation = translation
 
     surfaces = opencg_cell.surfaces
 
@@ -769,7 +769,7 @@ def get_opencg_universe(openmc_universe):
 
     for cell_id, openmc_cell in openmc_cells.items():
         opencg_cell = get_opencg_cell(openmc_cell)
-        opencg_universe.addCell(opencg_cell)
+        opencg_universe.add_cell(opencg_cell)
 
     # Add the OpenMC Universe to the global collection of all OpenMC Universes
     OPENMC_UNIVERSES[universe_id] = openmc_universe
@@ -892,14 +892,14 @@ def get_opencg_lattice(openmc_lattice):
                 universe_array[z][y][x] = unique_universes[universe_id]
 
     opencg_lattice = opencg.Lattice(lattice_id, name)
-    opencg_lattice.setDimension(dimension)
-    opencg_lattice.setWidth(pitch)
-    opencg_lattice.setUniverses(universe_array)
+    opencg_lattice.dimension = dimension
+    opencg_lattice.width = pitch
+    opencg_lattice.universes = universe_array
 
     offset = np.array(lower_left, dtype=np.float64) - \
              ((np.array(pitch, dtype=np.float64) *
                np.array(dimension, dtype=np.float64))) / -2.0
-    opencg_lattice.setOffset(offset)
+    opencg_lattice.offset = offset
 
     # Add the OpenMC Lattice to the global collection of all OpenMC Lattices
     OPENMC_LATTICES[lattice_id] = openmc_lattice
@@ -1015,8 +1015,8 @@ def get_opencg_geometry(openmc_geometry):
     opencg_root_universe = get_opencg_universe(openmc_root_universe)
 
     opencg_geometry = opencg.Geometry()
-    opencg_geometry.setRootUniverse(opencg_root_universe)
-    opencg_geometry.initializeCellOffsets()
+    opencg_geometry.root_universe = opencg_root_universe
+    opencg_geometry.initialize_cell_offsets()
 
     return opencg_geometry
 

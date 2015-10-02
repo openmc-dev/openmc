@@ -5,9 +5,11 @@ from numbers import Real, Integral
 import numpy as np
 
 from openmc import Mesh
-from openmc.constants import *
 from openmc.checkvalue import check_type, check_iterable_type, \
-                              check_greater_than
+                              check_greater_than, _isinstance
+
+_FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
+                 'mesh', 'energy', 'energyout', 'distribcell']
 
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only tally
@@ -109,7 +111,7 @@ class Filter(object):
     def type(self, type):
         if type is None:
             self._type = type
-        elif type not in FILTER_TYPES.values():
+        elif type not in _FILTER_TYPES:
             msg = 'Unable to set Filter type to "{0}" since it is not one ' \
                   'of the supported types'.format(type)
             raise ValueError(msg)
@@ -126,7 +128,7 @@ class Filter(object):
             raise ValueError(msg)
 
         # If the bin edge is a single value, it is a Cell, Material, etc. ID
-        if not isinstance(bins, Iterable):
+        if not _isinstance(bins, Iterable):
             bins = [bins]
 
         # If the bins are in a collection, convert it to a list
@@ -141,7 +143,7 @@ class Filter(object):
 
         elif self._type in ['energy', 'energyout']:
             for edge in bins:
-                if not isinstance(edge, Real):
+                if not _isinstance(edge, Real):
                     msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
                           'since it is a non-integer or floating point ' \
                           'value'.format(edge, self.type)
@@ -165,7 +167,7 @@ class Filter(object):
                 msg = 'Unable to add bins "{0}" to a mesh Filter since ' \
                       'only a single mesh can be used per tally'.format(bins)
                 raise ValueError(msg)
-            elif not isinstance(bins[0], Integral):
+            elif not _isinstance(bins[0], Integral):
                 msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
                        'is a non-integer'.format(bins[0])
                 raise ValueError(msg)

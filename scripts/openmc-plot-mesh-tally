@@ -33,7 +33,7 @@ class MeshPlotter(tk.Frame):
 
         self.labels = {'cell': 'Cell:', 'cellborn': 'Cell born:',
                        'surface': 'Surface:', 'material': 'Material:',
-                       'universe': 'Universe:', 'energyin': 'Energy in:',
+                       'universe': 'Universe:', 'energy': 'Energy in:',
                        'energyout': 'Energy out:'}
 
         self.filterBoxes = {}
@@ -180,9 +180,9 @@ class MeshPlotter(tk.Frame):
             self.filterBoxes[filterType] = combobox
 
             # Set combobox items
-            if filterType in ['energyin', 'energyout']:
+            if filterType in ['energy', 'energyout']:
                 combobox['values'] = ['{0} to {1}'.format(*f.bins[i:i+2])
-                                      for i in range(f.length)]
+                                      for i in range(len(f.bins) - 1)]
             else:
                 combobox['values'] = [str(i) for i in f.bins]
 
@@ -213,8 +213,13 @@ class MeshPlotter(tk.Frame):
             if f.type == 'mesh':
                 mesh_filter = f
                 continue
-            index = self.filterBoxes[f.type].current()
-            spec_list.append((f.type, (index,)))
+            elif f.type in ['energy', 'energyout']:
+                index = self.filterBoxes[f.type].current()
+                ebin = (f.bins[index], f.bins[index + 1])
+                spec_list.append((f.type, (ebin,)))
+            else:
+                index = self.filterBoxes[f.type].current()
+                spec_list.append((f.type, (index,)))
 
         text = self.basisBox.get()
         if text == 'xy':
@@ -268,8 +273,6 @@ class MeshPlotter(tk.Frame):
     def get_file_data(self, filename):
         # Create StatePoint object and read in data
         self.datafile = StatePoint(filename)
-        self.datafile.read_results()
-        self.datafile.compute_stdev()
 
         # Find which tallies are mesh tallies
         self.meshTallies = []

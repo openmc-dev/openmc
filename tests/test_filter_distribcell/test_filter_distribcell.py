@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+import glob
 import hashlib
+import os
 import sys
 
 sys.path.insert(0, '..')
@@ -67,9 +69,8 @@ class DistribcellTestHarness(TestHarness):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
         assert len(statepoint) == 1, 'Either multiple or no statepoint files ' \
              'exist.'
-        assert statepoint[0].endswith('binary') \
-             or statepoint[0].endswith('h5'), \
-             'Statepoint file is not a binary or hdf5 file.'
+        assert statepoint[0].endswith('h5'), \
+             'Statepoint file is not a HDF5 file.'
         if tallies_out_present:
             assert os.path.exists(os.path.join(os.getcwd(), 'tallies.out')), \
                  'Tally output file does not exist.'

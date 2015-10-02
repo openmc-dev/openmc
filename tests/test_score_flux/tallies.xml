@@ -6,4 +6,16 @@
     <scores>flux</scores>
   </tally>
 
+  <tally id="2">
+    <filter type="cell" bins="21 22 23 27 28 29" />
+    <scores>flux</scores>
+    <estimator>analog</estimator>
+  </tally>
+
+  <tally id="3">
+    <filter type="cell" bins="21 22 23 27 28 29" />
+    <scores>flux</scores>
+    <estimator>collision</estimator>
+  </tally>
+
 </tallies>

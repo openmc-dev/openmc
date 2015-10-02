@@ -297,40 +297,40 @@ def get_openmc_surface(opencg_surface):
         boundary = 'transmission'
 
     if opencg_surface.type == 'plane':
-        A = opencg_surface._coeffs['A']
-        B = opencg_surface._coeffs['B']
-        C = opencg_surface._coeffs['C']
-        D = opencg_surface._coeffs['D']
+        A = opencg_surface.coeffs['A']
+        B = opencg_surface.coeffs['B']
+        C = opencg_surface.coeffs['C']
+        D = opencg_surface.coeffs['D']
         openmc_surface = openmc.Plane(surface_id, boundary, A, B, C, D, name)
 
     elif opencg_surface.type == 'x-plane':
-        x0 = opencg_surface._coeffs['x0']
+        x0 = opencg_surface.coeffs['x0']
         openmc_surface = openmc.XPlane(surface_id, boundary, x0, name)
 
     elif opencg_surface.type == 'y-plane':
-        y0 = opencg_surface._coeffs['y0']
+        y0 = opencg_surface.coeffs['y0']
         openmc_surface = openmc.YPlane(surface_id, boundary, y0, name)
 
     elif opencg_surface.type == 'z-plane':
-        z0 = opencg_surface._coeffs['z0']
+        z0 = opencg_surface.coeffs['z0']
         openmc_surface = openmc.ZPlane(surface_id, boundary, z0, name)
 
     elif opencg_surface.type == 'x-cylinder':
-        y0 = opencg_surface._coeffs['y0']
-        z0 = opencg_surface._coeffs['z0']
-        R = opencg_surface._coeffs['R']
+        y0 = opencg_surface.coeffs['y0']
+        z0 = opencg_surface.coeffs['z0']
+        R = opencg_surface.coeffs['R']
         openmc_surface = openmc.XCylinder(surface_id, boundary, y0, z0, R, name)
 
     elif opencg_surface.type == 'y-cylinder':
-        x0 = opencg_surface._coeffs['x0']
-        z0 = opencg_surface._coeffs['z0']
-        R = opencg_surface._coeffs['R']
+        x0 = opencg_surface.coeffs['x0']
+        z0 = opencg_surface.coeffs['z0']
+        R = opencg_surface.coeffs['R']
         openmc_surface = openmc.YCylinder(surface_id, boundary, x0, z0, R, name)
 
     elif opencg_surface.type == 'z-cylinder':
-        x0 = opencg_surface._coeffs['x0']
-        y0 = opencg_surface._coeffs['y0']
-        R = opencg_surface._coeffs['R']
+        x0 = opencg_surface.coeffs['x0']
+        y0 = opencg_surface.coeffs['y0']
+        R = opencg_surface.coeffs['R']
         openmc_surface = openmc.ZCylinder(surface_id, boundary, x0, y0, R, name)
 
     else:
@@ -384,9 +384,9 @@ def get_compatible_opencg_surfaces(opencg_surface):
     boundary = opencg_surface.boundary_type
 
     if opencg_surface.type == 'x-squareprism':
-        y0 = opencg_surface._coeffs['y0']
-        z0 = opencg_surface._coeffs['z0']
-        R = opencg_surface._coeffs['R']
+        y0 = opencg_surface.coeffs['y0']
+        z0 = opencg_surface.coeffs['z0']
+        R = opencg_surface.coeffs['R']
 
         # Create a list of the four planes we need
         left = opencg.YPlane(name=name, boundary=boundary, y0=y0-R)
@@ -396,9 +396,9 @@ def get_compatible_opencg_surfaces(opencg_surface):
         surfaces = [left, right, bottom, top]
 
     elif opencg_surface.type == 'y-squareprism':
-        x0 = opencg_surface._coeffs['x0']
-        z0 = opencg_surface._coeffs['z0']
-        R = opencg_surface._coeffs['R']
+        x0 = opencg_surface.coeffs['x0']
+        z0 = opencg_surface.coeffs['z0']
+        R = opencg_surface.coeffs['R']
 
         # Create a list of the four planes we need
         left = opencg.XPlane(name=name, boundary=boundary, x0=x0-R)
@@ -408,9 +408,9 @@ def get_compatible_opencg_surfaces(opencg_surface):
         surfaces = [left, right, bottom, top]
 
     elif opencg_surface.type == 'z-squareprism':
-        x0 = opencg_surface._coeffs['x0']
-        y0 = opencg_surface._coeffs['y0']
-        R = opencg_surface._coeffs['R']
+        x0 = opencg_surface.coeffs['x0']
+        y0 = opencg_surface.coeffs['y0']
+        R = opencg_surface.coeffs['R']
 
         # Create a list of the four planes we need
         left = opencg.XPlane(name=name, boundary=boundary, x0=x0-R)
@@ -631,12 +631,12 @@ def make_opencg_cells_compatible(opencg_universe):
         raise ValueError(msg)
 
     # Check all OpenCG Cells in this Universe for compatibility with OpenMC
-    opencg_cells = opencg_universe._cells
+    opencg_cells = opencg_universe.cells
 
     for cell_id, opencg_cell in opencg_cells.items():
 
         # Check each of the OpenCG Surfaces for OpenMC compatibility
-        surfaces = opencg_cell._surfaces
+        surfaces = opencg_cell.surfaces
 
         for surface_id in surfaces:
             surface = surfaces[surface_id][0]
@@ -717,7 +717,7 @@ def get_openmc_cell(opencg_cell):
         translation = np.asarray(opencg_cell.translation, dtype=np.float64)
         openmc_cell.setTranslation(translation)
 
-    surfaces = opencg_cell._surfaces
+    surfaces = opencg_cell.surfaces
 
     for surface_id in surfaces:
         surface = surfaces[surface_id][0]
@@ -815,7 +815,7 @@ def get_openmc_universe(opencg_universe):
     openmc_universe = openmc.Universe(universe_id, name)
 
     # Convert all OpenCG Cells in this Universe to OpenMC Cells
-    opencg_cells = opencg_universe._cells
+    opencg_cells = opencg_universe.cells
 
     for cell_id, opencg_cell in opencg_cells.items():
         openmc_cell = get_openmc_cell(opencg_cell)

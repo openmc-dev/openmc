@@ -9,7 +9,7 @@ module tally
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
                               get_mesh_indices, mesh_indices_to_bin, &
                               mesh_intersects_2d, mesh_intersects_3d
-  use mesh_header,      only: StructuredMesh
+  use mesh_header,      only: RegularMesh
   use output,           only: header
   use particle_header,  only: LocalCoord, Particle
   use search,           only: binary_search
@@ -170,10 +170,34 @@ contains
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-        ! For scattering production, we need to use the post-collision
-        ! weight as the estimate for the number of neutrons exiting a
-        ! reaction with neutrons in the exit channel
-        score = p % wgt
+        ! For scattering production, we need to use the pre-collision
+        ! weight times the multiplicity as the estimate for the number of
+        ! neutrons exiting a reaction with neutrons in the exit channel
+        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          ! Don't waste time on very common reactions we know have multiplicities
+          ! of one.
+          score = p % last_wgt
+        else
+          do m = 1, nuclides(p % event_nuclide) % n_reaction
+            ! Check if this is the desired MT
+            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+              ! Found the reaction, set our pointer and move on with life
+              rxn => nuclides(p % event_nuclide) % reactions(m)
+              exit
+            end if
+          end do
+
+          ! Get multiplicity and apply to score
+          if (rxn % multiplicity_with_E) then
+            ! Then the multiplicity was already incorporated in to p % wgt
+            ! per the scattering routine,
+            score = p % wgt
+          else
+            ! Grab the multiplicity from the rxn
+            score = p % last_wgt * rxn % multiplicity
+          end if
+        end if
 
 
       case (SCORE_NU_SCATTER_PN)
@@ -183,10 +207,34 @@ contains
           i = i + t % moment_order(i)
           cycle SCORE_LOOP
         end if
-        ! For scattering production, we need to use the post-collision
-        ! weight as the estimate for the number of neutrons exiting a
-        ! reaction with neutrons in the exit channel
-        score = p % wgt
+        ! For scattering production, we need to use the pre-collision
+        ! weight times the multiplicity as the estimate for the number of
+        ! neutrons exiting a reaction with neutrons in the exit channel
+        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          ! Don't waste time on very common reactions we know have multiplicities
+          ! of one.
+          score = p % last_wgt
+        else
+          do m = 1, nuclides(p % event_nuclide) % n_reaction
+            ! Check if this is the desired MT
+            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+              ! Found the reaction, set our pointer and move on with life
+              rxn => nuclides(p % event_nuclide) % reactions(m)
+              exit
+            end if
+          end do
+
+          ! Get multiplicity and apply to score
+          if (rxn % multiplicity_with_E) then
+            ! Then the multiplicity was already incorporated in to p % wgt
+            ! per the scattering routine,
+            score = p % wgt
+          else
+            ! Grab the multiplicity from the rxn
+            score = p % last_wgt * rxn % multiplicity
+          end if
+        end if
 
 
       case (SCORE_NU_SCATTER_YN)
@@ -196,10 +244,34 @@ contains
           i = i + (t % moment_order(i) + 1)**2 - 1
           cycle SCORE_LOOP
         end if
-        ! For scattering production, we need to use the post-collision
-        ! weight as the estimate for the number of neutrons exiting a
-        ! reaction with neutrons in the exit channel
-        score = p % wgt
+        ! For scattering production, we need to use the pre-collision
+        ! weight times the multiplicity as the estimate for the number of
+        ! neutrons exiting a reaction with neutrons in the exit channel
+        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          ! Don't waste time on very common reactions we know have multiplicities
+          ! of one.
+          score = p % last_wgt
+        else
+          do m = 1, nuclides(p % event_nuclide) % n_reaction
+            ! Check if this is the desired MT
+            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+              ! Found the reaction, set our pointer and move on with life
+              rxn => nuclides(p % event_nuclide) % reactions(m)
+              exit
+            end if
+          end do
+
+          ! Get multiplicity and apply to score
+          if (rxn % multiplicity_with_E) then
+            ! Then the multiplicity was already incorporated in to p % wgt
+            ! per the scattering routine,
+            score = p % wgt
+          else
+            ! Grab the multiplicity from the rxn
+            score = p % last_wgt * rxn % multiplicity
+          end if
+        end if
 
 
       case (SCORE_TRANSPORT)
@@ -360,6 +432,19 @@ contains
         ! Simply count number of scoring events
         score = ONE
 
+      case (ELASTIC)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          ! Check if event MT matches
+          if (p % event_MT /= ELASTIC) cycle SCORE_LOOP
+          score = p % last_wgt
+
+        else
+          if (i_nuclide > 0) then
+            score = micro_xs(i_nuclide) % elastic * atom_density * flux
+          else
+            score = material_xs % elastic * flux
+          end if
+        end if
 
       case default
         if (t % estimator == ESTIMATOR_ANALOG) then
@@ -908,7 +993,7 @@ contains
     logical :: start_in_mesh        ! starting coordinates inside mesh?
     logical :: end_in_mesh          ! ending coordinates inside mesh?
     type(TallyObject),    pointer :: t
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
     type(Material),       pointer :: mat
 
     t => tallies(i_tally)
@@ -1249,7 +1334,7 @@ contains
     integer :: offset ! offset for distribcell
     real(8) :: E ! particle energy
     type(TallyObject),    pointer :: t
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
 
     found_bin = .true.
     t => tallies(i_tally)
@@ -1402,7 +1487,7 @@ contains
     logical :: y_same               ! same starting/ending y index (j)
     logical :: z_same               ! same starting/ending z index (k)
     type(TallyObject),    pointer :: t
-    type(StructuredMesh), pointer :: m
+    type(RegularMesh), pointer :: m
 
     TALLY_LOOP: do i = 1, active_current_tallies % size()
       ! Copy starting and ending location of particle

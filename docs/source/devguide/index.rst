@@ -16,5 +16,4 @@ as debugging.
     styleguide
     workflow
     xml-parsing
-    voxel
     docbuild

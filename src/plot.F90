@@ -5,7 +5,9 @@ module plot
   use geometry,        only: find_cell, check_cell_overlap
   use geometry_header, only: Cell, BASE_UNIVERSE
   use global
+  use hdf5_interface
   use mesh,            only: get_mesh_indices
+  use mesh_header,     only: RegularMesh
   use output,          only: write_message
   use particle_header, only: Particle, LocalCoord
   use plot_header
@@ -13,6 +15,8 @@ module plot
                              deallocate_image, set_pixel
   use progress_header, only: ProgressBar
   use string,          only: to_str
+
+  use hdf5
 
   implicit none
 
@@ -212,7 +216,7 @@ contains
     real(8) :: xyz_ur_plot(3)  ! upper right xyz of plot image
     real(8) :: xyz_ll(3)  ! lower left xyz
     real(8) :: xyz_ur(3)  ! upper right xyz
-    type(StructuredMesh), pointer :: m => null()
+    type(RegularMesh), pointer :: m
 
     m => pl % meshlines_mesh
 
@@ -305,25 +309,26 @@ contains
 
     integer :: i ! loop index for height
     integer :: j ! loop index for width
+    integer :: unit_plot
 
     ! Open PPM file for writing
-    open(UNIT=UNIT_PLOT, FILE=pl % path_plot)
+    open(NEWUNIT=unit_plot, FILE=pl % path_plot)
 
     ! Write header
-    write(UNIT_PLOT, '(A2)') 'P6'
-    write(UNIT_PLOT, '(I0,'' '',I0)') img%width, img%height
-    write(UNIT_PLOT, '(A)') '255'
+    write(unit_plot, '(A2)') 'P6'
+    write(unit_plot, '(I0,'' '',I0)') img%width, img%height
+    write(unit_plot, '(A)') '255'
 
     ! Write color for each pixel
     do j = 1, img % height
       do i = 1, img % width
-        write(UNIT_PLOT, '(3A1)', advance='no') achar(img%red(i,j)), &
+        write(unit_plot, '(3A1)', advance='no') achar(img%red(i,j)), &
              achar(img%green(i,j)), achar(img%blue(i,j))
       end do
     end do
 
     ! Close plot file
-    close(UNIT=UNIT_PLOT)
+    close(UNIT=unit_plot)
 
   end subroutine output_ppm
 
@@ -346,10 +351,20 @@ contains
     integer :: x, y, z      ! voxel location indices
     integer :: rgb(3)       ! colors (red, green, blue) from 0-255
     integer :: id           ! id of cell or material
+    integer :: hdf5_err
+    integer, target :: data(pl%pixels(3),pl%pixels(2))
+    integer(HID_T) :: file_id
+    integer(HID_T) :: dspace
+    integeR(HID_T) :: memspace
+    integer(HID_T) :: dset
+    integer(HSIZE_T) :: dims(3)
+    integer(HSIZE_T) :: dims_slab(3)
+    integer(HSIZE_T) :: offset(3)
     real(8) :: vox(3)       ! x, y, and z voxel widths
     real(8) :: ll(3)        ! lower left starting point for each sweep direction
     type(Particle)    :: p
     type(ProgressBar) :: progress
+    type(c_ptr) :: f_ptr
 
     ! compute voxel widths in each direction
     vox = pl % width/dble(pl % pixels)
@@ -364,11 +379,30 @@ contains
     p % coord(1) % universe = BASE_UNIVERSE
 
     ! Open binary plot file for writing
-    open(UNIT=UNIT_PLOT, FILE=pl % path_plot, STATUS='replace', &
-         ACCESS='stream')
+    file_id = file_create(pl%path_plot)
 
     ! write plot header info
-    write(UNIT_PLOT) pl % pixels, vox, ll
+    call write_dataset(file_id, "filetype", 'voxel')
+    call write_dataset(file_id, "num_voxels", pl%pixels)
+    call write_dataset(file_id, "voxel_width", vox)
+    call write_dataset(file_id, "lower_left", ll)
+
+    ! Create dataset for voxel data -- note that the dimensions are reversed
+    ! since we want the order in the file to be z, y, x
+    dims(:) = [pl%pixels(3), pl%pixels(2), pl%pixels(1)]
+    call h5screate_simple_f(3, dims, dspace, hdf5_err)
+    call h5dcreate_f(file_id, "data", H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
+
+    ! Create another dataspace for 2D array in memory
+    dims_slab(1) = pl%pixels(3)
+    dims_slab(2) = pl%pixels(2)
+    dims_slab(3) = 1
+    call h5screate_simple_f(2, dims_slab(1:2), memspace, hdf5_err)
+
+    ! Initialize offset and get pointer to data
+    offset(:) = 0
+    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims_slab, hdf5_err)
+    f_ptr = c_loc(data)
 
     ! move to center of voxels
     ll = ll + vox / TWO
@@ -377,22 +411,19 @@ contains
       call progress % set_value(dble(x)/dble(pl % pixels(1))*100)
       do y = 1, pl % pixels(2)
         do z = 1, pl % pixels(3)
-
           ! get voxel color
           call position_rgb(p, pl, rgb, id)
 
           ! write to plot file
-          write(UNIT_PLOT) id
+          data(z,y) = id
 
           ! advance particle in z direction
           p % coord(1) % xyz(3) = p % coord(1) % xyz(3) + vox(3)
-
         end do
 
         ! advance particle in y direction
         p % coord(1) % xyz(2) = p % coord(1) % xyz(2) + vox(2)
         p % coord(1) % xyz(3) = ll(3)
-
       end do
 
       ! advance particle in y direction
@@ -400,9 +431,17 @@ contains
       p % coord(1) % xyz(2) = ll(2)
       p % coord(1) % xyz(3) = ll(3)
 
+      ! Write to HDF5 dataset
+      offset(3) = x - 1
+      call h5soffset_simple_f(dspace, offset, hdf5_err)
+      call h5dwrite_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, &
+           mem_space_id=memspace, file_space_id=dspace)
     end do
 
-    close(UNIT_PLOT)
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+    call h5sclose_f(memspace, hdf5_err)
+    call file_close(file_id)
 
   end subroutine create_3d_dump
 

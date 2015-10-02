@@ -8,11 +8,9 @@ Normally, source data is stored in a state point file. However, it is possible
 to request that the source be written separately, in which case the format used
 is that documented here.
 
-**/filetype** (*int*)
+**/filetype** (*char[]*)
 
-    Flags what type of file this is. A value of -1 indicates a statepoint file,
-    a value of -2 indicates a particle restart file, a value of -3 indicates a
-    source file, and a value of -4 indicates a track file.
+    String indicating the type of file.
 
 **/source_bank** (Compound type)
 

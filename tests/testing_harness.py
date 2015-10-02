@@ -94,7 +94,6 @@ class TestHarness(object):
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)
-        sp.read_results()
 
         # Write out k-combined.
         outstr = 'k-combined:\n'
@@ -104,11 +103,11 @@ class TestHarness(object):
         # Write out tally data.
         if self._tallies:
             tally_num = 1
-            for tally_ind in sp._tallies:
-                tally = sp._tallies[tally_ind]
-                results = np.zeros((tally._sum.size*2, ))
-                results[0::2] = tally._sum.ravel()
-                results[1::2] = tally._sum_sq.ravel()
+            for tally_ind in sp.tallies:
+                tally = sp.tallies[tally_ind]
+                results = np.zeros((tally.sum.size*2, ))
+                results[0::2] = tally.sum.ravel()
+                results[1::2] = tally.sum_sq.ravel()
                 results = ['{0:12.6E}'.format(x) for x in results]
 
                 outstr += 'tally ' + str(tally_num) + ':\n'
@@ -207,26 +206,25 @@ class CMFDTestHarness(TestHarness):
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)
-        sp.read_results()
 
         # Write out the eigenvalue and tallies.
         outstr = TestHarness._get_results(self)
 
         # Write out CMFD data.
         outstr += 'cmfd indices\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_indices])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_indices])
         outstr += '\nk cmfd\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._k_cmfd])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.k_cmfd])
         outstr += '\ncmfd entropy\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_entropy])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_entropy])
         outstr += '\ncmfd balance\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_balance])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_balance])
         outstr += '\ncmfd dominance ratio\n'
-        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in sp._cmfd_dominance])
+        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in sp.cmfd_dominance])
         outstr += '\ncmfd openmc source comparison\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_srccmp])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_srccmp])
         outstr += '\ncmfd source\n'
-        cmfdsrc = np.reshape(sp._cmfd_src, np.product(sp._cmfd_indices),
+        cmfdsrc = np.reshape(sp.cmfd_src, np.product(sp.cmfd_indices),
                              order='F')
         outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
         outstr += '\n'
@@ -259,7 +257,7 @@ class ParticleRestartTestHarness(TestHarness):
         outstr += 'particle id:\n'
         outstr += "{0:12.6E}\n".format(p.id)
         outstr += 'run mode:\n'
-        outstr += "{0:12.6E}\n".format(p.run_mode)
+        outstr += "{0}\n".format(p.run_mode)
         outstr += 'particle weight:\n'
         outstr += "{0:12.6E}\n".format(p.weight)
         outstr += 'particle energy:\n'

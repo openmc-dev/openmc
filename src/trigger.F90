@@ -9,6 +9,7 @@ module trigger
   use string,           only: to_str
   use output,           only: warning, write_message
   use mesh,             only: mesh_indices_to_bin
+  use mesh_header,      only: RegularMesh
   use trigger_header,   only: TriggerObject
   use tally,            only: TallyObject
 
@@ -315,7 +316,7 @@ contains
     real(8) :: std_dev  = ZERO      ! temporary standard deviration of result
     type(TallyObject), pointer    :: t        ! surface current tally
     type(TriggerObject)           :: trigger  ! surface current tally trigger
-    type(StructuredMesh), pointer :: m        ! surface current mesh
+    type(RegularMesh), pointer :: m        ! surface current mesh
 
     ! Get pointer to mesh
     i_filter_mesh = t % find_filter(FILTER_MESH)

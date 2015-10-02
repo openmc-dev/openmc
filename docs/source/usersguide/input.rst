@@ -79,14 +79,13 @@ Message                   Description
 [VALID]                   XML file matches RelaxNG.
 ========================  ===================================
 
-As an example, if OpenMC is installed in the directory
-``/opt/openmc/0.6.2`` and the current working directory is where
-OpenMC XML input files are located, they can be validated using
-the following command:
+As an example, if OpenMC is installed in the directory ``/opt/openmc/`` and the
+current working directory is where OpenMC XML input files are located, they can
+be validated using the following command:
 
 .. code-block:: bash
 
-   /opt/openmc/0.6.2/bin/xml_validate
+   /opt/openmc/bin/openmc-validate-xml
 
 --------------------------------------
 Settings Specification -- settings.xml
@@ -1427,8 +1426,7 @@ a separate element with the tag name ``<mesh>``. This element has the following
 attributes/sub-elements:
 
   :type:
-    The type of structured mesh. Valid options include "rectangular" and
-    "hexagonal".
+    The type of structured mesh. The only valid option is "regular".
 
   :dimension:
     The number of mesh cells in each direction.
@@ -1530,16 +1528,16 @@ sub-elements:
     *Default*: None - Required entry
 
   :type:
-    Keyword for type of plot to be produced. Currently only "slice" and
-    "voxel" plots are implemented. The "slice" plot type creates 2D pixel
-    maps saved in the PPM file format. PPM files can be displayed in most
-    viewers (e.g. the default Gnome viewer, IrfanView, etc.).  The "voxel"
-    plot type produces a binary datafile containing voxel grid positioning and
-    the cell or material (specified by the ``color`` tag) at the center of each
-    voxel. These datafiles can be processed into 3D SILO files using the
-    ``voxel.py`` utility provided with the OpenMC source, and subsequently
-    viewed with a 3D viewer such as VISIT or Paraview. See the
-    :ref:`devguide_voxel` for information about the datafile structure.
+    Keyword for type of plot to be produced. Currently only "slice" and "voxel"
+    plots are implemented. The "slice" plot type creates 2D pixel maps saved in
+    the PPM file format. PPM files can be displayed in most viewers (e.g. the
+    default Gnome viewer, IrfanView, etc.).  The "voxel" plot type produces a
+    binary datafile containing voxel grid positioning and the cell or material
+    (specified by the ``color`` tag) at the center of each voxel. These
+    datafiles can be processed into 3D SILO files using the
+    ``openmc-voxel-to-silovtk`` utility provided with the OpenMC source, and
+    subsequently viewed with a 3D viewer such as VISIT or Paraview. See the
+    :ref:`usersguide_voxel` for information about the datafile structure.
 
     .. note:: Since the PPM format is saved without any kind of compression,
               the resulting file sizes can be quite large.  Saving the image in

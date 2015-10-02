@@ -5,9 +5,11 @@ from numbers import Real, Integral
 import numpy as np
 
 from openmc import Mesh
-from openmc.constants import *
 from openmc.checkvalue import check_type, check_iterable_type, \
                               check_greater_than, _isinstance
+
+_FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
+                 'mesh', 'energy', 'energyout', 'distribcell']
 
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only tally
@@ -109,7 +111,7 @@ class Filter(object):
     def type(self, type):
         if type is None:
             self._type = type
-        elif type not in FILTER_TYPES.values():
+        elif type not in _FILTER_TYPES:
             msg = 'Unable to set Filter type to "{0}" since it is not one ' \
                   'of the supported types'.format(type)
             raise ValueError(msg)

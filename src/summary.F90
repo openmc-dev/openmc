@@ -186,6 +186,7 @@ contains
           region_spec = trim(region_spec) // " )"
         case (OP_COMPLEMENT)
           region_spec = trim(region_spec) // " ~"
+        case (OP_INTERSECTION)
         case (OP_UNION)
           region_spec = trim(region_spec) // " ^"
         case default

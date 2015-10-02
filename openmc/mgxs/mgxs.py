@@ -1738,9 +1738,11 @@ class Chi(MultiGroupXS):
         nu_fission_in.remove_filter(energy_filter)
 
         # Compute chi
+        self._xs_tally = nu_fission_out / nu_fission_in
+
+        # Add the coarse energy filter back to the nu-fission tally
         nu_fission_in.add_filter(energy_filter)
 
-        self._xs_tally = nu_fission_out / nu_fission_in
         super(Chi, self).compute_xs()
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',

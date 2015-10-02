@@ -467,8 +467,6 @@ def get_opencg_cell(openmc_cell):
 
     fill = openmc_cell.fill
 
-    print(openmc_cell.fill_type)
-
     if (openmc_cell.fill_type == 'material'):
         opencg_cell.fill = get_opencg_material(fill)
     elif (openmc_cell.fill_type == 'universe'):
@@ -717,7 +715,7 @@ def get_openmc_cell(opencg_cell):
 
     if opencg_cell.translation:
         translation = np.asarray(opencg_cell.translation, dtype=np.float64)
-        openmc_cell.setTranslation(translation)
+        openmc_cell.translation = translation
 
     surfaces = opencg_cell.surfaces
 
@@ -894,14 +892,14 @@ def get_opencg_lattice(openmc_lattice):
                 universe_array[z][y][x] = unique_universes[universe_id]
 
     opencg_lattice = opencg.Lattice(lattice_id, name)
-    opencg_lattice.setDimension(dimension)
-    opencg_lattice.setWidth(pitch)
-    opencg_lattice.setUniverses(universe_array)
+    opencg_lattice.dimension = dimension
+    opencg_lattice.width = pitch
+    opencg_lattice.universes = universe_array
 
     offset = np.array(lower_left, dtype=np.float64) - \
              ((np.array(pitch, dtype=np.float64) *
                np.array(dimension, dtype=np.float64))) / -2.0
-    opencg_lattice.setOffset(offset)
+    opencg_lattice.offset = offset
 
     # Add the OpenMC Lattice to the global collection of all OpenMC Lattices
     OPENMC_LATTICES[lattice_id] = openmc_lattice

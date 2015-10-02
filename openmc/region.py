@@ -67,7 +67,8 @@ class Region(object):
             else:
                 # Check for invalid characters
                 if expression[i] not in '-0123456789':
-                    raise SyntaxError('Invalid character in expression')
+                    raise SyntaxError("Invalid character '{}' in expression"
+                                      .format(expression[i]))
 
                 # If we haven't yet reached the start of a word, start one
                 if i_start < 0:

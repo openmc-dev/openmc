@@ -179,21 +179,19 @@ contains
       region_spec = ""
       do j = 1, size(c%region)
         k = c%region(j)
-        if (k < OP_UNION) then
+        select case(k)
+        case (OP_LEFT_PAREN)
+          region_spec = trim(region_spec) // " ("
+        case (OP_RIGHT_PAREN)
+          region_spec = trim(region_spec) // " )"
+        case (OP_COMPLEMENT)
+          region_spec = trim(region_spec) // " ~"
+        case (OP_UNION)
+          region_spec = trim(region_spec) // " ^"
+        case default
           region_spec = trim(region_spec) // " " // to_str(&
                sign(surfaces(abs(k))%obj%id, k))
-        else
-          select case(k)
-          case (OP_LEFT_PAREN)
-            region_spec = trim(region_spec) // " ("
-          case (OP_RIGHT_PAREN)
-            region_spec = trim(region_spec) // " )"
-          case (OP_COMPLEMENT)
-            region_spec = trim(region_spec) // " ~"
-          case (OP_UNION)
-            region_spec = trim(region_spec) // " ^"
-          end select
-        end if
+        end select
       end do
       call write_dataset(cell_group, "region", adjustl(region_spec))
 

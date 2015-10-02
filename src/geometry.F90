@@ -83,7 +83,6 @@ contains
 
     integer :: i
     integer :: token
-    logical :: b1, b2
     integer :: i_stack
     logical :: actual_sense    ! sense of particle wrt surface
     logical :: stack(size(c%rpn))
@@ -91,7 +90,20 @@ contains
     i_stack = 0
     do i = 1, size(c%rpn)
       token = c%rpn(i)
-      if (token < OP_UNION) then
+
+      ! If the token is a binary operator (intersection/union), apply it to
+      ! the last two items on the stack. If the token is a unary operator
+      ! (complement), apply it to the last item on the stack.
+      select case (token)
+      case (OP_UNION)
+        stack(i_stack - 1) = stack(i_stack - 1) .or. stack(i_stack)
+        i_stack = i_stack - 1
+      case (OP_INTERSECTION)
+        stack(i_stack - 1) = stack(i_stack - 1) .and. stack(i_stack)
+        i_stack = i_stack - 1
+      case (OP_COMPLEMENT)
+        stack(i_stack) = .not. stack(i_stack)
+      case default
         ! If the token is not an operator, evaluate the sense of particle with
         ! respect to the surface and see if the token matches the sense. If the
         ! particle's surface attribute is set and matches the token, that
@@ -106,24 +118,7 @@ contains
                p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
           stack(i_stack) = (actual_sense .eqv. (token > 0))
         end if
-      else
-        ! If the token is a binary operator (intersection/union), apply it to
-        ! the last two items on the stack. If the token is a unary operator
-        ! (complement), apply it to the last item on the stack.
-        b1 = stack(i_stack)
-        select case (token)
-        case (OP_UNION)
-          b2 = stack(i_stack - 1)
-          stack(i_stack - 1) = b1 .or. b2
-          i_stack = i_stack - 1
-        case (OP_INTERSECTION)
-          b2 = stack(i_stack - 1)
-          stack(i_stack - 1) = b1 .and. b2
-          i_stack = i_stack - 1
-        case (OP_COMPLEMENT)
-          stack(i_stack) = .not. b1
-        end select
-      end if
+      end select
     end do
 
     if (i_stack == 1) then
@@ -630,11 +625,11 @@ contains
       ! FIND MINIMUM DISTANCE TO SURFACE IN THIS CELL
 
       SURFACE_LOOP: do i = 1, size(cl%region)
-        ! check for operators
         index_surf = cl%region(i)
         coincident = (index_surf == p % surface)
 
-        ! check for operators
+        ! ignore this token if it corresponds to an operator rather than a
+        ! region.
         index_surf = abs(index_surf)
         if (index_surf >= OP_UNION) cycle
 
@@ -642,7 +637,7 @@ contains
         surf => surfaces(index_surf)%obj
         d = surf%distance(p%coord(j)%xyz, p%coord(j)%uvw, coincident)
 
-        ! Check is calculated distance is new minimum
+        ! Check if calculated distance is new minimum
         if (d < d_surf) then
           if (abs(d - d_surf)/d_surf >= FP_PRECISION) then
             d_surf = d
@@ -899,8 +894,11 @@ contains
       do j = 1, size(c%region)
         i_surface = c % region(j)
         positive = (i_surface > 0)
+
+        ! Skip any tokens that correspond to operators rather than regions
         i_surface = abs(i_surface)
         if (i_surface >= OP_UNION) cycle
+
         if (positive) then
           count_positive(i_surface) = count_positive(i_surface) + 1
         else
@@ -930,6 +928,8 @@ contains
       do j = 1, size(c%region)
         i_surface = c % region(j)
         positive = (i_surface > 0)
+
+        ! Skip any tokens that correspond to operators rather than regions
         i_surface = abs(i_surface)
         if (i_surface >= OP_UNION) cycle
 

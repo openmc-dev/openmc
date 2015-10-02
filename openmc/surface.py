@@ -287,7 +287,7 @@ class XPlane(Plane):
 
     @property
     def x0(self):
-        return self.coeff['x0']
+        return self._coeffs['x0']
 
     @x0.setter
     def x0(self, x0):

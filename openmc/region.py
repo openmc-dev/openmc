@@ -83,16 +83,19 @@ class Region(object):
             else:
                 tokens.append(surfaces[abs(j)].positive)
 
-        # This function is used below to apply an operator to operands on the
+        # The functions below are used to apply an operator to operands on the
         # output queue during the shunting yard algorithm.
+        def can_be_combined(region):
+            return isinstance(region, Complement) or hasattr(region, 'surface')
+
         def apply_operator(output, operator):
             r2 = output.pop()
             if operator == ' ':
                 r1 = output.pop()
-                if isinstance(r1, Intersection) and hasattr(r2, 'surface'):
+                if isinstance(r1, Intersection) and can_be_combined(r2):
                     r1.nodes.append(r2)
                     output.append(r1)
-                elif isinstance(r2, Intersection) and hasattr(r1, 'surface'):
+                elif isinstance(r2, Intersection) and can_be_combined(r1):
                     r2.nodes.insert(0, r1)
                     output.append(r2)
                 elif isinstance(r1, Intersection) and isinstance(r2, Intersection):
@@ -102,10 +105,10 @@ class Region(object):
                     output.append(Intersection(r1, r2))
             elif operator == '^':
                 r1 = output.pop()
-                if isinstance(r1, Union) and hasattr(r2, 'surface'):
+                if isinstance(r1, Union) and can_be_combined(r2):
                     r1.nodes.append(r2)
                     output.append(r1)
-                elif isinstance(r2, Union) and hasattr(r1, 'surface'):
+                elif isinstance(r2, Union) and can_be_combined(r1):
                     r2.nodes.insert(0, r1)
                     output.append(r2)
                 elif isinstance(r1, Union) and isinstance(r2, Union):

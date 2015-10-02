@@ -282,10 +282,10 @@
           </choice>
           <optional>
             <choice>
-              <element name="outside">
+              <element name="outer">
                 <data type="int"/>
               </element>
-              <attribute name="outside">
+              <attribute name="outer">
                 <data type="int"/>
               </attribute>
             </choice>

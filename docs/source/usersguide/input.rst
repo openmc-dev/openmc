@@ -79,14 +79,13 @@ Message                   Description
 [VALID]                   XML file matches RelaxNG.
 ========================  ===================================
 
-As an example, if OpenMC is installed in the directory
-``/opt/openmc/0.6.2`` and the current working directory is where
-OpenMC XML input files are located, they can be validated using
-the following command:
+As an example, if OpenMC is installed in the directory ``/opt/openmc/`` and the
+current working directory is where OpenMC XML input files are located, they can
+be validated using the following command:
 
 .. code-block:: bash
 
-   /opt/openmc/0.6.2/bin/xml_validate
+   /opt/openmc/bin/openmc-validate-xml
 
 --------------------------------------
 Settings Specification -- settings.xml
@@ -1287,14 +1286,16 @@ The ``<tally>`` element accepts the following sub-elements:
     *Default*: total
 
   :estimator:
-    The estimator element is used to force the use of either ``analog`` or
-    ``tracklength`` tally estimation.  ''analog'' is generally less efficient
-    though it can be used with every score type.  ''tracklength'' is generally
-    the most efficient, though its usage is restricted to tallies that do not
-    score particle information which requires a collision to have occured, such
-    as a scattering tally which utilizes outgoing energy filters.
+    The estimator element is used to force the use of either ``analog``,
+    ``collision``, or ``tracklength`` tally estimation.  ``analog`` is generally
+    the least efficient though it can be used with every score type.
+    ``tracklength`` is generally the most efficient, but neither ``tracklength``
+    nor ``collision`` can be used to score a tally that requires post-collision
+    information.  For example, a scattering tally with outgoing energy filters
+    cannot be used with ``tracklength`` or ``collision`` because the code will
+    not know the outgoing energy distribution.
 
-    *Default*: ``tracklength`` but will revert to analog if necessary.
+    *Default*: ``tracklength`` but will revert to ``analog`` if necessary.
 
   :scores:
     A space-separated list of the desired responses to be accumulated. Accepted
@@ -1305,7 +1306,9 @@ The ``<tally>`` element accepts the following sub-elements:
     physical quantities:
 
     :flux:
-      Total flux in particle-cm per source particle.
+      Total flux in particle-cm per source particle.  Note: The ``analog``
+      estimator is actually identical to the ``collision`` estimator for the
+      flux score.
 
     :total:
       Total reaction rate in reactions per source particle.
@@ -1432,8 +1435,7 @@ a separate element with the tag name ``<mesh>``. This element has the following
 attributes/sub-elements:
 
   :type:
-    The type of structured mesh. Valid options include "rectangular" and
-    "hexagonal".
+    The type of structured mesh. The only valid option is "regular".
 
   :dimension:
     The number of mesh cells in each direction.
@@ -1535,16 +1537,16 @@ sub-elements:
     *Default*: None - Required entry
 
   :type:
-    Keyword for type of plot to be produced. Currently only "slice" and
-    "voxel" plots are implemented. The "slice" plot type creates 2D pixel
-    maps saved in the PPM file format. PPM files can be displayed in most
-    viewers (e.g. the default Gnome viewer, IrfanView, etc.).  The "voxel"
-    plot type produces a binary datafile containing voxel grid positioning and
-    the cell or material (specified by the ``color`` tag) at the center of each
-    voxel. These datafiles can be processed into 3D SILO files using the
-    ``voxel.py`` utility provided with the OpenMC source, and subsequently
-    viewed with a 3D viewer such as VISIT or Paraview. See the
-    :ref:`devguide_voxel` for information about the datafile structure.
+    Keyword for type of plot to be produced. Currently only "slice" and "voxel"
+    plots are implemented. The "slice" plot type creates 2D pixel maps saved in
+    the PPM file format. PPM files can be displayed in most viewers (e.g. the
+    default Gnome viewer, IrfanView, etc.).  The "voxel" plot type produces a
+    binary datafile containing voxel grid positioning and the cell or material
+    (specified by the ``color`` tag) at the center of each voxel. These
+    datafiles can be processed into 3D SILO files using the
+    ``openmc-voxel-to-silovtk`` utility provided with the OpenMC source, and
+    subsequently viewed with a 3D viewer such as VISIT or Paraview. See the
+    :ref:`usersguide_voxel` for information about the datafile structure.
 
     .. note:: Since the PPM format is saved without any kind of compression,
               the resulting file sizes can be quite large.  Saving the image in

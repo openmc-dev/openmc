@@ -117,8 +117,11 @@ class Cell(object):
 
     @name.setter
     def name(self, name):
-        cv.check_type('cell name', name, basestring)
-        self._name = name
+        if name is not None:
+            cv.check_type('cell name', name, basestring)
+            self._name = name
+        else:
+            self._name = None
 
     @fill.setter
     def fill(self, fill):
@@ -438,8 +441,11 @@ class Universe(object):
 
     @name.setter
     def name(self, name):
-        cv.check_type('universe name', name, basestring)
-        self._name = name
+        if name is not None:
+            cv.check_type('universe name', name, basestring)
+            self._name = name
+        else:
+            self._name = None
 
     def add_cell(self, cell):
         """Add a cell to the universe.
@@ -677,8 +683,11 @@ class Lattice(object):
 
     @name.setter
     def name(self, name):
-        cv.check_type('lattice name', name, basestring)
-        self._name = name
+        if name is not None:
+            cv.check_type('lattice name', name, basestring)
+            self._name = name
+        else:
+            self._name = None
 
     @outer.setter
     def outer(self, outer):

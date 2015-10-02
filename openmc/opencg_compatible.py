@@ -83,14 +83,14 @@ def get_opencg_material(openmc_material):
         raise ValueError(msg)
 
     global OPENCG_MATERIALS
-    material_id = openmc_material._id
+    material_id = openmc_material.id
 
     # If this Material was already created, use it
     if material_id in OPENCG_MATERIALS:
         return OPENCG_MATERIALS[material_id]
 
     # Create an OpenCG Material to represent this OpenMC Material
-    name = openmc_material._name
+    name = openmc_material.name
     opencg_material = opencg.Material(material_id=material_id, name=name)
 
     # Add the OpenMC Material to the global collection of all OpenMC Materials
@@ -123,14 +123,14 @@ def get_openmc_material(opencg_material):
         raise ValueError(msg)
 
     global OPENMC_MATERIALS
-    material_id = opencg_material._id
+    material_id = opencg_material.id
 
     # If this Material was already created, use it
     if material_id in OPENMC_MATERIALS:
         return OPENMC_MATERIALS[material_id]
 
     # Create an OpenMC Material to represent this OpenCG Material
-    name = opencg_material._name
+    name = opencg_material.name
     openmc_material = openmc.Material(material_id=material_id, name=name)
 
     # Add the OpenMC Material to the global collection of all OpenMC Materials
@@ -168,8 +168,8 @@ def is_opencg_surface_compatible(opencg_surface):
               'since "{0}" is not a Surface'.format(opencg_surface)
         raise ValueError(msg)
 
-    if opencg_surface._type in ['x-squareprism',
-                                 'y-squareprism', 'z-squareprism']:
+    if opencg_surface.type in ['x-squareprism',
+                               'y-squareprism', 'z-squareprism']:
         return False
     else:
         return True
@@ -196,59 +196,59 @@ def get_opencg_surface(openmc_surface):
         raise ValueError(msg)
 
     global OPENCG_SURFACES
-    surface_id = openmc_surface._id
+    surface_id = openmc_surface.id
 
     # If this Material was already created, use it
     if surface_id in OPENCG_SURFACES:
         return OPENCG_SURFACES[surface_id]
 
     # Create an OpenCG Surface to represent this OpenMC Surface
-    name = openmc_surface._name
+    name = openmc_surface.name
 
     # Correct for OpenMC's syntax for Surfaces dividing Cells
-    boundary = openmc_surface._boundary_type
+    boundary = openmc_surface.boundary_type
     if boundary == 'transmission':
         boundary = 'interface'
 
     opencg_surface = None
 
-    if openmc_surface._type == 'plane':
-        A = openmc_surface._coeffs['A']
-        B = openmc_surface._coeffs['B']
-        C = openmc_surface._coeffs['C']
-        D = openmc_surface._coeffs['D']
+    if openmc_surface.type == 'plane':
+        A = openmc_surface.coeffs['A']
+        B = openmc_surface.coeffs['B']
+        C = openmc_surface.coeffs['C']
+        D = openmc_surface.coeffs['D']
         opencg_surface = opencg.Plane(surface_id, name, boundary, A, B, C, D)
 
-    elif openmc_surface._type == 'x-plane':
-        x0 = openmc_surface._coeffs['x0']
+    elif openmc_surface.type == 'x-plane':
+        x0 = openmc_surface.coeffs['x0']
         opencg_surface = opencg.XPlane(surface_id, name, boundary, x0)
 
-    elif openmc_surface._type == 'y-plane':
-        y0 = openmc_surface._coeffs['y0']
+    elif openmc_surface.type == 'y-plane':
+        y0 = openmc_surface.coeffs['y0']
         opencg_surface = opencg.YPlane(surface_id, name, boundary, y0)
 
-    elif openmc_surface._type == 'z-plane':
-        z0 = openmc_surface._coeffs['z0']
+    elif openmc_surface.type == 'z-plane':
+        z0 = openmc_surface.coeffs['z0']
         opencg_surface = opencg.ZPlane(surface_id, name, boundary, z0)
 
-    elif openmc_surface._type == 'x-cylinder':
-        y0 = openmc_surface._coeffs['y0']
-        z0 = openmc_surface._coeffs['z0']
-        R = openmc_surface._coeffs['R']
+    elif openmc_surface.type == 'x-cylinder':
+        y0 = openmc_surface.coeffs['y0']
+        z0 = openmc_surface.coeffs['z0']
+        R = openmc_surface.coeffs['R']
         opencg_surface = opencg.XCylinder(surface_id, name,
                                             boundary, y0, z0, R)
 
-    elif openmc_surface._type == 'y-cylinder':
-        x0 = openmc_surface._coeffs['x0']
-        z0 = openmc_surface._coeffs['z0']
-        R = openmc_surface._coeffs['R']
+    elif openmc_surface.type == 'y-cylinder':
+        x0 = openmc_surface.coeffs['x0']
+        z0 = openmc_surface.coeffs['z0']
+        R = openmc_surface.coeffs['R']
         opencg_surface = opencg.YCylinder(surface_id, name,
                                             boundary, x0, z0, R)
 
-    elif openmc_surface._type == 'z-cylinder':
-        x0 = openmc_surface._coeffs['x0']
-        y0 = openmc_surface._coeffs['y0']
-        R = openmc_surface._coeffs['R']
+    elif openmc_surface.type == 'z-cylinder':
+        x0 = openmc_surface.coeffs['x0']
+        y0 = openmc_surface.coeffs['y0']
+        R = openmc_surface.coeffs['R']
         opencg_surface = opencg.ZCylinder(surface_id, name,
                                             boundary, x0, y0, R)
 
@@ -282,52 +282,52 @@ def get_openmc_surface(opencg_surface):
         raise ValueError(msg)
 
     global openmc_surface
-    surface_id = opencg_surface._id
+    surface_id = opencg_surface.id
 
     # If this Surface was already created, use it
     if surface_id in OPENMC_SURFACES:
         return OPENMC_SURFACES[surface_id]
 
     # Create an OpenMC Surface to represent this OpenCG Surface
-    name = opencg_surface._name
+    name = opencg_surface.name
 
     # Correct for OpenMC's syntax for Surfaces dividing Cells
-    boundary = opencg_surface._boundary_type
+    boundary = opencg_surface.boundary_type
     if boundary == 'interface':
         boundary = 'transmission'
 
-    if opencg_surface._type == 'plane':
+    if opencg_surface.type == 'plane':
         A = opencg_surface._coeffs['A']
         B = opencg_surface._coeffs['B']
         C = opencg_surface._coeffs['C']
         D = opencg_surface._coeffs['D']
         openmc_surface = openmc.Plane(surface_id, boundary, A, B, C, D, name)
 
-    elif opencg_surface._type == 'x-plane':
+    elif opencg_surface.type == 'x-plane':
         x0 = opencg_surface._coeffs['x0']
         openmc_surface = openmc.XPlane(surface_id, boundary, x0, name)
 
-    elif opencg_surface._type == 'y-plane':
+    elif opencg_surface.type == 'y-plane':
         y0 = opencg_surface._coeffs['y0']
         openmc_surface = openmc.YPlane(surface_id, boundary, y0, name)
 
-    elif opencg_surface._type == 'z-plane':
+    elif opencg_surface.type == 'z-plane':
         z0 = opencg_surface._coeffs['z0']
         openmc_surface = openmc.ZPlane(surface_id, boundary, z0, name)
 
-    elif opencg_surface._type == 'x-cylinder':
+    elif opencg_surface.type == 'x-cylinder':
         y0 = opencg_surface._coeffs['y0']
         z0 = opencg_surface._coeffs['z0']
         R = opencg_surface._coeffs['R']
         openmc_surface = openmc.XCylinder(surface_id, boundary, y0, z0, R, name)
 
-    elif opencg_surface._type == 'y-cylinder':
+    elif opencg_surface.type == 'y-cylinder':
         x0 = opencg_surface._coeffs['x0']
         z0 = opencg_surface._coeffs['z0']
         R = opencg_surface._coeffs['R']
         openmc_surface = openmc.YCylinder(surface_id, boundary, x0, z0, R, name)
 
-    elif opencg_surface._type == 'z-cylinder':
+    elif opencg_surface.type == 'z-cylinder':
         x0 = opencg_surface._coeffs['x0']
         y0 = opencg_surface._coeffs['y0']
         R = opencg_surface._coeffs['R']
@@ -336,7 +336,7 @@ def get_openmc_surface(opencg_surface):
     else:
         msg = 'Unable to create an OpenMC Surface from an OpenCG ' \
               'Surface of type "{0}" since it is not a compatible ' \
-              'Surface type in OpenMC'.format(opencg_surface._type)
+              'Surface type in OpenMC'.format(opencg_surface.type)
         raise ValueError(msg)
 
     # Add the OpenMC Surface to the global collection of all OpenMC Surfaces
@@ -373,17 +373,17 @@ def get_compatible_opencg_surfaces(opencg_surface):
         raise ValueError(msg)
 
     global OPENMC_SURFACES
-    surface_id = opencg_surface._id
+    surface_id = opencg_surface.id
 
     # If this Surface was already created, use it
     if surface_id in OPENMC_SURFACES:
         return OPENMC_SURFACES[surface_id]
 
     # Create an OpenMC Surface to represent this OpenCG Surface
-    name = opencg_surface._name
-    boundary = opencg_surface._boundary_type
+    name = opencg_surface.name
+    boundary = opencg_surface.boundary_type
 
-    if opencg_surface._type == 'x-squareprism':
+    if opencg_surface.type == 'x-squareprism':
         y0 = opencg_surface._coeffs['y0']
         z0 = opencg_surface._coeffs['z0']
         R = opencg_surface._coeffs['R']
@@ -395,7 +395,7 @@ def get_compatible_opencg_surfaces(opencg_surface):
         top = opencg.ZPlane(name=name, boundary=boundary, z0=z0+R)
         surfaces = [left, right, bottom, top]
 
-    elif opencg_surface._type == 'y-squareprism':
+    elif opencg_surface.type == 'y-squareprism':
         x0 = opencg_surface._coeffs['x0']
         z0 = opencg_surface._coeffs['z0']
         R = opencg_surface._coeffs['R']
@@ -407,7 +407,7 @@ def get_compatible_opencg_surfaces(opencg_surface):
         top = opencg.ZPlane(name=name, boundary=boundary, z0=z0+R)
         surfaces = [left, right, bottom, top]
 
-    elif opencg_surface._type == 'z-squareprism':
+    elif opencg_surface.type == 'z-squareprism':
         x0 = opencg_surface._coeffs['x0']
         y0 = opencg_surface._coeffs['y0']
         R = opencg_surface._coeffs['R']
@@ -422,7 +422,7 @@ def get_compatible_opencg_surfaces(opencg_surface):
     else:
         msg = 'Unable to create a compatible OpenMC Surface an OpenCG ' \
               'Surface of type "{0}" since it already a compatible ' \
-              'Surface type in OpenMC'.format(opencg_surface._type)
+              'Surface type in OpenMC'.format(opencg_surface.type)
         raise ValueError(msg)
 
     # Add the OpenMC Surface(s) to the global collection of all OpenMC Surfaces
@@ -455,32 +455,32 @@ def get_opencg_cell(openmc_cell):
         raise ValueError(msg)
 
     global OPENCG_CELLS
-    cell_id = openmc_cell._id
+    cell_id = openmc_cell.id
 
     # If this Cell was already created, use it
     if cell_id in OPENCG_CELLS:
         return OPENCG_CELLS[cell_id]
 
     # Create an OpenCG Cell to represent this OpenMC Cell
-    name = openmc_cell._name
+    name = openmc_cell.name
     opencg_cell = opencg.Cell(cell_id, name)
 
-    fill = openmc_cell._fill
+    fill = openmc_cell.fill
 
-    if (openmc_cell._type == 'normal'):
+    if (openmc_cell.type == 'normal'):
         opencg_cell.setFill(get_opencg_material(fill))
-    elif (openmc_cell._type == 'fill'):
+    elif (openmc_cell.type == 'fill'):
         opencg_cell.setFill(get_opencg_universe(fill))
     else:
         opencg_cell.setFill(get_opencg_lattice(fill))
 
-    if openmc_cell._rotation is not None:
-        opencg_cell.setRotation(openmc_cell._rotation)
+    if openmc_cell.rotation is not None:
+        opencg_cell.setRotation(openmc_cell.rotation)
 
-    if openmc_cell._translation is not None:
-        opencg_cell.setTranslation(openmc_cell._translation)
+    if openmc_cell.translation is not None:
+        opencg_cell.setTranslation(openmc_cell.translation)
 
-    surfaces = openmc_cell._surfaces
+    surfaces = openmc_cell.surfaces
 
     for surface_id in surfaces:
         surface = surfaces[surface_id][0]
@@ -536,8 +536,8 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
     compatible_cells = []
 
     # SquarePrism Surfaces
-    if opencg_surface._type in ['x-squareprism', 'y-squareprism',
-                                'z-squareprism']:
+    if opencg_surface.type in ['x-squareprism', 'y-squareprism',
+                               'z-squareprism']:
 
         # Get the compatible Surfaces (XPlanes and YPlanes)
         compatible_surfaces = get_compatible_opencg_surfaces(opencg_surface)
@@ -690,31 +690,31 @@ def get_openmc_cell(opencg_cell):
         raise ValueError(msg)
 
     global OPENMC_CELLS
-    cell_id = opencg_cell._id
+    cell_id = opencg_cell.id
 
     # If this Cell was already created, use it
     if cell_id in OPENMC_CELLS:
         return OPENMC_CELLS[cell_id]
 
     # Create an OpenCG Cell to represent this OpenMC Cell
-    name = opencg_cell._name
+    name = opencg_cell.name
     openmc_cell = openmc.Cell(cell_id, name)
 
-    fill = opencg_cell._fill
+    fill = opencg_cell.fill
 
-    if (opencg_cell._type == 'universe'):
+    if (opencg_cell.type == 'universe'):
         openmc_cell.fill = get_openmc_universe(fill)
-    elif (opencg_cell._type == 'lattice'):
+    elif (opencg_cell.type == 'lattice'):
         openmc_cell.fill = get_openmc_lattice(fill)
     else:
         openmc_cell.fill = get_openmc_material(fill)
 
-    if opencg_cell._rotation:
-        rotation = np.asarray(opencg_cell._rotation, dtype=np.int)
+    if opencg_cell.rotation:
+        rotation = np.asarray(opencg_cell.rotation, dtype=np.int)
         openmc_cell.rotation = rotation
 
-    if opencg_cell._translation:
-        translation = np.asarray(opencg_cell._translation, dtype=np.float64)
+    if opencg_cell.translation:
+        translation = np.asarray(opencg_cell.translation, dtype=np.float64)
         openmc_cell.setTranslation(translation)
 
     surfaces = opencg_cell._surfaces
@@ -754,18 +754,18 @@ def get_opencg_universe(openmc_universe):
         raise ValueError(msg)
 
     global OPENCG_UNIVERSES
-    universe_id = openmc_universe._id
+    universe_id = openmc_universe.id
 
     # If this Universe was already created, use it
     if universe_id in OPENCG_UNIVERSES:
         return OPENCG_UNIVERSES[universe_id]
 
     # Create an OpenCG Universe to represent this OpenMC Universe
-    name = openmc_universe._name
+    name = openmc_universe.name
     opencg_universe = opencg.Universe(universe_id, name)
 
     # Convert all OpenMC Cells in this Universe to OpenCG Cells
-    openmc_cells = openmc_universe._cells
+    openmc_cells = openmc_universe.cells
 
     for cell_id, openmc_cell in openmc_cells.items():
         opencg_cell = get_opencg_cell(openmc_cell)
@@ -801,7 +801,7 @@ def get_openmc_universe(opencg_universe):
         raise ValueError(msg)
 
     global OPENMC_UNIVERSES
-    universe_id = opencg_universe._id
+    universe_id = opencg_universe.id
 
     # If this Universe was already created, use it
     if universe_id in OPENMC_UNIVERSES:
@@ -811,7 +811,7 @@ def get_openmc_universe(opencg_universe):
     make_opencg_cells_compatible(opencg_universe)
 
     # Create an OpenMC Universe to represent this OpenCSg Universe
-    name = opencg_universe._name
+    name = opencg_universe.name
     openmc_universe = openmc.Universe(universe_id, name)
 
     # Convert all OpenCG Cells in this Universe to OpenMC Cells
@@ -851,7 +851,7 @@ def get_opencg_lattice(openmc_lattice):
         raise ValueError(msg)
 
     global OPENCG_LATTICES
-    lattice_id = openmc_lattice._id
+    lattice_id = openmc_lattice.id
 
     # If this Lattice was already created, use it
     if lattice_id in OPENCG_LATTICES:
@@ -888,7 +888,7 @@ def get_opencg_lattice(openmc_lattice):
     for z in range(dimension[2]):
         for y in range(dimension[1]):
             for x in range(dimension[0]):
-                universe_id = universes[x][dimension[1]-y-1][z]._id
+                universe_id = universes[x][dimension[1]-y-1][z].id
                 universe_array[z][y][x] = unique_universes[universe_id]
 
     opencg_lattice = opencg.Lattice(lattice_id, name)
@@ -931,23 +931,23 @@ def get_openmc_lattice(opencg_lattice):
         raise ValueError(msg)
 
     global OPENMC_LATTICES
-    lattice_id = opencg_lattice._id
+    lattice_id = opencg_lattice.id
 
     # If this Lattice was already created, use it
     if lattice_id in OPENMC_LATTICES:
         return OPENMC_LATTICES[lattice_id]
 
-    dimension = opencg_lattice._dimension
-    width = opencg_lattice._width
-    offset = opencg_lattice._offset
-    universes = opencg_lattice._universes
+    dimension = opencg_lattice.dimension
+    width = opencg_lattice.width
+    offset = opencg_lattice.offset
+    universes = opencg_lattice.universes
 
     # Initialize an empty array for the OpenMC nested Universes in this Lattice
     universe_array = np.ndarray(tuple(np.array(dimension)),
                                 dtype=openmc.Universe)
 
     # Create OpenMC Universes for each unique nested Universe in this Lattice
-    unique_universes = opencg_lattice.getUniqueUniverses()
+    unique_universes = opencg_lattice.get_unique_universes()
 
     for universe_id, universe in unique_universes.items():
         unique_universes[universe_id] = get_openmc_universe(universe)
@@ -956,7 +956,7 @@ def get_openmc_lattice(opencg_lattice):
     for z in range(dimension[2]):
         for y in range(dimension[1]):
             for x in range(dimension[0]):
-                universe_id = universes[z][y][x]._id
+                universe_id = universes[z][y][x].id
                 universe_array[x][y][z] = unique_universes[universe_id]
 
     # Reverse y-dimension in array to match ordering in OpenCG
@@ -1011,7 +1011,7 @@ def get_opencg_geometry(openmc_geometry):
     OPENMC_LATTICES.clear()
     OPENCG_LATTICES.clear()
 
-    openmc_root_universe = openmc_geometry._root_universe
+    openmc_root_universe = openmc_geometry.root_universe
     opencg_root_universe = get_opencg_universe(openmc_root_universe)
 
     opencg_geometry = opencg.Geometry()
@@ -1043,11 +1043,11 @@ def get_openmc_geometry(opencg_geometry):
 
     # Deep copy the goemetry since it may be modified to make all Surfaces
     # compatible with OpenMC's specifications
-    opencg_geometry.assignAutoIds()
+    opencg_geometry.assign_auto_ids()
     opencg_geometry = copy.deepcopy(opencg_geometry)
 
     # Update Cell bounding boxes in Geometry
-    opencg_geometry.updateBoundingBoxes()
+    opencg_geometry.update_bounding_boxes()
 
     # Clear dictionaries and auto-generated ID
     OPENMC_SURFACES.clear()
@@ -1060,14 +1060,14 @@ def get_openmc_geometry(opencg_geometry):
     OPENCG_LATTICES.clear()
 
     # Make the entire geometry "compatible" before assigning auto IDs
-    universes = opencg_geometry.getAllUniverses()
+    universes = opencg_geometry.get_all_universes()
     for universe_id, universe in universes.items():
         if not isinstance(universe, opencg.Lattice):
             make_opencg_cells_compatible(universe)
 
-    opencg_geometry.assignAutoIds()
+    opencg_geometry.assign_auto_ids()
 
-    opencg_root_universe = opencg_geometry._root_universe
+    opencg_root_universe = opencg_geometry.root_universe
     openmc_root_universe = get_openmc_universe(opencg_root_universe)
 
     openmc_geometry = openmc.Geometry()

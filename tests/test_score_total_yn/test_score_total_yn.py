@@ -11,14 +11,15 @@ import openmc
 class ScoreTotalYNTestHarness(PyAPITestHarness):
     def _build_inputs(self):
         filt = openmc.Filter(type='cell', bins=(10, 21, 22, 23))
-        tallies = [openmc.Tally(tally_id=i) for i in range(1, 4)]
+        tallies = [openmc.Tally(tally_id=i) for i in range(1, 5)]
         [t.add_filter(filt) for t in tallies]
-        [t.add_score('total-y4') for t in tallies]
-        [t.add_nuclide('U-235') for t in tallies]
-        [t.add_nuclide('total') for t in tallies]
-        tallies[0].estimator = 'tracklength'
-        tallies[1].estimator = 'analog'
-        tallies[2].estimator = 'collision'
+        tallies[0].add_score('total')
+        [t.add_score('total-y4') for t in tallies[1:]]
+        [t.add_nuclide('U-235') for t in tallies[1:]]
+        [t.add_nuclide('total') for t in tallies[1:]]
+        tallies[1].estimator = 'tracklength'
+        tallies[2].estimator = 'analog'
+        tallies[3].estimator = 'collision'
         self._input_set.tallies = openmc.TalliesFile()
         [self._input_set.tallies.add_tally(t) for t in tallies]
 

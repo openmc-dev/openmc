@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+    <eigenvalue>
+        <particles>2500</particles>
+        <batches>50</batches>
+        <inactive>10</inactive>
+    </eigenvalue>
+    <source>
+        <space type="box">
+            <parameters>-0.63 -0.63 -0.63 0.63 0.63 0.63</parameters>
+        </space>
+    </source>
+    <output>
+        <tallies>true</tallies>
+        <summary>true</summary>
+    </output>
+</settings>

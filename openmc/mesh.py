@@ -151,7 +151,7 @@ class Mesh(object):
     @name.setter
     def name(self, name):
         if name is not None:
-            check_type('name for mesh ID="{0}"'.format(self._id),
+            cv.check_type('name for mesh ID="{0}"'.format(self._id),
                        name, basestring)
             self._name = name
         else:

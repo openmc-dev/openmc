@@ -1,5 +1,4 @@
 import openmc
-from openmc.region import Intersection
 
 
 ###############################################################################
@@ -68,13 +67,12 @@ cell4 = openmc.Cell(cell_id=500, name='cell 4')
 cell5 = openmc.Cell(cell_id=600, name='cell 5')
 cell6 = openmc.Cell(cell_id=601, name='cell 6')
 
-# Register Surfaces with Cells
-cell1.region = Intersection(left.positive, right.negative,
-                            bottom.positive, top.negative)
-cell2.region = fuel_surf.negative
-cell3.region = fuel_surf.positive
-cell5.region = fuel_surf.negative
-cell6.region = fuel_surf.positive
+# Use surface half-spaces to define regions
+cell1.region = +left & -right & +bottom & -top
+cell2.region = -fuel_surf
+cell3.region = +fuel_surf
+cell5.region = -fuel_surf
+cell6.region = +fuel_surf
 
 # Register Materials with Cells
 cell2.fill = fuel

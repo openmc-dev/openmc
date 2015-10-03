@@ -1,5 +1,4 @@
 import openmc
-from openmc.region import Intersection
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -52,10 +51,8 @@ surf6.boundary_type = 'reflective'
 # Instantiate Cell
 cell = openmc.Cell(cell_id=1, name='cell 1')
 
-# Register Region with Cell
-cell.region = Intersection(surf1.positive, surf2.negative,
-                           surf3.positive, surf4.negative,
-                           surf5.positive, surf6.negative)
+# Use surface half-spaces to define region
+cell.region = +surf1 & -surf2 & +surf3 & -surf4 & +surf5 & -surf6
 
 # Register Material with Cell
 cell.fill = fuel

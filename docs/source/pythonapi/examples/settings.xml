@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+    <eigenvalue>
+        <particles>2500</particles>
+        <batches>20</batches>
+        <inactive>5</inactive>
+    </eigenvalue>
+    <source>
+        <space type="box">
+            <parameters>-10.71 -10.71 -10 10.71 10.71 10.0</parameters>
+        </space>
+    </source>
+    <output>
+        <tallies>false</tallies>
+        <summary>true</summary>
+    </output>
+    <trigger>
+        <active>true</active>
+        <max_batches>200</max_batches>
+    </trigger>
+</settings>

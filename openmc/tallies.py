@@ -1612,26 +1612,23 @@ class Tally(object):
 
         if self.filters != other.filters:
 
-            self_shape = list(self.mean.shape)
-            other_shape = list(other.mean.shape)
-
-            # FIXME:
             # Determine the number of paired combinations of filter bins
             # between the two tallies and repeat arrays along filter axes
             diff1 = list(set(self.filters).difference(set(other.filters)))
             diff2 = list(set(other.filters).difference(set(self.filters)))
 
-            #
+            # Determine the factors by which each tally operands' data arrays
+            # must be tiled or repeated for the tally outer product
             other_tile_factor = 1
             self_repeat_factor = 1
-
-            #
             for filter in diff1:
                 other_tile_factor *= filter.num_bins
             for filter in diff2:
                 self_repeat_factor *= filter.num_bins
 
-            # Replicate the data
+            # Tile / repeat the tally data for the tally outer product
+            self_shape = list(self.mean.shape)
+            other_shape = list(other.mean.shape)
             self_shape[0] *= self_repeat_factor
             self_mean = np.repeat(self_mean, self_repeat_factor)
             self_std_dev = np.repeat(self_std_dev, self_repeat_factor)
@@ -1644,6 +1641,8 @@ class Tally(object):
                 other_mean = np.tile(other_mean, (other_tile_factor, 1, 1))
                 other_std_dev = np.tile(other_std_dev, (other_tile_factor, 1, 1))
 
+            # NumPy repeat and tile routines return 1D flattened arrays
+            # Reshape arrays as 3D with filters, nuclides and scores axes
             self_mean.shape = tuple(self_shape)
             self_std_dev.shape = tuple(self_shape)
             other_mean.shape = tuple(other_shape)
@@ -1656,14 +1655,15 @@ class Tally(object):
             self_repeat_factor = other.num_nuclides
             other_tile_factor = self.num_nuclides
 
-            self_shape = list(self.mean.shape)
-
             # Replicate the data
             self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
             other_mean = np.tile(other_mean, (1, other_tile_factor, 1))
             self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=1)
             other_std_dev = np.tile(other_std_dev, (1, other_tile_factor, 1))
 
+            # NumPy repeat and tile routines return 1D flattened arrays
+            # Reshape arrays as 3D with filters, nuclides and scores axes
+            self_shape = list(self.mean.shape)
             self_shape[1] *= self_repeat_factor
             self_mean.shape = tuple(self_shape)
             self_std_dev.shape = tuple(self_shape)
@@ -1675,14 +1675,15 @@ class Tally(object):
             self_repeat_factor = other.num_score_bins
             other_tile_factor = self.num_score_bins
 
-            self_shape = list(self.mean.shape)
-
             # Replicate the data
             self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)
             other_mean = np.tile(other_mean, (1, 1, other_tile_factor))
             self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=2)
             other_std_dev = np.tile(other_std_dev, (1, 1, other_tile_factor))
 
+            # NumPy repeat and tile routines return 1D flattened arrays
+            # Reshape arrays as 3D with filters, nuclides and scores axes
+            self_shape = list(self.mean.shape)
             self_shape[2] *= self_repeat_factor
             self_mean.shape = tuple(self_shape)
             self_std_dev.shape = tuple(self_shape)
@@ -1697,11 +1698,31 @@ class Tally(object):
         return data
 
     def swap_filters(self, filter1, filter2):
-        """
+        """Reverse the ordering of two filters in this tally
 
-        :param filter1:
-        :param filter2:
-        :return:
+        This is a helper routine for tally arithmetic which helps align the data
+        in two tallies with shared filters. This routine copies this tally and
+        reverses the order of the two filters.
+
+        Parameters
+        ----------
+        filter1 : Filter
+            The filter to swap with filter2
+
+        filter2 : Filter
+            The filter to swap with filter1
+
+        Returns
+        -------
+        swap_tally
+            A copy of this tally with the filters swapped
+
+        Raises
+        ------
+        ValueError
+            If this is a derived tally or this method is called before the tally
+            is populated with data by the StatePoint.read_results() method.
+
         """
 
         # Check that results have been read
@@ -1739,6 +1760,7 @@ class Tally(object):
             filter.stride = stride
             stride *= filter.num_bins
 
+        # Construct lists of tuples for the bins in each of the two filters
         filters = [filter1.type, filter2.type]
         if filter1.type == 'distribcell':
             filter1_bins = np.arange(filter.num_bins)
@@ -1750,6 +1772,7 @@ class Tally(object):
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
+        # Adjust the sum data array to relect the new filter order
         if self.sum is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
@@ -1758,6 +1781,7 @@ class Tally(object):
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally.sum[indices, :, :] = data
 
+        # Adjust the sum_sq data array to relect the new filter order
         if self.sum_sq is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
@@ -1766,7 +1790,8 @@ class Tally(object):
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally.sum_sq[indices, :, :] = data
 
-        if self.sum is not None:
+        # Adjust the mean data array to relect the new filter order
+        if self.mean is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
                 data = self.get_values(filters=filters,
@@ -1774,7 +1799,8 @@ class Tally(object):
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally._mean[indices, :, :] = data
 
-        if self.sum is not None:
+        # Adjust the std_dev data array to relect the new filter order
+        if self.std_dev is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
                 data = self.get_values(filters=filters,

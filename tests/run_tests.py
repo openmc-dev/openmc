@@ -126,7 +126,12 @@ class Test(object):
 
         # Check for MPI
         if self.mpi:
-            self.fc = os.path.join(MPI_DIR, 'bin', 'mpifort')
+            if os.path.exists(os.path.join(MPI_DIR, 'bin', 'mpifort')):
+                self.fc = os.path.join(MPI_DIR, 'bin', 'mpifort')
+            elif os.path.exists(os.path.join(MPI_DIR, 'bin', 'mpif90')):
+                self.fc = os.path.join(MPI_DIR, 'bin', 'mpif90')
+            else:
+                raise RuntimeError('Cannot find an MPI Fortran compiler')
         else:
             self.fc = FC
 

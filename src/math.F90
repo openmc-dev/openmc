@@ -555,8 +555,6 @@ contains
       rn = ONE
     end select
 
-    ! rn = rn * sin(phi)
-
   end function calc_rn
 
 !===============================================================================

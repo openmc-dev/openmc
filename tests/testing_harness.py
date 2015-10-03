@@ -11,8 +11,8 @@ import sys
 
 import numpy as np
 
+sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 from input_set import InputSet
-sys.path.insert(0, '../..')
 from openmc.statepoint import StatePoint
 from openmc.executor import Executor
 import openmc.particle_restart as pr

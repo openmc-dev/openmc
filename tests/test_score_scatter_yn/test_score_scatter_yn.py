@@ -3,7 +3,6 @@
 import os
 import sys
 sys.path.insert(0, os.pardir)
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 from testing_harness import TestHarness, PyAPITestHarness
 import openmc
 
@@ -22,10 +21,10 @@ class ScoreScatterYNTestHarness(PyAPITestHarness):
         self._input_set.tallies.add_tally(t1)
         self._input_set.tallies.add_tally(t2)
 
-        PyAPITestHarness._build_inputs(self)
+        super(ScoreScatterYNTestHarness, self)._build_inputs()
 
     def _cleanup(self):
-        PyAPITestHarness._cleanup(self)
+        super(ScoreScatterYNTestHarness, self)._cleanup()
         f = os.path.join(os.getcwd(), 'tallies.xml')
         if os.path.exists(f): os.remove(f)
 

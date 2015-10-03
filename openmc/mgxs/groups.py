@@ -227,11 +227,11 @@ class EnergyGroups(object):
         ----------
         coarse_groups : Iterable of 2-tuple
             The energy groups of interest - a list of 2-tuples, each directly
-             corresponding to one of the new coarse groups. The values in the
-             2-tuples are upper/lower energy groups used to construct a new
-             coarse group. For example, if [(1,2), (2,4)] was used as the coarse
-             groups, fine groups 1 and 2 would be merged into coarse group 1
-             while fine groups 3 and 4 would be merged into coarse group 2.
+            corresponding to one of the new coarse groups. The values in the
+            2-tuples are upper/lower energy groups used to construct a new
+            coarse group. For example, if [(1,2), (2,4)] was used as the coarse
+            groups, fine groups 1 and 2 would be merged into coarse group 1
+            while fine groups 3 and 4 would be merged into coarse group 2.
 
         Returns
         -------
@@ -255,9 +255,7 @@ class EnergyGroups(object):
             cv.check_less_than('lower group', group[0], group[1], False)
 
         # Compute the group indices into the coarse group
-        group_bounds = list()
-        for group in coarse_groups:
-            group_bounds.append(group[0])
+        group_bounds = [group[0] for group in coarse_groups]
         group_bounds.append(coarse_groups[-1][1])
 
         # Determine the indices mapping the fine-to-coarse energy groups

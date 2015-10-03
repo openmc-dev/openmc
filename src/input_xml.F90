@@ -1135,7 +1135,7 @@ contains
         call tokenize(region_spec, tokens)
 
         ! Use shunting-yard algorithm to determine RPN for surface algorithm
-        call generate_rpn(tokens, rpn)
+        call generate_rpn(c%id, tokens, rpn)
 
         ! Copy region spec and RPN form to cell arrays
         allocate(c % region(tokens%size()))
@@ -4801,7 +4801,8 @@ contains
 ! the infix notation.
 !===============================================================================
 
-  subroutine generate_rpn(tokens, output)
+  subroutine generate_rpn(cell_id, tokens, output)
+    integer, intent(in) :: cell_id
     type(VectorInt), intent(in) :: tokens    ! infix notation
     type(VectorInt), intent(inout) :: output ! RPN notation
 
@@ -4851,7 +4852,8 @@ contains
           ! If we run out of operators without finding a left parenthesis, it
           ! means there are mismatched parentheses.
           if (stack%size() == 0) then
-            call fatal_error('Mimatched parentheses in region specification')
+            call fatal_error('Mimatched parentheses in region specification &
+                 &for cell ' // trim(to_str(cell_id)) // '.')
           end if
 
           op = stack%data(stack%size())
@@ -4871,7 +4873,8 @@ contains
 
       ! If the operator is a parenthesis, it is mismatched
       if (op >= OP_RIGHT_PAREN) then
-        call fatal_error('Mimatched parentheses in region specification')
+        call fatal_error('Mimatched parentheses in region specification &
+             &for cell ' // trim(to_str(cell_id)) // '.')
       end if
 
       call output%push_back(op)

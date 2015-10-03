@@ -76,6 +76,7 @@ contains
 
     integer :: i       ! current index
     integer :: i_start ! starting index of word
+    integer :: token
     character(len=len_trim(string)) :: string_
 
     ! Remove leading blanks
@@ -97,8 +98,22 @@ contains
         case ('(')
           call tokens%push_back(OP_LEFT_PAREN)
         case (')')
+          if (tokens%size() > 0) then
+            token = tokens%data(tokens%size())
+            if (token >= OP_UNION .and. token < OP_RIGHT_PAREN) then
+              call fatal_error("Right parentheses cannot follow an operator in &
+                   &region specification: " // trim(string))
+            end if
+          end if
           call tokens%push_back(OP_RIGHT_PAREN)
         case ('|')
+          if (tokens%size() > 0) then
+            token = tokens%data(tokens%size())
+            if (.not. (token < OP_UNION .or. token == OP_RIGHT_PAREN)) then
+              call fatal_error("Union cannot follow an operator in region &
+                   &specification: " // trim(string))
+            end if
+          end if
           call tokens%push_back(OP_UNION)
         case ('~')
           call tokens%push_back(OP_COMPLEMENT)

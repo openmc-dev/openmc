@@ -42,12 +42,12 @@ contains
     type(Nuclide), pointer  :: nuc ! current nuclide
 
     ! Set all material macroscopic cross sections to zero
-    material_xs % total              = ZERO
-    material_xs % elastic            = ZERO
-    material_xs % absorption         = ZERO
-    material_xs % fission            = ZERO
-    material_xs % nu_fission         = ZERO
-    material_xs % kappa_fission      = ZERO
+    material_xs % total          = ZERO
+    material_xs % elastic        = ZERO
+    material_xs % absorption     = ZERO
+    material_xs % fission        = ZERO
+    material_xs % nu_fission     = ZERO
+    material_xs % kappa_fission  = ZERO
 
     do d = 1, MAX_DELAYED_GROUPS
       material_xs % delayed_nu_fission(d) = ZERO

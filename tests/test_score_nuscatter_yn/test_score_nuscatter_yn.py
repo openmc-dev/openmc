@@ -21,7 +21,12 @@ class ScoreNuScatterYNTestHarness(PyAPITestHarness):
         self._input_set.tallies.add_tally(t1)
         self._input_set.tallies.add_tally(t2)
 
-        PyAPITestHarness._build_inputs(self)
+        self._input_set.build_default_materials_and_geometry()
+        self._input_set.build_default_settings()
+
+        self._input_set.settings.inactive = 0
+
+        self._input_set.export()
 
     def _cleanup(self):
         PyAPITestHarness._cleanup(self)

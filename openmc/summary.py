@@ -82,7 +82,7 @@ class Summary(object):
             # Create the Material
             material = openmc.Material(material_id=material_id, name=name)
 
-            # Set the Material's density to g/cm3 - this is what is used in OpenMC
+            # Set the Material's density to atom/b-cm as used by OpenMC
             material.set_density(density=density, units='atom/b-cm')
 
             # Add all nuclides to the Material

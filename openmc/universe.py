@@ -85,8 +85,15 @@ class Cell(object):
         return self._fill
 
     @property
-    def type(self):
-        return self._fill
+    def fill_type(self):
+        if isinstance(self.fill, openmc.Material):
+            return 'material'
+        elif isinstance(self.fill, openmc.Universe):
+            return 'universe'
+        elif isinstance(self.fill, openmc.Lattice):
+            return 'lattice'
+        else:
+            return None
 
     @property
     def surfaces(self):

@@ -417,7 +417,6 @@ class CrossFilter(object):
         ----------
         data_size : Integral
             The total number of bins in the tally corresponding to this filter
-
         summary : None or Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric

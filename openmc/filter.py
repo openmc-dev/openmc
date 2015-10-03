@@ -35,7 +35,7 @@ class Filter(object):
     ----------
     type : str
         The type of the tally filter.
-    bins : Integral or Iterable of Integral or Iterable of float
+    bins : Integral or Iterable of Integral or Iterable of Real
         The bins for the filter
     num_bins : Integral
         The number of filter bins
@@ -325,8 +325,8 @@ class Filter(object):
         elif self.type in ['energy', 'energyout']:
             return np.all(self.bins == other.bins)
 
-        for bin in self.bins:
-            if bin not in other.bins:
+        for bin in other.bins:
+            if bin not in self.bins:
                 return False
 
         return True
@@ -404,7 +404,7 @@ class Filter(object):
             The zero-based index into the filter's array of bins. The bin
             index for 'material', 'surface', 'cell', 'cellborn', and 'universe'
             filters corresponds to the ID in the filter's list of bins. For
-            'distribcell' tallies the bin_index necessarily can only be zero
+            'distribcell' tallies the bin index necessarily can only be zero
             since only one cell can be tracked per tally. The bin index for
             'energy' and 'energyout' filters corresponds to the energy range of
             interest in the filter bins of energies. The bin index for 'mesh'
@@ -434,22 +434,28 @@ class Filter(object):
 
         if self.type == 'mesh':
 
+            # Construct 3-tuple of x,y,z cell indices for a 3D mesh
             if (len(self.mesh.dimension) == 3):
                 nx, ny, nz = self.mesh.dimension
                 x = bin_index / (ny * nz)
                 y = (bin_index - (x * ny * nz)) / nz
                 z = bin_index - (x * ny * nz) - (y * nz)
                 filter_bin = (x, y, z)
+
+            # Construct 2-tuple of x,y cell indices for a 2D mesh
             else:
                 nx, ny = self.mesh.dimension
                 x = bin_index / ny
                 y = bin_index - (x * ny)
                 filter_bin = (x, y)
 
+        # Construct 2-tuple of lower, upper energies for energy(out) filters
         elif self.type in ['energy', 'energyout']:
             filter_bin = (self.bins[bin_index], self.bins[bin_index+1])
+        # Construct 1-tuple of with the cell ID for distribcell filters
         elif self.type == 'distribcell':
             filter_bin = (self.bins[0],)
+        # Construct 1-tuple with domain ID (e.g., material) for other filters
         else:
             filter_bin = (self.bins[bin_index],)
 
@@ -586,8 +592,8 @@ class Filter(object):
                 openmc_geometry = summary.openmc_geometry
 
                 # Use OpenCG to compute the number of regions
-                opencg_geometry.initializeCellOffsets()
-                num_regions = opencg_geometry._num_regions
+                opencg_geometry.initialize_cell_offsets()
+                num_regions = opencg_geometry.num_regions
 
                 # Initialize a dictionary mapping OpenMC distribcell
                 # offsets to OpenCG LocalCoords linked lists
@@ -596,7 +602,7 @@ class Filter(object):
                 # Use OpenCG to compute LocalCoords linked list for
                 # each region and store in dictionary
                 for region in range(num_regions):
-                    coords = opencg_geometry.findRegion(region)
+                    coords = opencg_geometry.find_region(region)
                     path = opencg.get_path(coords)
                     cell_id = path[-1]
 

@@ -544,7 +544,7 @@ class StatePoint(object):
                     contains_filters = False
 
                     for test_filter in test_tally.filters:
-                        if filter.is_subset(test_filter):
+                        if test_filter.is_subset(filter):
                             contains_filters = True
                             break
 

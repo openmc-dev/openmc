@@ -14,7 +14,7 @@ TALLY_ARITHMETIC_OPS = ['+', '-', '*', '/', '^']
 
 class CrossScore(object):
     """A special-purpose tally score used to encapsulate all combinations of two
-    tally's scores as a outer product for tally arithmetic.
+    tally's scores as an outer product for tally arithmetic.
 
     Parameters
     ----------
@@ -270,7 +270,6 @@ class CrossFilter(object):
         self._left_filter = None
         self._right_filter = None
         self._binary_op = None
-        self._num_bins = 0
 
         if left_filter is not None:
             self.left_filter = left_filter
@@ -280,9 +279,6 @@ class CrossFilter(object):
             self._bins['right'] = right_filter.bins
         if binary_op is not None:
             self.binary_op = binary_op
-
-        if self.left_filter is not None and self.right_filter is not None:
-            self._num_bins = left_filter.num_bins * right_filter.num_bins
 
     def __hash__(self):
         return hash((self.left_filter, self.right_filter))
@@ -337,7 +333,10 @@ class CrossFilter(object):
 
     @property
     def num_bins(self):
-        return self._num_bins
+        if self.left_filter is not None and self.right_filter is not None:
+            return self.left_filter.num_bins * self.right_filter.num_bins
+        else:
+            return 0
 
     @property
     def stride(self):
@@ -356,11 +355,13 @@ class CrossFilter(object):
     def left_filter(self, left_filter):
         cv.check_type('left_filter', left_filter, (Filter, CrossFilter))
         self._left_filter = left_filter
+        self._bins['left'] = left_filter.bins
 
     @right_filter.setter
     def right_filter(self, right_filter):
         cv.check_type('right_filter', right_filter, (Filter, CrossFilter))
         self._right_filter = right_filter
+        self._bins['right'] = right_filter.bins
 
     @binary_op.setter
     def binary_op(self, binary_op):

@@ -24,7 +24,7 @@ class EnergyGroups(object):
 
     Attributes
     ----------
-    group_edges : NumPy array
+    group_edges : ndarray
         The energy group boundaries [MeV]
     num_groups : Integral
         The number of energy groups
@@ -57,6 +57,20 @@ class EnergyGroups(object):
         else:
             return existing
 
+    def __eq__(self, other):
+        if not isinstance(other, EnergyGroups):
+            return False
+        elif self.group_edges != other.group_edges:
+            return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(tuple(self.group_edges))
+
     @property
     def group_edges(self):
         return self._group_edges
@@ -72,20 +86,6 @@ class EnergyGroups(object):
         self._group_edges = np.array(edges)
         self._num_groups = len(edges)-1
 
-    def __eq__(self, other):
-        if not isinstance(other, EnergyGroups):
-            return False
-        elif self.group_edges != other.group_edges:
-            return False
-        else:
-            return True
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash(tuple(self.group_edges))
-
     def generate_bin_edges(self, start, stop, num_groups, spacing='linear'):
         """Generate equally or logarithmically-spaced energy group boundaries.
 
@@ -97,8 +97,8 @@ class EnergyGroups(object):
             The highest energy in MeV
         num_groups : Integral
             The number of energy groups
-        spacing : str
-            The spacing between groups ('linear' or 'logarithmic')
+        spacing : {'linear', 'logarithmic'}
+            The spacing between groups
 
         """
 
@@ -107,15 +107,15 @@ class EnergyGroups(object):
         cv.check_type('number of groups', num_groups, Integral)
         cv.check_type('spacing', spacing, basestring)
         cv.check_greater_than('first edge', start, 0, True)
-        cv.check_greater_than('first edge', stop, start, False)
+        cv.check_greater_than('last edge', stop, start, False)
         cv.check_greater_than('number of groups', num_groups, 0)
         cv.check_value('spacing', spacing, ('linear', 'logarithmic'))
 
         if spacing == 'linear':
-            self.group_edges = np.linspace(start, stop, num_groups+1)
+            self.group_edges = np.linspace(start, stop, num_groups + 1)
         elif spacing == 'logarithmic':
             self.group_edges = \
-                np.logspace(np.log10(start), np.log10(stop), num_groups+1)
+                np.logspace(np.log10(start), np.log10(stop), num_groups + 1)
 
         self._num_groups = num_groups
 
@@ -189,7 +189,7 @@ class EnergyGroups(object):
         Returns
         -------
         ndarray
-            The NumPy array indices for each energy group of interest
+            The ndarray array indices for each energy group of interest
 
         Raises
         ------

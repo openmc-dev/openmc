@@ -64,5 +64,8 @@ data/nndc
 # IPython notebook checkpoints
 .ipynb_checkpoints
 
-# OpenMOC tracks
-*.data
+# Multi-group cross section IPython Notebook
+docs/source/pythonapi/examples/*.xml
+docs/source/pythonapi/examples/*.png
+docs/source/pythonapi/examples/*.xls
+docs/source/pythonapi/examples/tracks

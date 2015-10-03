@@ -4,7 +4,7 @@ module cross_section
   use constants
   use energy_grid,     only: grid_method, log_spacing
   use error,           only: fatal_error
-  use fission,         only: nu_total, nu_delayed
+  use fission,         only: nu_total, nu_delayed, yield_delayed
   use global
   use list_header,     only: ListElemInt
   use material_header, only: Material
@@ -33,9 +33,12 @@ contains
     integer :: i_nuclide     ! index into nuclides array
     integer :: i_sab         ! index into sab_tables array
     integer :: j             ! index in mat % i_sab_nuclides
+    integer :: d             ! index for delayed precursor groups
     real(8) :: atom_density  ! atom density of a nuclide
+    real(8) :: yield         ! delayed neutron yield
     logical :: check_sab     ! should we check for S(a,b) table?
     type(Material), pointer :: mat ! current material
+    type(Nuclide), pointer  :: nuc ! current nuclide
 
     ! Set all material macroscopic cross sections to zero
     material_xs % total              = ZERO
@@ -44,7 +47,10 @@ contains
     material_xs % fission            = ZERO
     material_xs % nu_fission         = ZERO
     material_xs % kappa_fission      = ZERO
-    material_xs % delayed_nu_fission = ZERO
+
+    do d = 1, MAX_DELAYED_GROUPS
+      material_xs % delayed_nu_fission(d) = ZERO
+    end do
 
     ! Exit subroutine if material is void
     if (p % material == MATERIAL_VOID) return
@@ -63,6 +69,7 @@ contains
 
     ! Add contribution from each nuclide in material
     do i = 1, mat % n_nuclides
+
       ! ========================================================================
       ! CHECK FOR S(A,B) TABLE
 
@@ -92,6 +99,7 @@ contains
 
       ! Determine microscopic cross sections for this nuclide
       i_nuclide = mat % nuclide(i)
+      nuc => nuclides(i_nuclide)
 
       ! Calculate microscopic cross section for this nuclide
       if (p % E /= micro_xs(i_nuclide) % last_E) then
@@ -132,8 +140,12 @@ contains
 
       ! Add contributions to material macroscopic delayed-nu-fission cross
       ! section
-      material_xs % delayed_nu_fission = material_xs % delayed_nu_fission + &
-           atom_density * micro_xs(i_nuclide) % delayed_nu_fission
+      do d = 1, nuclides(i_nuclide) % n_precursor
+        yield = yield_delayed(nuc, p % E, d)
+        material_xs % delayed_nu_fission(d) = &
+             material_xs % delayed_nu_fission(d) +&
+             atom_density * micro_xs(i_nuclide) % delayed_nu_fission * yield
+      end do
     end do
 
   end subroutine calculate_xs

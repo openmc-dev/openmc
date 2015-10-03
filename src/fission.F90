@@ -63,7 +63,7 @@ contains
       ! since no prompt or delayed data is present, this means all neutron
       ! emission is prompt -- WARNING: This currently returns zero. The calling
       ! routine needs to know this situation is occurring since we don't want
-      ! to call nu_total unnecessarily if it's already been called
+      ! to call nu_total unnecessarily if it's already been called.
       nu = ZERO
     elseif (nuc % nu_p_type == NU_POLYNOMIAL) then
       ! determine number of coefficients
@@ -94,6 +94,10 @@ contains
     real(8)                :: nu  ! number of delayed neutrons emitted per fission
 
     if (nuc % nu_d_type == NU_NONE) then
+      ! since no prompt or delayed data is present, this means all neutron
+      ! emission is prompt -- WARNING: This currently returns zero. The calling
+      ! routine needs to know this situation is occurring since we don't want
+      ! to call nu_delayed unnecessarily if it's already been called.
       nu = ZERO
     elseif (nuc % nu_d_type == NU_TABULAR) then
       ! use ENDF interpolation laws to determine nu
@@ -101,5 +105,58 @@ contains
     end if
 
   end function nu_delayed
+
+!===============================================================================
+! YIELD_DELAYED calculates the fractional yield of delayed neutrons emitted for
+! a given nuclide and incoming neutron energy in a given delayed group.
+!===============================================================================
+
+  function yield_delayed(nuc, E, g) result(yield)
+
+    type(Nuclide), pointer :: nuc   ! nuclide from which to find nu
+    real(8), intent(in)    :: E     ! energy of incoming neutron
+    real(8)                :: yield ! delayed neutron precursor yield
+    integer                :: g     ! the delayed neutron precursor group
+    integer                :: d     ! precursor group
+    integer                :: lc    ! index before start of energies/nu values
+    integer                :: NR    ! number of interpolation regions
+    integer                :: NE    ! number of energies tabulated
+
+    yield = ZERO
+
+    if (g > nuc % n_precursor .or. g < 1) then
+      ! if the precursor group is outside the range of precursor groups for
+      ! the input nuclide, return ZERO.
+      yield = ZERO
+    else if (nuc % nu_d_type == NU_NONE) then
+      ! since no prompt or delayed data is present, this means all neutron
+      ! emission is prompt -- WARNING: This currently returns zero. The calling
+      ! routine needs to know this situation is occurring since we don't want
+      ! to call yield unnecessarily if it's already been called.
+      yield = ZERO
+    else if (nuc % nu_d_type == NU_TABULAR) then
+
+      lc = 1
+
+      ! determine the yield for this group
+      do d = 1, nuc % n_precursor
+
+        ! determine number of interpolation regions and energies
+        NR = int(nuc % nu_d_precursor_data(lc + 1))
+        NE = int(nuc % nu_d_precursor_data(lc + 2 + 2*NR))
+
+        ! determine delayed neutron precursor yield for group d
+        yield = interpolate_tab1(nuc % nu_d_precursor_data( &
+          lc+1:lc+2+2*NR+2*NE), E)
+
+        ! Check if this group is the requested group
+        if (d == g) exit
+
+        ! advance pointer
+        lc = lc + 2 + 2*NR + 2*NE + 1
+      end do
+    end if
+
+  end function yield_delayed
 
 end module fission

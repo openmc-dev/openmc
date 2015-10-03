@@ -578,6 +578,8 @@ contains
           str_array(j) = "fission"
         case (SCORE_NU_FISSION)
           str_array(j) = "nu-fission"
+        case (SCORE_DELAYED_NU_FISSION)
+          str_array(j) = "delayed-nu-fission"
         case (SCORE_KAPPA_FISSION)
           str_array(j) = "kappa-fission"
         case (SCORE_CURRENT)

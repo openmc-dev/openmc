@@ -1,6 +1,6 @@
 module ace_header
 
-  use constants,     only: MAX_FILE_LEN, ZERO
+  use constants,     only: MAX_FILE_LEN, ZERO, MAX_DELAYED_GROUPS
   use endf_header,   only: Tab1
   use list_header,   only: ListInt
 
@@ -291,7 +291,8 @@ module ace_header
     real(8) :: fission            ! macroscopic fission xs
     real(8) :: nu_fission         ! macroscopic production xs
     real(8) :: kappa_fission      ! macroscopic energy-released from fission
-    real(8) :: delayed_nu_fission ! macroscopic delayed production xs
+    real(8) :: delayed_nu_fission(MAX_DELAYED_GROUPS) ! macroscopic delayed
+                                                      ! production xs
   end type MaterialMacroXS
 
   contains

@@ -220,7 +220,7 @@ def get_opencg_surface(openmc_surface):
         opencg_surface = opencg.Plane(surface_id, name, boundary, A, B, C, D)
 
     elif openmc_surface.type == 'x-plane':
-        x0 = openmc_surface.y0
+        x0 = openmc_surface.x0
         opencg_surface = opencg.XPlane(surface_id, name, boundary, x0)
 
     elif openmc_surface.type == 'y-plane':

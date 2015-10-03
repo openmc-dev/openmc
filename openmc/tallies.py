@@ -843,8 +843,8 @@ class Tally(object):
     def get_filter_indices(self, filters=[], filter_bins=[]):
         """Get indices into the filter axis of this tally's data arrays.
 
-        This is a helper routine for the Tally.get_values(...) routine to
-        extract tally data. This routine returns the indices into the filter
+        This is a helper method for the Tally.get_values(...) method to
+        extract tally data. This method returns the indices into the filter
         axis of the tally's data array (axis=0) for particular combinations
         of filters and their corresponding bins.
 
@@ -937,8 +937,8 @@ class Tally(object):
     def get_nuclide_indices(self, nuclides):
         """Get indices into the nuclide axis of this tally's data arrays.
 
-        This is a helper routine for the Tally.get_values(...) routine to
-        extract tally data. This routine returns the indices into the nuclide
+        This is a helper method for the Tally.get_values(...) method to
+        extract tally data. This method returns the indices into the nuclide
         axis of the tally's data array (axis=1) for one or more nuclides.
 
         Parameters
@@ -971,8 +971,8 @@ class Tally(object):
     def get_score_indices(self, scores):
         """Get indices into the score axis of this tally's data arrays.
 
-        This is a helper routine for the Tally.get_values(...) routine to
-        extract tally data. This routine returns the indices into the score
+        This is a helper method for the Tally.get_values(...) method to
+        extract tally data. This method returns the indices into the score
         axis of the tally's data array (axis=2) for one or more scores.
 
         Parameters
@@ -1227,7 +1227,7 @@ class Tally(object):
         The tally data in OpenMC is stored as a 3D array with the dimensions
         corresponding to filters, nuclides and scores. As a result, tally data
         can be opaque for a user to directly index (i.e., without use of the
-        Tally.get_values(...) routine) since one must know how to properly use
+        Tally.get_values(...) method) since one must know how to properly use
         the number of bins and strides for each filter to index into the first
         (filter) dimension.
 
@@ -1235,7 +1235,7 @@ class Tally(object):
         unique dimensions corresponding to each tally filter. For example,
         suppose this tally has arrays of data with shape (8,5,5) corresponding
         to two filters (2 and 4 bins, respectively), five nuclides and five
-        scores. This routine will return a version of the data array with the
+        scores. This method will return a version of the data array with the
         with a new shape of (2,4,5,5) such that the first two dimensions
         correspond directly to the two filters with two and four bins.
 
@@ -1293,7 +1293,7 @@ class Tally(object):
         # Ensure that StatePoint.read_results() was called first
         if self._sum is None or self._sum_sq is None and not self.derived:
             msg = 'The Tally ID="{0}" has no data to export. Call the ' \
-                  'StatePoint.read_results() routine before using ' \
+                  'StatePoint.read_results() method before using ' \
                   'Tally.export_results(...)'.format(self.id)
             raise KeyError(msg)
 
@@ -1688,8 +1688,8 @@ class Tally(object):
     def swap_filters(self, filter1, filter2):
         """Reverse the ordering of two filters in this tally
 
-        This is a helper routine for tally arithmetic which helps align the data
-        in two tallies with shared filters. This routine copies this tally and
+        This is a helper method for tally arithmetic which helps align the data
+        in two tallies with shared filters. This method copies this tally and
         reverses the order of the two filters.
 
         Parameters
@@ -2471,7 +2471,7 @@ class Tally(object):
     def diagonalize_filter(self, new_filter):
         """Diagonalize the tally data array along a new axis of filter bins.
 
-        This is a helper method for the tally arithmetic methods. This routine
+        This is a helper method for the tally arithmetic methods. This method
         adds the new filter to a derived tally constructed copied from this one.
         The data in the derived tally arrays is "diagonalized" along the bins in
         the new filter. This functionality is used by the openmc.mgxs module; to

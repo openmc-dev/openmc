@@ -405,7 +405,7 @@ class CrossFilter(object):
 
         This method constructs a Pandas DataFrame object for the CrossFilter
         with columns annotated by filter bin information. This is a helper
-        method for the Tally.get_pandas_dataframe(...) routine. This method
+        method for the Tally.get_pandas_dataframe(...) method. This method
         recursively builds and concatenates Pandas DataFrames for the left
         and right filters and crossfilters.
 

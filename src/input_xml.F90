@@ -2562,6 +2562,21 @@ contains
 
             ! Check if total material was specified
             if (trim(sarray(j)) == 'total') then
+
+              ! Check if a delayedgroup filter is present for this tally
+              do l = 1, t % n_filters
+                if (t % filters(l) % type == FILTER_DELAYEDGROUP) then
+                  call warning("A delayedgroup filter was used on a total &
+                       &nuclide tally. Cross section libraries are not &
+                       &guaranteed to have the same delayed group structure &
+                       &across all isotopes. In particular, ENDF/B-VII.1 does &
+                       &not have a consistent delayed group structure across &
+                       &all isotopes while the JEFF 3.1.1 library has the same &
+                       &delayed group structure across all isotopes. Use with &
+                       &caution!")
+                end if
+              end do
+
               t % nuclide_bins(j) = -1
               cycle
             end if

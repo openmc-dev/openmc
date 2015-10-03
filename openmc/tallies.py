@@ -742,7 +742,6 @@ class Tally(object):
         ----------
         filter_type : str
             The type of Filter (e.g., 'cell', 'energy', etc.)
-
         filter_bin : Integral or tuple
             The bin is an integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. The bin is an integer for the
@@ -854,7 +853,6 @@ class Tally(object):
         filters : list of str
             A list of filter type strings
             (e.g., ['mesh', 'energy']; default is [])
-
         filter_bins : list of Iterables
             A list of the filter bins corresponding to the filter_types
             parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
@@ -1018,11 +1016,9 @@ class Tally(object):
         scores : list of str
             A list of one or more score strings
             (e.g., ['absorption', 'nu-fission']; default is [])
-
         filters : list of str
             A list of filter type strings
             (e.g., ['mesh', 'energy']; default is [])
-
         filter_bins : list of Iterables
             A list of the filter bins corresponding to the filter_types
             parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
@@ -1034,11 +1030,9 @@ class Tally(object):
             3-tuple for 'mesh' filters corresponding to the mesh cell of
             interest. The order of the bins in the list must correspond to the
             filter_types parameter.
-
         nuclides : list of str
             A list of nuclide name strings
             (e.g., ['U-235', 'U-238']; default is [])
-
         value : str
             A string for the type of value to return  - 'mean' (default),
             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
@@ -1112,13 +1106,10 @@ class Tally(object):
         ----------
         filters : bool
             Include columns with filter bin information (default is True).
-
         nuclides : bool
             Include columns with nuclide bin information (default is True).
-
         scores : bool
             Include columns with score bin information (default is True).
-
         summary : None or Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
@@ -1283,14 +1274,11 @@ class Tally(object):
         ----------
         filename : str
             The name of the file for the results (default is 'tally-results')
-
         directory : str
             The name of the directory for the results (default is '.')
-
         format : str
             The format for the exported file - HDF5 ('hdf5', default) and
             Python pickle ('pkl') files are supported
-
         append : bool
             Whether or not to append the results to the file (default is True)
 
@@ -2274,14 +2262,12 @@ class Tally(object):
 
         Parameters
         ----------
-        scores : list
+        scores : list of str
             A list of one or more score strings
             (e.g., ['absorption', 'nu-fission']; default is [])
-
-        filters : list
+        filters : list of str
             A list of filter type strings
             (e.g., ['mesh', 'energy']; default is [])
-
         filter_bins : list of Iterables
             A list of the filter bins corresponding to the filter_types
             parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
@@ -2293,8 +2279,7 @@ class Tally(object):
             3-tuple for 'mesh' filters corresponding to the mesh cell of
             interest. The order of the bins in the list must correspond to the
             filter_types parameter.
-
-        nuclides : list
+        nuclides : list of str
             A list of nuclide name strings
             (e.g., ['U-235', 'U-238']; default is [])
 
@@ -2398,25 +2383,24 @@ class Tally(object):
 
     def summation(self, scores=[], filter_type=None,
                   filter_bins=[], nuclides=[]):
-        """Build a sliced tally for the specified filter bins, nuclides, scores.
+        """Vectorized sum of tally data across scores, filter bins and/or
+        nuclides using tally addition.
 
-        This method constructs a new tally to encapsulate a subset of the data
-        represented by this tally. The subset of data to include in the tally
-        slice is determined by the scores, filter bins and nuclides specified
+        This method constructs a new tally to encapsulate the sum of the data
+        represented by the summation of the data in this tally. The tally data
+        sum is determined by the scores, filter bins and nuclides specified
         in the input parameters.
 
         Parameters
         ----------
-        scores : list
+        scores : list of str
             A list of one or more score strings to sum across
             (e.g., ['absorption', 'nu-fission']; default is [])
-
         filter_type : str
             A filter type string (e.g., 'cell', 'energy') corresponding to the
             filter bins to sum across
-
         filter_bins : Iterable of Integral or tuple
-            A list of the filter bins corresponding to the filters parameter
+            A list of the filter bins corresponding to the filter_type parameter
             Each bin in the list is the integer ID for 'material', 'surface',
             'cell', 'cellborn', and 'universe' Filters. Each bin is an integer
             for the cell instance ID for 'distribcell Filters. Each bin is a
@@ -2424,8 +2408,7 @@ class Tally(object):
             to the energy boundaries of the bin of interest. Each bin is an
             (x,y,z) 3-tuple for 'mesh' filters corresponding to the mesh cell of
             interest.
-
-        nuclides : list
+        nuclides : list of str
             A list of nuclide name strings to sum across
             (e.g., ['U-235', 'U-238']; default is [])
 
@@ -2476,6 +2459,7 @@ class Tally(object):
             # Accumulate this Tally slice into the Tally sum
             tally_sum += tally_slice
 
+        # Add back the filter(s) which were summed across to derived tally
         for filter_type in summed_filters:
             filters = summed_filters[filter_type]
             for i in range(1, len(filters)):
@@ -2485,24 +2469,25 @@ class Tally(object):
         return tally_sum
 
     def diagonalize_filter(self, new_filter):
-        """Combines filters, scores and nuclides with another tally.
+        """Diagonalize the tally data array along a new axis of filter bins.
 
-        This is a helper method for the tally arithmetic methods. The filters,
-        scores and nuclides from both tallies are enumerated into all possible
-        combinations and expressed as CrossFilter, CrossScore and
-        CrossNuclide objects in the new derived tally.
+        This is a helper method for the tally arithmetic methods. This routine
+        adds the new filter to a derived tally constructed copied from this one.
+        The data in the derived tally arrays is "diagonalized" along the bins in
+        the new filter. This functionality is used by the openmc.mgxs module; to
+        transport-correct scattering matrices by subtracting a 'scatter-P1'
+        reaction rate tally with an energy filter from an 'scatter' reaction
+        rate tally with both energy and energyout filters.
 
         Parameters
         ----------
-        other : Tally
-            The tally on the right hand side of the outer product
-        binary_op : {'+', '-', '*', '/', '^'}
-            The binary operation in the outer product
+        new_filter : Filter
+            The filter along which to diagonalize the data in the new
 
         Returns
         -------
         Tally
-            A new Tally outer that is the outer product with this one.
+            A new derived Tally with data diagaonalized along the new filter.
 
         """
 
@@ -2513,35 +2498,42 @@ class Tally(object):
                   'contains a "{1}" filter'.format(self.id, new_filter.type)
             raise ValueError(msg)
 
+        # Add the new filter to a copy of this Tally
         new_tally = copy.deepcopy(self)
         new_tally.add_filter(new_filter)
 
+        # Determine the shape of data in the new diagonalized Tally
         num_filter_bins = new_tally.num_filter_bins
         num_nuclides = new_tally.num_nuclides
         num_score_bins = new_tally.num_score_bins
         new_shape = (num_filter_bins, num_nuclides, num_score_bins)
 
-        diag_factor = self.num_filter_bins / new_filter.num_bins
+        # Determine "base" indices along the new "diagonal", and the factor
+        # by which the "base" indices should be repeated to account for all
+        # other filter bins in the diagonalized tally
         indices = np.arange(0, new_filter.num_bins**2, new_filter.num_bins+1)
+        diag_factor = self.num_filter_bins / new_filter.num_bins
         diag_indices = np.zeros(self.num_filter_bins, dtype=np.int)
 
+        # Determine the filter indices along the new "diagonal"
         for i in range(diag_factor):
             start = i * new_filter.num_bins
             end = (i+1) * new_filter.num_bins
             diag_indices[start:end] = indices + (i * new_filter.num_bins**2)
 
+        # Inject this Tally's data along the diagonal of the diagonalized Tally
         if self.sum is not None:
             new_tally._sum = np.zeros(new_shape, dtype=np.float64)
-            new_tally._sum[diag_indices, :self.num_nuclides, :self.num_scores] = self.sum
+            new_tally._sum[diag_indices, :, :] = self.sum
         if self.sum_sq is not None:
             new_tally._sum_sq = np.zeros(new_shape, dtype=np.float64)
-            new_tally._sum_sq[diag_indices, :self.num_nuclides, :self.num_scores] = self.sum_sq
+            new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
         if self.mean is not None:
             new_tally._mean = np.zeros(new_shape, dtype=np.float64)
-            new_tally._mean[diag_indices, :self.num_nuclides, :self.num_scores] = self.mean
+            new_tally._mean[diag_indices, :, :] = self.mean
         if self.std_dev is not None:
             new_tally._std_dev = np.zeros(new_shape, dtype=np.float64)
-            new_tally._std_dev[diag_indices, :self.num_nuclides, :self.num_scores] = self.std_dev
+            new_tally._std_dev[diag_indices, :, :] = self.std_dev
 
         # Correct each Filter's stride
         stride = new_tally.num_nuclides * new_tally.num_score_bins
@@ -2579,6 +2571,7 @@ class TalliesFile(object):
         ----------
         tally : Tally
             Tally to add to file
+
         merge : bool
             Indicate whether the tally should be merged with an existing tally,
             if possible. Defaults to False.

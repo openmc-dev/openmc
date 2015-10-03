@@ -33,42 +33,42 @@ class StatePoint(object):
         each batch
     cmfd_src : ndarray
         CMFD fission source distribution over all mesh cells and energy groups.
-    current_batch : int
+    current_batch : Integral
         Number of batches simulated
     date_and_time : str
         Date and time when simulation began
     entropy : ndarray
         Shannon entropy of fission source at each batch
-    gen_per_batch : int
+    gen_per_batch : Integral
         Number of fission generations per batch
     global_tallies : ndarray of compound datatype
         Global tallies for k-effective estimates and leakage. The compound
         datatype has fields 'name', 'sum', 'sum_sq', 'mean', and 'std_dev'.
     k_combined : list
         Combined estimator for k-effective and its uncertainty
-    k_col_abs : float
+    k_col_abs : Real
         Cross-product of collision and absorption estimates of k-effective
-    k_col_tra : float
+    k_col_tra : Real
         Cross-product of collision and tracklength estimates of k-effective
-    k_abs_tra : float
+    k_abs_tra : Real
         Cross-product of absorption and tracklength estimates of k-effective
     k_generation : ndarray
         Estimate of k-effective for each batch/generation
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are Mesh objects
-    n_batches : int
+    n_batches : Integral
         Number of batches
-    n_inactive : int
+    n_inactive : Integral
         Number of inactive batches
-    n_particles : int
+    n_particles : Integral
         Number of particles per generation
-    n_realizations : int
+    n_realizations : Integral
         Number of tally realizations
     path : str
         Working directory for simulation
     run_mode : str
         Simulation run mode, e.g. 'k-eigenvalue'
-    seed : int
+    seed : Integral
         Pseudorandom number generator seed
     source : ndarray of compound datatype
         Array of source sites. The compound datatype has fields 'wgt', 'xyz',
@@ -80,7 +80,7 @@ class StatePoint(object):
         Dictionary whose keys are tally IDs and whose values are Tally objects
     tallies_present : bool
         Indicate whether user-defined tallies are present
-    version: tuple of int
+    version: tuple of Integral
         Version of OpenMC
     summary : None or openmc.summary.Summary
         A summary object if the statepoint has been linked with a summary file
@@ -487,7 +487,7 @@ class StatePoint(object):
             A list of Nuclide objects (default is []).
         name : str, optional
             The name specified for the Tally (default is None).
-        id : int, optional
+        id : Integral, optional
             The id specified for the Tally (default is None).
         estimator: str, optional
             The type of estimator ('tracklength', 'analog'; default is None).
@@ -543,6 +543,8 @@ class StatePoint(object):
                 for filter in filters:
                     contains_filters = False
 
+                    # Test if requested filter is a subset of any of the test
+                    # tally's filters and if so continue to next filter
                     for test_filter in test_tally.filters:
                         if test_filter.is_subset(filter):
                             contains_filters = True

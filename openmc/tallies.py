@@ -34,7 +34,7 @@ class Tally(object):
 
     Parameters
     ----------
-    tally_id : int, optional
+    tally_id : Integral, optional
         Unique identifier for the tally. If none is specified, an identifier
         will automatically be assigned
     name : str, optional
@@ -42,7 +42,7 @@ class Tally(object):
 
     Attributes
     ----------
-    id : int
+    id : Integral
         Unique identifier for the tally
     name : str
         Name of the tally
@@ -56,17 +56,17 @@ class Tally(object):
         Type of estimator for the tally
     triggers : list of openmc.trigger.Trigger
         List of tally triggers
-    num_score_bins : int
+    num_score_bins : Integral
         Total number of scores, accounting for the fact that a single
         user-specified score, e.g. scatter-P3 or flux-Y2,2, might have multiple
         bins
-    num_scores : int
+    num_scores : Integral
         Total number of user-specified scores
-    num_filter_bins : int
+    num_filter_bins : Integral
         Total number of filter bins accounting for all filters
-    num_bins : int
+    num_bins : Integral
         Total number of bins for the tally
-    num_realizations : int
+    num_realizations : Integral
         Total number of realizations
     with_summary : bool
         Whether or not a Summary has been linked
@@ -743,7 +743,7 @@ class Tally(object):
         filter_type : str
             The type of Filter (e.g., 'cell', 'energy', etc.)
 
-        filter_bin : int, tuple
+        filter_bin : Integral or tuple
             The bin is an integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. The bin is an integer for the
             cell instance ID for 'distribcell' Filters. The bin is a 2-tuple of
@@ -842,11 +842,36 @@ class Tally(object):
         return score_index
 
     def get_filter_indices(self, filters=[], filter_bins=[]):
-        """
+        """Get indices into the filter axis of this tally's data arrays.
 
-        :param filters:
-        :param filter_bins:
-        :return:
+        This is a helper routine for the Tally.get_values(...) routine to
+        extract tally data. This routine returns the indices into the filter
+        axis of the tally's data array (axis=0) for particular combinations
+        of filters and their corresponding bins.
+
+        Parameters
+        ----------
+        filters : list of str
+            A list of filter type strings
+            (e.g., ['mesh', 'energy']; default is [])
+
+        filter_bins : list of Iterables
+            A list of the filter bins corresponding to the filter_types
+            parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
+            in the list is the integer ID for 'material', 'surface', 'cell',
+            'cellborn', and 'universe' Filters. Each bin is an integer for the
+            cell instance ID for 'distribcell' Filters. Each bin is a 2-tuple of
+            floats for 'energy' and 'energyout' filters corresponding to the
+            energy boundaries of the bin of interest.  The bin is a (x,y,z)
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest. The order of the bins in the list must correspond to the
+            filter_types parameter.
+
+        Returns
+        -------
+        ndarray
+            A NumPy array of the filter indices
+
         """
 
         cv.check_iterable_type('filters', filters, basestring)
@@ -882,10 +907,11 @@ class Tally(object):
                         for k in range(filter.num_bins):
                             bins.append((filter.bins[k], filter.bins[k+1]))
 
+                    # Create list of cell instance IDs for distribcell Filters
                     elif filter.type == 'distribcell':
                         bins = np.arange(filter.num_bins)
 
-                    # Create list of IDs for bins for all other Filter types
+                    # Create list of IDs for bins for all other filter types
                     else:
                         bins = filter.bins
 
@@ -911,10 +937,23 @@ class Tally(object):
         return filter_indices
 
     def get_nuclide_indices(self, nuclides):
-        """
+        """Get indices into the nuclide axis of this tally's data arrays.
 
-        :param nuclides:
-        :return:
+        This is a helper routine for the Tally.get_values(...) routine to
+        extract tally data. This routine returns the indices into the nuclide
+        axis of the tally's data array (axis=1) for one or more nuclides.
+
+        Parameters
+        ----------
+        nuclides : list of str
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
+
+        Returns
+        -------
+        ndarray
+            A NumPy array of the nuclide indices
+
         """
 
         cv.check_iterable_type('nuclides', nuclides, basestring)
@@ -932,10 +971,23 @@ class Tally(object):
         return nuclide_indices
 
     def get_score_indices(self, scores):
-        """
+        """Get indices into the score axis of this tally's data arrays.
 
-        :param scores:
-        :return:
+        This is a helper routine for the Tally.get_values(...) routine to
+        extract tally data. This routine returns the indices into the score
+        axis of the tally's data array (axis=2) for one or more scores.
+
+        Parameters
+        ----------
+        scores : list of str
+            A list of one or more score strings
+            (e.g., ['absorption', 'nu-fission']; default is [])
+
+        Returns
+        -------
+        ndarray
+            A NumPy array of the score indices
+
         """
 
         cv.check_iterable_type('scores', scores, basestring)
@@ -954,19 +1006,20 @@ class Tally(object):
 
     def get_values(self, scores=[], filters=[], filter_bins=[],
                    nuclides=[], value='mean'):
-        """Returns a tally score value given a list of filters to satisfy.
+        """Returns one or more tallied values given a list of scores, filters,
+        filter bins and nuclides.
 
         This method constructs a 3D NumPy array for the requested Tally data
         indexed by filter bin, nuclide bin, and score index. The method will
-        order the data in the array as specified in the parameter lists
+        order the data in the array as specified in the parameter lists.
 
         Parameters
         ----------
-        scores : list
+        scores : list of str
             A list of one or more score strings
             (e.g., ['absorption', 'nu-fission']; default is [])
 
-        filters : list
+        filters : list of str
             A list of filter type strings
             (e.g., ['mesh', 'energy']; default is [])
 
@@ -982,7 +1035,7 @@ class Tally(object):
             interest. The order of the bins in the list must correspond to the
             filter_types parameter.
 
-        nuclides : list
+        nuclides : list of str
             A list of nuclide name strings
             (e.g., ['U-235', 'U-238']; default is [])
 
@@ -1121,7 +1174,7 @@ class Tally(object):
         # Build DataFrame columns for filters if user requested them
         if filters:
 
-            # Append each Filter's DataFRame to the overall DataFrame
+            # Append each Filter's DataFrame to the overall DataFrame
             for filter in self.filters:
                 filter_df = filter.get_pandas_dataframe(data_size, summary)
 
@@ -1192,7 +1245,7 @@ class Tally(object):
         suppose this tally has arrays of data with shape (8,5,5) corresponding
         to two filters (2 and 4 bins, respectively), five nuclides and five
         scores. This routine will return a version of the data array with the
-        with a new shape of (2,4,5,5) such that the first two dimensions now
+        with a new shape of (2,4,5,5) such that the first two dimensions
         correspond directly to the two filters with two and four bins.
 
         Parameters
@@ -1203,9 +1256,8 @@ class Tally(object):
 
         Returns
         -------
-        float or ndarray
-            A scalar or NumPy array of the Tally data indexed in the order
-            each filter, nuclide and score is listed in the parameters.
+        ndarray
+            The tally data array indexed by filters, nuclides and scores.
 
         """
 
@@ -1388,7 +1440,7 @@ class Tally(object):
         Returns
         -------
         Tally
-            A new Tally outer that is the outer product with this one.
+            A new Tally that is the outer product with this one.
 
         Raises
         ------
@@ -1408,15 +1460,17 @@ class Tally(object):
         new_tally.with_batch_statistics = True
         new_tally._derived = True
 
+        # Construct a combined derived name from the two tally operands
         if self.name != '' and other.name != '':
             new_name = '({0} {1} {2})'.format(self.name, binary_op, other.name)
             new_tally.name = new_name
 
-        # FIXME: Align filters
+        # Find any shared filters between the two tallies
         self_filters = set(self.filters)
         other_filters = set(other.filters)
         filter_intersect = self_filters.intersection(other_filters)
 
+        # Align the shared filters to follow in each tally operand
         for i, filter in enumerate(filter_intersect):
             self_index = self.filters.index(filter)
             other_filter = other.filters[self_index]
@@ -1461,12 +1515,15 @@ class Tally(object):
         if self.num_realizations == other.num_realizations:
             new_tally.num_realizations = self.num_realizations
 
-        # Generate filter "outer products"
+        # If filters are identical, simply reuse them in derived tally
         if self.filters == other.filters:
             for self_filter in self.filters:
                 new_tally.add_filter(self_filter)
+
+        # Generate filter "outer products" for non-identical filters
         else:
 
+            # Find the common longest sequence of shared filters
             match = 0
             for self_filter, other_filter in zip(self.filters, other.filters):
                 if self_filter == other_filter:
@@ -1477,11 +1534,11 @@ class Tally(object):
             match_filters = self.filters[:match]
             cross_filters = [self.filters[match:], other.filters[match:]]
 
-            # FIXME: This must be the common longest sequence of tallies at the beginning
-
+            # Simply reuse shared filters in derived tally
             for filter in match_filters:
                 new_tally.add_filter(filter)
 
+            # Use cross filters to combine non-shared filters in derived tally
             if len(self.filters) != match and len(other.filters) == match:
                 for filter in cross_filters[0]:
                     new_tally.add_filter(filter)
@@ -1522,94 +1579,6 @@ class Tally(object):
             stride *= filter.num_bins
 
         return new_tally
-
-    def swap_filters(self, filter1, filter2):
-        """
-
-        :param filter1:
-        :param filter2:
-        :return:
-        """
-
-        # Check that results have been read
-        if not self.derived and self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
-                  'since it does not contain any results.'.format(self.id)
-            raise ValueError(msg)
-
-        cv.check_type('filter1', filter1, Filter)
-        cv.check_type('filter2', filter2, Filter)
-
-        if filter1 == filter2:
-            msg = 'Unable to swap a filter with itself'
-            raise ValueError(msg)
-        elif filter1 not in self.filters:
-            msg = 'Unable to swap "{0}" filter1 in Tally ID="{1}" since it ' \
-                  'does not contain such a filter'.format(filter1.type, self.id)
-            raise ValueError(msg)
-        elif filter2 not in self.filters:
-            msg = 'Unable to swap "{0}" filter2 in Tally ID="{1}" since it ' \
-                  'does not contain such a filter'.format(filter2.type, self.id)
-            raise ValueError(msg)
-
-        swap_tally = copy.deepcopy(self)
-
-        # Swap the filters in the copied version of this Tally
-        filter1_index = swap_tally.filters.index(filter1)
-        filter2_index = swap_tally.filters.index(filter2)
-        swap_tally.filters[filter1_index] = filter2
-        swap_tally.filters[filter2_index] = filter1
-
-        # Update the strides for each of the filters
-        stride = swap_tally.num_nuclides * swap_tally.num_score_bins
-        for filter in reversed(swap_tally.filters):
-            filter.stride = stride
-            stride *= filter.num_bins
-
-        filters = [filter1.type, filter2.type]
-        if filter1.type == 'distribcell':
-            filter1_bins = np.arange(filter.num_bins)
-        else:
-            filter1_bins = [(filter1.get_bin(i)) for i in range(filter1.num_bins)]
-
-        if filter1.type == 'distribcell':
-            filter2_bins = np.arange(filter2.num_bins)
-        else:
-            filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
-
-        if self.sum is not None:
-            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='sum')
-                indices = swap_tally.get_filter_indices(filters, filter_bins)
-                swap_tally.sum[indices, :, :] = data
-
-        if self.sum_sq is not None:
-            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='sum_sq')
-                indices = swap_tally.get_filter_indices(filters, filter_bins)
-                swap_tally.sum_sq[indices, :, :] = data
-
-        if self.sum is not None:
-            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='mean')
-                indices = swap_tally.get_filter_indices(filters, filter_bins)
-                swap_tally._mean[indices, :, :] = data
-
-        if self.sum is not None:
-            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='std_dev')
-                indices = swap_tally.get_filter_indices(filters, filter_bins)
-                swap_tally._std_dev[indices, :, :] = data
-
-        return swap_tally
 
     def _align_tally_data(self, other):
         """Aligns data from two tallies for tally arithmetic.
@@ -1726,6 +1695,94 @@ class Tally(object):
         data['self']['std. dev.'] = self_std_dev
         data['other']['std. dev.'] = other_std_dev
         return data
+
+    def swap_filters(self, filter1, filter2):
+        """
+
+        :param filter1:
+        :param filter2:
+        :return:
+        """
+
+        # Check that results have been read
+        if not self.derived and self.sum is None:
+            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+                  'since it does not contain any results.'.format(self.id)
+            raise ValueError(msg)
+
+        cv.check_type('filter1', filter1, Filter)
+        cv.check_type('filter2', filter2, Filter)
+
+        if filter1 == filter2:
+            msg = 'Unable to swap a filter with itself'
+            raise ValueError(msg)
+        elif filter1 not in self.filters:
+            msg = 'Unable to swap "{0}" filter1 in Tally ID="{1}" since it ' \
+                  'does not contain such a filter'.format(filter1.type, self.id)
+            raise ValueError(msg)
+        elif filter2 not in self.filters:
+            msg = 'Unable to swap "{0}" filter2 in Tally ID="{1}" since it ' \
+                  'does not contain such a filter'.format(filter2.type, self.id)
+            raise ValueError(msg)
+
+        swap_tally = copy.deepcopy(self)
+
+        # Swap the filters in the copied version of this Tally
+        filter1_index = swap_tally.filters.index(filter1)
+        filter2_index = swap_tally.filters.index(filter2)
+        swap_tally.filters[filter1_index] = filter2
+        swap_tally.filters[filter2_index] = filter1
+
+        # Update the strides for each of the filters
+        stride = swap_tally.num_nuclides * swap_tally.num_score_bins
+        for filter in reversed(swap_tally.filters):
+            filter.stride = stride
+            stride *= filter.num_bins
+
+        filters = [filter1.type, filter2.type]
+        if filter1.type == 'distribcell':
+            filter1_bins = np.arange(filter.num_bins)
+        else:
+            filter1_bins = [(filter1.get_bin(i)) for i in range(filter1.num_bins)]
+
+        if filter1.type == 'distribcell':
+            filter2_bins = np.arange(filter2.num_bins)
+        else:
+            filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
+
+        if self.sum is not None:
+            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
+                filter_bins = [(bin1,), (bin2,)]
+                data = self.get_values(filters=filters,
+                                       filter_bins=filter_bins, value='sum')
+                indices = swap_tally.get_filter_indices(filters, filter_bins)
+                swap_tally.sum[indices, :, :] = data
+
+        if self.sum_sq is not None:
+            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
+                filter_bins = [(bin1,), (bin2,)]
+                data = self.get_values(filters=filters,
+                                       filter_bins=filter_bins, value='sum_sq')
+                indices = swap_tally.get_filter_indices(filters, filter_bins)
+                swap_tally.sum_sq[indices, :, :] = data
+
+        if self.sum is not None:
+            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
+                filter_bins = [(bin1,), (bin2,)]
+                data = self.get_values(filters=filters,
+                                       filter_bins=filter_bins, value='mean')
+                indices = swap_tally.get_filter_indices(filters, filter_bins)
+                swap_tally._mean[indices, :, :] = data
+
+        if self.sum is not None:
+            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
+                filter_bins = [(bin1,), (bin2,)]
+                data = self.get_values(filters=filters,
+                                       filter_bins=filter_bins, value='std_dev')
+                indices = swap_tally.get_filter_indices(filters, filter_bins)
+                swap_tally._std_dev[indices, :, :] = data
+
+        return swap_tally
 
     def __add__(self, other):
         """Adds this tally to another tally or scalar value.
@@ -2422,7 +2479,7 @@ class Tally(object):
         Returns
         -------
         Tally
-            A new Tally outer that is the outer product with this one.
+            A new Tally that is the outer product with this one.
 
         """
 

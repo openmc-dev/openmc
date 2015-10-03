@@ -461,10 +461,10 @@ contains
 
               if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
                 t % results(score_index, d) % value = &
-                  t % results(score_index, d) % value + score
+                     t % results(score_index, d) % value + score
               else
                 t % results(score_index, 1) % value = &
-                  t % results(score_index, 1) % value + score
+                     t % results(score_index, 1) % value + score
               end if
             end do
             !$omp end critical
@@ -480,14 +480,14 @@ contains
             do d = 1, nuclides(i_nuclide) % n_precursor
               yield = yield_delayed(nuc, p % E, d)
               score = micro_xs(i_nuclide) % delayed_nu_fission * yield &
-                * atom_density * flux
+                   * atom_density * flux
 
               if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
                 t % results(score_index, d) % value = &
-                  t % results(score_index, d) % value + score
+                     t % results(score_index, d) % value + score
               else
                 t % results(score_index, 1) % value = &
-                  t % results(score_index, 1) % value + score
+                     t % results(score_index, 1) % value + score
               end if
             end do
           else
@@ -497,10 +497,10 @@ contains
 
               if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
                 t % results(score_index, d) % value = &
-                  t % results(score_index, d) % value + score
+                     t % results(score_index, d) % value + score
               else
                 t % results(score_index, 1) % value = &
-                  t % results(score_index, 1) % value + score
+                     t % results(score_index, 1) % value + score
               end if
             end do
           end if

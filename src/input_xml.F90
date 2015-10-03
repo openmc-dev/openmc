@@ -2357,8 +2357,8 @@ contains
           if (check_for_node(node_filt, "bins")) then
             if ((trim(temp_str) == 'energy' .or. &
                  trim(temp_str) == 'energyout') .or. &
-                (trim(temp_str) == 'mu' .or. trim(temp_str) == 'polar') .or. &
-                (trim(temp_str) == 'azimuthal')) then
+                 (trim(temp_str) == 'mu' .or. trim(temp_str) == 'polar') .or. &
+                 (trim(temp_str) == 'azimuthal')) then
               n_words = get_arraysize_double(node_filt, "bins")
             else
               n_words = get_arraysize_integer(node_filt, "bins")
@@ -2807,7 +2807,7 @@ contains
 
           ! Check to see if the mu filter is applied and if that makes sense.
           if ((.not. starts_with(score_name,'scatter')) .and. &
-              (.not. starts_with(score_name,'nu-scatter'))) then
+               (.not. starts_with(score_name,'nu-scatter'))) then
             if (t % find_filter(FILTER_MU) > 0) then
               call fatal_error("Cannot tally " // trim(score_name) //" with a &
                                &change of angle (mu) filter.")

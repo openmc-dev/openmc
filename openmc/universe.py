@@ -3,6 +3,7 @@ from collections import OrderedDict, Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
+import warnings
 
 import numpy as np
 
@@ -180,6 +181,12 @@ class Cell(object):
             Indicate whether the negative or positive half-space is to be used
 
         """
+
+        warnings.simplefilter('always', DeprecationWarning)
+        warnings.warn("Cell.add_surface(...) has been deprecated and may be "
+                      "removed in a future version. The region for a Cell "
+                      "should be defined using the region property directly.",
+                      DeprecationWarning)
 
         if not isinstance(surface, openmc.Surface):
             msg = 'Unable to add Surface "{0}" to Cell ID="{1}" since it is ' \

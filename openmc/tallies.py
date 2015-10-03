@@ -2379,15 +2379,13 @@ class Tally(object):
                 for filter_bin in filter_bins[i]:
                     bin_index = filter.get_bin_index(filter_bin)
                     if filter_type in ['energy', 'energyout']:
-                        bin_indices.append(bin_index)
-                        bin_indices.append(bin_index+1)
+                        bin_indices.extend([bin_index, bin_index+1])
                     elif filter_type == 'distribcell':
                         bin_indices.append(0)
                     else:
                         bin_indices.append(bin_index)
 
-                new_bins = filter.bins[bin_indices]
-                filter.bins = new_bins
+                filter.bins = filter.bins[bin_indices]
                 filter.num_bins = len(filter_bins[i])
 
         # Correct each Filter's stride
@@ -2478,7 +2476,6 @@ class Tally(object):
             # Accumulate this Tally slice into the Tally sum
             tally_sum += tally_slice
 
-        # FIXME: test if this works for filter
         for filter_type in summed_filters:
             filters = summed_filters[filter_type]
             for i in range(1, len(filters)):
@@ -2486,74 +2483,6 @@ class Tally(object):
             tally_sum.add_filter(filters[-1])
 
         return tally_sum
-
-    def tile_filter(self, new_filter):
-        """Combines filters, scores and nuclides with another tally.
-
-        This is a helper method for the tally arithmetic methods. The filters,
-        scores and nuclides from both tallies are enumerated into all possible
-        combinations and expressed as CrossFilter, CrossScore and
-        CrossNuclide objects in the new derived tally.
-
-        Parameters
-        ----------
-        other : Tally
-            The tally on the right hand side of the outer product
-        binary_op : {'+', '-', '*', '/', '^'}
-            The binary operation in the outer product
-
-        Returns
-        -------
-        Tally
-            A new Tally that is the outer product with this one.
-
-        """
-
-        cv.check_type('new_filter', new_filter, Filter)
-
-        if new_filter in self.filters:
-            msg = 'Unable to tile Tally ID="{0}" which already ' \
-                  'contains a "{1}" filter'.format(self.id, new_filter.type)
-            raise ValueError(msg)
-
-        new_tally = copy.deepcopy(self)
-        new_tally.add_filter(new_filter)
-
-        num_filter_bins = new_tally.num_filter_bins
-        num_nuclides = new_tally.num_nuclides
-        num_score_bins = new_tally.num_score_bins
-        new_shape = (num_filter_bins, num_nuclides, num_score_bins)
-
-        repeat_indices = np.arange(0, new_tally.num_bins, new_filter.num_bins)
-        repeat_factor = new_filter.num_bins
-
-        if self.sum is not None:
-            new_tally._sum = np.zeros(new_shape, dtype=np.float64)
-        if self.sum_sq is not None:
-            new_tally._sum_sq = np.zeros(new_shape, dtype=np.float64)
-        if self.mean is not None:
-            new_tally._mean = np.zeros(new_shape, dtype=np.float64)
-        if self.std_dev is not None:
-            new_tally._std_dev = np.zeros(new_shape, dtype=np.float64)
-
-        for i in range(repeat_factor):
-            if self.sum is not None:
-                new_tally._sum[repeat_indices+i, :, :] = self.sum
-            if self.sum_sq is not None:
-                new_tally._sum_sq[repeat_indices+i, :, :] = self.sum_sq
-            if self.mean is not None:
-                new_tally._mean[repeat_indices+i, :, :] = self.mean
-            if self.std_dev is not None:
-                new_tally._std_dev[repeat_indices+i, :, :] = self.std_dev
-
-        # Correct each Filter's stride
-        stride = new_tally.num_nuclides * new_tally.num_score_bins
-        for filter in reversed(new_tally.filters):
-            filter.stride = stride
-            stride *= filter.num_bins
-
-        return new_tally
-
 
     def diagonalize_filter(self, new_filter):
         """Combines filters, scores and nuclides with another tally.

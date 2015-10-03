@@ -147,7 +147,7 @@ contains
 
         ! determine delayed neutron precursor yield for group d
         yield = interpolate_tab1(nuc % nu_d_precursor_data( &
-          lc+1:lc+2+2*NR+2*NE), E)
+             lc+1:lc+2+2*NR+2*NE), E)
 
         ! Check if this group is the requested group
         if (d == g) exit

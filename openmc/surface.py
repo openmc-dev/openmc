@@ -48,12 +48,6 @@ class Surface(object):
         Unique identifier for the surface
     name : str
         Name of the surface
-    negative : Halfspace
-        Negative half-space of the surface, i.e., if :math:`f(x,y,z) = 0` is the
-        equation for the sufrace, the region for which :math:`f(x,y,z) < 0`.
-    positive : Halfspace
-        Positive half-space of the surface, i.e., if :math:`f(x,y,z) = 0` is the
-        equation for the sufrace, the region for which :math:`f(x,y,z) > 0`.
     type : str
         Type of the surface, e.g. 'x-plane'
 
@@ -75,6 +69,12 @@ class Surface(object):
         # proper order
         self._coeff_keys = []
 
+    def __neg__(self):
+        return Halfspace(self, '-')
+
+    def __pos__(self):
+        return Halfspace(self, '+')
+
     @property
     def id(self):
         return self._id
@@ -94,14 +94,6 @@ class Surface(object):
     @property
     def coeffs(self):
         return self._coeffs
-
-    @property
-    def negative(self):
-        return Halfspace(self, '-')
-
-    @property
-    def positive(self):
-        return Halfspace(self, '+')
 
     @id.setter
     def id(self, surface_id):

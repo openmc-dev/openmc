@@ -896,7 +896,7 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     the cell occupies. Each half-space is identified by the unique ID of the
     surface prefixed by `-` or `+` to indicate that it is the negative or
     positive half-space, respectively. The `+` sign for a positive half-space
-    can be omitted. Valid Boolean operators are parentheses, union `^`,
+    can be omitted. Valid Boolean operators are parentheses, union `|`,
     complement `~`, and intersection. Intersection is implicit and indicated by
     the presence of whitespace. The order of operator precedence is parentheses,
     complement, intersection, and then union.
@@ -908,7 +908,7 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
     .. code-block:: xml
 
-        <cell id="1" material="1" region="-3 ^ ~(5 -2)" />
+        <cell id="1" material="1" region="-3 | ~(5 -2)" />
 
     .. note:: The ``region`` attribute/element can be omitted to make a cell
               fill its entire universe.

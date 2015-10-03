@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections import Iterable, OrderedDict
 from copy import deepcopy
 from numbers import Real, Integral
 import warnings
@@ -64,15 +64,15 @@ class Material(object):
         self._density = None
         self._density_units = ''
 
-        # A dictionary of Nuclides
+        # An ordered dictionary of Nuclides (order affects OpenMC results)
         # Keys         - Nuclide names
         # Values     - tuple (nuclide, percent, percent type)
-        self._nuclides = {}
+        self._nuclides = OrderedDict()
 
-        # A dictionary of Elements
+        # An ordered dictionary of Elements (order affects OpenMC results)
         # Keys         - Element names
         # Values     - tuple (element, percent, percent type)
-        self._elements = {}
+        self._elements = OrderedDict()
 
         # If specified, a list of tuples of (table name, xs identifier)
         self._sab = []

@@ -213,42 +213,42 @@ def get_opencg_surface(openmc_surface):
     opencg_surface = None
 
     if openmc_surface.type == 'plane':
-        A = openmc_surface.coeffs['A']
-        B = openmc_surface.coeffs['B']
-        C = openmc_surface.coeffs['C']
-        D = openmc_surface.coeffs['D']
+        A = openmc_surface.a
+        B = openmc_surface.b
+        C = openmc_surface.c
+        D = openmc_surface.d
         opencg_surface = opencg.Plane(surface_id, name, boundary, A, B, C, D)
 
     elif openmc_surface.type == 'x-plane':
-        x0 = openmc_surface.coeffs['x0']
+        x0 = openmc_surface.y0
         opencg_surface = opencg.XPlane(surface_id, name, boundary, x0)
 
     elif openmc_surface.type == 'y-plane':
-        y0 = openmc_surface.coeffs['y0']
+        y0 = openmc_surface.y0
         opencg_surface = opencg.YPlane(surface_id, name, boundary, y0)
 
     elif openmc_surface.type == 'z-plane':
-        z0 = openmc_surface.coeffs['z0']
+        z0 = openmc_surface.z0
         opencg_surface = opencg.ZPlane(surface_id, name, boundary, z0)
 
     elif openmc_surface.type == 'x-cylinder':
-        y0 = openmc_surface.coeffs['y0']
-        z0 = openmc_surface.coeffs['z0']
-        R = openmc_surface.coeffs['R']
+        y0 = openmc_surface.y0
+        z0 = openmc_surface.z0
+        R = openmc_surface.r
         opencg_surface = opencg.XCylinder(surface_id, name,
                                             boundary, y0, z0, R)
 
     elif openmc_surface.type == 'y-cylinder':
-        x0 = openmc_surface.coeffs['x0']
-        z0 = openmc_surface.coeffs['z0']
-        R = openmc_surface.coeffs['R']
+        x0 = openmc_surface.x0
+        z0 = openmc_surface.z0
+        R = openmc_surface.r
         opencg_surface = opencg.YCylinder(surface_id, name,
                                             boundary, x0, z0, R)
 
     elif openmc_surface.type == 'z-cylinder':
-        x0 = openmc_surface.coeffs['x0']
-        y0 = openmc_surface.coeffs['y0']
-        R = openmc_surface.coeffs['R']
+        x0 = openmc_surface.x0
+        y0 = openmc_surface.y0
+        R = openmc_surface.r
         opencg_surface = opencg.ZCylinder(surface_id, name,
                                             boundary, x0, y0, R)
 
@@ -297,40 +297,40 @@ def get_openmc_surface(opencg_surface):
         boundary = 'transmission'
 
     if opencg_surface.type == 'plane':
-        A = opencg_surface.coeffs['A']
-        B = opencg_surface.coeffs['B']
-        C = opencg_surface.coeffs['C']
-        D = opencg_surface.coeffs['D']
+        A = opencg_surface.a
+        B = opencg_surface.b
+        C = opencg_surface.c
+        D = opencg_surface.d
         openmc_surface = openmc.Plane(surface_id, boundary, A, B, C, D, name)
 
     elif opencg_surface.type == 'x-plane':
-        x0 = opencg_surface.coeffs['x0']
+        x0 = opencg_surface.x0
         openmc_surface = openmc.XPlane(surface_id, boundary, x0, name)
 
     elif opencg_surface.type == 'y-plane':
-        y0 = opencg_surface.coeffs['y0']
+        y0 = opencg_surface.y0
         openmc_surface = openmc.YPlane(surface_id, boundary, y0, name)
 
     elif opencg_surface.type == 'z-plane':
-        z0 = opencg_surface.coeffs['z0']
+        z0 = opencg_surface.z0
         openmc_surface = openmc.ZPlane(surface_id, boundary, z0, name)
 
     elif opencg_surface.type == 'x-cylinder':
-        y0 = opencg_surface.coeffs['y0']
-        z0 = opencg_surface.coeffs['z0']
-        R = opencg_surface.coeffs['R']
+        y0 = opencg_surface.y0
+        z0 = opencg_surface.z0
+        R = opencg_surface.r
         openmc_surface = openmc.XCylinder(surface_id, boundary, y0, z0, R, name)
 
     elif opencg_surface.type == 'y-cylinder':
-        x0 = opencg_surface.coeffs['x0']
-        z0 = opencg_surface.coeffs['z0']
-        R = opencg_surface.coeffs['R']
+        x0 = opencg_surface.x0
+        z0 = opencg_surface.z0
+        R = opencg_surface.r
         openmc_surface = openmc.YCylinder(surface_id, boundary, x0, z0, R, name)
 
     elif opencg_surface.type == 'z-cylinder':
-        x0 = opencg_surface.coeffs['x0']
-        y0 = opencg_surface.coeffs['y0']
-        R = opencg_surface.coeffs['R']
+        x0 = opencg_surface.x0
+        y0 = opencg_surface.y0
+        R = opencg_surface.r
         openmc_surface = openmc.ZCylinder(surface_id, boundary, x0, y0, R, name)
 
     else:
@@ -384,9 +384,9 @@ def get_compatible_opencg_surfaces(opencg_surface):
     boundary = opencg_surface.boundary_type
 
     if opencg_surface.type == 'x-squareprism':
-        y0 = opencg_surface.coeffs['y0']
-        z0 = opencg_surface.coeffs['z0']
-        R = opencg_surface.coeffs['R']
+        y0 = opencg_surface.y0
+        z0 = opencg_surface.z0
+        R = opencg_surface.r
 
         # Create a list of the four planes we need
         left = opencg.YPlane(name=name, boundary=boundary, y0=y0-R)
@@ -396,9 +396,9 @@ def get_compatible_opencg_surfaces(opencg_surface):
         surfaces = [left, right, bottom, top]
 
     elif opencg_surface.type == 'y-squareprism':
-        x0 = opencg_surface.coeffs['x0']
-        z0 = opencg_surface.coeffs['z0']
-        R = opencg_surface.coeffs['R']
+        x0 = opencg_surface.x0
+        z0 = opencg_surface.z0
+        R = opencg_surface.r
 
         # Create a list of the four planes we need
         left = opencg.XPlane(name=name, boundary=boundary, x0=x0-R)
@@ -408,9 +408,9 @@ def get_compatible_opencg_surfaces(opencg_surface):
         surfaces = [left, right, bottom, top]
 
     elif opencg_surface.type == 'z-squareprism':
-        x0 = opencg_surface.coeffs['x0']
-        y0 = opencg_surface.coeffs['y0']
-        R = opencg_surface.coeffs['R']
+        x0 = opencg_surface.x0['x0']
+        y0 = opencg_surface.y0['y0']
+        R = opencg_surface.r['R']
 
         # Create a list of the four planes we need
         left = opencg.XPlane(name=name, boundary=boundary, x0=x0-R)

@@ -447,7 +447,8 @@ class MultiGroupXS(object):
             sp_tally = statepoint.get_tally(tally.scores, tally.filters,
                                             tally.nuclides,
                                             estimator=tally.estimator)
-            sp_tally = sp_tally.get_slice(tally.scores, nuclides=tally.nuclides)
+            sp_tally = sp_tally.get_slice(tally.scores, [self.domain_type],
+                                          [(self.domain.id,)], tally.nuclides)
             self.tallies[tally_type] = sp_tally
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
@@ -1788,9 +1789,9 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         """
 
         # Create a list of scores for each Tally to be created
-        scores = ['flux', 'scatter', 'scatter-P1']
+        scores = ['flux', 'nu-scatter', 'scatter-P1']
         estimator = 'analog'
-        keys = scores
+        keys = ['flux', 'scatter', 'scatter-P1']
 
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges

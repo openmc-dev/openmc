@@ -15,7 +15,7 @@ module tally
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
-  use fission,          only: nu_total, nu_delayed
+  use fission,          only: nu_total, nu_delayed, yield_delayed
   use interpolation,    only: interpolate_tab1
 
 #ifdef MPI
@@ -55,10 +55,6 @@ contains
     integer :: i_energy             ! index in nuclide energy grid
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: score_index          ! scoring bin index
-    integer :: lc                   ! pointer for interpolating in precursor
-                                    ! yield table
-    integer :: NR                   ! number of interpolation regions
-    integer :: NE                   ! number of interpolation energies
     integer :: d                    ! delayed neutron index
     real(8) :: yield                ! delayed neutron yield
     real(8) :: atom_density_        ! atom/b-cm
@@ -69,6 +65,7 @@ contains
     real(8) :: uvw(3)               ! particle direction
     type(Material),    pointer :: mat
     type(Reaction),    pointer :: rxn
+    type(Nuclide),     pointer :: nuc
 
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins
@@ -421,73 +418,95 @@ contains
             ! calculate fraction of absorptions that would have resulted in
             ! nu-fission
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
-              if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
 
-                !$omp critical
-                lc = 1
-                do d = 1, nuclides(p % event_nuclide) % n_precursor
+              nuc => nuclides(p % event_nuclide)
 
-                  ! determine number of interpolation regions and energies
-                  NR = int(nuclides(p % event_nuclide) &
-                       % nu_d_precursor_data(lc + 1))
-                  NE = int(nuclides(p % event_nuclide) &
-                       % nu_d_precursor_data(lc + 2 + 2*NR))
+              !$omp critical
+              do d = 1, nuclides(p % event_nuclide) % n_precursor
 
-                  ! determine delayed neutron precursor yield for group d
-                  yield = interpolate_tab1(nuclides(p % event_nuclide) &
-                       % nu_d_precursor_data(lc+1:lc+2+2*NR+2*NE), p % E)
+                yield = yield_delayed(nuc, p % E, d)
 
-                  ! advance pointer
-                  lc = lc + 2 + 2*NR + 2*NE + 1
+                score = p % absorb_wgt * yield * micro_xs(p % event_nuclide) &
+                     % delayed_nu_fission / micro_xs(p % event_nuclide) &
+                     % absorption
 
-                  score = p % absorb_wgt * yield * micro_xs(p % event_nuclide) &
-                       % delayed_nu_fission / micro_xs(p % event_nuclide) &
-                       % absorption
-
+                if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
                   t % results(score_index, d) % value = &
                        t % results(score_index, d) % value + score
-                end do
-                !$omp end critical
-              else
-                score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
-                     delayed_nu_fission / micro_xs(p % event_nuclide) % &
-                     absorption
-
-                t % results(score_index, 1) % value = &
-                     t % results(score_index, 1) % value + score
-              end if
-            else
-              score = ZERO
+                else
+                  t % results(score_index, 1) % value = &
+                       t % results(score_index, 1) % value + score
+                end if
+              end do
+              !$omp end critical
             end if
+
+            cycle SCORE_LOOP
+
           else
+            ! Skip any non-fission events
+            if (.not. p % fission) cycle SCORE_LOOP
+            ! If there is no outgoing energy filter, than we only need to
+            ! score to one bin. For the score to be 'analog', we need to
+            ! score the number of particles that were banked in the fission
+            ! bank. Since this was weighted by 1/keff, we multiply by keff
+            ! to get the proper score. Loop over the neutrons produced from
+            ! fission and check which ones are delayed. If a delayed neutron is
+            ! encountered, add its contribution to the fission bank to the
+            ! score.
 
-            score = ZERO
-
-            ! Loop over the neutrons produce from fission and check which
-            ! ones are delayed. If a delayed neutron is encountered, add
-            ! its contribution to the fission bank to the score.
             !$omp critical
             do d = 1, nuclides(p % event_nuclide) % n_precursor
               score = keff * p % wgt_bank / p % n_bank * p % n_delayed_bank(d)
 
               if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
                 t % results(score_index, d) % value = &
-                     t % results(score_index, d) % value + score
+                  t % results(score_index, d) % value + score
               else
                 t % results(score_index, 1) % value = &
-                     t % results(score_index, 1) % value + score
+                  t % results(score_index, 1) % value + score
               end if
             end do
             !$omp end critical
-            cycle SCORE_LOOP
-          end if
 
+            cycle SCORE_LOOP
+
+          end if
         else
           if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
+
+            nuc => nuclides(i_nuclide)
+
+            do d = 1, nuclides(i_nuclide) % n_precursor
+              yield = yield_delayed(nuc, p % E, d)
+              score = micro_xs(i_nuclide) % delayed_nu_fission * yield &
+                * atom_density * flux
+
+              if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
+                t % results(score_index, d) % value = &
+                  t % results(score_index, d) % value + score
+              else
+                t % results(score_index, 1) % value = &
+                  t % results(score_index, 1) % value + score
+              end if
+            end do
           else
-            score = material_xs % nu_fission * flux
+            do d = 1, MAX_DELAYED_GROUPS
+
+              score = material_xs % delayed_nu_fission(d) * flux
+
+              if (t % find_filter(FILTER_DELAYEDGROUP) > 0) then
+                t % results(score_index, d) % value = &
+                  t % results(score_index, d) % value + score
+              else
+                t % results(score_index, 1) % value = &
+                  t % results(score_index, 1) % value + score
+              end if
+            end do
           end if
+
+          cycle SCORE_LOOP
+
         end if
 
       case (SCORE_KAPPA_FISSION)

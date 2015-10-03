@@ -983,7 +983,7 @@ contains
     score_names(abs(SCORE_NU_SCATTER_N))       = "Scattering Prod. Rate Moment"
     score_names(abs(SCORE_NU_SCATTER_PN))      = "Scattering Prod. Rate Moment"
     score_names(abs(SCORE_NU_SCATTER_YN))      = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_DELAYED_NU_FISSION)) = "Delayed-Nu-fission Rate"
+    score_names(abs(SCORE_DELAYED_NU_FISSION)) = "Delayed-Nu-Fission Rate"
 
     ! Create filename for tally output
     filename = trim(path_output) // "tallies.out"

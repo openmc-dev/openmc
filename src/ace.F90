@@ -684,6 +684,7 @@ contains
 
     else
       nuc % nu_d_type = NU_NONE
+      nuc % n_precursor = ZERO
     end if
 
   end subroutine read_nu_data
@@ -1399,7 +1400,7 @@ contains
   end subroutine generate_nu_fission
 
 !===============================================================================
-! GENERATE_DELAYED_NU_FISSION precalculates the microscopic delay-nu-fission
+! GENERATE_DELAYED_NU_FISSION precalculates the microscopic delayed-nu-fission
 ! cross section for a given nuclide. This is done so that the nu_delayed
 ! function does not need to be called during cross section lookups.
 !===============================================================================

@@ -67,7 +67,7 @@ contains
 !===============================================================================
 ! TOKENIZE takes a string that includes logical expressions for a list of
 ! bounding surfaces in a cell and splits it into separate tokens. The characters
-! (, ), ^, and ~ count as separate tokens since they represent operators.
+! (, ), |, and ~ count as separate tokens since they represent operators.
 !===============================================================================
 
   subroutine tokenize(string, tokens)
@@ -85,7 +85,7 @@ contains
     i = 1
     do while (i <= len_trim(string_))
       ! Check for special characters
-      if (index('()^~ ', string_(i:i)) > 0) then
+      if (index('()|~ ', string_(i:i)) > 0) then
         ! If the special character appears immediately after a non-operator,
         ! create a token with the surface half-space
         if (i_start > 0) then
@@ -98,7 +98,7 @@ contains
           call tokens%push_back(OP_LEFT_PAREN)
         case (')')
           call tokens%push_back(OP_RIGHT_PAREN)
-        case ('^')
+        case ('|')
           call tokens%push_back(OP_UNION)
         case ('~')
           call tokens%push_back(OP_COMPLEMENT)
@@ -112,7 +112,7 @@ contains
           ! is not a left parenthese or union operator, that implies that the
           ! whitespace is to be interpreted as an intersection operator
           if (i_start > 0 .or. tokens%data(tokens%size()) == OP_RIGHT_PAREN) then
-            if (index(')^', string_(i+1:i+1)) == 0) then
+            if (index(')|', string_(i+1:i+1)) == 0) then
               call tokens%push_back(OP_INTERSECTION)
             end if
           end if

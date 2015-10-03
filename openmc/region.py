@@ -7,6 +7,15 @@ from openmc.checkvalue import check_type
 class Region(object):
     __metaclass__ = ABCMeta
 
+    def __and__(self, other):
+        return Intersection(self, other)
+
+    def __or__(self, other):
+        return Union(self, other)
+
+    def __invert__(self):
+        return Complement(self)
+
     @abstractmethod
     def __str__(self):
         return ''
@@ -19,8 +28,8 @@ class Region(object):
         ----------
         expression : str
             Boolean expression relating surface half-spaces. The possible
-            operators are union '^', intersection ' ', and complement '~'. For
-            example, '(1 -2) ^ 3 ~(4 -5)'.
+            operators are union '|', intersection ' ', and complement '~'. For
+            example, '(1 -2) | 3 ~(4 -5)'.
         surfaces : dict
             Dictionary whose keys are suface IDs that appear in the Boolean
             expression and whose values are Surface objects.
@@ -37,7 +46,7 @@ class Region(object):
         i_start = -1
         tokens = []
         while i < len(expression):
-            if expression[i] in '()^~ ':
+            if expression[i] in '()|~ ':
                 # If special character appears immediately after a non-operator,
                 # create a token with the apporpriate half-space
                 if i_start >= 0:
@@ -47,7 +56,7 @@ class Region(object):
                     else:
                         tokens.append(surfaces[abs(j)].positive)
 
-                if expression[i] in '()^~':
+                if expression[i] in '()|~':
                     # For everything other than intersection, add the operator
                     # to the list of tokens
                     tokens.append(expression[i])
@@ -60,7 +69,7 @@ class Region(object):
                     # is not a left parenthese or union operator, that implies that the
                     # whitespace is to be interpreted as an intersection operator
                     if (i_start >= 0 or tokens[-1] == ')') and \
-                       expression[i+1] not in ')^':
+                       expression[i+1] not in ')|':
                         tokens.append(' ')
 
                 i_start = -1
@@ -104,7 +113,7 @@ class Region(object):
                     output.append(r1)
                 else:
                     output.append(Intersection(r1, r2))
-            elif operator == '^':
+            elif operator == '|':
                 r1 = output.pop()
                 if isinstance(r1, Union) and can_be_combined(r2):
                     r1.nodes.append(r2)
@@ -124,10 +133,10 @@ class Region(object):
         # generate an abstract syntax tree for the region expression.
         output = []
         stack = []
-        precedence = {'^': 1, ' ': 2, '~': 3}
-        associativity = {'^': 'left', ' ': 'left', '~': 'right'}
+        precedence = {'|': 1, ' ': 2, '~': 3}
+        associativity = {'|': 'left', ' ': 'left', '~': 'right'}
         for token in tokens:
-            if token in (' ', '^', '~'):
+            if token in (' ', '|', '~'):
                 # Normal operators
                 while stack:
                     op = stack[-1]
@@ -225,7 +234,7 @@ class Union(Region):
         self._nodes = nodes
 
     def __str__(self):
-        return '(' + ' ^ '.join(map(str, self.nodes)) + ')'
+        return '(' + ' | '.join(map(str, self.nodes)) + ')'
 
 
 class Complement(Region):

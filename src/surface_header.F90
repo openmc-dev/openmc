@@ -24,9 +24,44 @@ module surface_header
     procedure(iNormal),   deferred :: normal
   end type Surface
 
+  abstract interface
+    pure function iEvaluate(this, xyz) result(f)
+      import Surface
+      class(Surface), intent(in) :: this
+      real(8), intent(in) :: xyz(3)
+      real(8) :: f
+    end function iEvaluate
+
+    pure function iDistance(this, xyz, uvw, coincident) result(d)
+      import Surface
+      class(Surface), intent(in) :: this
+      real(8), intent(in) :: xyz(3)
+      real(8), intent(in) :: uvw(3)
+      logical, intent(in) :: coincident
+      real(8) :: d
+    end function iDistance
+
+    pure function iNormal(this, xyz) result(uvw)
+      import Surface
+      class(Surface), intent(in) :: this
+      real(8), intent(in) :: xyz(3)
+      real(8) :: uvw(3)
+    end function iNormal
+  end interface
+
+!===============================================================================
+! SURFACECONTAINER allows us to store an array of different types of surfaces
+!===============================================================================
+
   type :: SurfaceContainer
     class(Surface), allocatable :: obj
   end type SurfaceContainer
+
+!===============================================================================
+! All the derived types below are extensions of the abstract Surface type. They
+! inherent the reflect() and sense() type-bound procedures and must implement
+! evaluate(), distance(), and normal()
+!===============================================================================
 
   type, extends(Surface) :: SurfaceXPlane
     ! x = x0
@@ -147,31 +182,6 @@ module surface_header
     procedure :: distance => z_cone_distance
     procedure :: normal => z_cone_normal
   end type SurfaceZCone
-
-  abstract interface
-    pure function iEvaluate(this, xyz) result(f)
-      import Surface
-      class(Surface), intent(in) :: this
-      real(8), intent(in) :: xyz(3)
-      real(8) :: f
-    end function iEvaluate
-
-    pure function iDistance(this, xyz, uvw, coincident) result(d)
-      import Surface
-      class(Surface), intent(in) :: this
-      real(8), intent(in) :: xyz(3)
-      real(8), intent(in) :: uvw(3)
-      logical, intent(in) :: coincident
-      real(8) :: d
-    end function iDistance
-
-    pure function iNormal(this, xyz) result(uvw)
-      import Surface
-      class(Surface), intent(in) :: this
-      real(8), intent(in) :: xyz(3)
-      real(8) :: uvw(3)
-    end function iNormal
-  end interface
 
 contains
 
@@ -369,14 +379,14 @@ contains
     real(8) :: d
 
     real(8) :: f
-    real(8) :: tmp
+    real(8) :: projection
 
     f = this%A*xyz(1) + this%B*xyz(2) + this%C*xyz(3) - this%D
-    tmp = this%A*uvw(1) + this%B*uvw(2) + this%C*uvw(3)
-    if (coincident .or. abs(f) < FP_COINCIDENT .or. tmp == ZERO) then
+    projection = this%A*uvw(1) + this%B*uvw(2) + this%C*uvw(3)
+    if (coincident .or. abs(f) < FP_COINCIDENT .or. projection == ZERO) then
       d = INFINITY
     else
-      d = -f/tmp
+      d = -f/projection
       if (d < ZERO) d = INFINITY
     end if
   end function plane_distance

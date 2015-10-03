@@ -36,9 +36,10 @@ they will be moved to a new file with '.original' appended to their name.
 
 Formatting changes that will be made:
 
-geometry.xml:  Lattices containing 'outside' attributes/tags will be replaced
+geometry.xml: Lattices containing 'outside' attributes/tags will be replaced
   with lattices containing 'outer' attributes, and the appropriate
-  cells/universes will be added.
+  cells/universes will be added. Any 'surfaces' attributes/elements on a cell
+  will be renamed 'region'.
 """
 
 

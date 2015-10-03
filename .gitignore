@@ -63,3 +63,6 @@ data/nndc
 
 # IPython notebook checkpoints
 .ipynb_checkpoints
+
+# OpenMOC tracks
+*.data

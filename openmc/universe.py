@@ -194,7 +194,7 @@ class Cell(object):
         # If no region has been assigned, simply use the half-space. Otherwise,
         # take the intersection of the current region and the half-space
         # specified
-        region = surface.positive if halfspace == 1 else surface.negative
+        region = +surface if halfspace == 1 else -surface
         if self.region is None:
             self.region = region
         else:

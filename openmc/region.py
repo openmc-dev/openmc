@@ -52,9 +52,9 @@ class Region(object):
                 if i_start >= 0:
                     j = int(expression[i_start:i])
                     if j < 0:
-                        tokens.append(surfaces[abs(j)].negative)
+                        tokens.append(-surfaces[abs(j)])
                     else:
-                        tokens.append(surfaces[abs(j)].positive)
+                        tokens.append(+surfaces[abs(j)])
 
                 if expression[i] in '()|~':
                     # For everything other than intersection, add the operator
@@ -89,9 +89,9 @@ class Region(object):
         if i_start >= 0:
             j = int(expression[i_start:])
             if j < 0:
-                tokens.append(surfaces[abs(j)].negative)
+                tokens.append(-surfaces[abs(j)])
             else:
-                tokens.append(surfaces[abs(j)].positive)
+                tokens.append(+surfaces[abs(j)])
 
         # The functions below are used to apply an operator to operands on the
         # output queue during the shunting yard algorithm.

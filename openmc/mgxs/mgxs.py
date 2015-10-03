@@ -441,14 +441,24 @@ class MultiGroupXS(object):
         # Create Tallies to search for in StatePoint
         self.create_tallies()
 
+        # Use tally "slicing" to ensure that tallies correspond to our domain
+        # NOTE: This is important if tally merging was used
+        if self.domain_type != 'distribcell':
+            filters = [self.domain_type]
+            filter_bins = [(self.domain.id,)]
+        # Distribcell filters only accept single cell - neglect it when slicing
+        else:
+            filters = []
+            filter_bins = []
+
         # Find, slice and store Tallies from StatePoint
         # The tally slicing is needed if tally merging was used
         for tally_type, tally in self.tallies.items():
             sp_tally = statepoint.get_tally(tally.scores, tally.filters,
                                             tally.nuclides,
                                             estimator=tally.estimator)
-            sp_tally = sp_tally.get_slice(tally.scores, [self.domain_type],
-                                          [(self.domain.id,)], tally.nuclides)
+            sp_tally = sp_tally.get_slice(tally.scores, filters,
+                                          filter_bins, tally.nuclides)
             self.tallies[tally_type] = sp_tally
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',

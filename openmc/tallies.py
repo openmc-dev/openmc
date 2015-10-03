@@ -2366,7 +2366,8 @@ class Tally(object):
                     if filter_type in ['energy', 'energyout']:
                         bin_indices.extend([bin_index, bin_index+1])
                     elif filter_type == 'distribcell':
-                        bin_indices.append(0)
+                        indices = [(bin,) for bin in range(filter.num_bins)]
+                        bin_indices.extend(indices)
                     else:
                         bin_indices.append(bin_index)
 

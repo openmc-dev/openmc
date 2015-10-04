@@ -331,7 +331,7 @@ class MultiGroupXS(object):
         ----------
         scores : Iterable of str
             Scores for each tally
-        filters : Iterable of tuple of Filter
+        all_filters : Iterable of tuple of Filter
             Tuples of non-spatial domain filters for each tally
         keys : Iterable of str
             Key string used to store each tally in the tallies dictionary
@@ -1459,7 +1459,7 @@ class NuScatterXS(MultiGroupXS):
 
         # Create a list of scores for each Tally to be created
         scores = ['flux', 'nu-scatter']
-        estimator = 'analog'
+        estimator = 'tracklength'
         keys = scores
 
         # Create the non-domain specific Filters for the Tallies

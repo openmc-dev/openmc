@@ -1213,8 +1213,8 @@ The ``<tally>`` element accepts the following sub-elements:
 
       :type:
         The type of the filter. Accepted options are "cell", "cellborn",
-        "material", "universe", "energy", "energyout", "mesh", and
-        "distribcell".
+        "material", "universe", "energy", "energyout", "mesh", "distribcell",
+        and "delayedgroup".
 
       :bins:
         For each filter type, the corresponding ``bins`` entry is given as
@@ -1262,7 +1262,13 @@ The ``<tally>`` element accepts the following sub-elements:
               not accept more than one cell ID. It is not recommended to combine
               this filter with a cell or mesh filter.
 
-  :nuclides:
+        :delayedgroup:
+          A list of delayed neutron precursor groups for which the tally should
+          be accumulated. For instance, to tally to all 6 delayed groups in the
+          ENDF/B-VII.1 library the filter is specified as ``<filter
+          type="delayedgroup" bins="1 2 3 4 5 6" />``.
+
+:nuclides:
     If specified, the scores listed will be for particular nuclides, not the
     summation of reactions from all nuclides. The format for nuclides should be
     [Atomic symbol]-[Mass number], e.g. "U-235". The reaction rate for all
@@ -1291,10 +1297,10 @@ The ``<tally>`` element accepts the following sub-elements:
   :scores:
     A space-separated list of the desired responses to be accumulated. Accepted
     options are "flux", "total", "scatter", "absorption", "fission",
-    "nu-fission", "kappa-fission", "nu-scatter", "scatter-N", "scatter-PN",
-    "scatter-YN", "nu-scatter-N", "nu-scatter-PN", "nu-scatter-YN", "flux-YN",
-    "total-YN", "current", and "events". These corresponding to the following
-    physical quantities:
+    "nu-fission", "delayed-nu-fission", "kappa-fission", "nu-scatter",
+    "scatter-N", "scatter-PN", "scatter-YN", "nu-scatter-N", "nu-scatter-PN",
+    "nu-scatter-YN", "flux-YN", "total-YN", "current", and "events". These
+    corresponding to the following physical quantities:
 
     :flux:
       Total flux in particle-cm per source particle.  Note: The ``analog``
@@ -1317,6 +1323,10 @@ The ``<tally>`` element accepts the following sub-elements:
 
     :nu-fission:
       Total production of neutrons due to fission. Units are neutrons produced
+      per source neutron.
+
+    :delayed-nu-fission:
+      Total production of delayed neutrons due to fission. Units are neutrons produced
       per source neutron.
 
     :kappa-fission:

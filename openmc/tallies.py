@@ -373,8 +373,11 @@ class Tally(object):
 
     @name.setter
     def name(self, name):
-        check_type('tally name', name, basestring)
-        self._name = name
+        if name is not None:
+            check_type('tally name', name, basestring)
+            self._name = name
+        else:
+            self._name = None
 
     def add_filter(self, filter):
         """Add a filter to the tally

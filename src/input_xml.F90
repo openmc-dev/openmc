@@ -2495,13 +2495,21 @@ contains
             t % filters(j) % type = FILTER_DELAYEDGROUP
 
             ! Set number of bins
-            t % filters(j) % n_bins = MAX_DELAYED_GROUPS
+            t % filters(j) % n_bins = n_words
 
             ! Allocate and store bins
-            allocate(t % filters(j) % int_bins(MAX_DELAYED_GROUPS))
+            allocate(t % filters(j) % int_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
 
-            do d = 1, MAX_DELAYED_GROUPS
-              t % filters(j) % int_bins(d) = d
+            ! Check bins to make sure all are between 1 and MAX_DELAYED_GROUPS
+            do d = 1, n_words
+              if (t % filters(j) % int_bins(d) < 1 .or. &
+                   t % filters(j) % int_bins(d) > MAX_DELAYED_GROUPS) then
+                call fatal_error("Encountered delayedgroup bin with index " &
+                     &// trim(to_str(t % filters(j) % int_bins(d))) &
+                     &//" that is outside the range of 1 to MAX_DELAYED_GROUPS"&
+                     &// " (" // trim(to_str(MAX_DELAYED_GROUPS)) // ")")
+              end if
             end do
 
           case default

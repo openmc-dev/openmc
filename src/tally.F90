@@ -170,10 +170,34 @@ contains
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-        ! For scattering production, we need to use the post-collision
-        ! weight as the estimate for the number of neutrons exiting a
-        ! reaction with neutrons in the exit channel
-        score = p % wgt
+        ! For scattering production, we need to use the pre-collision
+        ! weight times the multiplicity as the estimate for the number of
+        ! neutrons exiting a reaction with neutrons in the exit channel
+        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          ! Don't waste time on very common reactions we know have multiplicities
+          ! of one.
+          score = p % last_wgt
+        else
+          do m = 1, nuclides(p % event_nuclide) % n_reaction
+            ! Check if this is the desired MT
+            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+              ! Found the reaction, set our pointer and move on with life
+              rxn => nuclides(p % event_nuclide) % reactions(m)
+              exit
+            end if
+          end do
+
+          ! Get multiplicity and apply to score
+          if (rxn % multiplicity_with_E) then
+            ! Then the multiplicity was already incorporated in to p % wgt
+            ! per the scattering routine,
+            score = p % wgt
+          else
+            ! Grab the multiplicity from the rxn
+            score = p % last_wgt * rxn % multiplicity
+          end if
+        end if
 
 
       case (SCORE_NU_SCATTER_PN)
@@ -183,10 +207,34 @@ contains
           i = i + t % moment_order(i)
           cycle SCORE_LOOP
         end if
-        ! For scattering production, we need to use the post-collision
-        ! weight as the estimate for the number of neutrons exiting a
-        ! reaction with neutrons in the exit channel
-        score = p % wgt
+        ! For scattering production, we need to use the pre-collision
+        ! weight times the multiplicity as the estimate for the number of
+        ! neutrons exiting a reaction with neutrons in the exit channel
+        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          ! Don't waste time on very common reactions we know have multiplicities
+          ! of one.
+          score = p % last_wgt
+        else
+          do m = 1, nuclides(p % event_nuclide) % n_reaction
+            ! Check if this is the desired MT
+            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+              ! Found the reaction, set our pointer and move on with life
+              rxn => nuclides(p % event_nuclide) % reactions(m)
+              exit
+            end if
+          end do
+
+          ! Get multiplicity and apply to score
+          if (rxn % multiplicity_with_E) then
+            ! Then the multiplicity was already incorporated in to p % wgt
+            ! per the scattering routine,
+            score = p % wgt
+          else
+            ! Grab the multiplicity from the rxn
+            score = p % last_wgt * rxn % multiplicity
+          end if
+        end if
 
 
       case (SCORE_NU_SCATTER_YN)
@@ -196,10 +244,34 @@ contains
           i = i + (t % moment_order(i) + 1)**2 - 1
           cycle SCORE_LOOP
         end if
-        ! For scattering production, we need to use the post-collision
-        ! weight as the estimate for the number of neutrons exiting a
-        ! reaction with neutrons in the exit channel
-        score = p % wgt
+        ! For scattering production, we need to use the pre-collision
+        ! weight times the multiplicity as the estimate for the number of
+        ! neutrons exiting a reaction with neutrons in the exit channel
+        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+          ! Don't waste time on very common reactions we know have multiplicities
+          ! of one.
+          score = p % last_wgt
+        else
+          do m = 1, nuclides(p % event_nuclide) % n_reaction
+            ! Check if this is the desired MT
+            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+              ! Found the reaction, set our pointer and move on with life
+              rxn => nuclides(p % event_nuclide) % reactions(m)
+              exit
+            end if
+          end do
+
+          ! Get multiplicity and apply to score
+          if (rxn % multiplicity_with_E) then
+            ! Then the multiplicity was already incorporated in to p % wgt
+            ! per the scattering routine,
+            score = p % wgt
+          else
+            ! Grab the multiplicity from the rxn
+            score = p % last_wgt * rxn % multiplicity
+          end if
+        end if
 
 
       case (SCORE_TRANSPORT)

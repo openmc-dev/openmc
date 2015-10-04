@@ -101,8 +101,11 @@ class Surface(object):
 
     @name.setter
     def name(self, name):
-        check_type('surface name', name, basestring)
-        self._name = name
+        if name is not None:
+            check_type('surface name', name, basestring)
+            self._name = name
+        else:
+            self._name = None
 
     @boundary_type.setter
     def boundary_type(self, boundary_type):
@@ -272,7 +275,7 @@ class XPlane(Plane):
 
     @property
     def x0(self):
-        return self.coeff['x0']
+        return self.coeffs['x0']
 
     @x0.setter
     def x0(self, x0):

@@ -188,7 +188,7 @@ contains
           region_spec = trim(region_spec) // " ~"
         case (OP_INTERSECTION)
         case (OP_UNION)
-          region_spec = trim(region_spec) // " ^"
+          region_spec = trim(region_spec) // " |"
         case default
           region_spec = trim(region_spec) // " " // to_str(&
                sign(surfaces(abs(k))%obj%id, k))

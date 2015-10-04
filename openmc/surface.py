@@ -958,6 +958,16 @@ class Halfspace(Region):
     is referred to as the negative half-space and the region for which
     :math:`f(x,y,z) > 0` is referred to as the positive half-space.
 
+    Instances of Halfspace are generally not instantiated directly. Rather, they
+    can be created from an existing Surface through the __neg__ and __pos__
+    operators, as the following example demonstrates:
+
+    >>> sphere = openmc.surface.Sphere(surface_id=1, R=10.0)
+    >>> inside_sphere = -sphere
+    >>> outside_sphere = +sphere
+    >>> type(inside_sphere)
+    <class 'openmc.surface.Halfspace'>
+
     Parameters
     ----------
     surface : Surface

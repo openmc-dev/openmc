@@ -5,6 +5,15 @@ from openmc.checkvalue import check_type
 
 
 class Region(object):
+    """Region of space that can be assigned to a cell.
+
+    Region is an abstract base class that is inherited by Halfspace,
+    Intersection, Union, and Complement. Each of those respective classes are
+    typically not instantiated directly but rather are created through operators
+    of the Surface and Region classes.
+
+    """
+
     __metaclass__ = ABCMeta
 
     def __and__(self, other):
@@ -178,6 +187,17 @@ class Region(object):
 class Intersection(Region):
     """Intersection of two or more regions.
 
+    Instances of Intersection are generally created via the __and__ operator
+    applied to two instances of Region. This is illustrated in the following
+    example:
+
+    >>> equator = openmc.surface.ZPlane(z0=0.0)
+    >>> earth = openmc.surface.Sphere(R=637.1e6)
+    >>> northern_hemisphere = -earth & +equator
+    >>> southern_hemisphere = -earth & -equator
+    >>> type(northern_hemisphere)
+    <class 'openmc.region.Intersection'>
+
     Parameters
     ----------
     *nodes
@@ -209,6 +229,14 @@ class Intersection(Region):
 class Union(Region):
     """Union of two or more regions.
 
+    Instances of Union are generally created via the __or__ operator applied to
+    two instances of Region. This is illustrated in the following example:
+
+    >>> s1 = openmc.surface.ZPlane(z0=0.0)
+    >>> s2 = openmc.surface.Sphere(R=637.1e6)
+    >>> type(-s2 | +s1)
+    <class 'openmc.region.Union'>
+
     Parameters
     ----------
     *nodes
@@ -239,6 +267,18 @@ class Union(Region):
 
 class Complement(Region):
     """Complement of a region.
+
+    The Complement of an existing Region can be created by using the __invert__
+    operator as the following example demonstrates:
+
+    >>> xl = openmc.surface.XPlane(x0=-10.0)
+    >>> xr = openmc.surface.XPlane(x0=10.0)
+    >>> yl = openmc.surface.YPlane(y0=-10.0)
+    >>> yr = openmc.surface.YPlane(y0=10.0)
+    >>> inside_box = +xl & -xr & +yl & -yl
+    >>> outside_box = ~inside_box
+    >>> type(outside_box)
+    <class 'openmc.region.Complement'>
 
     Parameters
     ----------

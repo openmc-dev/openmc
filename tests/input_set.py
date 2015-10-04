@@ -435,14 +435,14 @@ class InputSet(object):
         c70.fill = hot_water
         fa_hw.add_cells((c70, ))
 
-        fa_cold = openmc.Universe(name='Fuel assemlby (cold)', universe_id=6)
+        fa_cold = openmc.Universe(name='Fuel assembly (cold)', universe_id=6)
         c60 = openmc.Cell(cell_id=60)
         c60.add_surface(s34, +1)
         c60.add_surface(s35, -1)
         c60.fill = l100
         fa_cold.add_cells((c60, ))
 
-        fa_hot = openmc.Universe(name='Fuel assemlby (hot)', universe_id=8)
+        fa_hot = openmc.Universe(name='Fuel assembly (hot)', universe_id=8)
         c80 = openmc.Cell(cell_id=80)
         c80.add_surface(s35, +1)
         c80.add_surface(s36, -1)

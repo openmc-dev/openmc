@@ -296,56 +296,52 @@ class InputSet(object):
         fuel_cold = openmc.Universe(name='Fuel pin, cladding, cold water',
                                     universe_id=1)
         c21 = openmc.Cell(cell_id=21)
-        c21.add_surface(s1, -1)
+        c21.region = -s1
         c21.fill = fuel
         c22 = openmc.Cell(cell_id=22)
-        c22.add_surface(s1, +1)
-        c22.add_surface(s2, -1)
+        c22.region = +s1 & -s2
         c22.fill = clad
         c23 = openmc.Cell(cell_id=23)
-        c23.add_surface(s2, +1)
+        c23.region = +s2
         c23.fill = cold_water
         fuel_cold.add_cells((c21, c22, c23))
 
         tube_cold = openmc.Universe(name='Instrumentation guide tube, '
                                     'cold water', universe_id=2)
         c24 = openmc.Cell(cell_id=24)
-        c24.add_surface(s3, -1)
+        c24.region = -s3
         c24.fill = cold_water
         c25 = openmc.Cell(cell_id=25)
-        c25.add_surface(s3, +1)
-        c25.add_surface(s4, -1)
+        c25.region = +s3 & -s4
         c25.fill = clad
         c26 = openmc.Cell(cell_id=26)
-        c26.add_surface(s4, +1)
+        c26.region = +s4
         c26.fill = cold_water
         tube_cold.add_cells((c24, c25, c26))
 
         fuel_hot = openmc.Universe(name='Fuel pin, cladding, hot water',
                                    universe_id=3)
         c27 = openmc.Cell(cell_id=27)
-        c27.add_surface(s1, -1)
+        c27.region = -s1
         c27.fill = fuel
         c28 = openmc.Cell(cell_id=28)
-        c28.add_surface(s1, +1)
-        c28.add_surface(s2, -1)
+        c28.region = +s1 & -s2
         c28.fill = clad
         c29 = openmc.Cell(cell_id=29)
-        c29.add_surface(s2, +1)
+        c29.region = +s2
         c29.fill = hot_water
         fuel_hot.add_cells((c27, c28, c29))
 
         tube_hot = openmc.Universe(name='Instrumentation guide tube, hot water',
                                    universe_id=4)
         c30 = openmc.Cell(cell_id=30)
-        c30.add_surface(s3, -1)
+        c30.region = -s3
         c30.fill = hot_water
         c31 = openmc.Cell(cell_id=31)
-        c31.add_surface(s3, +1)
-        c31.add_surface(s4, -1)
+        c31.region = +s3 & -s4
         c31.fill = clad
         c32 = openmc.Cell(cell_id=32)
-        c32.add_surface(s4, +1)
+        c32.region = +s4
         c32.fill = hot_water
         tube_hot.add_cells((c30, c31, c32))
 
@@ -419,33 +415,27 @@ class InputSet(object):
              [fuel_hot]*17 ]
 
         # Define assemblies.
-        fa_cw = openmc.Universe(name='Water assembly (cold)',
-                                universe_id=5)
+        fa_cw = openmc.Universe(name='Water assembly (cold)', universe_id=5)
         c50 = openmc.Cell(cell_id=50)
-        c50.add_surface(s34, +1)
-        c50.add_surface(s35, -1)
+        c50.region = +s34 & -s35
         c50.fill = cold_water
         fa_cw.add_cells((c50, ))
 
-        fa_hw = openmc.Universe(name='Water assembly (hot)',
-                                universe_id=7)
+        fa_hw = openmc.Universe(name='Water assembly (hot)', universe_id=7)
         c70 = openmc.Cell(cell_id=70)
-        c70.add_surface(s35, +1)
-        c70.add_surface(s36, -1)
+        c70.region = +s35 & -s36
         c70.fill = hot_water
         fa_hw.add_cells((c70, ))
 
         fa_cold = openmc.Universe(name='Fuel assembly (cold)', universe_id=6)
         c60 = openmc.Cell(cell_id=60)
-        c60.add_surface(s34, +1)
-        c60.add_surface(s35, -1)
+        c60.region = +s34 & -s35
         c60.fill = l100
         fa_cold.add_cells((c60, ))
 
         fa_hot = openmc.Universe(name='Fuel assembly (hot)', universe_id=8)
         c80 = openmc.Cell(cell_id=80)
-        c80.add_surface(s35, +1)
-        c80.add_surface(s36, -1)
+        c80.region = +s35 & -s36
         c80.fill = l101
         fa_hot.add_cells((c80, ))
 
@@ -509,79 +499,51 @@ class InputSet(object):
         # Define root universe.
         root = openmc.Universe(universe_id=0, name='root universe')
         c1 = openmc.Cell(cell_id=1)
-        c1.add_surface(s6, -1)
-        c1.add_surface(s34, +1)
-        c1.add_surface(s35, -1)
+        c1.region = -s6 & +s34 & -s35
         c1.fill = l200
 
         c2 = openmc.Cell(cell_id=2)
-        c2.add_surface(s6, -1)
-        c1.add_surface(s35, +1)
-        c2.add_surface(s36, -1)
+        c2.region = -s6 & +s35 & -s36
         c2.fill = l201
 
         c3 = openmc.Cell(cell_id=3)
-        c3.add_surface(s7, -1)
-        c3.add_surface(s31, +1)
-        c3.add_surface(s32, -1)
+        c3.region = -s7 & +s31 & -s32
         c3.fill = bot_plate
 
         c4 = openmc.Cell(cell_id=4)
-        c4.add_surface(s5, -1)
-        c4.add_surface(s32, +1)
-        c4.add_surface(s33, -1)
+        c4.region = -s5 & +s32 & -s33
         c4.fill = bot_nozzle
 
         c5 = openmc.Cell(cell_id=5)
-        c5.add_surface(s5, -1)
-        c5.add_surface(s33, +1)
-        c5.add_surface(s34, -1)
+        c5.region = -s5 & +s33 & -s34
         c5.fill = bot_fa
 
         c6 = openmc.Cell(cell_id=6)
-        c6.add_surface(s5, -1)
-        c6.add_surface(s36, +1)
-        c6.add_surface(s37, -1)
+        c6.region = -s5 & +s36 & -s37
         c6.fill = top_fa
 
         c7 = openmc.Cell(cell_id=7)
-        c7.add_surface(s5, -1)
-        c7.add_surface(s37, +1)
-        c7.add_surface(s38, -1)
+        c7.region = -s5 & +s37 & -s38
         c7.fill = top_nozzle
 
         c8 = openmc.Cell(cell_id=8)
-        c8.add_surface(s7, -1)
-        c8.add_surface(s38, +1)
-        c8.add_surface(s39, -1)
+        c8.region = -s7 & +s38 & -s39
         c8.fill = upper_rad_ref
 
         c9 = openmc.Cell(cell_id=9)
-        c9.add_surface(s6, +1)
-        c9.add_surface(s7, -1)
-        c9.add_surface(s32, +1)
-        c9.add_surface(s38, -1)
+        c9.region = +s6 & -s7 & +s32 & -s38
         c9.fill = bot_nozzle
 
         c10 = openmc.Cell(cell_id=10)
-        c10.add_surface(s7, +1)
-        c10.add_surface(s8, -1)
-        c10.add_surface(s31, +1)
-        c10.add_surface(s39, -1)
+        c10.region = +s7 & -s8 & +s31 & -s39
         c10.fill = rpv_steel
 
         c11 = openmc.Cell(cell_id=11)
-        c11.add_surface(s5, +1)
-        c11.add_surface(s6, -1)
-        c11.add_surface(s32, +1)
-        c11.add_surface(s34, -1)
+        c11.region = +s5 & -s6 & +s32 & -s34
         c11.fill = lower_rad_ref
 
         c12 = openmc.Cell(cell_id=12)
-        c12.add_surface(s5, +1)
-        c12.add_surface(s6, -1)
-        c12.add_surface(s36, +1)
-        c12.add_surface(s38, -1)
+        c12.region = +s5 & -s6 & +s36 & -s38
         c12.fill = upper_rad_ref
 
         root.add_cells((c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12))

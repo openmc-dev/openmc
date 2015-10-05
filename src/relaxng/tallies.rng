@@ -145,6 +145,7 @@
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
+                      <value>delayedgroup</value>
                     </choice>
                   </element>
                   <attribute name="type">
@@ -158,6 +159,7 @@
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
+                      <value>delayedgroup</value>
                     </choice>
                   </attribute>
                 </choice>

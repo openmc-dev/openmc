@@ -2634,6 +2634,19 @@ contains
         allocate(t % nuclide_bins(1))
         t % nuclide_bins(1) = -1
         t % n_nuclide_bins = 1
+
+        ! Check if a delayedgroup filter is present for this tally
+        do l = 1, t % n_filters
+          if (t % filters(l) % type == FILTER_DELAYEDGROUP) then
+            call warning("A delayedgroup filter was used on a total nuclide &
+                 &tally. Cross section libraries are not guaranteed to have the&
+                 & same delayed group structure across all isotopes. In &
+                 &particular, ENDF/B-VII.1 does not have a consistent delayed &
+                 &group structure across all isotopes while the JEFF 3.1.1 &
+                 &library has the same delayed group structure across all &
+                 &isotopes. Use with caution!")
+          end if
+        end do
       end if
 
       ! =======================================================================

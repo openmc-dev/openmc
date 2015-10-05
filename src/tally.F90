@@ -1097,7 +1097,7 @@ contains
         end if
 
       case (FILTER_AZIMUTHAL)
-      ! make sure the correct direction vector is used
+        ! make sure the correct direction vector is used
         phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
 
         ! determine mu bin
@@ -1516,7 +1516,7 @@ contains
         end if
 
       case (FILTER_AZIMUTHAL)
-      ! make sure the correct direction vector is used
+        ! make sure the correct direction vector is used
         if (t % estimator == ESTIMATOR_TRACKLENGTH) then
           phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
         else

@@ -2355,10 +2355,10 @@ contains
 
           ! Determine number of bins
           if (check_for_node(node_filt, "bins")) then
-            if ((trim(temp_str) == 'energy' .or. &
-                 trim(temp_str) == 'energyout') .or. &
-                 (trim(temp_str) == 'mu' .or. trim(temp_str) == 'polar') .or. &
-                 (trim(temp_str) == 'azimuthal')) then
+            if ((temp_str == 'energy' .or. &
+                 temp_str == 'energyout') .or. &
+                 (temp_str == 'mu' .or. temp_str == 'polar') .or. &
+                 (temp_str == 'azimuthal')) then
               n_words = get_arraysize_double(node_filt, "bins")
             else
               n_words = get_arraysize_integer(node_filt, "bins")
@@ -2508,13 +2508,13 @@ contains
             ! Allow a user to input a lone number which will mean that
             ! you subivide [-1,1] evenly with the input being the number of bins
             if (n_words == 1) then
-              Nangle = abs(int(t % filters(j) % real_bins(1)))
+              Nangle = int(t % filters(j) % real_bins(1))
               if (Nangle > 1) then
                 t % filters(j) % n_bins = Nangle
-                dangle = TWO / (real(Nangle,8))
+                dangle = TWO / real(Nangle,8)
                 deallocate(t % filters(j) % real_bins)
                 allocate(t % filters(j) % real_bins(Nangle + 1))
-                do iangle = 1, Nangle + 1
+                do iangle = 1, Nangle
                   t % filters(j) % real_bins(iangle) = -ONE + (iangle - 1) * dangle
                 end do
                 t % filters(j) % real_bins(Nangle + 1) = ONE
@@ -2542,13 +2542,13 @@ contains
             ! Allow a user to input a lone number which will mean that
             ! you subivide [0,pi] evenly with the input being the number of bins
             if (n_words == 1) then
-              Nangle = abs(int(t % filters(j) % real_bins(1)))
+              Nangle = int(t % filters(j) % real_bins(1))
               if (Nangle > 1) then
                 t % filters(j) % n_bins = Nangle
-                dangle = PI / (real(Nangle,8))
+                dangle = PI / real(Nangle,8)
                 deallocate(t % filters(j) % real_bins)
                 allocate(t % filters(j) % real_bins(Nangle + 1))
-                do iangle = 1, Nangle + 1
+                do iangle = 1, Nangle
                   t % filters(j) % real_bins(iangle) = (iangle - 1) * dangle
                 end do
                 t % filters(j) % real_bins(Nangle + 1) = PI
@@ -2573,13 +2573,13 @@ contains
             ! Allow a user to input a lone number which will mean that
             ! you subivide [0,2pi] evenly with the input being the number of bins
             if (n_words == 1) then
-              Nangle = abs(int(t % filters(j) % real_bins(1)))
+              Nangle = int(t % filters(j) % real_bins(1))
               if (Nangle > 1) then
                 t % filters(j) % n_bins = Nangle
-                dangle = TWO * PI / (real(Nangle,8))
+                dangle = TWO * PI / real(Nangle,8)
                 deallocate(t % filters(j) % real_bins)
                 allocate(t % filters(j) % real_bins(Nangle + 1))
-                do iangle = 1, Nangle + 1
+                do iangle = 1, Nangle
                   t % filters(j) % real_bins(iangle) = -PI + (iangle - 1) * dangle
                 end do
                 t % filters(j) % real_bins(Nangle + 1) = PI

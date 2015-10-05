@@ -4,6 +4,7 @@ from xml.etree import ElementTree as ET
 import sys
 
 from openmc.checkvalue import check_type, check_value, check_greater_than
+from openmc.region import Region
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -38,17 +39,17 @@ class Surface(object):
 
     Attributes
     ----------
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coeffs : dict
+        Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
         Type of the surface, e.g. 'x-plane'
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
-        Boundary condition that defines the behavior for particles hitting the
-        surface.
-    coeffs : dict
-        Dictionary of surface coefficients
 
     """
 
@@ -67,6 +68,12 @@ class Surface(object):
         # An ordered list of the coefficient names to export to XML in the
         # proper order
         self._coeff_keys = []
+
+    def __neg__(self):
+        return Halfspace(self, '-')
+
+    def __pos__(self):
+        return Halfspace(self, '+')
 
     @property
     def id(self):
@@ -940,3 +947,68 @@ class ZCone(Cone):
                                     R2, name=name)
 
         self._type = 'z-cone'
+
+
+class Halfspace(Region):
+    """A positive or negative half-space region.
+
+    A half-space is either of the two parts into which a two-dimension surface
+    divides the three-dimensional Euclidean space. If the equation of the
+    surface is :math:`f(x,y,z) = 0`, the region for which :math:`f(x,y,z) < 0`
+    is referred to as the negative half-space and the region for which
+    :math:`f(x,y,z) > 0` is referred to as the positive half-space.
+
+    Instances of Halfspace are generally not instantiated directly. Rather, they
+    can be created from an existing Surface through the __neg__ and __pos__
+    operators, as the following example demonstrates:
+
+    >>> sphere = openmc.surface.Sphere(surface_id=1, R=10.0)
+    >>> inside_sphere = -sphere
+    >>> outside_sphere = +sphere
+    >>> type(inside_sphere)
+    <class 'openmc.surface.Halfspace'>
+
+    Parameters
+    ----------
+    surface : Surface
+        Surface which divides Euclidean space.
+    side : {'+', '-'}
+        Indicates whether the positive or negative half-space is used.
+
+    Attributes
+    ----------
+    surface : Surface
+        Surface which divides Euclidean space.
+    side : {'+', '-'}
+        Indicates whether the positive or negative half-space is used.
+
+    """
+
+    def __init__(self, surface, side):
+        self.surface = surface
+        self.side = side
+
+    def __invert__(self):
+        return -self.surface if self.side == '+' else +self.surface
+
+    @property
+    def surface(self):
+        return self._surface
+
+    @surface.setter
+    def surface(self, surface):
+        check_type('surface', surface, Surface)
+        self._surface = surface
+
+    @property
+    def side(self):
+        return self._side
+
+    @side.setter
+    def side(self, side):
+        check_value('side', side, ('+', '-'))
+        self._side = side
+
+    def __str__(self):
+        return '-' + str(self.surface.id) if self.side == '-' \
+            else str(self.surface.id)

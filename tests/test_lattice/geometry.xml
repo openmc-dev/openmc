@@ -40,11 +40,11 @@
 
 
   <!-- overall geometry -->
-  <cell id="1" material="4" surfaces="21 23 -25 1   -2" /> <!-- Bottom and Top Refl -->
-  <cell id="2" material="5" surfaces="21 23 -25 2   -4" /> <!-- Aluminum Plate -->
-  <cell id="3" fill="11"    surfaces="21 23 -25 4  -12" /> <!-- Core Lattice -->
-  <cell id="4" material="6" surfaces="21 23 -25 12 -14" /> <!-- Lead Shield -->
-  <cell id="5" material="4" surfaces="21 23 -25 14 -15" /> <!-- Bottom and Top Refl -->
+  <cell id="1" material="4" region="21 23 -25 1   -2" /> <!-- Bottom and Top Refl -->
+  <cell id="2" material="5" region="21 23 -25 2   -4" /> <!-- Aluminum Plate -->
+  <cell id="3" fill="11"    region="21 23 -25 4  -12" /> <!-- Core Lattice -->
+  <cell id="4" material="6" region="21 23 -25 12 -14" /> <!-- Lead Shield -->
+  <cell id="5" material="4" region="21 23 -25 14 -15" /> <!-- Bottom and Top Refl -->
 
   <!-- Cube cell filled Fuel -->
   <lattice id="11">
@@ -85,38 +85,38 @@
   </lattice>
 
   <!-- fuel cell universe -->
-  <cell id="21" universe="1" material="3" surfaces="-6     -36" />                 <!-- Bottom Clad -->
-  <cell id="22" universe="1" material="2" surfaces=" 6  -7 -35" />                 <!-- UO2 layer -->
-  <cell id="23" universe="1" material="1" surfaces=" 7 -11 -35" />                 <!-- MOX -->
-  <cell id="24" universe="1" material="3" surfaces=" 6 -11  35 -36" />             <!-- Middle Clad -->
-  <cell id="25" universe="1" material="3" surfaces="11     -36" />                 <!-- Top clad -->
-  <cell id="26" universe="1" material="4" surfaces="-5  36" />                     <!-- Moderator below bottom egg-crate -->
-  <cell id="27" universe="1" material="5" surfaces=" 5  -8 -37" />                 <!-- Bottom Al Egg-Crate Left -->
-  <cell id="28" universe="1" material="5" surfaces=" 5  -8  38" />                 <!-- Bottom Al Egg-Crate Right -->
-  <cell id="29" universe="1" material="5" surfaces=" 5  -8 -39  37 -38" />         <!-- Bottom Al Egg-Crate Top -->
-  <cell id="30" universe="1" material="5" surfaces=" 5  -8  40  37 -38" />         <!-- Bottom Al Egg-Crate Bottom -->
-  <cell id="31" universe="1" material="4" surfaces=" 5  -8  37 -38  39 -40 36" />  <!-- Moderator within bottom egg-crate -->
-  <cell id="32" universe="1" material="4" surfaces=" 8  -9  36" />                 <!-- Moderator in middle -->
-  <cell id="33" universe="1" material="5" surfaces=" 9 -10 -37" />                 <!-- Top Al Egg-Crate Left -->
-  <cell id="34" universe="1" material="5" surfaces=" 9 -10  38" />                 <!-- Top Al Egg-Crate Right -->
-  <cell id="35" universe="1" material="5" surfaces=" 9 -10 -39  37 -38" />         <!-- Top Al Egg-Crate Top -->
-  <cell id="36" universe="1" material="5" surfaces=" 9 -10  40  37 -38" />         <!-- Top Al Egg-Crate Bottom -->
-  <cell id="37" universe="1" material="4" surfaces=" 9 -10  37 -38  39 -40 36" />  <!-- Moderator within top egg-crate -->
-  <cell id="38" universe="1" material="4" surfaces="10      36" />                 <!-- Moderator above top egg-crate -->
+  <cell id="21" universe="1" material="3" region="-6     -36" />                 <!-- Bottom Clad -->
+  <cell id="22" universe="1" material="2" region=" 6  -7 -35" />                 <!-- UO2 layer -->
+  <cell id="23" universe="1" material="1" region=" 7 -11 -35" />                 <!-- MOX -->
+  <cell id="24" universe="1" material="3" region=" 6 -11  35 -36" />             <!-- Middle Clad -->
+  <cell id="25" universe="1" material="3" region="11     -36" />                 <!-- Top clad -->
+  <cell id="26" universe="1" material="4" region="-5  36" />                     <!-- Moderator below bottom egg-crate -->
+  <cell id="27" universe="1" material="5" region=" 5  -8 -37" />                 <!-- Bottom Al Egg-Crate Left -->
+  <cell id="28" universe="1" material="5" region=" 5  -8  38" />                 <!-- Bottom Al Egg-Crate Right -->
+  <cell id="29" universe="1" material="5" region=" 5  -8 -39  37 -38" />         <!-- Bottom Al Egg-Crate Top -->
+  <cell id="30" universe="1" material="5" region=" 5  -8  40  37 -38" />         <!-- Bottom Al Egg-Crate Bottom -->
+  <cell id="31" universe="1" material="4" region=" 5  -8  37 -38  39 -40 36" />  <!-- Moderator within bottom egg-crate -->
+  <cell id="32" universe="1" material="4" region=" 8  -9  36" />                 <!-- Moderator in middle -->
+  <cell id="33" universe="1" material="5" region=" 9 -10 -37" />                 <!-- Top Al Egg-Crate Left -->
+  <cell id="34" universe="1" material="5" region=" 9 -10  38" />                 <!-- Top Al Egg-Crate Right -->
+  <cell id="35" universe="1" material="5" region=" 9 -10 -39  37 -38" />         <!-- Top Al Egg-Crate Top -->
+  <cell id="36" universe="1" material="5" region=" 9 -10  40  37 -38" />         <!-- Top Al Egg-Crate Bottom -->
+  <cell id="37" universe="1" material="4" region=" 9 -10  37 -38  39 -40 36" />  <!-- Moderator within top egg-crate -->
+  <cell id="38" universe="1" material="4" region="10      36" />                 <!-- Moderator above top egg-crate -->
 
   <!-- radial reflector cell universe -->
-  <cell id="41" universe="2" material="4" surfaces="-5" />                     <!-- Moderator below bottom egg-crate -->
-  <cell id="42" universe="2" material="5" surfaces="5  -8 -37" />              <!-- Bottom Al Egg-Crate Left -->
-  <cell id="43" universe="2" material="5" surfaces="5  -8  38" />              <!-- Bottom Al Egg-Crate Right -->
-  <cell id="44" universe="2" material="5" surfaces="5  -8 -39  37 -38" />      <!-- Bottom Al Egg-Crate Top -->
-  <cell id="45" universe="2" material="5" surfaces="5  -8  40  37 -38" />      <!-- Bottom Al Egg-Crate Bottom -->
-  <cell id="46" universe="2" material="4" surfaces="5  -8  37 -38  39 -40" />  <!-- Moderator within bottom egg-crate -->
-  <cell id="47" universe="2" material="4" surfaces="8  -9" />                  <!-- Moderator in middle -->
-  <cell id="48" universe="2" material="5" surfaces="9 -10 -37" />              <!-- Top Al Egg-Crate Left -->
-  <cell id="49" universe="2" material="5" surfaces="9 -10  38" />              <!-- Top Al Egg-Crate Right -->
-  <cell id="50" universe="2" material="5" surfaces="9 -10 -39  37 -38" />      <!-- Top Al Egg-Crate Top -->
-  <cell id="51" universe="2" material="5" surfaces="9 -10  40  37 -38" />      <!-- Top Al Egg-Crate Bottom -->
-  <cell id="52" universe="2" material="4" surfaces="9 -10  37 -38  39 -40" />  <!-- Moderator within top egg-crate -->
-  <cell id="53" universe="2" material="4" surfaces="10" />                     <!-- Moderator within top egg-crate -->
+  <cell id="41" universe="2" material="4" region="-5" />                     <!-- Moderator below bottom egg-crate -->
+  <cell id="42" universe="2" material="5" region="5  -8 -37" />              <!-- Bottom Al Egg-Crate Left -->
+  <cell id="43" universe="2" material="5" region="5  -8  38" />              <!-- Bottom Al Egg-Crate Right -->
+  <cell id="44" universe="2" material="5" region="5  -8 -39  37 -38" />      <!-- Bottom Al Egg-Crate Top -->
+  <cell id="45" universe="2" material="5" region="5  -8  40  37 -38" />      <!-- Bottom Al Egg-Crate Bottom -->
+  <cell id="46" universe="2" material="4" region="5  -8  37 -38  39 -40" />  <!-- Moderator within bottom egg-crate -->
+  <cell id="47" universe="2" material="4" region="8  -9" />                  <!-- Moderator in middle -->
+  <cell id="48" universe="2" material="5" region="9 -10 -37" />              <!-- Top Al Egg-Crate Left -->
+  <cell id="49" universe="2" material="5" region="9 -10  38" />              <!-- Top Al Egg-Crate Right -->
+  <cell id="50" universe="2" material="5" region="9 -10 -39  37 -38" />      <!-- Top Al Egg-Crate Top -->
+  <cell id="51" universe="2" material="5" region="9 -10  40  37 -38" />      <!-- Top Al Egg-Crate Bottom -->
+  <cell id="52" universe="2" material="4" region="9 -10  37 -38  39 -40" />  <!-- Moderator within top egg-crate -->
+  <cell id="53" universe="2" material="4" region="10" />                     <!-- Moderator within top egg-crate -->
 
 </geometry>

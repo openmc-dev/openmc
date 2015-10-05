@@ -31,9 +31,9 @@
   <cell id="1" material="1" region="3 -4 13 -14 23 -24" />
 
   <!-- Middle cubic shell -->
-  <cell id="2" material="2" region="2 -5 12 -15 22 -25 ~(3 ^ -4 ^ 13 ^ -14 ^ 23 ^ -24)" />
+  <cell id="2" material="2" region="2 -5 12 -15 22 -25 (-3 | 4 | -13 | 14 | -23 | 24)" />
 
   <!-- Outermost cubic shell -->
-  <cell id="3" material="3" region="1 -6 11 -16 21 -26 ~(1 ^ -5 ^ 12 ^ -15 ^ 22 ^ -25)" />
+  <cell id="3" material="3" region="1 -6 11 -16 21 -26 ~(2 -5 12 -15 22 -25)" />
 
 </geometry>

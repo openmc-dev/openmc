@@ -80,10 +80,11 @@ outer_box = openmc.Cell(cell_id=3, name='outer box')
 inner_cube = +x3 & -x4 & +y3 & -y4 & +z3 & -z4
 middle_cube = +x2 & -x5 & +y2 & -y5 & +z2 & -z5
 outer_cube = +x1 & -x6 & +y1 & -y6 & +z1 & -z6
+outside_inner_cube = -x3 | +x4 | -y3 | +y4 | -z3 | +z4
 
 # Use surface half-spaces to define regions
 inner_box.region = inner_cube
-middle_box.region = middle_cube & ~inner_cube
+middle_box.region = middle_cube & outside_inner_cube
 outer_box.region = outer_cube & ~middle_cube
 
 # Register Materials with Cells
@@ -116,3 +117,18 @@ settings_file.inactive = inactive
 settings_file.particles = particles
 settings_file.set_source_space('point', [0., 0., 0.])
 settings_file.export_to_xml()
+
+###############################################################################
+#                   Exporting to OpenMC plots.xml File
+###############################################################################
+
+plot = openmc.Plot(plot_id=1)
+plot.origin = [0, 0, 0]
+plot.width = [20, 20]
+plot.pixels = [200, 200]
+plot.color = 'cell'
+
+# Instantiate a PlotsFile, add Plot, and export to XML
+plot_file = openmc.PlotsFile()
+plot_file.add_plot(plot)
+plot_file.export_to_xml()

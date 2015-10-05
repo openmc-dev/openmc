@@ -1267,12 +1267,11 @@ class Tally(object):
                 # energy, energyout filters
                 elif 'energy' in filter.type:
                     bins = filter.bins
-                    num_bins = filter.num_bins
 
                     # Create strings for
                     template = '{0:.1e} - {1:.1e}'
                     filter_bins = []
-                    for i in range(num_bins):
+                    for i in range(filter.num_bins):
                         filter_bins.append(template.format(bins[i], bins[i+1]))
 
                     # Tile the energy bins into a DataFrame column
@@ -1284,12 +1283,11 @@ class Tally(object):
                 # mu, polar, and azimuthal
                 elif filter.type in ['mu', 'polar', 'azimuthal']:
                     bins = filter.bins
-                    num_bins = filter.num_bins
 
                     # Create strings for
                     template = '{0:1.2f} - {1:1.2f}'
                     filter_bins = []
-                    for i in range(num_bins):
+                    for i in range(filter.num_bins):
                         filter_bins.append(template.format(bins[i], bins[i+1]))
 
                     # Tile the mu bins into a DataFrame column

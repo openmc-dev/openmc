@@ -988,6 +988,9 @@ class Halfspace(Region):
         self.surface = surface
         self.side = side
 
+    def __invert__(self):
+        return -self.surface if self.side == '+' else +self.surface
+
     @property
     def surface(self):
         return self._surface

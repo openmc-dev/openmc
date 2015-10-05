@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <geometry>
 
-  <cell id="1" fill="5" surfaces="1 -2 3 -4" />
-  <cell id="201" universe="2" material="1" surfaces="-5" />
-  <cell id="202" universe="2" material="2" surfaces="5" />
+  <cell id="1" fill="5" region="1 -2 3 -4" />
+  <cell id="201" universe="2" material="1" region="-5" />
+  <cell id="202" universe="2" material="2" region="5" />
   <cell id="301" universe="3" material="2"/>
 
   <lattice id="5">

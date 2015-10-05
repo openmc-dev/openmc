@@ -117,9 +117,9 @@ The current revision of the summary file format is 1.
     Unique ID of the lattice which fills the cell. Only present if fill_type is
     set to 'lattice'.
 
-**/geometry/cells/cell <uid>/surfaces** (*int[]*)
+**/geometry/cells/cell <uid>/region** (*char[]*)
 
-    Surface specification for the cell.
+    Region specification for the cell.
 
 **/geometry/surfaces/surface <uid>/index** (*int*)
 

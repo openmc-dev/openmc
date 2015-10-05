@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <geometry>
 
-  <cell id="1" fill="5" surfaces="1 -2 3 -4" />
-  <cell id="201" universe="21" material="1" surfaces="-5" />
-  <cell id="202" universe="21" material="2" surfaces="5" />
-  <cell id="203" universe="22" material="1" surfaces="-5" />
-  <cell id="204" universe="22" material="2" surfaces="5" />
-  <cell id="205" universe="23" material="1" surfaces="-5" />
-  <cell id="206" universe="23" material="2" surfaces="5" />
-  <cell id="207" universe="20" material="1" surfaces="-5" />
-  <cell id="208" universe="20" material="2" surfaces="5" />
+  <cell id="1" fill="5" region="1 -2 3 -4" />
+  <cell id="201" universe="21" material="1" region="-5" />
+  <cell id="202" universe="21" material="2" region="5" />
+  <cell id="203" universe="22" material="1" region="-5" />
+  <cell id="204" universe="22" material="2" region="5" />
+  <cell id="205" universe="23" material="1" region="-5" />
+  <cell id="206" universe="23" material="2" region="5" />
+  <cell id="207" universe="20" material="1" region="-5" />
+  <cell id="208" universe="20" material="2" region="5" />
 
   <lattice id="5">
     <dimension>2 2</dimension>

@@ -720,9 +720,8 @@ Geometry Specification -- geometry.xml
 The geometry in OpenMC is described using `constructive solid geometry`_ (CSG),
 also sometimes referred to as combinatorial geometry. CSG allows a user to
 create complex objects using Boolean operators on a set of simpler surfaces. In
-the geometry model, each unique closed volume in defined by its bounding
-surfaces. In OpenMC, most `quadratic surfaces`_ can be modeled and used as
-bounding surfaces.
+the geometry model, each unique volume is defined by its bounding surfaces. In
+OpenMC, most `quadratic surfaces`_ can be modeled and used as bounding surfaces.
 
 Every geometry.xml must have an XML declaration at the beginning of the file and
 a root element named geometry. Within the root element the user can define any
@@ -745,7 +744,7 @@ number of cells, surfaces, and lattices. Let us look at the following example:
         <id>1</id>
         <universe>0</universe>
         <material>1</material>
-        <surfaces>-1</surfaces>
+        <region>-1</region>
       </cell>
     </geometry>
 
@@ -763,7 +762,7 @@ could be written as:
       <!-- This is a comment -->
 
       <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 5.0" boundary="vacuum" />
-      <cell id="1" universe="0" material="1" surfaces="-1" />
+      <cell id="1" universe="0" material="1" region="-1" />
 
     </geometry>
 
@@ -787,7 +786,8 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
   :type:
     The type of the surfaces. This can be "x-plane", "y-plane", "z-plane",
-    "plane", "x-cylinder", "y-cylinder", "z-cylinder", or "sphere".
+    "plane", "x-cylinder", "y-cylinder", "z-cylinder", "sphere", "x-cone",
+    "y-cone", or "z-cone".
 
     *Default*: None
 
@@ -891,15 +891,29 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
-  :surfaces:
-    A list of the ``ids`` for surfaces that bound this cell, e.g. if the cell
-    is on the negative side of surface 3 and the positive side of surface 5, the
-    bounding surfaces would be given as "-3 5".
+  :region:
+    A Boolean expression of half-spaces that defines the spatial region which
+    the cell occupies. Each half-space is identified by the unique ID of the
+    surface prefixed by `-` or `+` to indicate that it is the negative or
+    positive half-space, respectively. The `+` sign for a positive half-space
+    can be omitted. Valid Boolean operators are parentheses, union `|`,
+    complement `~`, and intersection. Intersection is implicit and indicated by
+    the presence of whitespace. The order of operator precedence is parentheses,
+    complement, intersection, and then union.
 
-    .. note:: The surface attribute/element can be omitted to make a cell fill
-              its entire universe.
+    As an example, the following code gives a cell that is the union of the
+    negative half-space of surface 3 and the complement of the intersection of
+    the positive half-space of surface 5 and the negative half-space of surface
+    2:
 
-    *Default*: No surfaces
+    .. code-block:: xml
+
+        <cell id="1" material="1" region="-3 | ~(5 -2)" />
+
+    .. note:: The ``region`` attribute/element can be omitted to make a cell
+              fill its entire universe.
+
+    *Default*: A region filling all space.
 
   :rotation:
     If the cell is filled with a universe, this element specifies the angles in

@@ -36,6 +36,7 @@ src/xml-fortran/xmlreader
 
 # Test results error file
 results_error.dat
+inputs_error.dat
 
 # Test build files
 tests/build/

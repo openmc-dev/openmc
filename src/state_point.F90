@@ -258,6 +258,8 @@ contains
               call write_dataset(filter_group, "type", "energyout")
             case(FILTER_DISTRIBCELL)
               call write_dataset(filter_group, "type", "distribcell")
+            case(FILTER_DELAYEDGROUP)
+              call write_dataset(filter_group, "type", "delayedgroup")
             end select
 
             call write_dataset(filter_group, "offset", tally%filters(j)%offset)

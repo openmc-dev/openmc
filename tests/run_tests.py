@@ -126,7 +126,10 @@ class Test(object):
 
         # Check for MPI
         if self.mpi:
-            self.fc = os.path.join(MPI_DIR, 'bin', 'mpifort')
+            if os.path.exists(os.path.join(MPI_DIR, 'bin', 'mpifort')):
+                self.fc = os.path.join(MPI_DIR, 'bin', 'mpifort')
+            else:
+                self.fc = os.path.join(MPI_DIR, 'bin', 'mpif90')
         else:
             self.fc = FC
 

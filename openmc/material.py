@@ -132,9 +132,12 @@ class Material(object):
 
     @name.setter
     def name(self, name):
-        check_type('name for Material ID="{0}"'.format(self._id),
-                   name, basestring)
-        self._name = name
+        if name is not None:
+            check_type('name for Material ID="{0}"'.format(self._id),
+                       name, basestring)
+            self._name = name
+        else:
+            self._name = None
 
     def set_density(self, units, density=NO_DENSITY):
         """Set the density of the material

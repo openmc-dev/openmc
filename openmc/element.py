@@ -38,18 +38,18 @@ class Element(object):
         if xs is not None:
             self.xs = xs
 
-    def __eq__(self, element2):
-        # Check type
-        if not isinstance(element2, Element):
-            return False
-
-        # Check name and xs
-        if self._name != element2._name:
-            return False
-        elif self._xs != element2._xs:
-            return False
-        else:
+    def __eq__(self, other):
+        if isinstance(other, Element):
+            if self._name != other._name:
+                return False
+            elif self._xs != other._xs:
+                return False
+            else:
+                return True
+        elif isinstance(other, basestring) and other == self.name:
             return True
+        else:
+            return False
 
     def __hash__(self):
         return hash((self._name, self._xs))

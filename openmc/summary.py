@@ -72,6 +72,9 @@ class Summary(object):
             nuc_densities = self._f['materials'][key]['nuclide_densities'][...]
             nuclides = self._f['materials'][key]['nuclides'].value
 
+            # Create the Material
+            material = openmc.Material(material_id=material_id, name=name)
+
             # Read the names of the S(a,b) tables for this Material and add them
             if 'sab_names' in self._f['materials'][key]:
                 sab_tables = self._f['materials'][key]['sab_names'].value
@@ -79,11 +82,8 @@ class Summary(object):
                     name, xs = sab_table.decode().split('.')
                     material.add_s_alpha_beta(name, xs)
 
-            # Create the Material
-            material = openmc.Material(material_id=material_id, name=name)
-
-            # Set the Material's density to g/cm3 - this is what is used in OpenMC
-            material.set_density(density=density, units='g/cm3')
+            # Set the Material's density to atom/b-cm as used by OpenMC
+            material.set_density(density=density, units='atom/b-cm')
 
             # Add all nuclides to the Material
             for fullname, density in zip(nuclides, nuc_densities):

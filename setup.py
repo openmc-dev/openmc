@@ -11,7 +11,7 @@ except ImportError:
 
 kwargs = {'name': 'openmc',
           'version': '0.7.0',
-          'packages': ['openmc'],
+          'packages': ['openmc', 'openmc.mgxs'],
           'scripts': glob.glob('scripts/openmc-*'),
 
           # Metadata

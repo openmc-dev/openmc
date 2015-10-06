@@ -420,9 +420,8 @@ contains
 !===============================================================================
 
   subroutine elastic_scatter(i_nuclide, rxn, E, uvw, mu_lab, wgt)
-
     integer, intent(in)     :: i_nuclide
-    type(Reaction), pointer :: rxn
+    type(Reaction), intent(in) :: rxn
     real(8), intent(inout)  :: E
     real(8), intent(inout)  :: uvw(3)
     real(8), intent(out)    :: mu_lab
@@ -759,9 +758,7 @@ contains
 !===============================================================================
 
   subroutine sample_target_velocity(nuc, v_target, E, uvw, v_neut, wgt, xs_eff)
-
-    type(Nuclide), pointer :: nuc ! target nuclide at temperature T
-
+    type(Nuclide), intent(in) :: nuc ! target nuclide at temperature T
     real(8), intent(out)   :: v_target(3) ! target velocity
     real(8), intent(in)    :: v_neut(3)   ! neutron velocity
     real(8), intent(in)    :: E           ! particle energy
@@ -1006,8 +1003,7 @@ contains
 !===============================================================================
 
   subroutine sample_cxs_target_velocity(nuc, v_target, E, uvw)
-
-    type(Nuclide),  pointer :: nuc ! target nuclide at temperature
+    type(Nuclide), intent(in) :: nuc ! target nuclide at temperature
     real(8), intent(out)    :: v_target(3)
     real(8), intent(in)     :: E
     real(8), intent(in)     :: uvw(3)
@@ -1080,7 +1076,6 @@ contains
 !===============================================================================
 
   subroutine create_fission_sites(p, i_nuclide, i_reaction)
-
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
     integer,        intent(in)    :: i_reaction
@@ -1197,8 +1192,8 @@ contains
 
   function sample_fission_energy(nuc, rxn, p) result(E_out)
 
-    type(Nuclide),  pointer       :: nuc
-    type(Reaction), pointer       :: rxn
+    type(Nuclide),  intent(in) :: nuc
+    type(Reaction), intent(in) :: rxn
     type(Particle), intent(inout) :: p     ! Particle causing fission
     real(8)                       :: E_out ! outgoing energy of fission neutron
 
@@ -1323,8 +1318,8 @@ contains
 !===============================================================================
 
   subroutine inelastic_scatter(nuc, rxn, p)
-    type(Nuclide),  pointer       :: nuc
-    type(Reaction), pointer       :: rxn
+    type(Nuclide),  intent(in)    :: nuc
+    type(Reaction), intent(in)    :: rxn
     type(Particle), intent(inout) :: p
 
     integer :: i      ! loop index
@@ -1409,8 +1404,7 @@ contains
 !===============================================================================
 
   function sample_angle(rxn, E) result(mu)
-
-    type(Reaction), pointer    :: rxn ! reaction
+    type(Reaction), intent(in) :: rxn ! reaction
     real(8),        intent(in) :: E   ! incoming energy
 
     real(8)        :: xi      ! random number on [0,1)
@@ -1536,7 +1530,6 @@ contains
 !===============================================================================
 
   function rotate_angle(uvw0, mu) result(uvw)
-
     real(8), intent(in) :: uvw0(3) ! directional cosine
     real(8), intent(in) :: mu      ! cosine of angle in lab or CM
     real(8)             :: uvw(3)  ! rotated directional cosine
@@ -1585,8 +1578,7 @@ contains
 !===============================================================================
 
   recursive subroutine sample_energy(edist, E_in, E_out, mu_out, A, Q)
-
-    type(DistEnergy),  pointer       :: edist
+    type(DistEnergy),  intent(in)    :: edist
     real(8), intent(in)              :: E_in   ! incoming energy of neutron
     real(8), intent(out)             :: E_out  ! outgoing energy
     real(8), intent(inout), optional :: mu_out ! outgoing cosine of angle

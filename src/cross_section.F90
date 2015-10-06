@@ -551,13 +551,13 @@ contains
 ! for a given nuclide at the trial relative energy used in resonance scattering
 !===============================================================================
 
-  function elastic_xs_0K(E, nuc) result(xs_out)
+  pure function elastic_xs_0K(E, nuc) result(xs_out)
+    real(8), intent(inout) :: E  ! trial energy
+    type(Nuclide), intent(in) :: nuc  ! target nuclide at temperature
+    real(8) :: xs_out ! 0K xs at trial energy
 
-    type(Nuclide), pointer :: nuc    ! target nuclide at temperature
-    integer                :: i_grid ! index on nuclide energy grid
-    real(8)                :: f      ! interp factor on nuclide energy grid
-    real(8), intent(inout) :: E      ! trial energy
-    real(8)                :: xs_out ! 0K xs at trial energy
+    integer :: i_grid ! index on nuclide energy grid
+    real(8) :: f      ! interp factor on nuclide energy grid
 
     ! Determine index on nuclide energy grid
     if (E < nuc % energy_0K(1)) then

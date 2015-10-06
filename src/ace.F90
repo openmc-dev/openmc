@@ -45,9 +45,9 @@ contains
     integer :: temp_table   ! temporary value for sorting
     character(12)  :: name  ! name of isotope, e.g. 92235.03c
     character(12)  :: alias ! alias of nuclide, e.g. U-235.03c
-    type(Material),   pointer :: mat => null()
-    type(Nuclide),    pointer :: nuc => null()
-    type(SAlphaBeta), pointer :: sab => null()
+    type(Material),   pointer :: mat
+    type(Nuclide),    pointer :: nuc
+    type(SAlphaBeta), pointer :: sab
     type(SetChar) :: already_read
 
     ! allocate arrays for ACE table storage and cross section cache
@@ -234,7 +234,6 @@ contains
 !===============================================================================
 
   subroutine read_ace_table(i_table, i_listing)
-
     integer, intent(in) :: i_table   ! index in nuclides/sab_tables
     integer, intent(in) :: i_listing ! index in xs_listings
 
@@ -258,9 +257,9 @@ contains
     character(10) :: mat           ! material identifier
     character(70) :: comment       ! comment for ACE table
     character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
-    type(Nuclide),   pointer :: nuc => null()
-    type(SAlphaBeta), pointer :: sab => null()
-    type(XsListing), pointer :: listing => null()
+    type(Nuclide),   pointer :: nuc
+    type(SAlphaBeta), pointer :: sab
+    type(XsListing), pointer :: listing
 
     ! determine path, record length, and location of table
     listing => xs_listings(i_listing)
@@ -406,8 +405,6 @@ contains
     end select
 
     deallocate(XSS)
-    if(associated(nuc)) nullify(nuc)
-    if(associated(sab)) nullify(sab)
 
   end subroutine read_ace_table
 
@@ -417,10 +414,8 @@ contains
 !===============================================================================
 
   subroutine read_esz(nuc, data_0K)
-
-    type(Nuclide), pointer :: nuc
-
-    logical :: data_0K ! are we reading 0K data?
+    type(Nuclide), intent(inout) :: nuc
+    logical, intent(in) :: data_0K ! are we reading 0K data?
 
     integer :: NE ! number of energy points for total and elastic cross sections
     integer :: i  ! index in 0K elastic xs array for this nuclide
@@ -507,8 +502,7 @@ contains
 !===============================================================================
 
   subroutine read_nu_data(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i      ! loop index
     integer :: JXS2   ! location for fission nu data
@@ -524,7 +518,7 @@ contains
     integer :: LOCC   ! location of energy distributions for given MT
     integer :: lc     ! locator
     integer :: length ! length of data to allocate
-    type(DistEnergy), pointer :: edist => null()
+    type(DistEnergy), pointer :: edist
 
     JXS2  = JXS(2)
     JXS24 = JXS(24)
@@ -707,8 +701,7 @@ contains
 !===============================================================================
 
   subroutine read_reactions(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i         ! loop indices
     integer :: i_fission ! index in nuc % index_fission
@@ -722,7 +715,7 @@ contains
     integer :: IE        ! reaction's starting index on energy grid
     integer :: NE        ! number of energies
     integer :: NR        ! number of interpolation regions
-    type(Reaction), pointer :: rxn => null()
+    type(Reaction), pointer :: rxn
     type(ListInt) :: MTs
 
     LMT  = JXS(3)
@@ -890,8 +883,7 @@ contains
 !===============================================================================
 
   subroutine read_angular_dist(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: JXS8   ! location of angular distribution locators
     integer :: JXS9   ! location of angular distributions
@@ -902,7 +894,7 @@ contains
     integer :: i      ! index in reactions array
     integer :: j      ! index over incoming energies
     integer :: length ! length of data array to allocate
-    type(Reaction), pointer :: rxn => null()
+    type(Reaction), pointer :: rxn
 
     JXS8 = JXS(8)
     JXS9 = JXS(9)
@@ -985,13 +977,12 @@ contains
 !===============================================================================
 
   subroutine read_energy_dist(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: LED   ! location of energy distribution locators
     integer :: LOCC  ! location of energy distributions for given MT
     integer :: i     ! loop index
-    type(Reaction), pointer :: rxn => null()
+    type(Reaction), pointer :: rxn
 
     LED  = JXS(10)
 
@@ -1019,10 +1010,9 @@ contains
 !===============================================================================
 
   recursive subroutine get_energy_dist(edist, loc_law, delayed_n)
-
-    type(DistEnergy), pointer :: edist     ! energy distribution
-    integer, intent(in)       :: loc_law   ! locator for data
-    logical, optional         :: delayed_n ! is this for delayed neutrons?
+    type(DistEnergy), intent(inout) :: edist     ! energy distribution
+    integer, intent(in) :: loc_law   ! locator for data
+    logical, intent(in), optional :: delayed_n ! is this for delayed neutrons?
 
     integer :: LDIS   ! location of all energy distributions
     integer :: LNW    ! location of next energy distribution if multiple
@@ -1102,7 +1092,6 @@ contains
 !===============================================================================
 
   function length_energy_dist(lc, law, LOCC, lid) result(length)
-
     integer, intent(in) :: lc     ! location in XSS array
     integer, intent(in) :: law    ! energy distribution law
     integer, intent(in) :: LOCC   ! location of energy distribution
@@ -1146,7 +1135,7 @@ contains
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
       allocate(L(NE))
-      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
 
       ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
@@ -1204,7 +1193,7 @@ contains
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
       allocate(L(NE))
-      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
 
       ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
@@ -1234,7 +1223,7 @@ contains
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
       allocate(L(NE))
-      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
 
       ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
@@ -1285,7 +1274,7 @@ contains
       ! in a way inconsistent with the current form of the ACE Format Guide
       ! (MCNP5 Manual, Vol 3)
       allocate(L(NE))
-      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
       ! Don't currently do anything with L
       deallocate(L)
       ! Continue with finding data length
@@ -1301,8 +1290,7 @@ contains
 !===============================================================================
 
   subroutine read_unr_res(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: JXS23 ! location of URR data
     integer :: lc    ! locator
@@ -1390,8 +1378,7 @@ contains
 !===============================================================================
 
   subroutine generate_nu_fission(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i  ! index on nuclide energy grid
     real(8) :: E  ! energy
@@ -1417,8 +1404,7 @@ contains
 !===============================================================================
 
   subroutine read_thermal_data(table)
-
-    type(SAlphaBeta), pointer :: table
+    type(SAlphaBeta), intent(inout) :: table
 
     integer :: i      ! index for incoming energies
     integer :: j      ! index for outgoing energies

@@ -100,10 +100,9 @@ contains
 !===============================================================================
 
   subroutine header(msg, unit, level)
-
     character(*), intent(in) :: msg ! header message
-    integer, optional :: unit       ! unit to write to
-    integer, optional :: level      ! specified header level
+    integer, intent(in), optional :: unit       ! unit to write to
+    integer, intent(in), optional :: level      ! specified header level
 
     integer :: n            ! number of = signs on left
     integer :: m            ! number of = signs on right
@@ -195,9 +194,8 @@ contains
 !===============================================================================
 
   subroutine write_message(message, level)
-
-    character(*) :: message
-    integer, optional :: level ! verbosity level
+    character(*), intent(in) :: message
+    integer, intent(in), optional :: level ! verbosity level
 
     integer :: i_start    ! starting position
     integer :: i_end      ! ending position
@@ -250,7 +248,6 @@ contains
 !===============================================================================
 
   subroutine print_particle(p)
-
     type(Particle), intent(in) :: p
 
     integer :: i ! index for coordinate levels
@@ -320,9 +317,8 @@ contains
 !===============================================================================
 
   subroutine print_nuclide(nuc, unit)
-
-    type(Nuclide), pointer :: nuc
-    integer,      optional :: unit
+    type(Nuclide), intent(in) :: nuc
+    integer, intent(in), optional :: unit
 
     integer :: i                 ! loop index over nuclides
     integer :: unit_             ! unit to write to
@@ -334,8 +330,8 @@ contains
     integer :: size_energy       ! memory used for a  energy distributions (bytes)
     integer :: size_urr          ! memory used for probability tables (bytes)
     character(11) :: law         ! secondary energy distribution law
-    type(Reaction), pointer :: rxn => null()
-    type(UrrData),  pointer :: urr => null()
+    type(Reaction), pointer :: rxn
+    type(UrrData),  pointer :: urr
 
     ! set default unit for writing information
     if (present(unit)) then
@@ -438,9 +434,8 @@ contains
 !===============================================================================
 
   subroutine print_sab_table(sab, unit)
-
-    type(SAlphaBeta), pointer :: sab
-    integer,         optional :: unit
+    type(SAlphaBeta), intent(in) :: sab
+    integer, intent(in), optional :: unit
 
     integer :: size_sab   ! memory used by S(a,b) table
     integer :: unit_      ! unit to write to
@@ -526,8 +521,8 @@ contains
     integer :: i       ! loop index
     integer :: unit_xs ! cross_sections.out file unit
     character(MAX_FILE_LEN)  :: path ! path of summary file
-    type(Nuclide),    pointer :: nuc => null()
-    type(SAlphaBeta), pointer :: sab => null()
+    type(Nuclide),    pointer :: nuc
+    type(SAlphaBeta), pointer :: sab
 
     ! Create filename for log file
     path = trim(path_output) // "cross_sections.out"
@@ -681,7 +676,7 @@ contains
   subroutine print_plot()
 
     integer :: i ! loop index for plots
-    type(ObjectPlot), pointer :: pl => null()
+    type(ObjectPlot), pointer :: pl
 
     ! Display header for plotting
     call header("PLOTTING SUMMARY")
@@ -1183,7 +1178,7 @@ contains
 !===============================================================================
 
   subroutine write_surface_current(t, unit_tally)
-    type(TallyObject), pointer :: t
+    type(TallyObject), intent(in) :: t
     integer, intent(in) :: unit_tally
 
     integer :: i                    ! mesh index for x
@@ -1356,9 +1351,9 @@ contains
 
   function get_label(t, i_filter) result(label)
 
-    type(TallyObject), pointer :: t        ! tally object
-    integer, intent(in)        :: i_filter ! index in filters array
-    character(100)              :: label    ! user-specified identifier
+    type(TallyObject), intent(in) :: t        ! tally object
+    integer, intent(in)  :: i_filter ! index in filters array
+    character(100) :: label    ! user-specified identifier
 
     integer :: i      ! index in cells/surfaces/etc array
     integer :: bin
@@ -1422,12 +1417,12 @@ contains
 
   recursive subroutine find_offset(map, goal, univ, final, offset, path)
 
-    integer, intent(in) :: map                   ! Index in maps vector
-    integer, intent(in) :: goal                  ! The target cell ID
-    type(Universe), pointer, intent(in) :: univ  ! Universe to begin search
-    integer, intent(in) :: final                 ! Target offset
-    integer, intent(inout) :: offset             ! Current offset
-    character(100) :: path                       ! Path to offset
+    integer, intent(in) :: map          ! Index in maps vector
+    integer, intent(in) :: goal         ! The target cell ID
+    type(Universe), intent(in) :: univ  ! Universe to begin search
+    integer, intent(in) :: final        ! Target offset
+    integer, intent(inout) :: offset    ! Current offset
+    character(*), intent(inout) :: path ! Path to offset
 
     integer :: i, j                 ! Index over cells
     integer :: k, l, m              ! Indices in lattice
@@ -1439,7 +1434,7 @@ contains
     integer :: temp_offset          ! Looped sum of offsets
     logical :: this_cell = .false.  ! Advance in this cell?
     logical :: later_cell = .false. ! Fill cells after this one?
-    type(Cell),     pointer:: c           ! Pointer to current cell
+    type(Cell), pointer :: c           ! Pointer to current cell
     type(Universe), pointer :: next_univ  ! Next universe to loop through
     class(Lattice), pointer :: lat        ! Pointer to current lattice
 

@@ -37,13 +37,13 @@ contains
 
   subroutine score_general(p, t, start_index, filter_index, i_nuclide, &
        atom_density, flux)
-    type(Particle),             intent(in)    :: p
-    type(TallyObject), pointer, intent(inout) :: t
-    integer,                    intent(in)    :: start_index
-    integer,                    intent(in)    :: i_nuclide
-    integer,                    intent(in)    :: filter_index   ! for % results
-    real(8),                    intent(in)    :: flux           ! flux estimate
-    real(8),                    intent(in)    :: atom_density   ! atom/b-cm
+    type(Particle),    intent(in)    :: p
+    type(TallyObject), intent(inout) :: t
+    integer,           intent(in)    :: start_index
+    integer,           intent(in)    :: i_nuclide
+    integer,           intent(in)    :: filter_index   ! for % results
+    real(8),           intent(in)    :: flux           ! flux estimate
+    real(8),           intent(in)    :: atom_density   ! atom/b-cm
 
     integer :: i                    ! loop index for scoring bins
     integer :: l                    ! loop index for nuclides in material
@@ -1018,9 +1018,8 @@ contains
 !===============================================================================
 
   subroutine score_fission_eout(p, t, i_score)
-
     type(Particle), intent(in) :: p
-    type(TallyObject), pointer :: t
+    type(TallyObject), intent(inout) :: t
     integer, intent(in)        :: i_score ! index for score
 
     integer :: i             ! index of outgoing energy filter
@@ -1348,9 +1347,9 @@ contains
     logical :: end_in_mesh          ! ending coordinates inside mesh?
     real(8) :: theta
     real(8) :: phi
-    type(TallyObject),    pointer :: t
+    type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
-    type(Material),       pointer :: mat
+    type(Material), pointer :: mat
 
     t => tallies(i_tally)
     matching_bins(1:t%n_filters) = 1
@@ -1724,7 +1723,7 @@ contains
     integer :: offset ! offset for distribcell
     real(8) :: E ! particle energy
     real(8) :: theta, phi ! Polar and Azimuthal Angles, respectively
-    type(TallyObject),    pointer :: t
+    type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
 
     found_bin = .true.
@@ -1948,7 +1947,7 @@ contains
     logical :: x_same               ! same starting/ending x index (i)
     logical :: y_same               ! same starting/ending y index (j)
     logical :: z_same               ! same starting/ending z index (k)
-    type(TallyObject),    pointer :: t
+    type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
 
     TALLY_LOOP: do i = 1, active_current_tallies % size()

@@ -463,14 +463,7 @@ contains
     ! Deallocate tally-related arrays
     if (allocated(global_tallies)) deallocate(global_tallies)
     if (allocated(meshes)) deallocate(meshes)
-    if (allocated(tallies)) then
-    ! First call the clear routines
-      do i = 1, size(tallies)
-        call tallies(i) % clear()
-      end do
-      ! Now deallocate the tally array
-      deallocate(tallies)
-    end if
+    if (allocated(tallies)) deallocate(tallies)
     if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
 

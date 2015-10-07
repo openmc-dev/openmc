@@ -146,7 +146,7 @@ module ace_header
 
     ! Reactions
     integer :: n_reaction ! # of reactions
-    type(Reaction), pointer :: reactions(:) => null()
+    type(Reaction), allocatable :: reactions(:)
     type(DictIntInt) :: reaction_index ! map MT values to index in reactions
                                        ! array; used at tally-time
 
@@ -341,11 +341,10 @@ module ace_header
       end if
 
       if (associated(this % urr_data)) then
-        call this % urr_data % clear()
         deallocate(this % urr_data)
       end if
 
-      if (associated(this % reactions)) then
+      if (allocated(this % reactions)) then
         do i = 1, size(this % reactions)
           call this % reactions(i) % clear()
         end do

@@ -379,7 +379,6 @@ contains
     logical :: same_nuc     ! do we know the xs for this nuclide at this energy?
     type(UrrData),  pointer :: urr
     type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
 
     micro_xs(i_nuclide) % use_ptable = .true.
 
@@ -475,18 +474,17 @@ contains
     ! Determine treatment of inelastic scattering
     inelastic = ZERO
     if (urr % inelastic_flag > 0) then
-      ! Get pointer to inelastic scattering reaction
-      rxn => nuc % reactions(nuc % urr_inelastic)
-
       ! Get index on energy grid and interpolation factor
       i_energy = micro_xs(i_nuclide) % index_grid
       f = micro_xs(i_nuclide) % interp_factor
 
       ! Determine inelastic scattering cross section
-      if (i_energy >= rxn % threshold) then
-        inelastic = (ONE - f) * rxn % sigma(i_energy - rxn%threshold + 1) + &
-             f * rxn % sigma(i_energy - rxn%threshold + 2)
-      end if
+      associate (rxn => nuc % reactions(nuc % urr_inelastic))
+        if (i_energy >= rxn % threshold) then
+          inelastic = (ONE - f) * rxn % sigma(i_energy - rxn%threshold + 1) + &
+               f * rxn % sigma(i_energy - rxn%threshold + 2)
+        end if
+      end associate
     end if
 
     ! Multiply by smooth cross-section if needed

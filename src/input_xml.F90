@@ -5,15 +5,17 @@ module input_xml
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
-  use geometry_header,  only: Cell, Surface, Lattice, RectLattice, HexLattice
+  use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
   use global
   use list_header,      only: ListChar, ListReal
   use mesh_header,      only: RegularMesh
   use output,           only: write_message
   use plot_header
   use random_lcg,       only: prn
+  use surface_header
+  use stl_vector,       only: VectorInt
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
-                              starts_with, ends_with
+                              starts_with, ends_with, tokenize
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
   use xml_interface
@@ -987,13 +989,15 @@ contains
     integer :: coeffs_reqd
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
+    real(8), allocatable :: coeffs(:)
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    type(Cell),     pointer :: c => null()
-    type(Surface),  pointer :: s => null()
-    class(Lattice), pointer :: lat => null()
+    character(MAX_LINE_LEN) :: region_spec
+    type(Cell),     pointer :: c
+    class(Surface), pointer :: s
+    class(Lattice), pointer :: lat
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_cell => null()
     type(Node), pointer :: node_surf => null()
@@ -1002,6 +1006,8 @@ contains
     type(NodeList), pointer :: node_surf_list => null()
     type(NodeList), pointer :: node_rlat_list => null()
     type(NodeList), pointer :: node_hlat_list => null()
+    type(VectorInt) :: tokens
+    type(VectorInt) :: rpn
 
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
@@ -1112,17 +1118,42 @@ contains
         call fatal_error("Cannot specify material and fill simultaneously")
       end if
 
-      ! Allocate array for surfaces and copy
+      ! Check for region specification (also under deprecated name surfaces)
+      region_spec = ''
       if (check_for_node(node_cell, "surfaces")) then
-        n = get_arraysize_integer(node_cell, "surfaces")
-      else
-        n = 0
+        call warning("The use of 'surfaces' is deprecated and will be &
+             &disallowed in a future release.  Use 'region' instead. The &
+             &openmc-update-inputs utility can be used to automatically &
+             &update geometry.xml files.")
+        call get_node_value(node_cell, "surfaces", region_spec)
+      elseif (check_for_node(node_cell, "region")) then
+        call get_node_value(node_cell, "region", region_spec)
       end if
-      c % n_surfaces = n
 
-      if (n > 0) then
-        allocate(c % surfaces(n))
-        call get_node_array(node_cell, "surfaces", c % surfaces)
+      if (len_trim(region_spec) > 0) then
+        ! Create surfaces array from string
+        call tokenize(region_spec, tokens)
+
+        ! Use shunting-yard algorithm to determine RPN for surface algorithm
+        call generate_rpn(c%id, tokens, rpn)
+
+        ! Copy region spec and RPN form to cell arrays
+        allocate(c % region(tokens%size()))
+        allocate(c % rpn(rpn%size()))
+        c % region(:) = tokens%data(1:tokens%size())
+        c % rpn(:) = rpn%data(1:rpn%size())
+
+        call tokens%clear()
+        call rpn%clear()
+      end if
+      if (.not. allocated(c%region)) allocate(c%region(0))
+      if (.not. allocated(c%rpn)) allocate(c%rpn(0))
+
+      ! Check if this is a simple cell
+      if (any(c%rpn == OP_COMPLEMENT) .or. any(c%rpn == OP_UNION)) then
+        c%simple = .false.
+      else
+        c%simple = .true.
       end if
 
       ! Rotation matrix
@@ -1222,28 +1253,8 @@ contains
     allocate(surfaces(n_surfaces))
 
     do i = 1, n_surfaces
-      s => surfaces(i)
-
       ! Get pointer to i-th surface node
       call get_list_item(node_surf_list, i, node_surf)
-
-      ! Copy data into cells
-      if (check_for_node(node_surf, "id")) then
-        call get_node_value(node_surf, "id", s % id)
-      else
-        call fatal_error("Must specify id of surface in geometry XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (surface_dict % has_key(s % id)) then
-        call fatal_error("Two or more surfaces use the same unique ID: " &
-             &// to_str(s % id))
-      end if
-
-      ! Copy surface name
-      if (check_for_node(node_surf, "name")) then
-        call get_node_value(node_surf, "name", s % name)
-      end if
 
       ! Copy and interpret surface type
       word = ''
@@ -1251,41 +1262,61 @@ contains
            call get_node_value(node_surf, "type", word)
       select case(to_lower(word))
       case ('x-plane')
-        s % type = SURF_PX
         coeffs_reqd  = 1
+        allocate(SurfaceXPlane :: surfaces(i)%obj)
       case ('y-plane')
-        s % type = SURF_PY
         coeffs_reqd  = 1
+        allocate(SurfaceYPlane :: surfaces(i)%obj)
       case ('z-plane')
-        s % type = SURF_PZ
         coeffs_reqd  = 1
+        allocate(SurfaceZPlane :: surfaces(i)%obj)
       case ('plane')
-        s % type = SURF_PLANE
         coeffs_reqd  = 4
+        allocate(SurfacePlane :: surfaces(i)%obj)
       case ('x-cylinder')
-        s % type = SURF_CYL_X
         coeffs_reqd  = 3
+        allocate(SurfaceXCylinder :: surfaces(i)%obj)
       case ('y-cylinder')
-        s % type = SURF_CYL_Y
         coeffs_reqd  = 3
+        allocate(SurfaceYCylinder :: surfaces(i)%obj)
       case ('z-cylinder')
-        s % type = SURF_CYL_Z
         coeffs_reqd  = 3
+        allocate(SurfaceZCylinder :: surfaces(i)%obj)
       case ('sphere')
-        s % type = SURF_SPHERE
         coeffs_reqd  = 4
+        allocate(SurfaceSphere :: surfaces(i)%obj)
       case ('x-cone')
-        s % type = SURF_CONE_X
         coeffs_reqd  = 4
+        allocate(SurfaceXCone :: surfaces(i)%obj)
       case ('y-cone')
-        s % type = SURF_CONE_Y
         coeffs_reqd  = 4
+        allocate(SurfaceYCone :: surfaces(i)%obj)
       case ('z-cone')
-        s % type = SURF_CONE_Z
         coeffs_reqd  = 4
+        allocate(SurfaceZCone :: surfaces(i)%obj)
       case default
         call fatal_error("Invalid surface type: " // trim(word))
       end select
+
+      s => surfaces(i)%obj
+
+      ! Copy data into cells
+      if (check_for_node(node_surf, "id")) then
+        call get_node_value(node_surf, "id", s%id)
+      else
+        call fatal_error("Must specify id of surface in geometry XML file.")
+      end if
+
+      ! Check to make sure 'id' hasn't been used
+      if (surface_dict % has_key(s%id)) then
+        call fatal_error("Two or more surfaces use the same unique ID: " &
+             &// to_str(s%id))
+      end if
+
+      ! Copy surface name
+      if (check_for_node(node_surf, "name")) then
+        call get_node_value(node_surf, "name", s%name)
+      end if
 
       ! Check to make sure that the proper number of coefficients
       ! have been specified for the given type of surface. Then copy
@@ -1294,14 +1325,63 @@ contains
       n = get_arraysize_double(node_surf, "coeffs")
       if (n < coeffs_reqd) then
         call fatal_error("Not enough coefficients specified for surface: " &
-             &// trim(to_str(s % id)))
+             &// trim(to_str(s%id)))
       elseif (n > coeffs_reqd) then
         call fatal_error("Too many coefficients specified for surface: " &
-             &// trim(to_str(s % id)))
-      else
-        allocate(s % coeffs(n))
-        call get_node_array(node_surf, "coeffs", s % coeffs)
+             &// trim(to_str(s%id)))
       end if
+
+      allocate(coeffs(n))
+      call get_node_array(node_surf, "coeffs", coeffs)
+
+      select type(s)
+      type is (SurfaceXPlane)
+        s%x0 = coeffs(1)
+      type is (SurfaceYPlane)
+        s%y0 = coeffs(1)
+      type is (SurfaceZPlane)
+        s%z0 = coeffs(1)
+      type is (SurfacePlane)
+        s%A = coeffs(1)
+        s%B = coeffs(2)
+        s%C = coeffs(3)
+        s%D = coeffs(4)
+      type is (SurfaceXCylinder)
+        s%y0 = coeffs(1)
+        s%z0 = coeffs(2)
+        s%r = coeffs(3)
+      type is (SurfaceYCylinder)
+        s%x0 = coeffs(1)
+        s%z0 = coeffs(2)
+        s%r = coeffs(3)
+      type is (SurfaceZCylinder)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%r = coeffs(3)
+      type is (SurfaceSphere)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r = coeffs(4)
+      type is (SurfaceXCone)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r2 = coeffs(4)
+      type is (SurfaceYCone)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r2 = coeffs(4)
+      type is (SurfaceZCone)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r2 = coeffs(4)
+      end select
+
+      ! No longer need coefficients
+      deallocate(coeffs)
 
       ! Boundary conditions
       word = ''
@@ -1309,21 +1389,20 @@ contains
            call get_node_value(node_surf, "boundary", word)
       select case (to_lower(word))
       case ('transmission', 'transmit', '')
-        s % bc = BC_TRANSMIT
+        s%bc = BC_TRANSMIT
       case ('vacuum')
-        s % bc = BC_VACUUM
+        s%bc = BC_VACUUM
         boundary_exists = .true.
       case ('reflective', 'reflect', 'reflecting')
-        s % bc = BC_REFLECT
+        s%bc = BC_REFLECT
         boundary_exists = .true.
       case default
         call fatal_error("Unknown boundary condition '" // trim(word) // &
-             &"' specified on surface " // trim(to_str(s % id)))
+             &"' specified on surface " // trim(to_str(s%id)))
       end select
 
       ! Add surface to dictionary
-      call surface_dict % add_key(s % id, i)
-
+      call surface_dict % add_key(s%id, i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -4834,5 +4913,92 @@ contains
     end select
 
   end subroutine expand_natural_element
+
+!===============================================================================
+! GENERATE_RPN implements the shunting-yard algorithm to generate a Reverse
+! Polish notation (RPN) expression for the region specification of a cell given
+! the infix notation.
+!===============================================================================
+
+  subroutine generate_rpn(cell_id, tokens, output)
+    integer, intent(in) :: cell_id
+    type(VectorInt), intent(in) :: tokens    ! infix notation
+    type(VectorInt), intent(inout) :: output ! RPN notation
+
+    integer :: i
+    integer :: token
+    integer :: op
+    type(VectorInt) :: stack
+
+    do i = 1, tokens%size()
+      token = tokens%data(i)
+
+      if (token < OP_UNION) then
+        ! If token is not an operator, add it to output
+        call output%push_back(token)
+
+      elseif (token < OP_RIGHT_PAREN) then
+        ! Regular operators union, intersection, complement
+        do while (stack%size() > 0)
+          op = stack%data(stack%size())
+
+          if (op < OP_RIGHT_PAREN .and. &
+               ((token == OP_COMPLEMENT .and. token < op) .or. &
+               (token /= OP_COMPLEMENT .and. token <= op))) then
+            ! While there is an operator, op, on top of the stack, if the token
+            ! is left-associative and its precedence is less than or equal to
+            ! that of op or if the token is right-associative and its precedence
+            ! is less than that of op, move op to the output queue and push the
+            ! token on to the stack. Note that only complement is
+            ! right-associative.
+            call output%push_back(op)
+            call stack%pop_back()
+          else
+            exit
+          end if
+        end do
+
+        call stack%push_back(token)
+
+      elseif (token == OP_LEFT_PAREN) then
+        ! If the token is a left parenthesis, push it onto the stack
+        call stack%push_back(token)
+
+      else
+        ! If the token is a right parenthesis, move operators from the stack to
+        ! the output queue until reaching the left parenthesis.
+        do
+          ! If we run out of operators without finding a left parenthesis, it
+          ! means there are mismatched parentheses.
+          if (stack%size() == 0) then
+            call fatal_error('Mimatched parentheses in region specification &
+                 &for cell ' // trim(to_str(cell_id)) // '.')
+          end if
+
+          op = stack%data(stack%size())
+          if (op == OP_LEFT_PAREN) exit
+          call output%push_back(op)
+          call stack%pop_back()
+        end do
+
+        ! Pop the left parenthesis.
+        call stack%pop_back()
+      end if
+    end do
+
+    ! While there are operators on the stack, move them to the output queue
+    do while (stack%size() > 0)
+      op = stack%data(stack%size())
+
+      ! If the operator is a parenthesis, it is mismatched
+      if (op >= OP_RIGHT_PAREN) then
+        call fatal_error('Mimatched parentheses in region specification &
+             &for cell ' // trim(to_str(cell_id)) // '.')
+      end if
+
+      call output%push_back(op)
+      call stack%pop_back()
+    end do
+  end subroutine generate_rpn
 
 end module input_xml

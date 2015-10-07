@@ -87,10 +87,11 @@ module constants
 
   ! Logical operators for cell definitions
   integer, parameter ::              &
-       OP_LEFT_PAREN  = huge(0),     & ! Left parentheses
-       OP_RIGHT_PAREN = huge(0) - 1, & ! Right parentheses
-       OP_UNION       = huge(0) - 2, & ! Union operator
-       OP_DIFFERENCE  = huge(0) - 3    ! Difference operator
+       OP_LEFT_PAREN   = huge(0),     & ! Left parentheses
+       OP_RIGHT_PAREN  = huge(0) - 1, & ! Right parentheses
+       OP_COMPLEMENT   = huge(0) - 2, & ! Complement operator (~)
+       OP_INTERSECTION = huge(0) - 3, & ! Intersection operator
+       OP_UNION        = huge(0) - 4    ! Union operator (^)
 
   ! Cell types
   integer, parameter ::  &

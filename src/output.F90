@@ -6,7 +6,7 @@ module output
   use constants
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
-  use geometry_header, only: Cell, Universe, Surface, Lattice, RectLattice, &
+  use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
                              HexLattice, BASE_UNIVERSE
   use global
   use math,            only: t_percentile
@@ -254,10 +254,9 @@ contains
     type(Particle), intent(in) :: p
 
     integer :: i ! index for coordinate levels
-    type(Cell),       pointer :: c => null()
-    type(Surface),    pointer :: s => null()
-    type(Universe),   pointer :: u => null()
-    class(Lattice),   pointer :: l => null()
+    type(Cell),       pointer :: c
+    type(Universe),   pointer :: u
+    class(Lattice),   pointer :: l
 
     ! display type of particle
     select case (p % type)
@@ -304,8 +303,7 @@ contains
 
     ! Print surface
     if (p % surface /= NONE) then
-      s => surfaces(abs(p % surface))
-      write(ou,*) '  Surface = ' // to_str(sign(s % id, p % surface))
+      write(ou,*) '  Surface = ' // to_str(sign(surfaces(i)%obj%id, p % surface))
     end if
 
     ! Display weight, energy, grid index, and interpolation factor
@@ -1388,7 +1386,7 @@ contains
            univ, bin-1, offset, label)
     case (FILTER_SURFACE)
       i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(surfaces(i) % id)
+      label = to_str(surfaces(i)%obj%id)
     case (FILTER_MESH)
       m => meshes(t % filters(i_filter) % int_bins(1))
       allocate(ijk(m % n_dimension))

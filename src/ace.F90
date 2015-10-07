@@ -1587,7 +1587,7 @@ contains
     do i = 1, n_nuclides_total
       do j = 1, n_nuclides_total
         if (nuclides(i) % zaid == nuclides(j) % zaid) then
-          call nuclides(i) % nuc_list % append(j)
+          call nuclides(i) % nuc_list % push_back(j)
         end if
       end do
     end do

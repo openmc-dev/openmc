@@ -375,31 +375,6 @@ module ace_header
 
       integer :: i ! Loop counter
 
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % total, this % elastic, &
-           & this % fission, this % nu_fission, this % absorption)
-
-      if (allocated(this % energy_0K)) &
-           deallocate(this % energy_0K)
-
-      if (allocated(this % elastic_0K)) &
-           deallocate(this % elastic_0K)
-
-      if (allocated(this % xs_cdf)) &
-           deallocate(this % xs_cdf)
-
-      if (allocated(this % heating)) &
-           deallocate(this % heating)
-
-      if (allocated(this % index_fission)) deallocate(this % index_fission)
-
-      if (allocated(this % nu_t_data)) deallocate(this % nu_t_data)
-      if (allocated(this % nu_p_data)) deallocate(this % nu_p_data)
-      if (allocated(this % nu_d_data)) deallocate(this % nu_d_data)
-
-      if (allocated(this % nu_d_precursor_data)) &
-           deallocate(this % nu_d_precursor_data)
-
       if (associated(this % nu_d_edist)) then
         do i = 1, size(this % nu_d_edist)
           call this % nu_d_edist(i) % clear()

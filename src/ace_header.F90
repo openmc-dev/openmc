@@ -3,7 +3,7 @@ module ace_header
   use constants,   only: MAX_FILE_LEN, ZERO
   use dict_header, only: DictIntInt
   use endf_header, only: Tab1
-  use list_header, only: ListInt
+  use stl_vector,  only: VectorInt
 
   implicit none
 
@@ -100,7 +100,7 @@ module ace_header
     real(8)       :: kT      ! temperature in MeV (k*T)
 
     ! Linked list of indices in nuclides array of instances of this same nuclide
-    type(ListInt) :: nuc_list
+    type(VectorInt) :: nuc_list
 
     ! Energy grid information
     integer :: n_grid                     ! # of nuclide grid points
@@ -419,7 +419,6 @@ module ace_header
         deallocate(this % reactions)
       end if
 
-      call this % nuc_list % clear()
       call this % reaction_index % clear()
 
     end subroutine nuclide_clear

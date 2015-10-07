@@ -405,7 +405,7 @@ contains
     ! preserve correlation of temperature in probability tables
     same_nuc = .false.
     do i = 1, nuc % nuc_list % size()
-      if (E /= ZERO .and. E == micro_xs(nuc % nuc_list % get_item(i)) % last_E) then
+      if (E /= ZERO .and. E == micro_xs(nuc % nuc_list % data(i)) % last_E) then
         same_nuc = .true.
         same_nuc_idx = i
         exit
@@ -413,7 +413,7 @@ contains
     end do
 
     if (same_nuc) then
-      r = micro_xs(nuc % nuc_list % get_item(same_nuc_idx)) % last_prn
+      r = micro_xs(nuc % nuc_list % data(same_nuc_idx)) % last_prn
     else
       r = prn()
       micro_xs(i_nuclide) % last_prn = r

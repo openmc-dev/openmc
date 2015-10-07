@@ -691,26 +691,20 @@ contains
             score = ZERO
 
             if (i_nuclide > 0) then
-              ! TODO: The following search for the matching reaction could
-              ! be replaced by adding a dictionary on each Nuclide instance
-              ! of the form {MT: i_reaction, ...}
-              REACTION_LOOP: do m = 1, nuclides(i_nuclide) % n_reaction
-                ! Get pointer to reaction
+              if (nuclides(i_nuclide)%reaction_index%has_key(score_bin)) then
+                m = nuclides(i_nuclide)%reaction_index%get_key(score_bin)
                 rxn => nuclides(i_nuclide) % reactions(m)
-                ! Check if this is the desired MT
-                if (score_bin == rxn % MT) then
-                  ! Retrieve index on nuclide energy grid and interpolation
-                  ! factor
-                  i_energy = micro_xs(i_nuclide) % index_grid
-                  f = micro_xs(i_nuclide) % interp_factor
-                  if (i_energy >= rxn % threshold) then
-                    score = ((ONE - f) * rxn % sigma(i_energy - &
-                         rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                         rxn%threshold + 2)) * atom_density * flux
-                  end if
-                  exit REACTION_LOOP
+
+                ! Retrieve index on nuclide energy grid and interpolation
+                ! factor
+                i_energy = micro_xs(i_nuclide) % index_grid
+                f = micro_xs(i_nuclide) % interp_factor
+                if (i_energy >= rxn % threshold) then
+                  score = ((ONE - f) * rxn % sigma(i_energy - &
+                       rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                       rxn%threshold + 2)) * atom_density * flux
                 end if
-              end do REACTION_LOOP
+              end if
 
             else
               ! Get pointer to current material
@@ -718,28 +712,24 @@ contains
               do l = 1, mat % n_nuclides
                 ! Get atom density
                 atom_density_ = mat % atom_density(l)
+
                 ! Get index in nuclides array
                 i_nuc = mat % nuclide(l)
-                ! TODO: The following search for the matching reaction could
-                ! be replaced by adding a dictionary on each Nuclide
-                ! instance of the form {MT: i_reaction, ...}
-                do m = 1, nuclides(i_nuc) % n_reaction
-                  ! Get pointer to reaction
+
+                if (nuclides(i_nuc)%reaction_index%has_key(score_bin)) then
+                  m = nuclides(i_nuc)%reaction_index%get_key(score_bin)
                   rxn => nuclides(i_nuc) % reactions(m)
-                  ! Check if this is the desired MT
-                  if (score_bin == rxn % MT) then
-                    ! Retrieve index on nuclide energy grid and interpolation
-                    ! factor
-                    i_energy = micro_xs(i_nuc) % index_grid
-                    f = micro_xs(i_nuc) % interp_factor
-                    if (i_energy >= rxn % threshold) then
-                      score = score + ((ONE - f) * rxn % sigma(i_energy - &
-                           rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                           rxn%threshold + 2)) * atom_density_ * flux
-                    end if
-                    exit
+
+                  ! Retrieve index on nuclide energy grid and interpolation
+                  ! factor
+                  i_energy = micro_xs(i_nuc) % index_grid
+                  f = micro_xs(i_nuc) % interp_factor
+                  if (i_energy >= rxn % threshold) then
+                    score = score + ((ONE - f) * rxn % sigma(i_energy - &
+                         rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                         rxn%threshold + 2)) * atom_density_ * flux
                   end if
-                end do
+                end if
               end do
             end if
 

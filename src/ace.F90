@@ -816,6 +816,7 @@ contains
     ! Create set of MT values
     do i = 1, size(nuc % reactions)
       call MTs % append(nuc % reactions(i) % MT)
+      call nuc%reaction_index%add_key(nuc%reactions(i)%MT, i)
     end do
 
     ! Create total, absorption, and fission cross sections

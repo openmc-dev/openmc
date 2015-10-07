@@ -1,8 +1,9 @@
 module ace_header
 
-  use constants,     only: MAX_FILE_LEN, ZERO
-  use endf_header,   only: Tab1
-  use list_header,   only: ListInt
+  use constants,   only: MAX_FILE_LEN, ZERO
+  use dict_header, only: DictIntInt
+  use endf_header, only: Tab1
+  use list_header, only: ListInt
 
   implicit none
 
@@ -154,6 +155,8 @@ module ace_header
     ! Reactions
     integer :: n_reaction ! # of reactions
     type(Reaction), pointer :: reactions(:) => null()
+    type(DictIntInt) :: reaction_index ! map MT values to index in reactions
+                                       ! array; used at tally-time
 
     ! Type-Bound procedures
     contains
@@ -417,6 +420,7 @@ module ace_header
       end if
 
       call this % nuc_list % clear()
+      call this % reaction_index % clear()
 
     end subroutine nuclide_clear
 

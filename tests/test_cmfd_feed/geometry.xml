@@ -4,7 +4,7 @@
 <!-- Definition of Cells -->
   <cell id="1">
     <universe>0</universe>
-    <surfaces>-1 2 -3 4 -5 6</surfaces>
+    <region>-1 2 -3 4 -5 6</region>
     <material>1</material>
   </cell>
 
@@ -39,5 +39,5 @@
     <coeffs>-1</coeffs>
     <boundary>reflective</boundary>
   </surface>
-   
+
 </geometry>

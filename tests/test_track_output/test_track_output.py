@@ -2,11 +2,11 @@
 
 import glob
 import os
+from subprocess import call
 import shutil
 import sys
-
-sys.path.insert(0, '..')
-from testing_harness import *
+sys.path.insert(0, os.pardir)
+from testing_harness import TestHarness
 
 
 class TrackTestHarness(TestHarness):

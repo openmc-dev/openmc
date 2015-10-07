@@ -568,19 +568,32 @@ contains
 
     do i = 1, n_cells
       ! =======================================================================
-      ! ADJUST SURFACE LIST FOR EACH CELL
+      ! ADJUST REGION SPECIFICATION FOR EACH CELL
 
       c => cells(i)
-      do j = 1, c%n_surfaces
-        id = c%surfaces(j)
-        if (id < OP_DIFFERENCE) then
+      do j = 1, size(c%region)
+        id = c%region(j)
+        ! Make sure that only regions are checked. Since OP_UNION is the
+        ! operator with the lowest integer value, anything below it must denote
+        ! a half-space
+        if (id < OP_UNION) then
           if (surface_dict%has_key(abs(id))) then
             i_array = surface_dict%get_key(abs(id))
-            c%surfaces(j) = sign(i_array, id)
+            c%region(j) = sign(i_array, id)
           else
             call fatal_error("Could not find surface " // trim(to_str(abs(id)))&
                  &// " specified on cell " // trim(to_str(c%id)))
           end if
+        end if
+      end do
+
+      ! Also adjust the indices in the reverse Polish notation
+      do j = 1, size(c%rpn)
+        id = c%rpn(j)
+        ! Again, make sure that only regions are checked
+        if (id < OP_UNION) then
+          i_array = surface_dict%get_key(abs(id))
+          c%rpn(j) = sign(i_array, id)
         end if
       end do
 

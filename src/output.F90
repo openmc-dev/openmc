@@ -330,7 +330,6 @@ contains
     integer :: size_energy       ! memory used for a  energy distributions (bytes)
     integer :: size_urr          ! memory used for probability tables (bytes)
     character(11) :: law         ! secondary energy distribution law
-    type(Reaction), pointer :: rxn
     type(UrrData),  pointer :: urr
 
     ! set default unit for writing information
@@ -359,32 +358,32 @@ contains
     ! Information on each reaction
     write(unit_,*) '  Reaction     Q-value  COM  Law    IE    size(angle) size(energy)'
     do i = 1, nuc % n_reaction
-      rxn => nuc % reactions(i)
+      associate (rxn => nuc % reactions(i))
+        ! Determine size of angle distribution
+        if (rxn % has_angle_dist) then
+          size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
+        else
+          size_angle = 0
+        end if
 
-      ! Determine size of angle distribution
-      if (rxn % has_angle_dist) then
-        size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
-      else
-        size_angle = 0
-      end if
+        ! Determine size of energy distribution and law
+        if (rxn % has_energy_dist) then
+          size_energy = size(rxn % edist % data) * 8
+          law = to_str(rxn % edist % law)
+        else
+          size_energy = 0
+          law = 'None'
+        end if
 
-      ! Determine size of energy distribution and law
-      if (rxn % has_energy_dist) then
-        size_energy = size(rxn % edist % data) * 8
-        law = to_str(rxn % edist % law)
-      else
-        size_energy = 0
-        law = 'None'
-      end if
+        write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
+             reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
+             law(1:4), rxn % threshold, size_angle, size_energy
 
-      write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
-           reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
-           law(1:4), rxn % threshold, size_angle, size_energy
-
-      ! Accumulate data size
-      size_xs = size_xs + (nuc % n_grid - rxn%threshold + 1) * 8
-      size_angle_total = size_angle_total + size_angle
-      size_energy_total = size_energy_total + size_energy
+        ! Accumulate data size
+        size_xs = size_xs + (nuc % n_grid - rxn%threshold + 1) * 8
+        size_angle_total = size_angle_total + size_angle
+        size_energy_total = size_energy_total + size_energy
+      end associate
     end do
 
     ! Add memory required for summary reactions (total, absorption, fission,

@@ -185,7 +185,6 @@ contains
 !===============================================================================
 
   subroutine sample_fission(i_nuclide, i_reaction)
-
     integer, intent(in)  :: i_nuclide  ! index in nuclides array
     integer, intent(out) :: i_reaction ! index in nuc % reactions array
 
@@ -195,7 +194,6 @@ contains
     real(8) :: prob
     real(8) :: cutoff
     type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
 
     ! Get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -220,14 +218,15 @@ contains
 
     FISSION_REACTION_LOOP: do i = 1, nuc % n_fission
       i_reaction = nuc % index_fission(i)
-      rxn => nuc % reactions(i_reaction)
 
-      ! if energy is below threshold for this reaction, skip it
-      if (i_grid < rxn % threshold) cycle
+      associate (rxn => nuc % reactions(i_reaction))
+        ! if energy is below threshold for this reaction, skip it
+        if (i_grid < rxn % threshold) cycle
 
-      ! add to cumulative probability
-      prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
-           + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+        ! add to cumulative probability
+        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
+             + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+      end associate
 
       ! Create fission bank sites if fission occurs
       if (prob > cutoff) exit FISSION_REACTION_LOOP
@@ -312,11 +311,10 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
     real(8) :: uvw_new(3) ! outgoing uvw for iso-in-lab scattering
     real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
     real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
+    type(Nuclide),  pointer :: nuc
 
     ! copy incoming direction
     uvw_old(:) = p % coord(1) % uvw
@@ -343,11 +341,8 @@ contains
              p % E, p % coord(1) % uvw, p % mu)
 
       else
-        ! get pointer to elastic scattering reaction
-        rxn => nuc % reactions(1)
-
         ! Perform collision physics for elastic scattering
-        call elastic_scatter(i_nuclide, rxn, &
+        call elastic_scatter(i_nuclide, nuc % reactions(1), &
              p % E, p % coord(1) % uvw, p % mu, p % wgt)
       end if
 
@@ -370,28 +365,28 @@ contains
                &// trim(nuc % name))
         end if
 
-        rxn => nuc % reactions(i)
+        associate (rxn => nuc % reactions(i))
+          ! Skip fission reactions
+          if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
+               .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
 
-        ! Skip fission reactions
-        if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
-             .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
+          ! some materials have gas production cross sections with MT > 200 that
+          ! are duplicates. Also MT=4 is total level inelastic scattering which
+          ! should be skipped
+          if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
 
-        ! some materials have gas production cross sections with MT > 200 that
-        ! are duplicates. Also MT=4 is total level inelastic scattering which
-        ! should be skipped
-        if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
+          ! if energy is below threshold for this reaction, skip it
+          if (i_grid < rxn % threshold) cycle
 
-        ! if energy is below threshold for this reaction, skip it
-        if (i_grid < rxn % threshold) cycle
-
-        ! add to cumulative probability
-        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
-             + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+          ! add to cumulative probability
+          prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
+               + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+        end associate
       end do
 
       ! Perform collision physics for inelastic scattering
-      call inelastic_scatter(nuc, rxn, p)
-      p % event_MT = rxn % MT
+      call inelastic_scatter(nuc, nuc%reactions(i), p)
+      p % event_MT = nuc%reactions(i)%MT
 
     end if
 
@@ -1090,11 +1085,9 @@ contains
     real(8) :: weight                   ! weight adjustment for ufs method
     logical :: in_mesh                  ! source site in ufs mesh?
     type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
 
     ! Get pointers
     nuc => nuclides(i_nuclide)
-    rxn => nuc % reactions(i_reaction)
 
     ! TODO: Heat generation from fission
 
@@ -1165,7 +1158,8 @@ contains
 
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
-      fission_bank(i) % E = sample_fission_energy(nuc, rxn, p)
+      fission_bank(i) % E = sample_fission_energy(nuc, nuc%reactions(&
+           i_reaction), p)
 
       ! Set the delayed group of the neutron
       fission_bank(i) % delayed_group = p % delayed_group

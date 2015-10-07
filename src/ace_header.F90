@@ -18,10 +18,6 @@ module ace_header
     integer, allocatable :: type(:)     ! type of distribution
     integer, allocatable :: location(:) ! location of each table
     real(8), allocatable :: data(:)     ! angular distribution data
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => distangle_clear ! Deallocates DistAngle
   end type DistAngle
 
 !===============================================================================
@@ -52,7 +48,7 @@ module ace_header
     integer :: MT                      ! ENDF MT value
     real(8) :: Q_value                 ! Reaction Q value
     integer :: multiplicity            ! Number of secondary particles released
-    type(Tab1), pointer :: multiplicity_E => null() ! Energy-dependent neutron yield
+    type(Tab1), allocatable :: multiplicity_E ! Energy-dependent neutron yield
     integer :: threshold               ! Energy grid index of threshold
     logical :: scatter_in_cm           ! scattering system in center-of-mass?
     logical :: multiplicity_with_E = .false. ! Flag to indicate E-dependent multiplicity
@@ -80,10 +76,6 @@ module ace_header
     logical :: multiply_smooth ! multiply by smooth cross section?
     real(8), allocatable :: energy(:)   ! incident energies
     real(8), allocatable :: prob(:,:,:) ! actual probabibility tables
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => urrdata_clear ! Deallocates UrrData
   end type UrrData
 
 !===============================================================================
@@ -169,14 +161,12 @@ module ace_header
 !===============================================================================
 
   type Nuclide0K
-
     character(10) :: nuclide             ! name of nuclide, e.g. U-238
     character(16) :: scheme = 'ares'     ! target velocity sampling scheme
     character(10) :: name                ! name of nuclide, e.g. 92235.03c
     character(10) :: name_0K             ! name of 0K nuclide, e.g. 92235.00c
     real(8)       :: E_min = 0.01e-6_8   ! lower cutoff energy for res scattering
     real(8)       :: E_max = 1000.0e-6_8 ! upper cutoff energy for res scattering
-
   end type Nuclide0K
 
 !===============================================================================
@@ -297,19 +287,6 @@ module ace_header
   contains
 
 !===============================================================================
-! DISTANGLE_CLEAR resets and deallocates data in Reaction.
-!===============================================================================
-
-    subroutine distangle_clear(this)
-
-      class(DistAngle), intent(inout) :: this ! The DistAngle object to clear
-
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % type, this % location, this % data)
-
-    end subroutine distangle_clear
-
-!===============================================================================
 ! DISTENERGY_CLEAR resets and deallocates data in DistEnergy.
 !===============================================================================
 
@@ -339,31 +316,12 @@ module ace_header
 
       class(Reaction), intent(inout) :: this ! The Reaction object to clear
 
-      if (allocated(this % sigma)) deallocate(this % sigma)
-
-      if (associated(this % multiplicity_E)) deallocate(this % multiplicity_E)
-
       if (associated(this % edist)) then
         call this % edist % clear()
         deallocate(this % edist)
       end if
 
-      call this % adist % clear()
-
     end subroutine reaction_clear
-
-!===============================================================================
-! URRDATA_CLEAR resets and deallocates data in Reaction.
-!===============================================================================
-
-    subroutine urrdata_clear(this)
-
-      class(UrrData), intent(inout) :: this ! The UrrData object to clear
-
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % prob)
-
-    end subroutine urrdata_clear
 
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide.

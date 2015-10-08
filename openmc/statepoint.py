@@ -307,7 +307,7 @@ class StatePoint(object):
 
     @property
     def source(self):
-        return self._f['source bank'].value if self.source_present else None
+        return self._f['source_bank'].value if self.source_present else None
 
     @property
     def source_present(self):

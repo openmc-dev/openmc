@@ -1253,24 +1253,32 @@ The ``<tally>`` element accepts the following sub-elements:
         :energy:
           A monotonically increasing list of bounding **pre-collision** energies
           for a number of groups. For example, if this filter is specified as
-          ``<filter type="energy" bins="0.0 1.0 20.0" />``, then two energy bins
-          will be created, one with energies between 0 and 1 MeV and the other
-          with energies between 1 and 20 MeV.
+
+          .. code-block:: xml
+
+              <filter type="energy" bins="0.0 1.0 20.0" />
+
+          then two energy bins will be created, one with energies between 0 and
+          1 MeV and the other with energies between 1 and 20 MeV.
 
         :energyout:
           A monotonically increasing list of bounding **post-collision**
           energies for a number of groups. For example, if this filter is
-          specified as ``<filter type="energyout" bins="0.0 1.0 20.0" />``, then
-          two post-collision energy bins will be created, one with energies
+          specified as
+
+          .. code-block:: xml
+
+              <filter type="energyout" bins="0.0 1.0 20.0" />
+
+          then two post-collision energy bins will be created, one with energies
           between 0 and 1 MeV and the other with energies between 1 and 20 MeV.
 
         :mu:
-          A monotonically increasing list of bounding **post-collision**
-          cosines of the change in a particle's angle (i.e.,
-          :math:`\mu = \cos(\Omega \cdot \Omega')`),
-          which represents a portion of the possible values of :math:`[-1,1]`.
-          For example, spanning all of :math:`[-1,1]` with five equi-width
-          bins can be specified as:
+          A monotonically increasing list of bounding **post-collision** cosines
+          of the change in a particle's angle (i.e., :math:`\mu = \hat{\Omega}
+          \cdot \hat{\Omega}'`), which represents a portion of the possible
+          values of :math:`[-1,1]`.  For example, spanning all of :math:`[-1,1]`
+          with five equi-width bins can be specified as:
 
           .. code-block:: xml
 

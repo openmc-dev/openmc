@@ -958,6 +958,9 @@ contains
     filter_name(FILTER_MESH)        = "Mesh"
     filter_name(FILTER_ENERGYIN)    = "Incoming Energy"
     filter_name(FILTER_ENERGYOUT)   = "Outgoing Energy"
+    filter_name(FILTER_MU)          = "Change-in-Angle"
+    filter_name(FILTER_POLAR)       = "Polar Angle"
+    filter_name(FILTER_AZIMUTHAL)   = "Azimuthal Angle"
 
     ! Initialize names for scores
     score_names(abs(SCORE_FLUX))          = "Flux"
@@ -1395,7 +1398,8 @@ contains
         label = "Index (" // trim(to_str(ijk(1))) // ", " // &
              trim(to_str(ijk(2))) // ", " // trim(to_str(ijk(3))) // ")"
       end if
-    case (FILTER_ENERGYIN, FILTER_ENERGYOUT)
+    case (FILTER_ENERGYIN, FILTER_ENERGYOUT, FILTER_MU, FILTER_POLAR, &
+          FILTER_AZIMUTHAL)
       E0 = t % filters(i_filter) % real_bins(bin)
       E1 = t % filters(i_filter) % real_bins(bin + 1)
       label = "[" // trim(to_str(E0)) // ", " // trim(to_str(E1)) // ")"

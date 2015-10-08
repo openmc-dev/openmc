@@ -16,16 +16,30 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
+# Supported cross section types
+MGXS_TYPES = ['total',
+              'transport',
+              'absorption',
+              'capture',
+              'fission',
+              'nu-fission',
+              'scatter',
+              'nu-scatter',
+              'scatter matrix',
+              'nu-scatter matrix',
+              'chi']
+
+
 # Supported domain types
 # TODO: Implement Mesh domains
-DOMAIN_TYPES = ['cell',
+_DOMAIN_TYPES = ['cell',
                 'distribcell',
                 'universe',
                 'material']
 
 # Supported domain classes
 # TODO: Implement Mesh domains
-DOMAINS = [openmc.Cell,
+_DOMAINS = [openmc.Cell,
            openmc.Universe,
            openmc.Material]
 
@@ -47,7 +61,7 @@ class MGXS(object):
     energy_groups : EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
-        If true, computes multi-group cross sections for each nuclide in domain
+        If true, computes cross sections for each nuclide in domain
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
@@ -59,7 +73,7 @@ class MGXS(object):
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
-        If true, computes multi-group cross sections for each nuclide in domain
+        If true, computes cross sections for each nuclide in domain
     domain : Material or Cell or Universe
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe'}
@@ -197,12 +211,12 @@ class MGXS(object):
 
     @domain.setter
     def domain(self, domain):
-        cv.check_type('domain', domain, tuple(DOMAINS))
+        cv.check_type('domain', domain, tuple(_DOMAINS))
         self._domain = domain
 
     @domain_type.setter
     def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, tuple(DOMAIN_TYPES))
+        cv.check_value('domain type', domain_type, tuple(_DOMAIN_TYPES))
         self._domain_type = domain_type
 
     @energy_groups.setter
@@ -210,6 +224,70 @@ class MGXS(object):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
         self._num_groups = energy_groups.num_groups
+
+    @staticmethod
+    def get_mgxs(mgxs_type, domain=None, domain_type=None,
+                 energy_groups=None, by_nuclide=False, name=''):
+        """Return a MGXS subclass object for some energy group structure within
+        some spatial domain for some reaction type.
+
+        This is a factory method which can be used to quickly create MGXS
+        subclass objects for various reaction types.
+
+        Parameters
+        ----------
+        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission',
+                     'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix',
+                     'nu-scatter matrix', 'chi'}
+            The type of multi-group cross section object to return
+        domain : Material or Cell or Universe
+            The domain for spatial homogenization
+        domain_type : {'material', 'cell', 'distribcell', 'universe'}
+            The domain type for spatial homogenization
+        energy_groups : EnergyGroups
+            The energy group structure for energy condensation
+        by_nuclide : bool
+            If true, computes cross sections for each nuclide in domain
+        name : str, optional
+            Name of the multi-group cross section. Used as a label to identify
+            tallies in OpenMC 'tallies.xml' file.
+
+        Returns
+        -------
+        MGXS
+            A subclass of the abstract MGXS class for the multi-group cross
+            section type requeted by the user
+
+        """
+
+        cv.check_value('mgxs_type', mgxs_type, MGXS_TYPES)
+
+        if mgxs_type == 'total':
+            mgxs = TotalXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'transport':
+            mgxs = TransportXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'absorption':
+            mgxs = AbsorptionXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'capture':
+            mgxs = CaptureXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'fission':
+            mgxs = FissionXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'nu-fission':
+            mgxs = NuFissionXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'scatter':
+            mgxs = ScatterXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'nu-scatter':
+            mgxs = NuScatterXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'scatter matrix':
+            mgxs = ScatterMatrixXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'nu-scatter matrix':
+            mgxs = NuScatterMatrixXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'chi':
+            mgxs = Chi(domain, domain_type, energy_groups)
+
+        mgxs.by_nuclide = by_nuclide
+        mgxs.name = name
+        return mgxs
 
     def get_all_nuclides(self):
         """Get all nuclides in the cross section's spatial domain.
@@ -1459,7 +1537,7 @@ class NuScatterXS(MGXS):
 
         # Create a list of scores for each Tally to be created
         scores = ['flux', 'nu-scatter']
-        estimator = 'tracklength'
+        estimator = 'analog'
         keys = scores
 
         # Create the non-domain specific Filters for the Tallies

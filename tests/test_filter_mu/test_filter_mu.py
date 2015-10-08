@@ -16,7 +16,7 @@ class FilterMuTestHarness(PyAPITestHarness):
         tally1.add_score('scatter')
         tally1.add_score('nu-scatter')
 
-        filt2 = openmc.Filter(type='mu', bins=(5))
+        filt2 = openmc.Filter(type='mu', bins=(5,))
         tally2 = openmc.Tally(tally_id=2)
         tally2.add_filter(filt2)
         tally2.add_score('scatter')
@@ -26,7 +26,7 @@ class FilterMuTestHarness(PyAPITestHarness):
         mesh.lower_left  = [-182.07, -182.07]
         mesh.upper_right = [182.07,  182.07]
         mesh.dimension = [2, 2]
-        filt_mesh = openmc.Filter(type='mesh', bins=(1))
+        filt_mesh = openmc.Filter(type='mesh', bins=(1,))
         tally3 = openmc.Tally(tally_id=3)
         tally3.add_filter(filt2)
         tally3.add_filter(filt_mesh)

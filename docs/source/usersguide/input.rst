@@ -1266,58 +1266,65 @@ The ``<tally>`` element accepts the following sub-elements:
 
         :mu:
           A monotonically increasing list of bounding **post-collision**
-          cosines of the change in a particle's angle (i.e., :math:`\mu`),
-          which represents a portion of the possible values of :math:`\[-1,1\]`.
-          For example, spanning all of :math:`\[-1,1\]` with five equi-width
+          cosines of the change in a particle's angle (i.e.,
+          :math:`\mu = \cos(\Omega \cdot \Omega')`),
+          which represents a portion of the possible values of :math:`[-1,1]`.
+          For example, spanning all of :math:`[-1,1]` with five equi-width
           bins can be specified as:
 
-          .. code-block  :: xml
-              ``<filter type="mu" bins="-1.0 -0.6 -0.2 0.2 0.6 1.0" />``
+          .. code-block:: xml
+
+              <filter type="mu" bins="-1.0 -0.6 -0.2 0.2 0.6 1.0" />
 
           Alternatively, if only one value is provided as a bin, OpenMC will
-          interpret this to mean the complete range of :math:`\[-1,1\]` should
+          interpret this to mean the complete range of :math:`[-1,1]` should
           be automatically subdivided in to the provided value for the bin.
           That is, the above example of five equi-width bins spanning
-          :math:`\[-1,1\]` can be instead written as:
+          :math:`[-1,1]` can be instead written as:
 
-          .. code-block  :: xml
-              ``<filter type="mu" bins="5" />``.
+          .. code-block:: xml
+
+              <filter type="mu" bins="5" />
 
         :polar:
           A monotonically increasing list of bounding particle polar angles
-          which represents a portion of the possible values of :math:`\[0,\pi\]`.
-          For example, spanning all of :math:`\[0,\pi\]` with five equi-width
+          which represents a portion of the possible values of :math:`[0,\pi]`.
+          For example, spanning all of :math:`[0,\pi]` with five equi-width
           bins can be specified as:
 
-          .. code-block  :: xml
-              ``<filter type="polar" bins="0.0 0.6283 1.2566 1.8850 2.5132 3.1416"/>``
+          .. code-block:: xml
+
+              <filter type="polar" bins="0.0 0.6283 1.2566 1.8850 2.5132 3.1416"/>
 
           Alternatively, if only one value is provided as a bin, OpenMC will
-          interpret this to mean the complete range of :math:`\[0,\pi\]` should
+          interpret this to mean the complete range of :math:`[0,\pi]` should
           be automatically subdivided in to the provided value for the bin.
           That is, the above example of five equi-width bins spanning
-          :math:`\[0,\pi\]` can be instead written as:
+          :math:`[0,\pi]` can be instead written as:
 
-          .. code-block  :: xml
-              ``<filter type="polar" bins="5" />``.
+          .. code-block:: xml
+
+              <filter type="polar" bins="5" />
 
         :azimuthal:
           A monotonically increasing list of bounding particle azimuthal angles
-          which represents a portion of the possible values of :math:`\[-\pi,\pi\)`.
-          For example, spanning all of :math:`\[-\pi,\pi\)` with two equi-width
+          which represents a portion of the possible values of :math:`[-\pi,\pi)`.
+          For example, spanning all of :math:`[-\pi,\pi)` with two equi-width
           bins can be specified as:
 
-          .. code-block  :: xml
-              ``<filter type="azimuthal" bins="0.0 3.1416 6.2832" />``
+          .. code-block:: xml
+
+              <filter type="azimuthal" bins="0.0 3.1416 6.2832" />
 
           Alternatively, if only one value is provided as a bin, OpenMC will
-          interpret this to mean the complete range of :math:`\[-\pi,\pi\)` should
+          interpret this to mean the complete range of :math:`[-\pi,\pi)` should
           be automatically subdivided in to the provided value for the bin.
           That is, the above example of five equi-width bins spanning
-          :math:`\[-\pi,\pi\)` can be instead written as:
+          :math:`[-\pi,\pi)` can be instead written as:
 
-          .. code-block  :: xml
-              ``<filter type="azimuthal" bins="2" />``.
+          .. code-block:: xml
+
+              <filter type="azimuthal" bins="2" />
 
         :mesh:
           The ``id`` of a structured mesh to be tallied over.

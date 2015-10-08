@@ -9,7 +9,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 # Acceptable tally arithmetic binary operations
-TALLY_ARITHMETIC_OPS = ['+', '-', '*', '/', '^']
+_TALLY_ARITHMETIC_OPS = ['+', '-', '*', '/', '^']
 
 
 class CrossScore(object):
@@ -78,6 +78,11 @@ class CrossScore(object):
         else:
             return existing
 
+    def __repr__(self):
+        string = '({0} {1} {2})'.format(self.left_score,
+                                        self.binary_op, self.right_score)
+        return string
+
     @property
     def left_score(self):
         return self._left_score
@@ -103,13 +108,8 @@ class CrossScore(object):
     @binary_op.setter
     def binary_op(self, binary_op):
         cv.check_type('binary_op', binary_op, (basestring, CrossScore))
-        cv.check_value('binary_op', binary_op, TALLY_ARITHMETIC_OPS)
+        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
         self._binary_op = binary_op
-
-    def __repr__(self):
-        string = '({0} {1} {2})'.format(self.left_score,
-                                        self.binary_op, self.right_score)
-        return string
 
 
 class CrossNuclide(object):
@@ -178,6 +178,28 @@ class CrossNuclide(object):
         else:
             return existing
 
+    def __repr__(self):
+
+        string = ''
+
+        # If the Summary was linked, the left nuclide is a Nuclide object
+        if isinstance(self.left_nuclide, Nuclide):
+            string += '(' + self.left_nuclide.name
+        # If the Summary was not linked, the left nuclide is the ZAID
+        else:
+            string += '(' + str(self.left_nuclide)
+
+        string += ' ' + self.binary_op + ' '
+
+        # If the Summary was linked, the right nuclide is a Nuclide object
+        if isinstance(self.right_nuclide, Nuclide):
+            string += self.right_nuclide.name + ')'
+        # If the Summary was not linked, the right nuclide is the ZAID
+        else:
+            string += str(self.right_nuclide) + ')'
+
+        return string
+
     @property
     def left_nuclide(self):
         return self._left_nuclide
@@ -203,33 +225,8 @@ class CrossNuclide(object):
     @binary_op.setter
     def binary_op(self, binary_op):
         cv.check_type('binary_op', binary_op, basestring)
-        cv.check_value('binary_op', binary_op, TALLY_ARITHMETIC_OPS)
+        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
         self._binary_op = binary_op
-
-    def __eq__(self, other):
-        return str(other) == str(self)
-
-    def __repr__(self):
-
-        string = ''
-
-        # If the Summary was linked, the left nuclide is a Nuclide object
-        if isinstance(self.left_nuclide, Nuclide):
-            string += '(' + self.left_nuclide.name
-        # If the Summary was not linked, the left nuclide is the ZAID
-        else:
-            string += '(' + str(self.left_nuclide)
-
-        string += ' ' + self.binary_op + ' '
-
-        # If the Summary was linked, the right nuclide is a Nuclide object
-        if isinstance(self.right_nuclide, Nuclide):
-            string += self.right_nuclide.name + ')'
-        # If the Summary was not linked, the right nuclide is the ZAID
-        else:
-            string += str(self.right_nuclide) + ')'
-
-        return string
 
 
 class CrossFilter(object):
@@ -289,6 +286,18 @@ class CrossFilter(object):
     def __ne__(self, other):
         return not self == other
 
+    def __repr__(self):
+
+        string = 'CrossFilter\n'
+        filter_type = '({0} {1} {2})'.format(self.left_filter.type,
+                                             self.binary_op,
+                                             self.right_filter.type)
+        filter_bins = '({0} {1} {2})'.format(self.left_filter.bins,
+                                             self.binary_op,
+                                             self.right_filter.bins)
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', filter_type)
+        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', filter_bins)
+        return string
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
 
@@ -366,7 +375,7 @@ class CrossFilter(object):
     @binary_op.setter
     def binary_op(self, binary_op):
         cv.check_type('binary_op', binary_op, basestring)
-        cv.check_value('binary_op', binary_op, TALLY_ARITHMETIC_OPS)
+        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
         self._binary_op = binary_op
 
     @stride.setter
@@ -415,7 +424,7 @@ class CrossFilter(object):
 
         Parameters
         ----------
-        data_size : Integral
+        datasize : Integral
             The total number of bins in the tally corresponding to this filter
         summary : None or Summary
             An optional Summary object to be used to construct columns for
@@ -453,16 +462,3 @@ class CrossFilter(object):
             df = '(' + left_df + ' ' + self.binary_op + ' ' + right_df + ')'
 
         return df
-
-    def __repr__(self):
-
-        string = 'CrossFilter\n'
-        filter_type = '({0} {1} {2})'.format(self.left_filter.type,
-                                             self.binary_op,
-                                             self.right_filter.type)
-        filter_bins = '({0} {1} {2})'.format(self.left_filter.bins,
-                                             self.binary_op,
-                                             self.right_filter.bins)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', filter_type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', filter_bins)
-        return string

@@ -75,6 +75,22 @@ class Surface(object):
     def __pos__(self):
         return Halfspace(self, '+')
 
+    def __repr__(self):
+        string = 'Surface\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
+        string += '{0: <16}{1}{2}\n'.format('\tBoundary', '=\t', self._boundary_type)
+
+        coeffs = '{0: <16}'.format('\tCoefficients') + '\n'
+
+        for coeff in self._coeffs:
+            coeffs += '{0: <16}{1}{2}\n'.format(coeff, '=\t', self._coeffs[coeff])
+
+        string += coeffs
+
+        return string
+
     @property
     def id(self):
         return self._id
@@ -119,22 +135,6 @@ class Surface(object):
         check_type('boundary type', boundary_type, basestring)
         check_value('boundary type', boundary_type, _BC_TYPES)
         self._boundary_type = boundary_type
-
-    def __repr__(self):
-        string = 'Surface\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBoundary', '=\t', self._boundary_type)
-
-        coeffs = '{0: <16}'.format('\tCoefficients') + '\n'
-
-        for coeff in self._coeffs:
-            coeffs += '{0: <16}{1}{2}\n'.format(coeff, '=\t', self._coeffs[coeff])
-
-        string += coeffs
-
-        return string
 
     def create_xml_subelement(self):
         element = ET.Element("surface")

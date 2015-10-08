@@ -58,6 +58,13 @@ class Trigger(object):
         else:
             return existing
 
+    def __repr__(self):
+        string = 'Trigger\n'
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._trigger_type)
+        string += '{0: <16}{1}{2}\n'.format('\tThreshold', '=\t', self._threshold)
+        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self._scores)
+        return string
+
     @property
     def trigger_type(self):
         return self._trigger_type
@@ -101,13 +108,6 @@ class Trigger(object):
             return
         else:
             self._scores.append(score)
-
-    def __repr__(self):
-        string = 'Trigger\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._trigger_type)
-        string += '{0: <16}{1}{2}\n'.format('\tThreshold', '=\t', self._threshold)
-        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self._scores)
-        return string
 
     def get_trigger_xml(self, element):
         """Return XML representation of the trigger

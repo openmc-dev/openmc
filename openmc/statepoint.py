@@ -1,4 +1,3 @@
-import copy
 import sys
 
 import numpy as np
@@ -116,31 +115,19 @@ class StatePoint(object):
 
     @property
     def cmfd_balance(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_balance'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_balance'].value if self.cmfd_on else None
 
     @property
     def cmfd_dominance(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_dominance'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_dominance'].value if self.cmfd_on else None
 
     @property
     def cmfd_entropy(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_entropy'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_entropy'].value if self.cmfd_on else None
 
     @property
     def cmfd_indices(self):
-        if self.cmfd_on:
-            return self._f['cmfd/indices'].value
-        else:
-            return None
+        return self._f['cmfd/indices'].value if self.cmfd_on else None
 
     @property
     def cmfd_src(self):
@@ -152,10 +139,7 @@ class StatePoint(object):
 
     @property
     def cmfd_srccmp(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_srccmp'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_srccmp'].value if self.cmfd_on else None
 
     @property
     def current_batch(self):
@@ -323,10 +307,7 @@ class StatePoint(object):
 
     @property
     def source(self):
-        if self.source_present:
-            return self._f['source_bank'].value
-        else:
-            return None
+        return self._f['source bank'].value if self.source_present else None
 
     @property
     def source_present(self):
@@ -463,10 +444,7 @@ class StatePoint(object):
 
     @property
     def with_summary(self):
-        if self.summary is None:
-            return False
-        else:
-            return True
+        return False if self.summary is None else True
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None):

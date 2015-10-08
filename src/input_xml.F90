@@ -2435,8 +2435,8 @@ contains
           ! Determine number of bins
           if (check_for_node(node_filt, "bins")) then
             if (temp_str == 'energy' .or. temp_str == 'energyout' .or. &
-                temp_str == 'mu' .or. temp_str == 'polar' .or. &
-                temp_str == 'azimuthal') then
+                 temp_str == 'mu' .or. temp_str == 'polar' .or. &
+                 temp_str == 'azimuthal') then
               n_words = get_arraysize_double(node_filt, "bins")
             else
               n_words = get_arraysize_integer(node_filt, "bins")

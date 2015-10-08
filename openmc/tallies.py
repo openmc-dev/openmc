@@ -204,6 +204,32 @@ class Tally(object):
 
         return hash(tuple(hashable))
 
+    def __repr__(self):
+        string = 'Tally\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
+
+        string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
+
+        for filter in self.filters:
+            string += '{0: <16}\t\t{1}\t{2}\n'.format('', filter.type,
+                                                          filter.bins)
+
+        string += '{0: <16}{1}'.format('\tNuclides', '=\t')
+
+        for nuclide in self.nuclides:
+            if isinstance(nuclide, Nuclide):
+                string += '{0} '.format(nuclide.name)
+            else:
+                string += '{0} '.format(nuclide)
+
+        string += '\n'
+
+        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self.scores)
+        string += '{0: <16}{1}{2}\n'.format('\tEstimator', '=\t', self.estimator)
+
+        return string
+
     @property
     def id(self):
         return self._id
@@ -517,32 +543,6 @@ class Tally(object):
             ValueError(msg)
 
         self._nuclides.remove(nuclide)
-
-    def __repr__(self):
-        string = 'Tally\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
-
-        string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
-
-        for filter in self.filters:
-            string += '{0: <16}\t\t{1}\t{2}\n'.format('', filter.type,
-                                                          filter.bins)
-
-        string += '{0: <16}{1}'.format('\tNuclides', '=\t')
-
-        for nuclide in self.nuclides:
-            if isinstance(nuclide, Nuclide):
-                string += '{0} '.format(nuclide.name)
-            else:
-                string += '{0} '.format(nuclide)
-
-        string += '\n'
-
-        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self.scores)
-        string += '{0: <16}{1}{2}\n'.format('\tEstimator', '=\t', self.estimator)
-
-        return string
 
     def can_merge(self, tally):
         """Determine if another tally can be merged with this one

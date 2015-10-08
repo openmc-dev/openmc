@@ -104,6 +104,13 @@ class Filter(object):
         else:
             return existing
 
+    def __repr__(self):
+        string = 'Filter\n'
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
+        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
+        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self.offset)
+        return string
+
     @property
     def type(self):
         return self._type
@@ -742,10 +749,3 @@ class Filter(object):
             df = pd.concat([df, pd.DataFrame({self.type : filter_bins})])
 
         return df
-
-    def __repr__(self):
-        string = 'Filter\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self.offset)
-        return string

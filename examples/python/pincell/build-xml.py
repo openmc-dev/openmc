@@ -1,6 +1,5 @@
 import openmc
 
-
 ###############################################################################
 #                      Simulation Input File Parameters
 ###############################################################################
@@ -132,17 +131,11 @@ gap = openmc.Cell(cell_id=2, name='cell 2')
 clad = openmc.Cell(cell_id=3, name='cell 3')
 water = openmc.Cell(cell_id=4, name='cell 4')
 
-# Register Surfaces with Cells
-fuel.add_surface(fuel_or, halfspace=-1)
-gap.add_surface(fuel_or, halfspace=+1)
-gap.add_surface(clad_ir, halfspace=-1)
-clad.add_surface(clad_ir, halfspace=+1)
-clad.add_surface(clad_or, halfspace=-1)
-water.add_surface(clad_or, halfspace=+1)
-water.add_surface(left, halfspace=+1)
-water.add_surface(right, halfspace=-1)
-water.add_surface(bottom, halfspace=+1)
-water.add_surface(top, halfspace=-1)
+# Use surface half-spaces to define regions
+fuel.region = -fuel_or
+gap.region = +fuel_or & -clad_ir
+clad.region = +clad_ir & -clad_or
+water.region = +clad_or & +left & -right & +bottom & -top
 
 # Register Materials with Cells
 fuel.fill = uo2

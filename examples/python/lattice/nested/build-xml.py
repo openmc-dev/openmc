@@ -66,21 +66,15 @@ cell6 = openmc.Cell(cell_id=202, name='cell 6')
 cell7 = openmc.Cell(cell_id=301, name='cell 7')
 cell8 = openmc.Cell(cell_id=302, name='cell 8')
 
-# Register Surfaces with Cells
-cell1.add_surface(left, halfspace=+1)
-cell1.add_surface(right, halfspace=-1)
-cell1.add_surface(bottom, halfspace=+1)
-cell1.add_surface(top, halfspace=-1)
-cell2.add_surface(left, halfspace=+1)
-cell2.add_surface(right, halfspace=-1)
-cell2.add_surface(bottom, halfspace=+1)
-cell2.add_surface(top, halfspace=-1)
-cell3.add_surface(fuel1, halfspace=-1)
-cell4.add_surface(fuel1, halfspace=+1)
-cell5.add_surface(fuel2, halfspace=-1)
-cell6.add_surface(fuel2, halfspace=+1)
-cell7.add_surface(fuel3, halfspace=-1)
-cell8.add_surface(fuel3, halfspace=+1)
+# Use surface half-space to define regions
+cell1.region = +left & -right & +bottom & -top
+cell2.region = +left & -right & +bottom & -top
+cell3.region = -fuel1
+cell4.region = +fuel1
+cell5.region = -fuel2
+cell6.region = +fuel2
+cell7.region = -fuel3
+cell8.region = +fuel3
 
 # Register Materials with Cells
 cell3.fill = fuel

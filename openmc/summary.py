@@ -1,6 +1,7 @@
 import numpy as np
 
 import openmc
+from openmc.region import Region
 
 
 class Summary(object):
@@ -212,10 +213,10 @@ class Summary(object):
             else:
                 fill = self._f['geometry/cells'][key]['lattice'].value
 
-            if 'surfaces' in self._f['geometry/cells'][key].keys():
-                surfaces = self._f['geometry/cells'][key]['surfaces'][...]
+            if 'region' in self._f['geometry/cells'][key].keys():
+                region = self._f['geometry/cells'][key]['region'].value.decode()
             else:
-                surfaces = []
+                region = []
 
             # Create this Cell
             cell = openmc.Cell(cell_id=cell_id, name=name)
@@ -240,13 +241,10 @@ class Summary(object):
             # Store Cell fill information for after Universe/Lattice creation
             self._cell_fills[index] = (fill_type, fill)
 
-            # Iterate over all Surfaces and add them to the Cell
-            for surface_halfspace in surfaces:
-
-                halfspace = np.sign(surface_halfspace)
-                surface_id = abs(surface_halfspace)
-                surface = self.get_surface_by_id(surface_id)
-                cell.add_surface(surface, halfspace)
+            # Generate Region object given infix expression
+            if region:
+                cell.region = Region.from_expression(
+                    region, {s.id: s for s in self.surfaces.values()})
 
             # Add the Cell to the global dictionary of all Cells
             self.cells[index] = cell

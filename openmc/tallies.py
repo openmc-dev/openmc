@@ -432,6 +432,8 @@ class Tally(object):
         # If the score is already in the Tally, don't add it again
         if score in self.scores:
             return
+        elif isinstance(score, basestring):
+            self._scores.append(score.strip())
         else:
             self._scores.append(score)
 
@@ -1168,7 +1170,6 @@ class Tally(object):
             # Append each Filter's DataFrame to the overall DataFrame
             for filter in self.filters:
                 filter_df = filter.get_pandas_dataframe(data_size, summary)
-
                 df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it

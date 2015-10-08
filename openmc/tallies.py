@@ -1268,7 +1268,7 @@ class Tally(object):
                 elif 'energy' in filter.type:
                     bins = filter.bins
 
-                    # Create strings for
+                    # Create strings for dataFrame rows
                     template = '{0:.1e} - {1:.1e}'
                     filter_bins = []
                     for i in range(filter.num_bins):
@@ -1284,13 +1284,13 @@ class Tally(object):
                 elif filter.type in ['mu', 'polar', 'azimuthal']:
                     bins = filter.bins
 
-                    # Create strings for
+                    # Create strings for dataFrame rows
                     template = '{0:1.2f} - {1:1.2f}'
                     filter_bins = []
                     for i in range(filter.num_bins):
                         filter_bins.append(template.format(bins[i], bins[i+1]))
 
-                    # Tile the mu bins into a DataFrame column
+                    # Tile the bins into a DataFrame column
                     filter_bins = np.repeat(filter_bins, filter.stride)
                     tile_factor = data_size / len(filter_bins)
                     filter_bins = np.tile(filter_bins, tile_factor)

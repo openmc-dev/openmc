@@ -2434,10 +2434,9 @@ contains
 
           ! Determine number of bins
           if (check_for_node(node_filt, "bins")) then
-            if ((temp_str == 'energy' .or. &
-                 temp_str == 'energyout') .or. &
-                 (temp_str == 'mu' .or. temp_str == 'polar') .or. &
-                 (temp_str == 'azimuthal')) then
+            if (temp_str == 'energy' .or. temp_str == 'energyout' .or. &
+                temp_str == 'mu' .or. temp_str == 'polar' .or. &
+                temp_str == 'azimuthal') then
               n_words = get_arraysize_double(node_filt, "bins")
             else
               n_words = get_arraysize_integer(node_filt, "bins")
@@ -2650,7 +2649,8 @@ contains
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
             ! Allow a user to input a lone number which will mean that
-            ! you subivide [0,2pi] evenly with the input being the number of bins
+            ! you sub-divide [-pi,pi) evenly with the input being the number of
+            ! bins
             if (n_words == 1) then
               Nangle = int(t % filters(j) % real_bins(1))
               if (Nangle > 1) then

@@ -21,7 +21,7 @@ class FilterAzimuthalTestHarness(PyAPITestHarness):
         tally2.add_score('flux')
         tally2.estimator = 'analog'
 
-        filt3 = openmc.Filter(type='azimuthal', bins=(5))
+        filt3 = openmc.Filter(type='azimuthal', bins=(5,))
         tally3 = openmc.Tally(tally_id=3)
         tally3.add_filter(filt3)
         tally3.add_score('flux')
@@ -31,7 +31,7 @@ class FilterAzimuthalTestHarness(PyAPITestHarness):
         mesh.lower_left  = [-182.07, -182.07]
         mesh.upper_right = [182.07,  182.07]
         mesh.dimension = [2, 2]
-        filt_mesh = openmc.Filter(type='mesh', bins=(1))
+        filt_mesh = openmc.Filter(type='mesh', bins=(1,))
         tally4 = openmc.Tally(tally_id=4)
         tally4.add_filter(filt3)
         tally4.add_filter(filt_mesh)

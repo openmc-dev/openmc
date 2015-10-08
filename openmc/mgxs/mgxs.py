@@ -479,7 +479,7 @@ class MultiGroupXS(object):
             special string 'all' (default) will return the cross sections for
             all nuclides in the spatial domain. The special string 'sum' will
             return the cross section summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
+        xs_type: {'macro', 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns
         order_groups: {'increasing', 'decreasing'}
             Return the cross section indexed according to increasing (default)
@@ -743,7 +743,7 @@ class MultiGroupXS(object):
             The special string 'all' (default) will report the cross sections
             for all nuclides in the spatial domain. The special string 'sum'
             will report the cross sections summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
+        xs_type: {'macro', 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns
 
         """
@@ -836,7 +836,7 @@ class MultiGroupXS(object):
             Filename for the HDF5 file (default is 'mgxs')
         directory : str
             Directory for the HDF5 file (default is 'mgxs')
-        xs_type: {'macro' or 'micro'}
+        xs_type: {'macro', 'micro'}
             Store the macro or micro cross section in units of cm^-1 or barns
         append : boolean
             If true, appends to an existing HDF5 file with the same filename
@@ -868,7 +868,7 @@ class MultiGroupXS(object):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        filename = directory + '/' + filename + '.h5'
+        filename = os.path.join(directory, filename + '.h5')
         filename = filename.replace(' ', '-')
 
         if append and os.path.isfile(filename):
@@ -958,7 +958,7 @@ class MultiGroupXS(object):
             The format for the exported data file
         groups : Iterable of Integral or 'all'
             Energy groups of interest
-        xs_type: {'macro' or 'micro'}
+        xs_type: {'macro', 'micro'}
             Store the macro or micro cross section in units of cm^-1 or barns
 
         """
@@ -972,7 +972,7 @@ class MultiGroupXS(object):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        filename = directory + '/' + filename
+        filename = os.path.join(directory, filename)
         filename = filename.replace(' ', '-')
 
         # Get a Pandas DataFrame for the data
@@ -1028,7 +1028,7 @@ class MultiGroupXS(object):
             The special string 'all' (default) will include the cross sections
             for all nuclides in the spatial domain. The special string 'sum'
             will include the cross sections summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
+        xs_type: {'macro', 'micro'}
             Return macro or micro cross section in units of cm^-1 or barns
         summary : None or Summary
             An optional Summary object to be used to construct columns for
@@ -1559,7 +1559,7 @@ class ScatterMatrixXS(MultiGroupXS):
             special string 'all' (default) will return the cross sections for
             all nuclides in the spatial domain. The special string 'sum' will
             return the cross section summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
+        xs_type: {'macro', 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns
         order_groups: {'increasing', 'decreasing'}
             Return the cross section indexed according to increasing (default)
@@ -1684,7 +1684,7 @@ class ScatterMatrixXS(MultiGroupXS):
             The special string 'all' (default) will report the cross sections
             for all nuclides in the spatial domain. The special string 'sum'
             will report the cross sections summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
+        xs_type: {'macro', 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns
 
         """
@@ -1881,7 +1881,7 @@ class Chi(MultiGroupXS):
             special string 'all' (default) will return the cross sections for
             all nuclides in the spatial domain. The special string 'sum' will
             return the cross section summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
+        xs_type: {'macro', 'micro'}
             This parameter is not relevant for chi but is included here to
             mirror the parent MultiGroupXS.get_xs(...) class method
         order_groups: {'increasing', 'decreasing'}
@@ -2010,7 +2010,7 @@ class Chi(MultiGroupXS):
             The special string 'all' (default) will include the cross sections
             for all nuclides in the spatial domain. The special string 'sum'
             will include the cross sections summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
+        xs_type: {'macro', 'micro'}
             Return macro or micro cross section in units of cm^-1 or barns
         summary : None or Summary
             An optional Summary object to be used to construct columns for

@@ -2164,6 +2164,9 @@ contains
     integer :: imomstr       ! Index of MOMENT_STRS & MOMENT_N_STRS
     logical :: file_exists   ! does tallies.xml file exist?
     real(8) :: rarray3(3)    ! temporary double prec. array
+    integer :: Nangle        ! Number of angular bins
+    real(8) :: dangle        ! Mu spacing if using automatic allocation
+    integer :: iangle        ! Loop counter for building mu filter bins
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: score_name
@@ -2431,8 +2434,9 @@ contains
 
           ! Determine number of bins
           if (check_for_node(node_filt, "bins")) then
-            if (trim(temp_str) == 'energy' .or. &
-                 trim(temp_str) == 'energyout') then
+            if (temp_str == 'energy' .or. temp_str == 'energyout' .or. &
+                 temp_str == 'mu' .or. temp_str == 'polar' .or. &
+                 temp_str == 'azimuthal') then
               n_words = get_arraysize_double(node_filt, "bins")
             else
               n_words = get_arraysize_integer(node_filt, "bins")
@@ -2567,6 +2571,103 @@ contains
 
             ! Set to analog estimator
             t % estimator = ESTIMATOR_ANALOG
+
+          case ('mu')
+            ! Set type of filter
+            t % filters(j) % type = FILTER_MU
+
+            ! Set number of bins
+            t % filters(j) % n_bins = n_words - 1
+
+            ! Allocate and store bins
+            allocate(t % filters(j) % real_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+
+            ! Allow a user to input a lone number which will mean that
+            ! you subivide [-1,1] evenly with the input being the number of bins
+            if (n_words == 1) then
+              Nangle = int(t % filters(j) % real_bins(1))
+              if (Nangle > 1) then
+                t % filters(j) % n_bins = Nangle
+                dangle = TWO / real(Nangle,8)
+                deallocate(t % filters(j) % real_bins)
+                allocate(t % filters(j) % real_bins(Nangle + 1))
+                do iangle = 1, Nangle
+                  t % filters(j) % real_bins(iangle) = -ONE + (iangle - 1) * dangle
+                end do
+                t % filters(j) % real_bins(Nangle + 1) = ONE
+              else
+                call fatal_error("Number of bins for mu filter must be&
+                     & greater than 1 on tally " // trim(to_str(t % id)) // ".")
+              end if
+
+            end if
+
+            ! Set to analog estimator
+            t % estimator = ESTIMATOR_ANALOG
+
+          case ('polar')
+            ! Set type of filter
+            t % filters(j) % type = FILTER_POLAR
+
+            ! Set number of bins
+            t % filters(j) % n_bins = n_words - 1
+
+            ! Allocate and store bins
+            allocate(t % filters(j) % real_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+
+            ! Allow a user to input a lone number which will mean that
+            ! you subivide [0,pi] evenly with the input being the number of bins
+            if (n_words == 1) then
+              Nangle = int(t % filters(j) % real_bins(1))
+              if (Nangle > 1) then
+                t % filters(j) % n_bins = Nangle
+                dangle = PI / real(Nangle,8)
+                deallocate(t % filters(j) % real_bins)
+                allocate(t % filters(j) % real_bins(Nangle + 1))
+                do iangle = 1, Nangle
+                  t % filters(j) % real_bins(iangle) = (iangle - 1) * dangle
+                end do
+                t % filters(j) % real_bins(Nangle + 1) = PI
+              else
+                call fatal_error("Number of bins for polar filter must be&
+                     & greater than 1 on tally " // trim(to_str(t % id)) // ".")
+              end if
+
+            end if
+
+          case ('azimuthal')
+            ! Set type of filter
+            t % filters(j) % type = FILTER_AZIMUTHAL
+
+            ! Set number of bins
+            t % filters(j) % n_bins = n_words - 1
+
+            ! Allocate and store bins
+            allocate(t % filters(j) % real_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+
+            ! Allow a user to input a lone number which will mean that
+            ! you sub-divide [-pi,pi) evenly with the input being the number of
+            ! bins
+            if (n_words == 1) then
+              Nangle = int(t % filters(j) % real_bins(1))
+              if (Nangle > 1) then
+                t % filters(j) % n_bins = Nangle
+                dangle = TWO * PI / real(Nangle,8)
+                deallocate(t % filters(j) % real_bins)
+                allocate(t % filters(j) % real_bins(Nangle + 1))
+                do iangle = 1, Nangle
+                  t % filters(j) % real_bins(iangle) = -PI + (iangle - 1) * dangle
+                end do
+                t % filters(j) % real_bins(Nangle + 1) = PI
+              else
+                call fatal_error("Number of bins for azimuthal filter must be&
+                     & greater than 1 on tally " // trim(to_str(t % id)) // ".")
+              end if
+
+            end if
 
           case default
             ! Specified tally filter is invalid, raise error
@@ -2737,6 +2838,7 @@ contains
           ! scores then strip off the n and store it as an integer to be used
           ! later. Then perform the select case on this modified (number
           ! removed) string
+          n_order = -1
           score_name = sarray(l)
           do imomstr = 1, size(MOMENT_STRS)
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
@@ -2780,6 +2882,23 @@ contains
                 exit
               end if
             end do
+          end if
+
+          ! Check to see if the mu filter is applied and if that makes sense.
+          if ((.not. starts_with(score_name,'scatter')) .and. &
+               (.not. starts_with(score_name,'nu-scatter'))) then
+            if (t % find_filter(FILTER_MU) > 0) then
+              call fatal_error("Cannot tally " // trim(score_name) //" with a &
+                               &change of angle (mu) filter.")
+            end if
+          ! Also check to see if this is a legendre expansion or not.
+          ! If so, we can accept this score and filter combo for p0, but not
+          ! elsewhere.
+          else if (n_order > 0) then
+            if (t % find_filter(FILTER_MU) > 0) then
+              call fatal_error("Cannot tally " // trim(score_name) //" with a &
+                               &change of angle (mu) filter unless order is 0.")
+            end if
           end if
 
           select case (trim(score_name))

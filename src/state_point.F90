@@ -256,14 +256,23 @@ contains
               call write_dataset(filter_group, "type", "energy")
             case(FILTER_ENERGYOUT)
               call write_dataset(filter_group, "type", "energyout")
+            case(FILTER_MU)
+              call write_dataset(filter_group, "type", "mu")
+            case(FILTER_POLAR)
+              call write_dataset(filter_group, "type", "polar")
+            case(FILTER_AZIMUTHAL)
+              call write_dataset(filter_group, "type", "azimuthal")
             case(FILTER_DISTRIBCELL)
               call write_dataset(filter_group, "type", "distribcell")
             end select
 
             call write_dataset(filter_group, "offset", tally%filters(j)%offset)
             call write_dataset(filter_group, "n_bins", tally%filters(j)%n_bins)
-            if (tally%filters(j)%type == FILTER_ENERGYIN .or. &
-                 tally%filters(j)%type == FILTER_ENERGYOUT) then
+            if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
+                 tally % filters(j) % type == FILTER_ENERGYOUT .or. &
+                 tally % filters(j) % type == FILTER_MU .or. &
+                 tally % filters(j) % type == FILTER_POLAR .or. &
+                 tally % filters(j) % type == FILTER_AZIMUTHAL) then
               call write_dataset(filter_group, "bins", &
                    tally%filters(j)%real_bins)
             else

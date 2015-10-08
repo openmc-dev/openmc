@@ -161,7 +161,7 @@ class Filter(object):
             raise ValueError(msg)
 
         # If the bin edge is a single value, it is a Cell, Material, etc. ID
-        if not cv._isinstance(bins, Iterable):
+        if not isinstance(bins, Iterable):
             bins = [bins]
 
         # If the bins are in a collection, convert it to a list
@@ -200,7 +200,7 @@ class Filter(object):
                 msg = 'Unable to add bins "{0}" to a mesh Filter since ' \
                       'only a single mesh can be used per tally'.format(bins)
                 raise ValueError(msg)
-            elif not cv._isinstance(bins[0], Integral):
+            elif not isinstance(bins[0], Integral):
                 msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
                        'is a non-integer'.format(bins[0])
                 raise ValueError(msg)
@@ -443,7 +443,7 @@ class Filter(object):
         if self.type == 'mesh':
 
             # Construct 3-tuple of x,y,z cell indices for a 3D mesh
-            if (len(self.mesh.dimension) == 3):
+            if len(self.mesh.dimension) == 3:
                 nx, ny, nz = self.mesh.dimension
                 x = bin_index / (ny * nz)
                 y = (bin_index - (x * ny * nz)) / nz

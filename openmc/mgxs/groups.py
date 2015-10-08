@@ -17,28 +17,21 @@ class EnergyGroups(object):
 
     Parameters
     ----------
-    group_edges : ndarray
+    group_edges : Iterable of Real
         The energy group boundaries [MeV]
-    num_groups : Integral
-        The number of energy groups
 
     Attributes
     ----------
-    group_edges : ndarray
+    group_edges : Iterable of Real
         The energy group boundaries [MeV]
-    num_groups : Integral
-        The number of energy groups
 
     """
 
-    def __init__(self, group_edges=None, num_groups=None):
+    def __init__(self, group_edges=None):
         self._group_edges = None
-        self._num_groups = None
 
         if group_edges is not None:
             self.group_edges = group_edges
-        if num_groups is not None:
-            self.num_groups = num_groups
 
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
@@ -47,7 +40,6 @@ class EnergyGroups(object):
         if existing is None:
             clone = type(self).__new__(type(self))
             clone._group_edges = copy.deepcopy(self.group_edges, memo)
-            clone._num_groups = self.num_groups
 
             memo[id(self)] = clone
 
@@ -77,47 +69,13 @@ class EnergyGroups(object):
 
     @property
     def num_groups(self):
-        return self._num_groups
+        return len(self.group_edges) - 1
 
     @group_edges.setter
     def group_edges(self, edges):
         cv.check_type('group edges', edges, Iterable, Real)
         cv.check_greater_than('number of group edges', len(edges), 1)
         self._group_edges = np.array(edges)
-        self._num_groups = len(edges)-1
-
-    def generate_bin_edges(self, start, stop, num_groups, spacing='linear'):
-        """Generate equally or logarithmically-spaced energy group boundaries.
-
-        Parameters
-        ----------
-        start : Real
-            The lowest energy in MeV
-        stop : Real
-            The highest energy in MeV
-        num_groups : Integral
-            The number of energy groups
-        spacing : {'linear', 'logarithmic'}
-            The spacing between groups
-
-        """
-
-        cv.check_type('first edge', start, Real)
-        cv.check_type('last edge', stop, Real)
-        cv.check_type('number of groups', num_groups, Integral)
-        cv.check_type('spacing', spacing, basestring)
-        cv.check_greater_than('first edge', start, 0, True)
-        cv.check_greater_than('last edge', stop, start, False)
-        cv.check_greater_than('number of groups', num_groups, 0)
-        cv.check_value('spacing', spacing, ('linear', 'logarithmic'))
-
-        if spacing == 'linear':
-            self.group_edges = np.linspace(start, stop, num_groups + 1)
-        elif spacing == 'logarithmic':
-            self.group_edges = \
-                np.logspace(np.log10(start), np.log10(stop), num_groups + 1)
-
-        self._num_groups = num_groups
 
     def get_group(self, energy):
         """Returns the energy group in which the given energy resides.
@@ -144,7 +102,7 @@ class EnergyGroups(object):
                   'the group edges have not yet been set'.format(energy)
             raise ValueError(msg)
 
-        index = np.where(self.group_edges > energy)[0]
+        index = np.where(self.group_edges > energy)[0][0]
         group = self.num_groups - index
         return group
 
@@ -172,6 +130,9 @@ class EnergyGroups(object):
             msg = 'Unable to get energy group bounds for group "{0}" since ' \
                   'the group edges have not yet been set'.format(group)
             raise ValueError(msg)
+
+        cv.check_greater_than('group', group, 0)
+        cv.check_less_than('group', group, self.num_groups, equality=True)
 
         lower = self.group_edges[self.num_groups-group]
         upper = self.group_edges[self.num_groups-group+1]
@@ -205,7 +166,7 @@ class EnergyGroups(object):
             raise ValueError(msg)
 
         if groups == 'all':
-            indices = np.arange(self.num_groups)
+            return np.arange(self.num_groups)
         else:
             indices = np.zeros(len(groups), dtype=np.int)
 
@@ -229,7 +190,7 @@ class EnergyGroups(object):
             The energy groups of interest - a list of 2-tuples, each directly
             corresponding to one of the new coarse groups. The values in the
             2-tuples are upper/lower energy groups used to construct a new
-            coarse group. For example, if [(1,2), (2,4)] was used as the coarse
+            coarse group. For example, if [(1,2), (3,4)] was used as the coarse
             groups, fine groups 1 and 2 would be merged into coarse group 1
             while fine groups 3 and 4 would be merged into coarse group 2.
 
@@ -255,8 +216,8 @@ class EnergyGroups(object):
             cv.check_less_than('lower group', group[0], group[1], False)
 
         # Compute the group indices into the coarse group
-        group_bounds = [group[0] for group in coarse_groups]
-        group_bounds.append(coarse_groups[-1][1])
+        group_bounds = [group[1] for group in coarse_groups]
+        group_bounds.insert(0, coarse_groups[0][0])
 
         # Determine the indices mapping the fine-to-coarse energy groups
         group_bounds = np.asarray(group_bounds)

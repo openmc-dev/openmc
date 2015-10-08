@@ -30,7 +30,7 @@ DOMAINS = [openmc.Cell,
            openmc.Material]
 
 
-class MultiGroupXS(object):
+class MGXS(object):
     """A multi-group cross section for some energy group structure within
     some spatial domain.
 
@@ -322,7 +322,7 @@ class MultiGroupXS(object):
     def create_tallies(self, scores, all_filters, keys, estimator):
         """Instantiates tallies needed to compute the multi-group cross section.
 
-        This is a helper method for MultiGroupXS subclasses to create tallies
+        This is a helper method for MGXS subclasses to create tallies
         for input file generation. The tallies are stored in the tallies dict.
         This method is called by each subclass' create_tallies(...) method
         which define the parameters given to this parent class method.
@@ -585,8 +585,8 @@ class MultiGroupXS(object):
 
         Returns
         -------
-        MultiGroupXS
-            A new MultiGroupXS condensed to the group structure of interest
+        MGXS
+            A new MGXS condensed to the group structure of interest
 
         """
 
@@ -603,7 +603,7 @@ class MultiGroupXS(object):
         cv.check_value('lower coarse energy', coarse_groups.group_edges[0],
                        [self.energy_groups.group_edges[0]])
 
-        # Clone this MultiGroupXS to initialize the condensed version
+        # Clone this MGXS to initialize the condensed version
         condensed_xs = copy.deepcopy(self)
         condensed_xs.energy_groups = coarse_groups
 
@@ -664,8 +664,8 @@ class MultiGroupXS(object):
 
         Returns
         -------
-        MultiGroupXS
-            A new MultiGroupXS averaged across the subdomains of interest
+        MGXS
+            A new MGXS averaged across the subdomains of interest
 
         Raises
         ------
@@ -688,7 +688,7 @@ class MultiGroupXS(object):
         else:
             subdomains = [0]
 
-        # Clone this MultiGroupXS to initialize the subdomain-averaged version
+        # Clone this MGXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
         avg_xs.domain_type = 'cell'
 
@@ -931,13 +931,13 @@ class MultiGroupXS(object):
                 average = average.squeeze()
                 std_dev = std_dev.squeeze()
 
-                # Add MultiGroupXS results data to the HDF5 group
+                # Add MGXS results data to the HDF5 group
                 nuclide_group.require_dataset('average', dtype=np.float64,
                                               shape=average.shape, data=average)
                 nuclide_group.require_dataset('std. dev.', dtype=np.float64,
                                               shape=std_dev.shape, data=std_dev)
 
-        # Close the MultiGroup results HDF5 file
+        # Close the results HDF5 file
         xs_results.close()
 
     def export_xs_data(self, filename='mgxs', directory='mgxs',
@@ -1013,7 +1013,7 @@ class MultiGroupXS(object):
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',
                              xs_type='macro', summary=None):
-        """Build a Pandas DataFrame for the MultiGroupXS data.
+        """Build a Pandas DataFrame for the MGXS data.
 
         This method leverages the Tally.get_pandas_dataframe(...) method, but
         renames the columns with terminology appropriate for cross section data.
@@ -1129,7 +1129,7 @@ class MultiGroupXS(object):
         return df
 
 
-class TotalXS(MultiGroupXS):
+class TotalXS(MGXS):
     """A total multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1169,7 +1169,7 @@ class TotalXS(MultiGroupXS):
         super(TotalXS, self).compute_xs()
 
 
-class TransportXS(MultiGroupXS):
+class TransportXS(MGXS):
     """A transport-corrected total multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1241,7 +1241,7 @@ class TransportXS(MultiGroupXS):
         super(TransportXS, self).compute_xs()
 
 
-class AbsorptionXS(MultiGroupXS):
+class AbsorptionXS(MGXS):
     """An absorption multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1281,7 +1281,7 @@ class AbsorptionXS(MultiGroupXS):
         super(AbsorptionXS, self).compute_xs()
 
 
-class CaptureXS(MultiGroupXS):
+class CaptureXS(MGXS):
     """A capture multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1321,7 +1321,7 @@ class CaptureXS(MultiGroupXS):
         super(CaptureXS, self).compute_xs()
 
 
-class FissionXS(MultiGroupXS):
+class FissionXS(MGXS):
     """A fission multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1360,7 +1360,7 @@ class FissionXS(MultiGroupXS):
         super(FissionXS, self).compute_xs()
 
 
-class NuFissionXS(MultiGroupXS):
+class NuFissionXS(MGXS):
     """A fission production multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1400,7 +1400,7 @@ class NuFissionXS(MultiGroupXS):
         super(NuFissionXS, self).compute_xs()
 
 
-class ScatterXS(MultiGroupXS):
+class ScatterXS(MGXS):
     """A scatter multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1439,7 +1439,7 @@ class ScatterXS(MultiGroupXS):
         super(ScatterXS, self).compute_xs()
 
 
-class NuScatterXS(MultiGroupXS):
+class NuScatterXS(MGXS):
     """A nu-scatter multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1479,7 +1479,7 @@ class NuScatterXS(MultiGroupXS):
         super(NuScatterXS, self).compute_xs()
 
 
-class ScatterMatrixXS(MultiGroupXS):
+class ScatterMatrixXS(MGXS):
     """A scattering matrix multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1813,7 +1813,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         super(ScatterMatrixXS, self).create_tallies(scores, filters,
                                                     keys, estimator)
 
-class Chi(MultiGroupXS):
+class Chi(MGXS):
     """The fission spectrum."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1883,7 +1883,7 @@ class Chi(MultiGroupXS):
             return the cross section summed over all nuclides.
         xs_type: {'macro', 'micro'}
             This parameter is not relevant for chi but is included here to
-            mirror the parent MultiGroupXS.get_xs(...) class method
+            mirror the parent MGXS.get_xs(...) class method
         order_groups: {'increasing', 'decreasing'}
             Return the cross section indexed according to increasing (default)
             or decreasing energy groups (decreasing or increasing energies)
@@ -1995,7 +1995,7 @@ class Chi(MultiGroupXS):
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',
                              xs_type='macro', summary=None):
-        """Build a Pandas DataFrame for the MultiGroupXS data.
+        """Build a Pandas DataFrame for the MGXS data.
 
         This method leverages the Tally.get_pandas_dataframe(...) method, but
         renames the columns with terminology appropriate for cross section data.

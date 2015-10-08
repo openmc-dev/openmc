@@ -15,7 +15,8 @@ if sys.version_info[0] >= 3:
 
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
-                 'mesh', 'energy', 'energyout', 'distribcell']
+                 'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
+                 'distribcell']
 
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only

@@ -145,6 +145,9 @@
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
+                      <value>mu</value>
+                      <value>polar</value>
+                      <value>azimuthal</value>
                     </choice>
                   </element>
                   <attribute name="type">
@@ -158,6 +161,9 @@
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
+                      <value>mu</value>
+                      <value>polar</value>
+                      <value>azimuthal</value>
                     </choice>
                   </attribute>
                 </choice>

@@ -1,6 +1,5 @@
 import openmc
 
-
 ###############################################################################
 #                      Simulation Input File Parameters
 ###############################################################################
@@ -54,12 +53,11 @@ cell2 = openmc.Cell(cell_id=100, name='cell 2')
 cell3 = openmc.Cell(cell_id=101, name='cell 3')
 cell4 = openmc.Cell(cell_id=2, name='cell 4')
 
-# Register Surfaces with Cells
-cell1.add_surface(surface=surf2, halfspace=-1)
-cell2.add_surface(surface=surf1, halfspace=-1)
-cell3.add_surface(surface=surf1, halfspace=+1)
-cell4.add_surface(surface=surf2, halfspace=+1)
-cell4.add_surface(surface=surf3, halfspace=-1)
+# Use surface half-spaces to define regions
+cell1.region = -surf2
+cell2.region = -surf1
+cell3.region = +surf1
+cell4.region = +surf2 & -surf3
 
 # Register Materials with Cells
 cell2.fill = fuel

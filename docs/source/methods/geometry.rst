@@ -117,6 +117,10 @@ to fully define the surface.
     | Cone parallel to the | z-cone     | :math:`(x-x_0)^2 + (y-y_0)^2 | :math:`x_0 \; y_0 \;    |
     | :math:`z`-axis       |            | = R^2(z-z_0)^2`              | z_0 \; R^2`             |
     +----------------------+------------+------------------------------+-------------------------+
+    | General quadric      | quadric    | :math:`Ax^2 + By^2 + Cz^2 +  | :math:`A \; B \; C \; D |
+    | surface              |            | Dxy + Eyz + Fxz + Gx + Hy +  | \; E \; F \; G \; H \;  |
+    |                      |            | Jz + K`                      | J \; K`                 |
+    +----------------------+------------+------------------------------+-------------------------+
 
 .. _universes:
 

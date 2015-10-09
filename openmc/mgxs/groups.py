@@ -1,5 +1,5 @@
 from collections import Iterable
-from numbers import Real, Integral
+from numbers import Real
 import copy
 import sys
 

@@ -32,7 +32,7 @@ MGXS_TYPES = ['total',
 
 # Supported domain types
 # TODO: Implement Mesh domains
-_DOMAIN_TYPES = ['cell',
+DOMAIN_TYPES = ['cell',
                 'distribcell',
                 'universe',
                 'material']
@@ -80,8 +80,6 @@ class MGXS(object):
         Domain type for spatial homogenization
     energy_groups : EnergyGroups
         Energy group structure for energy condensation
-    num_groups : Integral
-        Number of energy groups
     tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
     xs_tally : Tally
@@ -102,8 +100,7 @@ class MGXS(object):
         self._domain = None
         self._domain_type = None
         self._energy_groups = None
-        self._num_groups = None
-        self._tallies = dict()
+        self._tallies = {}
         self._xs_tally = None
 
         self.name = name
@@ -128,10 +125,9 @@ class MGXS(object):
             clone._domain = self.domain
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
-            clone._num_groups = self.num_groups
             clone._xs_tally = copy.deepcopy(self.xs_tally, memo)
 
-            clone._tallies = dict()
+            clone._tallies = {}
             for tally_type, tally in self.tallies.items():
                 clone.tallies[tally_type] = copy.deepcopy(tally, memo)
 
@@ -169,7 +165,7 @@ class MGXS(object):
 
     @property
     def num_groups(self):
-        return self._num_groups
+        return self.energy_groups.num_groups
 
     @property
     def tallies(self):
@@ -185,16 +181,6 @@ class MGXS(object):
         domain_filter = tally.find_filter(self.domain_type)
         return domain_filter.num_bins
 
-    @name.setter
-    def name(self, name):
-        cv.check_type('name', name, basestring)
-        self._name = name
-
-    @by_nuclide.setter
-    def by_nuclide(self, by_nuclide):
-        cv.check_type('by_nuclide', by_nuclide, bool)
-        self._by_nuclide = by_nuclide
-
     @property
     def num_nuclides(self):
         if self.by_nuclide:
@@ -209,6 +195,16 @@ class MGXS(object):
         else:
             return 'sum'
 
+    @name.setter
+    def name(self, name):
+        cv.check_type('name', name, basestring)
+        self._name = name
+
+    @by_nuclide.setter
+    def by_nuclide(self, by_nuclide):
+        cv.check_type('by_nuclide', by_nuclide, bool)
+        self._by_nuclide = by_nuclide
+
     @domain.setter
     def domain(self, domain):
         cv.check_type('domain', domain, tuple(_DOMAINS))
@@ -216,14 +212,13 @@ class MGXS(object):
 
     @domain_type.setter
     def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, tuple(_DOMAIN_TYPES))
+        cv.check_value('domain type', domain_type, tuple(DOMAIN_TYPES))
         self._domain_type = domain_type
 
     @energy_groups.setter
     def energy_groups(self, energy_groups):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
-        self._num_groups = energy_groups.num_groups
 
     @staticmethod
     def get_mgxs(mgxs_type, domain=None, domain_type=None,
@@ -295,7 +290,7 @@ class MGXS(object):
         Returns
         -------
         list of str
-            A list of the string names for each nuclide in the problem domain
+            A list of the string names for each nuclide in the spatial domain
             (e.g., ['U-235', 'U-238', 'O-16'])
 
         Raises
@@ -362,7 +357,7 @@ class MGXS(object):
         -------
         ndarray of Real
             An array of the atomic number densities (atom/b-cm) for each of the
-            nuclides in the problem domain
+            nuclides in the spatial domain
 
         Raises
         ------

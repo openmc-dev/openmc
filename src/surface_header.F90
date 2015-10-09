@@ -997,7 +997,7 @@ contains
            this%E*(v*z + w*y) + this%F*(w*x + u*z) + this%G*u + this%H*v + &
            this%J*w))
       c = this%A*x*x + this%B*y*y + this%C*z*z + this%D*x*y + this%E*y*z + &
-           this%F*y*z + this%G*x + this%H*y + this%J*z + K
+           this%F*x*z + this%G*x + this%H*y + this%J*z + this%K
       quad = k*k - a*c
 
       if (quad < ZERO) then

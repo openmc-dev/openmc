@@ -12,6 +12,51 @@ if sys.version_info[0] >= 3:
 
 
 class Library(object):
+    """A multi-group cross section library for some energy group structure.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    This class helps automate the generation of MGXS objects for some energy
+    group structure and domain type. The Library serves as a collection for
+    MGXS objects with routines to automate the initialization of tallies for
+    input files, the loading of tally data from statepoint files, data storage,
+    energy group condensation and more.
+
+    Parameters
+    ----------
+    openmc_geometry : openmc.Geometry
+        An geometry which has been initialized with a root universe
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in each domain
+    mgxs_types : Iterable of str
+        The types of cross sections in the library (e.g., ['total', 'scatter'])
+    name : str, optional
+        Name of the multi-group cross section. library Used as a label to
+        identify tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    openmc_geometry : openmc.Geometry
+        An geometry which has been initialized with a root universe
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in each domain
+    mgxs_types : Iterable of str
+        The types of cross sections in the library (e.g., ['total', 'scatter'])
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : EnergyGroups
+        Energy group structure for energy condensation
+    all_mgxs : dict
+        MGXS objects keyed by domain ID and cross section type
+    statepoint : openmc.StatePoint
+        The statepoint with tally data used to the compute cross sections
+    name : str, optional
+        Name of the multi-group cross section library. Used as a label to
+        identify tallies in OpenMC 'tallies.xml' file.
+
+    """
 
     def __init__(self, openmc_geometry, by_nuclide=False,
                  mgxs_types=None, name=''):
@@ -23,6 +68,7 @@ class Library(object):
         self._domain_type = None
         self._energy_groups = None
         self._all_mgxs = {}
+        self._statepoint = None
 
         self.name = name
         self.openmc_geometry = openmc_geometry
@@ -104,6 +150,10 @@ class Library(object):
     def all_mgxs(self):
         return self._all_mgxs
 
+    @property
+    def statepoint(self):
+        return self._statepoint
+
     @openmc_geometry.setter
     def openmc_geometry(self, openmc_geometry):
         cv.check_type('openmc_geometry', openmc_geometry, openmc.Geometry)
@@ -140,7 +190,13 @@ class Library(object):
         self._energy_groups = energy_groups
 
     def build_library(self):
-        """
+        """Initialize MGXS objects in each domain and for each reaction type
+        in the library.
+
+        This routine will populate the all_mgxs instance attribute dictionary
+        with MGXS subclass objects keyed by each domain ID (e.g., Material IDs)
+        and cross section type (e.g., 'nu-fission', 'total', etc.).
+
         """
 
         # Initialize MGXS for each domain and mgxs type and store in dictionary
@@ -155,13 +211,20 @@ class Library(object):
                 mgxs.create_tallies()
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 
-    def add_to_tallies_file(self, tallies_file):
-        """
+    def add_to_tallies_file(self, tallies_file, merge=True):
+        """Add all tallies from all MGXS objects to a tallies file.
 
         NOTE: This assumes that build_library() has been called
 
-        :param tallies_file:
-        :return:
+        Parameters
+        ----------
+        tallies_file : openmc.TalliesFile
+            A TalliesFile object to add each MGXS' tallies to generate a
+            "tallies.xml" input file for OpenMC
+        merge : bool
+            Indicate whether tallies should be merged when possible. Defaults
+            to True.
+
         """
 
         cv.check_type('tallies_file', tallies_file, openmc.TalliesFile)
@@ -171,16 +234,38 @@ class Library(object):
             for mgxs_type in self.mgxs_types:
                 mgxs = self.get_mgxs(domain, mgxs_type)
                 for tally_id, tally in mgxs.tallies.items():
-                    tallies_file.add_tally(tally, merge=True)
+                    tallies_file.add_tally(tally, merge=merge)
 
     def load_from_statepoint(self, statepoint):
-        """
+        """Extracts tallies in an OpenMC StatePoint with the data needed to
+        compute multi-group cross sections.
 
-        :param statepoint:
-        :return:
+        This method is needed to compute cross section data from tallies
+        in an OpenMC StatePoint object.
+
+        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+
+        Parameters
+        ----------
+        statepoint : openmc.StatePoint
+            An OpenMC StatePoint object with tally data
+
+        Raises
+        ------
+        ValueError
+            When this method is called with a statepoint that has not been
+            linked with a summary object.
+
         """
 
         cv.check_type('statepoint', statepoint, openmc.StatePoint)
+
+        if not statepoint.with_summary:
+            msg = 'Unable to load data from a statepoint which has not been ' \
+                  'linked with a summary file'
+            raise ValueError(msg)
+
+        self._statepoint = statepoint
 
         # Load tallies for each MGXS for each domain and mgxs type
         for domain in self.domains:
@@ -190,11 +275,33 @@ class Library(object):
                 mgxs.compute_xs()
 
     def get_mgxs(self, domain, mgxs_type):
-        """
+        """Return the MGXS object for some domain and reaction rate type.
 
-        :param domain:
-        :param mgxs_type:
-        :return:
+        This routine searches the library for an MGXS object for the spatial
+        domain and reaction rate type requ
+
+        NOTE: This routine must be called after the build_library() routine.
+
+        Parameters
+        ----------
+        domain : Material or Cell or Universe or Integral
+            The material, cell, or universe object of interest (or its ID)
+        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission',
+                     'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix',
+                     'nu-scatter matrix', 'chi'}
+            The type of multi-group cross section object to return
+
+        Returns
+        -------
+        openmc.mgxs.MGXS
+            The MGXS object for the requested domain and reaction rate type
+
+        Raises
+        ------
+        ValueError
+            If no MGXS object can be found for the requested domain or
+            multi-group cross section type
+
         """
 
         if self.domain_type == 'material':
@@ -225,15 +332,38 @@ class Library(object):
         return self.all_mgxs[domain_id][mgxs_type]
 
     def get_condensed_library(self, coarse_groups):
+        """Construct an energy-condensed version of this library.
+
+        This routine condense each of the multi-group cross sections in the
+        library to a coarse energy group structure. NOTE: This routine must
+        be called after the load_from_statepoint(...) routine loads the tallies
+        from the statepoint into each of the cross sections.
+
+        Parameters
+        ----------
+        coarse_groups : openmc.mgxs.EnergyGroups
+            The coarse energy group structure of interest
+
+        Returns
+        -------
+        Library
+            A new multi-group cross section library condensed to the group
+            structure of interest
+
+        Raises
+        ------
+        ValueError
+            When this method is called before a statepoint has been loaded
+
+        See also
+        --------
+        MGXS.get_condensed_xs(coarse_groups)
+
         """
 
-        :param coarse_groups:
-        :return:
-        """
-
-        if self.energy_groups is None:
+        if self.statepoint is None:
             msg = 'Unable to get a condensed coarse group cross section ' \
-                  'library since the fine energy groups have not yet been set'
+                  'library since the statepoint has not yet been loaded'
             raise ValueError(msg)
 
         cv.check_type('coarse_groups', coarse_groups, openmc.mgxs.EnergyGroups)
@@ -260,26 +390,42 @@ class Library(object):
     def build_hdf5_store(self, filename='mgxs', directory='mgxs', xs_type='macro'):
         """Export the multi-group cross section library to an HDF5 binary file.
 
-        This method constructs an HDF5 file which stores the multi-group
-        cross section data. The data is stored in a hierarchy of HDF5 groups
-        from the domain type, domain id, subdomain id (for distribcell domains),
-        nuclides and cross section types. Two datasets for the mean and standard
-        deviation are stored for each subdomain entry in the HDF5 file.
+        This method constructs an HDF5 file which stores the library's
+        multi-group cross section data. The data is stored in a hierarchy of
+        HDF5 groups from the domain type, domain id, subdomain id (for
+        distribcell domains), nuclides and cross section types. Two datasets for
+        the mean and standard deviation are stored for each subdomain entry in
+        the HDF5 file.
 
         NOTE: This requires the h5py Python package.
 
         Parameters
         ----------
         filename : str
-            Filename for the HDF5 file (default is 'mgxs')
+            Filename for the HDF5 file. Defaults to 'mgxs'.
         directory : str
-            Directory for the HDF5 file (default is 'mgxs')
+            Directory for the HDF5 file. Defaults to 'mgxs'.
         xs_type: {'macro', 'micro'}
-            Store the macro or micro cross section in units of cm^-1 or barns
+            Store the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
+
+        Raises
+        ------
+        ValueError
+            When this method is called before a statepoint has been loaded
+
+        See also
+        --------
+        MGXS.build_hdf5_store(filename, directory, xs_type)
 
         """
 
-        # Load tallies for each MGXS for each domain and mgxs type
+        if self.statepoint is None:
+            msg = 'Unable to get a condensed coarse group cross section ' \
+                  'library since a statepoint has not yet been loaded'
+            raise ValueError(msg)
+
+        # Export MGXS for each domain and mgxs type to an HDF5 file
         for domain in self.domains:
             for mgxs_type in self.mgxs_types:
                 mgxs = self.all_mgxs[domain.id][mgxs_type]

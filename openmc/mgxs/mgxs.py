@@ -242,10 +242,11 @@ class MGXS(object):
         energy_groups : EnergyGroups
             The energy group structure for energy condensation
         by_nuclide : bool
-            If true, computes cross sections for each nuclide in domain
+            If true, computes cross sections for each nuclide in domain.
+            Defaults to False
         name : str, optional
             Name of the multi-group cross section. Used as a label to identify
-            tallies in OpenMC 'tallies.xml' file.
+            tallies in OpenMC 'tallies.xml' file. Defaults to the empty string.
 
         Returns
         -------
@@ -351,7 +352,8 @@ class MGXS(object):
             A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
             special string 'all' will return the atom densities for all nuclides
             in the spatial domain. The special string 'sum' will return the atom
-            density summed across all nuclides in the spatial domain.
+            density summed across all nuclides in the spatial domain. Defaults
+            to 'all'.
 
         Returns
         -------
@@ -544,22 +546,24 @@ class MGXS(object):
         Parameters
         ----------
         groups : Iterable of Integral or 'all'
-            Energy groups of interest
+            Energy groups of interest. Defaults to 'all'.
         subdomains : Iterable of Integral or 'all'
-            Subdomain IDs of interest
+            Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
-            special string 'all' (default) will return the cross sections for
-            all nuclides in the spatial domain. The special string 'sum' will
-            return the cross section summed over all nuclides.
+            special string 'all' will return the cross sections for all nuclides
+            in the spatial domain. The special string 'sum' will return the
+            cross section summed over all nuclides. Defaults to 'all'.
         xs_type: {'macro', 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns
+            Return the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
         order_groups: {'increasing', 'decreasing'}
-            Return the cross section indexed according to increasing (default)
-            or decreasing energy groups (decreasing or increasing energies)
+            Return the cross section indexed according to increasing or
+            decreasing energy groups (decreasing or increasing energies).
+            Defaults to 'increasing'.
         value : str
-            A string for the type of value to return - 'mean' (default),
-            'std_dev' or 'rel_err' are accepted
+            A string for the type of value to return - 'mean', 'std_dev' or
+            'rel_err' are accepted. Defaults to 'mean'.
 
         Returns
         -------
@@ -739,7 +743,7 @@ class MGXS(object):
         Parameters
         ----------
         subdomains : Iterable of Integral or 'all'
-            The subdomain IDs to average across
+            The subdomain IDs to average across. Defaults to 'all'.
 
         Returns
         -------
@@ -815,15 +819,17 @@ class MGXS(object):
         Parameters
         ----------
         subdomains : Iterable of Integral or 'all'
-            The subdomain IDs of the cross sections to include in the report
+            The subdomain IDs of the cross sections to include in the report.
+            Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
             may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
-            The special string 'all' (default) will report the cross sections
-            for all nuclides in the spatial domain. The special string 'sum'
-            will report the cross sections summed over all nuclides.
+            The special string 'all' will report the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will report
+            the cross sections summed over all nuclides. Defaults to 'all'.
         xs_type: {'macro', 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns
+            Return the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
 
         """
 
@@ -912,14 +918,15 @@ class MGXS(object):
         Parameters
         ----------
         filename : str
-            Filename for the HDF5 file (default is 'mgxs')
+            Filename for the HDF5 file. Defaults to 'mgxs'.
         directory : str
-            Directory for the HDF5 file (default is 'mgxs')
+            Directory for the HDF5 file. Defaults to 'mgxs'.
         xs_type: {'macro', 'micro'}
-            Store the macro or micro cross section in units of cm^-1 or barns
+            Store the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
         append : boolean
             If true, appends to an existing HDF5 file with the same filename
-            directory (if one exists)
+            directory (if one exists). Defaults to True.
 
         Raises
         ------
@@ -1030,15 +1037,16 @@ class MGXS(object):
         Parameters
         ----------
         filename : str
-            Filename for the exported file (default is 'mgxs')
+            Filename for the exported file. Defaults to 'mgxs'.
         directory : str
-            Directory for the exported file (default is 'mgxs')
+            Directory for the exported file. Defaults to 'mgxs'.
         format : {'csv', 'excel', 'pickle', 'latex'}
-            The format for the exported data file
+            The format for the exported data file. Defaults to 'csv'.
         groups : Iterable of Integral or 'all'
-            Energy groups of interest
+            Energy groups of interest. Defaults to 'all'.
         xs_type: {'macro', 'micro'}
-            Store the macro or micro cross section in units of cm^-1 or barns
+            Store the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
 
         """
 
@@ -1100,15 +1108,17 @@ class MGXS(object):
         Parameters
         ----------
         groups : Iterable of Integral or 'all'
-            Energy groups of interest
+            Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
             may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
-            The special string 'all' (default) will include the cross sections
-            for all nuclides in the spatial domain. The special string 'sum'
-            will include the cross sections summed over all nuclides.
+            The special string 'all' will include the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will
+            include the cross sections summed over all nuclides. Defaults
+            to 'all'.
         xs_type: {'macro', 'micro'}
-            Return macro or micro cross section in units of cm^-1 or barns
+            Return macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
         summary : None or Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
@@ -1628,24 +1638,26 @@ class ScatterMatrixXS(MGXS):
         Parameters
         ----------
         in_groups : Iterable of Integral or 'all'
-            Incoming energy groups of interest
+            Incoming energy groups of interest. Defaults to 'all'.
         out_groups : Iterable of Integral or 'all'
-            Outgoing energy groups of interest
+            Outgoing energy groups of interest. Defaults to 'all'.
         subdomains : Iterable of Integral or 'all'
-            Subdomain IDs of interest
+            Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
-            special string 'all' (default) will return the cross sections for
-            all nuclides in the spatial domain. The special string 'sum' will
-            return the cross section summed over all nuclides.
+            special string 'all' will return the cross sections for all nuclides
+            in the spatial domain. The special string 'sum' will return the
+            cross section summed over all nuclides. Defaults to 'all'.
         xs_type: {'macro', 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns
+            Return the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
         order_groups: {'increasing', 'decreasing'}
-            Return the cross section indexed according to increasing (default)
-            or decreasing energy groups (decreasing or increasing energies)
+            Return the cross section indexed according to increasing or
+            decreasing energy groups (decreasing or increasing energies).
+            Defaults to 'increasing'.
         value : str
-            A string for the type of value to return - 'mean' (default),
-            'std_dev' or 'rel_err' are accepted
+            A string for the type of value to return - 'mean', 'std_dev', or
+            'rel_err' are accepted. Defaults to the empty string.
 
         Returns
         -------
@@ -1756,15 +1768,17 @@ class ScatterMatrixXS(MGXS):
         Parameters
         ----------
         subdomains : Iterable of Integral or 'all'
-            The subdomain IDs of the cross sections to include in the report
+            The subdomain IDs of the cross sections to include in the report.
+            Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
             may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
-            The special string 'all' (default) will report the cross sections
-            for all nuclides in the spatial domain. The special string 'sum'
-            will report the cross sections summed over all nuclides.
+            The special string 'all' will report the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will report
+            the cross sections summed over all nuclides. Defaults to 'all'.
         xs_type: {'macro', 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns
+            Return the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
 
         """
 
@@ -1952,23 +1966,24 @@ class Chi(MGXS):
         Parameters
         ----------
         groups : Iterable of Integral or 'all'
-            Energy groups of interest
+            Energy groups of interest. Defaults to 'all'.
         subdomains : Iterable of Integral or 'all'
-            Subdomain IDs of interest
+            Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
-            special string 'all' (default) will return the cross sections for
-            all nuclides in the spatial domain. The special string 'sum' will
-            return the cross section summed over all nuclides.
+            special string 'all' will return the cross sections for all nuclides
+            in the spatial domain. The special string 'sum' will return the
+            cross section summed over all nuclides. Defaults to 'all'.
         xs_type: {'macro', 'micro'}
             This parameter is not relevant for chi but is included here to
             mirror the parent MGXS.get_xs(...) class method
         order_groups: {'increasing', 'decreasing'}
-            Return the cross section indexed according to increasing (default)
-            or decreasing energy groups (decreasing or increasing energies)
+            Return the cross section indexed according to increasing or
+            decreasing energy groups (decreasing or increasing energies).
+            Defaults to 'increasing'.
         value : str
-            A string for the type of value to return - 'mean' (default),
-            'std_dev' or 'rel_err' are accepted
+            A string for the type of value to return - 'mean', 'std_dev', or
+            'rel_err' are accepted. Defaults to 'mean'.
 
         Returns
         -------
@@ -2082,15 +2097,17 @@ class Chi(MGXS):
         Parameters
         ----------
         groups : Iterable of Integral or 'all'
-            Energy groups of interest
+            Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
             may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
-            The special string 'all' (default) will include the cross sections
-            for all nuclides in the spatial domain. The special string 'sum'
-            will include the cross sections summed over all nuclides.
+            The special string 'all' will include the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will
+            include the cross sections summed over all nuclides. Defaults to
+            'all'.
         xs_type: {'macro', 'micro'}
-            Return macro or micro cross section in units of cm^-1 or barns
+            Return macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
         summary : None or Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric

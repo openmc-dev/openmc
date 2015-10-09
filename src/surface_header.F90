@@ -1001,14 +1001,14 @@ contains
       quad = k*k - a*c
 
       if (quad < ZERO) then
-        ! no intersection with cone
+        ! no intersection with surface
 
         d = INFINITY
 
       elseif (coincident .or. abs(c) < FP_COINCIDENT) then
-        ! particle is on the cone, thus one distance is positive/negative and the
-        ! other is zero. The sign of k determines which distance is zero and which
-        ! is not.
+        ! particle is on the surface, thus one distance is positive/negative and
+        ! the other is zero. The sign of k determines which distance is zero and
+        ! which is not.
 
         if (k >= ZERO) then
           d = (-k - sqrt(quad))/a

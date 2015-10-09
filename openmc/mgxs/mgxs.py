@@ -703,7 +703,13 @@ class MGXS(object):
 
             # Sum across all applicable fine energy group filters
             for i, filter in enumerate(tally.filters):
-                if 'energy' in filter.type and np.all(filter.bins == fine_edges):
+                if 'energy' not in filter.type:
+                    continue
+                elif len(filter.bins) != len(fine_edges):
+                    continue
+                elif not np.allclose(filter.bins, fine_edges):
+                    continue
+                else:
                     filter.bins = coarse_groups.group_edges
                     mean = np.add.reduceat(mean, energy_indices, axis=i)
                     std_dev = np.add.reduceat(std_dev**2, energy_indices, axis=i)

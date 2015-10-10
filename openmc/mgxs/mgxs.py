@@ -903,8 +903,8 @@ class MGXS(object):
 
         print(string)
 
-    def build_hdf5_store(self, filename='mgxs', directory='mgxs',
-                         xs_type='macro', append=True):
+    def build_hdf5_store(self, filename='mgxs', directory='mgxs', append=True,
+                         subdomains='all', nuclides='all', xs_type='macro'):
         """Export the multi-group cross section data to an HDF5 binary file.
 
         This method constructs an HDF5 file which stores the multi-group
@@ -921,12 +921,21 @@ class MGXS(object):
             Filename for the HDF5 file. Defaults to 'mgxs'.
         directory : str
             Directory for the HDF5 file. Defaults to 'mgxs'.
-        xs_type: {'macro', 'micro'}
-            Store the macro or micro cross section in units of cm^-1 or barns.
-            Defaults to 'macro'.
         append : boolean
             If true, appends to an existing HDF5 file with the same filename
             directory (if one exists). Defaults to True.
+        subdomains : Iterable of Integral or 'all'
+            The subdomain IDs of the cross sections to include in the report.
+            Defaults to 'all'.
+        nuclides : Iterable of str or 'all' or 'sum'
+            The nuclides of the cross-sections to include in the report. This
+            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            The special string 'all' will report the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will report
+            the cross sections summed over all nuclides. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
+            Store the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
 
         Raises
         ------
@@ -962,8 +971,29 @@ class MGXS(object):
         else:
             xs_results = h5py.File(filename, 'w')
 
+        # Construct a collection of the subdomains to report
+        if subdomains != 'all':
+            cv.check_iterable_type('subdomains', subdomains, Integral)
+        elif self.domain_type == 'distribcell':
+            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+        else:
+            subdomains = [self.domain.id]
+
+        # Construct a collection of the nuclides to report
+        if self.by_nuclide:
+            if nuclides == 'all':
+                nuclides = self.get_all_nuclides()
+                densities = np.zeros(len(nuclides), dtype=np.float)
+            elif nuclides == 'sum':
+                nuclides = ['sum']
+            else:
+                cv.check_iterable_type('nuclides', nuclides, basestring)
+        else:
+            nuclides = ['sum']
+
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
+        '''
         if self.by_nuclide:
             nuclides = self.domain.get_all_nuclides()
             densities = np.zeros(len(nuclides), dtype=np.float)
@@ -971,16 +1001,18 @@ class MGXS(object):
                 densities[i] = nuclides[nuclide][1]
         else:
             nuclides = ['sum']
+        '''
 
         # Create an HDF5 group within the file for the domain
         domain_type_group = xs_results.require_group(self.domain_type)
-        group_name = '{0} {1}'.format(self.domain_type, self.domain.id)
-        domain_group = domain_type_group.require_group(group_name)
+        domain_group = domain_type_group.require_group(str(self.domain.id))
 
-        if self.domain_type == 'distribcell':
+        '''
+        if subdomains == 'all' and self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         else:
             subdomains = [self.domain.id]
+        '''
 
         # Determine number of digits to pad subdomain group keys
         num_digits = len(str(self.num_subdomains))
@@ -990,7 +1022,7 @@ class MGXS(object):
 
             # Create an HDF5 group for the subdomain
             if self.domain_type == 'distribcell':
-                group_name = str(subdomain).zfill(num_digits)
+                group_name = ''.zfill(num_digits)
                 subdomain_group = domain_group.require_group(group_name)
             else:
                 subdomain_group = domain_group

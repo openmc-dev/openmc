@@ -387,7 +387,8 @@ class Library(object):
 
         return condensed_library
 
-    def build_hdf5_store(self, filename='mgxs', directory='mgxs', xs_type='macro'):
+    def build_hdf5_store(self, filename='mgxs', directory='mgxs',
+                         subdomains='all', nuclides='all', xs_type='macro'):
         """Export the multi-group cross section library to an HDF5 binary file.
 
         This method constructs an HDF5 file which stores the library's
@@ -405,6 +406,15 @@ class Library(object):
             Filename for the HDF5 file. Defaults to 'mgxs'.
         directory : str
             Directory for the HDF5 file. Defaults to 'mgxs'.
+        subdomains : {'all', 'avg'}
+            Report all subdomains or the average of all subdomain cross sections
+            in the report. Defaults to 'all'.
+        nuclides : {'all', 'sum'}
+            The nuclides of the cross-sections to include in the report. This
+            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            The special string 'all' will report the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will report
+            the cross sections summed over all nuclides. Defaults to 'all'.
         xs_type: {'macro', 'micro'}
             Store the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
@@ -429,4 +439,8 @@ class Library(object):
         for domain in self.domains:
             for mgxs_type in self.mgxs_types:
                 mgxs = self.all_mgxs[domain.id][mgxs_type]
+
+                if subdomains == 'avg':
+                    mgxs = mgxs.get_subdomain_avg_xs()
+
                 mgxs.build_hdf5_store(filename, directory, xs_type)

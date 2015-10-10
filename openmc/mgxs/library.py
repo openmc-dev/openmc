@@ -1,4 +1,5 @@
 import sys
+import os
 import copy
 from numbers import Integral
 
@@ -90,6 +91,7 @@ class Library(object):
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._all_mgxs = self.all_mgxs
+            clone._statepoint = self._statepoint
 
             clone._all_mgxs = {}
             for domain in self.domains:
@@ -396,7 +398,7 @@ class Library(object):
         HDF5 groups from the domain type, domain id, subdomain id (for
         distribcell domains), nuclides and cross section types. Two datasets for
         the mean and standard deviation are stored for each subdomain entry in
-        the HDF5 file.
+        the HDF5 file. The number of groups is stored as a file attribute.
 
         NOTE: This requires the h5py Python package.
 
@@ -435,6 +437,19 @@ class Library(object):
                   'library since a statepoint has not yet been loaded'
             raise ValueError(msg)
 
+        import h5py
+
+        # Make directory if it does not exist
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        # Add an attribute for the number of energy groups to the HDF5 file
+        full_filename = os.path.join(directory, filename + '.h5')
+        full_filename = full_filename.replace(' ', '-')
+        f = h5py.File(full_filename, 'w')
+        f.attrs["# groups"] = self.num_groups
+        f.close()
+
         # Export MGXS for each domain and mgxs type to an HDF5 file
         for domain in self.domains:
             for mgxs_type in self.mgxs_types:
@@ -443,4 +458,5 @@ class Library(object):
                 if subdomains == 'avg':
                     mgxs = mgxs.get_subdomain_avg_xs()
 
-                mgxs.build_hdf5_store(filename, directory, xs_type)
+                mgxs.build_hdf5_store(filename, directory,
+                                      xs_type=xs_type, nuclides=nuclides)

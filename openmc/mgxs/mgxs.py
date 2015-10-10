@@ -903,8 +903,9 @@ class MGXS(object):
 
         print(string)
 
-    def build_hdf5_store(self, filename='mgxs', directory='mgxs', append=True,
-                         subdomains='all', nuclides='all', xs_type='macro'):
+    def build_hdf5_store(self, filename='mgxs', directory='mgxs',
+                         subdomains='all', nuclides='all',
+                         xs_type='macro', append=True):
         """Export the multi-group cross section data to an HDF5 binary file.
 
         This method constructs an HDF5 file which stores the multi-group
@@ -921,9 +922,6 @@ class MGXS(object):
             Filename for the HDF5 file. Defaults to 'mgxs'.
         directory : str
             Directory for the HDF5 file. Defaults to 'mgxs'.
-        append : boolean
-            If true, appends to an existing HDF5 file with the same filename
-            directory (if one exists). Defaults to True.
         subdomains : Iterable of Integral or 'all'
             The subdomain IDs of the cross sections to include in the report.
             Defaults to 'all'.
@@ -936,6 +934,9 @@ class MGXS(object):
         xs_type: {'macro', 'micro'}
             Store the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
+        append : boolean
+            If true, appends to an existing HDF5 file with the same filename
+            directory (if one exists). Defaults to True.
 
         Raises
         ------
@@ -952,12 +953,7 @@ class MGXS(object):
                   'cross section has not been computed'
             raise ValueError(msg)
 
-        # Attempt to import h5py
-        try:
-            import h5py
-        except ImportError:
-            msg = 'The h5py Python package must be installed on your system'
-            raise ImportError(msg)
+        import h5py
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
@@ -993,26 +989,9 @@ class MGXS(object):
 
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
-        '''
-        if self.by_nuclide:
-            nuclides = self.domain.get_all_nuclides()
-            densities = np.zeros(len(nuclides), dtype=np.float)
-            for i, nuclide in enumerate(nuclides):
-                densities[i] = nuclides[nuclide][1]
-        else:
-            nuclides = ['sum']
-        '''
-
         # Create an HDF5 group within the file for the domain
         domain_type_group = xs_results.require_group(self.domain_type)
         domain_group = domain_type_group.require_group(str(self.domain.id))
-
-        '''
-        if subdomains == 'all' and self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
-        else:
-            subdomains = [self.domain.id]
-        '''
 
         # Determine number of digits to pad subdomain group keys
         num_digits = len(str(self.num_subdomains))
@@ -1976,7 +1955,7 @@ class Chi(MGXS):
         nu_fission_in = self.tallies['nu-fission-in']
         nu_fission_out = self.tallies['nu-fission-out']
 
-        # Remove the coarse energy filter to keep it out of tally arithmetic
+        # Remove coarse energy filter to keep it out of tally arithmetic
         energy_filter = nu_fission_in.find_filter('energy')
         nu_fission_in.remove_filter(energy_filter)
 
@@ -2071,9 +2050,17 @@ class Chi(MGXS):
                 nu_fission_in = nu_fission_in.summation(nuclides=nuclides)
                 nu_fission_out = nu_fission_out.summation(nuclides=nuclides)
 
+                # Remove coarse energy filter to keep it out of tally arithmetic
+                energy_filter = nu_fission_in.find_filter('energy')
+                nu_fission_in.remove_filter(energy_filter)
+
                 # Compute chi and store it as the xs_tally attribute so we can
                 # use the generic get_xs(...) method
                 xs_tally = nu_fission_out / nu_fission_in
+
+                # Add the coarse energy filter back to the nu-fission tally
+                nu_fission_in.add_filter(energy_filter)
+
                 xs = xs_tally.get_values(filters=filters,
                                          filter_bins=filter_bins, value=value)
 

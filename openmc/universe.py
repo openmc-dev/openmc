@@ -275,7 +275,7 @@ class Cell(object):
 
         """
 
-        nuclides = {}
+        nuclides = OrderedDict()
 
         if self._type != 'void':
             nuclides.update(self._fill.get_all_nuclides())
@@ -293,7 +293,7 @@ class Cell(object):
 
         """
 
-        cells = {}
+        cells = OrderedDict()
 
         if self._type == 'fill' or self._type == 'lattice':
             cells.update(self._fill.get_all_cells())
@@ -312,7 +312,7 @@ class Cell(object):
 
         """
 
-        universes = {}
+        universes = OrderedDict()
 
         if self._type == 'fill':
             universes[self._fill._id] = self._fill
@@ -415,7 +415,7 @@ class Universe(object):
 
         # Keys     - Cell IDs
         # Values - Cells
-        self._cells = {}
+        self._cells = OrderedDict()
 
         # Keys     - Cell IDs
         # Values - Offsets
@@ -541,7 +541,7 @@ class Universe(object):
 
         """
 
-        nuclides = {}
+        nuclides = OrderedDict()
 
         # Append all Nuclides in each Cell in the Universe to the dictionary
         for cell_id, cell in self._cells.items():
@@ -559,7 +559,7 @@ class Universe(object):
 
         """
 
-        cells = {}
+        cells = OrderedDict()
 
         # Add this Universe's cells to the dictionary
         cells.update(self._cells)
@@ -584,7 +584,7 @@ class Universe(object):
         # Get all Cells in this Universe
         cells = self.get_all_cells()
 
-        universes = {}
+        universes = OrderedDict()
 
         # Append all Universes containing each Cell to the dictionary
         for cell_id, cell in cells.items():
@@ -717,7 +717,7 @@ class Lattice(object):
 
         """
 
-        univs = dict()
+        univs = OrderedDict()
         for k in range(len(self._universes)):
             for j in range(len(self._universes[k])):
                 if isinstance(self._universes[k][j], Universe):
@@ -745,7 +745,7 @@ class Lattice(object):
 
         """
 
-        nuclides = {}
+        nuclides = OrderedDict()
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()
@@ -766,7 +766,7 @@ class Lattice(object):
 
         """
 
-        cells = {}
+        cells = OrderedDict()
         unique_universes = self.get_unique_universes()
 
         for universe_id, universe in unique_universes.items():
@@ -787,7 +787,7 @@ class Lattice(object):
 
         # Initialize a dictionary of all Universes contained by the Lattice
         # in each nested Universe level
-        all_universes = {}
+        all_universes = OrderedDict()
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()

@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from xml.etree import ElementTree as ET
 
 import openmc
@@ -110,7 +111,7 @@ class Geometry(object):
 
         """
 
-        nuclides = {}
+        nuclides = OrderedDict()
         materials = self.get_all_materials()
 
         for material in materials:
@@ -134,7 +135,7 @@ class Geometry(object):
         for cell in material_cells:
             materials.add(cell._fill)
 
-        return list(materials)
+        return sorted(list(materials))
 
     def get_all_material_cells(self):
         all_cells = self.get_all_cells()
@@ -144,7 +145,7 @@ class Geometry(object):
             if cell._type == 'normal':
                 material_cells.add(cell)
 
-        return list(material_cells)
+        return sorted(list(material_cells))
 
     def get_all_material_universes(self):
         """Return all universes composed of at least one non-fill cell
@@ -165,7 +166,7 @@ class Geometry(object):
                 if cell._type == 'normal':
                     material_universes.add(universe)
 
-        return list(material_universes)
+        return sorted(list(material_universes))
 
 
 class GeometryFile(object):

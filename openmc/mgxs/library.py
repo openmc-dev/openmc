@@ -2,6 +2,7 @@ import sys
 import os
 import copy
 from numbers import Integral
+from collections import OrderedDict
 
 import openmc
 import openmc.mgxs
@@ -68,7 +69,7 @@ class Library(object):
         self._mgxs_types = []
         self._domain_type = None
         self._energy_groups = None
-        self._all_mgxs = {}
+        self._all_mgxs = OrderedDict()
         self._statepoint = None
 
         self.name = name
@@ -93,9 +94,9 @@ class Library(object):
             clone._all_mgxs = self.all_mgxs
             clone._statepoint = self._statepoint
 
-            clone._all_mgxs = {}
+            clone._all_mgxs = OrderedDict()
             for domain in self.domains:
-                clone.all_mgxs[domain.id] = {}
+                clone.all_mgxs[domain.id] = OrderedDict()
                 for mgxs_type in self.mgxs_types:
                     mgxs = copy.deepcopy(self.all_mgxs[domain.id][mgxs_type])
                     clone.all_mgxs[domain.id][mgxs_type] = mgxs
@@ -203,7 +204,7 @@ class Library(object):
 
         # Initialize MGXS for each domain and mgxs type and store in dictionary
         for domain in self.domains:
-            self.all_mgxs[domain.id] = {}
+            self.all_mgxs[domain.id] = OrderedDict()
             for mgxs_type in self.mgxs_types:
                 mgxs = openmc.mgxs.MGXS.get_mgxs(mgxs_type, name=self.name)
                 mgxs.domain = domain

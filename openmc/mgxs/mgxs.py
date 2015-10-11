@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections import Iterable, OrderedDict
 from numbers import Integral
 import os
 import sys
@@ -100,7 +100,7 @@ class MGXS(object):
         self._domain = None
         self._domain_type = None
         self._energy_groups = None
-        self._tallies = {}
+        self._tallies = OrderedDict()
         self._xs_tally = None
 
         self.name = name
@@ -127,7 +127,7 @@ class MGXS(object):
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._xs_tally = copy.deepcopy(self.xs_tally, memo)
 
-            clone._tallies = {}
+            clone._tallies = OrderedDict()
             for tally_type, tally in self.tallies.items():
                 clone.tallies[tally_type] = copy.deepcopy(tally, memo)
 

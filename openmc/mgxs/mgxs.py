@@ -252,7 +252,7 @@ class MGXS(object):
         -------
         MGXS
             A subclass of the abstract MGXS class for the multi-group cross
-            section type requeted by the user
+            section type requested by the user
 
         """
 
@@ -322,7 +322,7 @@ class MGXS(object):
             The atomic number density (atom/b-cm) for the nuclide of interest
 
         Raises
-        ------
+        -------
         ValueError
             When the density is requested for a nuclide which is not found in
             the spatial domain.

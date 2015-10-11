@@ -358,7 +358,7 @@ class Material(object):
 
         """
 
-        nuclides = {}
+        nuclides = OrderedDict()
 
         for nuclide_name, nuclide_tuple in self._nuclides.items():
             nuclide = nuclide_tuple[0]

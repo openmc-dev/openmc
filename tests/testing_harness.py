@@ -349,6 +349,7 @@ class PyAPITestHarness(TestHarness):
         output.append(os.path.join(os.getcwd(), 'geometry.xml'))
         output.append(os.path.join(os.getcwd(), 'settings.xml'))
         output.append(os.path.join(os.getcwd(), 'inputs_test.dat'))
+        output.append(os.path.join(os.getcwd(), 'summary.h5'))
         for f in output:
             if os.path.exists(f):
                 os.remove(f)

@@ -1,8 +1,8 @@
-.. _pythonapi_openmc_mgxs:
+.. _pythonapi_mgxs:
 
 ==========================
 Multi-Group Cross Sections
 ==========================
 
 .. automodule:: openmc.mgxs.mgxs
-    :members:
+    :members: MGXS

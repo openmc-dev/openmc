@@ -281,7 +281,7 @@ class Library(object):
         """Return the MGXS object for some domain and reaction rate type.
 
         This routine searches the library for an MGXS object for the spatial
-        domain and reaction rate type requ
+        domain and reaction rate type requested by the user.
 
         NOTE: This routine must be called after the build_library() routine.
 

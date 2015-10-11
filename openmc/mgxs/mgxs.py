@@ -773,7 +773,10 @@ class MGXS(object):
 
         # Clone this MGXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
-        avg_xs.domain_type = 'cell'
+
+            # If domain is distribcell, make the new domain 'cell'
+        if self.domain_type == 'distribcell':
+            avg_xs.domain_type = 'cell'
 
         # Average each of the tallies across subdomains
         for tally_type, tally in avg_xs.tallies.items():

@@ -509,7 +509,7 @@ class MGXS(object):
         elif self.domain_type == 'material':
             self.domain = statepoint.summary.get_material_by_id(self.domain.id)
         else:
-            msg = 'Unable to load data from a statepoint for domain type {} ' \
+            msg = 'Unable to load data from a statepoint for domain type {0} ' \
                   'which is not yet supported'.format(self.domain_type)
             raise ValueError(msg)
 

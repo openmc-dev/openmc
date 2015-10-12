@@ -49,10 +49,6 @@ contains
     material_xs % nu_fission     = ZERO
     material_xs % kappa_fission  = ZERO
 
-    do d = 1, MAX_DELAYED_GROUPS
-      material_xs % delayed_nu_fission(d) = ZERO
-    end do
-
     ! Exit subroutine if material is void
     if (p % material == MATERIAL_VOID) return
 
@@ -142,15 +138,6 @@ contains
       ! Add contributions to material macroscopic energy release from fission
       material_xs % kappa_fission = material_xs % kappa_fission + &
            atom_density * micro_xs(i_nuclide) % kappa_fission
-
-      ! Add contributions to material macroscopic delayed-nu-fission cross
-      ! section
-      do d = 1, nuclides(i_nuclide) % n_precursor
-        yield = yield_delayed(nuc, p % E, d)
-        material_xs % delayed_nu_fission(d) = &
-             material_xs % delayed_nu_fission(d) +&
-             atom_density * micro_xs(i_nuclide) % delayed_nu_fission * yield
-      end do
     end do
 
   end subroutine calculate_xs

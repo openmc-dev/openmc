@@ -1279,8 +1279,11 @@ The ``<tally>`` element accepts the following sub-elements:
         :delayedgroup:
           A list of delayed neutron precursor groups for which the tally should
           be accumulated. For instance, to tally to all 6 delayed groups in the
-          ENDF/B-VII.1 library the filter is specified as ``<filter
-          type="delayedgroup" bins="1 2 3 4 5 6" />``.
+          ENDF/B-VII.1 library the filter is specified as:
+
+          .. code-block:: xml
+
+              <filter type="delayedgroup" bins="1 2 3 4 5 6" />
 
 :nuclides:
     If specified, the scores listed will be for particular nuclides, not the

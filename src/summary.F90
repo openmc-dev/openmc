@@ -540,7 +540,10 @@ contains
 
         ! Write filter bins
         if (t%filters(j)%type == FILTER_ENERGYIN .or. &
-             t%filters(j)%type == FILTER_ENERGYOUT) then
+             t%filters(j)%type == FILTER_ENERGYOUT .or. &
+             t%filters(j)%type == FILTER_MU .or. &
+             t%filters(j)%type == FILTER_POLAR .or. &
+             t%filters(j)%type == FILTER_AZIMUTHAL) then
           call write_dataset(filter_group, "bins", t%filters(j)%real_bins)
         else
           call write_dataset(filter_group, "bins", t%filters(j)%int_bins)
@@ -566,6 +569,12 @@ contains
           call write_dataset(filter_group, "type", "energyout")
         case(FILTER_DISTRIBCELL)
           call write_dataset(filter_group, "type", "distribcell")
+        case(FILTER_MU)
+          call write_dataset(filter_group, "type", "mu")
+        case(FILTER_POLAR)
+          call write_dataset(filter_group, "type", "polar")
+        case(FILTER_AZIMUTHAL)
+          call write_dataset(filter_group, "type", "azimuthal")
         end select
 
         call close_group(filter_group)

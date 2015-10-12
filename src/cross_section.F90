@@ -70,7 +70,6 @@ contains
 
     ! Add contribution from each nuclide in material
     do i = 1, mat % n_nuclides
-
       ! ========================================================================
       ! CHECK FOR S(A,B) TABLE
 
@@ -259,7 +258,6 @@ contains
       micro_xs(i_nuclide) % delayed_nu_fission = (ONE - f) * &
            nuc % delayed_nu_fission(i_grid) + f * &
            nuc % delayed_nu_fission(i_grid+1)
-
     end if
 
     ! If there is S(a,b) data for this nuclide, we need to do a few

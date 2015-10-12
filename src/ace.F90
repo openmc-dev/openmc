@@ -1417,7 +1417,7 @@ contains
       ! determine energy
       E = nuc % energy(i)
 
-      ! determine total nu at given energy
+      ! determine nu delayed at given energy
       nu_d = nu_delayed(nuc, E)
 
       ! determine delayed-nu-fission microscopic cross section

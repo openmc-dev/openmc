@@ -63,7 +63,7 @@ contains
       ! since no prompt or delayed data is present, this means all neutron
       ! emission is prompt -- WARNING: This currently returns zero. The calling
       ! routine needs to know this situation is occurring since we don't want
-      ! to call nu_total unnecessarily if it's already been called.
+      ! to call nu_total unnecessarily if it has already been called.
       nu = ZERO
     elseif (nuc % nu_p_type == NU_POLYNOMIAL) then
       ! determine number of coefficients
@@ -97,7 +97,7 @@ contains
       ! since no prompt or delayed data is present, this means all neutron
       ! emission is prompt -- WARNING: This currently returns zero. The calling
       ! routine needs to know this situation is occurring since we don't want
-      ! to call nu_delayed unnecessarily if it's already been called.
+      ! to call nu_delayed unnecessarily if it has already been called.
       nu = ZERO
     elseif (nuc % nu_d_type == NU_TABULAR) then
       ! use ENDF interpolation laws to determine nu
@@ -132,7 +132,7 @@ contains
       ! since no prompt or delayed data is present, this means all neutron
       ! emission is prompt -- WARNING: This currently returns zero. The calling
       ! routine needs to know this situation is occurring since we don't want
-      ! to call yield unnecessarily if it's already been called.
+      ! to call yield unnecessarily if it has already been called.
       yield = ZERO
     else if (nuc % nu_d_type == NU_TABULAR) then
 

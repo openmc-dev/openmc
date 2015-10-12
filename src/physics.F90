@@ -1063,16 +1063,16 @@ contains
     integer,        intent(in)    :: i_nuclide
     integer,        intent(in)    :: i_reaction
 
-    integer :: d                              ! delayed group index
-    integer :: nu_d(MAX_DELAYED_GROUPS)       ! number of delayed neutrons born
-    integer :: i                              ! loop index
-    integer :: nu                             ! actual number of neutrons produced
-    integer :: ijk(3)                         ! indices in ufs mesh
-    real(8) :: nu_t                           ! total nu
-    real(8) :: mu                             ! fission neutron angular cosine
-    real(8) :: phi                            ! fission neutron azimuthal angle
-    real(8) :: weight                         ! weight adjustment for ufs method
-    logical :: in_mesh                        ! source site in ufs mesh?
+    integer :: d                        ! delayed group index
+    integer :: nu_d(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
+    integer :: i                        ! loop index
+    integer :: nu                       ! actual number of neutrons produced
+    integer :: ijk(3)                   ! indices in ufs mesh
+    real(8) :: nu_t                     ! total nu
+    real(8) :: mu                       ! fission neutron angular cosine
+    real(8) :: phi                      ! fission neutron azimuthal angle
+    real(8) :: weight                   ! weight adjustment for ufs method
+    logical :: in_mesh                  ! source site in ufs mesh?
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
@@ -1178,7 +1178,7 @@ contains
 
     type(Nuclide),  pointer       :: nuc
     type(Reaction), pointer       :: rxn
-    type(Particle), intent(inout) :: p     ! Particle caussing fission
+    type(Particle), intent(inout) :: p     ! Particle causing fission
     real(8)                       :: E_out ! outgoing energy of fission neutron
 
     integer :: j            ! index on nu energy grid / precursor group

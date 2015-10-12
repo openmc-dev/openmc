@@ -300,6 +300,27 @@ class Cell(object):
 
         return cells
 
+    def get_all_materials(self):
+        """Return all materials that are contained within the cell
+
+        Returns
+        -------
+        materials : dict
+            Dictionary whose keys are material IDs and values are Material instances
+
+        """
+
+        materials = OrderedDict()
+        if self.fill_type == 'material':
+            materials[self.fill.id] = self.fill
+
+        # Append all Cells in each Cell in the Universe to the dictionary
+        cells = self.get_all_cells()
+        for cell_id, cell in cells.items():
+            materials.update(cell.get_all_materials())
+
+        return materials
+
     def get_all_universes(self):
         """Return all universes that are contained within this one if any of
         its cells are filled with a universe or lattice.
@@ -570,6 +591,25 @@ class Universe(object):
 
         return cells
 
+    def get_all_materials(self):
+        """Return all materials that are contained within the universe
+
+        Returns
+        -------
+        materials : dict
+            Dictionary whose keys are material IDs and values are Material instances
+
+        """
+
+        materials = OrderedDict()
+
+        # Append all Cells in each Cell in the Universe to the dictionary
+        cells = self.get_all_cells()
+        for cell_id, cell in cells.items():
+            materials.update(cell.get_all_materials())
+
+        return materials
+
     def get_all_universes(self):
         """Return all universes that are contained within this one.
 
@@ -774,6 +814,25 @@ class Lattice(object):
             cells.update(universe.get_all_cells())
 
         return cells
+
+    def get_all_materials(self):
+        """Return all materials that are contained within the lattice
+
+        Returns
+        -------
+        materials : dict
+            Dictionary whose keys are material IDs and values are Material instances
+
+        """
+
+        materials = OrderedDict()
+
+        # Append all Cells in each Cell in the Universe to the dictionary
+        cells = self.get_all_cells()
+        for cell_id, cell in cells.items():
+            materials.update(cell.get_all_materials())
+
+        return materials
 
     def get_all_universes(self):
         """Return all universes that are contained within the lattice

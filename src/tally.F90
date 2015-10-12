@@ -527,7 +527,7 @@ contains
                   nuc => nuclides(i_nuc)
                   yield = yield_delayed(nuc, p % E, d)
                   score = micro_xs(i_nuc) % delayed_nu_fission * yield &
-                    * atom_density_ * flux
+                       * atom_density_ * flux
                   call score_fission_delayed_dg(t, d_bin, score, score_index)
                 end do
               end do

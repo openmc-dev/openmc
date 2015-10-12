@@ -9,7 +9,8 @@ from openmc.checkvalue import check_type, check_iterable_type, \
                               check_greater_than, _isinstance
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
-                 'mesh', 'energy', 'energyout', 'distribcell', 'delayedgroup']
+                 'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
+                 'distribcell', 'delayedgroup']
 
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only tally

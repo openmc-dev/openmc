@@ -603,6 +603,7 @@ class Universe(object):
         return string
 
     def create_xml_subelement(self, xml_element):
+
         # Iterate over all Cells
         for cell_id, cell in self._cells.items():
 
@@ -938,6 +939,7 @@ class RectLattice(Lattice):
         return offset
 
     def create_xml_subelement(self, xml_element):
+
         # Determine if XML element already contains subelement for this Lattice
         path = './lattice[@id=\'{0}\']'.format(self._id)
         test = xml_element.find(path)

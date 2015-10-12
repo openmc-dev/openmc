@@ -199,7 +199,10 @@ class GeometryFile(object):
 
         """
 
-        root_universe = self._geometry._root_universe
+        # Clear OpenMC written IDs used to optimize XML generation
+        openmc.universe.WRITTEN_IDS = {}
+
+        root_universe = self.geometry.root_universe
         root_universe.create_xml_subelement(self._geometry_file)
 
         # Clean the indentation in the file to be user-readable

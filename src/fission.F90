@@ -113,14 +113,14 @@ contains
 
   function yield_delayed(nuc, E, g) result(yield)
 
-    type(Nuclide), pointer :: nuc   ! nuclide from which to find nu
-    real(8), intent(in)    :: E     ! energy of incoming neutron
-    real(8)                :: yield ! delayed neutron precursor yield
-    integer                :: g     ! the delayed neutron precursor group
-    integer                :: d     ! precursor group
-    integer                :: lc    ! index before start of energies/nu values
-    integer                :: NR    ! number of interpolation regions
-    integer                :: NE    ! number of energies tabulated
+    type(Nuclide), intent(in) :: nuc   ! nuclide from which to find nu
+    real(8), intent(in)       :: E     ! energy of incoming neutron
+    real(8)                   :: yield ! delayed neutron precursor yield
+    integer, intent(in)       :: g     ! the delayed neutron precursor group
+    integer                   :: d     ! precursor group
+    integer                   :: lc    ! index before start of energies/nu values
+    integer                   :: NR    ! number of interpolation regions
+    integer                   :: NE    ! number of energies tabulated
 
     yield = ZERO
 

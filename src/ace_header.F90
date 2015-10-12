@@ -285,14 +285,12 @@ module ace_header
 !===============================================================================
 
   type MaterialMacroXS
-    real(8) :: total              ! macroscopic total xs
-    real(8) :: elastic            ! macroscopic elastic scattering xs
-    real(8) :: absorption         ! macroscopic absorption xs
-    real(8) :: fission            ! macroscopic fission xs
-    real(8) :: nu_fission         ! macroscopic production xs
-    real(8) :: kappa_fission      ! macroscopic energy-released from fission
-    real(8) :: delayed_nu_fission(MAX_DELAYED_GROUPS) ! macroscopic delayed
-                                                      ! production xs
+    real(8) :: total         ! macroscopic total xs
+    real(8) :: elastic       ! macroscopic elastic scattering xs
+    real(8) :: absorption    ! macroscopic absorption xs
+    real(8) :: fission       ! macroscopic fission xs
+    real(8) :: nu_fission    ! macroscopic production xs
+    real(8) :: kappa_fission ! macroscopic energy-released from fission
   end type MaterialMacroXS
 
   contains

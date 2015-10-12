@@ -165,10 +165,7 @@ contains
         ! Reset banked weight during collision
         p % n_bank   = 0
         p % wgt_bank = ZERO
-
-        do d = 1, MAX_DELAYED_GROUPS
-          p % n_delayed_bank = 0
-        end do
+        p % n_delayed_bank(:) = 0
 
         ! Reset fission logical
         p % fission = .false.

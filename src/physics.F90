@@ -1052,7 +1052,7 @@ contains
     integer,        intent(in)    :: i_reaction
 
     integer :: d                              ! delayed group index
-    integer :: nu_delayed(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
+    integer :: nu_d(MAX_DELAYED_GROUPS)       ! number of delayed neutrons born
     integer :: i                              ! loop index
     integer :: nu                             ! actual number of neutrons produced
     integer :: ijk(3)                         ! indices in ufs mesh
@@ -1113,9 +1113,7 @@ contains
 
     ! Initialize counter of delayed neutrons encountered for each delayed group
     ! to zero.
-    do d = 1, MAX_DELAYED_GROUPS
-      nu_delayed(d) = 0
-    end do
+    nu_d(:) = 0
 
     p % fission = .true. ! Fission neutrons will be banked
     do i = int(n_bank,4) + 1, int(min(n_bank + nu, int(size(fission_bank),8)),4)
@@ -1146,7 +1144,7 @@ contains
 
       ! Increment the number of neutrons born delayed
       if (p % delayed_group > 0) then
-        nu_delayed(p % delayed_group) = nu_delayed(p % delayed_group) + 1
+        nu_d(p % delayed_group) = nu_d(p % delayed_group) + 1
       end if
     end do
 
@@ -1156,9 +1154,7 @@ contains
     ! Store total and delayed weight banked for analog fission tallies
     p % n_bank   = nu
     p % wgt_bank = nu/weight
-    do d = 1, MAX_DELAYED_GROUPS
-      p % n_delayed_bank(d) = nu_delayed(d)
-    end do
+    p % n_delayed_bank(:) = nu_d(:)
 
   end subroutine create_fission_sites
 

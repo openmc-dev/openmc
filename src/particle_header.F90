@@ -116,22 +116,19 @@ contains
     this % alive = .true.
 
     ! clear attributes
-    this % surface       = NONE
-    this % cell_born     = NONE
-    this % material      = NONE
-    this % last_material = NONE
-    this % wgt           = ONE
-    this % last_wgt      = ONE
-    this % absorb_wgt    = ZERO
-    this % n_bank        = 0
-    this % wgt_bank      = ZERO
-    this % n_collision   = 0
-    this % fission       = .false.
-    this % delayed_group = 0
-
-    do d = 1, MAX_DELAYED_GROUPS
-      this % n_delayed_bank(d) = 0
-    end do
+    this % surface           = NONE
+    this % cell_born         = NONE
+    this % material          = NONE
+    this % last_material     = NONE
+    this % wgt               = ONE
+    this % last_wgt          = ONE
+    this % absorb_wgt        = ZERO
+    this % n_bank            = 0
+    this % wgt_bank          = ZERO
+    this % n_collision       = 0
+    this % fission           = .false.
+    this % delayed_group     = 0
+    this % n_delayed_bank(:) = 0
 
     ! Set up base level coordinates
     this % coord(1) % universe = BASE_UNIVERSE

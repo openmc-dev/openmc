@@ -2940,7 +2940,7 @@ contains
           if (trim(score_name) /= 'delayed-nu-fission' .and. &
                t % find_filter(FILTER_DELAYEDGROUP) > 0) then
             call fatal_error("Cannot tally " // trim(score_name) // " with a &
-              &delayedgroup filter.")
+                 &delayedgroup filter.")
           end if
 
           ! Check to see if the mu filter is applied and if that makes sense.

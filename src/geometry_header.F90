@@ -24,7 +24,7 @@ module geometry_header
 
   type, abstract :: Lattice
     integer              :: id               ! Universe number for lattice
-    character(len=52) :: name = ""          ! User-defined name
+    character(len=104)   :: name = ""        ! User-defined name
     real(8), allocatable :: pitch(:)         ! Pitch along each axis
     integer, allocatable :: universes(:,:,:) ! Specified universes
     integer              :: outside          ! Material to fill area outside
@@ -119,7 +119,7 @@ module geometry_header
 
   type Cell
     integer :: id                          ! Unique ID
-    character(len=52) :: name = ""         ! User-defined name
+    character(len=104) :: name = ""        ! User-defined name
     integer :: type                        ! Type of cell (normal, universe,
                                            !  lattice)
     integer :: universe                    ! universe # this cell is in

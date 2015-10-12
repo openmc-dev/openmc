@@ -2973,7 +2973,6 @@ contains
               call fatal_error("Cannot tally flux with an outgoing energy &
                    &filter.")
             end if
-
           case ('flux-yn')
             ! Prohibit user from tallying flux for an individual nuclide
             if (.not. (t % n_nuclide_bins == 1 .and. &
@@ -3008,17 +3007,14 @@ contains
             j = j + n_bins - 1
 
           case ('scatter')
-
             t % score_bins(j) = SCORE_SCATTER
 
           case ('nu-scatter')
-
             t % score_bins(j) = SCORE_NU_SCATTER
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
           case ('scatter-n')
-
             if (n_order == 0) then
               t % score_bins(j) = SCORE_SCATTER
             else
@@ -3029,7 +3025,6 @@ contains
             t % moment_order(j) = n_order
 
           case ('nu-scatter-n')
-
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
             if (n_order == 0) then
@@ -3040,7 +3035,6 @@ contains
             t % moment_order(j) = n_order
 
           case ('scatter-pn')
-
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
             t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_PN
@@ -3048,7 +3042,6 @@ contains
             j = j + n_bins - 1
 
           case ('nu-scatter-pn')
-
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
             t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_PN
@@ -3056,7 +3049,6 @@ contains
             j = j + n_bins - 1
 
           case ('scatter-yn')
-
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
             t % score_bins(j : j + n_bins - 1) = SCORE_SCATTER_YN
@@ -3064,7 +3056,6 @@ contains
             j = j + n_bins - 1
 
           case ('nu-scatter-yn')
-
             t % estimator = ESTIMATOR_ANALOG
             ! Setup P0:Pn
             t % score_bins(j : j + n_bins - 1) = SCORE_NU_SCATTER_YN
@@ -3072,7 +3063,6 @@ contains
             j = j + n_bins - 1
 
           case('transport')
-
             t % score_bins(j) = SCORE_TRANSPORT
 
             ! Set tally estimator to analog
@@ -3081,7 +3071,6 @@ contains
             call fatal_error("Diffusion score no longer supported for tallies, &
                  &please remove")
           case ('n1n')
-
             t % score_bins(j) = SCORE_N_1N
 
             ! Set tally estimator to analog
@@ -3096,38 +3085,32 @@ contains
             t % score_bins(j) = N_4N
 
           case ('absorption')
-
             t % score_bins(j) = SCORE_ABSORPTION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               call fatal_error("Cannot tally absorption rate with an outgoing &
                    &energy filter.")
             end if
           case ('fission')
-
             t % score_bins(j) = SCORE_FISSION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               call fatal_error("Cannot tally fission rate with an outgoing &
                    &energy filter.")
             end if
           case ('nu-fission')
-
             t % score_bins(j) = SCORE_NU_FISSION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
           case ('delayed-nu-fission')
-
             t % score_bins(j) = SCORE_DELAYED_NU_FISSION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
           case ('kappa-fission')
-
             t % score_bins(j) = SCORE_KAPPA_FISSION
           case ('current')
-
             t % score_bins(j) = SCORE_CURRENT
             t % type = TALLY_SURFACE_CURRENT
 

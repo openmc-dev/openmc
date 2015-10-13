@@ -400,7 +400,7 @@ class Tally(object):
             AUTO_TALLY_ID += 1
         else:
             cv.check_type('tally ID', tally_id, Integral)
-            cv.check_greater_than('tally ID', tally_id, 0)
+            cv.check_greater_than('tally ID', tally_id, 0, equality=True)
             self._id = tally_id
 
     @name.setter

@@ -144,7 +144,7 @@ class Cell(object):
             AUTO_CELL_ID += 1
         else:
             cv.check_type('cell ID', cell_id, Integral)
-            cv.check_greater_than('cell ID', cell_id, 0)
+            cv.check_greater_than('cell ID', cell_id, 0, equality=True)
             self._id = cell_id
 
     @name.setter
@@ -463,7 +463,7 @@ class Universe(object):
             AUTO_UNIVERSE_ID += 1
         else:
             cv.check_type('universe ID', universe_id, Integral)
-            cv.check_greater_than('universe ID', universe_id, 0, True)
+            cv.check_greater_than('universe ID', universe_id, 0, equality=True)
             self._id = universe_id
 
     @name.setter
@@ -725,7 +725,7 @@ class Lattice(object):
             AUTO_UNIVERSE_ID += 1
         else:
             cv.check_type('lattice ID', lattice_id, Integral)
-            cv.check_greater_than('lattice ID', lattice_id, 0)
+            cv.check_greater_than('lattice ID', lattice_id, 0, equality=True)
             self._id = lattice_id
 
     @name.setter

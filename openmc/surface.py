@@ -119,7 +119,7 @@ class Surface(object):
             AUTO_SURFACE_ID += 1
         else:
             check_type('surface ID', surface_id, Integral)
-            check_greater_than('surface ID', surface_id, 0)
+            check_greater_than('surface ID', surface_id, 0, equality=True)
             self._id = surface_id
 
     @name.setter

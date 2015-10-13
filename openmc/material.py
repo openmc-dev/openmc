@@ -157,7 +157,7 @@ class Material(object):
                 msg = 'Unable to set Material ID to "{0}" since a Material with ' \
                       'this ID was already initialized'.format(material_id)
                 raise ValueError(msg)
-            check_greater_than('material ID', material_id, 0)
+            check_greater_than('material ID', material_id, 0, equality=True)
 
             self._id = material_id
             MATERIAL_IDS.append(material_id)

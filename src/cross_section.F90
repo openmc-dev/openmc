@@ -68,7 +68,6 @@ contains
 
     ! Add contribution from each nuclide in material
     do i = 1, mat % n_nuclides
-
       ! ========================================================================
       ! CHECK FOR S(A,B) TABLE
 

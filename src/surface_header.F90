@@ -15,7 +15,7 @@ module surface_header
          neighbor_pos(:), &           ! List of cells on positive side
          neighbor_neg(:)              ! List of cells on negative side
     integer :: bc                     ! Boundary condition
-    character(len=52) :: name = ""    ! User-defined name
+    character(len=104) :: name = ""    ! User-defined name
   contains
     procedure :: sense
     procedure :: reflect

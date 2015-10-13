@@ -134,7 +134,6 @@ contains
     integer :: i    ! index in global isotopes array
     integer :: i_ER ! resonance energy range index
     integer :: NIS  ! number of isotopes in material
-    integer :: LFW  ! URR average fission widths flag
     real(8) :: ZA
     real(8) :: A
     real(8) :: ABN
@@ -159,7 +158,7 @@ contains
 10  format(A80)
     read(rec(1:11),  '(E11.0)') ZA
     read(rec(12:22), '(E11.0)') ABN
-    read(rec(34:44), '(I11)')   LFW
+    read(rec(34:44), '(I11)')   tope % LFW
     read(rec(45:55), '(I11)')   tope % NER
 
     ! allocate energy range variables
@@ -172,7 +171,7 @@ contains
     call check_abundance(ABN)
 
     ! check URR average fission widths treatment
-    call check_fission_widths(LFW)
+    call check_fission_widths(tope % LFW)
 
     ! loop over energy ranges
     do i_ER = 1, tope % NER
@@ -193,8 +192,7 @@ contains
       call check_radius_flags(tope % NRO(i_ER), tope % NAPS(i_ER))
 
       ! read energy range and formalism-dependent resonance subsection data
-      call read_resonance_subsection(i, i_ER, &
-        & tope % LRU(i_ER), tope % LRF(i_ER), LFW)
+      call read_resonance_subsection(i, i_ER, tope % LRU(i_ER), tope %LRF(i_ER))
 
     end do
 
@@ -580,13 +578,12 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine read_resonance_subsection(i, i_ER, LRU, LRF, LFW)
+  subroutine read_resonance_subsection(i, i_ER, LRU, LRF)
 
     integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
     integer :: LRU  ! resolved (1) or unresolved (2) parameters
     integer :: LRF  ! ENDF-6 resonance formalism flag
-    integer :: LFW  ! ENDF-6 fission widths flag
 
     ! select energy range
     select case(LRU)
@@ -638,9 +635,6 @@ contains
 
       ! only fission widths are energy-dependent
       case(1)
-        if (LFW == 0) call fatal_error('Energy-independent parameters&
-             & w/o fission widths (LRF = 1, LFW = 0) in '//trim(filename)//&
-             &' not yet supported')
         call read_urr_slbw_parameters_lrf1(i, i_ER)
 
       ! all parameters are energy-dependent
@@ -892,7 +886,7 @@ contains
     call tope % channel_radius(i_ER)
     read(rec(45:55), '(I11)')   tope % NLS(i_ER)
     if (tope % NLS(i_ER) > 3) &
-         call fatal_error('R-M parameters given for a resonance higher than&
+         call warning('R-M parameters given for a resonance higher than&
          & d-wave')
 
     ! allocate Reich-Moore resonance vectors for each l
@@ -973,145 +967,248 @@ contains
     ! this is forced by the ENDF-6 format when LRF = 1 and LFW = 1
     tope % INT = LINEAR_LINEAR
 
-    ! read first line of energy range subsection
-    read(in, 10) rec
 10  format(A80)
-    read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
-    read(rec(12:22), '(E11.0)') tope % AP(i_ER)
+    select case(tope % LFW)
+    case(0)
+      ! read first line of energy range subsection
+      read(in, 10) rec
+      read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
+      read(rec(12:22), '(E11.0)') tope % AP(i_ER)
 ! TODO: don't overwrite the resolved value
-    call tope % channel_radius(i_ER)
-    read(rec(23:33), '(I11)')   tope % LSSF
-    read(rec(45:55), '(I11)')   tope % NE
-    read(rec(56:66), '(I11)')   tope % NLS(i_ER)
-    if (tope % NLS(i_ER) > 3) &
-         call fatal_error('URR parameters given for a spin sequence higher than&
-         & d-wave')
-
-    ! allocate number of total angular momenta values for each l
-    allocate(tope % NJS(tope % NLS(i_ER)))
-
-    ! allocate total angular momentua
-    allocate(tope % AJ(tope % NLS(i_ER)))
-
-    ! allocate degrees of freedom for partial widths
-    allocate(tope % DOFX(tope % NLS(i_ER)))
-    allocate(tope % DOFN(tope % NLS(i_ER)))
-    allocate(tope % DOFG(tope % NLS(i_ER)))
-    allocate(tope % DOFF(tope % NLS(i_ER)))
-
-    ! allocate fission width energies
-    allocate(tope % ES(tope % NE))
-    allocate(tope % D_mean  (tope % NLS(i_ER)))
-    allocate(tope % GN0_mean(tope % NLS(i_ER)))
-    allocate(tope % GG_mean (tope % NLS(i_ER)))
-    allocate(tope % GF_mean (tope % NLS(i_ER)))
-    allocate(tope % GX_mean (tope % NLS(i_ER)))
-    if (tope % LSSF == 1 .and. (.not. write_avg_urr_xs)) call read_avg_urr_xs(i)
-
-    i_ES = 1
-    do
-      read(in, 10) rec
-      read(rec( 1:11), '(E11.0)') tope % ES(i_ES)
-      if (i_ES == tope % NE) exit
-      i_ES = i_ES + 1
-      read(rec(12:22), '(E11.0)') tope % ES(i_ES)
-      if (i_ES == tope % NE) exit
-      i_ES = i_ES + 1
-      read(rec(23:33), '(E11.0)') tope % ES(i_ES)
-      if (i_ES == tope % NE) exit
-      i_ES = i_ES + 1
-      read(rec(34:44), '(E11.0)') tope % ES(i_ES)
-      if (i_ES == tope % NE) exit
-      i_ES = i_ES + 1
-      read(rec(45:55), '(E11.0)') tope % ES(i_ES)
-      if (i_ES == tope % NE) exit
-      i_ES = i_ES + 1
-      read(rec(56:66), '(E11.0)') tope % ES(i_ES)
-      if (i_ES == tope % NE) exit
-      i_ES = i_ES + 1
-    end do
-
-    ! loop over orbital quantum numbers
-    do i_l = 0, tope % NLS(i_ER) - 1
-      read(in, 10) rec
-      read(rec(1:11),  '(E11.0)') A
-      read(rec(23:33),   '(I11)') L
-      read(rec(45:55),   '(I11)') tope % NJS(i_l + 1)
-
-      ! check mass ratios
-      call check_mass(A, tope % AWR)
-
-      ! check orbital quantum number
-      call check_l_number(L, i_l)
+      call tope % channel_radius(i_ER)
+      read(rec(23:33), '(I11)')   tope % LSSF
+      read(rec(45:55), '(I11)')   tope % NLS(i_ER)
+      if (tope % NLS(i_ER) > 3) &
+           call fatal_error('URR parameters given for a spin sequence higher than&
+           & d-wave')
+      
+      ! allocate number of total angular momenta values for each l
+      allocate(tope % NJS(tope % NLS(i_ER)))
 
       ! allocate total angular momenta
-      allocate(tope % AJ(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-      
-      ! allocate degress of freedom for partial widths
-      allocate(tope % DOFX(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-      allocate(tope % DOFN(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-      allocate(tope % DOFG(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-      allocate(tope % DOFF(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+      allocate(tope % AJ(tope % NLS(i_ER)))
 
-      allocate(tope % D_mean  (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-      allocate(tope % GN0_mean(i_l + 1) % dim2(tope % NJS(i_l + 1)))
-      allocate(tope % GG_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-      allocate(tope % GF_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-      allocate(tope % GX_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+      ! allocate degrees of freedom for partial widths
+      allocate(tope % DOFX(tope % NLS(i_ER)))
+      allocate(tope % DOFN(tope % NLS(i_ER)))
+      allocate(tope % DOFG(tope % NLS(i_ER)))
+      allocate(tope % DOFF(tope % NLS(i_ER)))
 
-      ! loop over total angular momenta
-      do i_J = 1, tope % NJS(i_l + 1)
-        allocate(tope % D_mean  (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-        allocate(tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(tope % NE))
-        allocate(tope % GG_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-        allocate(tope % GF_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-        allocate(tope % GX_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+      ! allocate partial widths
+      tope % NE = 2
+      allocate(tope % ES(tope % NE))
+      tope % ES(1) = tope % EL(i_ER)
+      tope % ES(2) = tope % EH(i_ER)
+      allocate(tope % D_mean  (tope % NLS(i_ER)))
+      allocate(tope % GN0_mean(tope % NLS(i_ER)))
+      allocate(tope % GG_mean (tope % NLS(i_ER)))
+      allocate(tope % GF_mean (tope % NLS(i_ER)))
+      allocate(tope % GX_mean (tope % NLS(i_ER)))
 
+      if (tope%LSSF == 1 .and. (.not. write_avg_urr_xs)) call read_avg_urr_xs(i)
+
+      ! loop over orbital quantum numbers
+      do i_l = 0, tope % NLS(i_ER) - 1
         read(in, 10) rec
-        read(rec(23:33), '(I11)') L
-        call check_l_number(L, i_l)
-        read(rec(34:44), '(E11.0)') tope % DOFF(i_l + 1) % dim1(i_J)
-        read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
-        tope % D_mean(i_l + 1) % dim2(i_J) % dim1(:)&
-             = tope % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
-        read(rec(12:22), '(E11.0)') tope % AJ(i_l + 1) % dim1(i_J)
-        read(rec(23:33), '(E11.0)') tope % DOFN(i_l + 1) % dim1(i_J)
-        read(rec(34:44), '(E11.0)') tope % GN0_mean(i_l+1) % dim2(i_J) % dim1(1)
-        tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(:)&
-             = tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(1)
-        read(rec(45:55), '(E11.0)') tope % GG_mean (i_l+1) % dim2(i_J) % dim1(1)
-        tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(:)&
-             = tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(1)
-        tope % GX_mean(i_l + 1) % dim2(i_J) % dim1(:) = ZERO
-        tope % DOFG(i_l + 1) % dim1(i_J) = ZERO
-        tope % DOFX(i_l + 1) % dim1(i_J) = ZERO
+        read(rec(1:11),  '(E11.0)') A
+        read(rec(23:33),   '(I11)') L
+        read(rec(56:66),   '(I11)') tope % NJS(i_l + 1)
 
-        ! loop over energies for which data are tabulated
-        i_ES = 1
-        do
+        ! check mass ratios
+        call check_mass(A, tope % AWR)
+
+        ! check orbital quantum number
+        call check_l_number(L, i_L)
+
+        ! allocate total angular momenta
+        allocate(tope % AJ(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+
+        ! allocate degrees of freedom for partial widths
+        allocate(tope % DOFX(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+        allocate(tope % DOFN(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+        allocate(tope % DOFG(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+        allocate(tope % DOFF(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+
+        ! allocate partial widths
+        allocate(tope % D_mean  (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+        allocate(tope % GN0_mean(i_l + 1) % dim2(tope % NJS(i_l + 1)))
+        allocate(tope % GG_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+        allocate(tope % GF_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+        allocate(tope % GX_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+
+        ! loop over total angular momenta
+        do i_J = 1, tope % NJS(i_l + 1)
+          allocate(tope % D_mean  (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+          allocate(tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(tope % NE))
+          allocate(tope % GG_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+          allocate(tope % GF_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+          allocate(tope % GX_mean (i_l + 1) % dim2(i_J) % dim1(2))
           read(in, 10) rec
-          read(rec( 1:11), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-          if (i_ES == tope % NE) exit
-          i_ES = i_ES + 1
-          read(rec(12:22), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-          if (i_ES == tope % NE) exit
-          i_ES = i_ES + 1
-          read(rec(23:33), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-          if (i_ES == tope % NE) exit
-          i_ES = i_ES + 1
-          read(rec(34:44), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-          if (i_ES == tope % NE) exit
-          i_ES = i_ES + 1
-          read(rec(45:55), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-          if (i_ES == tope % NE) exit
-          i_ES = i_ES + 1
-          read(rec(56:66), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-          if (i_ES == tope % NE) exit
-          i_ES = i_ES + 1
+          read(rec(1:11), '(E11.0)') tope%D_mean(i_l+1)   % dim2(i_J)%dim1(1)
+          read(rec(12:22),'(E11.0)') tope%AJ(i_l + 1)     % dim1(i_J)
+          read(rec(23:33),'(E11.0)') tope%DOFN(i_l + 1)   % dim1(i_J)
+          read(rec(34:44),'(E11.0)') tope%GN0_mean(i_l+1) % dim2(i_J)%dim1(1)
+          read(rec(45:55),'(E11.0)') tope%GG_mean (i_l+1) % dim2(i_J)%dim1(1)
+          tope % DOFX(i_l + 1) % dim1(i_J) = ZERO
+          tope % DOFG(i_l + 1) % dim1(i_J) = ZERO
+          tope % DOFF(i_l + 1) % dim1(i_J) = ZERO
+          tope % D_mean(i_l + 1) % dim2(i_J) % dim1(2)&
+               = tope % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(2)&
+               = tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(2)&
+               = tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          tope % GF_mean(i_l + 1) % dim2(i_J) % dim1(:) = ZERO
+          tope % GX_mean(i_l + 1) % dim2(i_J) % dim1(:) = ZERO
+
         end do
       end do
-    end do
+
+    case(1)
+      ! read first line of energy range subsection
+      read(in, 10) rec
+      read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
+      read(rec(12:22), '(E11.0)') tope % AP(i_ER)
+! TODO: don't overwrite the resolved value
+      call tope % channel_radius(i_ER)
+      read(rec(23:33), '(I11)')   tope % LSSF
+      read(rec(45:55), '(I11)')   tope % NE
+      read(rec(56:66), '(I11)')   tope % NLS(i_ER)
+      if (tope % NLS(i_ER) > 3) &
+           call fatal_error('URR parameters given for a spin sequence higher than&
+           & d-wave')
+
+      ! allocate number of total angular momenta values for each l
+      allocate(tope % NJS(tope % NLS(i_ER)))
+
+      ! allocate total angular momenta
+      allocate(tope % AJ(tope % NLS(i_ER)))
+
+      ! allocate degrees of freedom for partial widths
+      allocate(tope % DOFX(tope % NLS(i_ER)))
+      allocate(tope % DOFN(tope % NLS(i_ER)))
+      allocate(tope % DOFG(tope % NLS(i_ER)))
+      allocate(tope % DOFF(tope % NLS(i_ER)))
+
+      ! allocate fission width energies
+      allocate(tope % ES(tope % NE))
+      allocate(tope % D_mean  (tope % NLS(i_ER)))
+      allocate(tope % GN0_mean(tope % NLS(i_ER)))
+      allocate(tope % GG_mean (tope % NLS(i_ER)))
+      allocate(tope % GF_mean (tope % NLS(i_ER)))
+      allocate(tope % GX_mean (tope % NLS(i_ER)))
+      
+      if (tope % LSSF == 1 .and. (.not. write_avg_urr_xs)) call read_avg_urr_xs(i)
+
+      i_ES = 1
+      do
+        read(in, 10) rec
+        read(rec( 1:11), '(E11.0)') tope % ES(i_ES)
+        if (i_ES == tope % NE) exit
+        i_ES = i_ES + 1
+        read(rec(12:22), '(E11.0)') tope % ES(i_ES)
+        if (i_ES == tope % NE) exit
+        i_ES = i_ES + 1
+        read(rec(23:33), '(E11.0)') tope % ES(i_ES)
+        if (i_ES == tope % NE) exit
+        i_ES = i_ES + 1
+        read(rec(34:44), '(E11.0)') tope % ES(i_ES)
+        if (i_ES == tope % NE) exit
+        i_ES = i_ES + 1
+        read(rec(45:55), '(E11.0)') tope % ES(i_ES)
+        if (i_ES == tope % NE) exit
+        i_ES = i_ES + 1
+        read(rec(56:66), '(E11.0)') tope % ES(i_ES)
+        if (i_ES == tope % NE) exit
+        i_ES = i_ES + 1
+      end do
+
+      ! loop over orbital quantum numbers
+      do i_l = 0, tope % NLS(i_ER) - 1
+        read(in, 10) rec
+        read(rec(1:11),  '(E11.0)') A
+        read(rec(23:33),   '(I11)') L
+        read(rec(45:55),   '(I11)') tope % NJS(i_l + 1)
+
+        ! check mass ratios
+        call check_mass(A, tope % AWR)
+
+        ! check orbital quantum number
+        call check_l_number(L, i_l)
+
+        ! allocate total angular momenta
+        allocate(tope % AJ(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+        
+        ! allocate degress of freedom for partial widths
+        allocate(tope % DOFX(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+        allocate(tope % DOFN(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+        allocate(tope % DOFG(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+        allocate(tope % DOFF(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+
+        allocate(tope % D_mean  (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+        allocate(tope % GN0_mean(i_l + 1) % dim2(tope % NJS(i_l + 1)))
+        allocate(tope % GG_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+        allocate(tope % GF_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+        allocate(tope % GX_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+
+        ! loop over total angular momenta
+        do i_J = 1, tope % NJS(i_l + 1)
+          allocate(tope % D_mean  (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+          allocate(tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(tope % NE))
+          allocate(tope % GG_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+          allocate(tope % GF_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+          allocate(tope % GX_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+
+          read(in, 10) rec
+          read(rec(23:33), '(I11)') L
+          call check_l_number(L, i_l)
+          read(rec(34:44), '(E11.0)') tope % DOFF(i_l + 1) % dim1(i_J)
+          read(in, 10) rec
+          read(rec( 1:11), '(E11.0)') tope % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          tope % D_mean(i_l + 1) % dim2(i_J) % dim1(:)&
+               = tope % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          read(rec(12:22), '(E11.0)') tope % AJ(i_l + 1) % dim1(i_J)
+          read(rec(23:33), '(E11.0)') tope % DOFN(i_l + 1) % dim1(i_J)
+          read(rec(34:44), '(E11.0)') tope % GN0_mean(i_l+1) % dim2(i_J) % dim1(1)
+          tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(:)&
+               = tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          read(rec(45:55), '(E11.0)') tope % GG_mean (i_l+1) % dim2(i_J) % dim1(1)
+          tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(:)&
+               = tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          tope % GX_mean(i_l + 1) % dim2(i_J) % dim1(:) = ZERO
+          tope % DOFG(i_l + 1) % dim1(i_J) = ZERO
+          tope % DOFX(i_l + 1) % dim1(i_J) = ZERO
+
+          ! loop over energies for which data are tabulated
+          i_ES = 1
+          do
+            read(in, 10) rec
+            read(rec( 1:11), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == tope % NE) exit
+            i_ES = i_ES + 1
+            read(rec(12:22), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == tope % NE) exit
+            i_ES = i_ES + 1
+            read(rec(23:33), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == tope % NE) exit
+            i_ES = i_ES + 1
+            read(rec(34:44), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == tope % NE) exit
+            i_ES = i_ES + 1
+            read(rec(45:55), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == tope % NE) exit
+            i_ES = i_ES + 1
+            read(rec(56:66), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == tope % NE) exit
+            i_ES = i_ES + 1
+          end do
+        end do
+      end do
+
+    case default
+      call fatal_error('LFW must be 0 or 1.')
+
+    end select
 
   end subroutine read_urr_slbw_parameters_lrf1
 
@@ -1494,8 +1591,8 @@ contains
     real(8) :: j_val
 
     if (j_val < ZERO) then
-      if (master) call fatal_error('Negative total angular momentum not &
-           &supported in '//trim(filename))
+      if (master) call warning('Negative total angular momentum &
+           &in '//trim(filename))
     end if
 
   end subroutine check_j_sign

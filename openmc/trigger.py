@@ -1,6 +1,7 @@
 from numbers import Real
 from xml.etree import ElementTree as ET
 import sys
+import re
 
 from openmc.checkvalue import check_type, check_value
 
@@ -95,6 +96,20 @@ class Trigger(object):
             msg = 'Unable to add score "{0}" to tally trigger since ' \
                   'it is not a string'.format(score)
             raise ValueError(msg)
+
+        # If this is a scattering moment, use generic moment order
+        regexp = re.compile(r'-[0-9]')
+        if regexp.search(score) is not None:
+            score = score.strip(regexp.findall(score)[0])
+            score += '-n'
+        regexp = re.compile(r'-[p|P][0-9]')
+        if regexp.search(score) is not None:
+            score = score.strip(regexp.findall(score)[0])
+            score += '-pn'
+        regexp = re.compile(r'-[y|Y][0-9]')
+        if regexp.search(score) is not None:
+            score = score.strip(regexp.findall(score)[0])
+            score += '-yn'
 
         # If the score is already in the Tally, don't add it again
         if score in self._scores:

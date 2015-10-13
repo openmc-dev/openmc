@@ -107,12 +107,12 @@ module ace_header
     real(8), allocatable :: energy(:)     ! energy values corresponding to xs
 
     ! Microscopic cross sections
-    real(8), allocatable :: total(:)              ! total cross section
-    real(8), allocatable :: elastic(:)            ! elastic scattering
-    real(8), allocatable :: fission(:)            ! fission
-    real(8), allocatable :: nu_fission(:)         ! neutron production
-    real(8), allocatable :: absorption(:)         ! absorption (MT > 100)
-    real(8), allocatable :: heating(:)            ! heating
+    real(8), allocatable :: total(:)      ! total cross section
+    real(8), allocatable :: elastic(:)    ! elastic scattering
+    real(8), allocatable :: fission(:)    ! fission
+    real(8), allocatable :: nu_fission(:) ! neutron production
+    real(8), allocatable :: absorption(:) ! absorption (MT > 100)
+    real(8), allocatable :: heating(:)    ! heating
 
     ! Resonance scattering info
     logical              :: resonant = .false. ! resonant scatterer?
@@ -256,16 +256,16 @@ module ace_header
 !===============================================================================
 
   type NuclideMicroXS
-    integer :: index_grid         ! index on nuclide energy grid
-    integer :: index_temp         ! temperature index for nuclide
-    real(8) :: last_E = ZERO      ! last evaluated energy
-    real(8) :: interp_factor      ! interpolation factor on nuc. energy grid
-    real(8) :: total              ! microscropic total xs
-    real(8) :: elastic            ! microscopic elastic scattering xs
-    real(8) :: absorption         ! microscopic absorption xs
-    real(8) :: fission            ! microscopic fission xs
-    real(8) :: nu_fission         ! microscopic production xs
-    real(8) :: kappa_fission      ! microscopic energy-released from fission
+    integer :: index_grid      ! index on nuclide energy grid
+    integer :: index_temp      ! temperature index for nuclide
+    real(8) :: last_E = ZERO   ! last evaluated energy
+    real(8) :: interp_factor   ! interpolation factor on nuc. energy grid
+    real(8) :: total           ! microscropic total xs
+    real(8) :: elastic         ! microscopic elastic scattering xs
+    real(8) :: absorption      ! microscopic absorption xs
+    real(8) :: fission         ! microscopic fission xs
+    real(8) :: nu_fission      ! microscopic production xs
+    real(8) :: kappa_fission   ! microscopic energy-released from fission
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)

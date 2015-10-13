@@ -37,7 +37,6 @@ contains
     real(8) :: atom_density  ! atom density of a nuclide
     logical :: check_sab     ! should we check for S(a,b) table?
     type(Material), pointer :: mat ! current material
-    type(Nuclide), pointer  :: nuc ! current nuclide
 
     ! Set all material macroscopic cross sections to zero
     material_xs % total          = ZERO
@@ -97,7 +96,6 @@ contains
 
       ! Determine microscopic cross sections for this nuclide
       i_nuclide = mat % nuclide(i)
-      nuc => nuclides(i_nuclide)
 
       ! Calculate microscopic cross section for this nuclide
       if (p % E /= micro_xs(i_nuclide) % last_E) then

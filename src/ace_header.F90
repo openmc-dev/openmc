@@ -1,6 +1,6 @@
 module ace_header
 
-  use constants,     only: MAX_FILE_LEN, ZERO, MAX_DELAYED_GROUPS
+  use constants,     only: MAX_FILE_LEN, ZERO
   use endf_header,   only: Tab1
   use list_header,   only: ListInt
 
@@ -113,7 +113,6 @@ module ace_header
     real(8), allocatable :: nu_fission(:)         ! neutron production
     real(8), allocatable :: absorption(:)         ! absorption (MT > 100)
     real(8), allocatable :: heating(:)            ! heating
-    real(8), allocatable :: delayed_nu_fission(:) ! delayed neutron production
 
     ! Resonance scattering info
     logical              :: resonant = .false. ! resonant scatterer?
@@ -267,7 +266,6 @@ module ace_header
     real(8) :: fission            ! microscopic fission xs
     real(8) :: nu_fission         ! microscopic production xs
     real(8) :: kappa_fission      ! microscopic energy-released from fission
-    real(8) :: delayed_nu_fission ! microscopic delayed production xs
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)
@@ -376,8 +374,7 @@ module ace_header
 
       if (allocated(this % energy)) &
            deallocate(this % energy, this % total, this % elastic, &
-           & this % fission, this % nu_fission, this % absorption, &
-           this % delayed_nu_fission)
+           & this % fission, this % nu_fission, this % absorption)
 
       if (allocated(this % energy_0K)) &
            deallocate(this % energy_0K)

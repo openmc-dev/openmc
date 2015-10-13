@@ -5,7 +5,7 @@
   <eigenvalue>
     <batches>20</batches>
     <inactive>10</inactive>
-    <particles>10000</particles>
+    <particles>1000000</particles>
   </eigenvalue>
 
   <!-- Starting source -->

@@ -80,6 +80,9 @@ class MGXS(object):
         Domain type for spatial homogenization
     energy_groups : EnergyGroups
         Energy group structure for energy condensation
+    tally_trigger : Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
     tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
     xs_tally : Tally
@@ -100,6 +103,7 @@ class MGXS(object):
         self._domain = None
         self._domain_type = None
         self._energy_groups = None
+        self._tally_trigger = None
         self._tallies = OrderedDict()
         self._xs_tally = None
 
@@ -125,6 +129,7 @@ class MGXS(object):
             clone._domain = self.domain
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
+            clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._xs_tally = copy.deepcopy(self.xs_tally, memo)
 
             clone._tallies = OrderedDict()
@@ -162,6 +167,10 @@ class MGXS(object):
     @property
     def energy_groups(self):
         return self._energy_groups
+
+    @property
+    def tally_trigger(self):
+        return self._tally_trigger
 
     @property
     def num_groups(self):
@@ -219,6 +228,11 @@ class MGXS(object):
     def energy_groups(self, energy_groups):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
+
+    @tally_trigger.setter
+    def tally_trigger(self, tally_trigger):
+        cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
+        self._tally_trigger = tally_trigger
 
     @staticmethod
     def get_mgxs(mgxs_type, domain=None, domain_type=None,
@@ -430,6 +444,12 @@ class MGXS(object):
             self.tallies[key].add_score(score)
             self.tallies[key].estimator = estimator
             self.tallies[key].add_filter(domain_filter)
+
+            # If a tally trigger was specified, add it to each tally
+            if self.tally_trigger:
+                trigger_clone = copy.deepcopy(self.tally_trigger)
+                trigger_clone.add_score(score)
+                self.tallies[key].add_trigger(trigger_clone)
 
             # Add all non-domain specific Filters (e.g., 'energy') to the Tally
             for filter in filters:

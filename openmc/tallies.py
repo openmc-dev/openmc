@@ -390,7 +390,8 @@ class Tally(object):
                   'since "{1}" is not a Trigger'.format(self.id, trigger)
             raise ValueError(msg)
 
-        self._triggers.append(trigger)
+        if trigger not in self.triggers:
+            self.triggers.append(trigger)
 
     @id.setter
     def id(self, tally_id):

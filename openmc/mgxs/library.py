@@ -50,6 +50,9 @@ class Library(object):
         Domain type for spatial homogenization
     energy_groups : EnergyGroups
         Energy group structure for energy condensation
+    tally_trigger : Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
     all_mgxs : dict
         MGXS objects keyed by domain ID and cross section type
     statepoint : openmc.StatePoint
@@ -69,6 +72,7 @@ class Library(object):
         self._mgxs_types = []
         self._domain_type = None
         self._energy_groups = None
+        self._tally_trigger = None
         self._all_mgxs = OrderedDict()
         self._statepoint = None
 
@@ -91,6 +95,7 @@ class Library(object):
             clone._mgxs_types = self.mgxs_types
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
+            clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = self.all_mgxs
             clone._statepoint = self._statepoint
 
@@ -146,6 +151,10 @@ class Library(object):
         return self._energy_groups
 
     @property
+    def tally_trigger(self):
+        return self._tally_trigger
+
+    @property
     def num_groups(self):
         return self.energy_groups.num_groups
 
@@ -192,6 +201,11 @@ class Library(object):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
 
+    @tally_trigger.setter
+    def tally_trigger(self, tally_trigger):
+        cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
+        self._tally_trigger = tally_trigger
+
     def build_library(self):
         """Initialize MGXS objects in each domain and for each reaction type
         in the library.
@@ -211,6 +225,11 @@ class Library(object):
                 mgxs.domain_type = self.domain_type
                 mgxs.energy_groups = self.energy_groups
                 mgxs.by_nuclide = self.by_nuclide
+
+                # If a tally trigger was specified, add it to the MGXS
+                if self.tally_trigger:
+                    mgxs.tally_trigger = self.tally_trigger
+
                 mgxs.create_tallies()
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 

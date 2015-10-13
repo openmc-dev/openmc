@@ -48,6 +48,8 @@ class Library(object):
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     domain_type : {'material', 'cell', 'distribcell', 'universe'}
         Domain type for spatial homogenization
+    correction : 'P0' or None
+        Apply the P0 correction to scattering matrices if set to 'P0'
     energy_groups : EnergyGroups
         Energy group structure for energy condensation
     tally_trigger : Trigger
@@ -71,6 +73,7 @@ class Library(object):
         self._by_nuclide = None
         self._mgxs_types = []
         self._domain_type = None
+        self._correction = 'P0'
         self._energy_groups = None
         self._tally_trigger = None
         self._all_mgxs = OrderedDict()
@@ -94,6 +97,7 @@ class Library(object):
             clone._by_nuclide = self.by_nuclide
             clone._mgxs_types = self.mgxs_types
             clone._domain_type = self.domain_type
+            clone._correction = self.correction
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = self.all_mgxs
@@ -147,6 +151,10 @@ class Library(object):
         return self._domain_type
 
     @property
+    def correction(self):
+        return self._correction
+
+    @property
     def energy_groups(self):
         return self._energy_groups
 
@@ -195,6 +203,11 @@ class Library(object):
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, tuple(openmc.mgxs.DOMAIN_TYPES))
         self._domain_type = domain_type
+
+    @correction.setter
+    def correction(self, correction):
+        cv.check_value('correction', correction, ('P0', None))
+        self._correction = correction
 
     @energy_groups.setter
     def energy_groups(self, energy_groups):
@@ -294,7 +307,11 @@ class Library(object):
             for mgxs_type in self.mgxs_types:
                 mgxs = self.get_mgxs(domain, mgxs_type)
                 mgxs.load_from_statepoint(statepoint)
-                mgxs.compute_xs()
+
+                if isinstance(mgxs, openmc.mgxs.ScatterMatrixXS):
+                    mgxs.compute_xs(correction=self.correction)
+                else:
+                    mgxs.compute_xs()
 
     def get_mgxs(self, domain, mgxs_type):
         """Return the MGXS object for some domain and reaction rate type.

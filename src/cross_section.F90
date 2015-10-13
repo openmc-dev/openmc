@@ -4,7 +4,7 @@ module cross_section
   use constants
   use energy_grid,     only: grid_method, log_spacing
   use error,           only: fatal_error
-  use fission,         only: nu_total, nu_delayed, yield_delayed
+  use fission,         only: nu_total
   use global
   use list_header,     only: ListElemInt
   use material_header, only: Material
@@ -33,10 +33,8 @@ contains
     integer :: i_nuclide     ! index into nuclides array
     integer :: i_sab         ! index into sab_tables array
     integer :: j             ! index in mat % i_sab_nuclides
-    integer :: d             ! index for delayed precursor groups
     integer :: u             ! index into logarithmic mapping array
     real(8) :: atom_density  ! atom density of a nuclide
-    real(8) :: yield         ! delayed neutron yield
     logical :: check_sab     ! should we check for S(a,b) table?
     type(Material), pointer :: mat ! current material
     type(Nuclide), pointer  :: nuc ! current nuclide
@@ -225,7 +223,6 @@ contains
     micro_xs(i_nuclide) % fission    = ZERO
     micro_xs(i_nuclide) % nu_fission = ZERO
     micro_xs(i_nuclide) % kappa_fission  = ZERO
-    micro_xs(i_nuclide) % delayed_nu_fission = ZERO
 
     ! Calculate microscopic nuclide total cross section
     micro_xs(i_nuclide) % total = (ONE - f) * nuc % total(i_grid) &
@@ -254,12 +251,6 @@ contains
       micro_xs(i_nuclide) % kappa_fission = &
            nuc % reactions(nuc % index_fission(1)) % Q_value * &
            micro_xs(i_nuclide) % fission
-
-      ! Calculate microscopic nuclide delayed nu-fission cross section
-      micro_xs(i_nuclide) % delayed_nu_fission = (ONE - f) * &
-           nuc % delayed_nu_fission(i_grid) + f * &
-           nuc % delayed_nu_fission(i_grid+1)
-
     end if
 
     ! If there is S(a,b) data for this nuclide, we need to do a few
@@ -525,11 +516,9 @@ contains
     micro_xs(i_nuclide) % fission = fission
     micro_xs(i_nuclide) % total = elastic + inelastic + capture + fission
 
-    ! Determine nu-fission and delayed nu-fission cross section
+    ! Determine nu-fission cross section
     if (nuc % fissionable) then
       micro_xs(i_nuclide) % nu_fission = nu_total(nuc, E) * &
-           micro_xs(i_nuclide) % fission
-      micro_xs(i_nuclide) % delayed_nu_fission = nu_delayed(nuc, E) * &
            micro_xs(i_nuclide) % fission
     end if
 

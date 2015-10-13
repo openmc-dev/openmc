@@ -144,7 +144,7 @@ class Plot(object):
             AUTO_PLOT_ID += 1
         else:
             check_type('plot ID', plot_id, Integral)
-            check_greater_than('plot ID', plot_id, 0)
+            check_greater_than('plot ID', plot_id, 0, equality=True)
             self._id = plot_id
 
     @name.setter

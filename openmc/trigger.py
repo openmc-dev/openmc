@@ -58,6 +58,15 @@ class Trigger(object):
         else:
             return existing
 
+    def __eq__(self, other):
+        if str(self) == str(other):
+            return True
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self == other
+
     def __repr__(self):
         string = 'Trigger\n'
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._trigger_type)

@@ -265,6 +265,7 @@ module xs
     integer :: MF3_INT ! ENDF-6 interpolation law for File 3 xs
 ! TODO: check for interpolation law consistency
 ! TODO: use LRX if ZERO's aren't given for inelastic width in ENDF when LRX = 0
+    integer :: LFW     ! energy-dependent fission width flag
     integer :: LRX     ! competitive inelastic width flag
     integer :: NE      ! number of URR tabulated data energies
     real(8) :: E_ex1 = INF ! first level inelastic scattering excitation energy

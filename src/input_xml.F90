@@ -3404,6 +3404,15 @@ contains
           call fatal_error('No ENDF-6 data file specified for nuclide ' &
                // trim(to_str(i)) // ' in urr.xml file')
         end if
+
+        ! Check if a URR upper energy bound is given
+        if (check_for_node(nuc_node, 'E_upper')) then
+          call get_node_value(nuc_node, 'E_upper', isotopes(i) % EH_user)
+        else
+          isotopes(i) % EH_user = INF
+          call warning('No URR upper energy bound specified for nuclide ' &
+               // trim(to_str(i)) // ' in urr.xml file')
+        end if
       end do
 
     else

@@ -138,6 +138,8 @@ contains
         ! allocate space for a realization of parameters localized about E_n
         do i = 1, n_isotopes
           call isotopes(i) % alloc_local_realization()
+          isotopes(i) % EH(isotopes(i) % i_urr)&
+               = min(isotopes(i) % EH(isotopes(i)%i_urr), isotopes(i) % EH_user)
         end do
 
         select case (represent_urr)

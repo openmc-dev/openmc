@@ -271,6 +271,7 @@ module xs
     real(8) :: E_ex2 = INF ! second level inelastic scattering excitation energy
     real(8), allocatable :: EL(:)  ! lower energy bound of energy region
     real(8), allocatable :: EH(:)  ! upper energy bound of energy region
+    real(8) :: EH_user             ! user-specified URR upper energy bound
     real(8), allocatable :: AP(:)  ! scattering radius
     real(8), allocatable :: ac(:)  ! channel radius
     real(8), allocatable :: SPI(:) ! total spin

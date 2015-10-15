@@ -103,7 +103,7 @@ class EnergyGroups(object):
             raise ValueError(msg)
 
         index = np.where(self.group_edges > energy)[0][0]
-        group = self.num_groups - index
+        group = self.num_groups - index + 1
         return group
 
     def get_group_bounds(self, group):

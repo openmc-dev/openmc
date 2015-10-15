@@ -666,10 +666,7 @@ class MGXS(object):
             # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, :]
 
-            # Reshape array to original axes (filters, nuclides, scores)
-#            new_shape = (num_subdomains * num_groups,) + xs.shape[2:]
-#            xs = np.reshape(xs, new_shape)
-
+            # Eliminate trivial dimensions
             xs = np.squeeze(xs)
 
         return xs
@@ -1791,11 +1788,7 @@ class ScatterMatrixXS(MGXS):
             # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, ::-1, :]
 
-            # Reshape array to original axes (filters, nuclides, scores)
-            #new_shape = (num_subdomains * num_in_groups * num_out_groups,)
-            #new_shape += xs.shape[3:]
-            #xs = np.reshape(xs, new_shape)
-
+            # Eliminate trivial dimensions
             xs = np.squeeze(xs)
 
         return xs
@@ -2126,9 +2119,8 @@ class Chi(MGXS):
             # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, :]
 
-            # Reshape array to original axes (filters, nuclides, scores)
-            new_shape = (num_subdomains * num_groups,) + new_shape[2:]
-            xs = np.reshape(xs, new_shape)
+            # Eliminate trivial dimensions
+            xs = np.squeeze(xs)
 
         xs = np.nan_to_num(xs)
         return xs

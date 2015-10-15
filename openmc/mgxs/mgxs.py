@@ -668,6 +668,7 @@ class MGXS(object):
 
             # Eliminate trivial dimensions
             xs = np.squeeze(xs)
+            xs = np.atleast_1d(xs)
 
         return xs
 
@@ -1790,6 +1791,7 @@ class ScatterMatrixXS(MGXS):
 
             # Eliminate trivial dimensions
             xs = np.squeeze(xs)
+            xs = np.atleast_2d(xs)
 
         return xs
 
@@ -2121,6 +2123,7 @@ class Chi(MGXS):
 
             # Eliminate trivial dimensions
             xs = np.squeeze(xs)
+            xs = np.atleast_1d(xs)
 
         xs = np.nan_to_num(xs)
         return xs

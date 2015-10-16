@@ -57,7 +57,6 @@ contains
     integer :: score_index          ! scoring bin index
     integer :: d                    ! delayed neutron index
     integer :: d_bin                ! delayed group bin index
-    integer :: i_filter             ! filter index
     integer :: dg_filter            ! index of delayed group filter
     real(8) :: yield                ! delayed neutron yield
     real(8) :: atom_density_        ! atom/b-cm
@@ -1058,12 +1057,10 @@ contains
     integer :: j             ! index of delayedgroup filter
     integer :: d             ! delayed group
     integer :: g             ! another delayed group
-    integer :: d_bin = 1     ! delayed group bin index
+    integer :: d_bin         ! delayed group bin index
     integer :: n             ! number of energies on filter
     integer :: k             ! loop index for bank sites
     integer :: bin_energyout ! original outgoing energy bin
-    integer :: bin_delayedgroup ! original delayedgroup bin
-    integer :: i_filter      ! index for matching filter bin combination
     real(8) :: score         ! actual score
     real(8) :: E_out         ! energy of fission bank site
     logical :: d_found = .FALSE. ! bool to inidicate if delayed group was found

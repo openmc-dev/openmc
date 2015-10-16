@@ -16,7 +16,6 @@ module tracking
                              score_collision_tally, score_surface_current
   use track_output,    only: initialize_particle_track, write_particle_track, &
                              add_particle_track, finalize_particle_track
-  use constants,       only: MAX_DELAYED_GROUPS
 
   implicit none
 

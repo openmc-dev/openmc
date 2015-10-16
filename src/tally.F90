@@ -57,7 +57,6 @@ contains
     integer :: score_index          ! scoring bin index
     integer :: d                    ! delayed neutron index
     integer :: d_bin                ! delayed group bin index
-    integer :: n_bins               ! number of delayed group bins
     integer :: i_filter             ! filter index
     integer :: dg_filter            ! index of delayed group filter
     real(8) :: yield                ! delayed neutron yield
@@ -408,11 +407,6 @@ contains
 
         ! Set the delayedgroup filter index and the number of delayed group bins
         dg_filter = t % find_filter(FILTER_DELAYEDGROUP)
-        n_bins = 0
-
-        if (dg_filter > 0) then
-          n_bins = t % filters(dg_filter) % n_bins
-        end if
 
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
@@ -429,7 +423,7 @@ contains
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
-            ! nu-fission
+            ! delayed-nu-fission
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
 
               ! Get the event nuclide
@@ -440,9 +434,15 @@ contains
 
                 ! Loop over all delayed group bins and tally to them
                 ! individually
-                do d_bin = 1, n_bins
+                do d_bin = 1, t % filters(dg_filter) % n_bins
+
+                  ! Get the delayed group for this bin
                   d = t % filters(dg_filter) % int_bins(d_bin)
+
+                  ! Compute the yield for this delayed group
                   yield = yield_delayed(nuc, p % E, d)
+
+                  ! Compute the score and tally to bin
                   score = p % absorb_wgt * yield * micro_xs(p % event_nuclide) &
                        % fission * nu_delayed(nuc, p % E) / &
                        micro_xs(p % event_nuclide) % absorption
@@ -450,6 +450,9 @@ contains
                 end do
                 cycle SCORE_LOOP
               else
+                ! If the delayed group filter is not present, compute the score
+                ! by multiplying the absorbed weight by the fraction of the
+                ! delayed-nu-fission xs to the absorption xs
                 score = p % absorb_wgt * micro_xs(p % event_nuclide) &
                      % fission * nu_delayed(nuc, p % E) / &
                      micro_xs(p % event_nuclide) % absorption
@@ -472,13 +475,21 @@ contains
 
               ! Loop over all delayed group bins and tally to them individually
               do d_bin = 1, t % filters(dg_filter) % n_bins
+
+                ! Get the delayed group for this bin
                 d = t % filters(dg_filter) % int_bins(d_bin)
+
+                ! Compute the score and tally to bin
                 score = keff * p % wgt_bank / p % n_bank * p % n_delayed_bank(d)
                 call score_fission_delayed_dg(t, d_bin, score, score_index)
               end do
               cycle SCORE_LOOP
             else
+
               score = ZERO
+
+              ! Loop over all delayed groups and accumulate the contribution
+              ! from each group
               do d = 1, nuclides(p % event_nuclide) % n_precursor
                 score = score + keff * p % wgt_bank / p % n_bank * &
                      p % n_delayed_bank(d)
@@ -498,14 +509,23 @@ contains
 
               ! Loop over all delayed group bins and tally to them individually
               do d_bin = 1, t % filters(dg_filter) % n_bins
+
+                ! Get the delayed group for this bin
                 d = t % filters(dg_filter) % int_bins(d_bin)
+
+                ! Compute the yield for this delayed group
                 yield = yield_delayed(nuc, p % E, d)
+
+                ! Compute the score and tally to bin
                 score = micro_xs(i_nuclide) % fission * yield &
                      * nu_delayed(nuc, p % E) * atom_density * flux
                 call score_fission_delayed_dg(t, d_bin, score, score_index)
               end do
               cycle SCORE_LOOP
             else
+
+              ! If the delayed group filter is not present, compute the score
+              ! by multiplying the delayed-nu-fission macro xs by the flux
               score = micro_xs(i_nuclide) % fission * nu_delayed(nuc, p % E)&
                    * atom_density * flux
             end if
@@ -519,17 +539,28 @@ contains
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
 
+              ! Loop over all nuclides in the current material
               do l = 1, mat % n_nuclides
+
                 ! Get atom density
                 atom_density_ = mat % atom_density(l)
+
                 ! Get index in nuclides array
                 i_nuc = mat % nuclide(l)
 
                 ! Loop over all delayed group bins and tally to them individually
                 do d_bin = 1, t % filters(dg_filter) % n_bins
+
+                  ! Get the delayed group for this bin
                   d = t % filters(dg_filter) % int_bins(d_bin)
+
+                  ! Get the current nuclide
                   nuc => nuclides(i_nuc)
+
+                  ! Get the yield for the desired nuclide and delayed group
                   yield = yield_delayed(nuc, p % E, d)
+
+                  ! Compute the score and tally to bin
                   score = micro_xs(i_nuc) % fission * yield &
                        * nu_delayed(nuc, p % E) * atom_density_ * flux
                   call score_fission_delayed_dg(t, d_bin, score, score_index)
@@ -540,12 +571,19 @@ contains
 
               score = ZERO
 
+              ! Loop over all nuclides in the current material
               do l = 1, mat % n_nuclides
+
                 ! Get atom density
                 atom_density_ = mat % atom_density(l)
+
                 ! Get index in nuclides array
                 i_nuc = mat % nuclide(l)
+
+                ! Get the current nuclide
                 nuc => nuclides(i_nuc)
+
+                ! Accumulate the contribution from each nuclide
                 score = score + micro_xs(i_nuc) % fission &
                      * nu_delayed(nuc, p % E) * atom_density_ * flux
               end do

@@ -132,25 +132,28 @@ contains
       ! since no prompt or delayed data is present, this means all neutron
       ! emission is prompt -- WARNING: This currently returns zero. The calling
       ! routine needs to know this situation is occurring since we don't want
-      ! to call yield unnecessarily if it has already been called.
+      ! to call yield_delayed unnecessarily if it has already been called.
       yield = ZERO
     else if (nuc % nu_d_type == NU_TABULAR) then
 
       lc = 1
 
-      ! determine the yield for this group
+      ! loop over delayed groups and determine the yield for the desired group
       do d = 1, nuc % n_precursor
 
         ! determine number of interpolation regions and energies
         NR = int(nuc % nu_d_precursor_data(lc + 1))
         NE = int(nuc % nu_d_precursor_data(lc + 2 + 2*NR))
 
-        ! determine delayed neutron precursor yield for group d
-        yield = interpolate_tab1(nuc % nu_d_precursor_data( &
-             lc+1:lc+2+2*NR+2*NE), E)
+        ! check if this is the desired group
+        if (d == g) then
 
-        ! Check if this group is the requested group
-        if (d == g) exit
+          ! determine delayed neutron precursor yield for group g
+          yield = interpolate_tab1(nuc % nu_d_precursor_data( &
+               lc+1:lc+2+2*NR+2*NE), E)
+
+          exit
+        end if
 
         ! advance pointer
         lc = lc + 2 + 2*NR + 2*NE + 1

@@ -1387,7 +1387,7 @@ The ``<tally>`` element accepts the following sub-elements:
     "nu-fission", "delayed-nu-fission", "kappa-fission", "nu-scatter",
     "scatter-N", "scatter-PN", "scatter-YN", "nu-scatter-N", "nu-scatter-PN",
     "nu-scatter-YN", "flux-YN", "total-YN", "current", and "events". These
-    corresponding to the following physical quantities:
+    correspond to the following physical quantities:
 
     :flux:
       Total flux in particle-cm per source particle.  Note: The ``analog``

@@ -373,7 +373,7 @@ class Library(object):
     def get_condensed_library(self, coarse_groups):
         """Construct an energy-condensed version of this library.
 
-        This routine condense each of the multi-group cross sections in the
+        This routine condenses each of the multi-group cross sections in the
         library to a coarse energy group structure. NOTE: This routine must
         be called after the load_from_statepoint(...) routine loads the tallies
         from the statepoint into each of the cross sections.
@@ -425,6 +425,54 @@ class Library(object):
                 condensed_library.all_mgxs[domain.id][mgxs_type] = condensed_mgxs
 
         return condensed_library
+
+    def get_subdomain_avg_library(self):
+        """Construct a subdomain-averaged version of this library.
+
+        This routine averages each multi-group cross section across distribcell
+        instances. The method performs spatial homogenization to compute the
+        scalar flux-weighted average cross section across the subdomains.
+
+        NOTE: This method is only relevant for distribcell domain types and
+        simplys returns a deep copy of the library for all other domains types.
+
+        Returns
+        -------
+        Library
+            A new multi-group cross section library averaged across subdomains
+
+        Raises
+        ------
+        ValueError
+            When this method is called before a statepoint has been loaded
+
+        See also
+        --------
+        MGXS.get_subdomain_avg_xs(subdomains)
+
+        """
+
+        if self.statepoint is None:
+            msg = 'Unable to get a subdomain-averaged cross section ' \
+                  'library since the statepoint has not yet been loaded'
+            raise ValueError(msg)
+
+        # Clone this Library to initialize the subdomain-averaged version
+        subdomain_avg_library = copy.deepcopy(self)
+
+        if subdomain_avg_library.domain_type == 'distribcell':
+            subdomain_avg_library.domain_type = 'cell'
+        else:
+            return subdomain_avg_library
+
+        # Subdomain average the MGXS for each domain and mgxs type
+        for domain in self.domains:
+            for mgxs_type in self.mgxs_types:
+                mgxs = subdomain_avg_library.get_mgxs(domain, mgxs_type)
+                avg_mgxs = mgxs.get_subdomain_avg_xs()
+                subdomain_avg_library.all_mgxs[domain.id][mgxs_type] = avg_mgxs
+
+        return subdomain_avg_library
 
     def build_hdf5_store(self, filename='mgxs', directory='mgxs',
                          subdomains='all', nuclides='all', xs_type='macro'):

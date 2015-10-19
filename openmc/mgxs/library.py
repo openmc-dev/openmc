@@ -1,6 +1,7 @@
 import sys
 import os
 import copy
+import pickle
 from numbers import Integral
 from collections import OrderedDict
 
@@ -77,7 +78,7 @@ class Library(object):
         self._energy_groups = None
         self._tally_trigger = None
         self._all_mgxs = OrderedDict()
-        self._statepoint = None
+        self._sp_filename = None
 
         self.name = name
         self.openmc_geometry = openmc_geometry
@@ -101,7 +102,7 @@ class Library(object):
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = self.all_mgxs
-            clone._statepoint = self._statepoint
+            clone._sp_filename = self._sp_filename
 
             clone._all_mgxs = OrderedDict()
             for domain in self.domains:
@@ -172,7 +173,7 @@ class Library(object):
 
     @property
     def statepoint(self):
-        return self._statepoint
+        return self._sp_filename
 
     @openmc_geometry.setter
     def openmc_geometry(self, openmc_geometry):
@@ -300,7 +301,7 @@ class Library(object):
                   'linked with a summary file'
             raise ValueError(msg)
 
-        self._statepoint = statepoint
+        self._sp_filename = statepoint._f.filename
 
         # Load tallies for each MGXS for each domain and mgxs type
         for domain in self.domains:
@@ -522,6 +523,9 @@ class Library(object):
                   'library since a statepoint has not yet been loaded'
             raise ValueError(msg)
 
+        cv.check_type('filename', filename, basestring)
+        cv.check_type('directory', directory, basestring)
+
         import h5py
 
         # Make directory if it does not exist
@@ -545,3 +549,67 @@ class Library(object):
 
                 mgxs.build_hdf5_store(filename, directory,
                                       xs_type=xs_type, nuclides=nuclides)
+
+    def dump_to_file(self, filename='mgxs', directory='mgxs'):
+        """Store this Library object in a pickle binary file.
+
+        Parameters
+        ----------
+        filename : str
+            Filename for the pickle file. Defaults to 'mgxs'.
+        directory : str
+            Directory for the pickle file. Defaults to 'mgxs'.
+
+        See also
+        --------
+        Library.load_from_file(filename, directory)
+
+        """
+
+        cv.check_type('filename', filename, basestring)
+        cv.check_type('directory', directory, basestring)
+
+        # Make directory if it does not exist
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        full_filename = os.path.join(directory, filename + '.pkl')
+        full_filename = full_filename.replace(' ', '-')
+
+        # Load and return pickled Library object
+        pickle.dump(self, open(full_filename, 'wb'))
+
+    @staticmethod
+    def load_from_file(filename='mgxs', directory='mgxs'):
+        """Load a Library object from a pickle binary file.
+
+        Parameters
+        ----------
+        filename : str
+            Filename for the pickle file. Defaults to 'mgxs'.
+        directory : str
+            Directory for the pickle file. Defaults to 'mgxs'.
+
+        Returns
+        -------
+        Library
+            A Library object loaded from the pickle binary file
+
+        See also
+        --------
+        Library.dump_to_file(mgxs_lib, filename, directory)
+
+        """
+
+        cv.check_type('filename', filename, basestring)
+        cv.check_type('directory', directory, basestring)
+
+        # Make directory if it does not exist
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        full_filename = os.path.join(directory, filename + '.pkl')
+        full_filename = full_filename.replace(' ', '-')
+
+        # Load and return pickled Library object
+        return pickle.load(open(full_filename, 'rb'))

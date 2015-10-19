@@ -339,7 +339,7 @@ class StatePoint(object):
 
                 # Create Tally object and assign basic properties
                 tally = openmc.Tally(tally_id=tally_key)
-                tally._statepoint = self
+                tally._sp_filename = self._f.filename
                 tally.estimator = self._f['{0}{1}/estimator'.format(
                     base, tally_key)].value.decode()
                 tally.num_realizations = n_realizations

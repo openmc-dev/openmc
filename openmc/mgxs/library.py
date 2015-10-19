@@ -244,6 +244,10 @@ class Library(object):
                 if self.tally_trigger:
                     mgxs.tally_trigger = self.tally_trigger
 
+                # Specify whether to use a transport ('P0') correction
+                if isinstance(mgxs, openmc.mgxs.ScatterMatrixXS):
+                    mgxs.correction = self.correction
+
                 mgxs.create_tallies()
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 

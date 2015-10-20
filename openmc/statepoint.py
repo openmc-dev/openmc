@@ -431,7 +431,7 @@ class StatePoint(object):
                 for j, score in enumerate(scores):
                     score = score.decode()
                     # If this is a scattering moment, insert the scattering order
-                    if '-n' in score:
+                    if '-n' in score and 'delayed' not in score:
                         score = score.replace('-n', '-' + moments[j].decode())
                     elif '-pn' in score:
                         score = score.replace('-pn', '-' + moments[j].decode())

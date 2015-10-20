@@ -575,6 +575,8 @@ contains
           call write_dataset(filter_group, "type", "polar")
         case(FILTER_AZIMUTHAL)
           call write_dataset(filter_group, "type", "azimuthal")
+        case(FILTER_DELAYEDGROUP)
+          call write_dataset(filter_group, "type", "delayedgroup")
         end select
 
         call close_group(filter_group)

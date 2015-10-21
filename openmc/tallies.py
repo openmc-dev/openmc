@@ -1,3 +1,5 @@
+from __future__ import division
+
 from collections import Iterable, defaultdict
 import copy
 import os
@@ -2020,7 +2022,7 @@ class Tally(object):
 
         return new_tally
 
-    def __div__(self, other):
+    def __truediv__(self, other):
         """Divides this tally by another tally or scalar value.
 
         This method builds a new tally with data that is the dividend of
@@ -2525,7 +2527,7 @@ class Tally(object):
         # by which the "base" indices should be repeated to account for all
         # other filter bins in the diagonalized tally
         indices = np.arange(0, new_filter.num_bins**2, new_filter.num_bins+1)
-        diag_factor = self.num_filter_bins / new_filter.num_bins
+        diag_factor = int(self.num_filter_bins / new_filter.num_bins)
         diag_indices = np.zeros(self.num_filter_bins, dtype=np.int)
 
         # Determine the filter indices along the new "diagonal"

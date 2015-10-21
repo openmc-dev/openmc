@@ -320,6 +320,9 @@ class PyAPITestHarness(TestHarness):
         outstr = '\n'.join([open(fname).read() for fname in xmls
                             if os.path.exists(fname)])
 
+        if 'MGXSTestHarness' in str(type(self)):
+            print(outstr)
+
         sha512 = hashlib.sha512()
         sha512.update(outstr.encode('utf-8'))
         outstr = sha512.hexdigest()
@@ -339,6 +342,9 @@ class PyAPITestHarness(TestHarness):
         """Make sure the current inputs agree with the _true standard."""
         compare = filecmp.cmp('inputs_test.dat', 'inputs_true.dat')
         if not compare:
+            f = open('inputs_test.dat')
+            for line in f.readlines(): print(line)
+            f.close()
             os.rename('inputs_test.dat', 'inputs_error.dat')
         assert compare, 'Input files are broken.'
 

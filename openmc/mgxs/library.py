@@ -56,7 +56,7 @@ class Library(object):
     tally_trigger : Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
-    all_mgxs : dict
+    all_mgxs : OrderedDict
         MGXS objects keyed by domain ID and cross section type
     statepoint : openmc.StatePoint
         The statepoint with tally data used to the compute cross sections

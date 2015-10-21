@@ -34,10 +34,10 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Initialize a tallies file
         self._input_set.tallies = openmc.TalliesFile()
-        self.mgxs_lib.add_to_tallies_file(self._input_set.tallies, merge=True)
+        self.mgxs_lib.add_to_tallies_file(self._input_set.tallies, merge=False)
         self._input_set.tallies.export_to_xml()
 
-    def _get_results(self, hash_output=True):
+    def _get_results(self, hash_output=False):
         """Digest info in the statepoint and return as a string."""
 
         # Read the statepoint file.
@@ -60,12 +60,13 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Build a string from the datasets in the HDF5 file
         outstr = ''
-        for domain in sorted(self.mgxs_lib.domains):
+        for domain in self.mgxs_lib.domains:
             for mgxs_type in self.mgxs_lib.mgxs_types:
+                outstr += 'domain={0} type={1}\n'.format(domain.id, mgxs_type)
                 key = 'material/{0}/{1}/average'.format(domain.id, mgxs_type)
-                outstr += str(f[key])
+                outstr += str(f[key][...]) + '\n'
                 key = 'material/{0}/{1}/std. dev.'.format(domain.id, mgxs_type)
-                outstr += str(f[key])
+                outstr += str(f[key][...]) + '\n'
         
         # Close the MGXS HDF5 file
         f.close()

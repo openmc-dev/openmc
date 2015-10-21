@@ -83,7 +83,7 @@ class MGXS(object):
     tally_trigger : Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
-    tallies : dict
+    tallies : OrderedDict
         OpenMC tallies needed to compute the multi-group cross section
     xs_tally : Tally
         Derived tally for the multi-group cross section. This attribute

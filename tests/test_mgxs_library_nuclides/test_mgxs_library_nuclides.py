@@ -33,10 +33,10 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Initialize a tallies file
         self._input_set.tallies = openmc.TalliesFile()
-        self.mgxs_lib.add_to_tallies_file(self._input_set.tallies, merge=True)
+        self.mgxs_lib.add_to_tallies_file(self._input_set.tallies, merge=False)
         self._input_set.tallies.export_to_xml()
 
-    def _get_results(self, hash_output=True):
+    def _get_results(self, hash_output=False):
         """Digest info in the statepoint and return as a string."""
 
         # Read the statepoint file.
@@ -53,7 +53,7 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Build a string from Pandas Dataframe for each MGXS
         outstr = ''
-        for domain in sorted(self.mgxs_lib.domains):
+        for domain in self.mgxs_lib.domains:
             for mgxs_type in self.mgxs_lib.mgxs_types:
                 mgxs = self.mgxs_lib.get_mgxs(domain, mgxs_type)
                 df = mgxs.get_pandas_dataframe()

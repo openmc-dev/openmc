@@ -135,7 +135,9 @@ class Geometry(object):
         for cell in material_cells:
             materials.add(cell._fill)
 
-        return sorted(list(materials))
+        materials = list(materials)
+        materials.sort(key=lambda x: x.id)
+        return materials
 
     def get_all_material_cells(self):
         all_cells = self.get_all_cells()
@@ -145,7 +147,9 @@ class Geometry(object):
             if cell._type == 'normal':
                 material_cells.add(cell)
 
-        return sorted(list(material_cells))
+        material_cells = list(material_cells)
+        material_cells.sort(key=lambda x: x.id)
+        return material_cells
 
     def get_all_material_universes(self):
         """Return all universes composed of at least one non-fill cell
@@ -166,7 +170,9 @@ class Geometry(object):
                 if cell._type == 'normal':
                     material_universes.add(universe)
 
-        return sorted(list(material_universes))
+        material_universes = list(material_universes)
+        material_universes.sort(key=lambda x: x.id)
+        return material_universes
 
 
 class GeometryFile(object):

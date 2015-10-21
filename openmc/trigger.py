@@ -97,7 +97,7 @@ class Trigger(object):
                   'it is not a string'.format(score)
             raise ValueError(msg)
 
-        # If this is a scattering moment, use generic moment order
+        # If this is a total/flux/scattering moment, use generic moment order
         regexp = re.compile(r'-[0-9]')
         if regexp.search(score) is not None:
             score = score.strip(regexp.findall(score)[0])

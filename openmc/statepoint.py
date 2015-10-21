@@ -429,6 +429,7 @@ class StatePoint(object):
 
                 # Add the scores to the Tally
                 for j, score in enumerate(scores):
+                    score = score.decode()
 
                     # If this is a moment, use generic moment order
                     regexp = re.compile(r'-n$|-pn$|-yn$')

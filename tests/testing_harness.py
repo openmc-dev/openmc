@@ -320,9 +320,6 @@ class PyAPITestHarness(TestHarness):
         outstr = '\n'.join([open(fname).read() for fname in xmls
                             if os.path.exists(fname)])
 
-        if 'MGXSTestHarness' in str(type(self)):
-            print(outstr)
-
         sha512 = hashlib.sha512()
         sha512.update(outstr.encode('utf-8'))
         outstr = sha512.hexdigest()

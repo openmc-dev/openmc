@@ -434,7 +434,7 @@ class StatePoint(object):
                     regexp = re.compile(r'-n$|-pn$|-yn$')
                     if regexp.search(score) is not None:
                         score = score.strip(regexp.findall(score)[0])
-                        score += '-' + moments[j]
+                        score += '-' + moments[j].decode()
 
                     tally.add_score(score)
 

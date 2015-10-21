@@ -1,3 +1,5 @@
+from __future__ import division
+
 from collections import Iterable, OrderedDict
 from numbers import Integral
 import os

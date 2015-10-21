@@ -188,7 +188,7 @@ class MGXS(object):
 
     @property
     def num_subdomains(self):
-        tally = self.tallies.values()[0]
+        tally = list(self.tallies.values())[0]
         domain_filter = tally.find_filter(self.domain_type)
         return domain_filter.num_bins
 

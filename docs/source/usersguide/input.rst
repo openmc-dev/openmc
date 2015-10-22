@@ -1386,8 +1386,8 @@ The ``<tally>`` element accepts the following sub-elements:
     options are "flux", "total", "scatter", "absorption", "fission",
     "nu-fission", "delayed-nu-fission", "kappa-fission", "nu-scatter",
     "scatter-N", "scatter-PN", "scatter-YN", "nu-scatter-N", "nu-scatter-PN",
-    "nu-scatter-YN", "flux-YN", "total-YN", "current", and "events". These
-    correspond to the following physical quantities:
+    "nu-scatter-YN", "flux-YN", "total-YN", "current", "inverse-velocity" and
+    "events". These correspond to the following physical quantities:
 
     :flux:
       Total flux in particle-cm per source particle.  Note: The ``analog``
@@ -1477,6 +1477,11 @@ The ``<tally>`` element accepts the following sub-elements:
           This score can only be used if a mesh filter has been
           specified. Furthermore, it may not be used in conjunction with any
           other score.
+
+    :inverse-velocity:
+      The flux-weighted inverse velocity where the velocity is in units of
+      meters per second.  Note: The ``analog`` estimator is actually identical
+      to the ``collision`` estimator for the inverse-velocity score.
 
     :events:
       Number of scoring events. Units are events per source particle.

@@ -386,10 +386,10 @@ class Filter(object):
 
             # Use lower energy bound to find index for energy Filters
             elif self.type in ['energy', 'energyout']:
-                deltas = np.abs(self.bins - filter_bin[0]) / filter_bin[0]
+                deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
                 min_delta = np.min(deltas)
-                if min_delta < 1E-5:
-                    filter_index = deltas.argmin()
+                if min_delta < 1E-3:
+                    filter_index = deltas.argmin() - 1
                 else:
                     raise ValueError
 

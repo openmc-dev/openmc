@@ -331,7 +331,10 @@ class Filter(object):
         elif self.type != other.type:
             return False
         elif self.type in ['energy', 'energyout']:
-            return np.all(self.bins == other.bins)
+            if len(self.bins) != len(other.bins):
+                return False
+            else:
+                return np.allclose(self.bins, other.bins)
 
         for bin in other.bins:
             if bin not in self.bins:
@@ -383,8 +386,12 @@ class Filter(object):
 
             # Use lower energy bound to find index for energy Filters
             elif self.type in ['energy', 'energyout']:
-                val = np.where(self.bins == filter_bin[0])[0][0]
-                filter_index = val
+                deltas = np.abs(self.bins - filter_bin[0]) / filter_bin[0]
+                min_delta = np.min(deltas)
+                if min_delta < 1E-5:
+                    filter_index = deltas.argmin()
+                else:
+                    raise ValueError
 
             # Filter bins for distribcells are "IDs" of each unique placement
             # of the Cell in the Geometry (integers starting at 0)

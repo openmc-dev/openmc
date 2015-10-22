@@ -127,6 +127,27 @@ contains
         end if
 
 
+      case (SCORE_INVERSE_VELOCITY)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          ! All events score to a inverse velocity bin. We actually use a
+          ! collision estimator in place of an analog one since there is no way
+          ! to count 'events' exactly for the inverse velocity
+          if (survival_biasing) then
+            ! We need to account for the fact that some weight was already
+            ! absorbed
+            score = p % last_wgt + p % absorb_wgt
+          else
+            score = p % last_wgt
+          end if
+          score = score / material_xs % total &
+               / (sqrt(2 * p % E / (MASS_NEUTRON * AMU_MEV)) * C_LIGHT)
+
+        else
+          ! For inverse velocity, we need no cross section
+          score = flux / (sqrt(2 * p % E / (MASS_NEUTRON * AMU_MEV)) * C_LIGHT)
+        end if
+
+
       case (SCORE_SCATTER, SCORE_SCATTER_N)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Skip any event where the particle didn't scatter

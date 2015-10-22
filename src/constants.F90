@@ -65,6 +65,8 @@ module constants
        MASS_NEUTRON = 1.008664916_8,     & ! mass of a neutron in amu
        MASS_PROTON  = 1.007276466812_8,  & ! mass of a proton in amu
        AMU          = 1.660538921e-27_8, & ! 1 amu in kg
+       AMU_MEV      = 931.494061_8,      & ! 1 amu in MeV/c^2
+       C_LIGHT      = 2.99792458e8_8,    & ! speed of light in a vacuum
        N_AVOGADRO   = 0.602214129_8,     & ! Avogadro's number in 10^24/mol
        K_BOLTZMANN  = 8.6173324e-11_8,   & ! Boltzmann constant in MeV/K
        INFINITY     = huge(0.0_8),       & ! positive infinity
@@ -257,7 +259,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 21
+  integer, parameter :: N_SCORE_TYPES = 22
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -279,7 +281,8 @@ module constants
        SCORE_SCATTER_YN         = -18, & ! angular flux-weighted scattering moment (0:N)
        SCORE_NU_SCATTER_YN      = -19, & ! angular flux-weighted nu-scattering moment (0:N)
        SCORE_EVENTS             = -20, & ! number of events
-       SCORE_DELAYED_NU_FISSION = -21    ! delayed neutron production rate
+       SCORE_DELAYED_NU_FISSION = -21, & ! delayed neutron production rate
+       SCORE_INVERSE_VELOCITY   = -22    ! flux weighted inverse velocity
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10

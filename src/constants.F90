@@ -60,22 +60,22 @@ module constants
   ! Values here are from the Committee on Data for Science and Technology
   ! (CODATA) 2010 recommendation (doi:10.1103/RevModPhys.84.1527).
 
-  real(8), parameter ::            &
-       PI           = 3.1415926535898_8, & ! pi
-       MASS_NEUTRON = 1.008664916_8,     & ! mass of a neutron in amu
-       MASS_PROTON  = 1.007276466812_8,  & ! mass of a proton in amu
-       AMU          = 1.660538921e-27_8, & ! 1 amu in kg
-       AMU_MEV      = 931.494061_8,      & ! 1 amu in MeV/c^2
-       C_LIGHT      = 2.99792458e8_8,    & ! speed of light in a vacuum
-       N_AVOGADRO   = 0.602214129_8,     & ! Avogadro's number in 10^24/mol
-       K_BOLTZMANN  = 8.6173324e-11_8,   & ! Boltzmann constant in MeV/K
-       INFINITY     = huge(0.0_8),       & ! positive infinity
-       ZERO         = 0.0_8,             &
-       HALF         = 0.5_8,             &
-       ONE          = 1.0_8,             &
-       TWO          = 2.0_8,             &
-       THREE        = 3.0_8,             &
-       FOUR         = 4.0_8
+  real(8), parameter ::                      &
+       PI               = 3.1415926535898_8, & ! pi
+       MASS_NEUTRON     = 1.008664916_8,     & ! mass of a neutron in amu
+       MASS_NEUTRON_MEV = 939.565379_8,      & ! mass of a neutron in MeV/c^2
+       MASS_PROTON      = 1.007276466812_8,  & ! mass of a proton in amu
+       AMU              = 1.660538921e-27_8, & ! 1 amu in kg
+       C_LIGHT          = 2.99792458e8_8,    & ! speed of light in a vacuum
+       N_AVOGADRO       = 0.602214129_8,     & ! Avogadro's number in 10^24/mol
+       K_BOLTZMANN      = 8.6173324e-11_8,   & ! Boltzmann constant in MeV/K
+       INFINITY         = huge(0.0_8),       & ! positive infinity
+       ZERO             = 0.0_8,             &
+       HALF             = 0.5_8,             &
+       ONE              = 1.0_8,             &
+       TWO              = 2.0_8,             &
+       THREE            = 3.0_8,             &
+       FOUR             = 4.0_8
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS

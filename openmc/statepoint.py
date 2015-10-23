@@ -432,10 +432,8 @@ class StatePoint(object):
                     score = score.decode()
 
                     # If this is a moment, use generic moment order
-                    regexp = re.compile(r'-n$|-pn$|-yn$')
-                    if regexp.search(score) is not None:
-                        score = score.strip(regexp.findall(score)[0])
-                        score += '-' + moments[j].decode()
+                    pattern = r'-n$|-pn$|-yn$'
+                    score = re.sub(pattern, '-' + moments[j].decode(), score)
 
                     tally.add_score(score)
 

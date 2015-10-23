@@ -1063,7 +1063,6 @@ contains
     integer,        intent(in)    :: i_nuclide
     integer,        intent(in)    :: i_reaction
 
-    integer :: d                        ! delayed group index
     integer :: nu_d(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
     integer :: i                        ! loop index
     integer :: nu                       ! actual number of neutrons produced

@@ -106,7 +106,6 @@ contains
   subroutine initialize_particle(this)
 
     class(Particle) :: this
-    integer         :: d
 
     ! Clear coordinate lists
     call this % clear()

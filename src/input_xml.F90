@@ -2937,7 +2937,7 @@ contains
 
           ! Check if delayed group filter is used with any score besides
           ! delayed-nu-fission
-          if (trim(score_name) /= 'delayed-nu-fission' .and. &
+          if (score_name /= 'delayed-nu-fission' .and. &
                t % find_filter(FILTER_DELAYEDGROUP) > 0) then
             call fatal_error("Cannot tally " // trim(score_name) // " with a &
                  &delayedgroup filter.")

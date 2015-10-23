@@ -1355,7 +1355,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
               <filter type="delayedgroup" bins="1 2 3 4 5 6" />
 
-:nuclides:
+  :nuclides:
     If specified, the scores listed will be for particular nuclides, not the
     summation of reactions from all nuclides. The format for nuclides should be
     [Atomic symbol]-[Mass number], e.g. "U-235". The reaction rate for all

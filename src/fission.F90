@@ -89,9 +89,9 @@ contains
 
   function nu_delayed(nuc, E) result(nu)
 
-    type(Nuclide), pointer :: nuc ! nuclide from which to find nu
-    real(8), intent(in)    :: E   ! energy of incoming neutron
-    real(8)                :: nu  ! number of delayed neutrons emitted per fission
+    type(Nuclide), intent(in) :: nuc ! nuclide from which to find nu
+    real(8), intent(in)       :: E   ! energy of incoming neutron
+    real(8)                   :: nu  ! number of delayed neutrons emitted per fission
 
     if (nuc % nu_d_type == NU_NONE) then
       ! since no prompt or delayed data is present, this means all neutron

@@ -29,7 +29,6 @@ contains
 
     type(Particle), intent(inout) :: p
 
-    integer :: d                      ! delayed group index
     integer :: j                      ! coordinate level
     integer :: next_level             ! next coordinate level to check
     integer :: surface_crossed        ! surface which particle is on

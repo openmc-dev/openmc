@@ -506,14 +506,8 @@ contains
               cycle SCORE_LOOP
             else
 
-              score = ZERO
-
-              ! Loop over all delayed groups and accumulate the contribution
-              ! from each group
-              do d = 1, nuclides(p % event_nuclide) % n_precursor
-                score = score + keff * p % wgt_bank / p % n_bank * &
-                     p % n_delayed_bank(d)
-              end do
+              ! Add the contribution from all delayed groups
+              score = keff * p % wgt_bank / p % n_bank * sum(p % n_delayed_bank)
             end if
           end if
         else
@@ -600,12 +594,9 @@ contains
                 ! Get index in nuclides array
                 i_nuc = mat % nuclide(l)
 
-                ! Get the current nuclide
-                nuc => nuclides(i_nuc)
-
                 ! Accumulate the contribution from each nuclide
                 score = score + micro_xs(i_nuc) % fission &
-                     * nu_delayed(nuc, p % E) * atom_density_ * flux
+                     * nu_delayed(nuclides(i_nuc), p % E) * atom_density_ * flux
               end do
             end if
           end if
@@ -1070,9 +1061,9 @@ contains
 
   subroutine score_fission_delayed_eout(p, t, i_score)
 
-    type(Particle), intent(in)    :: p
-    type(TallyObject), intent(in) :: t
-    integer, intent(in)           :: i_score ! index for score
+    type(Particle), intent(in)       :: p
+    type(TallyObject), intent(inout) :: t
+    integer, intent(in)              :: i_score ! index for score
 
     integer :: i             ! index of outgoing energy filter
     integer :: j             ! index of delayedgroup filter
@@ -1084,7 +1075,7 @@ contains
     integer :: bin_energyout ! original outgoing energy bin
     real(8) :: score         ! actual score
     real(8) :: E_out         ! energy of fission bank site
-    logical :: d_found = .FALSE. ! bool to inidicate if delayed group was found
+    logical :: d_found = .false. ! bool to inidicate if delayed group was found
 
     ! save original outgoing energy and delayed group bins
     i = t % find_filter(FILTER_ENERGYOUT)
@@ -1153,9 +1144,9 @@ contains
 
   subroutine score_fission_delayed_dg(t, d_bin, score, score_index)
 
-    type(TallyObject)   :: t
-    integer, intent(in) :: score_index ! index for score
-    integer, intent(in) :: d_bin       ! delayed group bin index
+    type(TallyObject), intent(inout) :: t
+    integer, intent(in)              :: score_index ! index for score
+    integer, intent(in)              :: d_bin       ! delayed group bin index
 
     integer :: bin_original  ! original bin index
     integer :: filter_index  ! index for matching filter bin combination

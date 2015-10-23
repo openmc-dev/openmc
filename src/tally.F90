@@ -140,11 +140,11 @@ contains
             score = p % last_wgt
           end if
           score = score / material_xs % total &
-               / (sqrt(2 * p % E / (MASS_NEUTRON * AMU_MEV)) * C_LIGHT)
+               / (sqrt(TWO * p % E / (MASS_NEUTRON_MEV)) * C_LIGHT)
 
         else
           ! For inverse velocity, we need no cross section
-          score = flux / (sqrt(2 * p % E / (MASS_NEUTRON * AMU_MEV)) * C_LIGHT)
+          score = flux / (sqrt(TWO * p % E / (MASS_NEUTRON_MEV)) * C_LIGHT)
         end if
 
 

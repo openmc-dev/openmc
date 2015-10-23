@@ -1390,9 +1390,11 @@ The ``<tally>`` element accepts the following sub-elements:
     "events". These correspond to the following physical quantities:
 
     :flux:
-      Total flux in particle-cm per source particle.  Note: The ``analog``
-      estimator is actually identical to the ``collision`` estimator for the
-      flux score.
+      Total flux in particle-cm per source particle.
+
+      .. note::
+         The ``analog`` estimator is actually identical to the ``collision``
+         estimator for the flux score.
 
     :total:
       Total reaction rate in reactions per source particle.
@@ -1480,8 +1482,11 @@ The ``<tally>`` element accepts the following sub-elements:
 
     :inverse-velocity:
       The flux-weighted inverse velocity where the velocity is in units of
-      meters per second.  Note: The ``analog`` estimator is actually identical
-      to the ``collision`` estimator for the inverse-velocity score.
+      meters per second.
+
+      .. note::
+         The ``analog`` estimator is actually identical to the ``collision``
+         estimator for the inverse-velocity score.
 
     :events:
       Number of scoring events. Units are events per source particle.

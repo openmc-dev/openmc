@@ -103,7 +103,7 @@ class Tally(object):
         self._with_batch_statistics = False
         self._derived = False
 
-        self._statepoint = None
+        self._sp_filename = None
         self._results_read = False
 
     def __deepcopy__(self, memo):
@@ -124,7 +124,7 @@ class Tally(object):
             clone._with_summary = self.with_summary
             clone._with_batch_statistics = self.with_batch_statistics
             clone._derived = self.derived
-            clone._statepoint = self._statepoint
+            clone._sp_filename = self._sp_filename
             clone._results_read = self._results_read
 
             clone._filters = []
@@ -264,12 +264,17 @@ class Tally(object):
 
     @property
     def sum(self):
-        if not self._statepoint:
+        if not self._sp_filename:
             return None
 
         if not self._results_read:
+            import h5py
+
+            # Open the HDF5 statepoint file
+            f = h5py.File(self._sp_filename, 'r')
+
             # Extract Tally data from the file
-            data = self._statepoint._f['tallies/tally {0}/results'.format(
+            data = f['tallies/tally {0}/results'.format(
                 self.id)].value
             sum = data['sum']
             sum_sq = data['sum_sq']
@@ -293,11 +298,14 @@ class Tally(object):
             # Indicate that Tally results have been read
             self._results_read = True
 
+            # Close the HDF5 statepoint file
+            f.close()
+
         return self._sum
 
     @property
     def sum_sq(self):
-        if not self._statepoint:
+        if not self._sp_filename:
             return None
 
         if not self._results_read:
@@ -309,7 +317,7 @@ class Tally(object):
     @property
     def mean(self):
         if self._mean is None:
-            if not self._statepoint:
+            if not self._sp_filename:
                 return None
 
             self._mean = self.sum / self.num_realizations
@@ -318,7 +326,7 @@ class Tally(object):
     @property
     def std_dev(self):
         if self._std_dev is None:
-            if not self._statepoint:
+            if not self._sp_filename:
                 return None
 
             n = self.num_realizations
@@ -426,8 +434,13 @@ class Tally(object):
         # If the score is already in the Tally, don't add it again
         if score in self.scores:
             return
-        else:
+
+        # Normal score strings
+        if isinstance(score, basestring):
             self._scores.append(score.strip())
+        # CrossScores
+        else:
+            self._scores.append(score)
 
     @num_score_bins.setter
     def num_score_bins(self, num_score_bins):

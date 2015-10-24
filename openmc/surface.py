@@ -949,6 +949,152 @@ class ZCone(Cone):
         self._type = 'z-cone'
 
 
+class Quadric(Surface):
+    """A sphere of the form :math:`Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy +
+    Jz + K`.
+
+    Parameters
+    ----------
+    surface_id : int
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface. Defaults to transmissive boundary condition where particles
+        freely pass through the surface.
+    a, b, c, d, e, f, g, h, j, k : float
+        coefficients for the surface
+    name : str
+        Name of the sphere. If not specified, the name will be the empty string.
+
+    Attributes
+    ----------
+    a, b, c, d, e, f, g, h, j, k : float
+        coefficients for the surface
+
+    """
+
+    def __init__(self, surface_id=None, boundary_type='transmission',
+                 a=None, b=None, c=None, d=None, e=None, f=None, g=None,
+                 h=None, j=None, k=None, name=''):
+        # Initialize Quadric class attributes
+        super(Quadric, self).__init__(surface_id, boundary_type, name=name)
+
+        self._type = 'quadric'
+        self._coeff_keys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k']
+
+        if a is not None:
+            self.a = a
+        if b is not None:
+            self.b = b
+        if c is not None:
+            self.c = c
+        if d is not None:
+            self.d = d
+        if e is not None:
+            self.e = e
+        if f is not None:
+            self.f = f
+        if g is not None:
+            self.g = g
+        if h is not None:
+            self.h = h
+        if j is not None:
+            self.j = j
+        if k is not None:
+            self.k = k
+
+    @property
+    def a(self):
+        return self.coeffs['a']
+
+    @property
+    def b(self):
+        return self.coeffs['b']
+
+    @property
+    def c(self):
+        return self.coeffs['c']
+
+    @property
+    def d(self):
+        return self.coeffs['d']
+
+    @property
+    def e(self):
+        return self.coeffs['e']
+
+    @property
+    def f(self):
+        return self.coeffs['f']
+
+    @property
+    def g(self):
+        return self.coeffs['g']
+
+    @property
+    def h(self):
+        return self.coeffs['h']
+
+    @property
+    def j(self):
+        return self.coeffs['j']
+
+    @property
+    def k(self):
+        return self.coeffs['k']
+
+    @a.setter
+    def a(self, a):
+        check_type('a coefficient', a, Real)
+        self._coeffs['a'] = a
+
+    @b.setter
+    def b(self, b):
+        check_type('b coefficient', b, Real)
+        self._coeffs['b'] = b
+
+    @c.setter
+    def c(self, c):
+        check_type('c coefficient', c, Real)
+        self._coeffs['c'] = c
+
+    @d.setter
+    def d(self, d):
+        check_type('d coefficient', d, Real)
+        self._coeffs['d'] = d
+
+    @e.setter
+    def e(self, e):
+        check_type('e coefficient', e, Real)
+        self._coeffs['e'] = e
+
+    @f.setter
+    def f(self, f):
+        check_type('f coefficient', f, Real)
+        self._coeffs['f'] = f
+
+    @g.setter
+    def g(self, g):
+        check_type('g coefficient', g, Real)
+        self._coeffs['g'] = g
+
+    @h.setter
+    def h(self, h):
+        check_type('h coefficient', h, Real)
+        self._coeffs['h'] = h
+
+    @j.setter
+    def j(self, j):
+        check_type('j coefficient', j, Real)
+        self._coeffs['j'] = j
+
+    @k.setter
+    def k(self, k):
+        check_type('k coefficient', k, Real)
+        self._coeffs['k'] = k
+
+
 class Halfspace(Region):
     """A positive or negative half-space region.
 

@@ -430,7 +430,7 @@ contains
       call find_cell(p, found)
       if (.not. found) then
         call handle_lost_particle(p, "Couldn't find particle after reflecting&
-             & from surface.")
+             & from surface " // trim(to_str(surf%id)) // ".")
         return
       end if
 

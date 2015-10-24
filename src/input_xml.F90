@@ -1294,6 +1294,9 @@ contains
       case ('z-cone')
         coeffs_reqd  = 4
         allocate(SurfaceZCone :: surfaces(i)%obj)
+      case ('quadric')
+        coeffs_reqd  = 10
+        allocate(SurfaceQuadric :: surfaces(i)%obj)
       case default
         call fatal_error("Invalid surface type: " // trim(word))
       end select
@@ -1378,6 +1381,17 @@ contains
         s%y0 = coeffs(2)
         s%z0 = coeffs(3)
         s%r2 = coeffs(4)
+      type is (SurfaceQuadric)
+        s%A = coeffs(1)
+        s%B = coeffs(2)
+        s%C = coeffs(3)
+        s%D = coeffs(4)
+        s%E = coeffs(5)
+        s%F = coeffs(6)
+        s%G = coeffs(7)
+        s%H = coeffs(8)
+        s%J = coeffs(9)
+        s%K = coeffs(10)
       end select
 
       ! No longer need coefficients

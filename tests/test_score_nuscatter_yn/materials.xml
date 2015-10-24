@@ -1,0 +1,246 @@
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+    <default_xs>71c</default_xs>
+    <material id="1" name="Fuel">
+        <density units="g/cm3" value="10.062" />
+        <nuclide ao="4.9476e-06" name="U-234" />
+        <nuclide ao="0.00048218" name="U-235" />
+        <nuclide ao="9.0402e-05" name="U-236" />
+        <nuclide ao="0.021504" name="U-238" />
+        <nuclide ao="7.3733e-06" name="Np-237" />
+        <nuclide ao="1.5148e-06" name="Pu-238" />
+        <nuclide ao="0.00013955" name="Pu-239" />
+        <nuclide ao="3.4405e-05" name="Pu-240" />
+        <nuclide ao="2.1439e-05" name="Pu-241" />
+        <nuclide ao="3.7422e-06" name="Pu-242" />
+        <nuclide ao="4.5041e-07" name="Am-241" />
+        <nuclide ao="9.2301e-09" name="Am-242m" />
+        <nuclide ao="4.7878e-07" name="Am-243" />
+        <nuclide ao="1.0485e-07" name="Cm-242" />
+        <nuclide ao="1.4268e-09" name="Cm-243" />
+        <nuclide ao="8.8756e-08" name="Cm-244" />
+        <nuclide ao="3.5285e-09" name="Cm-245" />
+        <nuclide ao="2.6497e-05" name="Mo-95" />
+        <nuclide ao="3.2772e-05" name="Tc-99" />
+        <nuclide ao="3.0742e-05" name="Ru-101" />
+        <nuclide ao="2.3505e-06" name="Ru-103" />
+        <nuclide ao="2.0009e-06" name="Ag-109" />
+        <nuclide ao="1.0801e-08" name="Xe-135" />
+        <nuclide ao="3.4612e-05" name="Cs-133" />
+        <nuclide ao="2.6078e-05" name="Nd-143" />
+        <nuclide ao="1.9898e-05" name="Nd-145" />
+        <nuclide ao="1.6128e-06" name="Sm-147" />
+        <nuclide ao="1.1627e-07" name="Sm-149" />
+        <nuclide ao="7.1727e-06" name="Sm-150" />
+        <nuclide ao="5.4947e-07" name="Sm-151" />
+        <nuclide ao="3.0221e-06" name="Sm-152" />
+        <nuclide ao="2.6209e-06" name="Eu-153" />
+        <nuclide ao="1.5369e-09" name="Gd-155" />
+        <nuclide ao="0.045737" name="O-16" />
+    </material>
+    <material id="10" name="Top nozzle region">
+        <density units="g/cm3" value="1.746" />
+        <nuclide name="H-1" wo="0.035887" />
+        <nuclide name="O-16" wo="0.2847761" />
+        <nuclide name="B-10" wo="0.000115699" />
+        <nuclide name="B-11" wo="0.000527075" />
+        <nuclide name="Fe-54" wo="0.02644016154" />
+        <nuclide name="Fe-56" wo="0.43037146399" />
+        <nuclide name="Fe-57" wo="0.0101152584" />
+        <nuclide name="Fe-58" wo="0.00137211607" />
+        <nuclide name="Ni-58" wo="0.04104621835" />
+        <nuclide name="Ni-60" wo="0.0163554502" />
+        <nuclide name="Ni-61" wo="0.000722605975" />
+        <nuclide name="Ni-62" wo="0.002342513875" />
+        <nuclide name="Ni-64" wo="0.0006157116" />
+        <nuclide name="Mn-55" wo="0.0135739" />
+        <nuclide name="Si-28" wo="0.006234853554" />
+        <nuclide name="Si-29" wo="0.000328078746" />
+        <nuclide name="Si-30" wo="0.0002239677" />
+        <nuclide name="Cr-50" wo="0.005382452306" />
+        <nuclide name="Cr-52" wo="0.107931450781" />
+        <nuclide name="Cr-53" wo="0.012474806806" />
+        <nuclide name="Cr-54" wo="0.003163190107" />
+        <sab name="HH2O" xs="71t" />
+    </material>
+    <material id="11" name="Top of fuel assemblies">
+        <density units="g/cm3" value="3.044" />
+        <nuclide name="H-1" wo="0.0162913" />
+        <nuclide name="O-16" wo="0.1292776" />
+        <nuclide name="B-10" wo="5.25228e-05" />
+        <nuclide name="B-11" wo="0.000239272" />
+        <nuclide name="Zr-90" wo="0.43313403903" />
+        <nuclide name="Zr-91" wo="0.09549277374" />
+        <nuclide name="Zr-92" wo="0.14759527104" />
+        <nuclide name="Zr-94" wo="0.15280552077" />
+        <nuclide name="Zr-96" wo="0.02511169542" />
+        <sab name="HH2O" xs="71t" />
+    </material>
+    <material id="12" name="Bottom of fuel assemblies">
+        <density units="g/cm3" value="1.762" />
+        <nuclide name="H-1" wo="0.0292856" />
+        <nuclide name="O-16" wo="0.2323919" />
+        <nuclide name="B-10" wo="9.44159e-05" />
+        <nuclide name="B-11" wo="0.00043012" />
+        <nuclide name="Zr-90" wo="0.3741373658" />
+        <nuclide name="Zr-91" wo="0.0824858164" />
+        <nuclide name="Zr-92" wo="0.1274914944" />
+        <nuclide name="Zr-94" wo="0.1319920622" />
+        <nuclide name="Zr-96" wo="0.0216912612" />
+        <sab name="HH2O" xs="71t" />
+    </material>
+    <material id="2" name="Cladding">
+        <density units="g/cm3" value="5.77" />
+        <nuclide ao="0.5145" name="Zr-90" />
+        <nuclide ao="0.1122" name="Zr-91" />
+        <nuclide ao="0.1715" name="Zr-92" />
+        <nuclide ao="0.1738" name="Zr-94" />
+        <nuclide ao="0.028" name="Zr-96" />
+    </material>
+    <material id="3" name="Cold borated water">
+        <density units="atom/b-cm" value="0.07416" />
+        <nuclide ao="2.0" name="H-1" />
+        <nuclide ao="1.0" name="O-16" />
+        <nuclide ao="0.000649" name="B-10" />
+        <nuclide ao="0.002689" name="B-11" />
+        <sab name="HH2O" xs="71t" />
+    </material>
+    <material id="4" name="Hot borated water">
+        <density units="atom/b-cm" value="0.06614" />
+        <nuclide ao="2.0" name="H-1" />
+        <nuclide ao="1.0" name="O-16" />
+        <nuclide ao="0.000649" name="B-10" />
+        <nuclide ao="0.002689" name="B-11" />
+        <sab name="HH2O" xs="71t" />
+    </material>
+    <material id="5" name="Reactor pressure vessel steel">
+        <density units="g/cm3" value="7.9" />
+        <nuclide name="Fe-54" wo="0.05437098" />
+        <nuclide name="Fe-56" wo="0.88500663" />
+        <nuclide name="Fe-57" wo="0.0208008" />
+        <nuclide name="Fe-58" wo="0.00282159" />
+        <nuclide name="Ni-58" wo="0.0067198" />
+        <nuclide name="Ni-60" wo="0.0026776" />
+        <nuclide name="Ni-61" wo="0.0001183" />
+        <nuclide name="Ni-62" wo="0.0003835" />
+        <nuclide name="Ni-64" wo="0.0001008" />
+        <nuclide name="Mn-55" wo="0.01" />
+        <nuclide name="Mo-92" wo="0.000849" />
+        <nuclide name="Mo-94" wo="0.0005418" />
+        <nuclide name="Mo-95" wo="0.0009438" />
+        <nuclide name="Mo-96" wo="0.0010002" />
+        <nuclide name="Mo-97" wo="0.0005796" />
+        <nuclide name="Mo-98" wo="0.0014814" />
+        <nuclide name="Mo-100" wo="0.0006042" />
+        <nuclide name="Si-28" wo="0.00367464" />
+        <nuclide name="Si-29" wo="0.00019336" />
+        <nuclide name="Si-30" wo="0.000132" />
+        <nuclide name="Cr-50" wo="0.00010435" />
+        <nuclide name="Cr-52" wo="0.002092475" />
+        <nuclide name="Cr-53" wo="0.00024185" />
+        <nuclide name="Cr-54" wo="6.1325e-05" />
+        <nuclide name="C-Nat" wo="0.0025" />
+        <nuclide name="Cu-63" wo="0.0013696" />
+        <nuclide name="Cu-65" wo="0.0006304" />
+    </material>
+    <material id="6" name="Lower radial reflector">
+        <density units="g/cm3" value="4.32" />
+        <nuclide name="H-1" wo="0.0095661" />
+        <nuclide name="O-16" wo="0.0759107" />
+        <nuclide name="B-10" wo="3.08409e-05" />
+        <nuclide name="B-11" wo="0.000140499" />
+        <nuclide name="Fe-54" wo="0.035620772088" />
+        <nuclide name="Fe-56" wo="0.579805982228" />
+        <nuclide name="Fe-57" wo="0.01362750048" />
+        <nuclide name="Fe-58" wo="0.001848545204" />
+        <nuclide name="Ni-58" wo="0.055298376566" />
+        <nuclide name="Ni-60" wo="0.022034425592" />
+        <nuclide name="Ni-61" wo="0.000973510811" />
+        <nuclide name="Ni-62" wo="0.003155886695" />
+        <nuclide name="Ni-64" wo="0.000829500336" />
+        <nuclide name="Mn-55" wo="0.018287" />
+        <nuclide name="Si-28" wo="0.00839976771" />
+        <nuclide name="Si-29" wo="0.00044199679" />
+        <nuclide name="Si-30" wo="0.0003017355" />
+        <nuclide name="Cr-50" wo="0.007251360806" />
+        <nuclide name="Cr-52" wo="0.145407678031" />
+        <nuclide name="Cr-53" wo="0.016806340306" />
+        <nuclide name="Cr-54" wo="0.004261520857" />
+        <sab name="HH2O" xs="71t" />
+    </material>
+    <material id="7" name="Upper radial reflector /Top plate region">
+        <density units="g/cm3" value="4.28" />
+        <nuclide name="H-1" wo="0.0086117" />
+        <nuclide name="O-16" wo="0.0683369" />
+        <nuclide name="B-10" wo="2.77638e-05" />
+        <nuclide name="B-11" wo="0.000126481" />
+        <nuclide name="Fe-54" wo="0.035953677186" />
+        <nuclide name="Fe-56" wo="0.585224740891" />
+        <nuclide name="Fe-57" wo="0.01375486056" />
+        <nuclide name="Fe-58" wo="0.001865821363" />
+        <nuclide name="Ni-58" wo="0.055815129186" />
+        <nuclide name="Ni-60" wo="0.022240333032" />
+        <nuclide name="Ni-61" wo="0.000982608081" />
+        <nuclide name="Ni-62" wo="0.003185377845" />
+        <nuclide name="Ni-64" wo="0.000837251856" />
+        <nuclide name="Mn-55" wo="0.0184579" />
+        <nuclide name="Si-28" wo="0.00847831314" />
+        <nuclide name="Si-29" wo="0.00044612986" />
+        <nuclide name="Si-30" wo="0.000304557" />
+        <nuclide name="Cr-50" wo="0.00731912987" />
+        <nuclide name="Cr-52" wo="0.146766614995" />
+        <nuclide name="Cr-53" wo="0.01696340737" />
+        <nuclide name="Cr-54" wo="0.004301347765" />
+        <sab name="HH2O" xs="71t" />
+    </material>
+    <material id="8" name="Bottom plate region">
+        <density units="g/cm3" value="7.184" />
+        <nuclide name="H-1" wo="0.0011505" />
+        <nuclide name="O-16" wo="0.0091296" />
+        <nuclide name="B-10" wo="3.70915e-06" />
+        <nuclide name="B-11" wo="1.68974e-05" />
+        <nuclide name="Fe-54" wo="0.03855611055" />
+        <nuclide name="Fe-56" wo="0.627585036425" />
+        <nuclide name="Fe-57" wo="0.014750478" />
+        <nuclide name="Fe-58" wo="0.002000875025" />
+        <nuclide name="Ni-58" wo="0.059855207342" />
+        <nuclide name="Ni-60" wo="0.023850159704" />
+        <nuclide name="Ni-61" wo="0.001053732407" />
+        <nuclide name="Ni-62" wo="0.003415945715" />
+        <nuclide name="Ni-64" wo="0.000897854832" />
+        <nuclide name="Mn-55" wo="0.019794" />
+        <nuclide name="Si-28" wo="0.00909197802" />
+        <nuclide name="Si-29" wo="0.00047842098" />
+        <nuclide name="Si-30" wo="0.000326601" />
+        <nuclide name="Cr-50" wo="0.007848910646" />
+        <nuclide name="Cr-52" wo="0.157390026871" />
+        <nuclide name="Cr-53" wo="0.018191270146" />
+        <nuclide name="Cr-54" wo="0.004612692337" />
+        <sab name="HH2O" xs="71t" />
+    </material>
+    <material id="9" name="Bottom nozzle region">
+        <density units="g/cm3" value="2.53" />
+        <nuclide name="H-1" wo="0.0245014" />
+        <nuclide name="O-16" wo="0.1944274" />
+        <nuclide name="B-10" wo="7.89917e-05" />
+        <nuclide name="B-11" wo="0.000359854" />
+        <nuclide name="Fe-54" wo="0.030411411144" />
+        <nuclide name="Fe-56" wo="0.495012237964" />
+        <nuclide name="Fe-57" wo="0.01163454624" />
+        <nuclide name="Fe-58" wo="0.001578204652" />
+        <nuclide name="Ni-58" wo="0.047211231662" />
+        <nuclide name="Ni-60" wo="0.018811987544" />
+        <nuclide name="Ni-61" wo="0.000831139127" />
+        <nuclide name="Ni-62" wo="0.002694352115" />
+        <nuclide name="Ni-64" wo="0.000708189552" />
+        <nuclide name="Mn-55" wo="0.0156126" />
+        <nuclide name="Si-28" wo="0.007171335558" />
+        <nuclide name="Si-29" wo="0.000377356542" />
+        <nuclide name="Si-30" wo="0.0002576079" />
+        <nuclide name="Cr-50" wo="0.006190885148" />
+        <nuclide name="Cr-52" wo="0.124142524198" />
+        <nuclide name="Cr-53" wo="0.014348496148" />
+        <nuclide name="Cr-54" wo="0.003638294506" />
+        <sab name="HH2O" xs="71t" />
+    </material>
+</materials>

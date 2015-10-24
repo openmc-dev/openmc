@@ -2796,6 +2796,10 @@ contains
           ! MOMENT_STRS(:)
           ! If so, check the order, store if OK, then reset the number to 'n'
           score_name = trim(sarray(j))
+
+          ! Append the score to the list of possible trigger scores
+          if (trigger_on) call trigger_scores % add_key(trim(score_name), j)
+
           do imomstr = 1, size(MOMENT_STRS)
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
               n_order_pos = scan(score_name,'0123456789')
@@ -3196,11 +3200,8 @@ contains
             end if
 
           end select
-
-          ! Append the score to the list of possible trigger scores
-          if (trigger_on) call trigger_scores % add_key(trim(score_name), l)
-
         end do
+
         t % n_score_bins = n_scores
         t % n_user_score_bins = n_words
 

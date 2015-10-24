@@ -8,7 +8,6 @@ from xml.etree import ElementTree as ET
 import sys
 
 import numpy as np
-import h5py
 
 from openmc import Mesh, Filter, Trigger, Nuclide
 from openmc.cross import CrossScore, CrossNuclide, CrossFilter
@@ -269,6 +268,7 @@ class Tally(object):
             return None
 
         if not self._results_read:
+            import h5py
 
             # Open the HDF5 statepoint file
             f = h5py.File(self._sp_filename, 'r')

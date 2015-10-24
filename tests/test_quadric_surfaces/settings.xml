@@ -8,9 +8,7 @@
   </eigenvalue>
 
   <source>
-    <space type="box">
-      <parameters>-4 -4 -4  4  4  4</parameters>
-    </space>
+    <space type="point" parameters="0. 0. 0." />
   </source>
 
 </settings>

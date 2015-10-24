@@ -179,6 +179,11 @@ class Summary(object):
                 if surf_type == 'z-cone':
                     surface = openmc.ZCone(surface_id, bc, x0, y0, z0, R2, name)
 
+            elif surf_type == 'quadric':
+                a, b, c, d, e, f, g, h, j, k = coeffs
+                surface = openmc.Quadric(surface_id, bc, a, b, c, d, e, f,
+                                         g, h, j, k, name)
+
             # Add Surface to global dictionary of all Surfaces
             self.surfaces[index] = surface
 

@@ -787,7 +787,7 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
   :type:
     The type of the surfaces. This can be "x-plane", "y-plane", "z-plane",
     "plane", "x-cylinder", "y-cylinder", "z-cylinder", "sphere", "x-cone",
-    "y-cone", or "z-cone".
+    "y-cone", "z-cone", or "quadric".
 
     *Default*: None
 
@@ -854,6 +854,12 @@ The following quadratic surfaces can be modeled:
     A cone parallel to the x-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
     R^2 (z - z_0)^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0
     \: R^2`".
+
+  :quadric:
+     A general quadric surface of the form :math:`Ax^2 + By^2 + Cz^2 + Dxy +
+     Eyz + Fxz + Gx + Hy + Jz + K = 0` The coefficients specified are ":math:`A
+     \: B \: C \: D \: E \: F \: G \: H \: J \: K`".
+
 
 ``<cell>`` Element
 ------------------

@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+    <tally id="1">
+        <filter bins="21" type="cell" />
+        <scores>nu-scatter-0</scores>
+    </tally>
+    <tally id="2">
+        <filter bins="21" type="cell" />
+        <scores>nu-scatter-y3</scores>
+    </tally>
+</tallies>

@@ -132,7 +132,8 @@ The current revision of the summary file format is 1.
 **/geometry/surfaces/surface <uid>/type** (*char[]*)
 
     Type of the surface. Can be 'x-plane', 'y-plane', 'z-plane', 'plane',
-    'x-cylinder', 'y-cylinder', 'sphere', 'x-cone', 'y-cone', or 'z-cone'.
+    'x-cylinder', 'y-cylinder', 'sphere', 'x-cone', 'y-cone', 'z-cone', or
+    'quadric'.
 
 **/geometry/surfaces/surface <uid>/coefficients** (*double[]*)
 

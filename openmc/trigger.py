@@ -1,7 +1,6 @@
 from numbers import Real
 from xml.etree import ElementTree as ET
 import sys
-import re
 
 from openmc.checkvalue import check_type, check_value
 

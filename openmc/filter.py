@@ -10,7 +10,7 @@ from openmc.checkvalue import check_type, check_iterable_type, \
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
-                 'distribcell']
+                 'distribcell', 'delayedgroup']
 
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only tally
@@ -137,7 +137,7 @@ class Filter(object):
             bins = list(bins)
 
         if self.type in ['cell', 'cellborn', 'surface', 'material',
-                          'universe', 'distribcell']:
+                          'universe', 'distribcell', 'delayedgroup']:
             check_iterable_type('filter bins', bins, Integral)
             for edge in bins:
                 check_greater_than('filter bin', edge, 0, equality=True)
@@ -271,7 +271,7 @@ class Filter(object):
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = list(set(self.bins + filter.bins))
+        merged_bins = list(set(np.concatenate((self.bins, filter.bins))))
         merged_filter.bins = merged_bins
         merged_filter.num_bins = len(merged_bins)
 

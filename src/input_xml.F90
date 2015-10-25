@@ -2155,6 +2155,7 @@ contains
 
   subroutine read_tallies_xml()
 
+    integer :: d             ! delayed group index
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
     integer :: k             ! another loop index
@@ -2586,6 +2587,28 @@ contains
             ! Set to analog estimator
             t % estimator = ESTIMATOR_ANALOG
 
+          case ('delayedgroup')
+            ! Set type of filter
+            t % filters(j) % type = FILTER_DELAYEDGROUP
+
+            ! Set number of bins
+            t % filters(j) % n_bins = n_words
+
+            ! Allocate and store bins
+            allocate(t % filters(j) % int_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
+
+            ! Check bins to make sure all are between 1 and MAX_DELAYED_GROUPS
+            do d = 1, n_words
+              if (t % filters(j) % int_bins(d) < 1 .or. &
+                   t % filters(j) % int_bins(d) > MAX_DELAYED_GROUPS) then
+                call fatal_error("Encountered delayedgroup bin with index " &
+                     // trim(to_str(t % filters(j) % int_bins(d))) // " that is&
+                     & outside the range of 1 to MAX_DELAYED_GROUPS ( " &
+                     // trim(to_str(MAX_DELAYED_GROUPS)) // ")")
+              end if
+            end do
+
           case ('mu')
             ! Set type of filter
             t % filters(j) % type = FILTER_MU
@@ -2741,6 +2764,21 @@ contains
 
             ! Check if total material was specified
             if (trim(sarray(j)) == 'total') then
+
+              ! Check if a delayedgroup filter is present for this tally
+              do l = 1, t % n_filters
+                if (t % filters(l) % type == FILTER_DELAYEDGROUP) then
+                  call warning("A delayedgroup filter was used on a total &
+                       &nuclide tally. Cross section libraries are not &
+                       &guaranteed to have the same delayed group structure &
+                       &across all isotopes. In particular, ENDF/B-VII.1 does &
+                       &not have a consistent delayed group structure across &
+                       &all isotopes while the JEFF 3.1.1 library has the same &
+                       &delayed group structure across all isotopes. Use with &
+                       &caution!")
+                end if
+              end do
+
               t % nuclide_bins(j) = -1
               cycle
             end if
@@ -2790,6 +2828,19 @@ contains
         allocate(t % nuclide_bins(1))
         t % nuclide_bins(1) = -1
         t % n_nuclide_bins = 1
+
+        ! Check if a delayedgroup filter is present for this tally
+        do l = 1, t % n_filters
+          if (t % filters(l) % type == FILTER_DELAYEDGROUP) then
+            call warning("A delayedgroup filter was used on a total nuclide &
+                 &tally. Cross section libraries are not guaranteed to have the&
+                 & same delayed group structure across all isotopes. In &
+                 &particular, ENDF/B-VII.1 does not have a consistent delayed &
+                 &group structure across all isotopes while the JEFF 3.1.1 &
+                 &library has the same delayed group structure across all &
+                 &isotopes. Use with caution!")
+          end if
+        end do
       end if
 
       ! =======================================================================
@@ -2900,6 +2951,14 @@ contains
                 exit
               end if
             end do
+          end if
+
+          ! Check if delayed group filter is used with any score besides
+          ! delayed-nu-fission
+          if (score_name /= 'delayed-nu-fission' .and. &
+               t % find_filter(FILTER_DELAYEDGROUP) > 0) then
+            call fatal_error("Cannot tally " // trim(score_name) // " with a &
+                 &delayedgroup filter.")
           end if
 
           ! Check to see if the mu filter is applied and if that makes sense.
@@ -3057,6 +3116,12 @@ contains
             end if
           case ('nu-fission')
             t % score_bins(j) = SCORE_NU_FISSION
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              ! Set tally estimator to analog
+              t % estimator = ESTIMATOR_ANALOG
+            end if
+          case ('delayed-nu-fission')
+            t % score_bins(j) = SCORE_DELAYED_NU_FISSION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG

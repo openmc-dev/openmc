@@ -649,6 +649,15 @@ contains
 
       ! Allocate space for secondary energy distribution
       NPCR = NXS(8)
+
+      ! Check to make sure nuclide does not have more than the maximum number
+      ! of delayed groups
+      if (NPCR > MAX_DELAYED_GROUPS) then
+        call fatal_error("Encountered nuclide with " // trim(to_str(NPCR)) &
+             // " delayed groups while the maximum number of delayed groups &
+             &set in constants.F90 is " // trim(to_str(MAX_DELAYED_GROUPS)))
+      end if
+
       nuc % n_precursor = NPCR
       allocate(nuc % nu_d_edist(NPCR))
 
@@ -686,6 +695,7 @@ contains
 
     else
       nuc % nu_d_type = NU_NONE
+      nuc % n_precursor = 0
     end if
 
   end subroutine read_nu_data

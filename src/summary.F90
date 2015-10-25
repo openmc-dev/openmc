@@ -580,6 +580,8 @@ contains
           call write_dataset(filter_group, "type", "polar")
         case(FILTER_AZIMUTHAL)
           call write_dataset(filter_group, "type", "azimuthal")
+        case(FILTER_DELAYEDGROUP)
+          call write_dataset(filter_group, "type", "delayedgroup")
         end select
 
         call close_group(filter_group)
@@ -636,6 +638,8 @@ contains
           str_array(j) = "fission"
         case (SCORE_NU_FISSION)
           str_array(j) = "nu-fission"
+        case (SCORE_DELAYED_NU_FISSION)
+          str_array(j) = "delayed-nu-fission"
         case (SCORE_KAPPA_FISSION)
           str_array(j) = "kappa-fission"
         case (SCORE_CURRENT)

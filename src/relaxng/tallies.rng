@@ -145,6 +145,7 @@
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
+                      <value>delayedgroup</value>
                       <value>mu</value>
                       <value>polar</value>
                       <value>azimuthal</value>
@@ -161,6 +162,7 @@
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
+                      <value>delayedgroup</value>
                       <value>mu</value>
                       <value>polar</value>
                       <value>azimuthal</value>

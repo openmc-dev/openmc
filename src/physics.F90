@@ -1232,8 +1232,8 @@ contains
           call sample_energy(edist, E, E_out)
         end if
 
-        ! resample if energy is >= 20 MeV
-        if (E_out < 20) exit
+        ! resample if energy is greater than maximum neutron energy
+        if (E_out < energy_max_neutron) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1
@@ -1258,8 +1258,8 @@ contains
           call sample_energy(rxn%edist, E, E_out)
         end if
 
-        ! resample if energy is >= 20 MeV
-        if (E_out < 20) exit
+        ! resample if energy is greater than maximum neutron energy
+        if (E_out < energy_max_neutron) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1

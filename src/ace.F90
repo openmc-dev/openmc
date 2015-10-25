@@ -215,6 +215,16 @@ contains
 
     end do MATERIAL_LOOP3
 
+    ! Show which nuclide results in lowest energy for neutron transport
+    do i = 1, n_nuclides_total
+      if (nuclides(i)%energy(nuclides(i)%n_grid) == energy_max_neutron) then
+        call write_message("Maximum neutron transport energy: " // &
+             trim(to_str(energy_max_neutron)) // " MeV for " // &
+             trim(adjustl(nuclides(i)%name)), 6)
+        exit
+      end if
+    end do
+
   end subroutine read_xs
 
 !===============================================================================
@@ -482,6 +492,10 @@ contains
       ! Continue reading elastic scattering and heating
       nuc % elastic = get_real(NE)
 
+      ! Determine if minimum/maximum energy for this nuclide is greater/less
+      ! than the previous
+      energy_min_neutron = max(energy_min_neutron, nuc%energy(1))
+      energy_max_neutron = min(energy_max_neutron, nuc%energy(NE))
     end if
 
   end subroutine read_esz

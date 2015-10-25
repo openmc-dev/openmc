@@ -129,7 +129,7 @@ contains
 
       case (SCORE_INVERSE_VELOCITY)
         if (t % estimator == ESTIMATOR_ANALOG) then
-          ! All events score to a inverse velocity bin. We actually use a
+          ! All events score to an inverse velocity bin. We actually use a
           ! collision estimator in place of an analog one since there is no way
           ! to count 'events' exactly for the inverse velocity
           if (survival_biasing) then

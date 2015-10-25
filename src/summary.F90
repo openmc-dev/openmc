@@ -276,6 +276,11 @@ contains
         allocate(coeffs(4))
         coeffs(:) = [s%x0, s%y0, s%z0, s%r2]
 
+      type is (SurfaceQuadric)
+        call write_dataset(surface_group, "type", "quadric")
+        allocate(coeffs(10))
+        coeffs(:) = [s%A, s%B, s%C, s%D, s%E, s%F, s%G, s%H, s%J, s%K]
+
       end select
       call write_dataset(surface_group, "coefficients", coeffs)
       deallocate(coeffs)

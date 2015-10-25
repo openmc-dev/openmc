@@ -73,8 +73,8 @@ contains
     type(Nuclide), pointer :: nuc
 
     ! Set minimum/maximum energies
-    E_max = 20.0_8
-    E_min = 1.0e-11_8
+    E_max = energy_max_neutron
+    E_min = energy_min_neutron
 
     ! Determine equal-logarithmic energy spacing
     M = n_log_bins

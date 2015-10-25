@@ -1,6 +1,6 @@
 module surface_header
 
-  use constants, only: ONE, TWO, ZERO, INFINITY, FP_COINCIDENT
+  use constants, only: ONE, TWO, ZERO, HALF, INFINITY, FP_COINCIDENT
 
   implicit none
 
@@ -182,6 +182,15 @@ module surface_header
     procedure :: distance => z_cone_distance
     procedure :: normal => z_cone_normal
   end type SurfaceZCone
+
+  type, extends(Surface) :: SurfaceQuadric
+    ! Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
+    real(8) :: A, B, C, D, E, F, G, H, J, K
+  contains
+    procedure :: evaluate => quadric_evaluate
+    procedure :: distance => quadric_distance
+    procedure :: normal => quadric_normal
+  end type SurfaceQuadric
 
 contains
 
@@ -640,7 +649,7 @@ contains
   end function z_cylinder_normal
 
 !===============================================================================
-! SphereImplementation
+! SurfaceSphere Implementation
 !===============================================================================
 
   pure function sphere_evaluate(this, xyz) result(f)
@@ -874,7 +883,7 @@ contains
   end function y_cone_normal
 
 !===============================================================================
-! SurfaceZConeImplementation
+! SurfaceZCone Implementation
 !===============================================================================
 
   pure function z_cone_evaluate(this, xyz) result(f)
@@ -952,5 +961,92 @@ contains
     uvw(2) = TWO*(xyz(2) - this%y0)
     uvw(3) = -TWO*this%r2*(xyz(3) - this%z0)
   end function z_cone_normal
+
+!===============================================================================
+! SurfaceQuadric Implementation
+!===============================================================================
+
+  pure function quadric_evaluate(this, xyz) result(f)
+    class(SurfaceQuadric), intent(in) :: this
+    real(8), intent(in) :: xyz(3)
+    real(8) :: f
+
+    associate (x => xyz(1), y => xyz(2), z => xyz(3))
+      f = x*(this%A*x + this%D*y + this%G) + &
+           y*(this%B*y + this%E*z + this%H) + &
+           z*(this%C*z + this%F*x + this%J) + this%K
+    end associate
+  end function quadric_evaluate
+
+  pure function quadric_distance(this, xyz, uvw, coincident) result(d)
+    class(SurfaceQuadric), intent(in) :: this
+    real(8), intent(in) :: xyz(3)
+    real(8), intent(in) :: uvw(3)
+    logical, intent(in) :: coincident
+    real(8) :: d
+
+    real(8) :: a, k, c
+    real(8) :: quad, b
+
+    associate (x => xyz(1), y => xyz(2), z => xyz(3), &
+         u => uvw(1), v => uvw(2), w => uvw(3))
+
+      a = this%A*u*u + this%B*v*v + this%C*w*w + this%D*u*v + this%E*v*w + &
+           this%F*u*w
+      k = (this%A*u*x + this%B*v*y + this%C*w*z + HALF*(this%D*(u*y + v*x) + &
+           this%E*(v*z + w*y) + this%F*(w*x + u*z) + this%G*u + this%H*v + &
+           this%J*w))
+      c = this%A*x*x + this%B*y*y + this%C*z*z + this%D*x*y + this%E*y*z + &
+           this%F*x*z + this%G*x + this%H*y + this%J*z + this%K
+      quad = k*k - a*c
+
+      if (quad < ZERO) then
+        ! no intersection with surface
+
+        d = INFINITY
+
+      elseif (coincident .or. abs(c) < FP_COINCIDENT) then
+        ! particle is on the surface, thus one distance is positive/negative and
+        ! the other is zero. The sign of k determines which distance is zero and
+        ! which is not.
+
+        if (k >= ZERO) then
+          d = (-k - sqrt(quad))/a
+        else
+          d = (-k + sqrt(quad))/a
+        end if
+
+      else
+        ! calculate both solutions to the quadratic
+        quad = sqrt(quad)
+        d = (-k - quad)/a
+        b = (-k + quad)/a
+
+        ! determine the smallest positive solution
+        if (d < ZERO) then
+          if (b > ZERO) then
+            d = b
+          end if
+        else
+          if (b > ZERO) d = min(d, b)
+        end if
+      end if
+
+      ! If the distance was negative, set boundary distance to infinity
+      if (d <= ZERO) d = INFINITY
+    end associate
+  end function quadric_distance
+
+  pure function quadric_normal(this, xyz) result(uvw)
+    class(SurfaceQuadric), intent(in) :: this
+    real(8), intent(in) :: xyz(3)
+    real(8) :: uvw(3)
+
+    associate (x => xyz(1), y => xyz(2), z => xyz(3))
+      uvw(1) = TWO*this%A*x + this%D*y + this%F*z + this%G
+      uvw(2) = TWO*this%B*y + this%D*x + this%E*z + this%H
+      uvw(3) = TWO*this%C*z + this%E*y + this%F*x + this%J
+    end associate
+  end function quadric_normal
 
 end module surface_header

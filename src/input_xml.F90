@@ -1294,6 +1294,9 @@ contains
       case ('z-cone')
         coeffs_reqd  = 4
         allocate(SurfaceZCone :: surfaces(i)%obj)
+      case ('quadric')
+        coeffs_reqd  = 10
+        allocate(SurfaceQuadric :: surfaces(i)%obj)
       case default
         call fatal_error("Invalid surface type: " // trim(word))
       end select
@@ -1378,6 +1381,17 @@ contains
         s%y0 = coeffs(2)
         s%z0 = coeffs(3)
         s%r2 = coeffs(4)
+      type is (SurfaceQuadric)
+        s%A = coeffs(1)
+        s%B = coeffs(2)
+        s%C = coeffs(3)
+        s%D = coeffs(4)
+        s%E = coeffs(5)
+        s%F = coeffs(6)
+        s%G = coeffs(7)
+        s%H = coeffs(8)
+        s%J = coeffs(9)
+        s%K = coeffs(10)
       end select
 
       ! No longer need coefficients
@@ -2847,6 +2861,10 @@ contains
           ! MOMENT_STRS(:)
           ! If so, check the order, store if OK, then reset the number to 'n'
           score_name = trim(sarray(j))
+
+          ! Append the score to the list of possible trigger scores
+          if (trigger_on) call trigger_scores % add_key(trim(score_name), j)
+
           do imomstr = 1, size(MOMENT_STRS)
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
               n_order_pos = scan(score_name,'0123456789')
@@ -3263,11 +3281,8 @@ contains
             end if
 
           end select
-
-          ! Append the score to the list of possible trigger scores
-          if (trigger_on) call trigger_scores % add_key(trim(score_name), l)
-
         end do
+
         t % n_score_bins = n_scores
         t % n_user_score_bins = n_words
 

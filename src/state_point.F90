@@ -353,6 +353,8 @@ contains
               str_array(j) = "nu-scatter-yn"
             case (SCORE_EVENTS)
               str_array(j) = "events"
+            case (SCORE_INVERSE_VELOCITY)
+              str_array(j) = "inverse-velocity"
             case default
               str_array(j) = reaction_name(tally%score_bins(j))
             end select

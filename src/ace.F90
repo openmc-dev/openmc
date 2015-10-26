@@ -215,6 +215,16 @@ contains
 
     end do MATERIAL_LOOP3
 
+    ! Show which nuclide results in lowest energy for neutron transport
+    do i = 1, n_nuclides_total
+      if (nuclides(i)%energy(nuclides(i)%n_grid) == energy_max_neutron) then
+        call write_message("Maximum neutron transport energy: " // &
+             trim(to_str(energy_max_neutron)) // " MeV for " // &
+             trim(adjustl(nuclides(i)%name)), 6)
+        exit
+      end if
+    end do
+
   end subroutine read_xs
 
 !===============================================================================
@@ -482,6 +492,10 @@ contains
       ! Continue reading elastic scattering and heating
       nuc % elastic = get_real(NE)
 
+      ! Determine if minimum/maximum energy for this nuclide is greater/less
+      ! than the previous
+      energy_min_neutron = max(energy_min_neutron, nuc%energy(1))
+      energy_max_neutron = min(energy_max_neutron, nuc%energy(NE))
     end if
 
   end subroutine read_esz
@@ -635,6 +649,15 @@ contains
 
       ! Allocate space for secondary energy distribution
       NPCR = NXS(8)
+
+      ! Check to make sure nuclide does not have more than the maximum number
+      ! of delayed groups
+      if (NPCR > MAX_DELAYED_GROUPS) then
+        call fatal_error("Encountered nuclide with " // trim(to_str(NPCR)) &
+             // " delayed groups while the maximum number of delayed groups &
+             &set in constants.F90 is " // trim(to_str(MAX_DELAYED_GROUPS)))
+      end if
+
       nuc % n_precursor = NPCR
       allocate(nuc % nu_d_edist(NPCR))
 
@@ -672,6 +695,7 @@ contains
 
     else
       nuc % nu_d_type = NU_NONE
+      nuc % n_precursor = 0
     end if
 
   end subroutine read_nu_data

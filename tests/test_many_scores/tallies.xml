@@ -6,7 +6,7 @@
     <scores>
       flux total scatter nu-scatter scatter-2 scatter-p2 nu-scatter-2
       nu-scatter-p2 transport n1n absorption nu-fission kappa-fission
-      flux-y2 total-y2 scatter-y2 nu-scatter-y2 events
+      flux-y2 total-y2 scatter-y2 nu-scatter-y2 events delayed-nu-fission
     </scores>
   </tally>
 

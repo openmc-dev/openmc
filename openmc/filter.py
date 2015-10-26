@@ -16,7 +16,7 @@ if sys.version_info[0] >= 3:
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
-                 'distribcell']
+                 'distribcell', 'delayedgroup']
 
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only
@@ -169,7 +169,7 @@ class Filter(object):
             bins = list(bins)
 
         if self.type in ['cell', 'cellborn', 'surface', 'material',
-                          'universe', 'distribcell']:
+                         'universe', 'distribcell', 'delayedgroup']:
             cv.check_iterable_type('filter bins', bins, Integral)
             for edge in bins:
                 cv.check_greater_than('filter bin', edge, 0, equality=True)
@@ -302,7 +302,11 @@ class Filter(object):
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
+<<<<<<< HEAD
         merged_bins = list(set(list(self.bins) + list(filter.bins)))
+=======
+        merged_bins = list(set(np.concatenate((self.bins, filter.bins))))
+>>>>>>> upstream/develop
         merged_filter.bins = merged_bins
         merged_filter.num_bins = len(merged_bins)
 

@@ -1063,14 +1063,15 @@ contains
     integer,        intent(in)    :: i_nuclide
     integer,        intent(in)    :: i_reaction
 
-    integer :: i            ! loop index
-    integer :: nu           ! actual number of neutrons produced
-    integer :: ijk(3)       ! indices in ufs mesh
-    real(8) :: nu_t         ! total nu
-    real(8) :: mu           ! fission neutron angular cosine
-    real(8) :: phi          ! fission neutron azimuthal angle
-    real(8) :: weight       ! weight adjustment for ufs method
-    logical :: in_mesh      ! source site in ufs mesh?
+    integer :: nu_d(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
+    integer :: i                        ! loop index
+    integer :: nu                       ! actual number of neutrons produced
+    integer :: ijk(3)                   ! indices in ufs mesh
+    real(8) :: nu_t                     ! total nu
+    real(8) :: mu                       ! fission neutron angular cosine
+    real(8) :: phi                      ! fission neutron azimuthal angle
+    real(8) :: weight                   ! weight adjustment for ufs method
+    logical :: in_mesh                  ! source site in ufs mesh?
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
@@ -1120,6 +1121,11 @@ contains
 
     ! Bank source neutrons
     if (nu == 0 .or. n_bank == size(fission_bank)) return
+
+    ! Initialize counter of delayed neutrons encountered for each delayed group
+    ! to zero.
+    nu_d(:) = 0
+
     p % fission = .true. ! Fission neutrons will be banked
     do i = int(n_bank,4) + 1, int(min(n_bank + nu, int(size(fission_bank),8)),4)
       ! Bank source neutrons by copying particle data
@@ -1142,15 +1148,24 @@ contains
 
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
-      fission_bank(i) % E = sample_fission_energy(nuc, rxn, p % E)
+      fission_bank(i) % E = sample_fission_energy(nuc, rxn, p)
+
+      ! Set the delayed group of the neutron
+      fission_bank(i) % delayed_group = p % delayed_group
+
+      ! Increment the number of neutrons born delayed
+      if (p % delayed_group > 0) then
+        nu_d(p % delayed_group) = nu_d(p % delayed_group) + 1
+      end if
     end do
 
     ! increment number of bank sites
     n_bank = min(n_bank + nu, int(size(fission_bank),8))
 
-    ! Store total weight banked for analog fission tallies
+    ! Store total and delayed weight banked for analog fission tallies
     p % n_bank   = nu
     p % wgt_bank = nu/weight
+    p % n_delayed_bank(:) = nu_d(:)
 
   end subroutine create_fission_sites
 
@@ -1158,12 +1173,12 @@ contains
 ! SAMPLE_FISSION_ENERGY
 !===============================================================================
 
-  function sample_fission_energy(nuc, rxn, E) result(E_out)
+  function sample_fission_energy(nuc, rxn, p) result(E_out)
 
-    type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
-    real(8), intent(in)     :: E     ! incoming energy of neutron
-    real(8)                 :: E_out ! outgoing energy of fission neutron
+    type(Nuclide),  pointer       :: nuc
+    type(Reaction), pointer       :: rxn
+    type(Particle), intent(inout) :: p     ! Particle causing fission
+    real(8)                       :: E_out ! outgoing energy of fission neutron
 
     integer :: j            ! index on nu energy grid / precursor group
     integer :: lc           ! index before start of energies/nu values
@@ -1181,10 +1196,10 @@ contains
     type(DistEnergy), pointer :: edist
 
     ! Determine total nu
-    nu_t = nu_total(nuc, E)
+    nu_t = nu_total(nuc, p % E)
 
     ! Determine delayed nu
-    nu_d = nu_delayed(nuc, E)
+    nu_d = nu_delayed(nuc, p % E)
 
     ! Determine delayed neutron fraction
     beta = nu_d / nu_t
@@ -1204,7 +1219,7 @@ contains
 
         ! determine delayed neutron precursor yield for group j
         yield = interpolate_tab1(nuc % nu_d_precursor_data( &
-             lc+1:lc+2+2*NR+2*NE), E)
+             lc+1:lc+2+2*NR+2*NE), p % E)
 
         ! Check if this group is sampled
         prob = prob + yield
@@ -1219,6 +1234,9 @@ contains
       ! n_precursor -- check for this condition
       j = min(j, nuc % n_precursor)
 
+      ! set the delayed group for the particle born from fission
+      p % delayed_group = j
+
       ! select energy distribution for group j
       law = nuc % nu_d_edist(j) % law
       edist => nuc % nu_d_edist(j)
@@ -1227,13 +1245,13 @@ contains
       n_sample = 0
       do
         if (law == 44 .or. law == 61) then
-          call sample_energy(edist, E, E_out, mu)
+          call sample_energy(edist, p % E, E_out, mu)
         else
-          call sample_energy(edist, E, E_out)
+          call sample_energy(edist, p % E, E_out)
         end if
 
-        ! resample if energy is >= 20 MeV
-        if (E_out < 20) exit
+        ! resample if energy is greater than maximum neutron energy
+        if (E_out < energy_max_neutron) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1
@@ -1248,18 +1266,21 @@ contains
       ! ====================================================================
       ! PROMPT NEUTRON SAMPLED
 
+      ! set the delayed group for the particle born from fission to 0
+      p % delayed_group = 0
+
       ! sample from prompt neutron energy distribution
       law = rxn % edist % law
       n_sample = 0
       do
         if (law == 44 .or. law == 61) then
-          call sample_energy(rxn%edist, E, E_out, prob)
+          call sample_energy(rxn%edist, p % E, E_out, prob)
         else
-          call sample_energy(rxn%edist, E, E_out)
+          call sample_energy(rxn%edist, p % E, E_out)
         end if
 
-        ! resample if energy is >= 20 MeV
-        if (E_out < 20) exit
+        ! resample if energy is greater than maximum neutron energy
+        if (E_out < energy_max_neutron) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1

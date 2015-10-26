@@ -92,9 +92,14 @@ class StatePoint(object):
         self._f = h5py.File(filename, 'r')
 
         # Ensure filetype and revision are correct
-        if 'filetype' not in self._f or self._f[
-                'filetype'].value.decode() != 'statepoint':
-            raise IOError('{} is not a statepoint file.'.format(filename))
+        try:
+            if 'filetype' not in self._f or self._f[
+                    'filetype'].value.decode() != 'statepoint':
+                raise IOError('{} is not a statepoint file.'.format(filename))
+        except AttributeError:
+            raise IOError('Could not read statepoint file. This most likely '
+                          'means the statepoint file was produced by a different '
+                          'version of OpenMC than the one you are using.')
         if self._f['revision'].value != 14:
             raise IOError('Statepoint file has a file revision of {} '
                           'which is not consistent with the revision this '

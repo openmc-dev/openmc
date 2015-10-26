@@ -302,11 +302,7 @@ class Filter(object):
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-<<<<<<< HEAD
-        merged_bins = list(set(list(self.bins) + list(filter.bins)))
-=======
         merged_bins = list(set(np.concatenate((self.bins, filter.bins))))
->>>>>>> upstream/develop
         merged_filter.bins = merged_bins
         merged_filter.num_bins = len(merged_bins)
 

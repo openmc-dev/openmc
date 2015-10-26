@@ -586,6 +586,21 @@ class Tally(object):
         if len(self.filters) != len(tally.filters):
             return False
 
+        # Check if only one tally contains a delayed group filter
+        tally1_dg = False
+        for filter1 in self.filters:
+            if filter1.type == 'delayedgroup':
+                tally1_dg = True
+
+        tally2_dg = False
+        for filter2 in tally.filters:
+            if filter2.type == 'delayedgroup':
+                tally2_dg = True
+
+        # Return False if only one tally has a delayed group filter
+        if (tally1_dg or tally2_dg) and not (tally1_dg and tally2_dg):
+            return False
+
         # Look to see if all filters are the same, or one or more can be merged
         for filter1 in self.filters:
             mergeable_filter = False

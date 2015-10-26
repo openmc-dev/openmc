@@ -15,6 +15,8 @@ module tally
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
+  use fission,          only: nu_total, nu_delayed, yield_delayed
+  use interpolation,    only: interpolate_tab1
 
 #ifdef MPI
   use message_passing
@@ -53,6 +55,10 @@ contains
     integer :: i_energy             ! index in nuclide energy grid
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: score_index          ! scoring bin index
+    integer :: d                    ! delayed neutron index
+    integer :: d_bin                ! delayed group bin index
+    integer :: dg_filter            ! index of delayed group filter
+    real(8) :: yield                ! delayed neutron yield
     real(8) :: atom_density_        ! atom/b-cm
     real(8) :: f                    ! interpolation factor
     real(8) :: score                ! analog tally score
@@ -61,6 +67,7 @@ contains
     real(8) :: uvw(3)               ! particle direction
     type(Material),    pointer :: mat
     type(Reaction),    pointer :: rxn
+    type(Nuclide),     pointer :: nuc
 
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins
@@ -391,6 +398,186 @@ contains
             score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
           else
             score = material_xs % nu_fission * flux
+          end if
+        end if
+
+
+      case (SCORE_DELAYED_NU_FISSION)
+
+        ! Set the delayedgroup filter index and the number of delayed group bins
+        dg_filter = t % find_filter(FILTER_DELAYEDGROUP)
+
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing .or. p % fission) then
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              ! Normally, we only need to make contributions to one scoring
+              ! bin. However, in the case of fission, since multiple fission
+              ! neutrons were emitted with different energies, multiple
+              ! outgoing energy bins may have been scored to. The following
+              ! logic treats this special case and results to multiple bins
+              call score_fission_delayed_eout(p, t, score_index)
+              cycle SCORE_LOOP
+            end if
+          end if
+          if (survival_biasing) then
+            ! No fission events occur if survival biasing is on -- need to
+            ! calculate fraction of absorptions that would have resulted in
+            ! delayed-nu-fission
+            if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+
+              ! Get the event nuclide
+              nuc => nuclides(p % event_nuclide)
+
+              ! Check if the delayed group filter is present
+              if (dg_filter > 0) then
+
+                ! Loop over all delayed group bins and tally to them
+                ! individually
+                do d_bin = 1, t % filters(dg_filter) % n_bins
+
+                  ! Get the delayed group for this bin
+                  d = t % filters(dg_filter) % int_bins(d_bin)
+
+                  ! Compute the yield for this delayed group
+                  yield = yield_delayed(nuc, p % E, d)
+
+                  ! Compute the score and tally to bin
+                  score = p % absorb_wgt * yield * micro_xs(p % event_nuclide) &
+                       % fission * nu_delayed(nuc, p % E) / &
+                       micro_xs(p % event_nuclide) % absorption
+                  call score_fission_delayed_dg(t, d_bin, score, score_index)
+                end do
+                cycle SCORE_LOOP
+              else
+                ! If the delayed group filter is not present, compute the score
+                ! by multiplying the absorbed weight by the fraction of the
+                ! delayed-nu-fission xs to the absorption xs
+                score = p % absorb_wgt * micro_xs(p % event_nuclide) &
+                     % fission * nu_delayed(nuc, p % E) / &
+                     micro_xs(p % event_nuclide) % absorption
+              end if
+            end if
+          else
+            ! Skip any non-fission events
+            if (.not. p % fission) cycle SCORE_LOOP
+            ! If there is no outgoing energy filter, than we only need to
+            ! score to one bin. For the score to be 'analog', we need to
+            ! score the number of particles that were banked in the fission
+            ! bank. Since this was weighted by 1/keff, we multiply by keff
+            ! to get the proper score. Loop over the neutrons produced from
+            ! fission and check which ones are delayed. If a delayed neutron is
+            ! encountered, add its contribution to the fission bank to the
+            ! score.
+
+            ! Check if the delayed group filter is present
+            if (dg_filter > 0) then
+
+              ! Loop over all delayed group bins and tally to them individually
+              do d_bin = 1, t % filters(dg_filter) % n_bins
+
+                ! Get the delayed group for this bin
+                d = t % filters(dg_filter) % int_bins(d_bin)
+
+                ! Compute the score and tally to bin
+                score = keff * p % wgt_bank / p % n_bank * p % n_delayed_bank(d)
+                call score_fission_delayed_dg(t, d_bin, score, score_index)
+              end do
+              cycle SCORE_LOOP
+            else
+
+              ! Add the contribution from all delayed groups
+              score = keff * p % wgt_bank / p % n_bank * sum(p % n_delayed_bank)
+            end if
+          end if
+        else
+
+          ! Check if tally is on a single nuclide
+          if (i_nuclide > 0) then
+
+            ! Get the nuclide of interest
+            nuc => nuclides(i_nuclide)
+
+            ! Check if the delayed group filter is present
+            if (dg_filter > 0) then
+
+              ! Loop over all delayed group bins and tally to them individually
+              do d_bin = 1, t % filters(dg_filter) % n_bins
+
+                ! Get the delayed group for this bin
+                d = t % filters(dg_filter) % int_bins(d_bin)
+
+                ! Compute the yield for this delayed group
+                yield = yield_delayed(nuc, p % E, d)
+
+                ! Compute the score and tally to bin
+                score = micro_xs(i_nuclide) % fission * yield &
+                     * nu_delayed(nuc, p % E) * atom_density * flux
+                call score_fission_delayed_dg(t, d_bin, score, score_index)
+              end do
+              cycle SCORE_LOOP
+            else
+
+              ! If the delayed group filter is not present, compute the score
+              ! by multiplying the delayed-nu-fission macro xs by the flux
+              score = micro_xs(i_nuclide) % fission * nu_delayed(nuc, p % E)&
+                   * atom_density * flux
+            end if
+
+          ! Tally is on total nuclides
+          else
+
+            ! Get pointer to current material
+            mat => materials(p % material)
+
+            ! Check if the delayed group filter is present
+            if (dg_filter > 0) then
+
+              ! Loop over all nuclides in the current material
+              do l = 1, mat % n_nuclides
+
+                ! Get atom density
+                atom_density_ = mat % atom_density(l)
+
+                ! Get index in nuclides array
+                i_nuc = mat % nuclide(l)
+
+                ! Loop over all delayed group bins and tally to them individually
+                do d_bin = 1, t % filters(dg_filter) % n_bins
+
+                  ! Get the delayed group for this bin
+                  d = t % filters(dg_filter) % int_bins(d_bin)
+
+                  ! Get the current nuclide
+                  nuc => nuclides(i_nuc)
+
+                  ! Get the yield for the desired nuclide and delayed group
+                  yield = yield_delayed(nuc, p % E, d)
+
+                  ! Compute the score and tally to bin
+                  score = micro_xs(i_nuc) % fission * yield &
+                       * nu_delayed(nuc, p % E) * atom_density_ * flux
+                  call score_fission_delayed_dg(t, d_bin, score, score_index)
+                end do
+              end do
+              cycle SCORE_LOOP
+            else
+
+              score = ZERO
+
+              ! Loop over all nuclides in the current material
+              do l = 1, mat % n_nuclides
+
+                ! Get atom density
+                atom_density_ = mat % atom_density(l)
+
+                ! Get index in nuclides array
+                i_nuc = mat % nuclide(l)
+
+                ! Accumulate the contribution from each nuclide
+                score = score + micro_xs(i_nuc) % fission &
+                     * nu_delayed(nuclides(i_nuc), p % E) * atom_density_ * flux
+              end do
+            end if
           end if
         end if
 
@@ -843,6 +1030,132 @@ contains
     matching_bins(i) = bin_energyout
 
   end subroutine score_fission_eout
+
+!===============================================================================
+! SCORE_FISSION_DELAYED_EOUT handles a special case where we need to store
+! delayed neutron production rate with an outgoing energy filter (think of a
+! fission matrix). In this case, we may need to score to multiple bins if there
+! were multiple neutrons produced with different energies.
+!===============================================================================
+
+  subroutine score_fission_delayed_eout(p, t, i_score)
+
+    type(Particle), intent(in)       :: p
+    type(TallyObject), intent(inout) :: t
+    integer, intent(in)              :: i_score ! index for score
+
+    integer :: i             ! index of outgoing energy filter
+    integer :: j             ! index of delayedgroup filter
+    integer :: d             ! delayed group
+    integer :: g             ! another delayed group
+    integer :: d_bin         ! delayed group bin index
+    integer :: n             ! number of energies on filter
+    integer :: k             ! loop index for bank sites
+    integer :: bin_energyout ! original outgoing energy bin
+    integer :: i_filter      ! index for matching filter bin combination
+    real(8) :: score         ! actual score
+    real(8) :: E_out         ! energy of fission bank site
+
+    ! Save original outgoing energy bin
+    i = t % find_filter(FILTER_ENERGYOUT)
+    bin_energyout = matching_bins(i)
+
+    ! Get the index of delayed group filter
+    j = t % find_filter(FILTER_DELAYEDGROUP)
+
+    ! Get number of energies on filter
+    n = size(t % filters(i) % real_bins)
+
+    ! Since the creation of fission sites is weighted such that it is
+    ! expected to create n_particles sites, we need to multiply the
+    ! score by keff to get the true delayed-nu-fission rate.
+
+    ! loop over number of particles banked
+    do k = 1, p % n_bank
+
+      ! get the delayed group
+      g = fission_bank(n_bank - p % n_bank + k) % delayed_group
+
+      ! check if the particle was born delayed
+      if (g /= 0) then
+
+        ! determine score based on bank site weight and keff
+        score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
+
+        ! determine outgoing energy from fission bank
+        E_out = fission_bank(n_bank - p % n_bank + k) % E
+
+        ! check if outgoing energy is within specified range on filter
+        if (E_out < t % filters(i) % real_bins(1) .or. &
+             E_out > t % filters(i) % real_bins(n)) cycle
+
+        ! change outgoing energy bin
+        matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
+
+        ! if the delayed group filter is present, tally to corresponding
+        ! delayed group bin if it exists
+        if (j > 0) then
+
+          ! loop over delayed group bins until the corresponding bin is found
+          do d_bin = 1, t % filters(j) % n_bins
+            d = t % filters(j) % int_bins(d_bin)
+
+            ! check whether the delayed group of the particle is equal to the
+            ! delayed group of this bin
+            if (d == g) then
+              call score_fission_delayed_dg(t, d_bin, score, i_score)
+            end if
+          end do
+
+        ! if the delayed group filter is not present, add score to tally
+        else
+
+          ! determine scoring index
+          i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+
+          ! Add score to tally
+!$omp atomic
+          t % results(i_score, i_filter) % value = &
+               t % results(i_score, i_filter) % value + score
+        end if
+      end if
+    end do
+
+    ! reset outgoing energy bin
+    matching_bins(i) = bin_energyout
+
+  end subroutine score_fission_delayed_eout
+
+!===============================================================================
+! SCORE_FISSION_DELAYED_DG helper function used to increment the tally when a
+! delayed group filter is present.
+!===============================================================================
+
+  subroutine score_fission_delayed_dg(t, d_bin, score, score_index)
+
+    type(TallyObject), intent(inout) :: t
+    integer, intent(in)              :: score_index ! index for score
+    integer, intent(in)              :: d_bin       ! delayed group bin index
+
+    integer :: bin_original  ! original bin index
+    integer :: filter_index  ! index for matching filter bin combination
+    real(8) :: score         ! actual score
+
+    ! save original delayed group bin
+    bin_original = matching_bins(t % find_filter(FILTER_DELAYEDGROUP))
+    matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = d_bin
+
+    ! Compute the filter index based on the modified matching_bins
+    filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+
+!$omp atomic
+    t % results(score_index, filter_index) % value = &
+         t % results(score_index, filter_index) % value + score
+
+    ! reset original delayed group bin
+    matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = bin_original
+
+  end subroutine score_fission_delayed_dg
 
 !===============================================================================
 ! SCORE_TRACKLENGTH_TALLY calculates fluxes and reaction rates based on the
@@ -1478,6 +1791,20 @@ contains
           ! search to find incoming energy bin
           matching_bins(i) = binary_search(t % filters(i) % real_bins, &
                n + 1, p % E)
+        end if
+
+      case (FILTER_DELAYEDGROUP)
+
+        if (survival_biasing .and. t % find_filter(FILTER_ENERGYOUT) <= 0) then
+          matching_bins(i) = 1
+        elseif (active_tracklength_tallies % size() > 0) then
+          matching_bins(i) = 1
+        else
+          if (p % delayed_group == 0) then
+            matching_bins = NO_BIN_FOUND
+          else
+            matching_bins(i) = p % delayed_group
+          end if
         end if
 
       case (FILTER_MU)

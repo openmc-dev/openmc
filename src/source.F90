@@ -211,8 +211,9 @@ contains
     case (SRC_ENERGY_MONO)
       ! Monoenergtic source
       site%E = external_source%params_energy(1)
-      if (site%E >= 20) then
-        call fatal_error("Source energies above 20 MeV not allowed.")
+      if (site%E >= energy_max_neutron) then
+        call fatal_error("Source energy above range of energies of at least &
+             &one cross section table")
       end if
 
     case (SRC_ENERGY_MAXWELL)
@@ -221,8 +222,8 @@ contains
         ! Sample Maxwellian fission spectrum
         site%E = maxwell_spectrum(a)
 
-        ! resample if energy is >= 20 MeV
-        if (site%E < 20) exit
+        ! resample if energy is greater than maximum neutron energy
+        if (site%E < energy_max_neutron) exit
       end do
 
     case (SRC_ENERGY_WATT)
@@ -232,8 +233,8 @@ contains
         ! Sample Watt fission spectrum
         site%E = watt_spectrum(a, b)
 
-        ! resample if energy is >= 20 MeV
-        if (site%E < 20) exit
+        ! resample if energy is greater than maximum neutron energy
+        if (site%E < energy_max_neutron) exit
       end do
 
     case default

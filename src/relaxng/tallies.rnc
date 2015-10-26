@@ -24,10 +24,10 @@ element tallies {
     element filter {
       (element type { ( "cell" | "cellborn" | "material" | "universe" |
         "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu" |
-        "polar" | "azimuthal") } |
+        "polar" | "azimuthal" | "delayedgroup") } |
        attribute type { ( "cell" | "cellborn" | "material" | "universe" |
         "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu" |
-        "polar" | "azimuthal") }) &
+        "polar" | "azimuthal" | "delayedgroup") }) &
       (element bins { list { xsd:double+ } } |
         attribute bins { list { xsd:double+ } })
     }* &

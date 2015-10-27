@@ -37,14 +37,6 @@ contains
 
     boundary_crossed = .false.
 
-!  if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!      print *, "coincidence", &
-!          any(lattice_translation /= 0), &
-!          surfaces(abs(surface_crossed)) % bc /= BC_TRANSMIT, &
-!          d_collision > d_boundary, &
-!          abs(d_dd_mesh - distance) < FP_COINCIDENT, &
-!          d_collision, d_boundary
-
     ! Check for coincidence with a boundary condition - in this case we
     ! don't need to communicate the particle.  Here we rely on lattice
     ! boundaries NOT being selected by distance_to_boundary when they are
@@ -54,19 +46,12 @@ contains
                d_collision > d_boundary .and. &
                abs(d_dd_mesh - d_boundary) < FP_COINCIDENT)) then
 
-
-!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!          print *,rank,'sending', prn_seed(1), 'dist', stored_distance, p % coord0 % uvw
-
       ! Exit the particle tracking loop without killing the particle
       boundary_crossed = .true.
 
     end if
-
-!    if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!      print *, "DECIDED NOT TO SEND DUE TO COINCIDENCE"
-
-      end subroutine check_domain_boundary_crossing
+               
+  end subroutine check_domain_boundary_crossing
 
 !===============================================================================
 ! CROSS_DOMAIN_BOUNDARY determines which domain a particle will scatter to,

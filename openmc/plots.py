@@ -363,6 +363,9 @@ class PlotsFile(object):
 
         """
 
+        # Reset xml element tree
+        self._plots_file.clear()
+
         self._create_plot_subelements()
 
         # Clean the indentation in the file to be user-readable

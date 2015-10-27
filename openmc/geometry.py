@@ -208,6 +208,9 @@ class GeometryFile(object):
         # Clear OpenMC written IDs used to optimize XML generation
         openmc.universe.WRITTEN_IDS = {}
 
+        # Reset xml element tree
+        self._geometry_file.clear()
+
         root_universe = self.geometry.root_universe
         root_universe.create_xml_subelement(self._geometry_file)
 

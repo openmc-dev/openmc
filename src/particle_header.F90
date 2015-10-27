@@ -93,6 +93,7 @@ module particle_header
     real(8)    :: stored_xyz(3)
     real(8)    :: stored_uvw(3)
     real(8)    :: stored_distance ! sampled distance to go after changing domain
+    real(8)    :: fly_dd_distance ! accumulated distance to domain boundary
     integer(8) :: prn_seed(N_STREAMS) ! the  next random number seed 
     integer(8) :: xs_seed(N_STREAMS)  ! the previously seed used for xs gen
 
@@ -126,6 +127,7 @@ module particle_header
     real(8)    :: absorb_wgt
     real(8)    :: wgt_bank
     real(8)    :: stored_distance
+    real(8)    :: fly_dd_distance
     real(8)    :: last_xyz(3)
     real(8)    :: stored_xyz(3)
     real(8)    :: stored_uvw(3)
@@ -199,6 +201,7 @@ contains
     this % write_track     = .false.
     this % new_particle    = .true.
     this % stored_distance = ZERO
+    this % fly_dd_distance = ZERO
 
     ! Set up base level coordinates
     allocate(this % coord0)
@@ -243,6 +246,7 @@ contains
     buf % prn_seed        = part % prn_seed
     buf % xs_seed         = part % xs_seed
     buf % stored_distance = part % stored_distance
+    buf % fly_dd_distance = part % fly_dd_distance
   
   end subroutine particle_to_buffer
 
@@ -286,6 +290,7 @@ contains
     part % prn_seed        = buf % prn_seed
     part % xs_seed         = buf % xs_seed
     part % stored_distance = buf % stored_distance
+    part % fly_dd_distance = buf % fly_dd_distance
 
   end subroutine buffer_to_particle
 

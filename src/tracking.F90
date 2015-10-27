@@ -46,6 +46,7 @@ contains
     logical :: found_cell             ! found cell which particle is in?
     logical :: dd_boundary_crossed    ! domain decomposition boundary crossed
     type(LocalCoord), pointer :: coord
+    real(8) :: xyz_temp(3)            ! temporary storage of particle position
 
     ! DD debugging vars
     integer :: meshbin
@@ -58,7 +59,7 @@ contains
     starting_seed = prn_seed(1)
     !print *, 'starting', starting_seed
     if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-        print *,'starting particle', starting_seed, p % id, p % new_particle
+        print *,'starting particle', rank, starting_seed, p % id, p % new_particle, p % last_material
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
       call write_message("Simulating Particle " // trim(to_str(p % id)))
@@ -101,20 +102,20 @@ contains
 
     do while (p % alive)
       if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-          print *, prn_seed(1), p % coord0 % xyz
-!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!        then
-!          call get_mesh_bin(domain_decomp % mesh, p % coord0 % xyz, meshbin)
-!          print *, 'meshbin',meshbin
-!        end if
+          print *, prn_seed(1), 'xyz', p % coord0 % xyz
+      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+        then
+          call get_mesh_bin(domain_decomp % mesh, p % coord0 % xyz, meshbin)
+          print *, 'meshbin',meshbin
+        end if
 
       ! Write particle track.
       if (p % write_track) call write_particle_track(p)
 
       if (check_overlaps) call check_cell_overlap(p)
 
-!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!          print *, prn_seed(1), p % material /= p % last_material, p % inst /= p % last_inst, p % coord0 % xyz(2)
+      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+          print *, prn_seed(1),'material', p % material, p % last_material, p % inst, p % last_inst, p % coord0 % xyz(2)
 
       ! Calculate microscopic and macroscopic cross sections -- note: if the
       ! material is the same as the last material and the energy of the
@@ -135,9 +136,24 @@ contains
           micro_xs % last_E = ZERO
           micro_xs % last_index_sab = NONE
         end if
-
         call calculate_xs(p)
+      end if
 
+      ! determine whether the particle is now transferred to right domain 
+      if (dd_run .and. &
+        & p % stored_distance > ZERO) then
+        xyz_temp = p % coord0 % xyz
+        p % coord0 % xyz = xyz_temp + p % fly_dd_distance * p % coord0 % uvw
+        call distance_to_mesh_surface(p, domain_decomp % mesh, &
+          distance, d_dd_mesh, meshbin=domain_decomp % meshbin)
+        p % coord0 % xyz = xyz_temp
+        p % fly_dd_distance = p % fly_dd_distance + d_dd_mesh
+        if ( p % stored_distance - p % fly_dd_distance > FP_COINCIDENT) then
+          ! Prepare particle for communication and stop tracking it
+          call cross_domain_boundary(p, domain_decomp, p % stored_distance, &
+            p % fly_dd_distance)
+          exit
+        end if
       end if
 
       ! Find the distance to the nearest boundary
@@ -147,12 +163,18 @@ contains
            &lattice_translation)
 
       ! Sample a distance to collision
-      if (material_xs % total == ZERO) then
-        d_collision = INFINITY
-      else
-        if (p % stored_distance > ZERO) then
+      if (dd_run .and. p % stored_distance > ZERO) then
+        if (abs(p % stored_distance - d_boundary) < FP_COINCIDENT) then
+          d_boundary  = p % stored_distance
+          d_collision = INFINITY
+        else
           d_collision = p % stored_distance
+        end if
           p % stored_distance = ZERO
+          p % fly_dd_distance = ZERO
+      else
+        if (material_xs % total == ZERO) then
+          d_collision = INFINITY
         else
           d_collision = -log(prn()) / material_xs % total
         end if
@@ -165,13 +187,36 @@ contains
       if (dd_run) then
         call distance_to_mesh_surface(p, domain_decomp % mesh, &
             distance, d_dd_mesh, meshbin=domain_decomp % meshbin)
-        distance = min(distance, d_dd_mesh)
+        !distance = min(distance, d_dd_mesh)
       end if
 
       if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-          print *, prn_seed(1), 'distances', d_boundary, d_dd_mesh, d_collision
-!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!          print *, prn_seed(1), 'direction', p % coord0 % uvw
+          print *, prn_seed(1), 'distances', d_boundary, d_dd_mesh, d_collision, distance
+      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+          print *, prn_seed(1), 'direction', p % coord0 % uvw
+      
+      ! Check for domain boundary crossing
+      if (dd_run .and. &
+          d_dd_mesh <= distance) then
+
+        ! Determine if we should communicate the particle
+        call check_domain_boundary_crossing(d_dd_mesh, d_collision, d_boundary, lattice_translation, &
+            surface_crossed, dd_boundary_crossed)
+
+        if (dd_boundary_crossed) then
+          ! =================================================================
+          ! PARTICLE CROSSES DOMAIN BOUNDARY
+
+          ! Prepare particle for communication and stop tracking it
+          call cross_domain_boundary(p, domain_decomp, distance, d_dd_mesh)
+          if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+           print *, 'cross', prn_seed(1), p % coord0 % xyz, distance - d_dd_mesh, distance, d_dd_mesh,&
+              & p % stored_distance, p % last_material
+          exit
+
+        end if
+
+      end if
 
       ! Advance particle
       coord => p % coord0
@@ -179,8 +224,8 @@ contains
         coord % xyz = coord % xyz + distance * coord % uvw
         coord => coord % next
       end do
-!      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
-!          print *, prn_seed(1), 'advanced', p % coord0 % xyz
+      if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+          print *, prn_seed(1), 'advanced', p % coord0 % xyz
 
       ! Score track-length tallies
       if (active_tracklength_tallies % size() > 0) &
@@ -192,30 +237,14 @@ contains
            global_tallies(K_TRACKLENGTH) % value + p % wgt * distance * &
            material_xs % nu_fission
 
-      ! Check for domain boundary crossing
-      if (dd_run .and. &
-          abs(distance - d_dd_mesh) < FP_COINCIDENT) then
-
-        ! Determine if we should communicate the particle
-        call check_domain_boundary_crossing(d_dd_mesh, d_collision, d_boundary, lattice_translation, &
-            surface_crossed, dd_boundary_crossed)
-
-        if (dd_boundary_crossed) then
-          ! =================================================================
-          ! PARTICLE CROSSES DOMAIN BOUNDARY
-
-          ! Prepare particle for communication and stop tracking it
-          call cross_domain_boundary(p, domain_decomp, d_collision - distance)
-          exit
-
-        end if
-
-      end if
 
       ! Check for collisions and surface crossings
       if (d_collision > d_boundary) then
         ! ====================================================================
         ! PARTICLE CROSSES SURFACE
+
+        if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+          print *, prn_seed(1), 'CROSSES surface 1', p % surface, p % material, p % last_material, p % coord0 % xyz
 
         last_cell = p % coord % cell
         p % coord % cell = NONE
@@ -230,6 +259,9 @@ contains
           call cross_surface(p, last_cell)
           p % event = EVENT_SURFACE
         end if
+        if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+          print *, prn_seed(1), 'CROSSES surface 2', p % surface, p % material, p % last_material
+
       else
         ! ====================================================================
         ! PARTICLE HAS COLLISION
@@ -239,6 +271,8 @@ contains
         global_tallies(K_COLLISION) % value = &
              global_tallies(K_COLLISION) % value + p % wgt * &
              material_xs % nu_fission / material_xs % total
+        if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+          print *, prn_seed(1), 'Collison 1', p % surface, p % material, p % last_material
 
         ! score surface current tallies -- this has to be done before the collision
         ! since the direction of the particle will change and we need to use the
@@ -287,6 +321,10 @@ contains
           ! Advance coordinate level
           coord => coord % next
         end do
+        
+        if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
+          print *, prn_seed(1), 'Collison 2', p % surface, p % material, p % last_material
+
       end if
 
       ! If particle has too many events, display warning and kill it

@@ -66,30 +66,32 @@ contains
 !    if (starting_seed == debug1 .or. starting_seed == debug2 .or. starting_seed == debug3 .or. starting_seed == debug4) &
 !      print *, "DECIDED NOT TO SEND DUE TO COINCIDENCE"
 
-  end subroutine check_domain_boundary_crossing
+      end subroutine check_domain_boundary_crossing
 
 !===============================================================================
 ! CROSS_DOMAIN_BOUNDARY determines which domain a particle will scatter to,
 ! stores the position and direction of the particle, and sets the outscatter
-! flag for sending this particle later.  Also, if the next interaction would
-! have been a collision, we need to use the same distance to that collision when
-! the particle is continued in the adjacent domain, for reproducibility. Thus,
-! we also store the remaining distance to that collision, which should be used
-! in the next domain instead of sampling a new distance
+! flag for sending this particle later.  Note that the particle is not moved and
+! tallies are not recorded. After transfering the particle to the right domain 
+! (which maybe NOT a neighbor!), the particle will be recovered and tracked. 
+! We need to use the same distance to the next point for reproducibility. The 
+! accumulated distance to domain boundary is stored to determine whether the 
+! particle enters into right domain. 
 !===============================================================================
 
-  subroutine cross_domain_boundary(p, dd, dist)
+  subroutine cross_domain_boundary(p, dd, tracking_dist, flying_dist)
 
     type(Particle), intent(inout) :: p
     type(dd_type), intent(inout)  :: dd
-    real(8), intent(in)           :: dist ! distance p still needs to travel
+    real(8), intent(in)           :: tracking_dist ! distance p needs to travel
+    real(8), intent(in)           :: flying_dist   ! distance p traveled already
   
     real(8) :: xyz(3)
     integer :: to_meshbin  ! domain meshbin the particle is traveling to
     integer :: to_bin      ! local relative bin the particle is traveling to
   
-    ! Advance particle a little and recalculate the bin in the DD mesh
-    xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
+    ! Calculate current point and calculate the bin in the DD mesh
+    xyz = p % coord0 % xyz + (TINY_BIT + flying_dist)* p % coord0 % uvw
     call get_mesh_bin(dd % mesh, xyz, to_meshbin)
     
     ! Check for particle leaking out of domain mesh - this is a user input error
@@ -146,7 +148,8 @@ contains
     ! Save the transport info needed to restart the particle in the new domain
     p % stored_xyz      = p % coord0 % xyz
     p % stored_uvw      = p % coord0 % uvw
-    p % stored_distance = dist
+    p % stored_distance = tracking_dist
+    p % fly_dd_distance = flying_dist
     p % prn_seed        = prn_seed
     
   end subroutine cross_domain_boundary

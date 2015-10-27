@@ -581,6 +581,9 @@ class MaterialsFile(object):
 
         """
 
+        # Reset xml element tree
+        self._materials_file.clear()
+
         self._create_material_subelements()
 
         # Clean the indentation in the file to be user-readable

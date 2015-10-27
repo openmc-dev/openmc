@@ -2715,6 +2715,9 @@ class TalliesFile(object):
 
         """
 
+        # Reset xml element tree
+        self._tallies_file.clear()
+
         self._create_mesh_subelements()
         self._create_tally_subelements()
 

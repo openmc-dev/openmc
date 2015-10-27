@@ -367,6 +367,10 @@ contains
         call score_surface_current(p)
         p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
       end if
+      
+      ! set last material
+      p % last_material = p % material
+      p % last_inst = p % inst
 
       ! Copy particle's direction cosines
       u = p % coord0 % uvw(1)

@@ -3128,6 +3128,8 @@ contains
             end if
           case ('kappa-fission')
             t % score_bins(j) = SCORE_KAPPA_FISSION
+          case ('inverse-velocity')
+            t % score_bins(j) = SCORE_INVERSE_VELOCITY
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
             t % type = TALLY_SURFACE_CURRENT

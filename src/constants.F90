@@ -60,20 +60,22 @@ module constants
   ! Values here are from the Committee on Data for Science and Technology
   ! (CODATA) 2010 recommendation (doi:10.1103/RevModPhys.84.1527).
 
-  real(8), parameter ::            &
-       PI           = 3.1415926535898_8, & ! pi
-       MASS_NEUTRON = 1.008664916_8,     & ! mass of a neutron in amu
-       MASS_PROTON  = 1.007276466812_8,  & ! mass of a proton in amu
-       AMU          = 1.660538921e-27_8, & ! 1 amu in kg
-       N_AVOGADRO   = 0.602214129_8,     & ! Avogadro's number in 10^24/mol
-       K_BOLTZMANN  = 8.6173324e-11_8,   & ! Boltzmann constant in MeV/K
-       INFINITY     = huge(0.0_8),       & ! positive infinity
-       ZERO         = 0.0_8,             &
-       HALF         = 0.5_8,             &
-       ONE          = 1.0_8,             &
-       TWO          = 2.0_8,             &
-       THREE        = 3.0_8,             &
-       FOUR         = 4.0_8
+  real(8), parameter ::                      &
+       PI               = 3.1415926535898_8, & ! pi
+       MASS_NEUTRON     = 1.008664916_8,     & ! mass of a neutron in amu
+       MASS_NEUTRON_MEV = 939.565379_8,      & ! mass of a neutron in MeV/c^2
+       MASS_PROTON      = 1.007276466812_8,  & ! mass of a proton in amu
+       AMU              = 1.660538921e-27_8, & ! 1 amu in kg
+       C_LIGHT          = 2.99792458e8_8,    & ! speed of light in m/s
+       N_AVOGADRO       = 0.602214129_8,     & ! Avogadro's number in 10^24/mol
+       K_BOLTZMANN      = 8.6173324e-11_8,   & ! Boltzmann constant in MeV/K
+       INFINITY         = huge(0.0_8),       & ! positive infinity
+       ZERO             = 0.0_8,             &
+       HALF             = 0.5_8,             &
+       ONE              = 1.0_8,             &
+       TWO              = 2.0_8,             &
+       THREE            = 3.0_8,             &
+       FOUR             = 4.0_8
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS
@@ -257,7 +259,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 21
+  integer, parameter :: N_SCORE_TYPES = 22
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -279,7 +281,8 @@ module constants
        SCORE_SCATTER_YN         = -18, & ! angular flux-weighted scattering moment (0:N)
        SCORE_NU_SCATTER_YN      = -19, & ! angular flux-weighted nu-scattering moment (0:N)
        SCORE_EVENTS             = -20, & ! number of events
-       SCORE_DELAYED_NU_FISSION = -21    ! delayed neutron production rate
+       SCORE_DELAYED_NU_FISSION = -21, & ! delayed neutron production rate
+       SCORE_INVERSE_VELOCITY   = -22    ! flux-weighted inverse velocity
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10

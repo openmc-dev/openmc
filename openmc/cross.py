@@ -298,6 +298,7 @@ class CrossFilter(object):
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', filter_type)
         string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', filter_bins)
         return string
+
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
 

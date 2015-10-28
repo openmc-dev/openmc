@@ -1269,7 +1269,7 @@ class Tally(object):
         correspond directly to the two filters with two and four bins.
 
         Parameters
-        ---------
+        ----------
         value : str
             A string for the type of value to return  - 'mean' (default),
             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted

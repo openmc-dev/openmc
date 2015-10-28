@@ -312,11 +312,6 @@ class Library(object):
                 mgxs = self.get_mgxs(domain, mgxs_type)
                 mgxs.load_from_statepoint(statepoint)
 
-                if isinstance(mgxs, openmc.mgxs.ScatterMatrixXS):
-                    mgxs.compute_xs(correction=self.correction)
-                else:
-                    mgxs.compute_xs()
-
     def get_mgxs(self, domain, mgxs_type):
         """Return the MGXS object for some domain and reaction rate type.
 
@@ -478,7 +473,7 @@ class Library(object):
 
         return subdomain_avg_library
 
-    def build_hdf5_store(self, filename='mgxs', directory='mgxs',
+    def build_hdf5_store(self, filename='mgxs.h5', directory='mgxs',
                          subdomains='all', nuclides='all', xs_type='macro'):
         """Export the multi-group cross section library to an HDF5 binary file.
 
@@ -494,7 +489,7 @@ class Library(object):
         Parameters
         ----------
         filename : str
-            Filename for the HDF5 file. Defaults to 'mgxs'.
+            Filename for the HDF5 file. Defaults to 'mgxs.h5'.
         directory : str
             Directory for the HDF5 file. Defaults to 'mgxs'.
         subdomains : {'all', 'avg'}
@@ -536,7 +531,7 @@ class Library(object):
             os.makedirs(directory)
 
         # Add an attribute for the number of energy groups to the HDF5 file
-        full_filename = os.path.join(directory, filename + '.h5')
+        full_filename = os.path.join(directory, filename)
         full_filename = full_filename.replace(' ', '-')
         f = h5py.File(full_filename, 'w')
         f.attrs["# groups"] = self.num_groups

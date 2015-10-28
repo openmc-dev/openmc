@@ -511,8 +511,9 @@ class Filter(object):
             surface, material or universe ID corresponding to each filter bin.
 
             For 'distribcell' filters, the DataFrame either includes:
-            1) a single column with the cell instance IDs (without summary info)
-            2) separate columns for the cell IDs, universe IDs, and lattice IDs
+
+            1. a single column with the cell instance IDs (without summary info)
+            2. separate columns for the cell IDs, universe IDs, and lattice IDs
                and x,y,z cell indices corresponding to each (with summary info).
 
             For 'energy' and 'energyout' filters, the DataFrame include a single

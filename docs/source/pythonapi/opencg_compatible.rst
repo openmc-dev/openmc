@@ -1,8 +1,8 @@
-.. _pythonapi_openmc_mgxs:
+.. _pythonapi_opencg_compatible:
 
-==========================
-Multi-Group Cross Sections
-==========================
+====================
+OpenCG Compatibility
+====================
 
-.. automodule:: openmc.mgxs.mgxs
+.. automodule:: openmc.opencg_compatible
     :members:

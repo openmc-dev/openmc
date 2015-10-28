@@ -41,7 +41,7 @@ DOMAIN_TYPES = ['cell',
 
 # Supported domain classes
 # TODO: Implement Mesh domains
-DOMAINS = [openmc.Cell,
+_DOMAINS = [openmc.Cell,
            openmc.Universe,
            openmc.Material]
 
@@ -90,6 +90,17 @@ class MGXS(object):
     xs_tally : Tally
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
+    num_sumbdomains : Integral
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading 
+        tally data from a statepoint file).
+    num_nuclides : Integral
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : list of str or 'sum'
+        A list of nuclide string names (e.g., 'U-238', 'O-16') when by_nuclide
+        is True and 'sum' when by_nuclide is False.
 
     """
 
@@ -556,6 +567,9 @@ class MGXS(object):
                                           filter_bins, tally.nuclides)
             self.tallies[tally_type] = sp_tally
 
+        # Compute the cross section from the tallies
+        self.compute_xs()
+
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing', value='mean'):
         """Returns an array of multi-group cross sections.
@@ -926,7 +940,7 @@ class MGXS(object):
 
         print(string)
 
-    def build_hdf5_store(self, filename='mgxs', directory='mgxs',
+    def build_hdf5_store(self, filename='mgxs.h5', directory='mgxs',
                          subdomains='all', nuclides='all',
                          xs_type='macro', append=True):
         """Export the multi-group cross section data to an HDF5 binary file.
@@ -942,7 +956,7 @@ class MGXS(object):
         Parameters
         ----------
         filename : str
-            Filename for the HDF5 file. Defaults to 'mgxs'.
+            Filename for the HDF5 file. Defaults to 'mgxs.h5'.
         directory : str
             Directory for the HDF5 file. Defaults to 'mgxs'.
         subdomains : Iterable of Integral or 'all'
@@ -957,7 +971,7 @@ class MGXS(object):
         xs_type: {'macro', 'micro'}
             Store the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
-        append : boolean
+        append : bool
             If true, appends to an existing HDF5 file with the same filename
             directory (if one exists). Defaults to True.
 
@@ -982,7 +996,7 @@ class MGXS(object):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        filename = os.path.join(directory, filename + '.h5')
+        filename = os.path.join(directory, filename)
         filename = filename.replace(' ', '-')
 
         if append and os.path.isfile(filename):
@@ -1338,39 +1352,14 @@ class TransportXS(MGXS):
 
         return super(TransportXS, self).tallies
 
-    def load_from_statepoint(self, statepoint):
-        """Extracts tallies in an OpenMC StatePoint with the data needed to
-        compute multi-group cross sections.
-
-        This method is needed to compute cross section data from tallies
-        in an OpenMC StatePoint object.
-
-        NOTE: The statepoint must first be linked with an OpenMC Summary object.
-
-        Parameters
-        ----------
-        statepoint : openmc.StatePoint
-            An OpenMC StatePoint object with tally data
-
-        Raises
-        ------
-        ValueError
-            When this method is called with a statepoint that has not been
-            linked with a summary object.
-
-        """
-
-        # Load the tallies from the statepoint using the parent class method
-        super(TransportXS, self).load_from_statepoint(statepoint)
+    def compute_xs(self):
+        """Computes the multi-group transport cross sections using OpenMC
+        tally arithmetic."""
 
         # Use tally slicing to remove scatter-P0 data from scatter-P1 tally
         scatter_p1 = self.tallies['scatter-P1']
         self.tallies['scatter-P1'] = scatter_p1.get_slice(scores=['scatter-P1'])
         self.tallies['scatter-P1'].filters[-1].type = 'energy'
-
-    def compute_xs(self):
-        """Computes the multi-group transport cross sections using OpenMC
-        tally arithmetic."""
 
         self._xs_tally = self.tallies['total'] - self.tallies['scatter-P1']
         self._xs_tally /= self.tallies['flux']
@@ -1424,7 +1413,14 @@ class AbsorptionXS(MGXS):
 
 
 class CaptureXS(MGXS):
-    """A capture multi-group cross section."""
+    """A capture multi-group cross section.
+    
+    The Neutron capture reaction rate is defined as the difference between 
+    OpenMC's 'absorption' and 'fission' reaction rate score types. This includes
+    not only radiative capture, but all forms of neutron disappearance aside
+    from fission (e.g., MT > 100).
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):

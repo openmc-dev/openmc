@@ -1,4 +1,3 @@
-import copy
 import sys
 import re
 import numpy as np
@@ -33,42 +32,42 @@ class StatePoint(object):
         each batch
     cmfd_src : ndarray
         CMFD fission source distribution over all mesh cells and energy groups.
-    current_batch : int
+    current_batch : Integral
         Number of batches simulated
     date_and_time : str
         Date and time when simulation began
     entropy : ndarray
         Shannon entropy of fission source at each batch
-    gen_per_batch : int
+    gen_per_batch : Integral
         Number of fission generations per batch
     global_tallies : ndarray of compound datatype
         Global tallies for k-effective estimates and leakage. The compound
         datatype has fields 'name', 'sum', 'sum_sq', 'mean', and 'std_dev'.
     k_combined : list
         Combined estimator for k-effective and its uncertainty
-    k_col_abs : float
+    k_col_abs : Real
         Cross-product of collision and absorption estimates of k-effective
-    k_col_tra : float
+    k_col_tra : Real
         Cross-product of collision and tracklength estimates of k-effective
-    k_abs_tra : float
+    k_abs_tra : Real
         Cross-product of absorption and tracklength estimates of k-effective
     k_generation : ndarray
         Estimate of k-effective for each batch/generation
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are Mesh objects
-    n_batches : int
+    n_batches : Integral
         Number of batches
-    n_inactive : int
+    n_inactive : Integral
         Number of inactive batches
-    n_particles : int
+    n_particles : Integral
         Number of particles per generation
-    n_realizations : int
+    n_realizations : Integral
         Number of tally realizations
     path : str
         Working directory for simulation
     run_mode : str
         Simulation run mode, e.g. 'k-eigenvalue'
-    seed : int
+    seed : Integral
         Pseudorandom number generator seed
     source : ndarray of compound datatype
         Array of source sites. The compound datatype has fields 'wgt', 'xyz',
@@ -80,10 +79,10 @@ class StatePoint(object):
         Dictionary whose keys are tally IDs and whose values are Tally objects
     tallies_present : bool
         Indicate whether user-defined tallies are present
-    version: tuple of int
+    version: tuple of Integral
         Version of OpenMC
-    with_summary : bool
-        Indicate whether statepoint data has been linked against a summary file
+    summary : None or openmc.summary.Summary
+        A summary object if the statepoint has been linked with a summary file
 
     """
 
@@ -109,7 +108,7 @@ class StatePoint(object):
         # Set flags for what data has been read
         self._meshes_read = False
         self._tallies_read = False
-        self._with_summary = False
+        self._summary = False
         self._global_tallies = None
 
     def close(self):
@@ -121,31 +120,19 @@ class StatePoint(object):
 
     @property
     def cmfd_balance(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_balance'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_balance'].value if self.cmfd_on else None
 
     @property
     def cmfd_dominance(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_dominance'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_dominance'].value if self.cmfd_on else None
 
     @property
     def cmfd_entropy(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_entropy'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_entropy'].value if self.cmfd_on else None
 
     @property
     def cmfd_indices(self):
-        if self.cmfd_on:
-            return self._f['cmfd/indices'].value
-        else:
-            return None
+        return self._f['cmfd/indices'].value if self.cmfd_on else None
 
     @property
     def cmfd_src(self):
@@ -157,10 +144,7 @@ class StatePoint(object):
 
     @property
     def cmfd_srccmp(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_srccmp'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_srccmp'].value if self.cmfd_on else None
 
     @property
     def current_batch(self):
@@ -328,10 +312,7 @@ class StatePoint(object):
 
     @property
     def source(self):
-        if self.source_present:
-            return self._f['source_bank'].value
-        else:
-            return None
+        return self._f['source_bank'].value if self.source_present else None
 
     @property
     def source_present(self):
@@ -460,15 +441,19 @@ class StatePoint(object):
                 self._f['version_release'].value)
 
     @property
+    def summary(self):
+        return self._summary
+
+    @property
     def with_summary(self):
-        return self._with_summary
+        return False if self.summary is None else True
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
-        found it finds which satisfies all of the input parameters.
+        found which satisfies all of the input parameters.
         NOTE: The input parameters do not need to match the complete Tally
         specification and may only represent a subset of the Tally's properties.
 
@@ -482,7 +467,7 @@ class StatePoint(object):
             A list of Nuclide objects (default is []).
         name : str, optional
             The name specified for the Tally (default is None).
-        id : int, optional
+        id : Integral, optional
             The id specified for the Tally (default is None).
         estimator: str, optional
             The type of estimator ('tracklength', 'analog'; default is None).
@@ -536,8 +521,16 @@ class StatePoint(object):
 
                 # Iterate over the Filters requested by the user
                 for filter in filters:
-                    if filter not in test_tally.filters:
-                        contains_filters = False
+                    contains_filters = False
+
+                    # Test if requested filter is a subset of any of the test
+                    # tally's filters and if so continue to next filter
+                    for test_filter in test_tally.filters:
+                        if test_filter.is_subset(filter):
+                            contains_filters = True
+                            break
+
+                    if not contains_filters:
                         break
 
                 if not contains_filters:
@@ -624,4 +617,4 @@ class StatePoint(object):
                         material_ids.append(summary.materials[bin].id)
                     filter.bins = material_ids
 
-        self._with_summary = True
+        self._summary = summary

@@ -64,3 +64,10 @@ data/nndc
 
 # IPython notebook checkpoints
 .ipynb_checkpoints
+
+# Multi-group cross section IPython Notebook
+docs/source/pythonapi/examples/*.xml
+docs/source/pythonapi/examples/*.png
+docs/source/pythonapi/examples/*.xls
+docs/source/pythonapi/examples/mgxs
+docs/source/pythonapi/examples/tracks

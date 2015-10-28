@@ -38,21 +38,29 @@ class Element(object):
         if xs is not None:
             self.xs = xs
 
-    def __eq__(self, element2):
-        # Check type
-        if not isinstance(element2, Element):
+    def __eq__(self, other):
+        if isinstance(other, Element):
+            if self._name != other._name:
+                return False
+            elif self._xs != other._xs:
+                return False
+            else:
+                return True
+        elif isinstance(other, basestring) and other == self.name:
+            return True
+        else:
             return False
 
-        # Check name and xs
-        if self._name != element2._name:
-            return False
-        elif self._xs != element2._xs:
-            return False
-        else:
-            return True
+    def __ne__(self, other):
+        return not self == other
 
     def __hash__(self):
         return hash((self._name, self._xs))
+
+    def __repr__(self):
+        string = 'Element    -    {0}\n'.format(self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
+        return string
 
     @property
     def xs(self):
@@ -71,8 +79,3 @@ class Element(object):
     def name(self, name):
         check_type('name', name, basestring)
         self._name = name
-
-    def __repr__(self):
-        string = 'Element    -    {0}\n'.format(self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
-        return string

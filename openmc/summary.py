@@ -83,9 +83,8 @@ class Summary(object):
                     name, xs = sab_table.decode().split('.')
                     material.add_s_alpha_beta(name, xs)
 
-            # Set the Material's density to g/cm3 - this is what is used in
-            # OpenMC
-            material.set_density(density=density, units='g/cm3')
+            # Set the Material's density to atom/b-cm as used by OpenMC
+            material.set_density(density=density, units='atom/b-cm')
 
             # Add all nuclides to the Material
             for fullname, density in zip(nuclides, nuc_densities):

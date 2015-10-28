@@ -1286,7 +1286,7 @@ class TotalXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if self._tallies is None:
+        if super(TotalXS, self).tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'total']
@@ -1333,7 +1333,7 @@ class TransportXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if self._tallies is None:
+        if super(TransportXS, self).tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'total', 'scatter-P1']
@@ -1386,7 +1386,7 @@ class AbsorptionXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if self._tallies is None:
+        if super(AbsorptionXS, self).tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'absorption']
@@ -1439,7 +1439,7 @@ class CaptureXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if self._tallies is None:
+        if super(CaptureXS, self).tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'absorption', 'fission']
@@ -1486,7 +1486,7 @@ class FissionXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if self._tallies is None:
+        if super(FissionXS, self).tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'fission']
@@ -1532,7 +1532,7 @@ class NuFissionXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if self._tallies is None:
+        if super(NuFissionXS, self).tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'nu-fission']
@@ -1578,7 +1578,7 @@ class ScatterXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if self._tallies is None:
+        if super(ScatterXS, self).tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'scatter']
@@ -1624,7 +1624,7 @@ class NuScatterXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if self._tallies is None:
+        if super(NuScatterXS, self).tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'nu-scatter']
@@ -1687,7 +1687,7 @@ class ScatterMatrixXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if self._tallies is None:
+        if super(ScatterMatrixXS, self).tallies is None:
 
             group_edges = self.energy_groups.group_edges
             energy = openmc.Filter('energy', group_edges)
@@ -2006,7 +2006,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         """
 
         # Instantiate tallies if they do not exist
-        if self._tallies is None:
+        if super(NuScatterMatrixXS, self).tallies is None:
 
             # Create the non-domain specific Filters for the Tallies
             group_edges = self.energy_groups.group_edges
@@ -2050,7 +2050,7 @@ class Chi(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if self._tallies is None:
+        if super(Chi, self).tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['nu-fission', 'nu-fission']

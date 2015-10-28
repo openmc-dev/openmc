@@ -47,12 +47,14 @@ _DOMAINS = [openmc.Cell,
 
 
 class MGXS(object):
-    """A multi-group cross section for some energy group structure within
-    some spatial domain.
+    """An abstract multi-group cross section for some energy group structure 
+    within some spatial domain.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for deterministic neutronics calculations.
+
+    NOTE: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------

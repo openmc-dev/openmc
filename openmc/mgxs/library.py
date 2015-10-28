@@ -248,7 +248,6 @@ class Library(object):
                 if isinstance(mgxs, openmc.mgxs.ScatterMatrixXS):
                     mgxs.correction = self.correction
 
-                mgxs.create_tallies()
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 
     def add_to_tallies_file(self, tallies_file, merge=True):

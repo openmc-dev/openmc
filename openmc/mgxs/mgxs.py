@@ -247,9 +247,7 @@ class MGXS(object):
 
         Parameters
         ----------
-        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission',
-                     'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix',
-                     'nu-scatter matrix', 'chi'}
+        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
             The type of multi-group cross section object to return
         domain : Material or Cell or Universe
             The domain for spatial homogenization
@@ -327,8 +325,8 @@ class MGXS(object):
         """Get the atomic number density in units of atoms/b-cm for a nuclide
         in the cross section's spatial domain.
 
-        Paramters
-        ---------
+        Parameters
+        ----------
         nuclide : str
             A nuclide name string (e.g., 'U-235')
 
@@ -362,8 +360,8 @@ class MGXS(object):
         """Get an array of atomic number densities in units of atom/b-cm for all
         nuclides in the cross section's spatial domain.
 
-        Paramters
-        ---------
+        Parameters
+        ----------
         nuclides : Iterable of str or 'all' or 'sum'
             A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
             special string 'all' will return the atom densities for all nuclides

@@ -5,4 +5,4 @@ Multi-Group Cross Sections
 ==========================
 
 .. automodule:: openmc.mgxs.mgxs
-    :members: MGXS
+    :members:

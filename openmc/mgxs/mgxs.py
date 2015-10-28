@@ -1715,17 +1715,9 @@ class ScatterMatrixXS(MGXS):
         cv.check_value('correction', correction, ('P0', None))
         self._correction = correction
 
-    def compute_xs(self, correction='P0'):
+    def compute_xs(self):
         """Computes the multi-group scattering matrix using OpenMC
-        tally arithmetic.
-
-        Parameters
-        ----------
-        correction : {'P0' or None}
-            If 'P0', applies the P0 transport correction to the diagonal of the
-            scattering matrix.
-
-        """
+        tally arithmetic."""
 
         # If using P0 correction subtract scatter-P1 from the diagonal
         if self.correction == 'P0':

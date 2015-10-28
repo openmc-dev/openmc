@@ -4,38 +4,63 @@
 Multi-Group Cross Sections
 ==========================
 
-.. autoclass:: openmc.mgxs.mgxs.MGXS
+.. currentmodule:: openmc.mgxs.mgxs
+
+----------------------------
+Summary of Available Classes
+----------------------------
+
+.. autosummary::
+
+   MGXS
+   AbsorptionXS
+   CaptureXS
+   Chi
+   FissionXS
+   NuFissionXS
+   NuScatterXS
+   NuScatterMatrixXS
+   ScatterXS
+   ScatterMatrixXS
+   TotalXS
+   TransportXS
+
+-------------------
+Class Documentation
+-------------------
+
+.. autoclass:: MGXS
     :members:
 
-.. autoclass:: openmc.mgxs.mgxs.AbsorptionXS
+.. autoclass:: AbsorptionXS
     :members:
 
-.. autoclass:: openmc.mgxs.mgxs.CaptureXS
+.. autoclass:: CaptureXS
     :members:
 
-.. autoclass:: openmc.mgxs.mgxs.Chi
+.. autoclass:: Chi
     :members:
 
-.. autoclass:: openmc.mgxs.mgxs.FissionXS
+.. autoclass:: FissionXS
     :members:
 
-.. autoclass:: openmc.mgxs.mgxs.NuFissionXS
+.. autoclass:: NuFissionXS
     :members:
 
-.. autoclass:: openmc.mgxs.mgxs.NuScatterXS
+.. autoclass:: NuScatterXS
     :members:
 
-.. autoclass:: openmc.mgxs.mgxs.NuScatterMatrixXS
+.. autoclass:: NuScatterMatrixXS
     :members:
 
-.. autoclass:: openmc.mgxs.mgxs.ScatterXS
+.. autoclass:: ScatterXS
     :members:
 
-.. autoclass:: openmc.mgxs.mgxs.ScatterMatrixXS
+.. autoclass:: ScatterMatrixXS
     :members:
 
-.. autoclass:: openmc.mgxs.mgxs.TotalXS
+.. autoclass:: TotalXS
     :members:
 
-.. autoclass:: openmc.mgxs.mgxs.TransportXS
+.. autoclass:: TransportXS
     :members:

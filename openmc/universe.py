@@ -73,6 +73,30 @@ class Cell(object):
         self._translation = None
         self._offsets = None
 
+    def __repr__(self):
+        string = 'Cell\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+
+        if isinstance(self._fill, openmc.Material):
+            string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
+                                                self._fill._id)
+        elif isinstance(self._fill, (Universe, Lattice)):
+            string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t',
+                                                self._fill._id)
+        else:
+            string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t', self._fill)
+
+        string += '{0: <16}{1}{2}\n'.format('\tRegion', '=\t', self._region)
+
+        string += '{0: <16}{1}{2}\n'.format('\tRotation', '=\t',
+                                            self._rotation)
+        string += '{0: <16}{1}{2}\n'.format('\tTranslation', '=\t',
+                                            self._translation)
+        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self._offsets)
+
+        return string
+
     @property
     def id(self):
         return self._id
@@ -120,7 +144,7 @@ class Cell(object):
             AUTO_CELL_ID += 1
         else:
             cv.check_type('cell ID', cell_id, Integral)
-            cv.check_greater_than('cell ID', cell_id, 0)
+            cv.check_greater_than('cell ID', cell_id, 0, equality=True)
             self._id = cell_id
 
     @name.setter
@@ -251,7 +275,7 @@ class Cell(object):
 
         """
 
-        nuclides = {}
+        nuclides = OrderedDict()
 
         if self._type != 'void':
             nuclides.update(self._fill.get_all_nuclides())
@@ -269,12 +293,33 @@ class Cell(object):
 
         """
 
-        cells = {}
+        cells = OrderedDict()
 
         if self._type == 'fill' or self._type == 'lattice':
             cells.update(self._fill.get_all_cells())
 
         return cells
+
+    def get_all_materials(self):
+        """Return all materials that are contained within the cell
+
+        Returns
+        -------
+        materials : dict
+            Dictionary whose keys are material IDs and values are Material instances
+
+        """
+
+        materials = OrderedDict()
+        if self.fill_type == 'material':
+            materials[self.fill.id] = self.fill
+
+        # Append all Cells in each Cell in the Universe to the dictionary
+        cells = self.get_all_cells()
+        for cell_id, cell in cells.items():
+            materials.update(cell.get_all_materials())
+
+        return materials
 
     def get_all_universes(self):
         """Return all universes that are contained within this one if any of
@@ -288,7 +333,7 @@ class Cell(object):
 
         """
 
-        universes = {}
+        universes = OrderedDict()
 
         if self._type == 'fill':
             universes[self._fill._id] = self._fill
@@ -297,30 +342,6 @@ class Cell(object):
             universes.update(self._fill.get_all_universes())
 
         return universes
-
-    def __repr__(self):
-        string = 'Cell\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-
-        if isinstance(self._fill, openmc.Material):
-            string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
-                                                self._fill._id)
-        elif isinstance(self._fill, (Universe, Lattice)):
-            string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t',
-                                                self._fill._id)
-        else:
-            string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t', self._fill)
-
-        string += '{0: <16}{1}{2}\n'.format('\tRegion', '=\t', self._region)
-
-        string += '{0: <16}{1}{2}\n'.format('\tRotation', '=\t',
-                                            self._rotation)
-        string += '{0: <16}{1}{2}\n'.format('\tTranslation', '=\t',
-                                            self._translation)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self._offsets)
-
-        return string
 
     def create_xml_subelement(self, xml_element):
         element = ET.Element("cell")
@@ -415,7 +436,7 @@ class Universe(object):
 
         # Keys     - Cell IDs
         # Values - Cells
-        self._cells = {}
+        self._cells = OrderedDict()
 
         # Keys     - Cell IDs
         # Values - Offsets
@@ -442,7 +463,7 @@ class Universe(object):
             AUTO_UNIVERSE_ID += 1
         else:
             cv.check_type('universe ID', universe_id, Integral)
-            cv.check_greater_than('universe ID', universe_id, 0, True)
+            cv.check_greater_than('universe ID', universe_id, 0, equality=True)
             self._id = universe_id
 
     @name.setter
@@ -541,7 +562,7 @@ class Universe(object):
 
         """
 
-        nuclides = {}
+        nuclides = OrderedDict()
 
         # Append all Nuclides in each Cell in the Universe to the dictionary
         for cell_id, cell in self._cells.items():
@@ -559,7 +580,7 @@ class Universe(object):
 
         """
 
-        cells = {}
+        cells = OrderedDict()
 
         # Add this Universe's cells to the dictionary
         cells.update(self._cells)
@@ -569,6 +590,25 @@ class Universe(object):
             cells.update(cell.get_all_cells())
 
         return cells
+
+    def get_all_materials(self):
+        """Return all materials that are contained within the universe
+
+        Returns
+        -------
+        materials : dict
+            Dictionary whose keys are material IDs and values are Material instances
+
+        """
+
+        materials = OrderedDict()
+
+        # Append all Cells in each Cell in the Universe to the dictionary
+        cells = self.get_all_cells()
+        for cell_id, cell in cells.items():
+            materials.update(cell.get_all_materials())
+
+        return materials
 
     def get_all_universes(self):
         """Return all universes that are contained within this one.
@@ -584,7 +624,7 @@ class Universe(object):
         # Get all Cells in this Universe
         cells = self.get_all_cells()
 
-        universes = {}
+        universes = OrderedDict()
 
         # Append all Universes containing each Cell to the dictionary
         for cell_id, cell in cells.items():
@@ -603,6 +643,7 @@ class Universe(object):
         return string
 
     def create_xml_subelement(self, xml_element):
+
         # Iterate over all Cells
         for cell_id, cell in self._cells.items():
 
@@ -684,7 +725,7 @@ class Lattice(object):
             AUTO_UNIVERSE_ID += 1
         else:
             cv.check_type('lattice ID', lattice_id, Integral)
-            cv.check_greater_than('lattice ID', lattice_id, 0)
+            cv.check_greater_than('lattice ID', lattice_id, 0, equality=True)
             self._id = lattice_id
 
     @name.setter
@@ -717,7 +758,7 @@ class Lattice(object):
 
         """
 
-        univs = dict()
+        univs = OrderedDict()
         for k in range(len(self._universes)):
             for j in range(len(self._universes[k])):
                 if isinstance(self._universes[k][j], Universe):
@@ -745,7 +786,7 @@ class Lattice(object):
 
         """
 
-        nuclides = {}
+        nuclides = OrderedDict()
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()
@@ -766,13 +807,32 @@ class Lattice(object):
 
         """
 
-        cells = {}
+        cells = OrderedDict()
         unique_universes = self.get_unique_universes()
 
         for universe_id, universe in unique_universes.items():
             cells.update(universe.get_all_cells())
 
         return cells
+
+    def get_all_materials(self):
+        """Return all materials that are contained within the lattice
+
+        Returns
+        -------
+        materials : dict
+            Dictionary whose keys are material IDs and values are Material instances
+
+        """
+
+        materials = OrderedDict()
+
+        # Append all Cells in each Cell in the Universe to the dictionary
+        cells = self.get_all_cells()
+        for cell_id, cell in cells.items():
+            materials.update(cell.get_all_materials())
+
+        return materials
 
     def get_all_universes(self):
         """Return all universes that are contained within the lattice
@@ -787,7 +847,7 @@ class Lattice(object):
 
         # Initialize a dictionary of all Universes contained by the Lattice
         # in each nested Universe level
-        all_universes = {}
+        all_universes = OrderedDict()
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()
@@ -835,6 +895,50 @@ class RectLattice(Lattice):
         self._dimension = None
         self._lower_left = None
         self._offsets = None
+
+    def __repr__(self):
+        string = 'RectLattice\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tDimension', '=\t',
+                                            self._dimension)
+        string += '{0: <16}{1}{2}\n'.format('\tLower Left', '=\t',
+                                            self._lower_left)
+        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
+
+        if self._outer is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer._id)
+        else:
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer)
+
+        string += '{0: <16}\n'.format('\tUniverses')
+
+        # Lattice nested Universe IDs - column major for Fortran
+        for i, universe in enumerate(np.ravel(self._universes)):
+            string += '{0} '.format(universe._id)
+
+            # Add a newline character every time we reach end of row of cells
+            if (i+1) % self._dimension[-1] == 0:
+                string += '\n'
+
+        string = string.rstrip('\n')
+
+        if self._offsets is not None:
+            string += '{0: <16}\n'.format('\tOffsets')
+
+            # Lattice cell offsets
+            for i, offset in enumerate(np.ravel(self._offsets)):
+                string += '{0} '.format(offset)
+
+                # Add a newline character when we reach end of row of cells
+                if (i+1) % self._dimension[-1] == 0:
+                    string += '\n'
+
+            string = string.rstrip('\n')
+
+        return string
 
     @property
     def dimension(self):
@@ -893,51 +997,8 @@ class RectLattice(Lattice):
 
         return offset
 
-    def __repr__(self):
-        string = 'RectLattice\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tDimension', '=\t',
-                                            self._dimension)
-        string += '{0: <16}{1}{2}\n'.format('\tLower Left', '=\t',
-                                            self._lower_left)
-        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
-
-        if self._outer is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
-                                                self._outer._id)
-        else:
-            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
-                                                self._outer)
-
-        string += '{0: <16}\n'.format('\tUniverses')
-
-        # Lattice nested Universe IDs - column major for Fortran
-        for i, universe in enumerate(np.ravel(self._universes)):
-            string += '{0} '.format(universe._id)
-
-            # Add a newline character every time we reach end of row of cells
-            if (i+1) % self._dimension[-1] == 0:
-                string += '\n'
-
-        string = string.rstrip('\n')
-
-        if self._offsets is not None:
-            string += '{0: <16}\n'.format('\tOffsets')
-
-            # Lattice cell offsets
-            for i, offset in enumerate(np.ravel(self._offsets)):
-                string += '{0} '.format(offset)
-
-                # Add a newline character when we reach end of row of cells
-                if (i+1) % self._dimension[-1] == 0:
-                    string += '\n'
-
-            string = string.rstrip('\n')
-
-        return string
-
     def create_xml_subelement(self, xml_element):
+
         # Determine if XML element already contains subelement for this Lattice
         path = './lattice[@id=\'{0}\']'.format(self._id)
         test = xml_element.find(path)
@@ -1051,6 +1112,34 @@ class HexLattice(Lattice):
         self._num_rings = None
         self._num_axial = None
         self._center = None
+
+    def __repr__(self):
+        string = 'HexLattice\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\t# Rings', '=\t', self._num_rings)
+        string += '{0: <16}{1}{2}\n'.format('\t# Axial', '=\t', self._num_axial)
+        string += '{0: <16}{1}{2}\n'.format('\tCenter', '=\t',
+                                            self._center)
+        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
+
+        if self._outer is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer._id)
+        else:
+            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
+                                                self._outer)
+
+        string += '{0: <16}\n'.format('\tUniverses')
+
+        if self._num_axial is not None:
+            slices = [self._repr_axial_slice(x) for x in self._universes]
+            string += '\n'.join(slices)
+
+        else:
+            string += self._repr_axial_slice(self._universes)
+
+        return string
 
     @property
     def num_rings(self):
@@ -1171,34 +1260,6 @@ class HexLattice(Lattice):
                           'elements.'.format(self._id, r,
                                              6*(self._num_rings - 1 - r))
                     raise ValueError(msg)
-
-    def __repr__(self):
-        string = 'HexLattice\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\t# Rings', '=\t', self._num_rings)
-        string += '{0: <16}{1}{2}\n'.format('\t# Axial', '=\t', self._num_axial)
-        string += '{0: <16}{1}{2}\n'.format('\tCenter', '=\t',
-                                            self._center)
-        string += '{0: <16}{1}{2}\n'.format('\tPitch', '=\t', self._pitch)
-
-        if self._outer is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
-                                                self._outer._id)
-        else:
-            string += '{0: <16}{1}{2}\n'.format('\tOuter', '=\t',
-                                                self._outer)
-
-        string += '{0: <16}\n'.format('\tUniverses')
-
-        if self._num_axial is not None:
-            slices = [self._repr_axial_slice(x) for x in self._universes]
-            string += '\n'.join(slices)
-
-        else:
-            string += self._repr_axial_slice(self._universes)
-
-        return string
 
     def create_xml_subelement(self, xml_element):
         # Determine if XML element already contains subelement for this Lattice

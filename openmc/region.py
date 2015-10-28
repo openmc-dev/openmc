@@ -213,6 +213,9 @@ class Intersection(Region):
     def __init__(self, *nodes):
         self.nodes = list(nodes)
 
+    def __str__(self):
+        return '(' + ' '.join(map(str, self.nodes)) + ')'
+
     @property
     def nodes(self):
         return self._nodes
@@ -221,9 +224,6 @@ class Intersection(Region):
     def nodes(self, nodes):
         check_type('nodes', nodes, Iterable, Region)
         self._nodes = nodes
-
-    def __str__(self):
-        return '(' + ' '.join(map(str, self.nodes)) + ')'
 
 
 class Union(Region):
@@ -252,6 +252,9 @@ class Union(Region):
     def __init__(self, *nodes):
         self.nodes = list(nodes)
 
+    def __str__(self):
+        return '(' + ' | '.join(map(str, self.nodes)) + ')'
+
     @property
     def nodes(self):
         return self._nodes
@@ -260,9 +263,6 @@ class Union(Region):
     def nodes(self, nodes):
         check_type('nodes', nodes, Iterable, Region)
         self._nodes = nodes
-
-    def __str__(self):
-        return '(' + ' | '.join(map(str, self.nodes)) + ')'
 
 
 class Complement(Region):
@@ -295,6 +295,9 @@ class Complement(Region):
     def __init__(self, node):
         self.node = node
 
+    def __str__(self):
+        return '~' + str(self.node)
+
     @property
     def node(self):
         return self._node
@@ -303,6 +306,3 @@ class Complement(Region):
     def node(self, node):
         check_type('node', node, Region)
         self._node = node
-
-    def __str__(self):
-        return '~' + str(self.node)

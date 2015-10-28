@@ -4,8 +4,10 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
-from openmc.checkvalue import (check_type, check_length, check_value,
-                               check_greater_than)
+import numpy as np
+
+import openmc.checkvalue as cv
+
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -142,14 +144,14 @@ class Mesh(object):
             self._id = AUTO_MESH_ID
             AUTO_MESH_ID += 1
         else:
-            check_type('mesh ID', mesh_id, Integral)
-            check_greater_than('mesh ID', mesh_id, 0)
+            cv.check_type('mesh ID', mesh_id, Integral)
+            cv.check_greater_than('mesh ID', mesh_id, 0, equality=True)
             self._id = mesh_id
 
     @name.setter
     def name(self, name):
         if name is not None:
-            check_type('name for mesh ID="{0}"'.format(self._id),
+            cv.check_type('name for mesh ID="{0}"'.format(self._id),
                        name, basestring)
             self._name = name
         else:
@@ -157,34 +159,34 @@ class Mesh(object):
 
     @type.setter
     def type(self, meshtype):
-        check_type('type for mesh ID="{0}"'.format(self._id),
+        cv.check_type('type for mesh ID="{0}"'.format(self._id),
                    meshtype, basestring)
-        check_value('type for mesh ID="{0}"'.format(self._id),
+        cv.check_value('type for mesh ID="{0}"'.format(self._id),
                     meshtype, ['regular'])
         self._type = meshtype
 
     @dimension.setter
     def dimension(self, dimension):
-        check_type('mesh dimension', dimension, Iterable, Integral)
-        check_length('mesh dimension', dimension, 2, 3)
+        cv.check_type('mesh dimension', dimension, Iterable, Integral)
+        cv.check_length('mesh dimension', dimension, 2, 3)
         self._dimension = dimension
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        check_type('mesh lower_left', lower_left, Iterable, Real)
-        check_length('mesh lower_left', lower_left, 2, 3)
+        cv.check_type('mesh lower_left', lower_left, Iterable, Real)
+        cv.check_length('mesh lower_left', lower_left, 2, 3)
         self._lower_left = lower_left
 
     @upper_right.setter
     def upper_right(self, upper_right):
-        check_type('mesh upper_right', upper_right, Iterable, Real)
-        check_length('mesh upper_right', upper_right, 2, 3)
+        cv.check_type('mesh upper_right', upper_right, Iterable, Real)
+        cv.check_length('mesh upper_right', upper_right, 2, 3)
         self._upper_right = upper_right
 
     @width.setter
     def width(self, width):
-        check_type('mesh width', width, Iterable, Real)
-        check_length('mesh width', width, 2, 3)
+        cv.check_type('mesh width', width, Iterable, Real)
+        cv.check_length('mesh width', width, 2, 3)
         self._width = width
 
     def __repr__(self):

@@ -41,24 +41,31 @@ class Nuclide(object):
         if xs is not None:
             self.xs = xs
 
-    def __eq__(self, nuclide2):
-        # Check type
-        if not isinstance(nuclide2, Nuclide):
-            return False
-
-        # Check name
-        elif self._name != nuclide2._name:
-            return False
-
-        # Check xs
-        elif self._xs != nuclide2._xs:
-            return False
-
-        else:
+    def __eq__(self, other):
+        if isinstance(other, Nuclide):
+            if self._name != other._name:
+                return False
+            elif self._xs != other._xs:
+                return False
+            else:
+                return True
+        elif isinstance(other, basestring) and other == self.name:
             return True
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self == other
 
     def __hash__(self):
         return hash((self._name, self._xs))
+
+    def __repr__(self):
+        string = 'Nuclide    -    {0}\n'.format(self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
+        if self._zaid is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
+        return string
 
     @property
     def name(self):
@@ -86,10 +93,3 @@ class Nuclide(object):
     def zaid(self, zaid):
         check_type('zaid', zaid, Integral)
         self._zaid = zaid
-
-    def __repr__(self):
-        string = 'Nuclide    -    {0}\n'.format(self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
-        if self._zaid is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
-        return string

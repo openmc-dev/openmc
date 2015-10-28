@@ -24,6 +24,8 @@ class EnergyGroups(object):
     ----------
     group_edges : Iterable of Real
         The energy group boundaries [MeV]
+    num_group : Integral
+        The number of energy groups
 
     """
 

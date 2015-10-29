@@ -46,6 +46,7 @@ class Summary(object):
     @property
     def opencg_geometry(self):
         if self._opencg_geometry is None:
+            from openmc.opencg_compatible import get_opencg_geometry
             self._opencg_geometry = get_opencg_geometry(self._openmc_geometry)
         return self._opencg_geometry
 

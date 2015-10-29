@@ -8,6 +8,15 @@ class Summary(object):
     """Information summarizing the geometry, materials, and tallies used in a
     simulation.
 
+    Attributes
+    ----------
+    openmc_geometry : openmc.Geometry
+        An OpenMC geometry object reconstructed from the summary file
+    opencg_geometry : opencg.Geometry
+        An OpenCG geometry object equivalent to the OpenMC geometry
+        encapsulated by the summary file. Use of this attribute requires
+        installation of the OpenCG Python module.
+
     """
 
     def __init__(self, filename):
@@ -23,12 +32,29 @@ class Summary(object):
             raise ValueError(msg)
 
         self._f = h5py.File(filename, 'r')
-        self.openmc_geometry = None
-        self.opencg_geometry = None
+        self._openmc_geometry = None
+        self._opencg_geometry = None
 
         self._read_metadata()
         self._read_geometry()
         self._read_tallies()
+
+    @property
+    def openmc_geometry(self):
+        return self._openmc_geometry
+
+    @property
+    def opencg_geometry(self):
+        try:
+            from openmc.opencg_compatible import get_opencg_geometry
+        except ImportError:
+            msg = 'Unable to import OpenCG.'
+            raise ImportError(msg)
+
+        if self._opencg_geometry is None:
+            self._opencg_geometry = get_opencg_geometry(self._openmc_geometry)
+        
+        return self._opencg_geometry
 
     def _read_metadata(self):
         # Read OpenMC version
@@ -444,7 +470,7 @@ class Summary(object):
 
     def _finalize_geometry(self):
         # Initialize Geometry object
-        self.openmc_geometry = openmc.Geometry()
+        self._openmc_geometry = openmc.Geometry()
 
         # Iterate over all Cells and add fill Materials, Universes and Lattices
         for cell_key in self._cell_fills.keys():
@@ -468,7 +494,7 @@ class Summary(object):
 
         # Set the root universe for the Geometry
         root_universe = self.get_universe_by_id(0)
-        self.openmc_geometry.root_universe = root_universe
+        self._openmc_geometry.root_universe = root_universe
 
     def _read_tallies(self):
         # Initialize dictionaries for the Tallies
@@ -530,22 +556,6 @@ class Summary(object):
 
             # Add Tally to the global dictionary of all Tallies
             self.tallies[tally_id] = tally
-
-    def make_opencg_geometry(self):
-        """Create OpenCG geometry based on the information contained in the summary
-        file. The geometry is stored as the 'opencg_geometry' attribute.
-
-        """
-
-        try:
-            from openmc.opencg_compatible import get_opencg_geometry
-        except ImportError:
-            msg = 'Unable to import opencg which is needed ' \
-                  'by Summary.make_opencg_geometry()'
-            raise ImportError(msg)
-
-        if self.opencg_geometry is None:
-            self.opencg_geometry = get_opencg_geometry(self.openmc_geometry)
 
     def get_material_by_id(self, material_id):
         """Return a Material object given the material id

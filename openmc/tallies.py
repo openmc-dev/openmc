@@ -2107,6 +2107,9 @@ class Tally(object):
 
         return new_tally
 
+    def __div__(self, other):
+        return self.__truediv__(other)
+
     def __pow__(self, power):
         """Raises this tally to another tally or scalar value power.
 

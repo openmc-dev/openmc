@@ -200,7 +200,7 @@ class Filter(object):
                 msg = 'Unable to add bins "{0}" to a mesh Filter since ' \
                       'only a single mesh can be used per tally'.format(bins)
                 raise ValueError(msg)
-            elif not isinstance(bins[0], Integral):
+            elif not cv._isinstance(bins[0], Integral):
                 msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
                        'is a non-integer'.format(bins[0])
                 raise ValueError(msg)

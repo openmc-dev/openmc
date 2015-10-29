@@ -601,8 +601,7 @@ class Filter(object):
                           'to use a Summary for distribcell dataframes'
                     raise ImportError(msg)
 
-                # Create and extract the OpenCG geometry the Summary
-                summary.make_opencg_geometry()
+                # Extract the OpenCG geometry from the Summary
                 opencg_geometry = summary.opencg_geometry
                 openmc_geometry = summary.openmc_geometry
 

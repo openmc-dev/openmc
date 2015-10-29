@@ -47,7 +47,7 @@ class Summary(object):
     def opencg_geometry(self):
         if self._opencg_geometry is None:
             from openmc.opencg_compatible import get_opencg_geometry
-            self._opencg_geometry = get_opencg_geometry(self._openmc_geometry)
+            self._opencg_geometry = get_opencg_geometry(self.openmc_geometry)
         return self._opencg_geometry
 
     def _read_metadata(self):
@@ -488,7 +488,7 @@ class Summary(object):
 
         # Set the root universe for the Geometry
         root_universe = self.get_universe_by_id(0)
-        self._openmc_geometry.root_universe = root_universe
+        self.openmc_geometry.root_universe = root_universe
 
     def _read_tallies(self):
         # Initialize dictionaries for the Tallies

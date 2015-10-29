@@ -45,15 +45,8 @@ class Summary(object):
 
     @property
     def opencg_geometry(self):
-        try:
-            from openmc.opencg_compatible import get_opencg_geometry
-        except ImportError:
-            msg = 'Unable to import OpenCG.'
-            raise ImportError(msg)
-
         if self._opencg_geometry is None:
             self._opencg_geometry = get_opencg_geometry(self._openmc_geometry)
-        
         return self._opencg_geometry
 
     def _read_metadata(self):

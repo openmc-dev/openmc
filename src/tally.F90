@@ -1728,7 +1728,9 @@ contains
              p % coord(p % n_coord) % universe, i_tally)
 
       case (FILTER_MATERIAL)
-        if (p % material /= MATERIAL_VOID) then
+        if (p % material == MATERIAL_VOID) then
+          matching_bins(i) = NO_BIN_FOUND
+        else
           matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
                p % material, i_tally)
         endif

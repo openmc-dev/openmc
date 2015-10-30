@@ -84,7 +84,7 @@ class Region(object):
                 i_start = -1
             else:
                 # Check for invalid characters
-                if expression[i] not in '-0123456789':
+                if expression[i] not in '-+0123456789':
                     raise SyntaxError("Invalid character '{}' in expression"
                                       .format(expression[i]))
 

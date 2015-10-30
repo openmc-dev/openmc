@@ -100,7 +100,7 @@ class Library(object):
             clone = type(self).__new__(type(self))
             clone._name = self.name
             clone._openmc_geometry = self.openmc_geometry
-            clone._opencg_geometry = self.opencg_geometry
+            clone._opencg_geometry = None
             clone._by_nuclide = self.by_nuclide
             clone._mgxs_types = self.mgxs_types
             clone._domain_type = self.domain_type

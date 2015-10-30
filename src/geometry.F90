@@ -6,7 +6,8 @@ module geometry
                                     &RectLattice, HexLattice
   use global
   use output,                 only: write_message
-  use particle_header,        only: LocalCoord, Particle
+  use particle_header,        only: LocalCoord, Particle_Base, Particle_CE, &
+                                    Particle_MG
   use particle_restart_write, only: write_particle_restart
   use surface_header
   use string,                 only: to_str
@@ -32,7 +33,7 @@ contains
 
   pure function cell_contains(c, p) result(in_cell)
     type(Cell), intent(in) :: c
-    type(Particle), intent(in) :: p
+    class(Particle_Base), intent(in) :: p
     logical :: in_cell
 
     if (c%simple) then
@@ -44,7 +45,7 @@ contains
 
   pure function simple_cell_contains(c, p) result(in_cell)
     type(Cell), intent(in) :: c
-    type(Particle), intent(in) :: p
+    class(Particle_Base), intent(in) :: p
     logical :: in_cell
 
     integer :: i
@@ -78,7 +79,7 @@ contains
 
   pure function complex_cell_contains(c, p) result(in_cell)
     type(Cell), intent(in) :: c
-    type(Particle), intent(in) :: p
+    class(Particle_Base), intent(in) :: p
     logical :: in_cell
 
     integer :: i
@@ -139,7 +140,7 @@ contains
 
   subroutine check_cell_overlap(p)
 
-    type(Particle), intent(inout) :: p
+    class(Particle_Base), intent(inout) :: p
 
     integer :: i                       ! cell loop index on a level
     integer :: j                       ! coordinate level index
@@ -187,9 +188,9 @@ contains
 
   recursive subroutine find_cell(p, found, search_cells)
 
-    type(Particle), intent(inout) :: p
-    logical,        intent(inout) :: found
-    integer,        optional      :: search_cells(:)
+    class(Particle_Base), intent(inout) :: p
+    logical,              intent(inout) :: found
+    integer,              optional      :: search_cells(:)
     integer :: i                    ! index over cells
     integer :: j                    ! coordinate level index
     integer :: i_xyz(3)             ! indices in lattice
@@ -339,8 +340,8 @@ contains
 !===============================================================================
 
   subroutine cross_surface(p, last_cell)
-    type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: last_cell  ! last cell particle was in
+    class(Particle_Base), intent(inout) :: p
+    integer,        intent(in)          :: last_cell  ! last cell particle was in
 
     real(8) :: u         ! x-component of direction
     real(8) :: v         ! y-component of direction
@@ -501,8 +502,8 @@ contains
 
   subroutine cross_lattice(p, lattice_translation)
 
-    type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: lattice_translation(3)
+    class(Particle_Base), intent(inout) :: p
+    integer,              intent(in)    :: lattice_translation(3)
     integer :: j
     integer :: i_xyz(3)       ! indices in lattice
     logical :: found          ! particle found in cell?
@@ -574,11 +575,11 @@ contains
 
   subroutine distance_to_boundary(p, dist, surface_crossed, lattice_translation, &
        next_level)
-    type(Particle), intent(inout) :: p
-    real(8),        intent(out)   :: dist
-    integer,        intent(out)   :: surface_crossed
-    integer,        intent(out)   :: lattice_translation(3)
-    integer,        intent(out)   :: next_level
+    class(Particle_Base), intent(inout) :: p
+    real(8),              intent(out)   :: dist
+    integer,              intent(out)   :: surface_crossed
+    integer,              intent(out)   :: lattice_translation(3)
+    integer,              intent(out)   :: next_level
 
     integer :: i                  ! index for surface in cell
     integer :: j
@@ -954,8 +955,8 @@ contains
 
   subroutine handle_lost_particle(p, message)
 
-    type(Particle), intent(inout) :: p
-    character(*)                  :: message
+    class(Particle_Base), intent(inout) :: p
+    character(*)                        :: message
 
     ! Print warning and write lost particle file
     call warning(message)

@@ -11,7 +11,8 @@ module tally
                               mesh_intersects_2d, mesh_intersects_3d
   use mesh_header,      only: RegularMesh
   use output,           only: header
-  use particle_header,  only: LocalCoord, Particle
+  use particle_header,  only: LocalCoord, Particle_Base, Particle_CE, &
+                              Particle_MG
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
@@ -37,7 +38,7 @@ contains
 
   subroutine score_general(p, t, start_index, filter_index, i_nuclide, &
        atom_density, flux)
-    type(Particle),             intent(in)    :: p
+    type(Particle_CE),          intent(in)    :: p
     type(TallyObject), pointer, intent(inout) :: t
     integer,                    intent(in)    :: start_index
     integer,                    intent(in)    :: i_nuclide
@@ -837,10 +838,10 @@ contains
 
   subroutine score_all_nuclides(p, i_tally, flux, filter_index)
 
-    type(Particle), intent(in) :: p
-    integer,        intent(in) :: i_tally
-    real(8),        intent(in) :: flux
-    integer,        intent(in) :: filter_index
+    type(Particle_CE), intent(in) :: p
+    integer,           intent(in) :: i_tally
+    real(8),           intent(in) :: flux
+    integer,           intent(in) :: filter_index
 
     integer :: i             ! loop index for nuclides in material
     integer :: i_nuclide     ! index in nuclides array
@@ -891,7 +892,7 @@ contains
 
   subroutine score_analog_tally(p)
 
-    type(Particle), intent(in) :: p
+    type(Particle_CE), intent(in) :: p
 
     integer :: i
     integer :: i_tally
@@ -999,9 +1000,9 @@ contains
 
   subroutine score_fission_eout(p, t, i_score)
 
-    type(Particle), intent(in) :: p
-    type(TallyObject), pointer :: t
-    integer, intent(in)        :: i_score ! index for score
+    type(Particle_CE), intent(in) :: p
+    type(TallyObject), pointer       :: t
+    integer, intent(in)              :: i_score ! index for score
 
     integer :: i             ! index of outgoing energy filter
     integer :: n             ! number of energies on filter
@@ -1061,7 +1062,7 @@ contains
 
   subroutine score_fission_delayed_eout(p, t, i_score)
 
-    type(Particle), intent(in)       :: p
+    type(Particle_CE), intent(in)    :: p
     type(TallyObject), intent(inout) :: t
     integer, intent(in)              :: i_score ! index for score
 
@@ -1187,8 +1188,8 @@ contains
 
   subroutine score_tracklength_tally(p, distance)
 
-    type(Particle), intent(in) :: p
-    real(8),        intent(in) :: distance
+    type(Particle_CE), intent(in) :: p
+    real(8),           intent(in) :: distance
 
     integer :: i
     integer :: i_tally
@@ -1300,9 +1301,9 @@ contains
 
   subroutine score_tl_on_mesh(p, i_tally, d_track)
 
-    type(Particle), intent(in) :: p
-    integer,        intent(in) :: i_tally
-    real(8),        intent(in) :: d_track
+    type(Particle_CE), intent(in) :: p
+    integer,           intent(in) :: i_tally
+    real(8),           intent(in) :: d_track
 
     integer :: i                    ! loop index for filter/score bins
     integer :: j                    ! loop index for direction
@@ -1585,7 +1586,7 @@ contains
 
   subroutine score_collision_tally(p)
 
-    type(Particle), intent(in) :: p
+    type(Particle_CE), intent(in) :: p
 
     integer :: i
     integer :: i_tally
@@ -1694,9 +1695,9 @@ contains
 
   subroutine get_scoring_bins(p, i_tally, found_bin)
 
-    type(Particle), intent(in)  :: p
-    integer,        intent(in)  :: i_tally
-    logical,        intent(out) :: found_bin
+    type(Particle_CE), intent(in) :: p
+    integer,          intent(in)  :: i_tally
+    logical,          intent(out) :: found_bin
 
     integer :: i ! loop index for filters
     integer :: j
@@ -1902,7 +1903,7 @@ contains
 
   subroutine score_surface_current(p)
 
-    type(Particle), intent(in) :: p
+    class(Particle_Base), intent(in) :: p
 
     integer :: i
     integer :: i_tally
@@ -1967,19 +1968,22 @@ contains
       uvw = p % coord(1) % uvw
 
       ! determine incoming energy bin
-      j = t % find_filter(FILTER_ENERGYIN)
-      if (j > 0) then
-        n = t % filters(j) % n_bins
-        ! check if energy of the particle is within energy bins
-        if (p % E < t % filters(j) % real_bins(1) .or. &
-             p % E > t % filters(j) % real_bins(n + 1)) then
-          cycle
-        end if
+      select type(p)
+      type is (Particle_CE)
+        j = t % find_filter(FILTER_ENERGYIN)
+        if (j > 0) then
+          n = t % filters(j) % n_bins
+          ! check if energy of the particle is within energy bins
+          if (p % E < t % filters(j) % real_bins(1) .or. &
+               p % E > t % filters(j) % real_bins(n + 1)) then
+            cycle
+          end if
 
-        ! search to find incoming energy bin
-        matching_bins(j) = binary_search(t % filters(j) % real_bins, &
-             n + 1, p % E)
-      end if
+          ! search to find incoming energy bin
+          matching_bins(j) = binary_search(t % filters(j) % real_bins, &
+               n + 1, p % E)
+        end if
+      end select
 
       ! =======================================================================
       ! SPECIAL CASES WHERE TWO INDICES ARE THE SAME

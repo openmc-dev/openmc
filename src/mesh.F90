@@ -3,7 +3,6 @@ module mesh
   use constants
   use global
   use mesh_header
-  use particle_header, only: Particle
   use search,          only: binary_search
 
 #ifdef MPI

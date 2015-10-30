@@ -12,7 +12,7 @@ module output
   use math,            only: t_percentile
   use mesh_header,     only: RegularMesh
   use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
-  use particle_header, only: LocalCoord, Particle
+  use particle_header, only: LocalCoord, Particle_Base, Particle_CE, Particle_MG
   use plot_header
   use string,          only: to_upper, to_str
   use tally_header,    only: TallyObject
@@ -251,7 +251,7 @@ contains
 
   subroutine print_particle(p)
 
-    type(Particle), intent(in) :: p
+    class(Particle_Base), intent(in) :: p
 
     integer :: i ! index for coordinate levels
     type(Cell),       pointer :: c
@@ -308,7 +308,12 @@ contains
 
     ! Display weight, energy, grid index, and interpolation factor
     write(ou,*) '  Weight = ' // to_str(p % wgt)
-    write(ou,*) '  Energy = ' // to_str(p % E)
+    select type(p)
+    type is (Particle_CE)
+      write(ou,*) '  Energy = ' // to_str(p % E)
+    type is (Particle_MG)
+      write(ou,*) '  Energy Group = ' // to_str(p % g)
+    end select
     write(ou,*) '  Delayed Group = ' // to_str(p % delayed_group)
     write(ou,*)
 

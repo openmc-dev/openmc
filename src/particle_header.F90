@@ -250,9 +250,8 @@ contains
     this % coord(1) % uvw = src % uvw
     this % last_xyz       = src % xyz
     this % last_uvw       = src % uvw
-    !!! The following requires a MG version of Bank
-    this % g              = src % E
-    this % last_g         = src % E
+    this % g              = src % g
+    this % last_g         = src % g
 
   end subroutine initialize_from_source_mg
 
@@ -300,8 +299,7 @@ contains
     this % secondary_bank(n) % wgt    = this % wgt
     this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
     this % secondary_bank(n) % uvw(:) = uvw
-    !!! The following requires a MG version of Bank
-    this % secondary_bank(n) % E      = this % g
+    this % secondary_bank(n) % g      = this % g
     this % n_secondary = n
 
   end subroutine create_secondary_mg

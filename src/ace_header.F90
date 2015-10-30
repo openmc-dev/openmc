@@ -258,7 +258,6 @@ module ace_header
     real(8) :: absorption      ! microscopic absorption xs
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
-    real(8) :: kappa_fission   ! microscopic energy-released from fission
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)
@@ -281,7 +280,6 @@ module ace_header
     real(8) :: absorption    ! macroscopic absorption xs
     real(8) :: fission       ! macroscopic fission xs
     real(8) :: nu_fission    ! macroscopic production xs
-    real(8) :: kappa_fission ! macroscopic energy-released from fission
   end type MaterialMacroXS
 
   contains

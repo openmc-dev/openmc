@@ -527,19 +527,11 @@ contains
                 d = t % filters(dg_filter) % int_bins(d_bin)
 
                 ! Compute the yield for this delayed group
-<<<<<<< HEAD
-                yield = yield_delayed(nuc, E, d)
+                yield = yield_delayed(nuclides(i_nuclide), E, d)
 
                 ! Compute the score and tally to bin
                 score = micro_xs(i_nuclide) % fission * yield &
-                     * nu_delayed(nuc, E) * atom_density * flux
-=======
-                yield = yield_delayed(nuclides(i_nuclide), p % E, d)
-
-                ! Compute the score and tally to bin
-                score = micro_xs(i_nuclide) % fission * yield &
-                     * nu_delayed(nuclides(i_nuclide), p % E) * atom_density * flux
->>>>>>> Make Nuclide%reactions allocatable by using associate constructs
+                     * nu_delayed(nuclides(i_nuclide), E) * atom_density * flux
                 call score_fission_delayed_dg(t, d_bin, score, score_index)
               end do
               cycle SCORE_LOOP
@@ -547,13 +539,8 @@ contains
 
               ! If the delayed group filter is not present, compute the score
               ! by multiplying the delayed-nu-fission macro xs by the flux
-<<<<<<< HEAD
-              score = micro_xs(i_nuclide) % fission * nu_delayed(nuc, E)&
-                   * atom_density * flux
-=======
               score = micro_xs(i_nuclide) % fission * &
-                   nu_delayed(nuclides(i_nuclide), p % E) * atom_density * flux
->>>>>>> Make Nuclide%reactions allocatable by using associate constructs
+                   nu_delayed(nuclides(i_nuclide), E) * atom_density * flux
             end if
 
           ! Tally is on total nuclides
@@ -578,19 +565,11 @@ contains
                   d = t % filters(dg_filter) % int_bins(d_bin)
 
                   ! Get the yield for the desired nuclide and delayed group
-<<<<<<< HEAD
-                  yield = yield_delayed(nuc, E, d)
+                  yield = yield_delayed(nuclides(i_nuc), E, d)
 
                   ! Compute the score and tally to bin
                   score = micro_xs(i_nuc) % fission * yield &
-                       * nu_delayed(nuc, E) * atom_density_ * flux
-=======
-                  yield = yield_delayed(nuclides(i_nuc), p % E, d)
-
-                  ! Compute the score and tally to bin
-                  score = micro_xs(i_nuc) % fission * yield &
-                       * nu_delayed(nuclides(i_nuc), p % E) * atom_density_ * flux
->>>>>>> Make Nuclide%reactions allocatable by using associate constructs
+                       * nu_delayed(nuclides(i_nuc), E) * atom_density_ * flux
                   call score_fission_delayed_dg(t, d_bin, score, score_index)
                 end do
               end do
@@ -618,37 +597,66 @@ contains
 
 
       case (SCORE_KAPPA_FISSION)
+        ! Determine kappa-fission cross section on the fly. The ENDF standard
+        ! (ENDF-102) states that MT 18 stores the fission energy as the Q_value
+        ! (fission(1))
+
+        score = ZERO
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! fission scale by kappa-fission
-            if (micro_xs(p % event_nuclide) % absorption > ZERO) then
-              score = p % absorb_wgt * &
-                   micro_xs(p % event_nuclide) % kappa_fission / &
-                   micro_xs(p % event_nuclide) % absorption
-            else
-              score = ZERO
-            end if
+            associate (nuc => nuclides(p % event_nuclide))
+              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
+                   nuc % fissionable) then
+                score = p % absorb_wgt * &
+                     nuc%reactions(nuc%index_fission(1))%Q_value * &
+                     micro_xs(p % event_nuclide) % fission / &
+                     micro_xs(p % event_nuclide) % absorption
+              end if
+            end associate
           else
             ! Skip any non-absorption events
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission events will contribute, so again we can use
             ! particle's weight entering the collision as the estimate for
             ! the fission energy production rate
-            score = p % last_wgt * &
-                 micro_xs(p % event_nuclide) % kappa_fission / &
-                 micro_xs(p % event_nuclide) % absorption
+            associate (nuc => nuclides(p % event_nuclide))
+              if (nuc % fissionable) then
+                score = p % last_wgt * &
+                     nuc%reactions(nuc%index_fission(1))%Q_value * &
+                     micro_xs(p % event_nuclide) % fission / &
+                     micro_xs(p % event_nuclide) % absorption
+              end if
+            end associate
           end if
 
         else
           if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % kappa_fission * atom_density * flux
+            associate (nuc => nuclides(i_nuclide))
+              if (nuc % fissionable) then
+                score = nuc%reactions(nuc%index_fission(1))%Q_value * &
+                     micro_xs(i_nuclide)%fission * atom_density * flux
+              end if
+            end associate
           else
-            score = material_xs % kappa_fission * flux
+            do l = 1, materials(p%material)%n_nuclides
+              ! Determine atom density and index of nuclide
+              atom_density_ = materials(p%material)%atom_density(l)
+              i_nuc = materials(p%material)%nuclide(l)
+
+              ! If nuclide is fissionable, accumulate kappa fission
+              associate(nuc => nuclides(i_nuc))
+                if (nuc % fissionable) then
+                  score = score + nuc%reactions(nuc%index_fission(1))%Q_value * &
+                       micro_xs(i_nuc)%fission * atom_density_ * flux
+                end if
+              end associate
+            end do
           end if
         end if
-
 
       case (SCORE_EVENTS)
         ! Simply count number of scoring events

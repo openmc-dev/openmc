@@ -41,7 +41,6 @@ contains
     material_xs % absorption     = ZERO
     material_xs % fission        = ZERO
     material_xs % nu_fission     = ZERO
-    material_xs % kappa_fission  = ZERO
 
     ! Exit subroutine if material is void
     if (p % material == MATERIAL_VOID) return
@@ -125,10 +124,6 @@ contains
       ! Add contributions to material macroscopic nu-fission cross section
       material_xs % nu_fission = material_xs % nu_fission + &
            atom_density * micro_xs(i_nuclide) % nu_fission
-
-      ! Add contributions to material macroscopic energy release from fission
-      material_xs % kappa_fission = material_xs % kappa_fission + &
-           atom_density * micro_xs(i_nuclide) % kappa_fission
     end do
 
   end subroutine calculate_xs
@@ -216,7 +211,6 @@ contains
     ! Initialize nuclide cross-sections to zero
     micro_xs(i_nuclide) % fission    = ZERO
     micro_xs(i_nuclide) % nu_fission = ZERO
-    micro_xs(i_nuclide) % kappa_fission  = ZERO
 
     ! Calculate microscopic nuclide total cross section
     micro_xs(i_nuclide) % total = (ONE - f) * nuc % total(i_grid) &
@@ -238,13 +232,6 @@ contains
       ! Calculate microscopic nuclide nu-fission cross section
       micro_xs(i_nuclide) % nu_fission = (ONE - f) * nuc % nu_fission( &
            i_grid) + f * nuc % nu_fission(i_grid+1)
-
-      ! Calculate microscopic nuclide kappa-fission cross section
-      ! The ENDF standard (ENDF-102) states that MT 18 stores
-      ! the fission energy as the Q_value (fission(1))
-      micro_xs(i_nuclide) % kappa_fission = &
-           nuc % reactions(nuc % index_fission(1)) % Q_value * &
-           micro_xs(i_nuclide) % fission
     end if
 
     ! If there is S(a,b) data for this nuclide, we need to do a few

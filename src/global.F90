@@ -59,7 +59,11 @@ module global
   integer :: n_lost_particles
 
   ! ============================================================================
-  ! CROSS SECTION RELATED VARIABLES
+  ! ENERGY TREATMENT RELATED VARIABLES
+  logical :: run_CE = .true.  ! Run in CE mode?
+
+  ! ============================================================================
+  ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
 
   ! Cross section arrays
   type(Nuclide),    allocatable, target :: nuclides(:)    ! Nuclide cross-sections

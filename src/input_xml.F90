@@ -121,6 +121,17 @@ contains
       end if
     end if
 
+    ! Find if a multi-group or continuous-energy simulation is desired
+    if (check_for_node(doc, "energy_mode")) then
+      call get_node_value(doc, "energy_mode", temp_str)
+      temp_str = trim(to_lower(temp_str))
+      if (temp_str == "mg" .or. temp_str == "multi-group") then
+        run_CE = .false.
+      else if (temp_str == "ce" .or. temp_str == "continuous") then
+        run_CE = .true.
+      end if
+    end if
+
     ! Set output directory if a path has been specified on the <output_path>
     ! element
     if (check_for_node(doc, "output_path")) then
@@ -1784,6 +1795,7 @@ contains
     type(Node), pointer :: node_sab => null()
     type(NodeList), pointer :: node_mat_list => null()
     type(NodeList), pointer :: node_nuc_list => null()
+    type(NodeList), pointer :: node_macro_list => null()
     type(NodeList), pointer :: node_ele_list => null()
     type(NodeList), pointer :: node_sab_list => null()
 
@@ -1841,6 +1853,7 @@ contains
       ! Copy material name
       if (check_for_node(node_mat, "name")) then
         call get_node_value(node_mat, "name", mat % name)
+        mat % name = to_lower(mat % name)
       end if
 
       if (run_mode == MODE_PLOTTING) then
@@ -1873,6 +1886,19 @@ contains
 
         sum_density = .true.
 
+      else if (units == 'macro') then
+        if (check_for_node(node_dens, "value")) then
+          ! Copy value
+          call get_node_value(node_dens, "value", val)
+        else
+          val = ONE
+        end if
+
+        ! Set density
+        mat % density = val
+
+        sum_density = .false.
+
       else
         ! Copy value
         call get_node_value(node_dens, "value", val)
@@ -1904,66 +1930,122 @@ contains
       ! READ AND PARSE <nuclide> TAGS
 
       ! Check to ensure material has at least one nuclide
-      if (.not. check_for_node(node_mat, "nuclide") .and. &
-           .not. check_for_node(node_mat, "element")) then
-        call fatal_error("No nuclides or natural elements specified on &
-             &material " // trim(to_str(mat % id)))
+      if ((.not. check_for_node(node_mat, "nuclide") .and. &
+          .not. check_for_node(node_mat, "element")) .and. &
+          (.not. check_for_node(node_mat, "macroscopic"))) then
+        call fatal_error("No macroscopic data, nuclides or natural elements &
+                         &specified on material " // trim(to_str(mat % id)))
       end if
 
+      ! Create list of macroscopic x/s based on those specified, just treat
+      ! them as nuclides. This is all really a facade so the user thinks they
+      ! are entering in macroscopic data but the code treats them the same
+      ! as nuclides internally.
       ! Get pointer list of XML <nuclide>
-      call get_node_list(node_mat, "nuclide", node_nuc_list)
+      call get_node_list(node_mat, "macroscopic", node_macro_list)
+      if (get_list_size(node_macro_list) > 1) then
+        call fatal_error("Only one macroscopic data permitted per material, " &
+             &// trim(to_str(mat % id)))
+      else if (get_list_size(node_macro_list) == 1) then
 
-      ! Create list of nuclides based on those specified plus natural elements
-      INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
-        ! Combine nuclide identifier and cross section and copy into names
-        call get_list_item(node_nuc_list, j, node_nuc)
+        call get_list_item(node_macro_list, 1, node_nuc)
 
         ! Check for empty name on nuclide
         if (.not.check_for_node(node_nuc, "name")) then
-          call fatal_error("No name specified on nuclide in material " &
+          call fatal_error("No name specified on macroscopic data in material " &
                &// trim(to_str(mat % id)))
         end if
 
         ! Check for cross section
         if (.not.check_for_node(node_nuc, "xs")) then
           if (default_xs == '') then
-            call fatal_error("No cross section specified for nuclide in &
-                 &material " // trim(to_str(mat % id)))
+            call fatal_error("No cross section specified for macroscopic data &
+                 & in material " // trim(to_str(mat % id)))
           else
-            name = trim(default_xs)
+            name = to_lower(trim(default_xs))
           end if
         end if
 
         ! store full name
         call get_node_value(node_nuc, "name", temp_str)
         if (check_for_node(node_nuc, "xs")) &
-             call get_node_value(node_nuc, "xs", name)
+          call get_node_value(node_nuc, "xs", name)
         name = trim(temp_str) // "." // trim(name)
+        name = to_lower(name)
 
         ! save name and density to list
         call list_names % append(name)
 
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
-        if (.not.check_for_node(node_nuc, "ao") .and. &
-             .not.check_for_node(node_nuc, "wo")) then
-          call fatal_error("No atom or weight percent specified for nuclide " &
-               &// trim(name))
-        elseif (check_for_node(node_nuc, "ao") .and. &
-                check_for_node(node_nuc, "wo")) then
-          call fatal_error("Cannot specify both atom and weight percents for a &
-               &nuclide: " // trim(name))
-        end if
-
-        ! Copy atom/weight percents
-        if (check_for_node(node_nuc, "ao")) then
-          call get_node_value(node_nuc, "ao", temp_dble)
-          call list_density % append(temp_dble)
+        if (units == 'macro') then
+          call list_density % append(ONE)
         else
-          call get_node_value(node_nuc, "wo", temp_dble)
-          call list_density % append(-temp_dble)
+          call fatal_error("Units can only be macro for macroscopic data " &
+                 &// trim(name))
         end if
-      end do INDIVIDUAL_NUCLIDES
+      else
+
+        ! Get pointer list of XML <nuclide>
+        call get_node_list(node_mat, "nuclide", node_nuc_list)
+
+        ! Create list of nuclides based on those specified plus natural elements
+        INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
+          ! Combine nuclide identifier and cross section and copy into names
+          call get_list_item(node_nuc_list, j, node_nuc)
+
+          ! Check for empty name on nuclide
+          if (.not.check_for_node(node_nuc, "name")) then
+            call fatal_error("No name specified on nuclide in material " &
+                 &// trim(to_str(mat % id)))
+          end if
+
+          ! Check for cross section
+          if (.not.check_for_node(node_nuc, "xs")) then
+            if (default_xs == '') then
+              call fatal_error("No cross section specified for nuclide in &
+                   &material " // trim(to_str(mat % id)))
+            else
+              name = to_lower(trim(default_xs))
+            end if
+          end if
+
+          ! store full name
+          call get_node_value(node_nuc, "name", temp_str)
+          if (check_for_node(node_nuc, "xs")) &
+            call get_node_value(node_nuc, "xs", name)
+          name = trim(temp_str) // "." // trim(name)
+          name = to_lower(name)
+
+          ! save name and density to list
+          call list_names % append(name)
+
+          ! Check if no atom/weight percents were specified or if both atom and
+          ! weight percents were specified
+          if (units == 'macro') then
+            call list_density % append(ONE)
+          else
+            if (.not.check_for_node(node_nuc, "ao") .and. &
+                .not.check_for_node(node_nuc, "wo")) then
+              call fatal_error("No atom or weight percent specified for nuclide " &
+                   &// trim(name))
+            elseif (check_for_node(node_nuc, "ao") .and. &
+                    check_for_node(node_nuc, "wo")) then
+              call fatal_error("Cannot specify both atom and weight percents for a &
+                   &nuclide: " // trim(name))
+            end if
+
+            ! Copy atom/weight percents
+            if (check_for_node(node_nuc, "ao")) then
+              call get_node_value(node_nuc, "ao", temp_dble)
+              call list_density % append(temp_dble)
+            else
+              call get_node_value(node_nuc, "wo", temp_dble)
+              call list_density % append(-temp_dble)
+            end if
+          end if
+        end do INDIVIDUAL_NUCLIDES
+      end if
 
       ! =======================================================================
       ! READ AND PARSE <element> TAGS
@@ -1989,7 +2071,7 @@ contains
             call fatal_error("No cross section specified for nuclide in &
                  &material " // trim(to_str(mat % id)))
           else
-            temp_str = trim(default_xs)
+            temp_str = to_lower(trim(default_xs))
           end if
         end if
 
@@ -2031,14 +2113,16 @@ contains
         name = trim(list_names % get_item(j))
         if (.not. xs_listing_dict % has_key(to_lower(name))) then
           call fatal_error("Could not find nuclide " // trim(name) &
-               &// " in cross_sections.xml file!")
+               &// " in cross_sections data file!")
         end if
 
-        ! Check to make sure cross-section is continuous energy neutron table
-        n = len_trim(name)
-        if (name(n:n) /= 'c') then
-          call fatal_error("Cross-section table " // trim(name) &
-               &// " is not a continuous-energy neutron table.")
+        if (run_CE) then
+          ! Check to make sure cross-section is continuous energy neutron table
+          n = len_trim(name)
+          if (name(n:n) /= 'c') then
+            call fatal_error("Cross-section table " // trim(name) &
+                 &// " is not a continuous-energy neutron table.")
+          end if
         end if
 
         ! Find xs_listing and set the name/alias according to the listing
@@ -2080,59 +2164,60 @@ contains
 
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
+      if (run_CE) then
+        ! Get pointer list to XML <sab>
+        call get_node_list(node_mat, "sab", node_sab_list)
 
-      ! Get pointer list to XML <sab>
-      call get_node_list(node_mat, "sab", node_sab_list)
+        n_sab = get_list_size(node_sab_list)
+        if (n_sab > 0) then
+          ! Set number of S(a,b) tables
+          mat % n_sab = n_sab
 
-      n_sab = get_list_size(node_sab_list)
-      if (n_sab > 0) then
-        ! Set number of S(a,b) tables
-        mat % n_sab = n_sab
+          ! Allocate names and indices for nuclides and tables
+          allocate(mat % sab_names(n_sab))
+          allocate(mat % i_sab_nuclides(n_sab))
+          allocate(mat % i_sab_tables(n_sab))
 
-        ! Allocate names and indices for nuclides and tables
-        allocate(mat % sab_names(n_sab))
-        allocate(mat % i_sab_nuclides(n_sab))
-        allocate(mat % i_sab_tables(n_sab))
+          ! Initialize i_sab_nuclides
+          mat % i_sab_nuclides = NONE
 
-        ! Initialize i_sab_nuclides
-        mat % i_sab_nuclides = NONE
+          do j = 1, n_sab
+            ! Get pointer to S(a,b) table
+            call get_list_item(node_sab_list, j, node_sab)
 
-        do j = 1, n_sab
-          ! Get pointer to S(a,b) table
-          call get_list_item(node_sab_list, j, node_sab)
+            ! Determine name of S(a,b) table
+            if (.not.check_for_node(node_sab, "name") .or. &
+                 .not.check_for_node(node_sab, "xs")) then
+              call fatal_error("Need to specify <name> and <xs> for S(a,b) &
+                   &table.")
+            end if
+            call get_node_value(node_sab, "name", name)
+            call get_node_value(node_sab, "xs", temp_str)
+            name = trim(name) // "." // trim(temp_str)
+            mat % sab_names(j) = name
 
-          ! Determine name of S(a,b) table
-          if (.not.check_for_node(node_sab, "name") .or. &
-               .not.check_for_node(node_sab, "xs")) then
-            call fatal_error("Need to specify <name> and <xs> for S(a,b) &
-                 &table.")
-          end if
-          call get_node_value(node_sab, "name", name)
-          call get_node_value(node_sab, "xs", temp_str)
-          name = trim(name) // "." // trim(temp_str)
-          mat % sab_names(j) = name
+            ! Check that this nuclide is listed in the cross_sections.xml file
+            if (.not. xs_listing_dict % has_key(to_lower(name))) then
+              call fatal_error("Could not find S(a,b) table " // trim(name) &
+                   &// " in cross_sections.xml file!")
+            end if
 
-          ! Check that this nuclide is listed in the cross_sections.xml file
-          if (.not. xs_listing_dict % has_key(to_lower(name))) then
-            call fatal_error("Could not find S(a,b) table " // trim(name) &
-                 &// " in cross_sections.xml file!")
-          end if
+            ! Find index in xs_listing and set the name and alias according to the
+            ! listing
+            index_list = xs_listing_dict % get_key(to_lower(name))
+            name       = xs_listings(index_list) % name
 
-          ! Find index in xs_listing and set the name and alias according to the
-          ! listing
-          index_list = xs_listing_dict % get_key(to_lower(name))
-          name       = xs_listings(index_list) % name
-
-          ! If this S(a,b) table hasn't been encountered yet, we need to add its
-          ! name and alias to the sab_dict
-          if (.not. sab_dict % has_key(to_lower(name))) then
-            index_sab = index_sab + 1
-            mat % i_sab_tables(j) = index_sab
-            call sab_dict % add_key(to_lower(name), index_sab)
-          else
-            mat % i_sab_tables(j) = sab_dict % get_key(to_lower(name))
-          end if
-        end do
+            ! If this S(a,b) table hasn't been encountered yet, we need to add its
+            ! name and alias to the sab_dict
+            if (.not. sab_dict % has_key(to_lower(name))) then
+              index_sab = index_sab + 1
+              mat % i_sab_tables(j) = index_sab
+              call sab_dict % add_key(to_lower(name), index_sab)
+            else
+              mat % i_sab_tables(j) = sab_dict % get_key(to_lower(name))
+            end if
+          end do
+        end if
       end if
 
       ! Add material to dictionary

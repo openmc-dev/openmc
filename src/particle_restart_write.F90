@@ -3,7 +3,7 @@ module particle_restart_write
   use bank_header,      only: Bank
   use global
   use hdf5_interface
-  use particle_header,  only: Particle
+  use particle_header,  only: Particle_Base
   use string,           only: to_str
 
   use hdf5
@@ -19,7 +19,7 @@ contains
 !===============================================================================
 
   subroutine write_particle_restart(p)
-    type(Particle), intent(in) :: p
+    class(Particle_Base), intent(in) :: p
 
     integer(HID_T) :: file_id
     character(MAX_FILE_LEN) :: filename

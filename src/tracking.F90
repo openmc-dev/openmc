@@ -8,7 +8,7 @@ module tracking
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
   use output,          only: write_message
-  use particle_header, only: LocalCoord, Particle
+  use particle_header, only: LocalCoord, Particle_Base, Particle_CE, Particle_MG
   use physics,         only: collision
   use random_lcg,      only: prn
   use string,          only: to_str
@@ -27,7 +27,7 @@ contains
 
   subroutine transport(p)
 
-    type(Particle), intent(inout) :: p
+    class(Particle_Base), intent(inout) :: p
 
     integer :: j                      ! coordinate level
     integer :: next_level             ! next coordinate level to check
@@ -83,7 +83,10 @@ contains
       ! material is the same as the last material and the energy of the
       ! particle hasn't changed, we don't need to lookup cross sections again.
 
-      if (p % material /= p % last_material) call calculate_xs(p)
+      select type(p)
+      type is (Particle_CE)
+        if (p % material /= p % last_material) call calculate_xs(p)
+      end select
 
       ! Find the distance to the nearest boundary
       call distance_to_boundary(p, d_boundary, surface_crossed, &
@@ -105,8 +108,13 @@ contains
       end do
 
       ! Score track-length tallies
-      if (active_tracklength_tallies % size() > 0) &
-           call score_tracklength_tally(p, distance)
+      if (active_tracklength_tallies % size() > 0) then
+        select type(p)
+        type is (Particle_CE)
+          call score_tracklength_tally(p, distance)
+        end select
+      end if
+
 
       ! Score track-length estimate of k-eff
       if (run_mode == MODE_EIGENVALUE) then
@@ -151,14 +159,19 @@ contains
         ! Clear surface component
         p % surface = NONE
 
-        call collision(p)
+        select type(p)
+        type is (Particle_CE)
+          call collision(p)
+        end select
 
         ! Score collision estimator tallies -- this is done after a collision
         ! has occurred rather than before because we need information on the
         ! outgoing energy for any tallies with an outgoing energy filter
-
-        if (active_collision_tallies % size() > 0) call score_collision_tally(p)
-        if (active_analog_tallies % size() > 0) call score_analog_tally(p)
+        select type(p)
+        type is (Particle_CE)
+          if (active_collision_tallies % size() > 0) call score_collision_tally(p)
+          if (active_analog_tallies % size() > 0) call score_analog_tally(p)
+        end select
 
         ! Reset banked weight during collision
         p % n_bank   = 0

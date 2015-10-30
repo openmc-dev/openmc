@@ -8,7 +8,7 @@ module cross_section
   use global
   use list_header,     only: ListElemInt
   use material_header, only: Material
-  use particle_header, only: Particle
+  use particle_header, only: Particle_Base, Particle_CE, Particle_MG
   use random_lcg,      only: prn
   use search,          only: binary_search
 
@@ -27,7 +27,7 @@ contains
 
   subroutine calculate_xs(p)
 
-    type(Particle), intent(inout) :: p
+    type(Particle_CE), intent(in) :: p
 
     integer :: i             ! loop index over nuclides
     integer :: i_nuclide     ! index into nuclides array

@@ -12,7 +12,7 @@ module physics
   use math,                   only: maxwell_spectrum, watt_spectrum
   use mesh,                   only: get_mesh_indices
   use output,                 only: write_message
-  use particle_header,        only: Particle
+  use particle_header,        only: Particle_Base, Particle_CE, Particle_MG
   use particle_restart_write, only: write_particle_restart
   use random_lcg,             only: prn
   use search,                 only: binary_search
@@ -32,7 +32,7 @@ contains
 
   subroutine collision(p)
 
-    type(Particle), intent(inout) :: p
+    type(Particle_CE), intent(inout) :: p
 
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
@@ -70,7 +70,7 @@ contains
 
   subroutine sample_reaction(p)
 
-    type(Particle), intent(inout) :: p
+    type(Particle_CE), intent(inout) :: p
 
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
@@ -123,9 +123,9 @@ contains
 
   function sample_nuclide(p, base) result(i_nuclide)
 
-    type(Particle), intent(in) :: p
-    character(7),   intent(in) :: base      ! which reaction to sample based on
-    integer                    :: i_nuclide
+    class(Particle_Base), intent(in) :: p
+    character(7),         intent(in) :: base      ! which reaction to sample based on
+    integer                          :: i_nuclide
 
     integer :: i
     real(8) :: prob
@@ -240,8 +240,8 @@ contains
 
   subroutine absorption(p, i_nuclide)
 
-    type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: i_nuclide
+    class(Particle_Base), intent(inout) :: p
+    integer,              intent(in)    :: i_nuclide
 
     if (survival_biasing) then
       ! Determine weight absorbed in survival biasing
@@ -281,7 +281,7 @@ contains
 
   subroutine russian_roulette(p)
 
-    type(Particle), intent(inout) :: p
+    class(Particle_Base), intent(inout) :: p
 
     if (p % wgt < weight_cutoff) then
       if (prn() < p % wgt / weight_survive) then
@@ -302,8 +302,8 @@ contains
 
   subroutine scatter(p, i_nuclide)
 
-    type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: i_nuclide
+    type(Particle_CE), intent(inout) :: p
+    integer,           intent(in)    :: i_nuclide
 
     integer :: i
     integer :: i_grid
@@ -1059,9 +1059,9 @@ contains
 
   subroutine create_fission_sites(p, i_nuclide, i_reaction)
 
-    type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: i_nuclide
-    integer,        intent(in)    :: i_reaction
+    class(Particle_Base), intent(inout) :: p
+    integer,              intent(in)    :: i_nuclide
+    integer,              intent(in)    :: i_reaction
 
     integer :: nu_d(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
     integer :: i                        ! loop index
@@ -1175,10 +1175,10 @@ contains
 
   function sample_fission_energy(nuc, rxn, p) result(E_out)
 
-    type(Nuclide),  pointer       :: nuc
-    type(Reaction), pointer       :: rxn
-    type(Particle), intent(inout) :: p     ! Particle causing fission
-    real(8)                       :: E_out ! outgoing energy of fission neutron
+    type(Nuclide),  pointer             :: nuc
+    type(Reaction), pointer             :: rxn
+    class(Particle_Base), intent(inout) :: p     ! Particle causing fission
+    real(8)                             :: E_out ! outgoing E of fission neutron
 
     integer :: j            ! index on nu energy grid / precursor group
     integer :: lc           ! index before start of energies/nu values
@@ -1195,103 +1195,106 @@ contains
     real(8) :: prob         ! cumulative probability
     type(DistEnergy), pointer :: edist
 
-    ! Determine total nu
-    nu_t = nu_total(nuc, p % E)
+    select type(p)
+    type is (Particle_CE)
+      ! Determine total nu
+      nu_t = nu_total(nuc, p % E)
 
-    ! Determine delayed nu
-    nu_d = nu_delayed(nuc, p % E)
+      ! Determine delayed nu
+      nu_d = nu_delayed(nuc, p % E)
 
-    ! Determine delayed neutron fraction
-    beta = nu_d / nu_t
+      ! Determine delayed neutron fraction
+      beta = nu_d / nu_t
 
-    if (prn() < beta) then
-      ! ====================================================================
-      ! DELAYED NEUTRON SAMPLED
+      if (prn() < beta) then
+        ! ====================================================================
+        ! DELAYED NEUTRON SAMPLED
 
-      ! sampled delayed precursor group
-      xi = prn()
-      lc = 1
-      prob = ZERO
-      do j = 1, nuc % n_precursor
-        ! determine number of interpolation regions and energies
-        NR = int(nuc % nu_d_precursor_data(lc + 1))
-        NE = int(nuc % nu_d_precursor_data(lc + 2 + 2*NR))
+        ! sampled delayed precursor group
+        xi = prn()
+        lc = 1
+        prob = ZERO
+        do j = 1, nuc % n_precursor
+          ! determine number of interpolation regions and energies
+          NR = int(nuc % nu_d_precursor_data(lc + 1))
+          NE = int(nuc % nu_d_precursor_data(lc + 2 + 2*NR))
 
-        ! determine delayed neutron precursor yield for group j
-        yield = interpolate_tab1(nuc % nu_d_precursor_data( &
-             lc+1:lc+2+2*NR+2*NE), p % E)
+          ! determine delayed neutron precursor yield for group j
+          yield = interpolate_tab1(nuc % nu_d_precursor_data( &
+               lc+1:lc+2+2*NR+2*NE), p % E)
 
-        ! Check if this group is sampled
-        prob = prob + yield
-        if (xi < prob) exit
+          ! Check if this group is sampled
+          prob = prob + yield
+          if (xi < prob) exit
 
-        ! advance pointer
-        lc = lc + 2 + 2*NR + 2*NE + 1
-      end do
+          ! advance pointer
+          lc = lc + 2 + 2*NR + 2*NE + 1
+        end do
 
-      ! if the sum of the probabilities is slightly less than one and the
-      ! random number is greater, j will be greater than nuc %
-      ! n_precursor -- check for this condition
-      j = min(j, nuc % n_precursor)
+        ! if the sum of the probabilities is slightly less than one and the
+        ! random number is greater, j will be greater than nuc %
+        ! n_precursor -- check for this condition
+        j = min(j, nuc % n_precursor)
 
-      ! set the delayed group for the particle born from fission
-      p % delayed_group = j
+        ! set the delayed group for the particle born from fission
+        p % delayed_group = j
 
-      ! select energy distribution for group j
-      law = nuc % nu_d_edist(j) % law
-      edist => nuc % nu_d_edist(j)
+        ! select energy distribution for group j
+        law = nuc % nu_d_edist(j) % law
+        edist => nuc % nu_d_edist(j)
 
-      ! sample from energy distribution
-      n_sample = 0
-      do
-        if (law == 44 .or. law == 61) then
-          call sample_energy(edist, p % E, E_out, mu)
-        else
-          call sample_energy(edist, p % E, E_out)
-        end if
+        ! sample from energy distribution
+        n_sample = 0
+        do
+          if (law == 44 .or. law == 61) then
+            call sample_energy(edist, p % E, E_out, mu)
+          else
+            call sample_energy(edist, p % E, E_out)
+          end if
 
-        ! resample if energy is greater than maximum neutron energy
-        if (E_out < energy_max_neutron) exit
+          ! resample if energy is greater than maximum neutron energy
+          if (E_out < energy_max_neutron) exit
 
-        ! check for large number of resamples
-        n_sample = n_sample + 1
-        if (n_sample == MAX_SAMPLE) then
-          ! call write_particle_restart(p)
-          call fatal_error("Resampled energy distribution maximum number of " &
-               &// "times for nuclide " // nuc % name)
-        end if
-      end do
+          ! check for large number of resamples
+          n_sample = n_sample + 1
+          if (n_sample == MAX_SAMPLE) then
+            ! call write_particle_restart(p)
+            call fatal_error("Resampled energy distribution maximum number of " &
+                 &// "times for nuclide " // nuc % name)
+          end if
+        end do
 
-    else
-      ! ====================================================================
-      ! PROMPT NEUTRON SAMPLED
+      else
+        ! ====================================================================
+        ! PROMPT NEUTRON SAMPLED
 
-      ! set the delayed group for the particle born from fission to 0
-      p % delayed_group = 0
+        ! set the delayed group for the particle born from fission to 0
+        p % delayed_group = 0
 
-      ! sample from prompt neutron energy distribution
-      law = rxn % edist % law
-      n_sample = 0
-      do
-        if (law == 44 .or. law == 61) then
-          call sample_energy(rxn%edist, p % E, E_out, prob)
-        else
-          call sample_energy(rxn%edist, p % E, E_out)
-        end if
+        ! sample from prompt neutron energy distribution
+        law = rxn % edist % law
+        n_sample = 0
+        do
+          if (law == 44 .or. law == 61) then
+            call sample_energy(rxn%edist, p % E, E_out, prob)
+          else
+            call sample_energy(rxn%edist, p % E, E_out)
+          end if
 
-        ! resample if energy is greater than maximum neutron energy
-        if (E_out < energy_max_neutron) exit
+          ! resample if energy is greater than maximum neutron energy
+          if (E_out < energy_max_neutron) exit
 
-        ! check for large number of resamples
-        n_sample = n_sample + 1
-        if (n_sample == MAX_SAMPLE) then
-          ! call write_particle_restart(p)
-          call fatal_error("Resampled energy distribution maximum number of " &
-               &// "times for nuclide " // nuc % name)
-        end if
-      end do
+          ! check for large number of resamples
+          n_sample = n_sample + 1
+          if (n_sample == MAX_SAMPLE) then
+            ! call write_particle_restart(p)
+            call fatal_error("Resampled energy distribution maximum number of " &
+                 &// "times for nuclide " // nuc % name)
+          end if
+        end do
 
-    end if
+      end if
+    end select
 
   end function sample_fission_energy
 
@@ -1301,9 +1304,9 @@ contains
 !===============================================================================
 
   subroutine inelastic_scatter(nuc, rxn, p)
-    type(Nuclide),  pointer       :: nuc
-    type(Reaction), pointer       :: rxn
-    type(Particle), intent(inout) :: p
+    type(Nuclide),     pointer       :: nuc
+    type(Reaction),    pointer       :: rxn
+    type(Particle_CE), intent(inout) :: p
 
     integer :: i      ! loop index
     integer :: law    ! secondary energy distribution law

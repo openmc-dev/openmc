@@ -136,7 +136,7 @@ contains
         i_start = 0
       else
         ! Check for invalid characters
-        if (index('-0123456789', string_(i:i)) == 0) then
+        if (index('-+0123456789', string_(i:i)) == 0) then
           call fatal_error("Invalid character '" // string_(i:i) // "' in &
                &region specification.")
         end if

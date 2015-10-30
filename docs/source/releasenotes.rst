@@ -1,8 +1,29 @@
 .. _releasenotes:
 
 ==============================
-Release Notes for OpenMC 0.7.0
+Release Notes for OpenMC 0.7.1
 ==============================
+
+This release of OpenMC provides some substantial improvements over version
+0.7.0. Non-simple cell regions can now be defined through the ``|`` (union) and
+``~`` (complement) operators. Similar changes in the Python API also allow
+complex cell regions to be defined. A true secondary particle bank now exists;
+this is crucial for photon transport (to be added in the next minor release). A
+rich API for multi-group cross section generation has been added via the
+``openmc.mgxs`` Python module.
+
+Various improvements to tallies have also been made. It is now possible to
+explicitly specify that a collision estimator be used in a tally. A new
+``delayedgroup`` filter and ``delayed-nu-fission`` score allow a user to obtain
+delayed fission neutron production rates filtered by delayed group. Finally, the
+new ``inverse-velocity`` score may be useful for calculating kinetics
+parameters.
+
+.. caution:: In previous versions, depending on how OpenMC was compiled binary
+             output was either given in HDF5 or a flat binary format. With this
+             version, all binary output is now HDF5 which means you **must**
+             have HDF5 in order to install OpenMC. Please consult the user's
+             guide for instructions on how to compile with HDF5.
 
 -------------------
 System Requirements
@@ -17,36 +38,41 @@ the problem at hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
-- Complete Python API
-- Python 3 compatability for all scripts
-- All scripts consistently named openmc-* and installed together
-- New 'distribcell' tally filter for repeated cells
-- Ability to specify outer lattice universe
-- XML input validation utility (openmc-validate-xml)
-- Support for hexagonal lattices
-- Material union energy grid method
-- Tally triggers
-- Remove dependence on PETSc
-- Significant OpenMP performance improvements
-- Support for Fortran 2008 MPI interface
-- Use of Travis CI for continuous integration
-- Simplifications and improvements to test suite
+- Support for complex cell regions (union and complement operators)
+- Generic quadric surface type
+- Improved handling of secondary particles
+- Binary output is now solely HDF5
+- ``openmc.mgxs`` Python module enabling multi-group cross section generation
+- Collision estimator for tallies
+- Delayed fission neutron production tallies with ability to filter by delayed
+  group
+- Inverse velocity tally score
+- Performance improvements for binary search
+- Performance improvements for reaction rate tallies
 
 ---------
 Bug Fixes
 ---------
 
-- b5f712_: Fix bug in spherical harmonics tallies
-- e6675b_: Ensure all constants are double precision
-- 04e2c1_: Fix potential bug in sample_nuclide routine
-- 6121d9_: Fix bugs related to particle track files
-- 2f0e89_: Fixes for nuclide specification in tallies
+- 299322_: Bug with material filter when void material present
+- d74840_: Fix triggers on tallies with multiple filters
+- c29a81_: Correctly handle maximum transport energy
+- 3edc23_: Fixes in the nu-scatter score
+- 629e3b_: Assume unspecified surface coefficients are zero in Python API
+- 5dbe8b_: Fix energy filters for openmc-plot-mesh-tally
+- ff66f4_: Fixes in the openmc-plot-mesh-tally script
+- 441fd4_: Fix bug in kappa-fission score
+- 7e5974_: Allow fixed source simulations from Python API
 
-.. _b5f712: https://github.com/mit-crpg/openmc/commit/b5f712
-.. _e6675b: https://github.com/mit-crpg/openmc/commit/e6675b
-.. _04e2c1: https://github.com/mit-crpg/openmc/commit/04e2c1
-.. _6121d9: https://github.com/mit-crpg/openmc/commit/6121d9
-.. _2f0e89: https://github.com/mit-crpg/openmc/commit/2f0e89
+.. _299322: https://github.com/mit-crpg/openmc/commit/299322
+.. _d74840: https://github.com/mit-crpg/openmc/commit/d74840
+.. _c29a81: https://github.com/mit-crpg/openmc/commit/c29a81
+.. _3edc23: https://github.com/mit-crpg/openmc/commit/3edc23
+.. _629e3b: https://github.com/mit-crpg/openmc/commit/629e3b
+.. _5dbe8b: https://github.com/mit-crpg/openmc/commit/5dbe8b
+.. _ff66f4: https://github.com/mit-crpg/openmc/commit/ff66f4
+.. _441fd4: https://github.com/mit-crpg/openmc/commit/441fd4
+.. _7e5974: https://github.com/mit-crpg/openmc/commit/7e5974
 
 ------------
 Contributors
@@ -55,13 +81,10 @@ Contributors
 This release contains new contributions from the following people:
 
 - `Will Boyd <wbinventor@gmail.com>`_
-- `Matt Ellis <mellis13@mit.edu>`_
 - `Sterling Harper <sterlingmharper@mit.edu>`_
-- `Bryan Herman <bherman@mit.edu>`_
-- `Nicholas Horelik <nicholas.horelik@gmail.com>`_
 - `Colin Josey <cjosey@mit.edu>`_
-- `William Lyu <PaleNeutron@users.noreply.github.com>`_
 - `Adam Nelson <nelsonag@umich.edu>`_
 - `Paul Romano <paul.k.romano@gmail.com>`_
-- `Anthony Scopatz <scopatz@gmail.com>`_
+- `Kelly Rowland <kellylynnerowland@gmail.com>`_
+- `Sam Shaner <samuelshaner@gmail.com>`_
 - `Jon Walsh <walshjon@mit.edu>`_

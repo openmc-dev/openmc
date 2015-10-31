@@ -36,7 +36,13 @@ contains
   subroutine read_input_xml()
 
     call read_settings_xml()
-    if (run_mode /= MODE_PLOTTING) call read_cross_sections_xml()
+    if (run_mode /= MODE_PLOTTING) then
+      if (run_CE) then
+        call read_ce_cross_sections_xml()
+      else
+        call read_mg_cross_sections_xml()
+      end if
+    end if
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
@@ -97,30 +103,6 @@ contains
     ! Parse settings.xml file
     call open_xmldoc(doc, filename)
 
-    ! Find cross_sections.xml file -- the first place to look is the
-    ! settings.xml file. If no file is found there, then we check the
-    ! CROSS_SECTIONS environment variable
-    if (run_mode /= MODE_PLOTTING) then
-      if (.not. check_for_node(doc, "cross_sections") .and. &
-           run_mode /= MODE_PLOTTING) then
-        ! No cross_sections.xml file specified in settings.xml, check
-        ! environment variable
-        call get_environment_variable("CROSS_SECTIONS", env_variable)
-        if (len_trim(env_variable) == 0) then
-          call fatal_error("No cross_sections.xml file was specified in &
-               &settings.xml or in the CROSS_SECTIONS environment variable. &
-               &OpenMC needs a cross_sections.xml file to identify where to &
-               &find ACE cross section libraries. Please consult the user's &
-               &guide at http://mit-crpg.github.io/openmc for information on &
-               &how to set up ACE cross section libraries.")
-        else
-          path_cross_sections = trim(env_variable)
-        end if
-      else
-        call get_node_value(doc, "cross_sections", path_cross_sections)
-      end if
-    end if
-
     ! Find if a multi-group or continuous-energy simulation is desired
     if (check_for_node(doc, "energy_mode")) then
       call get_node_value(doc, "energy_mode", temp_str)
@@ -129,6 +111,44 @@ contains
         run_CE = .false.
       else if (temp_str == "ce" .or. temp_str == "continuous") then
         run_CE = .true.
+      end if
+    end if
+
+    ! Find cross_sections.xml file -- the first place to look is the
+    ! settings.xml file. If no file is found there, then we check the
+    ! CROSS_SECTIONS environment variable
+    if (run_mode /= MODE_PLOTTING) then
+      if (.not. check_for_node(doc, "cross_sections") .and. &
+           run_mode /= MODE_PLOTTING) then
+        ! No cross_sections.xml file specified in settings.xml, check
+        ! environment variable
+        if (run_CE) then
+          call get_environment_variable("CROSS_SECTIONS", env_variable)
+          if (len_trim(env_variable) == 0) then
+            call fatal_error("No cross_sections.xml file was specified in &
+                 &settings.xml or in the CROSS_SECTIONS environment variable. &
+                 &OpenMC needs such a file to identify where to &
+                 &find ACE cross section libraries. Please consult the user's &
+                 &guide at http://mit-crpg.github.io/openmc for information on &
+                 &how to set up ACE cross section libraries.")
+          else
+            path_cross_sections = trim(env_variable)
+          end if
+        else
+          call get_environment_variable("MG_CROSS_SECTIONS", env_variable)
+          if (len_trim(env_variable) == 0) then
+            call fatal_error("No cross_sections.xml file was specified in &
+                 &settings.xml or in the MG_CROSS_SECTIONS environment variable. &
+                 &OpenMC needs such a file to identify where to &
+                 &find the cross section libraries. Please consult the user's &
+                 &guide at http://mit-crpg.github.io/openmc for information on &
+                 &how to set up the cross section libraries.")
+          else
+            path_cross_sections = trim(env_variable)
+          end if
+        end if
+      else
+        call get_node_value(doc, "cross_sections", path_cross_sections)
       end if
     end if
 
@@ -4084,11 +4104,11 @@ contains
   end subroutine read_plots_xml
 
 !===============================================================================
-! READ_CROSS_SECTIONS_XML reads information from a cross_sections.xml file. This
-! file contains a listing of the ACE cross sections that may be used.
+! READ_*_CROSS_SECTIONS_XML reads information from a cross_sections.xml file. This
+! file contains a listing of the CE and MG cross sections that may be used.
 !===============================================================================
 
-  subroutine read_cross_sections_xml()
+  subroutine read_ce_cross_sections_xml()
 
     integer :: i           ! loop index
     integer :: filetype    ! default file type
@@ -4243,7 +4263,110 @@ contains
     ! Close cross sections XML file
     call close_xmldoc(doc)
 
-  end subroutine read_cross_sections_xml
+  end subroutine read_ce_cross_sections_xml
+
+  subroutine read_mg_cross_sections_xml()
+
+    integer :: i           ! loop index
+    logical :: file_exists ! does cross_sections.xml exist?
+    type(XsListing), pointer :: listing => null()
+    type(Node), pointer :: doc => null()
+    type(Node), pointer :: node_xsdata => null()
+    type(NodeList), pointer :: node_xsdata_list => null()
+    ! character(MAX_LINE_LEN) :: temp_str
+
+    ! Check if cross_sections.xml exists
+    inquire(FILE=path_cross_sections, EXIST=file_exists)
+    if (.not. file_exists) then
+       ! Could not find cross_sections.xml file
+       call fatal_error("Cross sections XML file '" &
+            &// trim(path_cross_sections) // "' does not exist!")
+    end if
+
+    call write_message("Reading cross sections XML file...", 5)
+
+    ! Parse cross_sections.xml file
+    call open_xmldoc(doc, path_cross_sections)
+
+    if (check_for_node(doc, "groups")) then
+       ! Get neutron group count
+       call get_node_value(doc, "groups", energy_groups)
+    else
+       call fatal_error("groups element must exist!")
+    end if
+
+    allocate(energy_bins(energy_groups + 1))
+    if (check_for_node(doc, "group_structure")) then
+       ! Get neutron group structure
+       call get_node_array(doc, "group_structure", energy_bins)
+    else
+       call fatal_error("group_structures element must exist!")
+    end if
+
+    if (check_for_node(doc, "legendre_mu_points")) then
+      ! Get scattering treatment
+      call get_node_value(doc, "legendre_mu_points", legendre_mu_points)
+      if (legendre_mu_points <= 0) then
+        call fatal_error("legendre_mu_points element must be positive and non-zero!")
+      end if
+      legendre_mu_points = -1 * legendre_mu_points
+    else
+      ! One will say 'dont do it'
+      legendre_mu_points = 1
+    end if
+
+    ! Get node list of all <xsdata>
+    call get_node_list(doc, "xsdata", node_xsdata_list)
+    n_listings = get_list_size(node_xsdata_list)
+
+    ! Allocate xs_listings array
+    if (n_listings == 0) then
+       call fatal_error("No XSDATA listings present in cross_sections.xml &
+            &file!")
+    else
+       allocate(xs_listings(n_listings))
+    end if
+
+    do i = 1, n_listings
+      listing => xs_listings(i)
+
+      ! Get pointer to xsdata table XML node
+      call get_list_item(node_xsdata_list, i, node_xsdata)
+
+      ! copy a number of attributes
+      call get_node_value(node_xsdata, "name", listing % name)
+      listing % name = to_lower(listing % name)
+      listing % alias = listing % name
+      if (check_for_node(node_xsdata, "alias")) &
+        call get_node_value(node_xsdata, "alias", listing % alias)
+      listing % alias = to_lower(listing % alias)
+      if (check_for_node(node_xsdata, "zaid")) then
+        call get_node_value(node_xsdata, "zaid", listing % zaid)
+      else
+        listing % zaid = 100
+      end if
+      if (check_for_node(node_xsdata, "kT")) &
+        call get_node_value(node_xsdata, "kT", listing % kT)
+      if (check_for_node(node_xsdata, "awr")) then
+        call get_node_value(node_xsdata, "awr", listing % awr)
+      else
+        listing % awr = ONE
+      end if
+
+      ! determine type of cross section
+      if (ends_with(listing % name, 'c')) then
+         listing % type = NEUTRON
+      end if
+
+       ! create dictionary entry for both name and alias
+       call xs_listing_dict % add_key(to_lower(listing % name), i)
+       call xs_listing_dict % add_key(to_lower(listing % alias), i)
+    end do
+
+    ! Close cross sections XML file
+    call close_xmldoc(doc)
+
+  end subroutine read_mg_cross_sections_xml
 
 !===============================================================================
 ! EXPAND_NATURAL_ELEMENT converts natural elements specified using an <element>

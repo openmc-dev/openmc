@@ -14,8 +14,7 @@ module initialize
   use global
   use hdf5_interface,   only: file_open, read_dataset, file_close, hdf5_bank_t,&
                               hdf5_tallyresult_t, hdf5_integer8_t
-  use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
-                              cells_in_univ_dict, read_plots_xml
+  use input_xml,        only: read_input_xml, cells_in_univ_dict, read_plots_xml
   use material_header,  only: Material
   use output,           only: title, header, print_version, write_message,     &
                               print_usage, write_xs_summary, print_plot

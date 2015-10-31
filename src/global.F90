@@ -63,38 +63,69 @@ module global
   logical :: run_CE = .true.  ! Run in CE mode?
 
   ! ============================================================================
+  ! CROSS SECTION RELATED VARIABLES NEEDED REGARDLESS OF CE OR MG
+
+  ! Cross section arrays
+  type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings
+
+  integer :: n_nuclides_total ! Number of nuclide cross section tables
+  integer :: n_listings       ! Number of listings in cross_sections.xml
+
+  ! Dictionaries to look up cross sections and listings
+  type(DictCharInt) :: nuclide_dict
+  type(DictCharInt) :: xs_listing_dict
+
+  ! Default xs identifier (e.g. 70c)
+  character(3):: default_xs
+
+  ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
 
   ! Cross section arrays
   type(Nuclide_CE), allocatable, target :: nuclides(:)    ! Nuclide cross-sections
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
-  type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
   type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 
-  integer :: n_nuclides_total ! Number of nuclide cross section tables
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
-  integer :: n_listings       ! Number of listings in cross_sections.xml
 
   ! Minimum/maximum energies
   real(8) :: energy_min_neutron = ZERO
   real(8) :: energy_max_neutron = INFINITY
 
   ! Dictionaries to look up cross sections and listings
-  type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: sab_dict
-  type(DictCharInt) :: xs_listing_dict
 
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.
 
-  ! Default xs identifier (e.g. 70c)
-  character(3):: default_xs
-
   ! What to assume for expanding natural elements
   integer :: default_expand = ENDF_BVII1
+
+  ! ============================================================================
+  ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
+
+  ! Cross section arrays
+  ! type(Nuclide_MG), allocatable, target :: nuclides_MG(:)
+
+  ! Number of energy groups
+  integer :: energy_groups
+
+  ! Energy group structure
+  real(8), allocatable :: energy_bins(:)
+
+  ! Maximum Data Order
+  integer :: max_order
+
+  ! Scattering Treatment (if Legendre)
+  integer :: legendre_mu_points
+
+  ! MGXS for current working particle (equivalent to material_xs, but simpler)
+  real(8) :: particle_xs(5)
+
+!$omp threadprivate(particle_xs)
 
   ! ============================================================================
   ! TALLY-RELATED VARIABLES

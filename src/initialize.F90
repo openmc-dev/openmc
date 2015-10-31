@@ -21,7 +21,8 @@ module initialize
                               print_usage, write_xs_summary, print_plot
   use random_lcg,       only: initialize_prng
   use state_point,      only: load_state_point
-  use string,           only: to_str, str_to_int, starts_with, ends_with
+  use simple_string,    only: to_str, starts_with, ends_with
+  use string,           only: str_to_int
   use summary,          only: write_summary
   use tally_header,     only: TallyObject, TallyResult, TallyFilter
   use tally_initialize, only: configure_tallies

@@ -1,10 +1,14 @@
 module nuclide_header
 
+  use, intrinsic :: ISO_FORTRAN_ENV
+
   use ace_header
   use constants
-  use list_header,     only: ListInt
+  use endf,        only: reaction_name
+  use list_header, only: ListInt
   ! use math,            only: calc_pn, calc_rn!, expand_harmonic
   !use scattdata_header
+  use simple_string
   ! use xml_interface
 
   implicit none
@@ -30,7 +34,17 @@ module nuclide_header
 
     contains
       procedure(nuclide_base_clear_), deferred, pass :: clear ! Deallocates Nuclide
+      procedure(print_nuclide_),      deferred, pass :: print ! Writes nuclide info
   end type Nuclide_Base
+
+  abstract interface
+    subroutine print_nuclide_(this, unit)
+      import Nuclide_Base
+      class(Nuclide_Base),intent(in) :: this
+      integer, optional,  intent(in) :: unit
+    end subroutine print_nuclide_
+
+  end interface
 
   type, extends(Nuclide_Base) :: Nuclide_CE
     ! Energy grid information
@@ -89,6 +103,7 @@ module nuclide_header
     ! Type-Bound procedures
     contains
       procedure, pass :: clear => nuclide_ce_clear
+      procedure, pass :: print => nuclide_ce_print
   end type Nuclide_CE
 
 !===============================================================================
@@ -244,5 +259,123 @@ module nuclide_header
       call nuclide_base_clear_(this)
 
     end subroutine nuclide_ce_clear
+
+!===============================================================================
+! PRINT_NUCLIDE_* displays information about a continuous-energy neutron
+! cross_section table and its reactions and secondary angle/energy distributions
+!===============================================================================
+
+  subroutine nuclide_ce_print(this, unit)
+
+    class(Nuclide_CE), intent(in) :: this
+    integer, optional, intent(in) :: unit
+
+    integer :: i                 ! loop index over nuclides
+    integer :: unit_             ! unit to write to
+    integer :: size_total        ! memory used by nuclide (bytes)
+    integer :: size_angle_total  ! total memory used for angle dist. (bytes)
+    integer :: size_energy_total ! total memory used for energy dist. (bytes)
+    integer :: size_xs           ! memory used for cross-sections (bytes)
+    integer :: size_angle        ! memory used for an angle distribution (bytes)
+    integer :: size_energy       ! memory used for a  energy distributions (bytes)
+    integer :: size_urr          ! memory used for probability tables (bytes)
+    character(11) :: law         ! secondary energy distribution law
+    type(Reaction), pointer :: rxn => null()
+    type(UrrData),  pointer :: urr => null()
+
+    ! set default unit for writing information
+    if (present(unit)) then
+      unit_ = unit
+    else
+      unit_ = OUTPUT_UNIT
+    end if
+
+    ! Initialize totals
+    size_angle_total = 0
+    size_energy_total = 0
+    size_urr = 0
+    size_xs = 0
+
+    ! Basic nuclide information
+    write(unit_,*) 'Nuclide ' // trim(this % name)
+    write(unit_,*) '  zaid = ' // trim(to_str(this % zaid))
+    write(unit_,*) '  awr = ' // trim(to_str(this % awr))
+    write(unit_,*) '  kT = ' // trim(to_str(this % kT))
+    write(unit_,*) '  # of grid points = ' // trim(to_str(this % n_grid))
+    write(unit_,*) '  Fissionable = ', this % fissionable
+    write(unit_,*) '  # of fission reactions = ' // trim(to_str(this % n_fission))
+    write(unit_,*) '  # of reactions = ' // trim(to_str(this % n_reaction))
+
+    ! Information on each reaction
+    write(unit_,*) '  Reaction     Q-value  COM  Law    IE    size(angle) size(energy)'
+    do i = 1, this % n_reaction
+      rxn => this % reactions(i)
+
+      ! Determine size of angle distribution
+      if (rxn % has_angle_dist) then
+        size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
+      else
+        size_angle = 0
+      end if
+
+      ! Determine size of energy distribution and law
+      if (rxn % has_energy_dist) then
+        size_energy = size(rxn % edist % data) * 8
+        law = to_str(rxn % edist % law)
+      else
+        size_energy = 0
+        law = 'None'
+      end if
+
+      write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
+           reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
+           law(1:4), rxn % threshold, size_angle, size_energy
+
+      ! Accumulate data size
+      size_xs = size_xs + (this % n_grid - rxn%threshold + 1) * 8
+      size_angle_total = size_angle_total + size_angle
+      size_energy_total = size_energy_total + size_energy
+    end do
+
+    ! Add memory required for summary reactions (total, absorption, fission,
+    ! nu-fission)
+    size_xs = 8 * this % n_grid * 4
+
+    ! Write information about URR probability tables
+    size_urr = 0
+    if (this % urr_present) then
+      urr => this % urr_data
+      write(unit_,*) '  Unresolved resonance probability table:'
+      write(unit_,*) '    # of energies = ' // trim(to_str(urr % n_energy))
+      write(unit_,*) '    # of probabilities = ' // trim(to_str(urr % n_prob))
+      write(unit_,*) '    Interpolation =  ' // trim(to_str(urr % interp))
+      write(unit_,*) '    Inelastic flag = ' // trim(to_str(urr % inelastic_flag))
+      write(unit_,*) '    Absorption flag = ' // trim(to_str(urr % absorption_flag))
+      write(unit_,*) '    Multiply by smooth? ', urr % multiply_smooth
+      write(unit_,*) '    Min energy = ', trim(to_str(urr % energy(1)))
+      write(unit_,*) '    Max energy = ', trim(to_str(urr % energy(urr % n_energy)))
+
+      ! Calculate memory used by probability tables and add to total
+      size_urr = urr % n_energy * (urr % n_prob * 6 + 1) * 8
+    end if
+
+    ! Calculate total memory
+    size_total = size_xs + size_angle_total + size_energy_total + size_urr
+
+    ! Write memory used
+    write(unit_,*) '  Memory Requirements'
+    write(unit_,*) '    Cross sections = ' // trim(to_str(size_xs)) // ' bytes'
+    write(unit_,*) '    Secondary angle distributions = ' // &
+         trim(to_str(size_angle_total)) // ' bytes'
+    write(unit_,*) '    Secondary energy distributions = ' // &
+         trim(to_str(size_energy_total)) // ' bytes'
+    write(unit_,*) '    Probability Tables = ' // &
+         trim(to_str(size_urr)) // ' bytes'
+    write(unit_,*) '    Total = ' // trim(to_str(size_total)) // ' bytes'
+
+    ! Blank line at end of nuclide
+    write(unit_,*)
+
+  end subroutine nuclide_ce_print
 
   end module nuclide_header

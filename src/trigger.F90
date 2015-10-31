@@ -6,7 +6,7 @@ module trigger
 
   use constants
   use global
-  use string,           only: to_str
+  use simple_string,    only: to_str
   use output,           only: warning, write_message
   use mesh,             only: mesh_indices_to_bin
   use mesh_header,      only: RegularMesh

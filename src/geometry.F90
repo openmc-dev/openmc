@@ -10,7 +10,7 @@ module geometry
                                     Particle_MG
   use particle_restart_write, only: write_particle_restart
   use surface_header
-  use string,                 only: to_str
+  use simple_string,          only: to_str
   use tally,                  only: score_surface_current
 
   implicit none

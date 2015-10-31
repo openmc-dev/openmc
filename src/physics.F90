@@ -17,7 +17,7 @@ module physics
   use particle_restart_write, only: write_particle_restart
   use random_lcg,             only: prn
   use search,                 only: binary_search
-  use string,                 only: to_str
+  use simple_string,          only: to_str
 
   implicit none
 

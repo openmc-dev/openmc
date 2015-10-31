@@ -1,6 +1,9 @@
 module sab_header
 
+  use, intrinsic :: ISO_FORTRAN_ENV
+
   use constants
+  use simple_string, only: to_str
 
   implicit none
 
@@ -57,6 +60,95 @@ module sab_header
     real(8), allocatable :: elastic_e_in(:)
     real(8), allocatable :: elastic_P(:)
     real(8), allocatable :: elastic_mu(:,:)
+    contains
+        procedure, pass :: print => print_sab_table
   end type SAlphaBeta
+
+  contains
+
+
+!===============================================================================
+! PRINT_SAB_TABLE displays information about a S(a,b) table containing data
+! describing thermal scattering from bound materials such as hydrogen in water.
+!===============================================================================
+
+  subroutine print_sab_table(this, unit)
+
+    class(SAlphaBeta), intent(in)  :: this
+    integer, optional, intent(in) :: unit
+
+    integer :: size_sab   ! memory used by S(a,b) table
+    integer :: unit_      ! unit to write to
+    integer :: i          ! Loop counter for parsing through sab % zaid
+    integer :: char_count ! Counter for the number of characters on a line
+
+    ! set default unit for writing information
+    if (present(unit)) then
+      unit_ = unit
+    else
+      unit_ = OUTPUT_UNIT
+    end if
+
+    ! Basic S(a,b) table information
+    write(unit_,*) 'S(a,b) Table ' // trim(this % name)
+    write(unit_,'(A)',advance="no") '   zaids = '
+    ! Initialize the counter based on the above string
+    char_count = 11
+    do i = 1, this % n_zaid
+      ! Deal with a line thats too long
+      if (char_count >= 73) then  ! 73 = 80 - (5 ZAID chars + 1 space + 1 comma)
+        ! End the line
+        write(unit_,*) ""
+        ! Add 11 leading blanks
+        write(unit_,'(A)', advance="no") "           "
+        ! reset the counter to 11
+        char_count = 11
+      end if
+      if (i < this % n_zaid) then
+        ! Include a comma
+        write(unit_,'(A)',advance="no") trim(to_str(this % zaid(i))) // ", "
+        char_count = char_count + len(trim(to_str(this % zaid(i)))) + 2
+      else
+        ! Don't include a comma, since we are all done
+        write(unit_,'(A)',advance="no") trim(to_str(this % zaid(i)))
+      end if
+
+    end do
+    write(unit_,*) "" ! Move to next line
+    write(unit_,*) '  awr = ' // trim(to_str(this % awr))
+    write(unit_,*) '  kT = ' // trim(to_str(this % kT))
+
+    ! Inelastic data
+    write(unit_,*) '  # of Incoming Energies (Inelastic) = ' // &
+         trim(to_str(this % n_inelastic_e_in))
+    write(unit_,*) '  # of Outgoing Energies (Inelastic) = ' // &
+         trim(to_str(this % n_inelastic_e_out))
+    write(unit_,*) '  # of Outgoing Angles (Inelastic) = ' // &
+         trim(to_str(this % n_inelastic_mu))
+    write(unit_,*) '  Threshold for Inelastic = ' // &
+         trim(to_str(this % threshold_inelastic))
+
+    ! Elastic data
+    if (this % n_elastic_e_in > 0) then
+      write(unit_,*) '  # of Incoming Energies (Elastic) = ' // &
+           trim(to_str(this % n_elastic_e_in))
+      write(unit_,*) '  # of Outgoing Angles (Elastic) = ' // &
+           trim(to_str(this % n_elastic_mu))
+      write(unit_,*) '  Threshold for Elastic = ' // &
+           trim(to_str(this % threshold_elastic))
+    end if
+
+    ! Determine memory used by S(a,b) table and write out
+    size_sab = 8 * (this % n_inelastic_e_in * (2 + this % n_inelastic_e_out * &
+         (1 + this % n_inelastic_mu)) + this % n_elastic_e_in * &
+         (2 + this % n_elastic_mu))
+    write(unit_,*) '  Memory Used = ' // trim(to_str(size_sab)) // ' bytes'
+
+    ! Blank line at end
+    write(unit_,*)
+
+  end subroutine print_sab_table
+
+
 
 end module sab_header

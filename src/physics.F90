@@ -1,6 +1,6 @@
 module physics
 
-  use ace_header,             only: Nuclide, Reaction, DistEnergy
+  use ace_header,             only: Reaction, DistEnergy
   use constants
   use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
@@ -11,6 +11,7 @@ module physics
   use material_header,        only: Material
   use math,                   only: maxwell_spectrum, watt_spectrum
   use mesh,                   only: get_mesh_indices
+  use nuclide_header
   use output,                 only: write_message
   use particle_header,        only: Particle_Base, Particle_CE, Particle_MG
   use particle_restart_write, only: write_particle_restart
@@ -74,7 +75,7 @@ contains
 
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
-    type(Nuclide), pointer :: nuc
+    type(Nuclide_CE), pointer :: nuc
 
     i_nuclide = sample_nuclide(p, 'total  ')
 
@@ -193,7 +194,7 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide),  pointer :: nuc
+    type(Nuclide_CE),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
     ! Get pointer to nuclide
@@ -310,7 +311,7 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide),  pointer :: nuc
+    type(Nuclide_CE),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
     ! Get pointer to nuclide and grid index/interpolation factor
@@ -413,7 +414,7 @@ contains
     real(8) :: v_cm(3)   ! velocity of center-of-mass
     real(8) :: v_t(3)    ! velocity of target nucleus
     real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
-    type(Nuclide), pointer :: nuc
+    type(Nuclide_CE), pointer :: nuc
 
     ! get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -738,7 +739,7 @@ contains
 
   subroutine sample_target_velocity(nuc, v_target, E, uvw, v_neut, wgt, xs_eff)
 
-    type(Nuclide), pointer :: nuc ! target nuclide at temperature T
+    type(Nuclide_CE), pointer :: nuc ! target nuclide at temperature T
 
     real(8), intent(out)   :: v_target(3) ! target velocity
     real(8), intent(in)    :: v_neut(3)   ! neutron velocity
@@ -985,7 +986,7 @@ contains
 
   subroutine sample_cxs_target_velocity(nuc, v_target, E, uvw)
 
-    type(Nuclide),  pointer :: nuc ! target nuclide at temperature
+    type(Nuclide_CE),  pointer :: nuc ! target nuclide at temperature
     real(8), intent(out)    :: v_target(3)
     real(8), intent(in)     :: E
     real(8), intent(in)     :: uvw(3)
@@ -1072,7 +1073,7 @@ contains
     real(8) :: phi                      ! fission neutron azimuthal angle
     real(8) :: weight                   ! weight adjustment for ufs method
     logical :: in_mesh                  ! source site in ufs mesh?
-    type(Nuclide),  pointer :: nuc
+    type(Nuclide_CE),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
     ! Get pointers
@@ -1175,7 +1176,7 @@ contains
 
   function sample_fission_energy(nuc, rxn, p) result(E_out)
 
-    type(Nuclide),  pointer             :: nuc
+    type(Nuclide_CE),  pointer             :: nuc
     type(Reaction), pointer             :: rxn
     class(Particle_Base), intent(inout) :: p     ! Particle causing fission
     real(8)                             :: E_out ! outgoing E of fission neutron
@@ -1304,7 +1305,7 @@ contains
 !===============================================================================
 
   subroutine inelastic_scatter(nuc, rxn, p)
-    type(Nuclide),     pointer       :: nuc
+    type(Nuclide_CE),     pointer       :: nuc
     type(Reaction),    pointer       :: rxn
     type(Particle_CE), intent(inout) :: p
 

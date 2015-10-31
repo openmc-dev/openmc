@@ -2,7 +2,7 @@ module output
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use ace_header,      only: Nuclide, Reaction, UrrData
+  use ace_header,      only: Reaction, UrrData
   use constants
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
@@ -12,8 +12,10 @@ module output
   use math,            only: t_percentile
   use mesh_header,     only: RegularMesh
   use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
+  use nuclide_header
   use particle_header, only: LocalCoord, Particle_Base, Particle_CE, Particle_MG
   use plot_header
+  use sab_header,      only: SAlphaBeta
   use string,          only: to_upper, to_str
   use tally_header,    only: TallyObject
 
@@ -326,7 +328,7 @@ contains
 
   subroutine print_nuclide(nuc, unit)
 
-    type(Nuclide), pointer :: nuc
+    type(Nuclide_CE), pointer :: nuc
     integer,      optional :: unit
 
     integer :: i                 ! loop index over nuclides
@@ -531,8 +533,8 @@ contains
     integer :: i       ! loop index
     integer :: unit_xs ! cross_sections.out file unit
     character(MAX_FILE_LEN)  :: path ! path of summary file
-    type(Nuclide),    pointer :: nuc => null()
-    type(SAlphaBeta), pointer :: sab => null()
+    type(Nuclide_CE), pointer :: nuc => null()
+    type(SAlphaBeta),    pointer :: sab => null()
 
     ! Create filename for log file
     path = trim(path_output) // "cross_sections.out"

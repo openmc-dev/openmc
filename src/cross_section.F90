@@ -1,6 +1,6 @@
 module cross_section
 
-  use ace_header,      only: Nuclide, SAlphaBeta, Reaction, UrrData
+  use ace_header,      only: Reaction, UrrData
   use constants
   use energy_grid,     only: grid_method, log_spacing
   use error,           only: fatal_error
@@ -8,8 +8,10 @@ module cross_section
   use global
   use list_header,     only: ListElemInt
   use material_header, only: Material
+  use nuclide_header
   use particle_header, only: Particle_Base, Particle_CE, Particle_MG
   use random_lcg,      only: prn
+  use sab_header,      only: SAlphaBeta
   use search,          only: binary_search
 
   implicit none
@@ -154,7 +156,7 @@ contains
     integer :: i_high ! upper logarithmic mapping index
     real(8), intent(in) :: E ! energy
     real(8) :: f             ! interp factor on nuclide energy grid
-    type(Nuclide),  pointer :: nuc
+    type(Nuclide_CE),  pointer :: nuc
     type(Material), pointer :: mat
 
     ! Set pointer to nuclide and material
@@ -381,7 +383,7 @@ contains
     real(8) :: inelastic    ! inelastic cross section
     logical :: same_nuc     ! do we know the xs for this nuclide at this energy?
     type(UrrData),  pointer :: urr
-    type(Nuclide),  pointer :: nuc
+    type(Nuclide_CE),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
     micro_xs(i_nuclide) % use_ptable = .true.
@@ -553,11 +555,11 @@ contains
 
   function elastic_xs_0K(E, nuc) result(xs_out)
 
-    type(Nuclide), pointer :: nuc    ! target nuclide at temperature
-    integer                :: i_grid ! index on nuclide energy grid
-    real(8)                :: f      ! interp factor on nuclide energy grid
-    real(8), intent(inout) :: E      ! trial energy
-    real(8)                :: xs_out ! 0K xs at trial energy
+    type(Nuclide_CE), pointer :: nuc    ! target nuclide at temperature
+    integer                   :: i_grid ! index on nuclide energy grid
+    real(8)                   :: f      ! interp factor on nuclide energy grid
+    real(8), intent(inout)    :: E      ! trial energy
+    real(8)                   :: xs_out ! 0K xs at trial energy
 
     ! Determine index on nuclide energy grid
     if (E < nuc % energy_0K(1)) then

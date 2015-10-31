@@ -1,7 +1,6 @@
 module ace
 
-  use ace_header,       only: Nuclide, Reaction, SAlphaBeta, XsListing, &
-                              DistEnergy
+  use ace_header,       only: Reaction, DistEnergy
   use constants
   use endf,             only: reaction_name, is_fission, is_disappearance
   use error,            only: fatal_error, warning
@@ -9,7 +8,9 @@ module ace
   use global
   use list_header,      only: ListInt
   use material_header,  only: Material
+  use nuclide_header
   use output,           only: write_message
+  use sab_header,       only: SAlphaBeta
   use set_header,       only: SetChar
   use string,           only: to_str, to_lower
 
@@ -46,7 +47,7 @@ contains
     character(12)  :: name  ! name of isotope, e.g. 92235.03c
     character(12)  :: alias ! alias of nuclide, e.g. U-235.03c
     type(Material),   pointer :: mat => null()
-    type(Nuclide),    pointer :: nuc => null()
+    type(Nuclide_CE), pointer :: nuc => null()
     type(SAlphaBeta), pointer :: sab => null()
     type(SetChar) :: already_read
 
@@ -258,7 +259,7 @@ contains
     character(10) :: mat           ! material identifier
     character(70) :: comment       ! comment for ACE table
     character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
-    type(Nuclide),   pointer :: nuc => null()
+    type(Nuclide_CE), pointer :: nuc => null()
     type(SAlphaBeta), pointer :: sab => null()
     type(XsListing), pointer :: listing => null()
 
@@ -418,7 +419,7 @@ contains
 
   subroutine read_esz(nuc, data_0K)
 
-    type(Nuclide), pointer :: nuc
+    type(Nuclide_CE), pointer :: nuc
 
     logical :: data_0K ! are we reading 0K data?
 
@@ -508,7 +509,7 @@ contains
 
   subroutine read_nu_data(nuc)
 
-    type(Nuclide), pointer :: nuc
+    type(Nuclide_CE), pointer :: nuc
 
     integer :: i      ! loop index
     integer :: JXS2   ! location for fission nu data
@@ -708,7 +709,7 @@ contains
 
   subroutine read_reactions(nuc)
 
-    type(Nuclide), pointer :: nuc
+    type(Nuclide_CE), pointer :: nuc
 
     integer :: i         ! loop indices
     integer :: i_fission ! index in nuc % index_fission
@@ -891,7 +892,7 @@ contains
 
   subroutine read_angular_dist(nuc)
 
-    type(Nuclide), pointer :: nuc
+    type(Nuclide_CE), pointer :: nuc
 
     integer :: JXS8   ! location of angular distribution locators
     integer :: JXS9   ! location of angular distributions
@@ -986,7 +987,7 @@ contains
 
   subroutine read_energy_dist(nuc)
 
-    type(Nuclide), pointer :: nuc
+    type(Nuclide_CE), pointer :: nuc
 
     integer :: LED   ! location of energy distribution locators
     integer :: LOCC  ! location of energy distributions for given MT
@@ -1302,7 +1303,7 @@ contains
 
   subroutine read_unr_res(nuc)
 
-    type(Nuclide), pointer :: nuc
+    type(Nuclide_CE), pointer :: nuc
 
     integer :: JXS23 ! location of URR data
     integer :: lc    ! locator
@@ -1391,7 +1392,7 @@ contains
 
   subroutine generate_nu_fission(nuc)
 
-    type(Nuclide), pointer :: nuc
+    type(Nuclide_CE), pointer :: nuc
 
     integer :: i  ! index on nuclide energy grid
     real(8) :: E  ! energy

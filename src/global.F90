@@ -1,7 +1,5 @@
 module global
 
-  use ace_header,       only: Nuclide, SAlphaBeta, xsListing, NuclideMicroXS, &
-                              MaterialMacroXS, Nuclide0K
   use bank_header,      only: Bank
   use cmfd_header
   use constants
@@ -9,7 +7,9 @@ module global
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
   use material_header,  only: Material
   use mesh_header,      only: RegularMesh
+  use nuclide_header
   use plot_header,      only: ObjectPlot
+  use sab_header,       only: SAlphaBeta
   use set_header,       only: SetInt
   use surface_header,   only: SurfaceContainer
   use source_header,    only: ExtSource
@@ -66,7 +66,7 @@ module global
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
 
   ! Cross section arrays
-  type(Nuclide),    allocatable, target :: nuclides(:)    ! Nuclide cross-sections
+  type(Nuclide_CE), allocatable, target :: nuclides(:)    ! Nuclide cross-sections
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
   type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings
 

@@ -68,7 +68,7 @@ contains
     real(8) :: uvw(3)               ! particle direction
     type(Material),    pointer :: mat
     type(Reaction),    pointer :: rxn
-    type(Nuclide),     pointer :: nuc
+    type(Nuclide_CE),  pointer :: nuc
 
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins

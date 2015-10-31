@@ -1,6 +1,6 @@
 module summary
 
-  use ace_header,      only: Reaction, UrrData, Nuclide
+  use ace_header,      only: Reaction, UrrData
   use constants
   use endf,            only: reaction_name
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
@@ -9,6 +9,7 @@ module summary
   use hdf5_interface
   use material_header, only: Material
   use mesh_header,     only: RegularMesh
+  use nuclide_header
   use output,          only: time_stamp
   use surface_header
   use string,          only: to_str

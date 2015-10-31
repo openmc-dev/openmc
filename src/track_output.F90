@@ -8,7 +8,7 @@ module track_output
   use global
   use hdf5_interface
   use particle_header,   only: Particle_Base
-  use string,            only: to_str
+  use simple_string,     only: to_str
 
   use hdf5
 

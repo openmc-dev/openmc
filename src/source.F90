@@ -12,7 +12,7 @@ module source
   use particle_header,  only: Particle_Base, Particle_CE, Particle_MG
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream
   use state_point,      only: read_source_bank, write_source_bank
-  use string,           only: to_str
+  use simple_string,    only: to_str
 
 #ifdef MPI
   use message_passing

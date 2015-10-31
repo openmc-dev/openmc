@@ -12,7 +12,7 @@ module ace
   use output,           only: write_message
   use sab_header,       only: SAlphaBeta
   use set_header,       only: SetChar
-  use string,           only: to_str, to_lower
+  use simple_string,    only: to_str, to_lower
 
   implicit none
 

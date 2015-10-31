@@ -1,7 +1,7 @@
 module endf
 
   use constants
-  use string, only: to_str
+  use simple_string, only: to_str
 
   implicit none
 

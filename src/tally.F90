@@ -14,7 +14,7 @@ module tally
   use particle_header,  only: LocalCoord, Particle_Base, Particle_CE, &
                               Particle_MG
   use search,           only: binary_search
-  use string,           only: to_str
+  use simple_string,    only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
   use fission,          only: nu_total, nu_delayed, yield_delayed
   use interpolation,    only: interpolate_tab1

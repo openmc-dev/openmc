@@ -49,17 +49,17 @@ contains
 
   subroutine compute_xs()
 
-    use constants,    only: FILTER_MESH, FILTER_ENERGYIN, FILTER_ENERGYOUT,     &
+    use constants,     only: FILTER_MESH, FILTER_ENERGYIN, FILTER_ENERGYOUT,     &
                             FILTER_SURFACE, IN_RIGHT, OUT_RIGHT, IN_FRONT,      &
                             OUT_FRONT, IN_TOP, OUT_TOP, CMFD_NOACCEL, ZERO,     &
                             ONE, TINY_BIT
-    use error,        only: fatal_error
-    use global,       only: cmfd, n_cmfd_tallies, cmfd_tallies, meshes,&
+    use error,         only: fatal_error
+    use global,        only: cmfd, n_cmfd_tallies, cmfd_tallies, meshes,&
                             matching_bins
-    use mesh,         only: mesh_indices_to_bin
-    use mesh_header,  only: RegularMesh
-    use string,       only: to_str
-    use tally_header, only: TallyObject
+    use mesh,          only: mesh_indices_to_bin
+    use mesh_header,   only: RegularMesh
+    use simple_string, only: to_str
+    use tally_header,  only: TallyObject
 
     integer :: nx            ! number of mesh cells in x direction
     integer :: ny            ! number of mesh cells in y direction
@@ -625,10 +625,10 @@ contains
 
   subroutine compute_dhat()
 
-    use constants,  only: CMFD_NOACCEL, ZERO
-    use global,     only: cmfd, cmfd_coremap, dhat_reset
-    use output,     only: write_message
-    use string,     only: to_str
+    use constants,     only: CMFD_NOACCEL, ZERO
+    use global,        only: cmfd, cmfd_coremap, dhat_reset
+    use output,        only: write_message
+    use simple_string, only: to_str
 
     integer :: nx             ! maximum number of cells in x direction
     integer :: ny             ! maximum number of cells in y direction

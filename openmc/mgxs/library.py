@@ -43,6 +43,10 @@ class Library(object):
     ----------
     openmc_geometry : openmc.Geometry
         An geometry which has been initialized with a root universe
+    opencg_geometry : opencg.Geometry
+        An OpenCG geometry object equivalent to the OpenMC geometry
+        encapsulated by the summary file. Use of this attribute requires
+        installation of the OpenCG Python module.
     by_nuclide : bool
         If true, computes cross sections for each nuclide in each domain
     mgxs_types : Iterable of str
@@ -71,6 +75,7 @@ class Library(object):
 
         self._name = ''
         self._openmc_geometry = None
+        self._opencg_geometry = None
         self._by_nuclide = None
         self._mgxs_types = []
         self._domain_type = None
@@ -95,6 +100,7 @@ class Library(object):
             clone = type(self).__new__(type(self))
             clone._name = self.name
             clone._openmc_geometry = self.openmc_geometry
+            clone._opencg_geometry = None
             clone._by_nuclide = self.by_nuclide
             clone._mgxs_types = self.mgxs_types
             clone._domain_type = self.domain_type
@@ -122,6 +128,17 @@ class Library(object):
     @property
     def openmc_geometry(self):
         return self._openmc_geometry
+
+    @property
+    def openmc_geometry(self):
+        return self._openmc_geometry
+
+    @property
+    def opencg_geometry(self):
+        if self._opencg_geometry is None:
+            from openmc.opencg_compatible import get_opencg_geometry
+            self._opencg_geometry = get_opencg_geometry(self._openmc_geometry)
+        return self._opencg_geometry
 
     @property
     def name(self):

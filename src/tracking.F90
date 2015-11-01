@@ -11,6 +11,7 @@ module tracking
   use output,          only: write_message
   use particle_header, only: LocalCoord, Particle_Base, Particle_CE, Particle_MG
   use physics,         only: collision
+  use physics_mg,      only: collision_mg
   use random_lcg,      only: prn
   use simple_string,   only: to_str
   use tally,           only: score_analog_tally, score_tracklength_tally, &
@@ -170,6 +171,8 @@ contains
         select type(p)
         type is (Particle_CE)
           call collision(p)
+        type is (Particle_MG)
+          call collision_mg(p)
         end select
 
         ! Score collision estimator tallies -- this is done after a collision

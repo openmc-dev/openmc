@@ -92,7 +92,15 @@ module particle_header
     procedure, pass :: clear => clear_particle
     procedure, pass :: initialize_from_source => initialize_from_source_base
     procedure, pass :: create_secondary => create_secondary_base
+    procedure(collision_), deferred, pass :: pre_collision
   end type Particle_Base
+
+  abstract interface
+    subroutine collision_(this)
+      import Particle_Base
+      class(Particle_Base), intent(inout) :: this
+    end subroutine collision_
+  end interface
 
   type, extends(Particle_Base) :: Particle_CE
     ! Energy Data
@@ -102,6 +110,7 @@ module particle_header
   contains
     procedure :: initialize_from_source => initialize_from_source_ce
     procedure :: create_secondary => create_secondary_ce
+    procedure :: pre_collision => pre_collision_ce
   end type Particle_CE
 
   type, extends(Particle_Base) :: Particle_MG
@@ -112,6 +121,7 @@ module particle_header
   contains
     procedure :: initialize_from_source => initialize_from_source_mg
     procedure :: create_secondary => create_secondary_mg
+    procedure :: pre_collision => pre_collision_mg
   end type Particle_MG
 
 contains
@@ -282,5 +292,35 @@ contains
     this % secondary_bank(this % n_secondary) % g = this % g
 
   end subroutine create_secondary_mg
+
+!===============================================================================
+! PRE_COLLISION_* Updates pre-collision particle properties
+!===============================================================================
+
+  subroutine pre_collision_ce(this)
+    class(Particle_CE), intent(inout) :: this
+
+    ! Store pre-collision particle properties
+    this % last_wgt = this % wgt
+    this % last_E   = this % E
+    this % last_uvw = this % coord(1) % uvw
+
+    ! Add to collision counter for particle
+    this % n_collision = this % n_collision + 1
+
+  end subroutine pre_collision_ce
+
+  subroutine pre_collision_mg(this)
+    class(Particle_MG), intent(inout) :: this
+
+    ! Store pre-collision particle properties
+    this % last_wgt = this % wgt
+    this % last_g   = this % g
+    this % last_uvw = this % coord(1) % uvw
+
+    ! Add to collision counter for particle
+    this % n_collision = this % n_collision + 1
+
+  end subroutine pre_collision_mg
 
 end module particle_header

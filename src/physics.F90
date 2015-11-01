@@ -12,8 +12,9 @@ module physics
   use mesh,                   only: get_mesh_indices
   use nuclide_header
   use output,                 only: write_message
-  use particle_header,        only: Particle_Base, Particle_CE, Particle_MG
+  use particle_header,        only: Particle_CE
   use particle_restart_write, only: write_particle_restart
+  use physics_common
   use random_lcg,             only: prn
   use search,                 only: binary_search
   use simple_string,          only: to_str
@@ -124,8 +125,8 @@ contains
 
   function sample_nuclide(p, base) result(i_nuclide)
 
-    class(Particle_Base), intent(in) :: p
-    character(7),         intent(in) :: base      ! which reaction to sample based on
+    type(Particle_CE), intent(in) :: p
+    character(7),      intent(in) :: base      ! which reaction to sample based on
     integer                          :: i_nuclide
 
     integer :: i
@@ -241,8 +242,8 @@ contains
 
   subroutine absorption(p, i_nuclide)
 
-    class(Particle_Base), intent(inout) :: p
-    integer,              intent(in)    :: i_nuclide
+    type(Particle_CE), intent(inout) :: p
+    integer,            intent(in)    :: i_nuclide
 
     if (survival_biasing) then
       ! Determine weight absorbed in survival biasing
@@ -275,27 +276,6 @@ contains
     end if
 
   end subroutine absorption
-
-!===============================================================================
-! RUSSIAN_ROULETTE
-!===============================================================================
-
-  subroutine russian_roulette(p)
-
-    class(Particle_Base), intent(inout) :: p
-
-    if (p % wgt < weight_cutoff) then
-      if (prn() < p % wgt / weight_survive) then
-        p % wgt = weight_survive
-        p % last_wgt = p % wgt
-      else
-        p % wgt = ZERO
-        p % last_wgt = ZERO
-        p % alive = .false.
-      end if
-    end if
-
-  end subroutine russian_roulette
 
 !===============================================================================
 ! SCATTER
@@ -1060,9 +1040,9 @@ contains
 
   subroutine create_fission_sites(p, i_nuclide, i_reaction)
 
-    class(Particle_Base), intent(inout) :: p
-    integer,              intent(in)    :: i_nuclide
-    integer,              intent(in)    :: i_reaction
+    type(Particle_CE), intent(inout) :: p
+    integer,           intent(in)    :: i_nuclide
+    integer,           intent(in)    :: i_reaction
 
     integer :: nu_d(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
     integer :: i                        ! loop index
@@ -1176,10 +1156,10 @@ contains
 
   function sample_fission_energy(nuc, rxn, p) result(E_out)
 
-    type(Nuclide_CE),  pointer             :: nuc
-    type(Reaction), pointer             :: rxn
-    class(Particle_Base), intent(inout) :: p     ! Particle causing fission
-    real(8)                             :: E_out ! outgoing E of fission neutron
+    type(Nuclide_CE),  pointer       :: nuc
+    type(Reaction), pointer          :: rxn
+    type(Particle_CE), intent(inout) :: p     ! Particle causing fission
+    real(8)                          :: E_out ! outgoing E of fission neutron
 
     integer :: j            ! index on nu energy grid / precursor group
     integer :: lc           ! index before start of energies/nu values
@@ -1196,106 +1176,103 @@ contains
     real(8) :: prob         ! cumulative probability
     type(DistEnergy), pointer :: edist
 
-    select type(p)
-    type is (Particle_CE)
-      ! Determine total nu
-      nu_t = nu_total(nuc, p % E)
+    ! Determine total nu
+    nu_t = nu_total(nuc, p % E)
 
-      ! Determine delayed nu
-      nu_d = nu_delayed(nuc, p % E)
+    ! Determine delayed nu
+    nu_d = nu_delayed(nuc, p % E)
 
-      ! Determine delayed neutron fraction
-      beta = nu_d / nu_t
+    ! Determine delayed neutron fraction
+    beta = nu_d / nu_t
 
-      if (prn() < beta) then
-        ! ====================================================================
-        ! DELAYED NEUTRON SAMPLED
+    if (prn() < beta) then
+      ! ====================================================================
+      ! DELAYED NEUTRON SAMPLED
 
-        ! sampled delayed precursor group
-        xi = prn()
-        lc = 1
-        prob = ZERO
-        do j = 1, nuc % n_precursor
-          ! determine number of interpolation regions and energies
-          NR = int(nuc % nu_d_precursor_data(lc + 1))
-          NE = int(nuc % nu_d_precursor_data(lc + 2 + 2*NR))
+      ! sampled delayed precursor group
+      xi = prn()
+      lc = 1
+      prob = ZERO
+      do j = 1, nuc % n_precursor
+        ! determine number of interpolation regions and energies
+        NR = int(nuc % nu_d_precursor_data(lc + 1))
+        NE = int(nuc % nu_d_precursor_data(lc + 2 + 2*NR))
 
-          ! determine delayed neutron precursor yield for group j
-          yield = interpolate_tab1(nuc % nu_d_precursor_data( &
-               lc+1:lc+2+2*NR+2*NE), p % E)
+        ! determine delayed neutron precursor yield for group j
+        yield = interpolate_tab1(nuc % nu_d_precursor_data( &
+             lc+1:lc+2+2*NR+2*NE), p % E)
 
-          ! Check if this group is sampled
-          prob = prob + yield
-          if (xi < prob) exit
+        ! Check if this group is sampled
+        prob = prob + yield
+        if (xi < prob) exit
 
-          ! advance pointer
-          lc = lc + 2 + 2*NR + 2*NE + 1
-        end do
+        ! advance pointer
+        lc = lc + 2 + 2*NR + 2*NE + 1
+      end do
 
-        ! if the sum of the probabilities is slightly less than one and the
-        ! random number is greater, j will be greater than nuc %
-        ! n_precursor -- check for this condition
-        j = min(j, nuc % n_precursor)
+      ! if the sum of the probabilities is slightly less than one and the
+      ! random number is greater, j will be greater than nuc %
+      ! n_precursor -- check for this condition
+      j = min(j, nuc % n_precursor)
 
-        ! set the delayed group for the particle born from fission
-        p % delayed_group = j
+      ! set the delayed group for the particle born from fission
+      p % delayed_group = j
 
-        ! select energy distribution for group j
-        law = nuc % nu_d_edist(j) % law
-        edist => nuc % nu_d_edist(j)
+      ! select energy distribution for group j
+      law = nuc % nu_d_edist(j) % law
+      edist => nuc % nu_d_edist(j)
 
-        ! sample from energy distribution
-        n_sample = 0
-        do
-          if (law == 44 .or. law == 61) then
-            call sample_energy(edist, p % E, E_out, mu)
-          else
-            call sample_energy(edist, p % E, E_out)
-          end if
+      ! sample from energy distribution
+      n_sample = 0
+      do
+        if (law == 44 .or. law == 61) then
+          call sample_energy(edist, p % E, E_out, mu)
+        else
+          call sample_energy(edist, p % E, E_out)
+        end if
 
-          ! resample if energy is greater than maximum neutron energy
-          if (E_out < energy_max_neutron) exit
+        ! resample if energy is greater than maximum neutron energy
+        if (E_out < energy_max_neutron) exit
 
-          ! check for large number of resamples
-          n_sample = n_sample + 1
-          if (n_sample == MAX_SAMPLE) then
-            ! call write_particle_restart(p)
-            call fatal_error("Resampled energy distribution maximum number of " &
-                 &// "times for nuclide " // nuc % name)
-          end if
-        end do
+        ! check for large number of resamples
+        n_sample = n_sample + 1
+        if (n_sample == MAX_SAMPLE) then
+          ! call write_particle_restart(p)
+          call fatal_error("Resampled energy distribution maximum number of " &
+               &// "times for nuclide " // nuc % name)
+        end if
+      end do
 
-      else
-        ! ====================================================================
-        ! PROMPT NEUTRON SAMPLED
+    else
+      ! ====================================================================
+      ! PROMPT NEUTRON SAMPLED
 
-        ! set the delayed group for the particle born from fission to 0
-        p % delayed_group = 0
+      ! set the delayed group for the particle born from fission to 0
+      p % delayed_group = 0
 
-        ! sample from prompt neutron energy distribution
-        law = rxn % edist % law
-        n_sample = 0
-        do
-          if (law == 44 .or. law == 61) then
-            call sample_energy(rxn%edist, p % E, E_out, prob)
-          else
-            call sample_energy(rxn%edist, p % E, E_out)
-          end if
+      ! sample from prompt neutron energy distribution
+      law = rxn % edist % law
+      n_sample = 0
+      do
+        if (law == 44 .or. law == 61) then
+          call sample_energy(rxn%edist, p % E, E_out, prob)
+        else
+          call sample_energy(rxn%edist, p % E, E_out)
+        end if
 
-          ! resample if energy is greater than maximum neutron energy
-          if (E_out < energy_max_neutron) exit
+        ! resample if energy is greater than maximum neutron energy
+        if (E_out < energy_max_neutron) exit
 
-          ! check for large number of resamples
-          n_sample = n_sample + 1
-          if (n_sample == MAX_SAMPLE) then
-            ! call write_particle_restart(p)
-            call fatal_error("Resampled energy distribution maximum number of " &
-                 &// "times for nuclide " // nuc % name)
-          end if
-        end do
+        ! check for large number of resamples
+        n_sample = n_sample + 1
+        if (n_sample == MAX_SAMPLE) then
+          ! call write_particle_restart(p)
+          call fatal_error("Resampled energy distribution maximum number of " &
+               &// "times for nuclide " // nuc % name)
+        end if
+      end do
 
-      end if
-    end select
+    end if
 
   end function sample_fission_energy
 
@@ -1511,55 +1488,7 @@ contains
 
   end function sample_angle
 
-!===============================================================================
-! ROTATE_ANGLE rotates direction cosines through a polar angle whose cosine is
-! mu and through an azimuthal angle sampled uniformly. Note that this is done
-! with direct sampling rather than rejection as is done in MCNP and SERPENT.
-!===============================================================================
 
-  function rotate_angle(uvw0, mu) result(uvw)
-
-    real(8), intent(in) :: uvw0(3) ! directional cosine
-    real(8), intent(in) :: mu      ! cosine of angle in lab or CM
-    real(8)             :: uvw(3)  ! rotated directional cosine
-
-    real(8) :: phi    ! azimuthal angle
-    real(8) :: sinphi ! sine of azimuthal angle
-    real(8) :: cosphi ! cosine of azimuthal angle
-    real(8) :: a      ! sqrt(1 - mu^2)
-    real(8) :: b      ! sqrt(1 - w^2)
-    real(8) :: u0     ! original cosine in x direction
-    real(8) :: v0     ! original cosine in y direction
-    real(8) :: w0     ! original cosine in z direction
-
-    ! Copy original directional cosines
-    u0 = uvw0(1)
-    v0 = uvw0(2)
-    w0 = uvw0(3)
-
-    ! Sample azimuthal angle in [0,2pi)
-    phi = TWO * PI * prn()
-
-    ! Precompute factors to save flops
-    sinphi = sin(phi)
-    cosphi = cos(phi)
-    a = sqrt(max(ZERO, ONE - mu*mu))
-    b = sqrt(max(ZERO, ONE - w0*w0))
-
-    ! Need to treat special case where sqrt(1 - w**2) is close to zero by
-    ! expanding about the v component rather than the w component
-    if (b > 1e-10) then
-      uvw(1) = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
-      uvw(2) = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
-      uvw(3) = mu*w0 - a*b*cosphi
-    else
-      b = sqrt(ONE - v0*v0)
-      uvw(1) = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b
-      uvw(2) = mu*v0 - a*b*cosphi
-      uvw(3) = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
-    end if
-
-  end function rotate_angle
 
 !===============================================================================
 ! SAMPLE_ENERGY samples an outgoing energy distribution, either for a secondary

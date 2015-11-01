@@ -477,6 +477,22 @@ contains
       deallocate(nuclides_0K)
     end if
 
+    if (allocated(nuclides_MG)) then
+      ! First call the clear routines
+      do i = 1, size(nuclides_MG)
+        call nuclides_MG(i) % obj % clear()
+      end do
+      deallocate(nuclides_MG)
+    end if
+
+    if (allocated(macro_xs)) then
+    ! First call the clear routines
+      do i = 1, size(macro_xs)
+        call macro_xs(i) % obj % clear()
+      end do
+      deallocate(macro_xs)
+    end if
+
     if (allocated(sab_tables)) deallocate(sab_tables)
     if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)

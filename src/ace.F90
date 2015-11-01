@@ -28,7 +28,7 @@ module ace
 contains
 
 !===============================================================================
-! READ_XS reads all the cross sections for the problem and stores them in
+! READ_CE_XS reads all the cross sections for the problem and stores them in
 ! nuclides and sab_tables arrays
 !===============================================================================
 

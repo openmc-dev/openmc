@@ -9,7 +9,6 @@ module nuclide_header
   ! use math,            only: calc_pn, calc_rn!, expand_harmonic
   !use scattdata_header
   use simple_string
-  ! use xml_interface
 
   implicit none
 
@@ -106,13 +105,90 @@ module nuclide_header
       procedure, pass :: print => nuclide_ce_print
   end type Nuclide_CE
 
-!===============================================================================
-! NUCLIDECONTAINER pointer array for storing Nuclides
+  type, abstract, extends(Nuclide_Base) :: Nuclide_MG
+    ! Scattering Order Information
+    integer :: order ! Order of data (Scattering for Nuclide_Iso,
+                      ! Number of angles for all in Nuclide_Angle)
+    integer :: scatt_type ! either legendre or tabular.
+
+    ! Type-Bound procedures
+    contains
+      procedure(nuclide_mg_get_xs_),     deferred, pass :: get_xs ! Get the xs
+  end type Nuclide_MG
+
+  abstract interface
+    function nuclide_mg_get_xs_(this, g, xstype, gout, uvw) result(xs)
+      import Nuclide_MG
+      class(Nuclide_MG), intent(in) :: this
+      integer, intent(in)           :: g      ! Incoming Energy group
+      character(*), intent(in)      :: xstype ! Cross Section Type
+      integer, optional, intent(in) :: gout   ! Outgoing Group
+      real(8), optional, intent(in) :: uvw(3) ! Requested Angle
+      real(8)                       :: xs     ! Resultant xs
+    end function nuclide_mg_get_xs_
+  end interface
+
+  !===============================================================================
+! NUCLIDE_ISO contains the base MGXS data for a nuclide specifically for
+! isotropically weighted MGXS
 !===============================================================================
 
-  type NuclideContainer
-    class(Nuclide_Base), pointer :: obj
-  end type NuclideContainer
+  type, extends(Nuclide_MG) :: Nuclide_Iso
+
+    ! Microscopic cross sections
+    real(8), allocatable :: total(:)        ! total cross section
+    real(8), allocatable :: absorption(:)   ! absorption cross section
+    real(8), allocatable :: scatter(:,:,:)  ! scattering information
+    real(8), allocatable :: nu_fission(:,:) ! fission matrix (Gout x Gin)
+    real(8), allocatable :: k_fission(:)    ! kappa-fission
+    real(8), allocatable :: fission(:)      ! neutron production
+    real(8), allocatable :: chi(:)          ! Fission Spectra
+    real(8), allocatable :: mult(:,:)       ! Scatter multiplicity (Gout x Gin)
+
+    ! Type-Bound procedures
+    contains
+      procedure, pass :: clear    => nuclide_iso_clear  ! Deallocates Nuclide
+      procedure, pass :: print    => nuclide_iso_print  ! Writes nuclide info
+      procedure, pass :: get_xs   => nuclide_iso_get_xs ! Gets Size of Data w/in Object
+  end type Nuclide_Iso
+
+!===============================================================================
+! NUCLIDE_ANGLE contains the base MGXS data for a nuclide specifically for
+! explicit angle-dependent weighted MGXS
+!===============================================================================
+
+  type, extends(Nuclide_MG) :: Nuclide_Angle
+
+    ! Microscopic cross sections. Dimensions are: (Npol, Nazi, Nl, Ng, Ng)
+    real(8), allocatable :: total(:,:,:)        ! total cross section
+    real(8), allocatable :: absorption(:,:,:)   ! absorption cross section
+    real(8), allocatable :: scatter(:,:,:,:,:)  ! scattering information
+    real(8), allocatable :: nu_fission(:,:,:,:) ! fission matrix (Gout x Gin)
+    real(8), allocatable :: k_fission(:,:,:)    ! kappa-fission
+    real(8), allocatable :: fission(:,:,:)      ! neutron production
+    real(8), allocatable :: chi(:,:,:)          ! Fission Spectra
+    real(8), allocatable :: mult(:,:,:,:)       ! Scatter multiplicity (Gout x Gin)
+
+    ! In all cases, right-most indices are theta, phi
+    integer              :: Npol         ! Number of polar angles
+    integer              :: Nazi         ! Number of azimuthal angles
+    real(8), allocatable :: polar(:)     ! polar angles
+    real(8), allocatable :: azimuthal(:) ! azimuthal angles
+
+    ! Type-Bound procedures
+    contains
+      procedure, pass :: clear  => nuclide_angle_clear  ! Deallocates Nuclide
+      procedure, pass :: print  => nuclide_angle_print  ! Gets Size of Data w/in Object
+      procedure, pass :: get_xs => nuclide_angle_get_xs ! Gets Size of Data w/in Object
+  end type Nuclide_Angle
+
+!===============================================================================
+! NUCLIDEMGCONTAINER pointer array for storing Nuclides
+!===============================================================================
+
+  type NuclideMGContainer
+    class(Nuclide_MG), pointer :: obj
+  end type NuclideMGContainer
 
 !===============================================================================
 ! NUCLIDE0K temporarily contains all 0K cross section data and other parameters
@@ -193,7 +269,6 @@ module nuclide_header
 
   contains
 
-
 !===============================================================================
 ! NUCLIDE_*_CLEAR resets and deallocates data in Nuclide_Base, Nuclide_Iso
 ! or Nuclide_Angle
@@ -260,122 +335,304 @@ module nuclide_header
 
     end subroutine nuclide_ce_clear
 
+    subroutine nuclide_iso_clear(this)
+
+      class(Nuclide_Iso), intent(inout) :: this ! The Nuclide object to clear
+
+      ! Clear the base object
+      call nuclide_base_clear_(this)
+
+      ! Cler the extended information
+      if (allocated(this % total)) then
+        deallocate(this % total, this % absorption, this % scatter)
+      end if
+      if (allocated(this % fission)) then
+        deallocate(this % fission, this % nu_fission)
+      end if
+      if (allocated(this % k_fission)) then
+        deallocate(this % k_fission)
+      end if
+       if (allocated(this % chi)) then
+        deallocate(this % chi)
+      end if
+      if (allocated(this % mult)) then
+        deallocate(this % mult)
+      end if
+
+    end subroutine nuclide_iso_clear
+
+    subroutine nuclide_angle_clear(this)
+
+      class(Nuclide_Angle), intent(inout) :: this ! The Nuclide object to clear
+
+      ! Clear the base object
+      call nuclide_base_clear_(this)
+
+      ! Cler the extended information
+      if (allocated(this % total)) then
+        deallocate(this % total, this % absorption, this % scatter)
+      end if
+      if (allocated(this % fission)) then
+        deallocate(this % fission, this % nu_fission)
+      end if
+      if (allocated(this % k_fission)) then
+        deallocate(this % k_fission)
+      end if
+       if (allocated(this % chi)) then
+        deallocate(this % chi)
+      end if
+
+      if (allocated(this % polar)) then
+        deallocate(this % polar)
+      end if
+      if (allocated(this % azimuthal)) then
+        deallocate(this % azimuthal)
+      end if
+      if (allocated(this % mult)) then
+        deallocate(this % mult)
+      end if
+
+    end subroutine nuclide_angle_clear
+
 !===============================================================================
 ! PRINT_NUCLIDE_* displays information about a continuous-energy neutron
 ! cross_section table and its reactions and secondary angle/energy distributions
 !===============================================================================
 
-  subroutine nuclide_ce_print(this, unit)
+    subroutine nuclide_ce_print(this, unit)
 
-    class(Nuclide_CE), intent(in) :: this
-    integer, optional, intent(in) :: unit
+      class(Nuclide_CE), intent(in) :: this
+      integer, optional, intent(in) :: unit
 
-    integer :: i                 ! loop index over nuclides
-    integer :: unit_             ! unit to write to
-    integer :: size_total        ! memory used by nuclide (bytes)
-    integer :: size_angle_total  ! total memory used for angle dist. (bytes)
-    integer :: size_energy_total ! total memory used for energy dist. (bytes)
-    integer :: size_xs           ! memory used for cross-sections (bytes)
-    integer :: size_angle        ! memory used for an angle distribution (bytes)
-    integer :: size_energy       ! memory used for a  energy distributions (bytes)
-    integer :: size_urr          ! memory used for probability tables (bytes)
-    character(11) :: law         ! secondary energy distribution law
-    type(Reaction), pointer :: rxn => null()
-    type(UrrData),  pointer :: urr => null()
+      integer :: i                 ! loop index over nuclides
+      integer :: unit_             ! unit to write to
+      integer :: size_total        ! memory used by nuclide (bytes)
+      integer :: size_angle_total  ! total memory used for angle dist. (bytes)
+      integer :: size_energy_total ! total memory used for energy dist. (bytes)
+      integer :: size_xs           ! memory used for cross-sections (bytes)
+      integer :: size_angle        ! memory used for an angle distribution (bytes)
+      integer :: size_energy       ! memory used for a  energy distributions (bytes)
+      integer :: size_urr          ! memory used for probability tables (bytes)
+      character(11) :: law         ! secondary energy distribution law
+      type(Reaction), pointer :: rxn => null()
+      type(UrrData),  pointer :: urr => null()
 
-    ! set default unit for writing information
-    if (present(unit)) then
-      unit_ = unit
-    else
-      unit_ = OUTPUT_UNIT
-    end if
-
-    ! Initialize totals
-    size_angle_total = 0
-    size_energy_total = 0
-    size_urr = 0
-    size_xs = 0
-
-    ! Basic nuclide information
-    write(unit_,*) 'Nuclide ' // trim(this % name)
-    write(unit_,*) '  zaid = ' // trim(to_str(this % zaid))
-    write(unit_,*) '  awr = ' // trim(to_str(this % awr))
-    write(unit_,*) '  kT = ' // trim(to_str(this % kT))
-    write(unit_,*) '  # of grid points = ' // trim(to_str(this % n_grid))
-    write(unit_,*) '  Fissionable = ', this % fissionable
-    write(unit_,*) '  # of fission reactions = ' // trim(to_str(this % n_fission))
-    write(unit_,*) '  # of reactions = ' // trim(to_str(this % n_reaction))
-
-    ! Information on each reaction
-    write(unit_,*) '  Reaction     Q-value  COM  Law    IE    size(angle) size(energy)'
-    do i = 1, this % n_reaction
-      rxn => this % reactions(i)
-
-      ! Determine size of angle distribution
-      if (rxn % has_angle_dist) then
-        size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
+      ! set default unit for writing information
+      if (present(unit)) then
+        unit_ = unit
       else
-        size_angle = 0
+        unit_ = OUTPUT_UNIT
       end if
 
-      ! Determine size of energy distribution and law
-      if (rxn % has_energy_dist) then
-        size_energy = size(rxn % edist % data) * 8
-        law = to_str(rxn % edist % law)
-      else
-        size_energy = 0
-        law = 'None'
+      ! Initialize totals
+      size_angle_total = 0
+      size_energy_total = 0
+      size_urr = 0
+      size_xs = 0
+
+      ! Basic nuclide information
+      write(unit_,*) 'Nuclide ' // trim(this % name)
+      write(unit_,*) '  zaid = ' // trim(to_str(this % zaid))
+      write(unit_,*) '  awr = ' // trim(to_str(this % awr))
+      write(unit_,*) '  kT = ' // trim(to_str(this % kT))
+      write(unit_,*) '  # of grid points = ' // trim(to_str(this % n_grid))
+      write(unit_,*) '  Fissionable = ', this % fissionable
+      write(unit_,*) '  # of fission reactions = ' // trim(to_str(this % n_fission))
+      write(unit_,*) '  # of reactions = ' // trim(to_str(this % n_reaction))
+
+      ! Information on each reaction
+      write(unit_,*) '  Reaction     Q-value  COM  Law    IE    size(angle) size(energy)'
+      do i = 1, this % n_reaction
+        rxn => this % reactions(i)
+
+        ! Determine size of angle distribution
+        if (rxn % has_angle_dist) then
+          size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
+        else
+          size_angle = 0
+        end if
+
+        ! Determine size of energy distribution and law
+        if (rxn % has_energy_dist) then
+          size_energy = size(rxn % edist % data) * 8
+          law = to_str(rxn % edist % law)
+        else
+          size_energy = 0
+          law = 'None'
+        end if
+
+        write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
+             reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
+             law(1:4), rxn % threshold, size_angle, size_energy
+
+        ! Accumulate data size
+        size_xs = size_xs + (this % n_grid - rxn%threshold + 1) * 8
+        size_angle_total = size_angle_total + size_angle
+        size_energy_total = size_energy_total + size_energy
+      end do
+
+      ! Add memory required for summary reactions (total, absorption, fission,
+      ! nu-fission)
+      size_xs = 8 * this % n_grid * 4
+
+      ! Write information about URR probability tables
+      size_urr = 0
+      if (this % urr_present) then
+        urr => this % urr_data
+        write(unit_,*) '  Unresolved resonance probability table:'
+        write(unit_,*) '    # of energies = ' // trim(to_str(urr % n_energy))
+        write(unit_,*) '    # of probabilities = ' // trim(to_str(urr % n_prob))
+        write(unit_,*) '    Interpolation =  ' // trim(to_str(urr % interp))
+        write(unit_,*) '    Inelastic flag = ' // trim(to_str(urr % inelastic_flag))
+        write(unit_,*) '    Absorption flag = ' // trim(to_str(urr % absorption_flag))
+        write(unit_,*) '    Multiply by smooth? ', urr % multiply_smooth
+        write(unit_,*) '    Min energy = ', trim(to_str(urr % energy(1)))
+        write(unit_,*) '    Max energy = ', trim(to_str(urr % energy(urr % n_energy)))
+
+        ! Calculate memory used by probability tables and add to total
+        size_urr = urr % n_energy * (urr % n_prob * 6 + 1) * 8
       end if
 
-      write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
-           reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
-           law(1:4), rxn % threshold, size_angle, size_energy
+      ! Calculate total memory
+      size_total = size_xs + size_angle_total + size_energy_total + size_urr
 
-      ! Accumulate data size
-      size_xs = size_xs + (this % n_grid - rxn%threshold + 1) * 8
-      size_angle_total = size_angle_total + size_angle
-      size_energy_total = size_energy_total + size_energy
-    end do
+      ! Write memory used
+      write(unit_,*) '  Memory Requirements'
+      write(unit_,*) '    Cross sections = ' // trim(to_str(size_xs)) // ' bytes'
+      write(unit_,*) '    Secondary angle distributions = ' // &
+           trim(to_str(size_angle_total)) // ' bytes'
+      write(unit_,*) '    Secondary energy distributions = ' // &
+           trim(to_str(size_energy_total)) // ' bytes'
+      write(unit_,*) '    Probability Tables = ' // &
+           trim(to_str(size_urr)) // ' bytes'
+      write(unit_,*) '    Total = ' // trim(to_str(size_total)) // ' bytes'
 
-    ! Add memory required for summary reactions (total, absorption, fission,
-    ! nu-fission)
-    size_xs = 8 * this % n_grid * 4
+      ! Blank line at end of nuclide
+      write(unit_,*)
 
-    ! Write information about URR probability tables
-    size_urr = 0
-    if (this % urr_present) then
-      urr => this % urr_data
-      write(unit_,*) '  Unresolved resonance probability table:'
-      write(unit_,*) '    # of energies = ' // trim(to_str(urr % n_energy))
-      write(unit_,*) '    # of probabilities = ' // trim(to_str(urr % n_prob))
-      write(unit_,*) '    Interpolation =  ' // trim(to_str(urr % interp))
-      write(unit_,*) '    Inelastic flag = ' // trim(to_str(urr % inelastic_flag))
-      write(unit_,*) '    Absorption flag = ' // trim(to_str(urr % absorption_flag))
-      write(unit_,*) '    Multiply by smooth? ', urr % multiply_smooth
-      write(unit_,*) '    Min energy = ', trim(to_str(urr % energy(1)))
-      write(unit_,*) '    Max energy = ', trim(to_str(urr % energy(urr % n_energy)))
+    end subroutine nuclide_ce_print
 
-      ! Calculate memory used by probability tables and add to total
-      size_urr = urr % n_energy * (urr % n_prob * 6 + 1) * 8
-    end if
+    subroutine nuclide_iso_print(this, unit)
 
-    ! Calculate total memory
-    size_total = size_xs + size_angle_total + size_energy_total + size_urr
+      class(Nuclide_Iso), intent(in) :: this
+      integer, optional, intent(in)  :: unit
 
-    ! Write memory used
-    write(unit_,*) '  Memory Requirements'
-    write(unit_,*) '    Cross sections = ' // trim(to_str(size_xs)) // ' bytes'
-    write(unit_,*) '    Secondary angle distributions = ' // &
-         trim(to_str(size_angle_total)) // ' bytes'
-    write(unit_,*) '    Secondary energy distributions = ' // &
-         trim(to_str(size_energy_total)) // ' bytes'
-    write(unit_,*) '    Probability Tables = ' // &
-         trim(to_str(size_urr)) // ' bytes'
-    write(unit_,*) '    Total = ' // trim(to_str(size_total)) // ' bytes'
 
-    ! Blank line at end of nuclide
-    write(unit_,*)
+    end subroutine nuclide_iso_print
 
-  end subroutine nuclide_ce_print
+    subroutine nuclide_angle_print(this, unit)
 
-  end module nuclide_header
+      class(Nuclide_Angle), intent(in) :: this
+      integer, optional, intent(in)    :: unit
+
+
+    end subroutine nuclide_angle_print
+
+!===============================================================================
+! NUCLIDE_*_GET_XS Returns the requested data type
+!===============================================================================
+
+    function nuclide_iso_get_xs(this, g, xstype, gout, uvw) result(xs)
+      class(Nuclide_Iso), intent(in) :: this
+      integer, intent(in)            :: g      ! Incoming Energy group
+      character(*), intent(in)      :: xstype ! Cross Section Type
+      integer, optional, intent(in)  :: gout   ! Outgoing Group
+      real(8), optional, intent(in)  :: uvw(3) ! Requested Angle
+      real(8)                        :: xs     ! Resultant xs
+
+      if (present(gout)) then
+        select case(xstype)
+        case('mult')
+          xs = this % mult(gout,g)
+        case('nu_fission')
+          xs = this % nu_fission(gout,g)
+        end select
+      else
+        select case(xstype)
+        case('total')
+          xs = this % total(g)
+        case('absorption')
+          xs = this % absorption(g)
+        case('fission')
+          xs = this % fission(g)
+        case('k_fission')
+          xs = this % k_fission(g)
+        case('chi')
+          xs = this % chi(g)
+        case('scatter')
+          xs = this % total(g) - this % absorption(g)
+        end select
+      end if
+    end function nuclide_iso_get_xs
+
+    function nuclide_angle_get_xs(this, g, xstype, gout, uvw) result(xs)
+      class(Nuclide_Angle), intent(in) :: this
+      integer, intent(in)              :: g      ! Incoming Energy group
+      character(*), intent(in)         :: xstype ! Cross Section Type
+      integer, optional, intent(in)    :: gout   ! Outgoing Group
+      real(8), optional, intent(in)    :: uvw(3) ! Requested Angle
+      real(8)                          :: xs     ! Resultant xs
+
+      integer :: i_pol, i_azi
+
+      call find_angle(this % polar, this % azimuthal, uvw, i_azi, i_pol)
+
+      if (present(gout)) then
+        select case(xstype)
+        case('mult')
+          xs = this % mult(gout,g,i_azi,i_pol)
+        case('nu_fission')
+          xs = this % nu_fission(gout,g,i_azi,i_pol)
+        case('chi')
+          xs = this % chi(gout,i_azi,i_pol)
+        end select
+      else
+        select case(xstype)
+        case('total')
+          xs = this % total(g,i_azi,i_pol)
+        case('absorption')
+          xs = this % absorption(g,i_azi,i_pol)
+        case('fission')
+          xs = this % fission(g,i_azi,i_pol)
+        case('k_fission')
+          xs = this % k_fission(g,i_azi,i_pol)
+        case('chi')
+          xs = this % chi(g,i_azi,i_pol)
+        case('scatter')
+          xs = this % total(g,i_azi,i_pol) - this % absorption(g,i_azi,i_pol)
+        end select
+      end if
+
+    end function nuclide_angle_get_xs
+
+!===============================================================================
+! find_angle finds the closest angle on the data grid and returns that index
+!===============================================================================
+
+    subroutine find_angle(polar, azimuthal, uvw, i_azi, i_pol)
+      real(8), intent(in) :: polar(:)     ! Polar angles [0,pi]
+      real(8), intent(in) :: azimuthal(:) ! Azi. angles [-pi,pi]
+      real(8), intent(in) :: uvw(3)       ! Direction of motion
+      integer, intent(inout) :: i_pol     ! Closest polar bin
+      integer, intent(inout) :: i_azi     ! Closest azi bin
+
+      real(8) my_pol, my_azi, dangle
+
+      ! Convert uvw to polar and azi
+
+      my_pol = acos(uvw(3))
+      my_azi = atan2(uvw(2), uvw(1))
+
+      ! Quick and clear (but slower):
+      ! i_pol = minloc(abs(polar - my_pol),dim=1)
+      ! i_azi = minloc(abs(azimuthal - my_azi),dim=1)
+
+      ! Fast search for equi-binned angles
+      dangle = PI / (real(size(polar),8))
+      i_pol  = floor(my_pol / dangle + ONE)
+      dangle = TWO * PI / (real(size(azimuthal),8))
+      i_azi  = floor((my_azi + PI) / dangle + ONE)
+
+    end subroutine find_angle
+
+end module nuclide_header

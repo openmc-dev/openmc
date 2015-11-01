@@ -157,9 +157,22 @@ module constants
 
   ! Angular distribution type
   integer, parameter :: &
-       ANGLE_ISOTROPIC = 1, & ! Isotropic angular distribution
-       ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins
-       ANGLE_TABULAR   = 3    ! Tabular angular distribution
+       ANGLE_ISOTROPIC = 1, & ! Isotropic angular distribution (CE)
+       ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins (CE)
+       ANGLE_TABULAR   = 3, & ! Tabular angular distribution (CE or MG)
+       ANGLE_LEGENDRE  = 4, & ! Legendre angular distribution (MG)
+       ANGLE_HISTOGRAM = 5    ! Histogram angular distribution (MG)
+
+  ! Number of mu bins to use when converting Legendres to tabular type
+  integer, parameter :: DEFAULT_NMU = 33
+
+  ! Location within pre-computed cross section data (particle_xs)
+  integer, parameter :: &
+      TOTAL  = 1, &
+      ABSORB = 2, &
+      NUFISS = 3, &
+      FISS   = 4, &
+      SCATT  = 5
 
   ! Secondary energy mode for S(a,b) inelastic scattering
   integer, parameter :: &
@@ -202,6 +215,11 @@ module constants
        ACE_NEUTRON   = 1, & ! continuous-energy neutron
        ACE_THERMAL   = 2, & ! thermal S(a,b) scattering data
        ACE_DOSIMETRY = 3    ! dosimetry cross sections
+
+  ! MGXS Table Types
+  integer, parameter :: &
+       ISOTROPIC   = 1, & ! Isotropically Weighted Data
+       ANGLE       = 2    ! Data by Angular Bins
 
   ! Fission neutron emission (nu) type
   integer, parameter ::   &

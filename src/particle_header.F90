@@ -88,10 +88,10 @@ module particle_header
     type(Bank) :: secondary_bank(MAX_SECONDARY)
 
   contains
-    procedure :: initialize => initialize_particle
-    procedure :: clear => clear_particle
-    procedure(initialize_from_source_), deferred, pass :: initialize_from_source
-    procedure(create_secondary_), deferred, pass :: create_secondary
+    procedure, pass :: initialize => initialize_particle
+    procedure, pass :: clear => clear_particle
+    procedure, pass :: initialize_from_source => initialize_from_source_base
+    procedure, pass :: create_secondary => create_secondary_base
   end type Particle_Base
 
   type, extends(Particle_Base) :: Particle_CE
@@ -113,31 +113,6 @@ module particle_header
     procedure :: initialize_from_source => initialize_from_source_mg
     procedure :: create_secondary => create_secondary_mg
   end type Particle_MG
-
-  abstract interface
-
-!===============================================================================
-! INITIALIZE_FROM_SOURCE_ returns .true. if the given lattice indices fit within the
-! bounds of the lattice.  Returns false otherwise.
-
-    subroutine initialize_from_source_(this, src)
-      import Particle_Base
-      import Bank
-      class(Particle_Base), intent(inout) :: this
-      type(Bank),           intent(in)    :: src
-    end subroutine initialize_from_source_
-
-!===============================================================================
-! CREATE_SECONDARY_ Generates a secondary particle from this
-
-    subroutine create_secondary_(this, uvw, type)
-      import Particle_Base
-      class(Particle_Base), intent(inout) :: this
-      real(8),              intent(in)    :: uvw(3)
-      integer,              intent(in)    :: type
-    end subroutine create_secondary_
-
-  end interface
 
 contains
 
@@ -217,9 +192,9 @@ contains
 ! fission, or simply as a secondary particle.
 !===============================================================================
 
-  subroutine initialize_from_source_ce(this, src)
-    class(Particle_CE), intent(inout) :: this
-    type(Bank),         intent(in)    :: src
+  subroutine initialize_from_source_base(this, src)
+    class(Particle_Base), intent(inout) :: this
+    type(Bank),           intent(in)    :: src
 
     ! set defaults
     call this % initialize()
@@ -231,6 +206,17 @@ contains
     this % coord(1) % uvw = src % uvw
     this % last_xyz       = src % xyz
     this % last_uvw       = src % uvw
+
+  end subroutine initialize_from_source_base
+
+  subroutine initialize_from_source_ce(this, src)
+    class(Particle_CE), intent(inout) :: this
+    type(Bank),         intent(in)    :: src
+
+    ! set defaults a nd init base
+    call initialize_from_source_base(this, src)
+
+    ! copy attributes from source bank site
     this % E              = src % E
     this % last_E         = src % E
 
@@ -240,16 +226,10 @@ contains
     class(Particle_MG), intent(inout) :: this
     type(Bank),         intent(in)    :: src
 
-    ! set defaults
-    call this % initialize()
+    ! set defaults and init base
+    call initialize_from_source_base(this, src)
 
     ! copy attributes from source bank site
-    this % wgt            = src % wgt
-    this % last_wgt       = src % wgt
-    this % coord(1) % xyz = src % xyz
-    this % coord(1) % uvw = src % uvw
-    this % last_xyz       = src % xyz
-    this % last_uvw       = src % uvw
     this % g              = src % g
     this % last_g         = src % g
 
@@ -260,10 +240,10 @@ contains
 ! the secondary bank and increments the number of sites in the secondary bank.
 !===============================================================================
 
-  subroutine create_secondary_ce(this, uvw, type)
-    class(Particle_CE), intent(inout) :: this
-    real(8),         intent(in)       :: uvw(3)
-    integer,         intent(in)       :: type
+  subroutine create_secondary_base(this, uvw, type)
+    class(Particle_Base), intent(inout) :: this
+    real(8),         intent(in)         :: uvw(3)
+    integer,         intent(in)         :: type
 
     integer :: n
 
@@ -277,8 +257,18 @@ contains
     this % secondary_bank(n) % wgt    = this % wgt
     this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
     this % secondary_bank(n) % uvw(:) = uvw
-    this % secondary_bank(n) % E      = this % E
     this % n_secondary = n
+
+  end subroutine create_secondary_base
+
+  subroutine create_secondary_ce(this, uvw, type)
+    class(Particle_CE), intent(inout) :: this
+    real(8),         intent(in)       :: uvw(3)
+    integer,         intent(in)       :: type
+
+    call create_secondary_base(this, uvw, type)
+
+    this % secondary_bank(this % n_secondary) % E = this % E
 
   end subroutine create_secondary_ce
 
@@ -287,20 +277,9 @@ contains
     real(8),         intent(in)       :: uvw(3)
     integer,         intent(in)       :: type
 
-    integer :: n
+    call create_secondary_base(this, uvw, type)
 
-    ! Check to make sure that the hard-limit on secondary particles is not
-    ! exceeded.
-    if (this % n_secondary == MAX_SECONDARY) then
-      call fatal_error("Too many secondary particles created.")
-    end if
-
-    n = this % n_secondary + 1
-    this % secondary_bank(n) % wgt    = this % wgt
-    this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
-    this % secondary_bank(n) % uvw(:) = uvw
-    this % secondary_bank(n) % g      = this % g
-    this % n_secondary = n
+    this % secondary_bank(this % n_secondary) % g = this % g
 
   end subroutine create_secondary_mg
 

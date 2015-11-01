@@ -5,19 +5,16 @@ module physics_mg
   use constants
   use error,                  only: fatal_error, warning
   use global
-  use interpolation,          only: interpolate_tab1
   use macroxs_header,         only: MacroXS_Base, MacroXSContainer
   use macroxs,                only: sample_fission_energy, sample_scatter
   use material_header,        only: Material
   use mesh,                   only: get_mesh_indices
-  ! use nuclide_header,         only: Nuclide_MG, NuclideMGContainer
   use output,                 only: write_message
   use particle_header,        only: Particle_Base, Particle_MG
   use particle_restart_write, only: write_particle_restart
   use physics_common
   use random_lcg,             only: prn
   use scattdata_header
-  use search,                 only: binary_search
   use simple_string,          only: to_str
 
   implicit none

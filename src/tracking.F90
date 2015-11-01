@@ -55,9 +55,9 @@ contains
     total_weight = total_weight + p % wgt
 
     ! Force calculation of cross-sections by setting last energy to zero
-    ! This is a penalty incurred by MG solver, but id rather have penalties
-    ! applied there over the CE Solver (i.e., by putting an if-block here)
-    micro_xs % last_E = ZERO
+    if (run_CE) then
+      micro_xs % last_E = ZERO
+    end if
 
     ! Prepare to write out particle track.
     if (p % write_track) then

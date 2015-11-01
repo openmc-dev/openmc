@@ -152,6 +152,18 @@ contains
       end if
     end if
 
+    if (.not. run_CE) then
+      ! Scattering Treatments
+      if (check_for_node(doc, "max_order")) then
+        call get_node_value(doc, "max_order", max_order)
+      else
+        ! Set to default of largest int, which means to use whatever is contained in library
+        max_order = huge(0)
+      end if
+    else
+      max_order = 0
+    end if
+
     ! Set output directory if a path has been specified on the <output_path>
     ! element
     if (check_for_node(doc, "output_path")) then

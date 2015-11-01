@@ -72,6 +72,10 @@ module global
   integer :: n_nuclides_total ! Number of nuclide cross section tables
   integer :: n_listings       ! Number of listings in cross_sections.xml
 
+  ! Cross section caches
+  type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
+  type(MaterialMacroXS)             :: material_xs  ! Cache for current material
+
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: xs_listing_dict
@@ -85,10 +89,6 @@ module global
   ! Cross section arrays
   type(Nuclide_CE), allocatable, target :: nuclides(:)    ! Nuclide cross-sections
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
-
-  ! Cross section caches
-  type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
-  type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
 
@@ -125,11 +125,6 @@ module global
 
   ! Scattering Treatment (if Legendre)
   integer :: legendre_mu_points
-
-  ! MGXS for current working particle (equivalent to material_xs, but simpler)
-  real(8) :: particle_xs(5)
-
-!$omp threadprivate(particle_xs)
 
   ! ============================================================================
   ! TALLY-RELATED VARIABLES

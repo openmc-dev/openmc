@@ -7,6 +7,7 @@ module tracking
                              cross_lattice, check_cell_overlap
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
+  use macroxs,         only: calculate_mgxs
   use output,          only: write_message
   use particle_header, only: LocalCoord, Particle_Base, Particle_CE, Particle_MG
   use physics,         only: collision
@@ -53,6 +54,8 @@ contains
     total_weight = total_weight + p % wgt
 
     ! Force calculation of cross-sections by setting last energy to zero
+    ! This is a penalty incurred by MG solver, but id rather have penalties
+    ! applied there over the CE Solver (i.e., by putting an if-block here)
     micro_xs % last_E = ZERO
 
     ! Prepare to write out particle track.
@@ -86,6 +89,11 @@ contains
       select type(p)
       type is (Particle_CE)
         if (p % material /= p % last_material) call calculate_xs(p)
+      type is (Particle_MG)
+        if ((p % material /= p % last_material) .or. (p % g /= p % last_g)) then
+          call calculate_mgxs(macro_xs(p % material) % obj, p % g, &
+                              p % coord(1) % uvw, material_xs)
+        end if
       end select
 
       ! Find the distance to the nearest boundary

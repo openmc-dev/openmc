@@ -166,14 +166,6 @@ module constants
   ! Number of mu bins to use when converting Legendres to tabular type
   integer, parameter :: DEFAULT_NMU = 33
 
-  ! Location within pre-computed cross section data (particle_xs)
-  integer, parameter :: &
-      TOTAL  = 1, &
-      ABSORB = 2, &
-      NUFISS = 3, &
-      FISS   = 4, &
-      SCATT  = 5
-
   ! Secondary energy mode for S(a,b) inelastic scattering
   integer, parameter :: &
        SAB_SECONDARY_EQUAL  = 0, & ! Equally-likely outgoing energy bins

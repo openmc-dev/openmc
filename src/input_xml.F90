@@ -4311,7 +4311,7 @@ contains
       end if
       legendre_mu_points = -1 * legendre_mu_points
     else
-      ! One will say 'dont do it'
+      ! One means 'don't expand scattering moments to a table, sample via legendre'
       legendre_mu_points = 1
     end if
 

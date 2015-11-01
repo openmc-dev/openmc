@@ -32,7 +32,7 @@ contains
 ! nuclides and sab_tables arrays
 !===============================================================================
 
-  subroutine read_xs()
+  subroutine read_ace_xs()
 
     integer :: i            ! index in materials array
     integer :: j            ! index over nuclides in material
@@ -226,7 +226,7 @@ contains
       end if
     end do
 
-  end subroutine read_xs
+  end subroutine read_ace_xs
 
 !===============================================================================
 ! READ_ACE_TABLE reads a single cross section table in either ASCII or binary

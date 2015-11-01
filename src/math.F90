@@ -1,7 +1,6 @@
 module math
 
   use constants
-  use random_lcg, only: prn
 
   implicit none
 
@@ -558,51 +557,43 @@ contains
   end function calc_rn
 
 !===============================================================================
-! MAXWELL_SPECTRUM samples an energy from the Maxwell fission distribution based
-! on a direct sampling scheme. The probability distribution function for a
-! Maxwellian is given as p(x) = 2/(T*sqrt(pi))*sqrt(x/T)*exp(-x/T). This PDF can
-! be sampled using rule C64 in the Monte Carlo Sampler LA-9721-MS.
+! EXPAND_HARMONIC expands a given series of harmonics
 !===============================================================================
+  pure function expand_harmonic(data, order, uvw) result(val)
+    real(8), intent(in) :: data(:)
+    integer, intent(in) :: order
+    real(8), intent(in) :: uvw(3)
+    real(8)             :: val
 
-  function maxwell_spectrum(T) result(E_out)
+    integer :: l, lm_lo, lm_hi
 
-    real(8), intent(in)  :: T     ! tabulated function of incoming E
-    real(8)              :: E_out ! sampled energy
+    val = data(1)
+    lm_lo = 2
+    lm_hi = 4
+    do l = 1, order - 1
+      val = val + sqrt(TWO * real(l,8) + ONE) * &
+           dot_product(calc_rn(l,uvw), data(lm_lo:lm_hi))
+      lm_lo = lm_hi + 1
+      lm_hi = lm_lo + 2 * (l + 1)
+    end do
 
-    real(8) :: r1, r2, r3  ! random numbers
-    real(8) :: c           ! cosine of pi/2*r3
-
-    r1 = prn()
-    r2 = prn()
-    r3 = prn()
-
-    ! determine cosine of pi/2*r
-    c = cos(PI/TWO*r3)
-
-    ! determine outgoing energy
-    E_out = -T*(log(r1) + log(r2)*c*c)
-
-  end function maxwell_spectrum
+  end function expand_harmonic
 
 !===============================================================================
-! WATT_SPECTRUM samples the outgoing energy from a Watt energy-dependent fission
-! spectrum. Although fitted parameters exist for many nuclides, generally the
-! continuous tabular distributions (LAW 4) should be used in lieu of the Watt
-! spectrum. This direct sampling scheme is an unpublished scheme based on the
-! original Watt spectrum derivation (See F. Brown's MC lectures).
+! EVALUATE_LEGENDRE
 !===============================================================================
+  pure function evaluate_legendre(data, x) result(val)
+    real(8), intent(in) :: data(:)
+    real(8), intent(in) :: x
+    real(8)             :: val
 
-  function watt_spectrum(a, b) result(E_out)
+    integer :: l
 
-    real(8), intent(in) :: a     ! Watt parameter a
-    real(8), intent(in) :: b     ! Watt parameter b
-    real(8)             :: E_out ! energy of emitted neutron
+    val = 0.5_8 * data(1)
+    do l = 1, size(data) - 1
+      val = val + (real(l,8) + 0.5_8) * data(l + 1) * calc_pn(l,x)
+    end do
 
-    real(8) :: w ! sampled from Maxwellian
-
-    w     = maxwell_spectrum(a)
-    E_out = w + a*a*b/4. + (TWO*prn() - ONE)*sqrt(a*a*b*w)
-
-  end function watt_spectrum
+  end function evaluate_legendre
 
 end module math

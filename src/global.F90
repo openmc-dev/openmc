@@ -5,6 +5,7 @@ module global
   use constants
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
+  use macroxs_header,   only: MacroXS_Base, MacroXSContainer
   use material_header,  only: Material
   use mesh_header,      only: RegularMesh
   use nuclide_header
@@ -108,7 +109,10 @@ module global
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
 
   ! Cross section arrays
-  ! type(Nuclide_MG), allocatable, target :: nuclides_MG(:)
+  type(NuclideMGContainer), allocatable, target :: nuclides_MG(:)
+
+  ! Cross section caches
+  type(MacroXSContainer), target, allocatable :: macro_xs(:)
 
   ! Number of energy groups
   integer :: energy_groups

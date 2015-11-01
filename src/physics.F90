@@ -9,7 +9,6 @@ module physics
   use global
   use interpolation,          only: interpolate_tab1
   use material_header,        only: Material
-  use math,                   only: maxwell_spectrum, watt_spectrum
   use mesh,                   only: get_mesh_indices
   use nuclide_header
   use output,                 only: write_message
@@ -18,6 +17,7 @@ module physics
   use random_lcg,             only: prn
   use search,                 only: binary_search
   use simple_string,          only: to_str
+  use spectra
 
   implicit none
 

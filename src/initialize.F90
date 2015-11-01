@@ -1,6 +1,6 @@
 module initialize
 
-  use ace,              only: read_xs, same_nuclide_list
+  use ace,              only: read_ace_xs, same_nuclide_list
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
@@ -16,6 +16,7 @@ module initialize
                               hdf5_tallyresult_t, hdf5_integer8_t
   use input_xml,        only: read_input_xml, cells_in_univ_dict, read_plots_xml
   use material_header,  only: Material
+  use mgxs_data
   use output,           only: title, header, print_version, write_message,     &
                               print_usage, write_xs_summary, print_plot
   use random_lcg,       only: initialize_prng
@@ -114,23 +115,37 @@ contains
 
       ! Read ACE-format cross sections
       call time_read_xs%start()
-      call read_xs()
+      if (run_CE) then
+        call read_ace_xs()
+      else
+        call read_mgxs()
+      end if
       call time_read_xs%stop()
 
       ! Create linked lists for multiple instances of the same nuclide
-      call same_nuclide_list()
+      if (run_CE) then
+        call same_nuclide_list()
+      else
+        call same_nuclide_mg_list()
+      end if
 
-      ! Construct unionized or log energy grid for cross-sections
-      select case (grid_method)
-      case (GRID_NUCLIDE)
-        continue
-      case (GRID_MAT_UNION)
-        call time_unionize%start()
-        call unionized_grid()
-        call time_unionize%stop()
-      case (GRID_LOGARITHM)
-        call logarithmic_grid()
-      end select
+      ! Construct information needed for nuclear data
+      if (run_CE) then
+        ! Construct unionized or log energy grid for cross-sections
+        select case (grid_method)
+        case (GRID_NUCLIDE)
+          continue
+        case (GRID_MAT_UNION)
+          call time_unionize%start()
+          call unionized_grid()
+          call time_unionize%stop()
+        case (GRID_LOGARITHM)
+          call logarithmic_grid()
+        end select
+      else
+        ! Create material macroscopic data for MGXS
+        call create_macro_xs()
+      end if
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()
@@ -307,6 +322,8 @@ contains
          c_loc(tmpb(1)%uvw)), coordinates_t, hdf5_err)
     call h5tinsert_f(hdf5_bank_t, "E", h5offsetof(c_loc(tmpb(1)), &
          c_loc(tmpb(1)%E)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "group", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%group)), H5T_NATIVE_INTEGER, hdf5_err)
     call h5tinsert_f(hdf5_bank_t, "delayed_group", h5offsetof(c_loc(tmpb(1)), &
          c_loc(tmpb(1)%delayed_group)), H5T_NATIVE_INTEGER, hdf5_err)
 

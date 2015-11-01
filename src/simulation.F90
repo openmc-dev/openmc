@@ -15,7 +15,7 @@ module simulation
   use global
   use output,          only: write_message, header, print_columns, &
                              print_batch_keff, print_generation
-  use particle_header, only: Particle_Base
+  use particle_header, only: Particle_Base, Particle_CE, Particle_MG
   use random_lcg,      only: set_particle_seed
   use source,          only: initialize_source
   use state_point,     only: write_state_point, write_source_point
@@ -41,6 +41,12 @@ contains
 
     class(Particle_Base), pointer :: p
     integer(8)           :: i_work
+
+    if (run_CE) then
+      allocate(Particle_CE :: p)
+    else
+      allocate(Particle_MG :: p)
+    end if
 
     if (.not. restart_run) call initialize_source()
 
@@ -116,6 +122,9 @@ contains
     ! Clear particle
     call p % clear()
 
+    if (associated(p)) &
+         deallocate(p)
+
   end subroutine run_simulation
 
 !===============================================================================
@@ -124,8 +133,8 @@ contains
 
   subroutine initialize_history(p, index_source)
 
-    class(Particle_Base), intent(inout) :: p
-    integer(8),           intent(in)    :: index_source
+    class(Particle_Base), pointer, intent(inout) :: p
+    integer(8),                    intent(in)    :: index_source
 
     integer(8) :: particle_seed  ! unique index for particle
     integer :: i

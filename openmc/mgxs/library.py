@@ -62,8 +62,9 @@ class Library(object):
         compute the cross section
     all_mgxs : OrderedDict
         MGXS objects keyed by domain ID and cross section type
-    statepoint : openmc.StatePoint
-        The statepoint with tally data used to the compute cross sections
+    sp_filename : str
+        The filename of the statepoint with tally data used to the
+        compute cross sections
     name : str, optional
         Name of the multi-group cross section library. Used as a label to
         identify tallies in OpenMC 'tallies.xml' file.
@@ -341,7 +342,9 @@ class Library(object):
         ----------
         domain : Material or Cell or Universe or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
+        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission',
+                     'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix',
+                     'nu-scatter matrix', 'chi'}
             The type of multi-group cross section object to return
 
         Returns

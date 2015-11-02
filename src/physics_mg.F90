@@ -142,10 +142,12 @@ contains
 
     type(Particle_MG), intent(inout)  :: p
 
-    call sample_scatter(macro_xs(p % material) % obj, p % coord(1) % uvw, &
-                        p % last_g, p % g, p % mu, p % wgt)
+    call sample_scatter(macro_xs(p % material) % obj, &
+                        p % coord(p % n_coord) % uvw, p % last_g, p % g, &
+                        p % mu, p % wgt)
 
-    p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, p % mu)
+    p % coord(p % n_coord) % uvw = rotate_angle(p % coord(p % n_coord) % uvw, &
+                                                p % mu)
 
     ! Set event component
     p % event = EVENT_SCATTER

@@ -83,18 +83,20 @@ contains
 
       if (check_overlaps) call check_cell_overlap(p)
 
-      ! Calculate microscopic and macroscopic cross sections -- note: if the
-      ! material is the same as the last material and the energy of the
-      ! particle hasn't changed, we don't need to lookup cross sections again.
+      ! Calculate microscopic and macroscopic cross sections
 
       select type(p)
       type is (Particle_CE)
+        ! If the material is the same as the last material and the energy of the
+        ! particle hasn't changed, we don't need to lookup cross sections again.
         if (p % material /= p % last_material) call calculate_xs(p)
       type is (Particle_MG)
-        if ((p % material /= p % last_material) .or. (p % g /= p % last_g)) then
-          call calculate_mgxs(macro_xs(p % material) % obj, p % g, &
-                              p % coord(p % n_coord) % uvw, material_xs)
-        end if
+        ! Since the MGXS can be angle dependent, this needs to be done
+        ! After every collision for the MGXS mode
+        call calculate_mgxs(macro_xs(p % material) % obj, &
+                            materials(p % material), nuclides_MG, p % g, &
+                            p % coord(p % n_coord) % uvw, material_xs, &
+                            micro_xs)
       end select
 
       ! Find the distance to the nearest boundary

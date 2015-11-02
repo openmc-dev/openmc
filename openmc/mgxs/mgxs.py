@@ -1286,7 +1286,7 @@ class TotalXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(TotalXS, self).tallies is None:
+        if self._tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'total']
@@ -1301,7 +1301,7 @@ class TotalXS(MGXS):
             # Initialize the Tallies
             self.create_tallies(scores, filters, keys, estimator)
 
-        return super(TotalXS, self).tallies
+        return self._tallies
 
     def compute_xs(self):
         """Computes the multi-group total cross sections using OpenMC
@@ -1332,7 +1332,7 @@ class TransportXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(TransportXS, self).tallies is None:
+        if self._tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'total', 'scatter-P1']
@@ -1348,7 +1348,7 @@ class TransportXS(MGXS):
             # Initialize the Tallies
             self.create_tallies(scores, filters, keys, estimator)
 
-        return super(TransportXS, self).tallies
+        return self._tallies
 
     def compute_xs(self):
         """Computes the multi-group transport cross sections using OpenMC
@@ -1384,7 +1384,7 @@ class AbsorptionXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(AbsorptionXS, self).tallies is None:
+        if self._tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'absorption']
@@ -1399,7 +1399,7 @@ class AbsorptionXS(MGXS):
             # Initialize the Tallies
             self.create_tallies(scores, filters, keys, estimator)
 
-        return super(AbsorptionXS, self).tallies
+        return self._tallies
 
     def compute_xs(self):
         """Computes the multi-group absorption cross sections using OpenMC
@@ -1436,7 +1436,7 @@ class CaptureXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(CaptureXS, self).tallies is None:
+        if self._tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'absorption', 'fission']
@@ -1451,7 +1451,7 @@ class CaptureXS(MGXS):
             # Initialize the Tallies
             self.create_tallies(scores, filters, keys, estimator)
 
-        return super(CaptureXS, self).tallies
+        return self._tallies
 
     def compute_xs(self):
         """Computes the multi-group capture cross sections using OpenMC
@@ -1482,7 +1482,7 @@ class FissionXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(FissionXS, self).tallies is None:
+        if self._tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'fission']
@@ -1497,7 +1497,7 @@ class FissionXS(MGXS):
             # Initialize the Tallies
             self.create_tallies(scores, filters, keys, estimator)
 
-        return super(FissionXS, self).tallies
+        return self._tallies
 
     def compute_xs(self):
         """Computes the multi-group fission cross sections using OpenMC
@@ -1527,7 +1527,7 @@ class NuFissionXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(NuFissionXS, self).tallies is None:
+        if self._tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'nu-fission']
@@ -1542,7 +1542,7 @@ class NuFissionXS(MGXS):
             # Initialize the Tallies
             self.create_tallies(scores, filters, keys, estimator)
 
-        return super(NuFissionXS, self).tallies
+        return self._tallies
 
     def compute_xs(self):
         """Computes the multi-group nu-fission cross sections using OpenMC
@@ -1572,7 +1572,7 @@ class ScatterXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(ScatterXS, self).tallies is None:
+        if self._tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'scatter']
@@ -1587,7 +1587,7 @@ class ScatterXS(MGXS):
             # Intialize the Tallies
             self.create_tallies(scores, filters, keys, estimator)
 
-        return super(ScatterXS, self).tallies
+        return self._tallies
 
     def compute_xs(self):
         """Computes the scattering multi-group cross sections using
@@ -1617,7 +1617,7 @@ class NuScatterXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(NuScatterXS, self).tallies is None:
+        if self._tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['flux', 'nu-scatter']
@@ -1632,7 +1632,7 @@ class NuScatterXS(MGXS):
             # Initialize the Tallies
             self.create_tallies(scores, filters, keys, estimator)
 
-        return super(NuScatterXS, self).tallies
+        return self._tallies
 
     def compute_xs(self):
         """Computes the nu-scattering multi-group cross section using OpenMC
@@ -1679,7 +1679,7 @@ class ScatterMatrixXS(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(ScatterMatrixXS, self).tallies is None:
+        if self._tallies is None:
 
             group_edges = self.energy_groups.group_edges
             energy = openmc.Filter('energy', group_edges)
@@ -1699,7 +1699,7 @@ class ScatterMatrixXS(MGXS):
             # Initialize the Tallies
             self.create_tallies(scores, filters, keys, estimator)
 
-        return super(ScatterMatrixXS, self).tallies
+        return self._tallies
 
     @correction.setter
     def correction(self, correction):
@@ -1989,7 +1989,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(ScatterMatrixXS, self).tallies is None:
+        if self._tallies is None:
 
             # Create the non-domain specific Filters for the Tallies
             group_edges = self.energy_groups.group_edges
@@ -2011,7 +2011,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
             # Intialize the Tallies
             self.create_tallies(scores, filters, keys, estimator)
 
-        return super(ScatterMatrixXS, self).tallies
+        return self._tallies
 
 class Chi(MGXS):
     """The fission spectrum."""
@@ -2032,7 +2032,7 @@ class Chi(MGXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(Chi, self).tallies is None:
+        if self._tallies is None:
 
             # Create a list of scores for each Tally to be created
             scores = ['nu-fission', 'nu-fission']
@@ -2048,7 +2048,7 @@ class Chi(MGXS):
             # Intialize the Tallies
             self.create_tallies(scores, filters, keys, estimator)
 
-        return super(Chi, self).tallies
+        return self._tallies
 
     def compute_xs(self):
         """Computes chi fission spectrum using OpenMC tally arithmetic."""

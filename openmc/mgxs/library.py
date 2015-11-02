@@ -62,8 +62,9 @@ class Library(object):
         compute the cross section
     all_mgxs : OrderedDict
         MGXS objects keyed by domain ID and cross section type
-    statepoint : openmc.StatePoint
-        The statepoint with tally data used to the compute cross sections
+    sp_filename : str
+        The filename of the statepoint with tally data used to the
+        compute cross sections
     name : str, optional
         Name of the multi-group cross section library. Used as a label to
         identify tallies in OpenMC 'tallies.xml' file.
@@ -189,7 +190,7 @@ class Library(object):
         return self._all_mgxs
 
     @property
-    def statepoint(self):
+    def sp_filename(self):
         return self._sp_filename
 
     @openmc_geometry.setter
@@ -341,7 +342,9 @@ class Library(object):
         ----------
         domain : Material or Cell or Universe or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
+        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission',
+                     'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix',
+                     'nu-scatter matrix', 'chi'}
             The type of multi-group cross section object to return
 
         Returns
@@ -414,7 +417,7 @@ class Library(object):
 
         """
 
-        if self.statepoint is None:
+        if self.sp_filename is None:
             msg = 'Unable to get a condensed coarse group cross section ' \
                   'library since the statepoint has not yet been loaded'
             raise ValueError(msg)
@@ -466,7 +469,7 @@ class Library(object):
 
         """
 
-        if self.statepoint is None:
+        if self.sp_filename is None:
             msg = 'Unable to get a subdomain-averaged cross section ' \
                   'library since the statepoint has not yet been loaded'
             raise ValueError(msg)
@@ -531,9 +534,9 @@ class Library(object):
 
         """
 
-        if self.statepoint is None:
-            msg = 'Unable to get a condensed coarse group cross section ' \
-                  'library since a statepoint has not yet been loaded'
+        if self.sp_filename is None:
+            msg = 'Unable to export multi-group cross section library ' \
+                  'since a statepoint has not yet been loaded'
             raise ValueError(msg)
 
         cv.check_type('filename', filename, basestring)

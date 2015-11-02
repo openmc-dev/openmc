@@ -1998,7 +1998,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         """
 
         # Instantiate tallies if they do not exist
-        if super(NuScatterMatrixXS, self).tallies is None:
+        if super(ScatterMatrixXS, self).tallies is None:
 
             # Create the non-domain specific Filters for the Tallies
             group_edges = self.energy_groups.group_edges

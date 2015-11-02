@@ -117,13 +117,16 @@ module nuclide_header
   end type Nuclide_MG
 
   abstract interface
-    function nuclide_mg_get_xs_(this, g, xstype, gout, uvw) result(xs)
+    function nuclide_mg_get_xs_(this, g, xstype, gout, uvw, i_azi, i_pol) &
+         result(xs)
       import Nuclide_MG
       class(Nuclide_MG), intent(in) :: this
       integer, intent(in)           :: g      ! Incoming Energy group
       character(*), intent(in)      :: xstype ! Cross Section Type
       integer, optional, intent(in) :: gout   ! Outgoing Group
       real(8), optional, intent(in) :: uvw(3) ! Requested Angle
+      integer, optional, intent(in) :: i_azi  ! Azimuthal Index
+      integer, optional, intent(in) :: i_pol  ! Polar Index
       real(8)                       :: xs     ! Resultant xs
     end function nuclide_mg_get_xs_
   end interface
@@ -532,12 +535,15 @@ module nuclide_header
 ! NUCLIDE_*_GET_XS Returns the requested data type
 !===============================================================================
 
-    function nuclide_iso_get_xs(this, g, xstype, gout, uvw) result(xs)
+    function nuclide_iso_get_xs(this, g, xstype, gout, uvw, i_azi, i_pol) &
+         result(xs)
       class(Nuclide_Iso), intent(in) :: this
       integer, intent(in)            :: g      ! Incoming Energy group
-      character(*), intent(in)      :: xstype ! Cross Section Type
+      character(*), intent(in)       :: xstype ! Cross Section Type
       integer, optional, intent(in)  :: gout   ! Outgoing Group
       real(8), optional, intent(in)  :: uvw(3) ! Requested Angle
+      integer, optional, intent(in)  :: i_azi  ! Azimuthal Index
+      integer, optional, intent(in)  :: i_pol  ! Polar Index
       real(8)                        :: xs     ! Resultant xs
 
       if (present(gout)) then
@@ -565,41 +571,49 @@ module nuclide_header
       end if
     end function nuclide_iso_get_xs
 
-    function nuclide_angle_get_xs(this, g, xstype, gout, uvw) result(xs)
+    function nuclide_angle_get_xs(this, g, xstype, gout, uvw, i_azi, i_pol) &
+         result(xs)
       class(Nuclide_Angle), intent(in) :: this
       integer, intent(in)              :: g      ! Incoming Energy group
       character(*), intent(in)         :: xstype ! Cross Section Type
       integer, optional, intent(in)    :: gout   ! Outgoing Group
       real(8), optional, intent(in)    :: uvw(3) ! Requested Angle
+      integer, optional, intent(in)    :: i_azi  ! Azimuthal Index
+      integer, optional, intent(in)    :: i_pol  ! Polar Index
       real(8)                          :: xs     ! Resultant xs
 
-      integer :: i_pol, i_azi
+      integer :: i_azi_, i_pol_
 
-      call find_angle(this % polar, this % azimuthal, uvw, i_azi, i_pol)
+      if (present(i_azi) .and. present(i_pol)) then
+        i_azi_ = i_azi
+        i_pol_ = i_pol
+      else
+        call find_angle(this % polar, this % azimuthal, uvw, i_azi_, i_pol_)
+      end if
 
       if (present(gout)) then
         select case(xstype)
         case('mult')
-          xs = this % mult(gout,g,i_azi,i_pol)
+          xs = this % mult(gout,g,i_azi_,i_pol_)
         case('nu_fission')
-          xs = this % nu_fission(gout,g,i_azi,i_pol)
+          xs = this % nu_fission(gout,g,i_azi_,i_pol_)
         case('chi')
-          xs = this % chi(gout,i_azi,i_pol)
+          xs = this % chi(gout,i_azi_,i_pol_)
         end select
       else
         select case(xstype)
         case('total')
-          xs = this % total(g,i_azi,i_pol)
+          xs = this % total(g,i_azi_,i_pol_)
         case('absorption')
-          xs = this % absorption(g,i_azi,i_pol)
+          xs = this % absorption(g,i_azi_,i_pol_)
         case('fission')
-          xs = this % fission(g,i_azi,i_pol)
+          xs = this % fission(g,i_azi_,i_pol_)
         case('k_fission')
-          xs = this % k_fission(g,i_azi,i_pol)
+          xs = this % k_fission(g,i_azi_,i_pol_)
         case('chi')
-          xs = this % chi(g,i_azi,i_pol)
+          xs = this % chi(g,i_azi_,i_pol_)
         case('scatter')
-          xs = this % total(g,i_azi,i_pol) - this % absorption(g,i_azi,i_pol)
+          xs = this % total(g,i_azi_,i_pol_) - this % absorption(g,i_azi_,i_pol_)
         end select
       end if
 

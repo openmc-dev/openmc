@@ -3,8 +3,10 @@ module macroxs
   use constants
   use macroxs_header,  only: MacroXS_Base, MacroXS_Iso, MacroXS_Angle, &
                              expand_harmonic
+  use material_header, only: Material
   use math
-  use nuclide_header,  only: find_angle, MaterialMacroXS
+  use nuclide_header,  only: find_angle, MaterialMacroXS, NuclideMicroXS, &
+                             Nuclide_MG, NuclideMGContainer
   use random_lcg,      only: prn
   use scattdata_header
   use search
@@ -17,30 +19,58 @@ contains
 ! UPDATE_XS stores the xs to work with
 !===============================================================================
 
-  subroutine calculate_mgxs(this, gin, uvw, xs)
+  subroutine calculate_mgxs(this, mat, nuclides, gin, uvw, xs, micro_xs)
     class(MacroXS_Base),   intent(in)    :: this
-    integer,               intent(in)    :: gin    ! Incoming neutron group
-    real(8),               intent(in)    :: uvw(3) ! Incoming neutron direction
+    type(Material), intent(in)           :: mat         ! Material of interest
+    type(NuclideMGContainer), intent(in) :: nuclides(:) ! List of nuclides
+    integer,               intent(in)    :: gin         ! Incoming neutron group
+    real(8),               intent(in)    :: uvw(3)      ! Incoming neutron direction
     type(MaterialMacroXS), intent(inout) :: xs
+    type(NuclideMicroXS),  intent(inout) :: micro_xs(:)
 
     integer :: iazi, ipol
+    integer :: i, i_nuclide
+    class(Nuclide_MG), pointer :: nuc
 
     select type(this)
     type is (MacroXS_Iso)
-      xs % total      = this % total(gin)
-      xs % elastic    = this % scattxs(gin)
-      xs % absorption = this % absorption(gin)
-      xs % fission    = this % fission(gin)
-      xs % nu_fission = this % nu_fission(gin)
+      xs % total         = this % total(gin)
+      xs % elastic       = this % scattxs(gin)
+      xs % absorption    = this % absorption(gin)
+      xs % fission       = this % fission(gin)
+      xs % nu_fission    = this % nu_fission(gin)
+      xs % kappa_fission = this % k_fission(gin)
 
     type is (MacroXS_Angle)
       call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
-      xs % total      = this % total(gin, iazi, ipol)
-      xs % elastic    = this % scattxs(gin, iazi, ipol)
-      xs % absorption = this % absorption(gin, iazi, ipol)
-      xs % fission    = this % fission(gin, iazi, ipol)
-      xs % nu_fission = this % nu_fission(gin, iazi, ipol)
+      xs % total         = this % total(gin, iazi, ipol)
+      xs % elastic       = this % scattxs(gin, iazi, ipol)
+      xs % absorption    = this % absorption(gin, iazi, ipol)
+      xs % fission       = this % fission(gin, iazi, ipol)
+      xs % nu_fission    = this % nu_fission(gin, iazi, ipol)
+      xs % kappa_fission = this % k_fission(gin, iazi, ipol)
     end select
+
+    ! Place nuclidic xs in micro_xs for tallying purposes
+    do i = 1, mat % n_nuclides
+      ! Determine microscopic cross section for this nuclide
+      i_nuclide = mat % nuclide(i)
+
+      nuc => nuclides(i_nuclide) % obj
+      micro_xs(i_nuclide) % total         = nuc % get_xs(gin, 'total', &
+           I_AZI=iazi, I_POL=ipol)
+      micro_xs(i_nuclide) % elastic       = nuc % get_xs(gin, 'scatter', &
+           I_AZI=iazi, I_POL=ipol)
+      micro_xs(i_nuclide) % absorption    = nuc % get_xs(gin, 'absorption', &
+           I_AZI=iazi, I_POL=ipol)
+      micro_xs(i_nuclide) % fission       = nuc % get_xs(gin, 'fission', &
+           I_AZI=iazi, I_POL=ipol)
+      micro_xs(i_nuclide) % nu_fission    = nuc % get_xs(gin, 'nu_fission', &
+           I_AZI=iazi, I_POL=ipol)
+      micro_xs(i_nuclide) % kappa_fission = nuc % get_xs(gin, 'k_fission', &
+           I_AZI=iazi, I_POL=ipol)
+
+    end do
 
   end subroutine calculate_mgxs
 

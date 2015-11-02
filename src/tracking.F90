@@ -93,7 +93,7 @@ contains
       type is (Particle_MG)
         if ((p % material /= p % last_material) .or. (p % g /= p % last_g)) then
           call calculate_mgxs(macro_xs(p % material) % obj, p % g, &
-                              p % coord(1) % uvw, material_xs)
+                              p % coord(p % n_coord) % uvw, material_xs)
         end if
       end select
 

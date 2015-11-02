@@ -40,7 +40,7 @@ contains
   subroutine run_simulation()
 
     class(Particle_Base), pointer :: p
-    integer(8)           :: i_work
+    integer(8)                    :: i_work
 
     if (run_CE) then
       allocate(Particle_CE :: p)

@@ -420,12 +420,12 @@ class MGXS(object):
 
         return densities
 
-    def create_tallies(self, scores, all_filters, keys, estimator):
+    def _create_tallies(self, scores, all_filters, keys, estimator):
         """Instantiates tallies needed to compute the multi-group cross section.
 
         This is a helper method for MGXS subclasses to create tallies
         for input file generation. The tallies are stored in the tallies dict.
-        This method is called by each subclass' create_tallies(...) method
+        This method is called by each subclass' tallies property getter
         which define the parameters given to this parent class method.
 
         Parameters
@@ -1299,7 +1299,7 @@ class TotalXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            self.create_tallies(scores, filters, keys, estimator)
+            self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
 
@@ -1346,7 +1346,7 @@ class TransportXS(MGXS):
             filters = [[energy_filter], [energy_filter], [energyout_filter]]
 
             # Initialize the Tallies
-            self.create_tallies(scores, filters, keys, estimator)
+            self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
 
@@ -1397,7 +1397,7 @@ class AbsorptionXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            self.create_tallies(scores, filters, keys, estimator)
+            self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
 
@@ -1449,7 +1449,7 @@ class CaptureXS(MGXS):
             filters = [[energy_filter], [energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            self.create_tallies(scores, filters, keys, estimator)
+            self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
 
@@ -1495,7 +1495,7 @@ class FissionXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            self.create_tallies(scores, filters, keys, estimator)
+            self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
 
@@ -1540,7 +1540,7 @@ class NuFissionXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            self.create_tallies(scores, filters, keys, estimator)
+            self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
 
@@ -1585,7 +1585,7 @@ class ScatterXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Intialize the Tallies
-            self.create_tallies(scores, filters, keys, estimator)
+            self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
 
@@ -1630,7 +1630,7 @@ class NuScatterXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            self.create_tallies(scores, filters, keys, estimator)
+            self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
 
@@ -1697,7 +1697,7 @@ class ScatterMatrixXS(MGXS):
             keys = scores
 
             # Initialize the Tallies
-            self.create_tallies(scores, filters, keys, estimator)
+            self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
 
@@ -2009,7 +2009,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
                 filters = [[energy], [energy, energyout]]
 
             # Intialize the Tallies
-            self.create_tallies(scores, filters, keys, estimator)
+            self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
 
@@ -2046,7 +2046,7 @@ class Chi(MGXS):
             filters = [[energyin], [energyout]]
 
             # Intialize the Tallies
-            self.create_tallies(scores, filters, keys, estimator)
+            self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
 

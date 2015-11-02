@@ -1299,8 +1299,7 @@ class TotalXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            super(TotalXS, self).create_tallies(scores, filters, 
-                                                keys, estimator)
+            self.create_tallies(scores, filters, keys, estimator)
 
         return super(TotalXS, self).tallies
 
@@ -1347,8 +1346,7 @@ class TransportXS(MGXS):
             filters = [[energy_filter], [energy_filter], [energyout_filter]]
 
             # Initialize the Tallies
-            super(TransportXS, self).create_tallies(scores, filters,
-                                                    keys, estimator)
+            self.create_tallies(scores, filters, keys, estimator)
 
         return super(TransportXS, self).tallies
 
@@ -1399,8 +1397,7 @@ class AbsorptionXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            super(AbsorptionXS, self).create_tallies(scores, filters,
-                                                     keys, estimator)
+            self.create_tallies(scores, filters, keys, estimator)
 
         return super(AbsorptionXS, self).tallies
 
@@ -1452,8 +1449,7 @@ class CaptureXS(MGXS):
             filters = [[energy_filter], [energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            super(CaptureXS, self).create_tallies(scores, filters, 
-                                                  keys, estimator)
+            self.create_tallies(scores, filters, keys, estimator)
 
         return super(CaptureXS, self).tallies
 
@@ -1499,8 +1495,7 @@ class FissionXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            super(FissionXS, self).create_tallies(scores, filters, 
-                                                  keys, estimator)
+            self.create_tallies(scores, filters, keys, estimator)
 
         return super(FissionXS, self).tallies
 
@@ -1545,8 +1540,7 @@ class NuFissionXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            super(NuFissionXS, self).create_tallies(scores, filters,
-                                                    keys, estimator)
+            self.create_tallies(scores, filters, keys, estimator)
 
         return super(NuFissionXS, self).tallies
 
@@ -1591,8 +1585,7 @@ class ScatterXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Intialize the Tallies
-            super(ScatterXS, self).create_tallies(scores, filters, 
-                                                  keys, estimator)
+            self.create_tallies(scores, filters, keys, estimator)
 
         return super(ScatterXS, self).tallies
 
@@ -1637,8 +1630,7 @@ class NuScatterXS(MGXS):
             filters = [[energy_filter], [energy_filter]]
 
             # Initialize the Tallies
-            super(NuScatterXS, self).create_tallies(scores, filters,
-                                                    keys, estimator)
+            self.create_tallies(scores, filters, keys, estimator)
 
         return super(NuScatterXS, self).tallies
 
@@ -1705,8 +1697,7 @@ class ScatterMatrixXS(MGXS):
             keys = scores
 
             # Initialize the Tallies
-            super(ScatterMatrixXS, self).create_tallies(scores, filters,
-                                                        keys, estimator)
+            self.create_tallies(scores, filters, keys, estimator)
 
         return super(ScatterMatrixXS, self).tallies
 
@@ -2018,8 +2009,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
                 filters = [[energy], [energy, energyout]]
 
             # Intialize the Tallies
-            super(ScatterMatrixXS, self).create_tallies(scores, filters,
-                                                        keys, estimator)
+            self.create_tallies(scores, filters, keys, estimator)
 
         return super(ScatterMatrixXS, self).tallies
 
@@ -2056,7 +2046,7 @@ class Chi(MGXS):
             filters = [[energyin], [energyout]]
 
             # Intialize the Tallies
-            super(Chi, self).create_tallies(scores, filters, keys, estimator)
+            self.create_tallies(scores, filters, keys, estimator)
 
         return super(Chi, self).tallies
 

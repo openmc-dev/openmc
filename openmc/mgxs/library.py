@@ -190,7 +190,7 @@ class Library(object):
         return self._all_mgxs
 
     @property
-    def statepoint(self):
+    def sp_filename(self):
         return self._sp_filename
 
     @openmc_geometry.setter
@@ -417,7 +417,7 @@ class Library(object):
 
         """
 
-        if self.statepoint is None:
+        if self.sp_filename is None:
             msg = 'Unable to get a condensed coarse group cross section ' \
                   'library since the statepoint has not yet been loaded'
             raise ValueError(msg)
@@ -469,7 +469,7 @@ class Library(object):
 
         """
 
-        if self.statepoint is None:
+        if self.sp_filename is None:
             msg = 'Unable to get a subdomain-averaged cross section ' \
                   'library since the statepoint has not yet been loaded'
             raise ValueError(msg)
@@ -534,9 +534,9 @@ class Library(object):
 
         """
 
-        if self.statepoint is None:
-            msg = 'Unable to get a condensed coarse group cross section ' \
-                  'library since a statepoint has not yet been loaded'
+        if self.sp_filename is None:
+            msg = 'Unable to export multi-group cross section library ' \
+                  'since a statepoint has not yet been loaded'
             raise ValueError(msg)
 
         cv.check_type('filename', filename, basestring)

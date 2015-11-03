@@ -2,7 +2,7 @@ module physics_common
 
   use constants
   use global,                 only: weight_cutoff, weight_survive
-  use particle_header,        only: Particle_Base, Particle_CE, Particle_MG
+  use particle_header,        only: Particle
   use random_lcg,             only: prn
 
   implicit none
@@ -15,7 +15,7 @@ contains
 
   subroutine russian_roulette(p)
 
-    class(Particle_Base), intent(inout) :: p
+    type(Particle), intent(inout) :: p
 
     if (p % wgt < weight_cutoff) then
       if (prn() < p % wgt / weight_survive) then

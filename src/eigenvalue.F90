@@ -10,7 +10,6 @@ module eigenvalue
   use math,          only: t_percentile
   use mesh,          only: count_bank_sites
   use mesh_header,   only: RegularMesh
-  ! use particle_header, only: Particle_Base
   use random_lcg,    only: prn, set_particle_seed, prn_skip
   use search,        only: binary_search
   use simple_string, only: to_str

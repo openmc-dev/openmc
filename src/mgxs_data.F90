@@ -61,6 +61,9 @@ contains
 
     ! allocate arrays for ACE table storage and cross section cache
     allocate(nuclides_MG(n_nuclides_total))
+!$omp parallel
+    allocate(micro_xs(n_nuclides_total))
+!$omp end parallel
 
     ! Find out if we need kappa fission (are there any k_fiss tallies?)
     get_kfiss = .false.

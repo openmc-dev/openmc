@@ -7,7 +7,7 @@ module track_output
 
   use global
   use hdf5_interface
-  use particle_header,   only: Particle_Base
+  use particle_header,   only: Particle
   use simple_string,     only: to_str
 
   use hdf5
@@ -43,7 +43,7 @@ contains
 !===============================================================================
 
   subroutine write_particle_track(p)
-    class(Particle_Base), intent(in)  :: p
+    type(Particle), intent(in)  :: p
     real(8), allocatable :: new_coords(:, :)
 
     integer :: i
@@ -93,7 +93,7 @@ contains
 !===============================================================================
 
   subroutine finalize_particle_track(p)
-    class(Particle_Base), intent(in)  :: p
+    type(Particle), intent(in)  :: p
 
     integer :: i
     integer :: n_particle_tracks

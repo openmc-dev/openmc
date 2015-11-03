@@ -10,7 +10,7 @@ module physics_mg
   use material_header,        only: Material
   use mesh,                   only: get_mesh_indices
   use output,                 only: write_message
-  use particle_header,        only: Particle_Base, Particle_MG
+  use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart
   use physics_common
   use random_lcg,             only: prn
@@ -28,7 +28,7 @@ contains
 
   subroutine collision_mg(p)
 
-    type(Particle_MG), intent(inout) :: p
+    type(Particle), intent(inout) :: p
 
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
@@ -58,7 +58,7 @@ contains
 
   subroutine sample_reaction(p)
 
-    type(Particle_MG), intent(inout) :: p
+    type(Particle), intent(inout) :: p
 
     type(Material), pointer :: mat
 
@@ -102,7 +102,7 @@ contains
 
   subroutine absorption(p)
 
-    type(Particle_MG), intent(inout) :: p
+    type(Particle), intent(inout) :: p
 
     if (survival_biasing) then
       ! Determine weight absorbed in survival biasing
@@ -140,7 +140,7 @@ contains
 
   subroutine scatter(p)
 
-    type(Particle_MG), intent(inout)  :: p
+    type(Particle), intent(inout)  :: p
 
     call sample_scatter(macro_xs(p % material) % obj, &
                         p % coord(p % n_coord) % uvw, p % last_g, p % g, &
@@ -161,7 +161,7 @@ contains
 
   subroutine create_fission_sites(p)
 
-    type(Particle_MG), intent(inout) :: p
+    type(Particle), intent(inout) :: p
 
     integer :: i            ! loop index
     integer :: nu           ! actual number of neutrons produced

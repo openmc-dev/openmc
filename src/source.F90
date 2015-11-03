@@ -8,7 +8,7 @@ module source
   use global
   use hdf5_interface,   only: file_create, file_open, file_close, read_dataset
   use output,           only: write_message
-  use particle_header,  only: Particle_Base, Particle_CE, Particle_MG
+  use particle_header,  only: Particle
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream
   use search,           only: binary_search
   use simple_string,    only: to_str
@@ -109,7 +109,7 @@ contains
     real(8) :: a          ! Arbitrary parameter 'a'
     real(8) :: b          ! Arbitrary parameter 'b'
     logical :: found      ! Does the source particle exist within geometry?
-    type(Particle_CE) :: p   ! Temporary particle for using find_cell
+    type(Particle) :: p   ! Temporary particle for using find_cell
     integer, save :: num_resamples = 0 ! Number of resamples encountered
 
     ! Set weight to one by default

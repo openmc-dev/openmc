@@ -8,7 +8,7 @@ module particle_restart
   use global
   use hdf5_interface,   only: file_open, file_close, read_dataset
   use output,           only: write_message, print_particle
-  use particle_header,  only: Particle_Base, Particle_CE, Particle_MG
+  use particle_header,  only: Particle
   use random_lcg,       only: set_particle_seed
   use tracking,         only: transport
 
@@ -28,7 +28,7 @@ contains
 
     integer(8) :: particle_seed
     integer :: previous_run_mode
-    class(Particle_Base), pointer :: p
+    type(Particle) :: p
 
     ! Set verbosity high
     verbosity = 10
@@ -66,7 +66,7 @@ contains
 !===============================================================================
 
   subroutine read_particle_restart(p, previous_run_mode)
-    class(Particle_Base), intent(inout) :: p
+    type(Particle), intent(inout) :: p
     integer, intent(inout) :: previous_run_mode
 
     integer :: int_scalar
@@ -96,12 +96,8 @@ contains
     end select
     call read_dataset(file_id, 'id', p%id)
     call read_dataset(file_id, 'weight', p%wgt)
-    select type(p)
-    type is (Particle_CE)
-      call read_dataset(file_id, 'energy', p%E)
-    type is (Particle_MG)
-      call read_dataset(file_id, 'energy_group', p%g)
-    end select
+    call read_dataset(file_id, 'energy', p%E)
+    call read_dataset(file_id, 'energy_group', p%g)
     call read_dataset(file_id, 'xyz', p%coord(1)%xyz)
     call read_dataset(file_id, 'uvw', p%coord(1)%uvw)
 
@@ -109,12 +105,8 @@ contains
     p%last_wgt = p%wgt
     p%last_xyz = p%coord(1)%xyz
     p%last_uvw = p%coord(1)%uvw
-    select type(p)
-    type is (Particle_CE)
-      p%last_E   = p%E
-    type is (Particle_MG)
-      p%last_g   = p%g
-    end select
+    p%last_E   = p%E
+    p%last_g   = p%g
 
     ! Close hdf5 file
     call file_close(file_id)

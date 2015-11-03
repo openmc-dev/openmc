@@ -13,7 +13,7 @@ module output
   use mesh_header,     only: RegularMesh
   use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
   use nuclide_header
-  use particle_header, only: LocalCoord, Particle_Base, Particle_CE, Particle_MG
+  use particle_header, only: LocalCoord, Particle
   use plot_header
   use sab_header,      only: SAlphaBeta
   use simple_string,   only: to_upper, to_str
@@ -253,7 +253,7 @@ contains
 
   subroutine print_particle(p)
 
-    class(Particle_Base), intent(in) :: p
+    type(Particle), intent(in) :: p
 
     integer :: i ! index for coordinate levels
     type(Cell),       pointer :: c
@@ -310,12 +310,11 @@ contains
 
     ! Display weight, energy, grid index, and interpolation factor
     write(ou,*) '  Weight = ' // to_str(p % wgt)
-    select type(p)
-    type is (Particle_CE)
+    if (run_CE) then
       write(ou,*) '  Energy = ' // to_str(p % E)
-    type is (Particle_MG)
+    else
       write(ou,*) '  Energy Group = ' // to_str(p % g)
-    end select
+    end if
     write(ou,*) '  Delayed Group = ' // to_str(p % delayed_group)
     write(ou,*)
 

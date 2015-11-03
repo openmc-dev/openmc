@@ -12,7 +12,7 @@ module physics
   use mesh,                   only: get_mesh_indices
   use nuclide_header
   use output,                 only: write_message
-  use particle_header,        only: Particle_CE
+  use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart
   use physics_common
   use random_lcg,             only: prn
@@ -34,7 +34,7 @@ contains
 
   subroutine collision(p)
 
-    type(Particle_CE), intent(inout) :: p
+    type(Particle), intent(inout) :: p
 
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
@@ -72,7 +72,7 @@ contains
 
   subroutine sample_reaction(p)
 
-    type(Particle_CE), intent(inout) :: p
+    type(Particle), intent(inout) :: p
 
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
@@ -125,7 +125,7 @@ contains
 
   function sample_nuclide(p, base) result(i_nuclide)
 
-    type(Particle_CE), intent(in) :: p
+    type(Particle), intent(in) :: p
     character(7),      intent(in) :: base      ! which reaction to sample based on
     integer                          :: i_nuclide
 
@@ -242,7 +242,7 @@ contains
 
   subroutine absorption(p, i_nuclide)
 
-    type(Particle_CE), intent(inout) :: p
+    type(Particle), intent(inout) :: p
     integer,            intent(in)    :: i_nuclide
 
     if (survival_biasing) then
@@ -283,7 +283,7 @@ contains
 
   subroutine scatter(p, i_nuclide)
 
-    type(Particle_CE), intent(inout) :: p
+    type(Particle), intent(inout) :: p
     integer,           intent(in)    :: i_nuclide
 
     integer :: i
@@ -1040,7 +1040,7 @@ contains
 
   subroutine create_fission_sites(p, i_nuclide, i_reaction)
 
-    type(Particle_CE), intent(inout) :: p
+    type(Particle), intent(inout) :: p
     integer,           intent(in)    :: i_nuclide
     integer,           intent(in)    :: i_reaction
 
@@ -1158,7 +1158,7 @@ contains
 
     type(Nuclide_CE),  pointer       :: nuc
     type(Reaction), pointer          :: rxn
-    type(Particle_CE), intent(inout) :: p     ! Particle causing fission
+    type(Particle), intent(inout) :: p     ! Particle causing fission
     real(8)                          :: E_out ! outgoing E of fission neutron
 
     integer :: j            ! index on nu energy grid / precursor group
@@ -1284,7 +1284,7 @@ contains
   subroutine inelastic_scatter(nuc, rxn, p)
     type(Nuclide_CE),     pointer       :: nuc
     type(Reaction),    pointer       :: rxn
-    type(Particle_CE), intent(inout) :: p
+    type(Particle), intent(inout) :: p
 
     integer :: i      ! loop index
     integer :: law    ! secondary energy distribution law
@@ -1355,7 +1355,7 @@ contains
       p % wgt = yield * p % wgt
     else
       do i = 1, rxn % multiplicity - 1
-        call p % create_secondary(p % coord(1) % uvw, NEUTRON)
+        call p % create_secondary(p % coord(1) % uvw, NEUTRON, run_CE)
       end do
     end if
 

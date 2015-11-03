@@ -527,11 +527,9 @@ class Universe(object):
                   'not a Cell'.format(self._id, cell)
             raise ValueError(msg)
 
-        cell_id = cell.getId()
-
         # If the Cell is in the Universe's list of Cells, delete it
-        if cell_id in self._cells:
-            del self._cells[cell_id]
+        if cell.id in self._cells:
+            del self._cells[cell.id]
 
     def clear_cells(self):
         """Remove all cells from the universe."""

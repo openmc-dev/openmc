@@ -420,7 +420,7 @@ class Tally(object):
             cv.check_type('tally name', name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     def add_filter(self, filter):
         """Add a filter to the tally

@@ -153,7 +153,7 @@ class Cell(object):
             cv.check_type('cell name', name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     @fill.setter
     def fill(self, fill):
@@ -472,7 +472,7 @@ class Universe(object):
             cv.check_type('universe name', name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     def add_cell(self, cell):
         """Add a cell to the universe.
@@ -732,7 +732,7 @@ class Lattice(object):
             cv.check_type('lattice name', name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     @outer.setter
     def outer(self, outer):

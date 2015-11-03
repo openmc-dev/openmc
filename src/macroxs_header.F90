@@ -48,11 +48,12 @@ module macroxs_header
 
     end subroutine macroxs_init_
 
-    function macroxs_get_xs_(this, g, xstype, uvw) result(xs)
+    function macroxs_get_xs_(this, g, xstype, gout, uvw) result(xs)
       import MacroXS_Base
       class(MacroXS_Base), intent(in) :: this   ! The MacroXS to initialize
       integer, intent(in)             :: g      ! Incoming Energy group
       character(*) , intent(in)       :: xstype ! Cross Section Type
+      integer, optional, intent(in)   :: gout   ! Outgoing Energy group
       real(8), optional, intent(in)   :: uvw(3) ! Requested Angle
       real(8)                         :: xs     ! Resultant xs
 
@@ -787,10 +788,11 @@ contains
 ! MACROXS_*_GET_XS returns the requested data type
 !===============================================================================
 
-  function macroxs_iso_get_xs(this, g, xstype, uvw) result(xs)
+  function macroxs_iso_get_xs(this, g, xstype, gout, uvw) result(xs)
     class(MacroXS_Iso), intent(in) :: this   ! The MacroXS to initialize
     integer, intent(in)            :: g      ! Incoming Energy group
     character(*) , intent(in)      :: xstype ! Type of xs requested
+    integer, optional, intent(in)  :: gout   ! Outgoing Energy group
     real(8), optional, intent(in)  :: uvw(3) ! Requested Angle
     real(8)                        :: xs     ! Requested x/s
 
@@ -807,14 +809,21 @@ contains
       xs = this % nu_fission(g)
     case('scatter')
       xs = this % scattxs(g)
+    case('mult')
+      if (present(gout)) then
+        xs = this % scatter % mult(gout,g)
+      else
+        xs = sum(this % scatter % mult(:,g))
+      end if
     end select
 
   end function macroxs_iso_get_xs
 
-  function macroxs_angle_get_xs(this, g, xstype, uvw) result(xs)
+  function macroxs_angle_get_xs(this, g, xstype, gout,uvw) result(xs)
     class(MacroXS_Angle), intent(in) :: this   ! The MacroXS to initialize
     integer, intent(in)              :: g      ! Incoming Energy group
     character(*) , intent(in)        :: xstype ! Type of xs requested
+    integer, optional, intent(in)    :: gout   ! Outgoing Energy group
     real(8), optional, intent(in)    :: uvw(3) ! Requested Angle
     real(8)                          :: xs     ! Requested x/s
 
@@ -835,6 +844,12 @@ contains
         xs = this % nu_fission(g,iazi,ipol)
       case('scatter')
         xs = this % scattxs(g,iazi,ipol)
+      case('mult')
+        if (present(gout)) then
+          xs = this % scatter(iazi,ipol) % obj % mult(gout,g)
+        else
+          xs = sum(this % scatter(iazi,ipol) % obj % mult(:,g))
+        end if
       end select
     end if
 

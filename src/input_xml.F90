@@ -2573,6 +2573,15 @@ contains
             else
               n_words = get_arraysize_integer(node_filt, "bins")
             end if
+          else if (temp_str == 'energy' .or. temp_str == 'energyout' .and. &
+                   .not. run_CE) then
+            ! For MG calculations, dont require the user to put in all the
+            ! group boundaries, as there could be many. Assume that if no &
+            ! bins are entered that that means they want group-wise results.
+            n_words = -1
+            call warning("Energy bins not set in filter on tally " &
+                 &// trim(to_str(t % id)))
+
           else
             call fatal_error("Bins not set in filter on tally " &
                  &// trim(to_str(t % id)))
@@ -2683,28 +2692,55 @@ contains
             ! Set type of filter
             t % filters(j) % type = FILTER_ENERGYIN
 
-            ! Set number of bins
-            t % filters(j) % n_bins = n_words - 1
+            if (n_words > 0) then
+              ! Set number of bins
+              t % filters(j) % n_bins = n_words - 1
 
-            ! Allocate and store bins
-            allocate(t % filters(j) % real_bins(n_words))
-            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+              ! Allocate and store bins
+              allocate(t % filters(j) % real_bins(n_words))
+              call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+            else if (n_words == -1) then
+              ! Set number of bins
+              t % filters(j) % n_bins = energy_groups
+
+              ! Allocate and store bins
+              allocate(t % filters(j) % real_bins(energy_groups))
+              t % filters(j) % real_bins = energy_bins
+            end if
 
           case ('energyout')
             ! Set type of filter
             t % filters(j) % type = FILTER_ENERGYOUT
 
-            ! Set number of bins
-            t % filters(j) % n_bins = n_words - 1
+            if (n_words > 0) then
+              ! Set number of bins
+              t % filters(j) % n_bins = n_words - 1
 
-            ! Allocate and store bins
-            allocate(t % filters(j) % real_bins(n_words))
-            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+              ! Allocate and store bins
+              allocate(t % filters(j) % real_bins(n_words))
+              call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+            else if (n_words == -1) then
+              ! Set number of bins
+              t % filters(j) % n_bins = energy_groups
+
+              ! Allocate and store bins
+              allocate(t % filters(j) % real_bins(energy_groups))
+              t % filters(j) % real_bins = energy_bins
+            end if
 
             ! Set to analog estimator
             t % estimator = ESTIMATOR_ANALOG
 
           case ('delayedgroup')
+            ! Check to see if running in MG mode, because if so, the current
+            ! system isnt set up yet to support delayed group data and thus
+            ! these tallies
+            if (.not. run_CE) then
+              call fatal_error("delayedgroup filter on tally " &
+                               // trim(to_str(t % id)) // " not yet supported&
+                               & for multi-group mode.")
+            end if
+
             ! Set type of filter
             t % filters(j) % type = FILTER_DELAYEDGROUP
 
@@ -3219,6 +3255,12 @@ contains
           case ('n4n', '(n,4n)')
             t % score_bins(j) = N_4N
 
+            ! Disallow for MG mode since data not present
+            if (.not. run_CE) then
+              call fatal_error("Cannot tally (n,4n) reaction rate in &
+                               &multi-group mode")
+            end if
+
           case ('absorption')
             t % score_bins(j) = SCORE_ABSORPTION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
@@ -3242,6 +3284,12 @@ contains
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
+            end if
+
+            ! Disallow for MG mode since data not present
+            if (.not. run_CE) then
+              call fatal_error("Cannot tally delayed nu-fission rate in &
+                               &multi-group mode")
             end if
           case ('kappa-fission')
             t % score_bins(j) = SCORE_KAPPA_FISSION
@@ -3398,6 +3446,14 @@ contains
             end if
 
           end select
+
+          ! Do a check at the end (instead of for every case) to make sure
+          ! the tallies are compatible with MG mode where we have less detailed
+          ! nuclear data
+            if (.not. run_CE .and. t % score_bins(j) > 0) then
+              call fatal_error("Cannot tally " // trim(score_name) // &
+                               " reaction rate in multi-group mode")
+            end if
         end do
 
         t % n_score_bins = n_scores

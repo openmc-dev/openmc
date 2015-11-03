@@ -546,6 +546,13 @@ module nuclide_header
       integer, optional, intent(in)  :: i_pol  ! Polar Index
       real(8)                        :: xs     ! Resultant xs
 
+      xs = ZERO
+
+      if ((xstype == 'nu_fission' .or. xstype == 'fission' .or. xstype =='chi' &
+           .or. xstype =='k_fission') .and. (.not. this % fissionable)) then
+        return
+      end if
+
       if (present(gout)) then
         select case(xstype)
         case('mult')
@@ -562,7 +569,9 @@ module nuclide_header
         case('fission')
           xs = this % fission(g)
         case('k_fission')
-          xs = this % k_fission(g)
+          if (allocated(this % k_fission)) then
+            xs = this % k_fission(g)
+          end if
         case('chi')
           xs = this % chi(g)
         case('scatter')
@@ -583,6 +592,13 @@ module nuclide_header
       real(8)                          :: xs     ! Resultant xs
 
       integer :: i_azi_, i_pol_
+
+      xs = ZERO
+
+      if ((xstype == 'nu_fission' .or. xstype == 'fission' .or. xstype =='chi' &
+           .or. xstype =='k_fission') .and. (.not. this % fissionable)) then
+        return
+      end if
 
       if (present(i_azi) .and. present(i_pol)) then
         i_azi_ = i_azi
@@ -609,7 +625,9 @@ module nuclide_header
         case('fission')
           xs = this % fission(g,i_azi_,i_pol_)
         case('k_fission')
-          xs = this % k_fission(g,i_azi_,i_pol_)
+          if (allocated(this % k_fission)) then
+            xs = this % k_fission(g,i_azi_,i_pol_)
+          end if
         case('chi')
           xs = this % chi(g,i_azi_,i_pol_)
         case('scatter')
@@ -637,11 +655,7 @@ module nuclide_header
       my_pol = acos(uvw(3))
       my_azi = atan2(uvw(2), uvw(1))
 
-      ! Quick and clear (but slower):
-      ! i_pol = minloc(abs(polar - my_pol),dim=1)
-      ! i_azi = minloc(abs(azimuthal - my_azi),dim=1)
-
-      ! Fast search for equi-binned angles
+      ! Search for equi-binned angles
       dangle = PI / (real(size(polar),8))
       i_pol  = floor(my_pol / dangle + ONE)
       dangle = TWO * PI / (real(size(azimuthal),8))

@@ -38,7 +38,7 @@ module particle_header
 ! geometry
 !===============================================================================
 
-  type, abstract :: Particle_Base
+  type Particle
     ! Basic data
     integer(8) :: id            ! Unique ID
     integer    :: type          ! Particle type (n, p, e, etc)
@@ -46,6 +46,12 @@ module particle_header
     ! Particle coordinates
     integer          :: n_coord          ! number of current coordinates
     type(LocalCoord) :: coord(MAX_COORD) ! coordinates for all levels
+
+    ! Energy Data
+    real(8)    :: E      ! post-collision energy
+    real(8)    :: last_E ! pre-collision energy
+    integer    :: g      ! post-collision energy group (MG only)
+    integer    :: last_g ! pre-collision energy group (MG only)
 
     ! Other physical data
     real(8)    :: wgt           ! particle weight
@@ -90,39 +96,9 @@ module particle_header
   contains
     procedure, pass :: initialize => initialize_particle
     procedure, pass :: clear => clear_particle
-    procedure, pass :: initialize_from_source => initialize_from_source_base
-    procedure, pass :: create_secondary => create_secondary_base
-    procedure(collision_), deferred, pass :: pre_collision
-  end type Particle_Base
-
-  abstract interface
-    subroutine collision_(this)
-      import Particle_Base
-      class(Particle_Base), intent(inout) :: this
-    end subroutine collision_
-  end interface
-
-  type, extends(Particle_Base) :: Particle_CE
-    ! Energy Data
-    real(8)    :: E      ! post-collision energy
-    real(8)    :: last_E ! pre-collision energy
-
-  contains
-    procedure :: initialize_from_source => initialize_from_source_ce
-    procedure :: create_secondary => create_secondary_ce
-    procedure :: pre_collision => pre_collision_ce
-  end type Particle_CE
-
-  type, extends(Particle_Base) :: Particle_MG
-    ! Energy Data
-    integer    :: g      ! post-collision energy group
-    integer    :: last_g ! pre-collision energy group
-
-  contains
-    procedure :: initialize_from_source => initialize_from_source_mg
-    procedure :: create_secondary => create_secondary_mg
-    procedure :: pre_collision => pre_collision_mg
-  end type Particle_MG
+    procedure, pass :: initialize_from_source => initialize_from_source
+    procedure, pass :: create_secondary => create_secondary
+  end type Particle
 
 contains
 
@@ -133,7 +109,7 @@ contains
 
   subroutine initialize_particle(this)
 
-    class(Particle_Base) :: this
+    class(Particle) :: this
 
     ! Clear coordinate lists
     call this % clear()
@@ -169,7 +145,7 @@ contains
 
   subroutine clear_particle(this)
 
-    class(Particle_Base) :: this
+    class(Particle) :: this
     integer :: i
 
     ! remove any coordinate levels
@@ -202,9 +178,10 @@ contains
 ! fission, or simply as a secondary particle.
 !===============================================================================
 
-  subroutine initialize_from_source_base(this, src)
-    class(Particle_Base), intent(inout) :: this
-    type(Bank),           intent(in)    :: src
+  subroutine initialize_from_source(this, src, run_CE)
+    class(Particle), intent(inout) :: this
+    type(Bank),      intent(in)    :: src
+    logical,         intent(in)    :: run_CE
 
     ! set defaults
     call this % initialize()
@@ -216,44 +193,25 @@ contains
     this % coord(1) % uvw = src % uvw
     this % last_xyz       = src % xyz
     this % last_uvw       = src % uvw
-
-  end subroutine initialize_from_source_base
-
-  subroutine initialize_from_source_ce(this, src)
-    class(Particle_CE), intent(inout) :: this
-    type(Bank),         intent(in)    :: src
-
-    ! set defaults a nd init base
-    call initialize_from_source_base(this, src)
-
-    ! copy attributes from source bank site
     this % E              = src % E
     this % last_E         = src % E
+    if (.not. run_CE) then
+      this % g              = src % g
+      this % last_g         = src % g
+    end if
 
-  end subroutine initialize_from_source_ce
-
-  subroutine initialize_from_source_mg(this, src)
-    class(Particle_MG), intent(inout) :: this
-    type(Bank),         intent(in)    :: src
-
-    ! set defaults and init base
-    call initialize_from_source_base(this, src)
-
-    ! copy attributes from source bank site
-    this % g              = src % g
-    this % last_g         = src % g
-
-  end subroutine initialize_from_source_mg
+  end subroutine initialize_from_source
 
 !===============================================================================
 ! CREATE_SECONDARY stores the current phase space attributes of the particle in
 ! the secondary bank and increments the number of sites in the secondary bank.
 !===============================================================================
 
-  subroutine create_secondary_base(this, uvw, type)
-    class(Particle_Base), intent(inout) :: this
-    real(8),         intent(in)         :: uvw(3)
-    integer,         intent(in)         :: type
+  subroutine create_secondary(this, uvw, type, run_CE)
+    class(Particle), intent(inout) :: this
+    real(8),         intent(in)    :: uvw(3)
+    integer,         intent(in)    :: type
+    logical,         intent(in)    :: run_CE
 
     integer :: n
 
@@ -268,59 +226,11 @@ contains
     this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
     this % secondary_bank(n) % uvw(:) = uvw
     this % n_secondary = n
-
-  end subroutine create_secondary_base
-
-  subroutine create_secondary_ce(this, uvw, type)
-    class(Particle_CE), intent(inout) :: this
-    real(8),         intent(in)       :: uvw(3)
-    integer,         intent(in)       :: type
-
-    call create_secondary_base(this, uvw, type)
-
     this % secondary_bank(this % n_secondary) % E = this % E
+    if (.not. run_CE) then
+      this % secondary_bank(this % n_secondary) % g = this % g
+    end if
 
-  end subroutine create_secondary_ce
-
-  subroutine create_secondary_mg(this, uvw, type)
-    class(Particle_MG), intent(inout) :: this
-    real(8),         intent(in)       :: uvw(3)
-    integer,         intent(in)       :: type
-
-    call create_secondary_base(this, uvw, type)
-
-    this % secondary_bank(this % n_secondary) % g = this % g
-
-  end subroutine create_secondary_mg
-
-!===============================================================================
-! PRE_COLLISION_* Updates pre-collision particle properties
-!===============================================================================
-
-  subroutine pre_collision_ce(this)
-    class(Particle_CE), intent(inout) :: this
-
-    ! Store pre-collision particle properties
-    this % last_wgt = this % wgt
-    this % last_E   = this % E
-    this % last_uvw = this % coord(1) % uvw
-
-    ! Add to collision counter for particle
-    this % n_collision = this % n_collision + 1
-
-  end subroutine pre_collision_ce
-
-  subroutine pre_collision_mg(this)
-    class(Particle_MG), intent(inout) :: this
-
-    ! Store pre-collision particle properties
-    this % last_wgt = this % wgt
-    this % last_g   = this % g
-    this % last_uvw = this % coord(1) % uvw
-
-    ! Add to collision counter for particle
-    this % n_collision = this % n_collision + 1
-
-  end subroutine pre_collision_mg
+  end subroutine create_secondary
 
 end module particle_header

@@ -9,7 +9,7 @@ module tracking
   use global
   use macroxs,         only: calculate_mgxs
   use output,          only: write_message
-  use particle_header, only: LocalCoord, Particle_Base, Particle_CE, Particle_MG
+  use particle_header, only: LocalCoord, Particle
   use physics,         only: collision
   use physics_mg,      only: collision_mg
   use random_lcg,      only: prn
@@ -29,7 +29,7 @@ contains
 
   subroutine transport(p)
 
-    class(Particle_Base), intent(inout) :: p
+    type(Particle), intent(inout) :: p
 
     integer :: j                      ! coordinate level
     integer :: next_level             ! next coordinate level to check
@@ -84,20 +84,18 @@ contains
       if (check_overlaps) call check_cell_overlap(p)
 
       ! Calculate microscopic and macroscopic cross sections
-
-      select type(p)
-      type is (Particle_CE)
+      if (run_CE) then
         ! If the material is the same as the last material and the energy of the
         ! particle hasn't changed, we don't need to lookup cross sections again.
         if (p % material /= p % last_material) call calculate_xs(p)
-      type is (Particle_MG)
+      else
         ! Since the MGXS can be angle dependent, this needs to be done
         ! After every collision for the MGXS mode
         call calculate_mgxs(macro_xs(p % material) % obj, &
                             materials(p % material), nuclides_MG, p % g, &
                             p % coord(p % n_coord) % uvw, material_xs, &
                             micro_xs)
-      end select
+      end if
 
       ! Find the distance to the nearest boundary
       call distance_to_boundary(p, d_boundary, surface_crossed, &
@@ -120,10 +118,7 @@ contains
 
       ! Score track-length tallies
       if (active_tracklength_tallies % size() > 0) then
-        select type(p)
-        type is (Particle_CE)
-          call score_tracklength_tally(p, distance)
-        end select
+        call score_tracklength_tally(p, distance)
       end if
 
 
@@ -170,21 +165,17 @@ contains
         ! Clear surface component
         p % surface = NONE
 
-        select type(p)
-        type is (Particle_CE)
+        if (run_CE) then
           call collision(p)
-        type is (Particle_MG)
+        else
           call collision_mg(p)
-        end select
+        end if
 
         ! Score collision estimator tallies -- this is done after a collision
         ! has occurred rather than before because we need information on the
         ! outgoing energy for any tallies with an outgoing energy filter
-        select type(p)
-        type is (Particle_CE)
-          if (active_collision_tallies % size() > 0) call score_collision_tally(p)
-          if (active_analog_tallies % size() > 0) call score_analog_tally(p)
-        end select
+        if (active_collision_tallies % size() > 0) call score_collision_tally(p)
+        if (active_analog_tallies % size() > 0) call score_analog_tally(p)
 
         ! Reset banked weight during collision
         p % n_bank   = 0
@@ -226,7 +217,8 @@ contains
       ! Check for secondary particles if this particle is dead
       if (.not. p % alive) then
         if (p % n_secondary > 0) then
-          call p % initialize_from_source(p % secondary_bank(p % n_secondary))
+          call p % initialize_from_source(p % secondary_bank(p % n_secondary), &
+                                          run_CE)
           p % n_secondary = p % n_secondary - 1
 
           ! Enter new particle in particle track file

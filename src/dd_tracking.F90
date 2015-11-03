@@ -42,7 +42,7 @@ contains
     ! boundaries NOT being selected by distance_to_boundary when they are
     ! coincident with boundary condition surfaces.
     if (any(lattice_translation /= 0) .or. & ! communicate if lattice trans
-        .not. (surfaces(abs(surface_crossed)) % bc /= BC_TRANSMIT .and. &
+        .not. (surfaces(abs(surface_crossed))%obj % bc /= BC_TRANSMIT .and. &
                d_collision > d_boundary .and. &
                abs(d_dd_mesh - d_boundary) < FP_COINCIDENT)) then
 
@@ -76,7 +76,7 @@ contains
     integer :: to_bin      ! local relative bin the particle is traveling to
   
     ! Calculate current point and calculate the bin in the DD mesh
-    xyz = p % coord0 % xyz + (TINY_BIT + flying_dist)* p % coord0 % uvw
+    xyz = p % coord(1) % xyz + (TINY_BIT + flying_dist)* p % coord(1) % uvw
     call get_mesh_bin(dd % mesh, xyz, to_meshbin)
     
     ! Check for particle leaking out of domain mesh - this is a user input error
@@ -84,9 +84,9 @@ contains
       if (.not. dd % allow_truncation)  then
         call fatal_error("For non-truncated DD mode, particle " // &
                   trim(to_str(p % id)) // " leaked out of DD mesh at (" // &
-                  trim(to_str(p % coord0 % xyz(1))) // ", " // &
-                  trim(to_str(p % coord0 % xyz(2))) // ", " // &
-                  trim(to_str(p % coord0 % xyz(3))) // ") on rank " // &
+                  trim(to_str(p % coord(1) % xyz(1))) // ", " // &
+                  trim(to_str(p % coord(1) % xyz(2))) // ", " // &
+                  trim(to_str(p % coord(1) % xyz(3))) // ") on rank " // &
                   trim(to_str(rank)) // ". Does the DD mesh " // &
                   "completely envelope the defined geometry?")
       end if
@@ -98,9 +98,9 @@ contains
       call fatal_error("Can't determine which domain to send particle " // &
           "on rank " // trim(to_str(rank)) // ". Particle "// &
                   trim(to_str(p % id)) // " at (" // &
-                  trim(to_str(p % coord0 % xyz(1))) // ", " // &
-                  trim(to_str(p % coord0 % xyz(2))) // ", " // &
-                  trim(to_str(p % coord0 % xyz(3))) // ") on rank " // &
+                  trim(to_str(p % coord(1) % xyz(1))) // ", " // &
+                  trim(to_str(p % coord(1) % xyz(2))) // ", " // &
+                  trim(to_str(p % coord(1) % xyz(3))) // ") on rank " // &
                   trim(to_str(rank)) // ". (to_meshbin, dd % meshbin): (" // &
                   trim(to_str(to_meshbin)) // ", " // &
                   trim(to_str(dd % meshbin)) // ").  prn_seed: " // &
@@ -131,8 +131,8 @@ contains
     dd % n_scatters_local(to_bin) = dd % n_scatters_local(to_bin) + 1
     
     ! Save the transport info needed to restart the particle in the new domain
-    p % stored_xyz      = p % coord0 % xyz
-    p % stored_uvw      = p % coord0 % uvw
+    p % stored_xyz      = p % coord(1) % xyz
+    p % stored_uvw      = p % coord(1) % uvw
     p % stored_distance = tracking_dist
     p % fly_dd_distance = flying_dist
     p % prn_seed        = prn_seed
@@ -156,7 +156,7 @@ contains
 
     integer(8) :: tmp_seed(N_STREAMS) ! Temporary variable to hold prn_seed
 
-    if (p % material /= NONE .and. p % material == p % last_material) then
+    if (p % material /= NONE) then  ! .and. p % material == p % last_material
       tmp_seed = prn_seed
       prn_seed = p % xs_seed
       call calculate_xs(p)

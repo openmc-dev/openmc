@@ -2,7 +2,7 @@
 <tallies>
 
   <mesh id="1">
-    <type>rectangular</type>
+    <type>regular</type>
     <lower_left>-182.07 -182.07 -183.00</lower_left>
     <upper_right>182.07 182.07 183.00</upper_right>
     <dimension>17 17 17</dimension>

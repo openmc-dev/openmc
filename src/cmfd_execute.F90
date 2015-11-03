@@ -95,7 +95,7 @@ contains
 
 #ifdef MPI
     use global,     only: mpi_err
-    use mpi
+    use message_passing
 #endif
 
     integer :: nx      ! maximum number of cells in x direction
@@ -121,7 +121,7 @@ contains
 
     ! Allocate cmfd source if not already allocated and allocate buffer
     if (.not. allocated(cmfd % cmfd_src)) &
-       allocate(cmfd % cmfd_src(ng,nx,ny,nz))
+         allocate(cmfd % cmfd_src(ng,nx,ny,nz))
 
     ! Reset cmfd source to 0
     cmfd % cmfd_src = ZERO
@@ -217,14 +217,14 @@ contains
     use error,       only: warning, fatal_error
     use global,      only: meshes, source_bank, work, n_user_meshes, cmfd, &
                            master
-    use mesh_header, only: StructuredMesh
+    use mesh_header, only: RegularMesh
     use mesh,        only: count_bank_sites, get_mesh_indices
     use search,      only: binary_search
     use string,      only: to_str
 
 #ifdef MPI
     use global,      only: mpi_err
-    use mpi
+    use message_passing
 #endif
 
     logical, intent(in) :: new_weights ! calcualte new weights
@@ -239,8 +239,7 @@ contains
     integer :: n_groups ! number of energy groups
     logical :: outside  ! any source sites outside mesh
     logical :: in_mesh  ! source site is inside mesh
-
-    type(StructuredMesh), pointer :: m ! point to mesh
+    type(RegularMesh), pointer :: m ! point to mesh
 
     ! Associate pointer
     m => meshes(n_user_meshes + 1)

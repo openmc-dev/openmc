@@ -2,7 +2,6 @@ module material_header
 
   use constants,        only: OTF_HEADROOM, MAX_LINE_LEN
   use dict_header,      only: DictIntInt
-  use output_interface, only: BinaryOutput
 
 #ifdef HDF5
   use hdf5
@@ -29,7 +28,6 @@ module material_header
   type CompositionFile
     character(MAX_LINE_LEN) :: path         ! path to the file
     character(MAX_LINE_LEN) :: group        ! group in HDF5 file
-    type(BinaryOutput)      :: fh           ! file handle
     integer                 :: n_nuclides   ! number of comps per row
     integer                 :: n_instances  ! number of comp rows
     logical                 :: initialized = .false.
@@ -67,7 +65,7 @@ module material_header
 
   type Material
     integer                        :: id          ! unique identifier
-    character(len=52)              :: name = ""   ! User-defined name
+    character(len=104)             :: name = ""   ! User-defined name
     integer                        :: n_nuclides  ! number of nuclides
     integer                        :: n_comp      ! number of compositions
     integer                        :: distribcell ! 1-to-1 distributed cell id

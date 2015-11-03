@@ -3,6 +3,7 @@ module tally_header
   use constants,          only: NONE, N_FILTER_TYPES, OTF_HEADROOM
   use dict_header,        only: DictIntInt
   use trigger_header,     only: TriggerObject
+  use, intrinsic :: ISO_C_BINDING
 
   implicit none
 
@@ -40,10 +41,10 @@ module tally_header
 ! TALLYRESULT provides accumulation of results in a particular tally bin
 !===============================================================================
 
-  type TallyResult
-    real(8) :: value    = 0.
-    real(8) :: sum      = 0.
-    real(8) :: sum_sq   = 0.
+  type, bind(C) :: TallyResult
+    real(C_DOUBLE) :: value    = 0.
+    real(C_DOUBLE) :: sum      = 0.
+    real(C_DOUBLE) :: sum_sq   = 0.
   end type TallyResult
 
 !===============================================================================
@@ -74,7 +75,7 @@ module tally_header
     ! Basic data
 
     integer :: id                   ! user-defined identifier
-    character(len=52) :: name = ""  ! user-defined name
+    character(len=104) :: name = "" ! user-defined name
     integer :: type                 ! volume, surface current
     integer :: estimator            ! collision, track-length
     real(8) :: volume               ! volume of region
@@ -143,7 +144,7 @@ module tally_header
 
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
-    
+
     ! Tally precision triggers
     integer                           :: n_triggers = 0  ! # of triggers
     type(TriggerObject),  allocatable :: triggers(:)     ! Array of triggers
@@ -309,10 +310,10 @@ module tally_header
       this % reset = .false.
 
       this % n_realizations = 0
-      
+
       if (allocated(this % triggers)) &
            deallocate (this % triggers)
-      
+
       this % n_triggers = 0
 
     end subroutine tallyobject_clear

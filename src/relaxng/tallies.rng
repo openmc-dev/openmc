@@ -14,16 +14,10 @@
           </choice>
           <choice>
             <element name="type">
-              <choice>
-                <value>rectangular</value>
-                <value>hexagonal</value>
-              </choice>
+              <value>regular</value>
             </element>
             <attribute name="type">
-              <choice>
-                <value>rectangular</value>
-                <value>hexagonal</value>
-              </choice>
+              <value>regular</value>
             </attribute>
           </choice>
           <choice>
@@ -151,6 +145,10 @@
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
+                      <value>delayedgroup</value>
+                      <value>mu</value>
+                      <value>polar</value>
+                      <value>azimuthal</value>
                     </choice>
                   </element>
                   <attribute name="type">
@@ -164,6 +162,10 @@
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
+                      <value>delayedgroup</value>
+                      <value>mu</value>
+                      <value>polar</value>
+                      <value>azimuthal</value>
                     </choice>
                   </attribute>
                 </choice>

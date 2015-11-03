@@ -39,6 +39,7 @@ src/xml-fortran/xmlreader
 
 # Test results error file
 results_error.dat
+inputs_error.dat
 
 # Test build files
 tests/build/
@@ -63,3 +64,13 @@ data/nndc
 # PyCharm project configuration files
 .idea
 .idea/*
+
+# IPython notebook checkpoints
+.ipynb_checkpoints
+
+# Multi-group cross section IPython Notebook
+docs/source/pythonapi/examples/*.xml
+docs/source/pythonapi/examples/*.png
+docs/source/pythonapi/examples/*.xls
+docs/source/pythonapi/examples/mgxs
+docs/source/pythonapi/examples/tracks

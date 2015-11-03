@@ -7,18 +7,14 @@ module constants
 
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
-  integer, parameter :: VERSION_MINOR   = 6
-  integer, parameter :: VERSION_RELEASE = 2
+  integer, parameter :: VERSION_MINOR   = 7
+  integer, parameter :: VERSION_RELEASE = 0
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 15
+  integer, parameter :: REVISION_STATEPOINT       = 14
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
-
-  ! Binary file types
-  integer, parameter :: &
-       FILETYPE_STATEPOINT       = -1, &
-       FILETYPE_PARTICLE_RESTART = -2, &
-       FILETYPE_SOURCE           = -3
+  integer, parameter :: REVISION_TRACK            = 1
+  integer, parameter :: REVISION_SUMMARY          = 1
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS
@@ -27,7 +23,7 @@ module constants
   ! adjusted. Modifying constants in other sections may cause the code to fail.
 
   ! Monoatomic ideal-gas scattering treatment threshold
-  real(8), parameter :: FREE_GAS_THRESHOLD = 400.0
+  real(8), parameter :: FREE_GAS_THRESHOLD = 400.0_8
 
   ! Significance level for confidence intervals
   real(8), parameter :: CONFIDENCE_LEVEL = 0.95_8
@@ -43,6 +39,9 @@ module constants
   ! Maximum number of collisions/crossings
   integer, parameter :: MAX_EVENTS = 10000
   integer, parameter :: MAX_SAMPLE = 100000
+
+  ! Maximum number of secondary particles created
+  integer, parameter :: MAX_SECONDARY = 1000
 
   ! Maximum number of words in a single line, length of line, and length of
   ! single word
@@ -61,17 +60,22 @@ module constants
   ! Values here are from the Committee on Data for Science and Technology
   ! (CODATA) 2010 recommendation (doi:10.1103/RevModPhys.84.1527).
 
-  real(8), parameter ::            &
-       PI           = 3.1415926535898_8, & ! pi
-       MASS_NEUTRON = 1.008664916,       & ! mass of a neutron in amu
-       MASS_PROTON  = 1.007276466812,    & ! mass of a proton in amu
-       AMU          = 1.660538921e-27,   & ! 1 amu in kg
-       N_AVOGADRO   = 0.602214129,       & ! Avogadro's number in 10^24/mol
-       K_BOLTZMANN  = 8.6173324e-11,     & ! Boltzmann constant in MeV/K
-       INFINITY     = huge(0.0_8),       & ! positive infinity
-       ZERO         = 0.0_8,             &
-       ONE          = 1.0_8,             &
-       TWO          = 2.0_8
+  real(8), parameter ::                      &
+       PI               = 3.1415926535898_8, & ! pi
+       MASS_NEUTRON     = 1.008664916_8,     & ! mass of a neutron in amu
+       MASS_NEUTRON_MEV = 939.565379_8,      & ! mass of a neutron in MeV/c^2
+       MASS_PROTON      = 1.007276466812_8,  & ! mass of a proton in amu
+       AMU              = 1.660538921e-27_8, & ! 1 amu in kg
+       C_LIGHT          = 2.99792458e8_8,    & ! speed of light in m/s
+       N_AVOGADRO       = 0.602214129_8,     & ! Avogadro's number in 10^24/mol
+       K_BOLTZMANN      = 8.6173324e-11_8,   & ! Boltzmann constant in MeV/K
+       INFINITY         = huge(0.0_8),       & ! positive infinity
+       ZERO             = 0.0_8,             &
+       HALF             = 0.5_8,             &
+       ONE              = 1.0_8,             &
+       TWO              = 2.0_8,             &
+       THREE            = 3.0_8,             &
+       FOUR             = 4.0_8
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS
@@ -85,10 +89,11 @@ module constants
 
   ! Logical operators for cell definitions
   integer, parameter ::              &
-       OP_LEFT_PAREN  = huge(0),     & ! Left parentheses
-       OP_RIGHT_PAREN = huge(0) - 1, & ! Right parentheses
-       OP_UNION       = huge(0) - 2, & ! Union operator
-       OP_DIFFERENCE  = huge(0) - 3    ! Difference operator
+       OP_LEFT_PAREN   = huge(0),     & ! Left parentheses
+       OP_RIGHT_PAREN  = huge(0) - 1, & ! Right parentheses
+       OP_COMPLEMENT   = huge(0) - 2, & ! Complement operator (~)
+       OP_INTERSECTION = huge(0) - 3, & ! Intersection operator
+       OP_UNION        = huge(0) - 4    ! Union operator (^)
 
   ! Cell types
   integer, parameter ::  &
@@ -243,7 +248,8 @@ module constants
   ! Tally estimator types
   integer, parameter :: &
        ESTIMATOR_ANALOG      = 1, &
-       ESTIMATOR_TRACKLENGTH = 2
+       ESTIMATOR_TRACKLENGTH = 2, &
+       ESTIMATOR_COLLISION   = 3
 
   ! Event types for tallies
   integer, parameter :: &
@@ -253,28 +259,30 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 20
+  integer, parameter :: N_SCORE_TYPES = 22
   integer, parameter :: &
-       SCORE_FLUX          = -1,  & ! flux
-       SCORE_TOTAL         = -2,  & ! total reaction rate
-       SCORE_SCATTER       = -3,  & ! scattering rate
-       SCORE_NU_SCATTER    = -4,  & ! scattering production rate
-       SCORE_SCATTER_N     = -5,  & ! arbitrary scattering moment
-       SCORE_SCATTER_PN    = -6,  & ! system for scoring 0th through nth moment
-       SCORE_NU_SCATTER_N  = -7,  & ! arbitrary nu-scattering moment
-       SCORE_NU_SCATTER_PN = -8,  & ! system for scoring 0th through nth nu-scatter moment
-       SCORE_TRANSPORT     = -9,  & ! transport reaction rate
-       SCORE_N_1N          = -10, & ! (n,1n) rate
-       SCORE_ABSORPTION    = -11, & ! absorption rate
-       SCORE_FISSION       = -12, & ! fission rate
-       SCORE_NU_FISSION    = -13, & ! neutron production rate
-       SCORE_KAPPA_FISSION = -14, & ! fission energy production rate
-       SCORE_CURRENT       = -15, & ! partial current
-       SCORE_FLUX_YN       = -16, & ! angular moment of flux
-       SCORE_TOTAL_YN      = -17, & ! angular moment of total reaction rate
-       SCORE_SCATTER_YN    = -18, & ! angular flux-weighted scattering moment (0:N)
-       SCORE_NU_SCATTER_YN = -19, & ! angular flux-weighted nu-scattering moment (0:N)
-       SCORE_EVENTS        = -20    ! number of events
+       SCORE_FLUX               = -1,  & ! flux
+       SCORE_TOTAL              = -2,  & ! total reaction rate
+       SCORE_SCATTER            = -3,  & ! scattering rate
+       SCORE_NU_SCATTER         = -4,  & ! scattering production rate
+       SCORE_SCATTER_N          = -5,  & ! arbitrary scattering moment
+       SCORE_SCATTER_PN         = -6,  & ! system for scoring 0th through nth moment
+       SCORE_NU_SCATTER_N       = -7,  & ! arbitrary nu-scattering moment
+       SCORE_NU_SCATTER_PN      = -8,  & ! system for scoring 0th through nth nu-scatter moment
+       SCORE_TRANSPORT          = -9,  & ! transport reaction rate
+       SCORE_N_1N               = -10, & ! (n,1n) rate
+       SCORE_ABSORPTION         = -11, & ! absorption rate
+       SCORE_FISSION            = -12, & ! fission rate
+       SCORE_NU_FISSION         = -13, & ! neutron production rate
+       SCORE_KAPPA_FISSION      = -14, & ! fission energy production rate
+       SCORE_CURRENT            = -15, & ! partial current
+       SCORE_FLUX_YN            = -16, & ! angular moment of flux
+       SCORE_TOTAL_YN           = -17, & ! angular moment of total reaction rate
+       SCORE_SCATTER_YN         = -18, & ! angular flux-weighted scattering moment (0:N)
+       SCORE_NU_SCATTER_YN      = -19, & ! angular flux-weighted nu-scattering moment (0:N)
+       SCORE_EVENTS             = -20, & ! number of events
+       SCORE_DELAYED_NU_FISSION = -21, & ! delayed neutron production rate
+       SCORE_INVERSE_VELOCITY   = -22    ! flux-weighted inverse velocity
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -297,17 +305,25 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 9
+  integer, parameter :: N_FILTER_TYPES = 13
   integer, parameter :: &
-       FILTER_UNIVERSE    = 1, &
-       FILTER_MATERIAL    = 2, &
-       FILTER_CELL        = 3, &
-       FILTER_CELLBORN    = 4, &
-       FILTER_SURFACE     = 5, &
-       FILTER_MESH        = 6, &
-       FILTER_ENERGYIN    = 7, &
-       FILTER_ENERGYOUT   = 8, &
-       FILTER_DISTRIBCELL = 9
+       FILTER_UNIVERSE     = 1,  &
+       FILTER_MATERIAL     = 2,  &
+       FILTER_CELL         = 3,  &
+       FILTER_CELLBORN     = 4,  &
+       FILTER_SURFACE      = 5,  &
+       FILTER_MESH         = 6,  &
+       FILTER_ENERGYIN     = 7,  &
+       FILTER_ENERGYOUT    = 8,  &
+       FILTER_DISTRIBCELL  = 9,  &
+       FILTER_MU           = 10, &
+       FILTER_POLAR        = 11, &
+       FILTER_AZIMUTHAL    = 12, &
+       FILTER_DELAYEDGROUP = 13
+
+  ! Mesh types
+  integer, parameter :: &
+       MESH_REGULAR = 1
 
   ! Tally surface current directions
   integer, parameter :: &
@@ -317,14 +333,14 @@ module constants
        OUT_FRONT = 4,   &
        IN_TOP    = 5,   &
        OUT_TOP   = 6
-  
+
   ! Tally trigger types and threshold
   integer, parameter :: &
        VARIANCE           = 1, &
        RELATIVE_ERROR     = 2, &
-       STANDARD_DEVIATION = 3 
-       
-  ! Global tallY parameters
+       STANDARD_DEVIATION = 3
+
+  ! Global tally parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &
        K_COLLISION   = 1, &
@@ -422,5 +438,15 @@ module constants
 
   ! constant for writing out no residual
   real(8), parameter :: CMFD_NORES = 99999.0_8
+
+  !=============================================================================
+  ! DELAYED NEUTRON PRECURSOR CONSTANTS
+
+  ! Since cross section libraries come with different numbers of delayed groups
+  ! (e.g. ENDF/B-VII.1 has 6 and JEFF 3.1.1 has 8 delayed groups) and we don't
+  ! yet know what cross section library is being used when the tallies.xml file
+  ! is read in, we want to have an upper bound on the size of the array we
+  ! use to store the bins for delayed group tallies.
+  integer, parameter :: MAX_DELAYED_GROUPS = 8
 
 end module constants

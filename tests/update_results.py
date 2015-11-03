@@ -10,9 +10,6 @@ from optparse import OptionParser
 import warnings
 
 parser = OptionParser()
-parser.add_option('--exe', dest='exe',
-                  help="Path to openmc executable with basic \
-                        configuration options (no HDF5, no MPI, etc.)")
 parser.add_option('--mpi_exec', dest='mpi_exec',
                   help="Path to mpiexec for tests that require it.")
 parser.add_option('-R', '--tests-regex', dest='regex_tests',
@@ -28,12 +25,6 @@ FAIL = '\033[91m'
 ENDC = '\033[0m'
 BOLD = '\033[1m'
 
-# Check for valid executable
-if opts.exe is None:
-    raise Exception('Need to specify an OpenMC executable')
-else:
-    openmc_exe = os.path.abspath(opts.exe)
-
 # Get a list of all test folders
 folders = glob('test_*')
 
@@ -43,10 +34,6 @@ if opts.regex_tests is not None:
 
 # Loop around directories
 for adir in sorted(folders):
-
-    # Skip test compile or plot
-    if adir.find('plot') != -1:
-        continue
 
     # Go into that directory
     os.chdir(adir)
@@ -59,19 +46,13 @@ for adir in sorted(folders):
     for i in range(35 - sz):
         print('.', end="")
 
-    # Handle source file test separately since it requires running OpenMC twice
-    if adir == 'test_source_file':
-        if os.path.exists('results_error.dat'):
-            os.remove('results_error.dat')
-        proc = Popen(['python', 'test_source_file.py', '--exe', openmc_exe],
-                     stderr=STDOUT, stdout=PIPE)
-        returncode = proc.wait()
-        if os.path.exists('results_error.dat'):
-            os.rename('results_error.dat', 'results_true.dat')
-        print(BOLD + OKGREEN + "[OK]" + ENDC)
-        os.chdir('..')
-        continue
+    # Find the test executable
+    test_exec = glob('test_*.py')
+    assert len(test_exec) == 1, 'There must be only one test executable per ' \
+         'test directory'
 
+    # Update the test results
+    proc = Popen(['python', test_exec[0], '--update'])
     # Handle DD test separately since it requires running OpenMC twice
     if adir == 'test_domain_decomp':
         if opts.mpi_exec is None:
@@ -122,13 +103,6 @@ for adir in sorted(folders):
         print(BOLD + OKGREEN + "[OK]" + ENDC)
     else:
         print(BOLD + FAIL + "[FAILED]" + ENDC)
-
-    # Process results
-    if returncode == 0:
-        call(['python', 'results.py'])
-        os.rename('results_test.dat', 'results_true.dat')
-        for path in glob("*.binary") + glob("*.out"):
-            os.remove(path)
 
     # Go back a directory
     os.chdir('..')

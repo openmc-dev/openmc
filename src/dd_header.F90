@@ -1,7 +1,7 @@
 module dd_header 
 
   use dict_header,      only: DictIntInt
-  use mesh_header,      only: StructuredMesh
+  use mesh_header,      only: RegularMesh
   use particle_header,  only: Particle, ParticleBuffer
 
   implicit none
@@ -11,7 +11,7 @@ module dd_header
   type, public :: dd_type
 
     ! Domain mesh information
-    type(StructuredMesh), pointer :: mesh => null()
+    type(RegularMesh), pointer :: mesh => null()
     integer :: n_domains
     integer :: meshbin               ! mesh domain of current processor
     integer :: ijk(3)                ! ijk corresponding to the meshbin

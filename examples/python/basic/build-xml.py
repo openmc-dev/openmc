@@ -1,6 +1,5 @@
 import openmc
 
-
 ###############################################################################
 #                      Simulation Input File Parameters
 ###############################################################################
@@ -54,12 +53,11 @@ cell2 = openmc.Cell(cell_id=100, name='cell 2')
 cell3 = openmc.Cell(cell_id=101, name='cell 3')
 cell4 = openmc.Cell(cell_id=2, name='cell 4')
 
-# Register Surfaces with Cells
-cell1.add_surface(surface=surf2, halfspace=-1)
-cell2.add_surface(surface=surf1, halfspace=-1)
-cell3.add_surface(surface=surf1, halfspace=+1)
-cell4.add_surface(surface=surf2, halfspace=+1)
-cell4.add_surface(surface=surf3, halfspace=-1)
+# Use surface half-spaces to define regions
+cell1.region = -surf2
+cell2.region = -surf1
+cell3.region = +surf1
+cell4.region = +surf2 & -surf3
 
 # Register Materials with Cells
 cell2.fill = fuel
@@ -108,7 +106,7 @@ energy_filter = openmc.Filter(type='energy', bins=[0., 20.])
 energyout_filter = openmc.Filter(type='energyout', bins=[0., 20.])
 
 # Instantiate the first Tally
-first_tally = openmc.Tally(tally_id=1, label='first tally')
+first_tally = openmc.Tally(tally_id=1, name='first tally')
 first_tally.add_filter(cell_filter)
 scores = ['total', 'scatter', 'nu-scatter', \
           'absorption', 'fission', 'nu-fission']
@@ -116,7 +114,7 @@ for score in scores:
   first_tally.add_score(score)
 
 # Instantiate the second Tally
-second_tally = openmc.Tally(tally_id=2, label='second tally')
+second_tally = openmc.Tally(tally_id=2, name='second tally')
 second_tally.add_filter(cell_filter)
 second_tally.add_filter(energy_filter)
 scores = ['total', 'scatter', 'nu-scatter', \
@@ -125,7 +123,7 @@ for score in scores:
   second_tally.add_score(score)
 
 # Instantiate the third Tally
-third_tally = openmc.Tally(tally_id=3, label='third tally')
+third_tally = openmc.Tally(tally_id=3, name='third tally')
 third_tally.add_filter(cell_filter)
 third_tally.add_filter(energy_filter)
 third_tally.add_filter(energyout_filter)

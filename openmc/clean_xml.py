@@ -29,7 +29,7 @@ def sort_xml_elements(tree):
             comment_elements.append((element, next_element))
 
     # Now iterate over all tags and order the elements within each tag
-    for tag in tags:
+    for tag in sorted(list(tags)):
 
         # Retrieve all of the elements for this tag
         try:
@@ -82,11 +82,11 @@ def clean_xml_indentation(element, level=0):
         if not element.tail or not element.tail.strip():
             element.tail = i
 
-        for element in element:
-            clean_xml_indentation(element, level+1)
+        for sub_element in element:
+            clean_xml_indentation(sub_element, level+1)
 
-            if not element.tail or not element.tail.strip():
-                element.tail = i
+        if not sub_element.tail or not sub_element.tail.strip():
+            sub_element.tail = i
 
     else:
         if level and (not element.tail or not element.tail.strip()):

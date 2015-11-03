@@ -10,7 +10,7 @@ Constructive Solid Geometry
 
 OpenMC uses a technique known as `constructive solid geometry`_ (CSG) to build
 arbitrarily complex three-dimensional models in Euclidean space. In a CSG model,
-every unique object is described as the union, intersection, or difference of
+every unique object is described as the union and/or intersection of
 *half-spaces* created by bounding `surfaces`_. Every surface divides all of
 space into exactly two half-spaces. We can mathematically define a surface as a
 collection of points that satisfy an equation of the form :math:`f(x,y,z) = 0`
@@ -54,13 +54,12 @@ dividing space into two half-spaces.
    Example of an ellipse and its associated half-spaces.
 
 References to half-spaces created by surfaces are used to define regions of
-space of uniform composition, known as *cells*. While some codes allow regions
-to be defined by intersections, unions, and differences or half-spaces, OpenMC
-is currently limited to cells defined only as intersections of
-half-spaces. Thus, the specification of the cell must include a list of
-half-space references whose intersection defines the region. The region is then
-assigned a material defined elsewhere. Figure :num:`fig-union` shows an
-example of a cell defined as the intersection of an ellipse and two planes.
+space of uniform composition, which are then assigned to *cells*. OpenMC allows
+regions to be defined using union, intersection, and complement operators. As in
+MCNP_, the intersection operator is implicit as doesn't need to be written in a
+region specification. A defined region is then associated with a material
+composition in a cell. Figure :num:`fig-union` shows an example of a cell region
+defined as the intersection of an ellipse and two planes.
 
 .. _fig-union:
 
@@ -116,6 +115,10 @@ to fully define the surface.
     +----------------------+------------+------------------------------+-------------------------+
     | Cone parallel to the | z-cone     | :math:`(x-x_0)^2 + (y-y_0)^2 | :math:`x_0 \; y_0 \;    |
     | :math:`z`-axis       |            | = R^2(z-z_0)^2`              | z_0 \; R^2`             |
+    +----------------------+------------+------------------------------+-------------------------+
+    | General quadric      | quadric    | :math:`Ax^2 + By^2 + Cz^2 +  | :math:`A \; B \; C \; D |
+    | surface              |            | Dxy + Eyz + Fxz + Gx + Hy +  | \; E \; F \; G \; H \;  |
+    |                      |            | Jz + K`                      | J \; K`                 |
     +----------------------+------------+------------------------------+-------------------------+
 
 .. _universes:

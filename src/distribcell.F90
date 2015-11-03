@@ -2,7 +2,7 @@ module distribcell
 
   use constants
   use error,                  only: fatal_error, warning
-  use geometry_header,        only: Cell, Surface, Universe, Lattice, &
+  use geometry_header,        only: Cell, Universe, Lattice, &
                                     RectLattice, HexLattice, BASE_UNIVERSE
   use global
   use output,                 only: write_message, find_offset
@@ -26,29 +26,28 @@ contains
     integer,        intent(in) :: map_num     ! Distribcell map number
     integer,        intent(in) :: target_cell ! Target cell to search for
     integer                    :: instance
+    integer                    :: j           ! coordinate level index
+    integer                    :: n_coord     ! saved number of coordinate levels
 
     integer                   :: offset
-    type(LocalCoord), pointer :: coord
 
     instance = NO_BIN_FOUND
 
     ! Loop through each layer and sum the offsets for the given cell map
-    coord => p % coord0
+    n_coord = p % n_coord
     offset = 0
-    do while(associated(coord))
-      if (cells(coord % cell) % type == CELL_FILL) then
-        offset = offset + cells(coord % cell) % offset(map_num)
-      elseif (cells(coord % cell) % type == CELL_LATTICE) then
-        offset = offset + lattices(coord % next % lattice) % obj % &
-             offset(map_num, coord % next % lattice_x, &
-                    coord % next % lattice_y, coord % next % lattice_z)
-      elseif (coord % cell == target_cell) then
+    do j = 1, n_coord
+      if (cells(p % coord(j) % cell) % type == CELL_FILL) then
+        offset = offset + cells(p % coord(j) % cell) % offset(map_num)
+      elseif (cells(p % coord(j) % cell) % type == CELL_LATTICE) then
+        offset = offset + lattices(p % coord(j + 1) % lattice) % obj % &
+             offset(map_num, p % coord(j + 1) % lattice_x, &
+                    p % coord(j + 1) % lattice_y, p % coord(j + 1) % lattice_z)
+      elseif (p % coord(j) % cell == target_cell) then
         instance = offset + 1
         exit
       end if
-      coord => coord % next
     end do
-    nullify(coord)
 
   end function get_distribcell_instance
 

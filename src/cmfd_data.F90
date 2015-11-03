@@ -57,7 +57,7 @@ contains
     use global,       only: cmfd, n_cmfd_tallies, cmfd_tallies, meshes,&
                             matching_bins
     use mesh,         only: mesh_indices_to_bin
-    use mesh_header,  only: StructuredMesh
+    use mesh_header,  only: RegularMesh
     use string,       only: to_str
     use tally_header, only: TallyObject
 
@@ -79,8 +79,8 @@ contains
     integer :: i_filter_eout ! index for outgoing energy filter
     integer :: i_filter_surf ! index for surface filter
     real(8) :: flux          ! temp variable for flux
-    type(TallyObject),    pointer :: t => null() ! pointer for tally object
-    type(StructuredMesh), pointer :: m => null() ! pointer for mesh object
+    type(TallyObject), pointer :: t ! pointer for tally object
+    type(RegularMesh), pointer :: m ! pointer for mesh object
 
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -104,23 +104,23 @@ contains
 
     cmfd % keff_bal = ZERO
 
-   ! Begin loop around tallies
-   TAL: do ital = 1, n_cmfd_tallies
+    ! Begin loop around tallies
+    TAL: do ital = 1, n_cmfd_tallies
 
-     ! Associate tallies and mesh
-     t => cmfd_tallies(ital)
-     i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
-     m => meshes(i_mesh)
+      ! Associate tallies and mesh
+      t => cmfd_tallies(ital)
+      i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
+      m => meshes(i_mesh)
 
-     i_filter_mesh = t % find_filter(FILTER_MESH)
-     i_filter_ein  = t % find_filter(FILTER_ENERGYIN)
-     i_filter_eout = t % find_filter(FILTER_ENERGYOUT)
-     i_filter_surf = t % find_filter(FILTER_SURFACE)
+      i_filter_mesh = t % find_filter(FILTER_MESH)
+      i_filter_ein  = t % find_filter(FILTER_ENERGYIN)
+      i_filter_eout = t % find_filter(FILTER_ENERGYOUT)
+      i_filter_surf = t % find_filter(FILTER_SURFACE)
 
-     ! Begin loop around space
-     ZLOOP: do k = 1,nz
+      ! Begin loop around space
+      ZLOOP: do k = 1,nz
 
-       YLOOP: do j = 1,ny
+        YLOOP: do j = 1,ny
 
           XLOOP: do i = 1,nx
 
@@ -600,7 +600,7 @@ contains
                   dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc + &
                        cell_hxyz(xyz_idx)*neig_dc)
 
-               end if
+                end if
 
               end if
 
@@ -797,7 +797,7 @@ contains
 
     ! Calculate albedo
     if ((shift_idx ==  1 .and. current(2*l  ) < 1.0e-10_8) .or. &
-        (shift_idx == -1 .and. current(2*l-1) < 1.0e-10_8)) then
+         (shift_idx == -1 .and. current(2*l-1) < 1.0e-10_8)) then
       albedo = ONE
     else
       albedo = (current(2*l-1)/current(2*l))**(shift_idx)

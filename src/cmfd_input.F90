@@ -44,6 +44,7 @@ contains
 
   subroutine read_cmfd_xml()
 
+    use constants, only: ZERO, ONE
     use error,   only: fatal_error, warning
     use global
     use output,  only: write_message
@@ -103,7 +104,7 @@ contains
       cmfd % indices(4) = ng - 1 ! sets energy group dimension
     else
       if(.not.allocated(cmfd % egrid)) allocate(cmfd % egrid(2))
-      cmfd % egrid = (/0.0_8,20.0_8/)
+      cmfd % egrid = [ ZERO, 20.0_8 ]
       cmfd % indices(4) = 1 ! one energy group
     end if
 
@@ -111,7 +112,7 @@ contains
     if (check_for_node(node_mesh, "albedo")) then
       call get_node_array(node_mesh, "albedo", cmfd % albedo)
     else
-      cmfd % albedo = (/1.0, 1.0, 1.0, 1.0, 1.0, 1.0/)
+      cmfd % albedo = [ ONE, ONE, ONE, ONE, ONE, ONE ]
     end if
 
     ! Get acceleration map
@@ -119,7 +120,7 @@ contains
       allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2), &
            cmfd % indices(3)))
       if (get_arraysize_integer(node_mesh, "map") /= &
-          product(cmfd % indices(1:3))) then
+           product(cmfd % indices(1:3))) then
         call fatal_error('CMFD coremap not to correct dimensions')
       end if
       allocate(iarray(get_arraysize_integer(node_mesh, "map")))
@@ -155,7 +156,7 @@ contains
       call get_node_value(doc, "dhat_reset", temp_str)
       temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        dhat_reset = .true.
+           dhat_reset = .true.
     end if
 
     ! Set monitoring
@@ -179,7 +180,7 @@ contains
       call get_node_value(doc, "run_adjoint", temp_str)
       temp_str = to_lower(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        cmfd_run_adjoint = .true.
+           cmfd_run_adjoint = .true.
     end if
 
     ! Batch to begin cmfd
@@ -246,7 +247,7 @@ contains
 
     use constants,        only: MAX_LINE_LEN
     use error,            only: fatal_error, warning
-    use mesh_header,      only: StructuredMesh
+    use mesh_header,      only: RegularMesh
     use string
     use tally,            only: setup_active_cmfdtallies
     use tally_header,     only: TallyObject, TallyFilter
@@ -263,10 +264,10 @@ contains
     integer :: i_filter_mesh ! index for mesh filter
     integer :: iarray3(3) ! temp integer array
     real(8) :: rarray3(3) ! temp double array
-    type(TallyObject),    pointer :: t => null()
-    type(StructuredMesh), pointer :: m => null()
+    type(TallyObject),    pointer :: t
+    type(RegularMesh), pointer :: m
     type(TallyFilter) :: filters(N_FILTER_TYPES) ! temporary filters
-    type(Node), pointer :: node_mesh => null()
+    type(Node), pointer :: node_mesh
 
     ! Set global variables if they are 0 (this can happen if there is no tally
     ! file)
@@ -288,7 +289,7 @@ contains
     ! Determine number of dimensions for mesh
     n = get_arraysize_integer(node_mesh, "dimension")
     if (n /= 2 .and. n /= 3) then
-       call fatal_error("Mesh must be two or three dimensions.")
+      call fatal_error("Mesh must be two or three dimensions.")
     end if
     m % n_dimension = n
 
@@ -317,14 +318,14 @@ contains
 
     ! Make sure both upper-right or width were specified
     if (check_for_node(node_mesh, "upper_right") .and. &
-        check_for_node(node_mesh, "width")) then
+         check_for_node(node_mesh, "width")) then
       call fatal_error("Cannot specify both <upper_right> and <width> on a &
            &tally mesh.")
     end if
 
     ! Make sure either upper-right or width was specified
     if (.not.check_for_node(node_mesh, "upper_right") .and. &
-        .not.check_for_node(node_mesh, "width")) then
+         .not.check_for_node(node_mesh, "width")) then
       call fatal_error("Must specify either <upper_right> and <width> on a &
            &tally mesh.")
     end if
@@ -332,7 +333,7 @@ contains
     if (check_for_node(node_mesh, "width")) then
       ! Check to ensure width has same dimensions
       if (get_arraysize_double(node_mesh, "width") /= &
-          get_arraysize_double(node_mesh, "lower_left")) then
+           get_arraysize_double(node_mesh, "lower_left")) then
         call fatal_error("Number of entries on <width> must be the same as the &
              &number of entries on <lower_left>.")
       end if
@@ -350,7 +351,7 @@ contains
     elseif (check_for_node(node_mesh, "upper_right")) then
       ! Check to ensure width has same dimensions
       if (get_arraysize_double(node_mesh, "upper_right") /= &
-          get_arraysize_double(node_mesh, "lower_left")) then
+           get_arraysize_double(node_mesh, "lower_left")) then
         call fatal_error("Number of entries on <upper_right> must be the same &
              &as the number of entries on <lower_left>.")
       end if
@@ -547,7 +548,7 @@ contains
       ! Deallocate filter bins
       deallocate(filters(1) % int_bins)
       if (check_for_node(node_mesh, "energy")) &
-        deallocate(filters(2) % real_bins)
+           deallocate(filters(2) % real_bins)
 
     end do
 

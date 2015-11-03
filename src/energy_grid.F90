@@ -73,8 +73,8 @@ contains
     type(Nuclide), pointer :: nuc
 
     ! Set minimum/maximum energies
-    E_max = 20.0_8
-    E_min = 1.0e-11_8
+    E_max = energy_max_neutron
+    E_min = energy_min_neutron
 
     ! Determine equal-logarithmic energy spacing
     M = n_log_bins
@@ -92,15 +92,17 @@ contains
       ! Determine corresponding indices in nuclide grid to energies on
       ! equal-logarithmic grid
       j = 1
-      do k = 0, M - 1
+      do k = 0, M
         do while (log(nuc%energy(j + 1)/E_min) <= umesh(k))
+          ! Ensure that for isotopes where maxval(nuc % energy) << E_max
+          ! that there are no out-of-bounds issues.
+          if (j + 1 == nuc % n_grid) then
+            exit
+          end if
           j = j + 1
         end do
         nuc % grid_index(k) = j
       end do
-
-      ! Set the last point explicitly so that we don't have out-of-bounds issues
-      nuc % grid_index(M) = size(nuc % energy) - 1
     end do
 
     deallocate(umesh)

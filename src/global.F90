@@ -7,19 +7,20 @@ module global
   use constants
   use dd_header,        only: dd_type, deallocate_dd
   use dict_header,      only: DictCharInt, DictIntInt
-  use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer, Surface
+  use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
   use material_header,  only: Material
-  use mesh_header,      only: StructuredMesh
+  use mesh_header,      only: RegularMesh
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
+  use surface_header,   only: SurfaceContainer
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use testing_header,   only: TestSuiteClass
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
 
-#ifdef HDF5
-  use hdf5_interface,  only: HID_T
+#ifdef MPIF08
+  use mpi_f08
 #endif
 
   implicit none
@@ -29,12 +30,12 @@ module global
   ! GEOMETRY-RELATED VARIABLES
 
   ! Main arrays
-  type(Cell),              allocatable, target :: cells(:)
-  type(Universe),          allocatable, target :: universes(:)
-  type(LatticeContainer),  allocatable, target :: lattices(:)
-  type(Surface),           allocatable, target :: surfaces(:)
-  type(Material),          allocatable, target :: materials(:)
-  type(ObjectPlot),        allocatable, target :: plots(:)
+  type(Cell),             allocatable, target :: cells(:)
+  type(Universe),         allocatable, target :: universes(:)
+  type(LatticeContainer), allocatable, target :: lattices(:)
+  type(SurfaceContainer), allocatable, target :: surfaces(:)
+  type(Material),         allocatable, target :: materials(:)
+  type(ObjectPlot),       allocatable, target :: plots(:)
 
   ! Size of main arrays
   integer :: n_cells     ! # of cells
@@ -75,6 +76,10 @@ module global
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
   integer :: n_listings       ! Number of listings in cross_sections.xml
 
+  ! Minimum/maximum energies
+  real(8) :: energy_min_neutron = ZERO
+  real(8) :: energy_max_neutron = INFINITY
+
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: sab_dict
@@ -92,7 +97,7 @@ module global
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
-  type(StructuredMesh), allocatable, target :: meshes(:)
+  type(RegularMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
   integer, allocatable :: matching_bins(:)
 
@@ -108,16 +113,31 @@ module global
   type(SetInt) :: active_analog_tallies
   type(SetInt) :: active_tracklength_tallies
   type(SetInt) :: active_current_tallies
+  type(SetInt) :: active_collision_tallies
   type(SetInt) :: active_tallies
 !$omp threadprivate(active_analog_tallies, active_tracklength_tallies, &
-!$omp&              active_current_tallies, active_tallies)
+!$omp&              active_current_tallies, active_collision_tallies, &
+!$omp&              active_tallies)
 
   ! Global tallies
   !   1) collision estimate of k-eff
-  !   2) track-length estimate of k-eff
-  !   3) leakage fraction
+  !   2) absorption estimate of k-eff
+  !   3) track-length estimate of k-eff
+  !   4) leakage fraction
 
   type(TallyResult), allocatable, target :: global_tallies(:)
+
+  ! It is possible to protect accumulate operations on global tallies by using
+  ! an atomic update. However, when multiple threads accumulate to the same
+  ! global tally, it can cause a higher cache miss rate due to
+  ! invalidation. Thus, we use threadprivate variables to accumulate global
+  ! tallies and then reduce at the end of a generation.
+  real(8) :: global_tally_collision   = ZERO
+  real(8) :: global_tally_absorption  = ZERO
+  real(8) :: global_tally_tracklength = ZERO
+  real(8) :: global_tally_leakage     = ZERO
+!$omp threadprivate(global_tally_collision, global_tally_absorption, &
+!$omp&              global_tally_tracklength, global_tally_leakage)
 
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
@@ -194,11 +214,11 @@ module global
   logical :: entropy_on = .false.
   real(8), allocatable :: entropy(:)         ! shannon entropy at each generation
   real(8), allocatable :: entropy_p(:,:,:,:) ! % of source sites in each cell
-  type(StructuredMesh), pointer :: entropy_mesh
+  type(RegularMesh), pointer :: entropy_mesh
 
   ! Uniform fission source weighting
   logical :: ufs = .false.
-  type(StructuredMesh), pointer :: ufs_mesh => null()
+  type(RegularMesh), pointer :: ufs_mesh => null()
   real(8), allocatable :: source_frac(:,:,:,:)
 
   ! Write source at end of simulation
@@ -218,10 +238,16 @@ module global
   logical :: master      = .true.  ! master process?
   logical :: mpi_enabled = .false. ! is MPI in use and initialized?
   integer :: mpi_err               ! MPI error code
+#ifdef MPIF08
+  type(MPI_Datatype) :: MPI_BANK
+  type(MPI_Datatype) :: MPI_TALLYRESULT
+  type(MPI_Datatype) :: MPI_PARTICLEBUFFER
+#else
   integer :: MPI_BANK              ! MPI datatype for fission bank
   integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
   integer :: MPI_PARTICLEBUFFER    ! MPI datatype for sending Particles
-  
+#endif
+
 #ifdef _OPENMP
   integer :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread
@@ -264,18 +290,14 @@ module global
   ! VARIANCE REDUCTION VARIABLES
 
   logical :: survival_biasing = .false.
-  real(8) :: weight_cutoff = 0.25
-  real(8) :: weight_survive = 1.0
+  real(8) :: weight_cutoff = 0.25_8
+  real(8) :: weight_survive = ONE
 
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer :: run_mode = NONE
-
-  ! Fixed source particle bank
-  type(Bank), pointer :: source_site => null()
-!$omp threadprivate(source_site)
 
   ! Restart run
   logical :: restart_run = .false.
@@ -501,6 +523,7 @@ contains
     call active_analog_tallies % clear()
     call active_tracklength_tallies % clear()
     call active_current_tallies % clear()
+    call active_collision_tallies % clear()
     call active_tallies % clear()
 
     ! Deallocate track_identifiers
@@ -526,9 +549,9 @@ contains
     ! Deallocate entropy mesh
     if (associated(entropy_mesh)) then
       if (allocated(entropy_mesh % lower_left)) &
-          deallocate(entropy_mesh % lower_left)
+           deallocate(entropy_mesh % lower_left)
       if (allocated(entropy_mesh % upper_right)) &
-          deallocate(entropy_mesh % upper_right)
+           deallocate(entropy_mesh % upper_right)
       if (allocated(entropy_mesh % width)) deallocate(entropy_mesh % width)
       deallocate(entropy_mesh)
     end if
@@ -538,7 +561,7 @@ contains
     if (associated(ufs_mesh)) then
         if (allocated(ufs_mesh % lower_left)) deallocate(ufs_mesh % lower_left)
         if (allocated(ufs_mesh % upper_right)) &
-            deallocate(ufs_mesh % upper_right)
+             deallocate(ufs_mesh % upper_right)
         if (allocated(ufs_mesh % width)) deallocate(ufs_mesh % width)
         deallocate(ufs_mesh)
     end if

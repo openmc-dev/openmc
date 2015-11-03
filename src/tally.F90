@@ -201,29 +201,43 @@ contains
         ! For scattering production, we need to use the pre-collision
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
-        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
-             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          ! Don't waste time on very common reactions we know have multiplicities
-          ! of one.
-          score = p % last_wgt
-        else
-          do m = 1, nuclides(p % event_nuclide) % n_reaction
-            ! Check if this is the desired MT
-            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
-              ! Found the reaction, set our pointer and move on with life
-              rxn => nuclides(p % event_nuclide) % reactions(m)
-              exit
-            end if
-          end do
-
-          ! Get multiplicity and apply to score
-          if (rxn % multiplicity_with_E) then
-            ! Then the multiplicity was already incorporated in to p % wgt
-            ! per the scattering routine,
-            score = p % wgt
+        if (run_CE) then
+          if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+               (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+            ! Don't waste time on very common reactions we know have multiplicities
+            ! of one.
+            score = p % last_wgt
           else
-            ! Grab the multiplicity from the rxn
-            score = p % last_wgt * rxn % multiplicity
+            do m = 1, nuclides(p % event_nuclide) % n_reaction
+              ! Check if this is the desired MT
+              if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+                ! Found the reaction, set our pointer and move on with life
+                rxn => nuclides(p % event_nuclide) % reactions(m)
+                exit
+              end if
+            end do
+
+            ! Get multiplicity and apply to score
+            if (rxn % multiplicity_with_E) then
+              ! Then the multiplicity was already incorporated in to p % wgt
+              ! per the scattering routine,
+              score = p % wgt
+            else
+              ! Grab the multiplicity from the rxn
+              score = p % last_wgt * rxn % multiplicity
+            end if
+          end if
+        else
+          if (i_nuclide > 0) then
+            score = p % last_wgt * &
+                 nuclides_MG(p % event_nuclide) % obj % get_xs(p % g, 'mult', &
+                                                               p % last_g, &
+                                                               p % coord(1) % uvw)
+          else
+            score = p % last_wgt * &
+                 macro_xs(p % material) % obj % get_xs(p % g, 'mult', &
+                                                       p % last_g, &
+                                                       p % coord(1) % uvw)
           end if
         end if
 
@@ -238,29 +252,43 @@ contains
         ! For scattering production, we need to use the pre-collision
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
-        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
-             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          ! Don't waste time on very common reactions we know have multiplicities
-          ! of one.
-          score = p % last_wgt
-        else
-          do m = 1, nuclides(p % event_nuclide) % n_reaction
-            ! Check if this is the desired MT
-            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
-              ! Found the reaction, set our pointer and move on with life
-              rxn => nuclides(p % event_nuclide) % reactions(m)
-              exit
-            end if
-          end do
-
-          ! Get multiplicity and apply to score
-          if (rxn % multiplicity_with_E) then
-            ! Then the multiplicity was already incorporated in to p % wgt
-            ! per the scattering routine,
-            score = p % wgt
+        if (run_CE) then
+          if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+               (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+            ! Don't waste time on very common reactions we know have multiplicities
+            ! of one.
+            score = p % last_wgt
           else
-            ! Grab the multiplicity from the rxn
-            score = p % last_wgt * rxn % multiplicity
+            do m = 1, nuclides(p % event_nuclide) % n_reaction
+              ! Check if this is the desired MT
+              if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+                ! Found the reaction, set our pointer and move on with life
+                rxn => nuclides(p % event_nuclide) % reactions(m)
+                exit
+              end if
+            end do
+
+            ! Get multiplicity and apply to score
+            if (rxn % multiplicity_with_E) then
+              ! Then the multiplicity was already incorporated in to p % wgt
+              ! per the scattering routine,
+              score = p % wgt
+            else
+              ! Grab the multiplicity from the rxn
+              score = p % last_wgt * rxn % multiplicity
+            end if
+          end if
+        else
+          if (i_nuclide > 0) then
+            score = p % last_wgt * &
+                 nuclides_MG(p % event_nuclide) % obj % get_xs(p % g, 'mult', &
+                                                               p % last_g, &
+                                                               p % coord(1) % uvw)
+          else
+            score = p % last_wgt * &
+                 macro_xs(p % material) % obj % get_xs(p % g, 'mult', &
+                                                       p % last_g, &
+                                                       p % coord(1) % uvw)
           end if
         end if
 
@@ -275,29 +303,43 @@ contains
         ! For scattering production, we need to use the pre-collision
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
-        if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
-             (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          ! Don't waste time on very common reactions we know have multiplicities
-          ! of one.
-          score = p % last_wgt
-        else
-          do m = 1, nuclides(p % event_nuclide) % n_reaction
-            ! Check if this is the desired MT
-            if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
-              ! Found the reaction, set our pointer and move on with life
-              rxn => nuclides(p % event_nuclide) % reactions(m)
-              exit
-            end if
-          end do
-
-          ! Get multiplicity and apply to score
-          if (rxn % multiplicity_with_E) then
-            ! Then the multiplicity was already incorporated in to p % wgt
-            ! per the scattering routine,
-            score = p % wgt
+        if (run_CE) then
+          if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
+               (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
+            ! Don't waste time on very common reactions we know have multiplicities
+            ! of one.
+            score = p % last_wgt
           else
-            ! Grab the multiplicity from the rxn
-            score = p % last_wgt * rxn % multiplicity
+            do m = 1, nuclides(p % event_nuclide) % n_reaction
+              ! Check if this is the desired MT
+              if (p % event_MT == nuclides(p % event_nuclide) % reactions(m) % MT) then
+                ! Found the reaction, set our pointer and move on with life
+                rxn => nuclides(p % event_nuclide) % reactions(m)
+                exit
+              end if
+            end do
+
+            ! Get multiplicity and apply to score
+            if (rxn % multiplicity_with_E) then
+              ! Then the multiplicity was already incorporated in to p % wgt
+              ! per the scattering routine,
+              score = p % wgt
+            else
+              ! Grab the multiplicity from the rxn
+              score = p % last_wgt * rxn % multiplicity
+            end if
+          end if
+        else
+          if (i_nuclide > 0) then
+            score = p % last_wgt * &
+                 nuclides_MG(p % event_nuclide) % obj % get_xs(p % g, 'mult', &
+                                                               p % last_g, &
+                                                               p % coord(1) % uvw)
+          else
+            score = p % last_wgt * &
+                 macro_xs(p % material) % obj % get_xs(p % g, 'mult', &
+                                                       p % last_g, &
+                                                       p % coord(1) % uvw)
           end if
         end if
 

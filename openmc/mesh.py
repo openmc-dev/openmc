@@ -155,7 +155,7 @@ class Mesh(object):
                        name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     @type.setter
     def type(self, meshtype):

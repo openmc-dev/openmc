@@ -193,7 +193,7 @@ class Material(object):
                        name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     def set_density(self, units, density=NO_DENSITY):
         """Set the density of the material

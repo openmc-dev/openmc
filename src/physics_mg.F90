@@ -32,6 +32,7 @@ contains
 
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
+    p % last_E   = p % E
     p % last_g   = p % g
     p % last_uvw = p % coord(1) % uvw
 
@@ -145,6 +146,9 @@ contains
     call sample_scatter(macro_xs(p % material) % obj, &
                         p % coord(p % n_coord) % uvw, p % last_g, p % g, &
                         p % mu, p % wgt)
+
+    ! Update energy value for downstream compatability (in tallying)
+    p % E = energy_bin_midpoints(p % g)
 
     p % coord(p % n_coord) % uvw = rotate_angle(p % coord(p % n_coord) % uvw, &
                                                 p % mu)

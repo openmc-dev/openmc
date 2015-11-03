@@ -4315,6 +4315,11 @@ contains
        call fatal_error("group_structures element must exist!")
     end if
 
+    allocate(energy_bin_midpoints(energy_groups))
+    do i = 1, energy_groups
+      energy_bin_midpoints(i) = 0.5_8 * (energy_bins(i) + energy_bins(i + 1))
+    end do
+
     if (check_for_node(doc, "legendre_mu_points")) then
       ! Get scattering treatment
       call get_node_value(doc, "legendre_mu_points", legendre_mu_points)

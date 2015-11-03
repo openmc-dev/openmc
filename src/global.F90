@@ -119,6 +119,7 @@ module global
 
   ! Energy group structure
   real(8), allocatable :: energy_bins(:)
+  real(8), allocatable :: energy_bin_midpoints(:)
 
   ! Maximum Data Order
   integer :: max_order

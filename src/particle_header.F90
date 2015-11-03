@@ -132,6 +132,8 @@ contains
     this % fission           = .false.
     this % delayed_group     = 0
     this % n_delayed_bank(:) = 0
+    ! Initialize this % g so there is always at least some initialized value
+    this % g = 1
 
     ! Set up base level coordinates
     this % coord(1) % universe = BASE_UNIVERSE

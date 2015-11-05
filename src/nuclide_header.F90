@@ -548,6 +548,9 @@ module nuclide_header
       integer, optional, intent(in)  :: i_pol  ! Polar Index
       real(8)                        :: xs     ! Resultant xs
 
+      integer :: imu
+      real(8) :: dmu, r, f
+
       xs = ZERO
 
       if ((xstype == 'nu_fission' .or. xstype == 'fission' .or. xstype =='chi' &
@@ -561,11 +564,31 @@ module nuclide_header
           xs = this % mult(gout,g)
         case('nu_fission')
           xs = this % nu_fission(gout,g)
-        case('f_mu')
-          xs = evaluate_legendre(this % scatter(gout,g,:), mu)
-        case('f_mu/mult')
-          xs = evaluate_legendre(this % scatter(gout,g,:), mu) / &
-               this % mult(gout,g)
+        case('f_mu', 'f_mu/mult')
+          if (this % scatt_type == ANGLE_LEGENDRE) then
+            xs = evaluate_legendre(this % scatter(gout,g,:), mu)
+          else
+            dmu = TWO / real(this % order)
+            ! Find mu bin algebraically, knowing that the spacing is equal
+            f   = (mu + ONE) / dmu + ONE
+            imu = floor(f)
+            ! But save the amount that mu is past the previous index
+            ! so we can use interpolation later.
+            f = f - real(imu)
+            ! Adjust so interpolation works on the last bin if necessary
+            if (imu == size(this % scatter, dim=3)) then
+              imu = imu - 1
+            end if
+
+            ! Now intepolate to find f(mu)
+            r  = f / dmu
+            xs = (ONE - r) * this % scatter(gout, g, imu) + &
+                 r * this % scatter(gout, g, imu+1)
+          end if
+          if (xstype == 'f_mu/mult') then
+            xs = xs / this % mult(gout,g)
+          end if
+
         end select
       else
         select case(xstype)
@@ -600,6 +623,8 @@ module nuclide_header
       real(8)                          :: xs     ! Resultant xs
 
       integer :: i_azi_, i_pol_
+      integer :: imu
+      real(8) :: dmu, r, f
 
       xs = ZERO
 
@@ -623,11 +648,30 @@ module nuclide_header
           xs = this % nu_fission(gout,g,i_azi_,i_pol_)
         case('chi')
           xs = this % chi(gout,i_azi_,i_pol_)
-        case('f_mu')
-          xs = evaluate_legendre(this % scatter(gout,g,:,i_azi_,i_pol_), mu)
-        case('f_mu/mult')
-          xs = evaluate_legendre(this % scatter(gout,g,:,i_azi_,i_pol_), mu) / &
-               this % mult(gout,g,i_azi_,i_pol_)
+        case('f_mu', 'f_mu/mult')
+          if (this % scatt_type == ANGLE_LEGENDRE) then
+            xs = evaluate_legendre(this % scatter(gout,g,:,i_azi_,i_pol_), mu)
+          else
+            dmu = TWO / real(this % order)
+            ! Find mu bin algebraically, knowing that the spacing is equal
+            f   = (mu + ONE) / dmu + ONE
+            imu = floor(f)
+            ! But save the amount that mu is past the previous index
+            ! so we can use interpolation later.
+            f = f - real(imu)
+            ! Adjust so interpolation works on the last bin if necessary
+            if (imu == size(this % scatter, dim=3)) then
+              imu = imu - 1
+            end if
+
+            ! Now intepolate to find f(mu)
+            r  = f / dmu
+            xs = (ONE - r) * this % scatter(gout,g,imu,i_azi_,i_pol_) + &
+                 r * this % scatter(gout,g,imu+1,i_azi_,i_pol_)
+          end if
+          if (xstype == 'f_mu/mult') then
+            xs = xs / this % mult(gout,g,i_azi_,i_pol_)
+          end if
         end select
       else
         select case(xstype)

@@ -31,7 +31,6 @@ contains
     character(12)  :: alias ! alias of isotope, e.g. U-235.03c
     integer :: representation ! Data representation
     type(Material),    pointer :: mat
-    class(Nuclide_MG), pointer :: nuc
     type(SetChar) :: already_read
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_xsdata
@@ -94,9 +93,6 @@ contains
           name  = xs_listings(i_listing) % name
           alias = xs_listings(i_listing) % alias
 
-          ! Keep track of what listing is associated with this nuclide
-          nuc => nuclides_MG(i_nuclide) % obj
-
           ! Get pointer to xsdata table XML node
           call get_list_item(node_xsdata_list, i_listing, node_xsdata)
 
@@ -131,6 +127,9 @@ contains
                                energy_groups, get_kfiss, error_code, &
                                error_text)
 
+          ! Keep track of what listing is associated with this nuclide
+          nuclides_MG(i_nuclide) % obj % listing = i_listing
+
           ! Handle any errors
           if (error_code /= 0) then
             call fatal_error(trim(error_text))
@@ -154,9 +153,8 @@ contains
 
       ! Loop around nuclides in material
       NUCLIDE_LOOP2: do j = 1, mat % n_nuclides
-        ! Get nuclide
-        nuc => nuclides_MG(mat % nuclide(j)) % obj
-        if (nuc % fissionable) then
+        ! Is this fissionable?
+        if (nuclides_MG(mat % nuclide(j)) % obj % fissionable) then
           mat % fissionable = .true.
         end if
         if (mat % fissionable) then

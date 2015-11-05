@@ -516,11 +516,74 @@ module nuclide_header
 
     end subroutine nuclide_ce_print
 
+    subroutine nuclide_mg_print(this, unit_)
+      class(Nuclide_MG), intent(in) :: this
+      integer, intent(in)           :: unit_
+
+      character(MAX_LINE_LEN) :: temp_str
+
+      ! Basic nuclide information
+      write(unit_,*) 'Nuclide ' // trim(this % name)
+      write(unit_,*) '  zaid = ' // trim(to_str(this % zaid))
+      write(unit_,*) '  awr = ' // trim(to_str(this % awr))
+      write(unit_,*) '  kT = ' // trim(to_str(this % kT))
+      if (this % scatt_type == ANGLE_LEGENDRE) then
+        temp_str = "Legendre"
+        write(unit_,*) '  Scattering Type = ' // trim(temp_str)
+        write(unit_,*) '  # of Scatter Moments = ' // &
+             trim(to_str(this % order - 1))
+      else if (this % scatt_type == ANGLE_HISTOGRAM) then
+        temp_str = "Histogram"
+        write(unit_,*) '  Scattering Type = ' // trim(temp_str)
+        write(unit_,*) '  # of Scatter Bins = ' // &
+             trim(to_str(this % order))
+      else if (this % scatt_type == ANGLE_TABULAR) then
+        temp_str = "Tabular"
+        write(unit_,*) '  Scattering Type = ' // trim(temp_str)
+        write(unit_,*) '  # of Scatter Points = ' // trim(to_str(this % order))
+      end if
+      write(unit_,*) '  Fissionable = ', this % fissionable
+
+    end subroutine nuclide_mg_print
+
     subroutine nuclide_iso_print(this, unit)
 
       class(Nuclide_Iso), intent(in) :: this
       integer, optional, intent(in)  :: unit
 
+      integer :: unit_             ! unit to write to
+      integer :: size_total, size_scattmat, size_mgxs
+      character(MAX_LINE_LEN) :: temp_str
+
+      ! set default unit for writing information
+      if (present(unit)) then
+        unit_ = unit
+      else
+        unit_ = OUTPUT_UNIT
+      end if
+
+      ! Write Basic Nuclide Information
+      call nuclide_mg_print(this, unit_)
+
+      ! Determine size of mgxs and scattering matrices
+      size_scattmat = (size(this % scatter) + size(this % mult)) * 8
+      size_mgxs = size(this % total) + size(this % absorption) + &
+           size(this % nu_fission) + size(this % k_fission) + &
+           size(this % fission) + size(this % chi)
+      size_mgxs = size_mgxs * 8
+
+      ! Calculate total memory
+      size_total = size_scattmat + size_mgxs
+
+      ! Write memory used
+      write(unit_,*) '  Memory Requirements'
+      write(unit_,*) '    Cross sections = ' // trim(to_str(size_mgxs)) // ' bytes'
+      write(unit_,*) '    Scattering Matrices = ' // &
+           trim(to_str(size_scattmat)) // ' bytes'
+      write(unit_,*) '    Total = ' // trim(to_str(size_total)) // ' bytes'
+
+      ! Blank line at end of nuclide
+      write(unit_,*)
 
     end subroutine nuclide_iso_print
 
@@ -528,6 +591,42 @@ module nuclide_header
 
       class(Nuclide_Angle), intent(in) :: this
       integer, optional, intent(in)    :: unit
+
+      integer :: unit_             ! unit to write to
+      integer :: size_total, size_scattmat, size_mgxs
+      character(MAX_LINE_LEN) :: temp_str
+
+      ! set default unit for writing information
+      if (present(unit)) then
+        unit_ = unit
+      else
+        unit_ = OUTPUT_UNIT
+      end if
+
+      ! Write Basic Nuclide Information
+      call nuclide_mg_print(this, unit_)
+      write(unit_,*) '  # of Polar Angles = ' // trim(to_str(this % Npol))
+      write(unit_,*) '  # of Azimuthal Angles = ' // trim(to_str(this % Nazi))
+
+      ! Determine size of mgxs and scattering matrices
+      size_scattmat = (size(this % scatter) + size(this % mult)) * 8
+      size_mgxs = size(this % total) + size(this % absorption) + &
+           size(this % nu_fission) + size(this % k_fission) + &
+           size(this % fission) + size(this % chi)
+      size_mgxs = size_mgxs * 8
+
+      ! Calculate total memory
+      size_total = size_scattmat + size_mgxs
+
+      ! Write memory used
+      write(unit_,*) '  Memory Requirements'
+      write(unit_,*) '    Cross sections = ' // trim(to_str(size_mgxs)) // ' bytes'
+      write(unit_,*) '    Scattering Matrices = ' // &
+           trim(to_str(size_scattmat)) // ' bytes'
+      write(unit_,*) '    Total = ' // trim(to_str(size_total)) // ' bytes'
+
+      ! Blank line at end of nuclide
+      write(unit_,*)
 
 
     end subroutine nuclide_angle_print

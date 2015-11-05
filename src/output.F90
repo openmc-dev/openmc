@@ -332,8 +332,6 @@ contains
     integer :: i       ! loop index
     integer :: unit_xs ! cross_sections.out file unit
     character(MAX_FILE_LEN)  :: path ! path of summary file
-    type(Nuclide_CE), pointer :: nuc => null()
-    type(SAlphaBeta),    pointer :: sab => null()
 
     ! Create filename for log file
     path = trim(path_output) // "cross_sections.out"
@@ -344,21 +342,22 @@ contains
     ! Write header
     call header("CROSS SECTION TABLES", unit=unit_xs)
 
-    NUCLIDE_LOOP: do i = 1, n_nuclides_total
-      ! Get pointer to nuclide
-      nuc => nuclides(i)
+    if (run_CE) then
+      NUCLIDE_LOOP: do i = 1, n_nuclides_total
+        ! Print information about nuclide
+        call nuclides(i) % print(unit=unit_xs)
+      end do NUCLIDE_LOOP
 
-      ! Print information about nuclide
-      call nuc % print(unit=unit_xs)
-    end do NUCLIDE_LOOP
-
-    SAB_TABLES_LOOP: do i = 1, n_sab_tables
-      ! Get pointer to S(a,b) table
-      sab => sab_tables(i)
-
-      ! Print information about S(a,b) table
-      call sab % print(unit=unit_xs)
-    end do SAB_TABLES_LOOP
+      SAB_TABLES_LOOP: do i = 1, n_sab_tables
+        ! Print information about S(a,b) table
+        call sab_tables(i) % print(unit=unit_xs)
+      end do SAB_TABLES_LOOP
+    else
+      NUCLIDE_MG_LOOP: do i = 1, n_nuclides_total
+        ! Print information about nuclide
+        call nuclides_mg(i) % obj % print(unit=unit_xs)
+      end do NUCLIDE_MG_LOOP
+    end if
 
     ! Close cross section summary file
     close(unit_xs)

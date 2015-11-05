@@ -19,18 +19,13 @@ contains
 ! UPDATE_XS stores the xs to work with
 !===============================================================================
 
-  subroutine calculate_mgxs(this, mat, nuclides, gin, uvw, xs, micro_xs)
+  subroutine calculate_mgxs(this, gin, uvw, xs)
     class(MacroXS_Base),   intent(in)    :: this
-    type(Material), intent(in)           :: mat         ! Material of interest
-    type(NuclideMGContainer), intent(in) :: nuclides(:) ! List of nuclides
     integer,               intent(in)    :: gin         ! Incoming neutron group
     real(8),               intent(in)    :: uvw(3)      ! Incoming neutron direction
     type(MaterialMacroXS), intent(inout) :: xs
-    type(NuclideMicroXS),  intent(inout) :: micro_xs(:)
 
     integer :: iazi, ipol
-    integer :: i, i_nuclide
-    class(Nuclide_MG), pointer :: nuc
 
     select type(this)
     type is (MacroXS_Iso)
@@ -54,27 +49,6 @@ contains
         xs % kappa_fission = this % k_fission(gin, iazi, ipol)
       end if
     end select
-
-    ! Place nuclidic xs in micro_xs for tallying purposes
-    do i = 1, mat % n_nuclides
-      ! Determine microscopic cross section for this nuclide
-      i_nuclide = mat % nuclide(i)
-
-      nuc => nuclides(i_nuclide) % obj
-      micro_xs(i_nuclide) % total         = nuc % get_xs(gin, 'total', &
-           I_AZI=iazi, I_POL=ipol)
-      micro_xs(i_nuclide) % elastic       = nuc % get_xs(gin, 'scatter', &
-           I_AZI=iazi, I_POL=ipol)
-      micro_xs(i_nuclide) % absorption    = nuc % get_xs(gin, 'absorption', &
-           I_AZI=iazi, I_POL=ipol)
-      micro_xs(i_nuclide) % fission       = nuc % get_xs(gin, 'fission', &
-           I_AZI=iazi, I_POL=ipol)
-      micro_xs(i_nuclide) % nu_fission    = nuc % get_xs(gin, 'nu_fission', &
-           I_AZI=iazi, I_POL=ipol)
-      micro_xs(i_nuclide) % kappa_fission = nuc % get_xs(gin, 'k_fission', &
-           I_AZI=iazi, I_POL=ipol)
-
-    end do
 
   end subroutine calculate_mgxs
 

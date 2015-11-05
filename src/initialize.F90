@@ -26,6 +26,7 @@ module initialize
   use summary,          only: write_summary
   use tally_header,     only: TallyObject, TallyResult, TallyFilter
   use tally_initialize, only: configure_tallies
+  use tally,            only: init_tally_routines
 
 #ifdef MPI
   use message_passing
@@ -149,6 +150,9 @@ contains
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()
+
+      ! Set up tally procedure pointers
+      call init_tally_routines()
 
       ! Determine how much work each processor should do
       call calculate_work()

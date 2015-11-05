@@ -799,7 +799,8 @@ contains
     real(8) :: micro_abs            ! nuclidic microscopic abs
     class(Nuclide_MG),  pointer :: nuc
 
-    nuc => nuclides_MG(i_nuclide) % obj
+    if (i_nuclide > 0) &
+         nuc => nuclides_MG(i_nuclide) % obj
 
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins

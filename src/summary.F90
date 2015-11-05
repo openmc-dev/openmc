@@ -454,7 +454,11 @@ contains
       ! Copy ZAID for each nuclide to temporary array
       allocate(nucnames(m%n_nuclides))
       do j = 1, m%n_nuclides
-        i_list = nuclides(m%nuclide(j))%listing
+        if (run_CE) then
+          i_list = nuclides(m%nuclide(j))%listing
+        else
+          i_list = nuclides_MG(m%nuclide(j))%obj%listing
+        end if
         nucnames(j) = xs_listings(i_list)%alias
       end do
 

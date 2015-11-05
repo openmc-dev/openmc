@@ -6,7 +6,7 @@ module nuclide_header
   use constants
   use endf,        only: reaction_name
   use list_header, only: ListInt
-  ! use math,            only: calc_pn, calc_rn!, expand_harmonic
+  use math,        only: evaluate_legendre
   !use scattdata_header
   use simple_string
 
@@ -117,7 +117,7 @@ module nuclide_header
   end type Nuclide_MG
 
   abstract interface
-    function nuclide_mg_get_xs_(this, g, xstype, gout, uvw, i_azi, i_pol) &
+    function nuclide_mg_get_xs_(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
          result(xs)
       import Nuclide_MG
       class(Nuclide_MG), intent(in) :: this
@@ -125,6 +125,7 @@ module nuclide_header
       character(*), intent(in)      :: xstype ! Cross Section Type
       integer, optional, intent(in) :: gout   ! Outgoing Group
       real(8), optional, intent(in) :: uvw(3) ! Requested Angle
+      real(8), optional, intent(in) :: mu     ! Change in angle
       integer, optional, intent(in) :: i_azi  ! Azimuthal Index
       integer, optional, intent(in) :: i_pol  ! Polar Index
       real(8)                       :: xs     ! Resultant xs
@@ -535,13 +536,14 @@ module nuclide_header
 ! NUCLIDE_*_GET_XS Returns the requested data type
 !===============================================================================
 
-    function nuclide_iso_get_xs(this, g, xstype, gout, uvw, i_azi, i_pol) &
+    function nuclide_iso_get_xs(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
          result(xs)
       class(Nuclide_Iso), intent(in) :: this
       integer, intent(in)            :: g      ! Incoming Energy group
       character(*), intent(in)       :: xstype ! Cross Section Type
       integer, optional, intent(in)  :: gout   ! Outgoing Group
       real(8), optional, intent(in)  :: uvw(3) ! Requested Angle
+      real(8), optional, intent(in)  :: mu     ! Change in angle
       integer, optional, intent(in)  :: i_azi  ! Azimuthal Index
       integer, optional, intent(in)  :: i_pol  ! Polar Index
       real(8)                        :: xs     ! Resultant xs
@@ -559,6 +561,11 @@ module nuclide_header
           xs = this % mult(gout,g)
         case('nu_fission')
           xs = this % nu_fission(gout,g)
+        case('f_mu')
+          xs = evaluate_legendre(this % scatter(gout,g,:), mu)
+        case('f_mu/mult')
+          xs = evaluate_legendre(this % scatter(gout,g,:), mu) / &
+               this % mult(gout,g)
         end select
       else
         select case(xstype)
@@ -580,12 +587,13 @@ module nuclide_header
       end if
     end function nuclide_iso_get_xs
 
-    function nuclide_angle_get_xs(this, g, xstype, gout, uvw, i_azi, i_pol) &
+    function nuclide_angle_get_xs(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
          result(xs)
       class(Nuclide_Angle), intent(in) :: this
       integer, intent(in)              :: g      ! Incoming Energy group
       character(*), intent(in)         :: xstype ! Cross Section Type
       integer, optional, intent(in)    :: gout   ! Outgoing Group
+      real(8), optional, intent(in)    :: mu     ! Change in angle
       real(8), optional, intent(in)    :: uvw(3) ! Requested Angle
       integer, optional, intent(in)    :: i_azi  ! Azimuthal Index
       integer, optional, intent(in)    :: i_pol  ! Polar Index
@@ -615,6 +623,11 @@ module nuclide_header
           xs = this % nu_fission(gout,g,i_azi_,i_pol_)
         case('chi')
           xs = this % chi(gout,i_azi_,i_pol_)
+        case('f_mu')
+          xs = evaluate_legendre(this % scatter(gout,g,:,i_azi_,i_pol_), mu)
+        case('f_mu/mult')
+          xs = evaluate_legendre(this % scatter(gout,g,:,i_azi_,i_pol_), mu) / &
+               this % mult(gout,g,i_azi_,i_pol_)
         end select
       else
         select case(xstype)

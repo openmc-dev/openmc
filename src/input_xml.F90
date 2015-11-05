@@ -2569,18 +2569,24 @@ contains
             if (temp_str == 'energy' .or. temp_str == 'energyout' .or. &
                  temp_str == 'mu' .or. temp_str == 'polar' .or. &
                  temp_str == 'azimuthal') then
-              n_words = get_arraysize_double(node_filt, "bins")
+              ! If in MG mode, fail if user provides bins, as we are only
+              ! allowing for all groups
+              if (.not. run_CE .and. (temp_str == 'energy' .or. &
+                  temp_str == 'energyout')) then
+                call fatal_error("No energy or energyout bins needed on tally " &
+                     &// trim(to_str(t % id)))
+              else
+                n_words = get_arraysize_double(node_filt, "bins")
+              end if
             else
               n_words = get_arraysize_integer(node_filt, "bins")
             end if
-          else if (temp_str == 'energy' .or. temp_str == 'energyout' .and. &
-                   .not. run_CE) then
+          else if (.not. run_CE .and. (temp_str == 'energy' .or. &
+                   temp_str == 'energyout')) then
             ! For MG calculations, dont require the user to put in all the
             ! group boundaries, as there could be many. Assume that if no &
             ! bins are entered that that means they want group-wise results.
             n_words = -1
-            call warning("Energy bins not set in filter on tally " &
-                 &// trim(to_str(t % id)))
 
           else
             call fatal_error("Bins not set in filter on tally " &

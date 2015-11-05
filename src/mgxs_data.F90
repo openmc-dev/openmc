@@ -1,9 +1,8 @@
 module mgxs_data
 
 use constants
-  use error,            only: fatal_error, warning
+  use error,            only: fatal_error
   use global
-  use list_header,      only: ListInt
   use macroxs_header
   use material_header,  only: Material
   use nuclide_header
@@ -208,10 +207,12 @@ contains
       error_text = ''
 
       ! Load the data
-      if (check_for_node(node_xsdata, "awr")) then
-        call get_node_value(node_xsdata, "awr", this % awr)
+      call get_node_value(node_xsdata, "name", this % name)
+      this % name = to_lower(this % name)
+      if (check_for_node(node_xsdata, "kT")) then
+        call get_node_value(node_xsdata, "kT", this % kT)
       else
-        this % awr = ONE
+        this % kT = ZERO
       end if
       if (check_for_node(node_xsdata, "zaid")) then
         call get_node_value(node_xsdata, "zaid", this % zaid)

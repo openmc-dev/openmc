@@ -524,8 +524,10 @@ module nuclide_header
 
       ! Basic nuclide information
       write(unit_,*) 'Nuclide ' // trim(this % name)
-      write(unit_,*) '  zaid = ' // trim(to_str(this % zaid))
-      write(unit_,*) '  awr = ' // trim(to_str(this % awr))
+      if (this % zaid > 0) then
+        ! Dont print if data was macroscopic and thus zaid would be nonsense
+        write(unit_,*) '  zaid = ' // trim(to_str(this % zaid))
+      end if
       write(unit_,*) '  kT = ' // trim(to_str(this % kT))
       if (this % scatt_type == ANGLE_LEGENDRE) then
         temp_str = "Legendre"

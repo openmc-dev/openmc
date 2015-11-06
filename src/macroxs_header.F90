@@ -22,7 +22,6 @@ module macroxs_header
     contains
       procedure(macroxs_init_),   deferred, pass :: init     ! initializes object
       procedure(macroxs_clear_),  deferred, pass :: clear    ! Deallocates object
-      procedure(macroxs_size_),   deferred, pass :: get_size ! Finds size of object
       procedure(macroxs_get_xs_), deferred, pass :: get_xs   ! Return xs
   end type MacroXS_Base
 
@@ -66,14 +65,6 @@ module macroxs_header
 
     end subroutine macroxs_clear_
 
-    subroutine macroxs_size_(this, size_total, size_scatt, size_fission)
-      import MacroXS_Base
-      class(MacroXS_Base), intent(in) :: this
-      integer, intent(out)            :: size_total   ! Total Data Size
-      integer, intent(out)            :: size_scatt   ! Scattering Data Size
-      integer, intent(out)            :: size_fission ! Fission Data Size
-
-    end subroutine macroxs_size_
   end interface
 
   type, extends(MacroXS_Base) :: MacroXS_Iso
@@ -91,7 +82,6 @@ module macroxs_header
     contains
       procedure, pass :: init        => macroxs_iso_init        ! inits object
       procedure, pass :: clear       => macroxs_iso_clear       ! Deallocates object
-      procedure, pass :: get_size    => macroxs_iso_size        ! Finds size of object
       procedure, pass :: get_xs      => macroxs_iso_get_xs      ! Returns xs
   end type MacroXS_Iso
 
@@ -112,7 +102,6 @@ module macroxs_header
     contains
       procedure, pass :: init     => macroxs_angle_init   ! inits object
       procedure, pass :: clear    => macroxs_angle_clear  ! Deallocates object
-      procedure, pass :: get_size => macroxs_angle_size   ! Finds size of object
       procedure, pass :: get_xs   => macroxs_angle_get_xs ! Returns xs
   end type MacroXS_Angle
 
@@ -194,7 +183,7 @@ contains
       ! Allocate stuff for later
       allocate(scatt_coeffs(order, groups, groups))
       scatt_coeffs = ZERO
-      allocate(ScattData_Histogram :: this % scatter)
+      allocate(ScattData_Tabular :: this % scatter)
 
     else if (scatt_type == ANGLE_LEGENDRE) then
       ! Otherwise find the maximum scattering order
@@ -710,79 +699,6 @@ contains
     end if
 
   end subroutine macroxs_angle_clear
-
-!===============================================================================
-! MACROXS_*_SIZE Finds the size of the data in MacroXS_Base, MacroXS_Iso,
-! or MacroXS_Angle
-!===============================================================================
-
-  subroutine macroxs_iso_size(this, size_total, size_scatt, size_fission)
-    class(MacroXS_Iso), intent(in) :: this
-    integer, intent(out)           :: size_total   ! Total Data Size
-    integer, intent(out)           :: size_scatt   ! Scattering Data Size
-    integer, intent(out)           :: size_fission ! Fission Data Size
-
-    integer :: groups
-
-    groups = size(this % total, dim=1)
-
-    ! Size Information On Each Reaction
-    ! Sum up for total, absorption, nu_scatter, nu_fission, fission
-    size_total = groups * 8 * (1 + 1 + 1 + 1 + 1)
-    ! Now do k_fission
-    ! Check k_fission
-    if (allocated (this % k_fission)) then
-      size_total = size_total + groups * 8
-    end if
-
-    ! Calculate chi data size
-    size_fission = 0
-    if (allocated(this % chi)) then
-      size_fission = size_fission + 8 * size(this % chi)
-    end if
-
-    ! Calculate Scatter Data Size
-    size_scatt = size(this % scatter % energy)
-
-    ! Calculate Total Memory
-    size_total = size_total + size_fission + size_scatt
-
-  end subroutine macroxs_iso_size
-
-  subroutine macroxs_angle_size(this, size_total, size_scatt, size_fission)
-    class(MacroXS_Angle), intent(in) :: this
-    integer, intent(out)             :: size_total   ! Total Data Size
-    integer, intent(out)             :: size_scatt   ! Scattering Data Size
-    integer, intent(out)             :: size_fission ! Fission Data Size
-
-    integer :: groups
-    integer :: tot_angle
-
-    groups = size(this % total, dim=2)
-    tot_angle = size(this % total, dim=1)
-
-    ! Size Information On Each Reaction
-    ! Sum up for total, absorption, nu_scatter, nu_fission, fission
-    size_total = groups * 8 * (1 + 1 + 1 + 1 + 1) * tot_angle
-    ! Now do k_fission
-    ! Check k_fission
-    if (allocated (this % k_fission)) then
-      size_total = size_total + groups * 8 * tot_angle
-    end if
-
-    ! Calculate chi data size
-    size_fission = 0
-    if (allocated(this % chi)) then
-      size_fission = size_fission + 8 * size(this % chi)
-    end if
-
-    ! Calculate Scatter Data Size
-    size_scatt = 0
-
-    ! Calculate Total Memory
-    size_total = size_total + size_fission + size_scatt
-
-  end subroutine macroxs_angle_size
 
 !===============================================================================
 ! MACROXS_*_GET_XS returns the requested data type

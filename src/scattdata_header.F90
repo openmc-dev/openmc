@@ -188,9 +188,9 @@ contains
       call scattdata_base_init(this, this_order, energy, mult)
 
       allocate(this % mu(this_order))
-      this % dmu = TWO / (real(this_order,8) - 1)
+      this % dmu = TWO / (real(this_order) - 1)
       do imu = 1, this_order - 1
-        this % mu(imu) = -ONE + real(imu - 1, 8) * this % dmu
+        this % mu(imu) = -ONE + real(imu - 1) * this % dmu
       end do
       this % mu(this_order) = ONE
 
@@ -220,7 +220,7 @@ contains
             ! the negative fix-up introduced un-normalized data
             norm = ZERO
             do imu = 2, this_order
-              norm = norm + 0.5_8 * this % dmu * (this % fmu(imu-1,gout,gin) + this % fmu(imu,gout,gin))
+              norm = norm + HALF * this % dmu * (this % fmu(imu-1,gout,gin) + this % fmu(imu,gout,gin))
             end do
             if (norm > ZERO) then
               this % fmu(:,gout,gin) = this % fmu(:,gout,gin) / norm
@@ -230,7 +230,7 @@ contains
             this % data(1,gout,gin) = ZERO
             do imu = 2, this_order - 1
               this % data(imu,gout,gin) = this % data(imu-1,gout,gin) + &
-                   0.5_8 * this % dmu * (this % fmu(imu-1,gout,gin) + this % fmu(imu,gout,gin))
+                   HALF * this % dmu * (this % fmu(imu-1,gout,gin) + this % fmu(imu,gout,gin))
             end do
             this % data(this_order,gout,gin) = ONE
           end if
@@ -295,10 +295,10 @@ contains
 
     pure function scattdata_legendre_calc_f(this, gin, gout, mu) result(f)
       class(ScattData_Legendre), intent(in) :: this ! The ScattData to evaluate
-      integer, intent(in)                      :: gin   ! Incoming Energy Group
-      integer, intent(in)                      :: gout  ! Outgoing Energy Group
-      real(8), intent(in)                      :: mu    ! Angle of interest
-      real(8)                                  :: f     ! Return value of f(mu)
+      integer, intent(in)                   :: gin  ! Incoming Energy Group
+      integer, intent(in)                   :: gout ! Outgoing Energy Group
+      real(8), intent(in)                   :: mu   ! Angle of interest
+      real(8)                               :: f    ! Return value of f(mu)
 
       ! Plug mu in to the legendre expansion and go from there
       f = evaluate_legendre(this % data(:, gout, gin), mu)
@@ -307,10 +307,10 @@ contains
 
     pure function scattdata_histogram_calc_f(this, gin, gout, mu) result(f)
       class(ScattData_Histogram), intent(in) :: this ! The ScattData to evaluate
-      integer, intent(in)                     :: gin   ! Incoming Energy Group
-      integer, intent(in)                     :: gout  ! Outgoing Energy Group
-      real(8), intent(in)                     :: mu    ! Angle of interest
-      real(8)                                 :: f     ! Return value of f(mu)
+      integer, intent(in)                    :: gin  ! Incoming Energy Group
+      integer, intent(in)                    :: gout ! Outgoing Energy Group
+      real(8), intent(in)                    :: mu   ! Angle of interest
+      real(8)                                :: f    ! Return value of f(mu)
 
       integer :: imu
 
@@ -328,10 +328,10 @@ contains
 
     pure function scattdata_tabular_calc_f(this, gin, gout, mu) result(f)
       class(ScattData_Tabular), intent(in) :: this ! The ScattData to evaluate
-      integer, intent(in)                     :: gin   ! Incoming Energy Group
-      integer, intent(in)                     :: gout  ! Outgoing Energy Group
-      real(8), intent(in)                     :: mu    ! Angle of interest
-      real(8)                                 :: f     ! Return value of f(mu)
+      integer, intent(in)                  :: gin  ! Incoming Energy Group
+      integer, intent(in)                  :: gout ! Outgoing Energy Group
+      real(8), intent(in)                  :: mu   ! Angle of interest
+      real(8)                              :: f    ! Return value of f(mu)
 
       integer :: imu
       real(8) :: r

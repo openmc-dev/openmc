@@ -148,7 +148,7 @@ contains
                         p % mu, p % wgt)
 
     ! Update energy value for downstream compatability (in tallying)
-    p % E = energy_bin_midpoints(p % g)
+    p % E = energy_bin_avg(p % g)
 
     p % coord(p % n_coord) % uvw = rotate_angle(p % coord(p % n_coord) % uvw, &
                                                 p % mu)

@@ -107,13 +107,16 @@ module nuclide_header
 
   type, abstract, extends(Nuclide_Base) :: Nuclide_MG
     ! Scattering Order Information
-    integer :: order ! Order of data (Scattering for Nuclide_Iso,
-                      ! Number of angles for all in Nuclide_Angle)
-    integer :: scatt_type ! either legendre or tabular.
-
-    ! Type-Bound procedures
+    integer :: order      ! Order of data (Scattering for Nuclide_Iso,
+                          ! Number of angles for all in Nuclide_Angle)
+    integer :: scatt_type ! either legendre, histogram, or tabular.
+    integer :: legendre_mu_points ! Number of tabular points to use to represent
+                                  ! Legendre distribs, -1 if sample with the
+                                  ! Legendres themselves
+! Type-Bound procedures
     contains
-      procedure(nuclide_mg_get_xs_),     deferred, pass :: get_xs ! Get the xs
+      procedure(nuclide_mg_get_xs_), deferred, pass :: get_xs ! Get the xs
+      procedure(nuclide_calc_f_), deferred, pass    :: calc_f ! Calculates f, given mu
   end type Nuclide_MG
 
   abstract interface
@@ -130,6 +133,19 @@ module nuclide_header
       integer, optional, intent(in) :: i_pol  ! Polar Index
       real(8)                       :: xs     ! Resultant xs
     end function nuclide_mg_get_xs_
+
+    pure function nuclide_calc_f_(this, gin, gout, mu, uvw, i_azi, i_pol) result(f)
+      import Nuclide_MG
+      class(Nuclide_MG), intent(in) :: this
+      integer, intent(in)           :: gin   ! Incoming Energy Group
+      integer, intent(in)           :: gout  ! Outgoing Energy Group
+      real(8), intent(in)           :: mu    ! Angle of interest
+      real(8), intent(in), optional :: uvw(3) ! Direction vector
+      integer, intent(in), optional :: i_azi ! Incoming Energy Group
+      integer, intent(in), optional :: i_pol ! Outgoing Energy Group
+      real(8)                       :: f     ! Return value of f(mu)
+
+    end function nuclide_calc_f_
   end interface
 
   !===============================================================================
@@ -151,9 +167,10 @@ module nuclide_header
 
     ! Type-Bound procedures
     contains
-      procedure, pass :: clear    => nuclide_iso_clear  ! Deallocates Nuclide
-      procedure, pass :: print    => nuclide_iso_print  ! Writes nuclide info
-      procedure, pass :: get_xs   => nuclide_iso_get_xs ! Gets Size of Data w/in Object
+      procedure, pass :: clear  => nuclide_iso_clear     ! Deallocates Nuclide
+      procedure, pass :: print  => nuclide_iso_print     ! Writes nuclide info
+      procedure, pass :: get_xs => nuclide_iso_get_xs    ! Gets Size of Data w/in Object
+      procedure, pass :: calc_f => nuclide_mg_iso_calc_f ! Calcs f given mu
   end type Nuclide_Iso
 
 !===============================================================================
@@ -181,9 +198,10 @@ module nuclide_header
 
     ! Type-Bound procedures
     contains
-      procedure, pass :: clear  => nuclide_angle_clear  ! Deallocates Nuclide
-      procedure, pass :: print  => nuclide_angle_print  ! Gets Size of Data w/in Object
-      procedure, pass :: get_xs => nuclide_angle_get_xs ! Gets Size of Data w/in Object
+      procedure, pass :: clear  => nuclide_angle_clear     ! Deallocates Nuclide
+      procedure, pass :: print  => nuclide_angle_print     ! Gets Size of Data w/in Object
+      procedure, pass :: get_xs => nuclide_angle_get_xs    ! Gets Size of Data w/in Object
+      procedure, pass :: calc_f => nuclide_mg_angle_calc_f ! Calcs f given mu
   end type Nuclide_Angle
 
 !===============================================================================
@@ -533,7 +551,7 @@ module nuclide_header
         temp_str = "Legendre"
         write(unit_,*) '  Scattering Type = ' // trim(temp_str)
         write(unit_,*) '  # of Scatter Moments = ' // &
-             trim(to_str(this % order - 1))
+             trim(to_str(this % order))
       else if (this % scatt_type == ANGLE_HISTOGRAM) then
         temp_str = "Histogram"
         write(unit_,*) '  Scattering Type = ' // trim(temp_str)
@@ -666,30 +684,10 @@ module nuclide_header
         case('nu_fission')
           xs = this % nu_fission(gout,g)
         case('f_mu', 'f_mu/mult')
-          if (this % scatt_type == ANGLE_LEGENDRE) then
-            xs = evaluate_legendre(this % scatter(gout,g,:), mu)
-          else
-            dmu = TWO / real(this % order)
-            ! Find mu bin algebraically, knowing that the spacing is equal
-            f   = (mu + ONE) / dmu + ONE
-            imu = floor(f)
-            ! But save the amount that mu is past the previous index
-            ! so we can use interpolation later.
-            f = f - real(imu)
-            ! Adjust so interpolation works on the last bin if necessary
-            if (imu == size(this % scatter, dim=3)) then
-              imu = imu - 1
-            end if
-
-            ! Now intepolate to find f(mu)
-            r  = f / dmu
-            xs = (ONE - r) * this % scatter(gout, g, imu) + &
-                 r * this % scatter(gout, g, imu+1)
-          end if
+          xs = this % calc_f(g, gout, mu)
           if (xstype == 'f_mu/mult') then
             xs = xs / this % mult(gout,g)
           end if
-
         end select
       else
         select case(xstype)
@@ -750,26 +748,7 @@ module nuclide_header
         case('chi')
           xs = this % chi(gout,i_azi_,i_pol_)
         case('f_mu', 'f_mu/mult')
-          if (this % scatt_type == ANGLE_LEGENDRE) then
-            xs = evaluate_legendre(this % scatter(gout,g,:,i_azi_,i_pol_), mu)
-          else
-            dmu = TWO / real(this % order)
-            ! Find mu bin algebraically, knowing that the spacing is equal
-            f   = (mu + ONE) / dmu + ONE
-            imu = floor(f)
-            ! But save the amount that mu is past the previous index
-            ! so we can use interpolation later.
-            f = f - real(imu)
-            ! Adjust so interpolation works on the last bin if necessary
-            if (imu == size(this % scatter, dim=3)) then
-              imu = imu - 1
-            end if
-
-            ! Now intepolate to find f(mu)
-            r  = f / dmu
-            xs = (ONE - r) * this % scatter(gout,g,imu,i_azi_,i_pol_) + &
-                 r * this % scatter(gout,g,imu+1,i_azi_,i_pol_)
-          end if
+          xs = this % calc_f(g, gout, mu, I_AZI=i_azi_, I_POL=i_pol_)
           if (xstype == 'f_mu/mult') then
             xs = xs / this % mult(gout,g,i_azi_,i_pol_)
           end if
@@ -796,10 +775,114 @@ module nuclide_header
     end function nuclide_angle_get_xs
 
 !===============================================================================
+! NUCLIDE_*_CALC_F Finds the value of f(mu), the scattering probability, given mu
+!===============================================================================
+
+  pure function nuclide_mg_iso_calc_f(this, gin, gout, mu, uvw, i_azi, i_pol) &
+       result(f)
+      class(Nuclide_Iso), intent(in) :: this
+      integer, intent(in)            :: gin  ! Incoming Energy Group
+      integer, intent(in)            :: gout ! Outgoing Energy Group
+      real(8), intent(in)            :: mu   ! Angle of interest
+      real(8), intent(in), optional  :: uvw(3) ! Direction vector
+      integer, intent(in), optional  :: i_azi ! Incoming Energy Group
+      integer, intent(in), optional  :: i_pol ! Outgoing Energy Group
+      real(8)                        :: f    ! Return value of f(mu)
+
+      real(8) :: dmu, r
+      integer :: imu
+
+      if (this % scatt_type == ANGLE_LEGENDRE) then
+        f = evaluate_legendre(this % scatter(gout,gin,:), mu)
+      else if (this % scatt_type == ANGLE_TABULAR) then
+        dmu = TWO / (real(this % order) - 1)
+        ! Find mu bin algebraically, knowing that the spacing is equal
+        f   = (mu + ONE) / dmu + ONE
+        imu = floor(f)
+        ! But save the amount that mu is past the previous index
+        ! so we can use interpolation later.
+        f = f - real(imu)
+        ! Adjust so interpolation works on the last bin if necessary
+        if (imu == size(this % scatter, dim=3)) then
+          imu = imu - 1
+        end if
+
+        ! Now intepolate to find f(mu)
+        r  = f / dmu
+        f = (ONE - r) * this % scatter(gout,gin,imu) + &
+             r * this % scatter(gout,gin,imu+1)
+      else ! (ANGLE_HISTOGRAM)
+        dmu = TWO / real(this % order)
+        ! Find mu bin algebraically, knowing that the spacing is equal
+        imu   = floor((mu + ONE) / dmu + ONE)
+        ! Adjust so interpolation works on the last bin if necessary
+        if (imu == size(this % scatter, dim=3)) then
+          imu = imu - 1
+        end if
+        f = this % scatter(gout, gin, imu)
+
+      end if
+
+    end function nuclide_mg_iso_calc_f
+
+    pure function nuclide_mg_angle_calc_f(this, gin, gout, mu, uvw, i_azi, &
+                                          i_pol) result(f)
+      class(Nuclide_Angle), intent(in) :: this
+      integer, intent(in)              :: gin  ! Incoming Energy Group
+      integer, intent(in)              :: gout ! Outgoing Energy Group
+      real(8), intent(in)              :: mu   ! Angle of interest
+      real(8), intent(in), optional    :: uvw(3) ! Direction vector
+      integer, intent(in), optional    :: i_azi ! Incoming Energy Group
+      integer, intent(in), optional    :: i_pol ! Outgoing Energy Group
+      real(8)                          :: f    ! Return value of f(mu)
+
+      real(8) :: dmu, r
+      integer :: imu
+      integer :: i_azi_, i_pol_
+      if (present(i_azi) .and. present(i_pol)) then
+        i_azi_ = i_azi
+        i_pol_ = i_pol
+      else if (present(uvw)) then
+        call find_angle(this % polar, this % azimuthal, uvw, i_azi_, i_pol_)
+      end if
+
+      if (this % scatt_type == ANGLE_LEGENDRE) then
+        f = evaluate_legendre(this % scatter(gout,gin,:,i_azi_,i_pol_), mu)
+      else if (this % scatt_type == ANGLE_TABULAR) then
+        dmu = TWO / (real(this % order) - 1)
+        ! Find mu bin algebraically, knowing that the spacing is equal
+        f   = (mu + ONE) / dmu + ONE
+        imu = floor(f)
+        ! But save the amount that mu is past the previous index
+        ! so we can use interpolation later.
+        f = f - real(imu)
+        ! Adjust so interpolation works on the last bin if necessary
+        if (imu == size(this % scatter, dim=3)) then
+          imu = imu - 1
+        end if
+
+        ! Now intepolate to find f(mu)
+        r  = f / dmu
+        f = (ONE - r) * this % scatter(gout,gin,imu,i_azi_,i_pol_) + &
+             r * this % scatter(gout,gin,imu+1,i_azi_,i_pol_)
+      else ! (ANGLE_HISTOGRAM)
+        dmu = TWO / real(this % order)
+        ! Find mu bin algebraically, knowing that the spacing is equal
+        imu   = floor((mu + ONE) / dmu + ONE)
+        ! Adjust so interpolation works on the last bin if necessary
+        if (imu == size(this % scatter, dim=3)) then
+          imu = imu - 1
+        end if
+        f = this % scatter(gout, gin, imu,i_azi_,i_pol_)
+
+      end if
+
+    end function nuclide_mg_angle_calc_f
+!===============================================================================
 ! find_angle finds the closest angle on the data grid and returns that index
 !===============================================================================
 
-    subroutine find_angle(polar, azimuthal, uvw, i_azi, i_pol)
+    pure subroutine find_angle(polar, azimuthal, uvw, i_azi, i_pol)
       real(8), intent(in) :: polar(:)     ! Polar angles [0,pi]
       real(8), intent(in) :: azimuthal(:) ! Azi. angles [-pi,pi]
       real(8), intent(in) :: uvw(3)       ! Direction of motion

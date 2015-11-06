@@ -4377,22 +4377,10 @@ contains
        call fatal_error("group_structures element must exist!")
     end if
 
-    allocate(energy_bin_midpoints(energy_groups))
+    allocate(energy_bin_avg(energy_groups))
     do i = 1, energy_groups
-      energy_bin_midpoints(i) = 0.5_8 * (energy_bins(i) + energy_bins(i + 1))
+      energy_bin_avg(i) = 0.5_8 * (energy_bins(i) + energy_bins(i + 1))
     end do
-
-    if (check_for_node(doc, "legendre_mu_points")) then
-      ! Get scattering treatment
-      call get_node_value(doc, "legendre_mu_points", legendre_mu_points)
-      if (legendre_mu_points <= 0) then
-        call fatal_error("legendre_mu_points element must be positive and non-zero!")
-      end if
-      legendre_mu_points = -1 * legendre_mu_points
-    else
-      ! One means 'don't expand scattering moments to a table, sample via legendre'
-      legendre_mu_points = 1
-    end if
 
     ! Get node list of all <xsdata>
     call get_node_list(doc, "xsdata", node_xsdata_list)

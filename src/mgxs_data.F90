@@ -200,7 +200,9 @@ contains
       integer, intent(inout)           :: error_code  ! Code signifying error
       character(MAX_LINE_LEN), intent(inout) :: error_text ! Error message to print
 
+      type(Node), pointer     :: node_legendre_mu
       character(MAX_LINE_LEN) :: temp_str
+      logical                 :: enable_leg_mu
 
       ! Initialize error data
       error_code = 0
@@ -224,8 +226,10 @@ contains
         temp_str = trim(to_lower(temp_str))
         if (temp_str == 'legendre') then
           this % scatt_type = ANGLE_LEGENDRE
-        else if (temp_str == 'tabular') then
+        else if (temp_str == 'histogram') then
           this % scatt_type = ANGLE_HISTOGRAM
+        else if (temp_str == 'tabular') then
+          this % scatt_type = ANGLE_TABULAR
         else
           error_code = 1
           error_text = "Invalid Scatt Type Option!"
@@ -234,6 +238,7 @@ contains
       else
         this % scatt_type = ANGLE_LEGENDRE
       end if
+
       if (check_for_node(node_xsdata, "order")) then
         call get_node_value(node_xsdata, "order", this % order)
       else
@@ -241,6 +246,37 @@ contains
         error_text = "Order Must Be Provided!"
         return
       end if
+
+      ! Get scattering treatment
+      if (check_for_node(node_xsdata, "tabular_legendre")) then
+        call get_node_ptr(node_xsdata, "tabular_legendre", node_legendre_mu)
+        if (check_for_node(node_legendre_mu, "enable")) then
+          call get_node_value(node_legendre_mu, "enable", temp_str)
+          temp_str = trim(to_lower(temp_str))
+          if (temp_str == 'true' .or. temp_str == '1') then
+            enable_leg_mu = .true.
+          elseif (temp_str == 'false' .or. temp_str == '0') then
+            enable_leg_mu = .false.
+          else
+            call fatal_error("Unrecognized tabular_legendre/enable: " // temp_str)
+          end if
+        else
+          enable_leg_mu = .false.
+          this % legendre_mu_points = 1
+        end if
+        if (enable_leg_mu .and. &
+            check_for_node(node_legendre_mu, "num_points")) then
+          call get_node_value(node_legendre_mu, "num_points", &
+                              this % legendre_mu_points)
+          if (this % legendre_mu_points <= 0) then
+            call fatal_error("num_points element must be positive and non-zero!")
+          end if
+          this % legendre_mu_points = -1 * this % legendre_mu_points
+        end if
+      else
+        this % legendre_mu_points = 1
+      end if
+
       if (check_for_node(node_xsdata, "fissionable")) then
         call get_node_value(node_xsdata, "fissionable", temp_str)
         temp_str = to_lower(temp_str)
@@ -349,6 +385,8 @@ contains
         order_dim = this % order + 1
       else if (this % scatt_type == ANGLE_HISTOGRAM) then
         order_dim = this % order
+      else if (this % scatt_type == ANGLE_TABULAR) then
+        order_dim = this % order
       end if
 
       allocate(this % scatter(groups, groups, order_dim))
@@ -409,6 +447,8 @@ contains
       if (this % scatt_type == ANGLE_LEGENDRE) then
         order_dim = this % order + 1
       else if (this % scatt_type == ANGLE_HISTOGRAM) then
+        order_dim = this % order
+      else if (this % scatt_type == ANGLE_TABULAR) then
         order_dim = this % order
       end if
 
@@ -592,6 +632,7 @@ contains
     character(MAX_LINE_LEN) :: error_text
     integer :: representation
     integer :: scatt_type
+    integer :: legendre_mu_points
 
     ! Find out if we need kappa fission (are there any k_fiss tallies?)
     get_kfiss = .false.
@@ -612,23 +653,18 @@ contains
       mat => materials(i_mat)
 
       ! Check to see how our nuclides are represented
-      ! For now assume all are the same type
+      ! Assume all are the same type
       ! Therefore type(nuclides(1) % obj) dictates type(macroxs)
       ! At the same time, we will find the scattering type, as that will dictate
       ! how we allocate the scatter object within macroxs
-      scatt_type = ANGLE_LEGENDRE
+      legendre_mu_points = nuclides_MG(1) % obj % legendre_mu_points
       select type(nuc => nuclides_MG(1) % obj)
       type is (Nuclide_Iso)
         representation = ISOTROPIC
-        if (nuc % scatt_type == ANGLE_HISTOGRAM) then
-          scatt_type = ANGLE_HISTOGRAM
-        end if
       type is (Nuclide_Angle)
         representation = ANGLE
-        if (nuc % scatt_type == ANGLE_HISTOGRAM) then
-          scatt_type = ANGLE_HISTOGRAM
-        end if
       end select
+      scatt_type = nuclides_MG(1) % obj % scatt_type
 
       ! Now allocate accordingly
       select case(representation)

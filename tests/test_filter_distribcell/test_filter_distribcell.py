@@ -76,16 +76,5 @@ class DistribcellTestHarness(TestHarness):
 
 
 if __name__ == '__main__':
-
-    # test for openmc executable
-    if opts.exe is None:
-        raise Exception('Must specify OpenMC executable from command line with --exe.')
-
-    # run tests
-    try:
-        test_run()
-        test_created_statepoint()
-        test_results()
-    finally:
-        teardown()
-
+    harness = DistribcellTestHarness()
+    harness.main()

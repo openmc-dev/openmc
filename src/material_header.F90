@@ -3,15 +3,11 @@ module material_header
   use constants,        only: OTF_HEADROOM, MAX_LINE_LEN
   use dict_header,      only: DictIntInt
 
-#ifdef HDF5
   use hdf5
-#endif
 
   implicit none
 
-#ifdef HDF5
     integer :: hdf5_err
-#endif
 
 !===============================================================================
 ! COMPOSITION describes a material by its constituent nuclide atom fractions
@@ -31,7 +27,6 @@ module material_header
     integer                 :: n_nuclides   ! number of comps per row
     integer                 :: n_instances  ! number of comp rows
     logical                 :: initialized = .false.
-#ifdef HDF5
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
     integer(HID_T) :: dset       ! data set handle
@@ -40,7 +35,6 @@ module material_header
     integer(HID_T) :: plist      ! property list handle
     integer(HSIZE_T) :: block1(1)
     integer(HSIZE_T) :: dims1(1)
-#endif
   contains
     procedure :: init => composition_file_init
     procedure :: load => composition_file_load
@@ -215,10 +209,6 @@ contains
 
       class(CompositionFile), intent(inout) :: this 
       integer, intent(in) :: length
-#ifndef HDF5
-      integer, intent(in) :: file_id
-      integer, intent(in) :: plist
-#else
       integer(HID_T), intent(in) :: file_id
       integer(HID_T), intent(in) :: plist
 
@@ -239,8 +229,6 @@ contains
 
       this % initialized = .true.
 
-#endif
-
     end subroutine composition_file_init
 
 !===============================================================================
@@ -253,8 +241,7 @@ contains
       integer,                intent(in)    :: real_inst
  
       real(8), allocatable :: comp(:)
-     
-#ifdef HDF5
+
       integer(HSIZE_T) :: start1(1)  ! start type for 1-D array
       integer(HSIZE_T) :: count1(1)  ! count type for 1-D array
 
@@ -277,8 +264,6 @@ contains
           this % dims1, hdf5_err, xfer_prp = this % plist, &
           mem_space_id = this % memspace, file_space_id = this % dspace)
 
-#endif
-
     end function composition_file_load
 
 !===============================================================================
@@ -289,7 +274,6 @@ contains
 
       class(CompositionFile), intent(inout) :: this
 
-#ifdef HDF5
       ! Close the dataspace and memory space
       call h5sclose_f(this % dspace, hdf5_err)
       call h5sclose_f(this % memspace, hdf5_err)
@@ -297,7 +281,6 @@ contains
       ! Close dataset and group
       call h5dclose_f(this % dset, hdf5_err)
       call h5gclose_f(this % group_id, hdf5_err)
-#endif
 
     end subroutine composition_file_close
 

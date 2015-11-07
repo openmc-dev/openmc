@@ -504,7 +504,6 @@ contains
       call file_close(file_id)
     end if
 
-#ifdef HDF5
     ! Write OTF tallies from DD runs, which were deferred for HDF5
     ! TODO: this function unscrambles the results arrays and writes to one
     ! aggregated statepoint for all domains.  It's terribly inefficient as
@@ -512,7 +511,6 @@ contains
     ! statepoints for each domain, which will need to be unscrambled in
     ! post-processing
 !    call write_state_point_otf_tally_data(filename)
-#endif
 
     if (master .and. n_tallies > 0) then
       deallocate(id_array)
@@ -523,7 +521,6 @@ contains
 
   end subroutine write_state_point
 
-#ifdef HDF5
 !===============================================================================
 ! WRITE_STATE_POINT_OTF_TALLY_DATA
 !===============================================================================
@@ -540,6 +537,7 @@ contains
 
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
+    integer(HSIZE_T) :: dims1(1)
 
     ! Set up OTF tally datasets
     if (master) then
@@ -674,7 +672,6 @@ contains
     end if
 
   end subroutine write_state_point_otf_tally_data
-#endif
 
 !===============================================================================
 ! WRITE_SOURCE_POINT
@@ -1632,11 +1629,6 @@ contains
     integer(HSIZE_T) :: chunk(1)
     integer(HID_T) :: chunk_plist
 
-#ifndef HDF5
-    call warning('Distribmat material writing only implemented for HDF5.')
-    return
-#else
-
     ! Start matdump timer
     call time_matdump % start()
 
@@ -1837,8 +1829,6 @@ contains
 
     ! Close the file
     call h5fclose_f(file_id, hdf5_err)
-
-#endif
 
 #ifdef MPI
     ! Everyone should wait here - master needs a good matdump time

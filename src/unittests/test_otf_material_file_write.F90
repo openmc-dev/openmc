@@ -14,9 +14,7 @@ module test_otf_material_file_write
   use string,           only: to_str
   use testing_header,   only: TestSuiteClass, TestClass
 
-#ifdef HDF5
   use hdf5
-#endif
 
 #ifdef MPI
   use mpi
@@ -69,12 +67,6 @@ contains
       call suite % skip(this)
       return
     end if
-
-#ifndef HDF5
-    if (master) call write_message("Skipping test: must be run with HDF5")
-    call suite % skip(this)
-    return
-#endif
 
     filename = 'materials.h5'
     call dd_create_four_nuc_five_comp_file(filename)

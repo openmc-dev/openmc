@@ -2235,10 +2235,6 @@ contains
         ! Read composition values
         if (mat % otf_compositions) then
 
-#ifndef HDF5
-          call fatal_error("OTF materials only supported for HDF5.")
-#endif
-
           ! Read from the OTF mats file
           mat % comp_file % path = trim(path_input) // 'materials.h5'
           call get_node_value(node_comp, "otf_file_path", mat % comp_file % group)
@@ -2251,11 +2247,8 @@ contains
           end if
 
           file_id = file_open(trim(mat %comp_file %path), 'r', parallel=.false.)
-          !XXmat %comp_file % id = file_id
-
-#ifdef HDF5
+          mat % comp_file % id = file_id
           !TODO: (important) check that the proper group exists
-#endif
 
           mat_group = open_group(file_id, trim(mat % comp_file % group))
 
@@ -2642,18 +2635,13 @@ contains
 
     integer :: i
     type(Material),    pointer :: mat => null()
-#ifdef HDF5
     integer(HID_T) :: file_id
     integer(HID_T) :: plist
     integer        :: hdf5_err
-#endif
 
 #ifndef MPI
     call fatal_error("OTF materials not implemented for non-MPI runs.")
 #else
-# ifndef HDF5
-    call fatal_error("OTF materials supported only for HDF5.")
-# else
     ! Create property list
     call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
 
@@ -2681,7 +2669,6 @@ contains
 
     otf_matfile_open = .true.
 
-# endif
 #endif
 
   end subroutine init_otf_materials

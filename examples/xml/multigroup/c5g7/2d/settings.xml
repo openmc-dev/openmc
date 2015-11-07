@@ -33,7 +33,7 @@
 
   <!-- Establish statepoints to aid in examining convergence -->
   <state_point>
-    <interval> 2000 </interval>
+    <interval> 2500 </interval>
     <source_write>true</source_write>
   </state_point>
 
@@ -43,7 +43,7 @@
     <tallies>true</tallies>
   </output>
 
-  <run_cmfd>false</run_cmfd>
+  <run_cmfd>true</run_cmfd>
 
   <cross_sections>../data.xml</cross_sections>
 

@@ -966,8 +966,11 @@ contains
         ! For scattering production, we need to use the pre-collision
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
-        score = p % wgt * nuc % get_xs(p % g, 'f_mu', p % last_g, &
+        score = p % wgt
+        if (i_nuclide > 0) then
+          score = score * nuc % get_xs(p % g, 'f_mu', p % last_g, &
                                        p % last_uvw, p % mu)
+        end if
 
 
       case (SCORE_NU_SCATTER_PN)
@@ -980,8 +983,11 @@ contains
         ! For scattering production, we need to use the pre-collision
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
-        score = p % wgt * nuc % get_xs(p % g, 'f_mu', p % last_g, &
+        score = p % wgt
+        if (i_nuclide > 0) then
+          score = score * nuc % get_xs(p % g, 'f_mu', p % last_g, &
                                        p % last_uvw, p % mu)
+        end if
 
 
       case (SCORE_NU_SCATTER_YN)
@@ -994,8 +1000,11 @@ contains
         ! For scattering production, we need to use the pre-collision
         ! weight times the multiplicity as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
-        score = p % wgt * nuc % get_xs(p % g, 'f_mu', p % last_g, &
+        score = p % wgt
+        if (i_nuclide > 0) then
+          score = score * nuc % get_xs(p % g, 'f_mu', p % last_g, &
                                        p % last_uvw, p % mu)
+        end if
 
 
       case (SCORE_TRANSPORT)

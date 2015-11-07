@@ -1,0 +1,118 @@
+<geometry>
+
+
+
+  <surface coeffs="0. 0. 0.540" id="1" type="z-cylinder" />
+
+
+  <surface boundary="reflective" coeffs="   0.0" id="20" type="x-plane" />
+  <surface boundary="vacuum"     coeffs=" 64.26" id="21" type="x-plane" />
+  <surface boundary="vacuum"     coeffs="   0.0" id="22" type="y-plane" />
+  <surface boundary="reflective" coeffs=" 64.26" id="23" type="y-plane" />
+  <surface boundary="reflective" coeffs="-100.0" id="35" type="z-plane" />
+  <surface boundary="reflective" coeffs=" 100.0" id="36" type="z-plane" />
+
+
+  <cell id="10" material="1" region="-1" universe="1" />
+  <cell id="11" material="7" region=" 1" universe="1" />
+
+
+  <cell id="20" material="2" region="-1" universe="2" />
+  <cell id="21" material="7" region=" 1" universe="2" />
+
+
+  <cell id="30" material="3" region="-1" universe="3" />
+  <cell id="31" material="7" region=" 1" universe="3" />
+
+
+  <cell id="40" material="4" region="-1" universe="4" />
+  <cell id="41" material="7" region=" 1" universe="4" />
+
+
+  <cell id="50" material="5" region="-1" universe="5" />
+  <cell id="51" material="7" region=" 1" universe="5" />
+
+
+  <cell id="60" material="6" region="-1" universe="6" />
+  <cell id="61" material="7" region=" 1" universe="6" />
+
+
+  <lattice id="100">
+    <outer>0</outer>
+    <dimension>17 17</dimension>
+    <lower_left>-10.71 -10.71</lower_left>
+    <pitch>1.26 1.26</pitch>
+    <universes>
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 6 1 1 6 1 1 6 1 1 1 1 1
+      1 1 1 6 1 1 1 1 1 1 1 1 1 6 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 6 1 1 6 1 1 6 1 1 6 1 1 6 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 6 1 1 6 1 1 5 1 1 6 1 1 6 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 6 1 1 6 1 1 6 1 1 6 1 1 6 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 6 1 1 1 1 1 1 1 1 1 6 1 1 1
+      1 1 1 1 1 6 1 1 6 1 1 6 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+    </universes>
+  </lattice>
+
+
+  <lattice id="101">
+    <outer>0</outer>
+    <dimension>17 17</dimension>
+    <lower_left>-10.71 -10.71</lower_left>
+    <pitch>1.26 1.26</pitch>
+    <universes>
+      2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+      2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 2
+      2 3 3 3 3 6 3 3 6 3 3 6 3 3 3 3 2
+      2 3 3 6 3 4 4 4 4 4 4 4 3 6 3 3 2
+      2 3 3 3 4 4 4 4 4 4 4 4 4 3 3 3 2
+      2 3 6 4 4 6 4 4 6 4 4 6 4 4 6 3 2
+      2 3 3 4 4 4 4 4 4 4 4 4 4 4 3 3 2
+      2 3 3 4 4 4 4 4 4 4 4 4 4 4 3 3 2
+      2 3 6 4 4 6 4 4 5 4 4 6 4 4 6 3 2
+      2 3 3 4 4 4 4 4 4 4 4 4 4 4 3 3 2
+      2 3 3 4 4 4 4 4 4 4 4 4 4 4 3 3 2
+      2 3 6 4 4 6 4 4 6 4 4 6 4 4 6 3 2
+      2 3 3 3 4 4 4 4 4 4 4 4 4 3 3 3 2
+      2 3 3 6 3 4 4 4 4 4 4 4 3 6 3 3 2
+      2 3 3 3 3 6 3 3 6 3 3 6 3 3 3 3 2
+      2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 2
+      2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+    </universes>
+  </lattice>
+
+
+  <cell id="112" material="7" region="35 -36" universe="12" />
+
+
+  <cell fill="100" id="110" region="35 -36" universe="10" />
+
+
+  <cell fill="101" id="111" region="35 -36" universe="11" />
+
+
+  <lattice id="200">
+    <outer>0</outer>
+    <dimension>3 3</dimension>
+    <lower_left>0.0 0.0</lower_left>
+    <pitch>21.42 21.42</pitch>
+    <universes>
+      10 11 12
+      11 10 12
+      12 12 12
+    </universes>
+  </lattice>
+
+
+  <cell fill="200" id="1" region=" 20 -21 22 -23 35 -36" />
+
+</geometry>

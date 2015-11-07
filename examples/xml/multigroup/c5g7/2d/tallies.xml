@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <tally id="1">
+    <filter type="mesh" bins="1" />
+    <filter type="energy" />
+    <scores>flux</scores>
+  </tally>
+
+  <tally id="2">
+    <filter type="mesh" bins="1"/>
+    <scores>fission</scores>
+  </tally>
+
+  <mesh>
+    <id>1</id>
+    <type>regular</type>
+    <lower_left> 0.0 0.0 -100.0 </lower_left>
+    <upper_right> 64.26 64.26 100.0 </upper_right>
+    <dimension> 51 51 1 </dimension>
+  </mesh>
+
+  <assume_separate>false</assume_separate>
+
+</tallies>

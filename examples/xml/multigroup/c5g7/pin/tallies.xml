@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <tally id="1">
+    <filter type="cell" bins="1 2" />
+    <filter type="energy" />
+    <scores>flux</scores>
+  </tally>
+
+  <tally id="2">
+    <filter type="energy" />
+    <filter type="energyout" />
+    <scores>scatter</scores>
+  </tally>
+
+</tallies>

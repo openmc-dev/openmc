@@ -88,7 +88,6 @@ contains
     call scatter(p)
 
     ! Play russian roulette if survival biasing is turned on
-
     if (survival_biasing) then
       call russian_roulette(p)
       if (.not. p % alive) return
@@ -143,15 +142,14 @@ contains
     type(Particle), intent(inout)  :: p
 
     call sample_scatter(macro_xs(p % material) % obj, &
-                        p % coord(p % n_coord) % uvw, p % last_g, p % g, &
+                        p % coord(1) % uvw, p % last_g, p % g, &
                         p % mu, p % wgt)
 
     ! Update energy value for downstream compatability (in tallying)
     p % E = energy_bin_avg(p % g)
 
     ! Convert change in angle (mu) to new direction
-    p % coord(p % n_coord) % uvw = rotate_angle(p % coord(p % n_coord) % uvw, &
-                                                p % mu)
+    p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, p % mu)
 
     ! Set event component
     p % event = EVENT_SCATTER

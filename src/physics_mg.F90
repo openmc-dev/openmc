@@ -32,7 +32,6 @@ contains
 
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
-    p % last_E   = p % E
     p % last_g   = p % g
     p % last_uvw = p % coord(1) % uvw
 
@@ -150,6 +149,7 @@ contains
     ! Update energy value for downstream compatability (in tallying)
     p % E = energy_bin_avg(p % g)
 
+    ! Convert change in angle (mu) to new direction
     p % coord(p % n_coord) % uvw = rotate_angle(p % coord(p % n_coord) % uvw, &
                                                 p % mu)
 

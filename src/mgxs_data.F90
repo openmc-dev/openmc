@@ -261,8 +261,8 @@ contains
             call fatal_error("Unrecognized tabular_legendre/enable: " // temp_str)
           end if
         else
-          enable_leg_mu = .false.
-          this % legendre_mu_points = 1
+          enable_leg_mu = .true.
+          this % legendre_mu_points = 33
         end if
         if (enable_leg_mu .and. &
             check_for_node(node_legendre_mu, "num_points")) then

@@ -373,7 +373,7 @@ class Material(object):
 
     def make_isotropic_in_lab(self):
         for nuclide_name in self._nuclides:
-            self._nuclides[nuclide_name][0].make_isotropic_in_lab()
+            self._nuclides[nuclide_name][0].scattering = 'iso-in-lab'
 
     def get_all_nuclides(self):
         """Returns all nuclides in the material
@@ -599,7 +599,7 @@ class MaterialsFile(object):
 
     def make_isotropic_in_lab(self):
         for material in self._materials:
-            materials.make_isotropic_in_lab()
+            material.make_isotropic_in_lab()
 
     def _create_material_subelements(self):
         subelement = ET.SubElement(self._materials_file, "default_xs")

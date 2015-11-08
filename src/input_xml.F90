@@ -1759,7 +1759,7 @@ contains
 
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
-    integer :: k             ! llop index for elements
+    integer :: k             ! loop index for elements
     integer :: n             ! number of nuclides
     integer :: n_sab         ! number of sab tables for a material
     integer :: n_nuc_ele     ! number of nuclides in an element

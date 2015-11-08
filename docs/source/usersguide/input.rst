@@ -1138,12 +1138,12 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     An optional attribute/sub-element for each nuclide is ``scattering``. This
     attribute may be set to "ace" to use the scattering laws specified in the
-    ACE files (default). Alternatively, when set to "lab", the ACE scattering
-    laws are used to sample the outgoing energy but an isotropic-in-lab 
-    distribution is used to sample the outgoing angle at each scattering 
-    interaction. The ``scattering`` attribute may be most useful when using 
-    OpenMC to compute multi-group cross-sections for deterministic transport 
-    codes and to quantify the effects of anisotropic scattering.
+    ACE files (default). Alternatively, when set to "iso-in-lab", the ACE
+    scattering laws are used to sample the outgoing energy but an
+    isotropic-in-lab  distribution is used to sample the outgoing angle at each
+    scattering  interaction. The ``scattering`` attribute may be most useful
+    when using OpenMC to compute multi-group cross-sections for deterministic
+    transport codes and to quantify the effects of anisotropic scattering.
 
     *Default*: None
 

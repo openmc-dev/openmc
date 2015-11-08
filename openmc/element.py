@@ -51,8 +51,16 @@ class Element(object):
         else:
             return False
 
+    def __ne__(self, other):
+        return not self == other
+
     def __hash__(self):
         return hash((self._name, self._xs))
+
+    def __repr__(self):
+        string = 'Element    -    {0}\n'.format(self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
+        return string
 
     @property
     def xs(self):
@@ -71,8 +79,3 @@ class Element(object):
     def name(self, name):
         check_type('name', name, basestring)
         self._name = name
-
-    def __repr__(self):
-        string = 'Element    -    {0}\n'.format(self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
-        return string

@@ -1,3 +1,5 @@
+from __future__ import division
+
 from collections import Iterable, defaultdict
 import copy
 import os
@@ -103,7 +105,7 @@ class Tally(object):
         self._with_batch_statistics = False
         self._derived = False
 
-        self._statepoint = None
+        self._sp_filename = None
         self._results_read = False
 
     def __deepcopy__(self, memo):
@@ -124,7 +126,7 @@ class Tally(object):
             clone._with_summary = self.with_summary
             clone._with_batch_statistics = self.with_batch_statistics
             clone._derived = self.derived
-            clone._statepoint = self._statepoint
+            clone._sp_filename = self._sp_filename
             clone._results_read = self._results_read
 
             clone._filters = []
@@ -204,6 +206,32 @@ class Tally(object):
 
         return hash(tuple(hashable))
 
+    def __repr__(self):
+        string = 'Tally\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
+
+        string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
+
+        for filter in self.filters:
+            string += '{0: <16}\t\t{1}\t{2}\n'.format('', filter.type,
+                                                          filter.bins)
+
+        string += '{0: <16}{1}'.format('\tNuclides', '=\t')
+
+        for nuclide in self.nuclides:
+            if isinstance(nuclide, Nuclide):
+                string += '{0} '.format(nuclide.name)
+            else:
+                string += '{0} '.format(nuclide)
+
+        string += '\n'
+
+        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self.scores)
+        string += '{0: <16}{1}{2}\n'.format('\tEstimator', '=\t', self.estimator)
+
+        return string
+
     @property
     def id(self):
         return self._id
@@ -270,12 +298,17 @@ class Tally(object):
 
     @property
     def sum(self):
-        if not self._statepoint:
+        if not self._sp_filename:
             return None
 
         if not self._results_read:
+            import h5py
+
+            # Open the HDF5 statepoint file
+            f = h5py.File(self._sp_filename, 'r')
+
             # Extract Tally data from the file
-            data = self._statepoint._f['tallies/tally {0}/results'.format(
+            data = f['tallies/tally {0}/results'.format(
                 self.id)].value
             sum = data['sum']
             sum_sq = data['sum_sq']
@@ -299,11 +332,14 @@ class Tally(object):
             # Indicate that Tally results have been read
             self._results_read = True
 
+            # Close the HDF5 statepoint file
+            f.close()
+
         return self._sum
 
     @property
     def sum_sq(self):
-        if not self._statepoint:
+        if not self._sp_filename:
             return None
 
         if not self._results_read:
@@ -315,7 +351,7 @@ class Tally(object):
     @property
     def mean(self):
         if self._mean is None:
-            if not self._statepoint:
+            if not self._sp_filename:
                 return None
 
             self._mean = self.sum / self.num_realizations
@@ -324,7 +360,7 @@ class Tally(object):
     @property
     def std_dev(self):
         if self._std_dev is None:
-            if not self._statepoint:
+            if not self._sp_filename:
                 return None
 
             n = self.num_realizations
@@ -364,7 +400,8 @@ class Tally(object):
                   'since "{1}" is not a Trigger'.format(self.id, trigger)
             raise ValueError(msg)
 
-        self._triggers.append(trigger)
+        if trigger not in self.triggers:
+            self.triggers.append(trigger)
 
     @id.setter
     def id(self, tally_id):
@@ -374,7 +411,7 @@ class Tally(object):
             AUTO_TALLY_ID += 1
         else:
             cv.check_type('tally ID', tally_id, Integral)
-            cv.check_greater_than('tally ID', tally_id, 0)
+            cv.check_greater_than('tally ID', tally_id, 0, equality=True)
             self._id = tally_id
 
     @name.setter
@@ -383,7 +420,7 @@ class Tally(object):
             cv.check_type('tally name', name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     def add_filter(self, filter):
         """Add a filter to the tally
@@ -432,6 +469,10 @@ class Tally(object):
         # If the score is already in the Tally, don't add it again
         if score in self.scores:
             return
+        # Normal score strings
+        if isinstance(score, basestring):
+            self._scores.append(score.strip())
+        # CrossScores
         else:
             self._scores.append(score)
 
@@ -516,32 +557,6 @@ class Tally(object):
 
         self._nuclides.remove(nuclide)
 
-    def __repr__(self):
-        string = 'Tally\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
-
-        string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
-
-        for filter in self.filters:
-            string += '{0: <16}\t\t{1}\t{2}\n'.format('', filter.type,
-                                                          filter.bins)
-
-        string += '{0: <16}{1}'.format('\tNuclides', '=\t')
-
-        for nuclide in self.nuclides:
-            if isinstance(nuclide, Nuclide):
-                string += '{0} '.format(nuclide.name)
-            else:
-                string += '{0} '.format(nuclide)
-
-        string += '\n'
-
-        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self.scores)
-        string += '{0: <16}{1}{2}\n'.format('\tEstimator', '=\t', self.estimator)
-
-        return string
-
     def can_merge(self, tally):
         """Determine if another tally can be merged with this one
 
@@ -569,6 +584,21 @@ class Tally(object):
 
         # Must have same or mergeable filters
         if len(self.filters) != len(tally.filters):
+            return False
+
+        # Check if only one tally contains a delayed group filter
+        tally1_dg = False
+        for filter1 in self.filters:
+            if filter1.type == 'delayedgroup':
+                tally1_dg = True
+
+        tally2_dg = False
+        for filter2 in tally.filters:
+            if filter2.type == 'delayedgroup':
+                tally2_dg = True
+
+        # Return False if only one tally has a delayed group filter
+        if (tally1_dg or tally2_dg) and not (tally1_dg and tally2_dg):
             return False
 
         # Look to see if all filters are the same, or one or more can be merged
@@ -1168,7 +1198,6 @@ class Tally(object):
             # Append each Filter's DataFrame to the overall DataFrame
             for filter in self.filters:
                 filter_df = filter.get_pandas_dataframe(data_size, summary)
-
                 df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it
@@ -1240,7 +1269,7 @@ class Tally(object):
         correspond directly to the two filters with two and four bins.
 
         Parameters
-        ---------
+        ----------
         value : str
             A string for the type of value to return  - 'mean' (default),
             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
@@ -2008,7 +2037,7 @@ class Tally(object):
 
         return new_tally
 
-    def __div__(self, other):
+    def __truediv__(self, other):
         """Divides this tally by another tally or scalar value.
 
         This method builds a new tally with data that is the dividend of
@@ -2077,6 +2106,9 @@ class Tally(object):
             raise ValueError(msg)
 
         return new_tally
+
+    def __div__(self, other):
+        return self.__truediv__(other)
 
     def __pow__(self, power):
         """Raises this tally to another tally or scalar value power.
@@ -2513,7 +2545,7 @@ class Tally(object):
         # by which the "base" indices should be repeated to account for all
         # other filter bins in the diagonalized tally
         indices = np.arange(0, new_filter.num_bins**2, new_filter.num_bins+1)
-        diag_factor = self.num_filter_bins / new_filter.num_bins
+        diag_factor = int(self.num_filter_bins / new_filter.num_bins)
         diag_indices = np.zeros(self.num_filter_bins, dtype=np.int)
 
         # Determine the filter indices along the new "diagonal"
@@ -2685,6 +2717,9 @@ class TalliesFile(object):
         """Create a tallies.xml file that can be used for a simulation.
 
         """
+
+        # Reset xml element tree
+        self._tallies_file.clear()
 
         self._create_mesh_subelements()
         self._create_tally_subelements()

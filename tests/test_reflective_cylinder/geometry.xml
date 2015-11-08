@@ -1,8 +1,0 @@
-<?xml version="1.0"?>
-<geometry>
-
-  <!-- cylinder with radius 10 -->
-  <surface id="1" type="z-cylinder" coeffs="0 0 10" boundary="reflective"/>
-  <cell id="1" material="1" surfaces="-1" />
-    
-</geometry>

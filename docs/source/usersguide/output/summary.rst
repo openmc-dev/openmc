@@ -117,9 +117,9 @@ The current revision of the summary file format is 1.
     Unique ID of the lattice which fills the cell. Only present if fill_type is
     set to 'lattice'.
 
-**/geometry/cells/cell <uid>/surfaces** (*int[]*)
+**/geometry/cells/cell <uid>/region** (*char[]*)
 
-    Surface specification for the cell.
+    Region specification for the cell.
 
 **/geometry/surfaces/surface <uid>/index** (*int*)
 
@@ -132,7 +132,8 @@ The current revision of the summary file format is 1.
 **/geometry/surfaces/surface <uid>/type** (*char[]*)
 
     Type of the surface. Can be 'x-plane', 'y-plane', 'z-plane', 'plane',
-    'x-cylinder', 'y-cylinder', 'sphere', 'x-cone', 'y-cone', or 'z-cone'.
+    'x-cylinder', 'y-cylinder', 'sphere', 'x-cone', 'y-cone', 'z-cone', or
+    'quadric'.
 
 **/geometry/surfaces/surface <uid>/coefficients** (*double[]*)
 

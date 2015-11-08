@@ -256,14 +256,25 @@ contains
               call write_dataset(filter_group, "type", "energy")
             case(FILTER_ENERGYOUT)
               call write_dataset(filter_group, "type", "energyout")
+            case(FILTER_MU)
+              call write_dataset(filter_group, "type", "mu")
+            case(FILTER_POLAR)
+              call write_dataset(filter_group, "type", "polar")
+            case(FILTER_AZIMUTHAL)
+              call write_dataset(filter_group, "type", "azimuthal")
             case(FILTER_DISTRIBCELL)
               call write_dataset(filter_group, "type", "distribcell")
+            case(FILTER_DELAYEDGROUP)
+              call write_dataset(filter_group, "type", "delayedgroup")
             end select
 
             call write_dataset(filter_group, "offset", tally%filters(j)%offset)
             call write_dataset(filter_group, "n_bins", tally%filters(j)%n_bins)
-            if (tally%filters(j)%type == FILTER_ENERGYIN .or. &
-                 tally%filters(j)%type == FILTER_ENERGYOUT) then
+            if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
+                 tally % filters(j) % type == FILTER_ENERGYOUT .or. &
+                 tally % filters(j) % type == FILTER_MU .or. &
+                 tally % filters(j) % type == FILTER_POLAR .or. &
+                 tally % filters(j) % type == FILTER_AZIMUTHAL) then
               call write_dataset(filter_group, "bins", &
                    tally%filters(j)%real_bins)
             else
@@ -326,6 +337,8 @@ contains
               str_array(j) = "fission"
             case (SCORE_NU_FISSION)
               str_array(j) = "nu-fission"
+            case (SCORE_DELAYED_NU_FISSION)
+              str_array(j) = "delayed-nu-fission"
             case (SCORE_KAPPA_FISSION)
               str_array(j) = "kappa-fission"
             case (SCORE_CURRENT)
@@ -340,6 +353,8 @@ contains
               str_array(j) = "nu-scatter-yn"
             case (SCORE_EVENTS)
               str_array(j) = "events"
+            case (SCORE_INVERSE_VELOCITY)
+              str_array(j) = "inverse-velocity"
             case default
               str_array(j) = reaction_name(tally%score_bins(j))
             end select

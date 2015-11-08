@@ -145,7 +145,7 @@ class Mesh(object):
             AUTO_MESH_ID += 1
         else:
             cv.check_type('mesh ID', mesh_id, Integral)
-            cv.check_greater_than('mesh ID', mesh_id, 0)
+            cv.check_greater_than('mesh ID', mesh_id, 0, equality=True)
             self._id = mesh_id
 
     @name.setter
@@ -155,7 +155,7 @@ class Mesh(object):
                        name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     @type.setter
     def type(self, meshtype):

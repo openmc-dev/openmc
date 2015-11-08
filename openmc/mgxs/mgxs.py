@@ -1,4 +1,6 @@
-from collections import Iterable
+from __future__ import division
+
+from collections import Iterable, OrderedDict
 from numbers import Integral
 import os
 import sys
@@ -16,6 +18,20 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
+# Supported cross section types
+MGXS_TYPES = ['total',
+              'transport',
+              'absorption',
+              'capture',
+              'fission',
+              'nu-fission',
+              'scatter',
+              'nu-scatter',
+              'scatter matrix',
+              'nu-scatter matrix',
+              'chi']
+
+
 # Supported domain types
 # TODO: Implement Mesh domains
 DOMAIN_TYPES = ['cell',
@@ -25,18 +41,20 @@ DOMAIN_TYPES = ['cell',
 
 # Supported domain classes
 # TODO: Implement Mesh domains
-DOMAINS = [openmc.Cell,
+_DOMAINS = [openmc.Cell,
            openmc.Universe,
            openmc.Material]
 
 
-class MultiGroupXS(object):
-    """A multi-group cross section for some energy group structure within
-    some spatial domain.
+class MGXS(object):
+    """An abstract multi-group cross section for some energy group structure 
+    within some spatial domain.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for deterministic neutronics calculations.
+
+    NOTE: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------
@@ -47,7 +65,7 @@ class MultiGroupXS(object):
     energy_groups : EnergyGroups
         The energy group structure for energy condensation
     by_nuclide : bool
-        If true, computes multi-group cross sections for each nuclide in domain
+        If true, computes cross sections for each nuclide in domain
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
@@ -59,20 +77,32 @@ class MultiGroupXS(object):
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
-        If true, computes multi-group cross sections for each nuclide in domain
+        If true, computes cross sections for each nuclide in domain
     domain : Material or Cell or Universe
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe'}
         Domain type for spatial homogenization
     energy_groups : EnergyGroups
         Energy group structure for energy condensation
-    num_groups : Integral
-        Number of energy groups
-    tallies : dict
+    tally_trigger : Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    tallies : OrderedDict
         OpenMC tallies needed to compute the multi-group cross section
     xs_tally : Tally
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
+    num_sumbdomains : Integral
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading 
+        tally data from a statepoint file).
+    num_nuclides : Integral
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : list of str or 'sum'
+        A list of nuclide string names (e.g., 'U-238', 'O-16') when by_nuclide
+        is True and 'sum' when by_nuclide is False.
 
     """
 
@@ -88,8 +118,8 @@ class MultiGroupXS(object):
         self._domain = None
         self._domain_type = None
         self._energy_groups = None
-        self._num_groups = None
-        self._tallies = dict()
+        self._tally_trigger = None
+        self._tallies = None
         self._xs_tally = None
 
         self.name = name
@@ -114,10 +144,10 @@ class MultiGroupXS(object):
             clone._domain = self.domain
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
-            clone._num_groups = self.num_groups
+            clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._xs_tally = copy.deepcopy(self.xs_tally, memo)
 
-            clone._tallies = dict()
+            clone._tallies = OrderedDict()
             for tally_type, tally in self.tallies.items():
                 clone.tallies[tally_type] = copy.deepcopy(tally, memo)
 
@@ -154,8 +184,12 @@ class MultiGroupXS(object):
         return self._energy_groups
 
     @property
+    def tally_trigger(self):
+        return self._tally_trigger
+
+    @property
     def num_groups(self):
-        return self._num_groups
+        return self.energy_groups.num_groups
 
     @property
     def tallies(self):
@@ -167,19 +201,9 @@ class MultiGroupXS(object):
 
     @property
     def num_subdomains(self):
-        tally = self.tallies.values()[0]
+        tally = list(self.tallies.values())[0]
         domain_filter = tally.find_filter(self.domain_type)
         return domain_filter.num_bins
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('name', name, basestring)
-        self._name = name
-
-    @by_nuclide.setter
-    def by_nuclide(self, by_nuclide):
-        cv.check_type('by_nuclide', by_nuclide, bool)
-        self._by_nuclide = by_nuclide
 
     @property
     def num_nuclides(self):
@@ -195,9 +219,19 @@ class MultiGroupXS(object):
         else:
             return 'sum'
 
+    @name.setter
+    def name(self, name):
+        cv.check_type('name', name, basestring)
+        self._name = name
+
+    @by_nuclide.setter
+    def by_nuclide(self, by_nuclide):
+        cv.check_type('by_nuclide', by_nuclide, bool)
+        self._by_nuclide = by_nuclide
+
     @domain.setter
     def domain(self, domain):
-        cv.check_type('domain', domain, tuple(DOMAINS))
+        cv.check_type('domain', domain, tuple(_DOMAINS))
         self._domain = domain
 
     @domain_type.setter
@@ -209,7 +243,74 @@ class MultiGroupXS(object):
     def energy_groups(self, energy_groups):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
-        self._num_groups = energy_groups.num_groups
+
+    @tally_trigger.setter
+    def tally_trigger(self, tally_trigger):
+        cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
+        self._tally_trigger = tally_trigger
+
+    @staticmethod
+    def get_mgxs(mgxs_type, domain=None, domain_type=None,
+                 energy_groups=None, by_nuclide=False, name=''):
+        """Return a MGXS subclass object for some energy group structure within
+        some spatial domain for some reaction type.
+
+        This is a factory method which can be used to quickly create MGXS
+        subclass objects for various reaction types.
+
+        Parameters
+        ----------
+        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
+            The type of multi-group cross section object to return
+        domain : Material or Cell or Universe
+            The domain for spatial homogenization
+        domain_type : {'material', 'cell', 'distribcell', 'universe'}
+            The domain type for spatial homogenization
+        energy_groups : EnergyGroups
+            The energy group structure for energy condensation
+        by_nuclide : bool
+            If true, computes cross sections for each nuclide in domain.
+            Defaults to False
+        name : str, optional
+            Name of the multi-group cross section. Used as a label to identify
+            tallies in OpenMC 'tallies.xml' file. Defaults to the empty string.
+
+        Returns
+        -------
+        MGXS
+            A subclass of the abstract MGXS class for the multi-group cross
+            section type requested by the user
+
+        """
+
+        cv.check_value('mgxs_type', mgxs_type, MGXS_TYPES)
+
+        if mgxs_type == 'total':
+            mgxs = TotalXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'transport':
+            mgxs = TransportXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'absorption':
+            mgxs = AbsorptionXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'capture':
+            mgxs = CaptureXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'fission':
+            mgxs = FissionXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'nu-fission':
+            mgxs = NuFissionXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'scatter':
+            mgxs = ScatterXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'nu-scatter':
+            mgxs = NuScatterXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'scatter matrix':
+            mgxs = ScatterMatrixXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'nu-scatter matrix':
+            mgxs = NuScatterMatrixXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'chi':
+            mgxs = Chi(domain, domain_type, energy_groups)
+
+        mgxs.by_nuclide = by_nuclide
+        mgxs.name = name
+        return mgxs
 
     def get_all_nuclides(self):
         """Get all nuclides in the cross section's spatial domain.
@@ -217,7 +318,7 @@ class MultiGroupXS(object):
         Returns
         -------
         list of str
-            A list of the string names for each nuclide in the problem domain
+            A list of the string names for each nuclide in the spatial domain
             (e.g., ['U-235', 'U-238', 'O-16'])
 
         Raises
@@ -237,8 +338,8 @@ class MultiGroupXS(object):
         """Get the atomic number density in units of atoms/b-cm for a nuclide
         in the cross section's spatial domain.
 
-        Paramters
-        ---------
+        Parameters
+        ----------
         nuclide : str
             A nuclide name string (e.g., 'U-235')
 
@@ -248,7 +349,7 @@ class MultiGroupXS(object):
             The atomic number density (atom/b-cm) for the nuclide of interest
 
         Raises
-        ------
+        -------
         ValueError
             When the density is requested for a nuclide which is not found in
             the spatial domain.
@@ -272,19 +373,20 @@ class MultiGroupXS(object):
         """Get an array of atomic number densities in units of atom/b-cm for all
         nuclides in the cross section's spatial domain.
 
-        Paramters
-        ---------
+        Parameters
+        ----------
         nuclides : Iterable of str or 'all' or 'sum'
             A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
             special string 'all' will return the atom densities for all nuclides
             in the spatial domain. The special string 'sum' will return the atom
-            density summed across all nuclides in the spatial domain.
+            density summed across all nuclides in the spatial domain. Defaults
+            to 'all'.
 
         Returns
         -------
         ndarray of Real
             An array of the atomic number densities (atom/b-cm) for each of the
-            nuclides in the problem domain
+            nuclides in the spatial domain
 
         Raises
         ------
@@ -318,13 +420,12 @@ class MultiGroupXS(object):
 
         return densities
 
-    @abc.abstractmethod
-    def create_tallies(self, scores, all_filters, keys, estimator):
+    def _create_tallies(self, scores, all_filters, keys, estimator):
         """Instantiates tallies needed to compute the multi-group cross section.
 
-        This is a helper method for MultiGroupXS subclasses to create tallies
+        This is a helper method for MGXS subclasses to create tallies
         for input file generation. The tallies are stored in the tallies dict.
-        This method is called by each subclass' create_tallies(...) method
+        This method is called by each subclass' tallies property getter
         which define the parameters given to this parent class method.
 
         Parameters
@@ -346,6 +447,8 @@ class MultiGroupXS(object):
         cv.check_type('keys', keys, Iterable, basestring)
         cv.check_value('estimator', estimator, ['analog', 'tracklength'])
 
+        self._tallies = OrderedDict()
+
         # Create a domain Filter object
         domain_filter = openmc.Filter(self.domain_type, self.domain.id)
 
@@ -355,6 +458,12 @@ class MultiGroupXS(object):
             self.tallies[key].add_score(score)
             self.tallies[key].estimator = estimator
             self.tallies[key].add_filter(domain_filter)
+
+            # If a tally trigger was specified, add it to each tally
+            if self.tally_trigger:
+                trigger_clone = copy.deepcopy(self.tally_trigger)
+                trigger_clone.add_score(score)
+                self.tallies[key].add_trigger(trigger_clone)
 
             # Add all non-domain specific Filters (e.g., 'energy') to the Tally
             for filter in filters:
@@ -434,12 +543,9 @@ class MultiGroupXS(object):
         elif self.domain_type == 'material':
             self.domain = statepoint.summary.get_material_by_id(self.domain.id)
         else:
-            msg = 'Unable to load data from a statepoint for domain type {} ' \
+            msg = 'Unable to load data from a statepoint for domain type {0} ' \
                   'which is not yet supported'.format(self.domain_type)
             raise ValueError(msg)
-
-        # Create Tallies to search for in StatePoint
-        self.create_tallies()
 
         # Use tally "slicing" to ensure that tallies correspond to our domain
         # NOTE: This is important if tally merging was used
@@ -461,6 +567,9 @@ class MultiGroupXS(object):
                                           filter_bins, tally.nuclides)
             self.tallies[tally_type] = sp_tally
 
+        # Compute the cross section from the tallies
+        self.compute_xs()
+
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing', value='mean'):
         """Returns an array of multi-group cross sections.
@@ -471,22 +580,24 @@ class MultiGroupXS(object):
         Parameters
         ----------
         groups : Iterable of Integral or 'all'
-            Energy groups of interest
+            Energy groups of interest. Defaults to 'all'.
         subdomains : Iterable of Integral or 'all'
-            Subdomain IDs of interest
+            Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
-            special string 'all' (default) will return the cross sections for
-            all nuclides in the spatial domain. The special string 'sum' will
-            return the cross section summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns
+            special string 'all' will return the cross sections for all nuclides
+            in the spatial domain. The special string 'sum' will return the
+            cross section summed over all nuclides. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
         order_groups: {'increasing', 'decreasing'}
-            Return the cross section indexed according to increasing (default)
-            or decreasing energy groups (decreasing or increasing energies)
+            Return the cross section indexed according to increasing or
+            decreasing energy groups (decreasing or increasing energies).
+            Defaults to 'increasing'.
         value : str
-            A string for the type of value to return - 'mean' (default),
-            'std_dev' or 'rel_err' are accepted
+            A string for the type of value to return - 'mean', 'std_dev' or
+            'rel_err' are accepted. Defaults to 'mean'.
 
         Returns
         -------
@@ -562,16 +673,16 @@ class MultiGroupXS(object):
                 num_groups = len(groups)
 
             # Reshape tally data array with separate axes for domain and energy
-            num_subdomains = xs.shape[0] / num_groups
+            num_subdomains = int(xs.shape[0] / num_groups)
             new_shape = (num_subdomains, num_groups) + xs.shape[1:]
             xs = np.reshape(xs, new_shape)
 
             # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, :]
 
-            # Reshape array to original axes (filters, nuclides, scores)
-            new_shape = (num_subdomains * num_groups,) + xs.shape[2:]
-            xs = np.reshape(xs, new_shape)
+            # Eliminate trivial dimensions
+            xs = np.squeeze(xs)
+            xs = np.atleast_1d(xs)
 
         return xs
 
@@ -585,8 +696,8 @@ class MultiGroupXS(object):
 
         Returns
         -------
-        MultiGroupXS
-            A new MultiGroupXS condensed to the group structure of interest
+        MGXS
+            A new MGXS condensed to the group structure of interest
 
         """
 
@@ -603,7 +714,7 @@ class MultiGroupXS(object):
         cv.check_value('lower coarse energy', coarse_groups.group_edges[0],
                        [self.energy_groups.group_edges[0]])
 
-        # Clone this MultiGroupXS to initialize the condensed version
+        # Clone this MGXS to initialize the condensed version
         condensed_xs = copy.deepcopy(self)
         condensed_xs.energy_groups = coarse_groups
 
@@ -630,7 +741,13 @@ class MultiGroupXS(object):
 
             # Sum across all applicable fine energy group filters
             for i, filter in enumerate(tally.filters):
-                if 'energy' in filter.type and np.all(filter.bins == fine_edges):
+                if 'energy' not in filter.type:
+                    continue
+                elif len(filter.bins) != len(fine_edges):
+                    continue
+                elif not np.allclose(filter.bins, fine_edges):
+                    continue
+                else:
                     filter.bins = coarse_groups.group_edges
                     mean = np.add.reduceat(mean, energy_indices, axis=i)
                     std_dev = np.add.reduceat(std_dev**2, energy_indices, axis=i)
@@ -660,12 +777,12 @@ class MultiGroupXS(object):
         Parameters
         ----------
         subdomains : Iterable of Integral or 'all'
-            The subdomain IDs to average across
+            The subdomain IDs to average across. Defaults to 'all'.
 
         Returns
         -------
-        MultiGroupXS
-            A new MultiGroupXS averaged across the subdomains of interest
+        MGXS
+            A new MGXS averaged across the subdomains of interest
 
         Raises
         ------
@@ -688,9 +805,12 @@ class MultiGroupXS(object):
         else:
             subdomains = [0]
 
-        # Clone this MultiGroupXS to initialize the subdomain-averaged version
+        # Clone this MGXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
-        avg_xs.domain_type = 'cell'
+
+            # If domain is distribcell, make the new domain 'cell'
+        if self.domain_type == 'distribcell':
+            avg_xs.domain_type = 'cell'
 
         # Average each of the tallies across subdomains
         for tally_type, tally in avg_xs.tallies.items():
@@ -736,15 +856,17 @@ class MultiGroupXS(object):
         Parameters
         ----------
         subdomains : Iterable of Integral or 'all'
-            The subdomain IDs of the cross sections to include in the report
+            The subdomain IDs of the cross sections to include in the report.
+            Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
             may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
-            The special string 'all' (default) will report the cross sections
-            for all nuclides in the spatial domain. The special string 'sum'
-            will report the cross sections summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns
+            The special string 'all' will report the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will report
+            the cross sections summed over all nuclides. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
 
         """
 
@@ -818,7 +940,8 @@ class MultiGroupXS(object):
 
         print(string)
 
-    def build_hdf5_store(self, filename='mgxs', directory='mgxs',
+    def build_hdf5_store(self, filename='mgxs.h5', directory='mgxs',
+                         subdomains='all', nuclides='all',
                          xs_type='macro', append=True):
         """Export the multi-group cross section data to an HDF5 binary file.
 
@@ -833,14 +956,24 @@ class MultiGroupXS(object):
         Parameters
         ----------
         filename : str
-            Filename for the HDF5 file (default is 'mgxs')
+            Filename for the HDF5 file. Defaults to 'mgxs.h5'.
         directory : str
-            Directory for the HDF5 file (default is 'mgxs')
-        xs_type: {'macro' or 'micro'}
-            Store the macro or micro cross section in units of cm^-1 or barns
-        append : boolean
+            Directory for the HDF5 file. Defaults to 'mgxs'.
+        subdomains : Iterable of Integral or 'all'
+            The subdomain IDs of the cross sections to include in the report.
+            Defaults to 'all'.
+        nuclides : Iterable of str or 'all' or 'sum'
+            The nuclides of the cross-sections to include in the report. This
+            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            The special string 'all' will report the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will report
+            the cross sections summed over all nuclides. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
+            Store the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
+        append : bool
             If true, appends to an existing HDF5 file with the same filename
-            directory (if one exists)
+            directory (if one exists). Defaults to True.
 
         Raises
         ------
@@ -857,18 +990,13 @@ class MultiGroupXS(object):
                   'cross section has not been computed'
             raise ValueError(msg)
 
-        # Attempt to import h5py
-        try:
-            import h5py
-        except ImportError:
-            msg = 'The h5py Python package must be installed on your system'
-            raise ImportError(msg)
+        import h5py
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        filename = directory + '/' + filename + '.h5'
+        filename = os.path.join(directory, filename)
         filename = filename.replace(' ', '-')
 
         if append and os.path.isfile(filename):
@@ -876,25 +1004,31 @@ class MultiGroupXS(object):
         else:
             xs_results = h5py.File(filename, 'w')
 
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-
-        if self.by_nuclide:
-            nuclides = self.domain.get_all_nuclides()
-            densities = np.zeros(len(nuclides), dtype=np.float)
-            for i, nuclide in enumerate(nuclides):
-                densities[i] = nuclides[nuclide][1]
-        else:
-            nuclides = ['sum']
-
-        # Create an HDF5 group within the file for the domain
-        domain_type_group = xs_results.require_group(self.domain_type)
-        group_name = '{0} {1}'.format(self.domain_type, self.domain.id)
-        domain_group = domain_type_group.require_group(group_name)
-
-        if self.domain_type == 'distribcell':
+        # Construct a collection of the subdomains to report
+        if subdomains != 'all':
+            cv.check_iterable_type('subdomains', subdomains, Integral)
+        elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         else:
             subdomains = [self.domain.id]
+
+        # Construct a collection of the nuclides to report
+        if self.by_nuclide:
+            if nuclides == 'all':
+                nuclides = self.get_all_nuclides()
+                densities = np.zeros(len(nuclides), dtype=np.float)
+            elif nuclides == 'sum':
+                nuclides = ['sum']
+            else:
+                cv.check_iterable_type('nuclides', nuclides, basestring)
+        else:
+            nuclides = ['sum']
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        # Create an HDF5 group within the file for the domain
+        domain_type_group = xs_results.require_group(self.domain_type)
+        domain_group = domain_type_group.require_group(str(self.domain.id))
 
         # Determine number of digits to pad subdomain group keys
         num_digits = len(str(self.num_subdomains))
@@ -904,7 +1038,7 @@ class MultiGroupXS(object):
 
             # Create an HDF5 group for the subdomain
             if self.domain_type == 'distribcell':
-                group_name = str(subdomain).zfill(num_digits)
+                group_name = ''.zfill(num_digits)
                 subdomain_group = domain_group.require_group(group_name)
             else:
                 subdomain_group = domain_group
@@ -931,13 +1065,13 @@ class MultiGroupXS(object):
                 average = average.squeeze()
                 std_dev = std_dev.squeeze()
 
-                # Add MultiGroupXS results data to the HDF5 group
+                # Add MGXS results data to the HDF5 group
                 nuclide_group.require_dataset('average', dtype=np.float64,
                                               shape=average.shape, data=average)
                 nuclide_group.require_dataset('std. dev.', dtype=np.float64,
                                               shape=std_dev.shape, data=std_dev)
 
-        # Close the MultiGroup results HDF5 file
+        # Close the results HDF5 file
         xs_results.close()
 
     def export_xs_data(self, filename='mgxs', directory='mgxs',
@@ -951,15 +1085,16 @@ class MultiGroupXS(object):
         Parameters
         ----------
         filename : str
-            Filename for the exported file (default is 'mgxs')
+            Filename for the exported file. Defaults to 'mgxs'.
         directory : str
-            Directory for the exported file (default is 'mgxs')
+            Directory for the exported file. Defaults to 'mgxs'.
         format : {'csv', 'excel', 'pickle', 'latex'}
-            The format for the exported data file
+            The format for the exported data file. Defaults to 'csv'.
         groups : Iterable of Integral or 'all'
-            Energy groups of interest
-        xs_type: {'macro' or 'micro'}
-            Store the macro or micro cross section in units of cm^-1 or barns
+            Energy groups of interest. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
+            Store the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
 
         """
 
@@ -972,7 +1107,7 @@ class MultiGroupXS(object):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        filename = directory + '/' + filename
+        filename = os.path.join(directory, filename)
         filename = filename.replace(' ', '-')
 
         # Get a Pandas DataFrame for the data
@@ -1013,7 +1148,7 @@ class MultiGroupXS(object):
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',
                              xs_type='macro', summary=None):
-        """Build a Pandas DataFrame for the MultiGroupXS data.
+        """Build a Pandas DataFrame for the MGXS data.
 
         This method leverages the Tally.get_pandas_dataframe(...) method, but
         renames the columns with terminology appropriate for cross section data.
@@ -1021,15 +1156,17 @@ class MultiGroupXS(object):
         Parameters
         ----------
         groups : Iterable of Integral or 'all'
-            Energy groups of interest
+            Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
             may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
-            The special string 'all' (default) will include the cross sections
-            for all nuclides in the spatial domain. The special string 'sum'
-            will include the cross sections summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
-            Return macro or micro cross section in units of cm^-1 or barns
+            The special string 'all' will include the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will
+            include the cross sections summed over all nuclides. Defaults
+            to 'all'.
+        xs_type: {'macro', 'micro'}
+            Return macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
         summary : None or Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
@@ -1129,7 +1266,7 @@ class MultiGroupXS(object):
         return df
 
 
-class TotalXS(MultiGroupXS):
+class TotalXS(MGXS):
     """A total multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1138,7 +1275,8 @@ class TotalXS(MultiGroupXS):
                                       groups, by_nuclide, name)
         self._rxn_type = 'total'
 
-    def create_tallies(self):
+    @property
+    def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs two tracklength tallies to compute the 'flux'
@@ -1147,18 +1285,23 @@ class TotalXS(MultiGroupXS):
 
         """
 
-        # Create a list of scores for each Tally to be created
-        scores = ['flux', 'total']
-        estimator = 'tracklength'
-        keys = scores
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
 
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
-        filters = [[energy_filter], [energy_filter]]
+            # Create a list of scores for each Tally to be created
+            scores = ['flux', 'total']
+            estimator = 'tracklength'
+            keys = scores
 
-        # Initialize the Tallies
-        super(TotalXS, self).create_tallies(scores, filters, keys, estimator)
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energy_filter = openmc.Filter('energy', group_edges)
+            filters = [[energy_filter], [energy_filter]]
+
+            # Initialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
 
     def compute_xs(self):
         """Computes the multi-group total cross sections using OpenMC
@@ -1169,7 +1312,7 @@ class TotalXS(MultiGroupXS):
         super(TotalXS, self).compute_xs()
 
 
-class TransportXS(MultiGroupXS):
+class TransportXS(MGXS):
     """A transport-corrected total multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1178,7 +1321,8 @@ class TransportXS(MultiGroupXS):
                                           groups, by_nuclide, name)
         self._rxn_type = 'transport'
 
-    def create_tallies(self):
+    @property
+    def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs three analog tallies to compute the 'flux',
@@ -1187,61 +1331,40 @@ class TransportXS(MultiGroupXS):
 
         """
 
-        # Create a list of scores for each Tally to be created
-        scores = ['flux', 'total', 'scatter-P1']
-        estimator = 'analog'
-        keys = scores
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
 
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
-        energyout_filter = openmc.Filter('energyout', group_edges)
-        filters = [[energy_filter], [energy_filter], [energyout_filter]]
+            # Create a list of scores for each Tally to be created
+            scores = ['flux', 'total', 'scatter-P1']
+            estimator = 'analog'
+            keys = scores
 
-        # Initialize the Tallies
-        super(TransportXS, self).create_tallies(scores, filters,
-                                                keys, estimator)
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energy_filter = openmc.Filter('energy', group_edges)
+            energyout_filter = openmc.Filter('energyout', group_edges)
+            filters = [[energy_filter], [energy_filter], [energyout_filter]]
 
-    def load_from_statepoint(self, statepoint):
-        """Extracts tallies in an OpenMC StatePoint with the data needed to
-        compute multi-group cross sections.
+            # Initialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
 
-        This method is needed to compute cross section data from tallies
-        in an OpenMC StatePoint object.
+        return self._tallies
 
-        NOTE: The statepoint must first be linked with an OpenMC Summary object.
-
-        Parameters
-        ----------
-        statepoint : openmc.StatePoint
-            An OpenMC StatePoint object with tally data
-
-        Raises
-        ------
-        ValueError
-            When this method is called with a statepoint that has not been
-            linked with a summary object.
-
-        """
-
-        # Load the tallies from the statepoint using the parent class method
-        super(TransportXS, self).load_from_statepoint(statepoint)
+    def compute_xs(self):
+        """Computes the multi-group transport cross sections using OpenMC
+        tally arithmetic."""
 
         # Use tally slicing to remove scatter-P0 data from scatter-P1 tally
         scatter_p1 = self.tallies['scatter-P1']
         self.tallies['scatter-P1'] = scatter_p1.get_slice(scores=['scatter-P1'])
         self.tallies['scatter-P1'].filters[-1].type = 'energy'
 
-    def compute_xs(self):
-        """Computes the multi-group transport cross sections using OpenMC
-        tally arithmetic."""
-
         self._xs_tally = self.tallies['total'] - self.tallies['scatter-P1']
         self._xs_tally /= self.tallies['flux']
         super(TransportXS, self).compute_xs()
 
 
-class AbsorptionXS(MultiGroupXS):
+class AbsorptionXS(MGXS):
     """An absorption multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1250,7 +1373,8 @@ class AbsorptionXS(MultiGroupXS):
                                            groups, by_nuclide, name)
         self._rxn_type = 'absorption'
 
-    def create_tallies(self):
+    @property
+    def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs two tracklength tallies to compute the 'flux'
@@ -1259,19 +1383,23 @@ class AbsorptionXS(MultiGroupXS):
 
         """
 
-        # Create a list of scores for each Tally to be created
-        scores = ['flux', 'absorption']
-        estimator = 'tracklength'
-        keys = scores
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
 
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
-        filters = [[energy_filter], [energy_filter]]
+            # Create a list of scores for each Tally to be created
+            scores = ['flux', 'absorption']
+            estimator = 'tracklength'
+            keys = scores
 
-        # Initialize the Tallies
-        super(AbsorptionXS, self).create_tallies(scores, filters,
-                                                 keys, estimator)
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energy_filter = openmc.Filter('energy', group_edges)
+            filters = [[energy_filter], [energy_filter]]
+
+            # Initialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
 
     def compute_xs(self):
         """Computes the multi-group absorption cross sections using OpenMC
@@ -1281,8 +1409,15 @@ class AbsorptionXS(MultiGroupXS):
         super(AbsorptionXS, self).compute_xs()
 
 
-class CaptureXS(MultiGroupXS):
-    """A capture multi-group cross section."""
+class CaptureXS(MGXS):
+    """A capture multi-group cross section.
+    
+    The Neutron capture reaction rate is defined as the difference between 
+    OpenMC's 'absorption' and 'fission' reaction rate score types. This includes
+    not only radiative capture, but all forms of neutron disappearance aside
+    from fission (e.g., MT > 100).
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
@@ -1290,7 +1425,8 @@ class CaptureXS(MultiGroupXS):
                                         groups, by_nuclide, name)
         self._rxn_type = 'capture'
 
-    def create_tallies(self):
+    @property
+    def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs two tracklength tallies to compute the 'flux'
@@ -1299,18 +1435,23 @@ class CaptureXS(MultiGroupXS):
 
         """
 
-        # Create a list of scores for each Tally to be created
-        scores = ['flux', 'absorption', 'fission']
-        estimator = 'tracklength'
-        keys = scores
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
 
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
-        filters = [[energy_filter], [energy_filter], [energy_filter]]
+            # Create a list of scores for each Tally to be created
+            scores = ['flux', 'absorption', 'fission']
+            estimator = 'tracklength'
+            keys = scores
 
-        # Initialize the Tallies
-        super(CaptureXS, self).create_tallies(scores, filters, keys, estimator)
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energy_filter = openmc.Filter('energy', group_edges)
+            filters = [[energy_filter], [energy_filter], [energy_filter]]
+
+            # Initialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
 
     def compute_xs(self):
         """Computes the multi-group capture cross sections using OpenMC
@@ -1321,7 +1462,7 @@ class CaptureXS(MultiGroupXS):
         super(CaptureXS, self).compute_xs()
 
 
-class FissionXS(MultiGroupXS):
+class FissionXS(MGXS):
     """A fission multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1330,7 +1471,8 @@ class FissionXS(MultiGroupXS):
                                         groups, by_nuclide, name)
         self._rxn_type = 'fission'
 
-    def create_tallies(self):
+    @property
+    def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs two tracklength tallies to compute the 'flux'
@@ -1339,18 +1481,23 @@ class FissionXS(MultiGroupXS):
 
         """
 
-        # Create a list of scores for each Tally to be created
-        scores = ['flux', 'fission']
-        estimator = 'tracklength'
-        keys = scores
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
 
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
-        filters = [[energy_filter], [energy_filter]]
+            # Create a list of scores for each Tally to be created
+            scores = ['flux', 'fission']
+            estimator = 'tracklength'
+            keys = scores
 
-        # Initialize the Tallies
-        super(FissionXS, self).create_tallies(scores, filters, keys, estimator)
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energy_filter = openmc.Filter('energy', group_edges)
+            filters = [[energy_filter], [energy_filter]]
+
+            # Initialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
 
     def compute_xs(self):
         """Computes the multi-group fission cross sections using OpenMC
@@ -1360,7 +1507,7 @@ class FissionXS(MultiGroupXS):
         super(FissionXS, self).compute_xs()
 
 
-class NuFissionXS(MultiGroupXS):
+class NuFissionXS(MGXS):
     """A fission production multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1369,7 +1516,8 @@ class NuFissionXS(MultiGroupXS):
                                           groups, by_nuclide, name)
         self._rxn_type = 'nu-fission'
 
-    def create_tallies(self):
+    @property
+    def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs two tracklength tallies to compute the 'flux'
@@ -1378,19 +1526,23 @@ class NuFissionXS(MultiGroupXS):
 
         """
 
-        # Create a list of scores for each Tally to be created
-        scores = ['flux', 'nu-fission']
-        estimator = 'tracklength'
-        keys = scores
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
 
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
-        filters = [[energy_filter], [energy_filter]]
+            # Create a list of scores for each Tally to be created
+            scores = ['flux', 'nu-fission']
+            estimator = 'tracklength'
+            keys = scores
 
-        # Initialize the Tallies
-        super(NuFissionXS, self).create_tallies(scores, filters,
-                                                keys, estimator)
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energy_filter = openmc.Filter('energy', group_edges)
+            filters = [[energy_filter], [energy_filter]]
+
+            # Initialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
 
     def compute_xs(self):
         """Computes the multi-group nu-fission cross sections using OpenMC
@@ -1400,7 +1552,7 @@ class NuFissionXS(MultiGroupXS):
         super(NuFissionXS, self).compute_xs()
 
 
-class ScatterXS(MultiGroupXS):
+class ScatterXS(MGXS):
     """A scatter multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1409,7 +1561,8 @@ class ScatterXS(MultiGroupXS):
                                         groups, by_nuclide, name)
         self._rxn_type = 'scatter'
 
-    def create_tallies(self):
+    @property
+    def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs two tracklength tallies to compute the 'flux'
@@ -1418,18 +1571,23 @@ class ScatterXS(MultiGroupXS):
 
         """
 
-        # Create a list of scores for each Tally to be created
-        scores = ['flux', 'scatter']
-        estimator = 'tracklength'
-        keys = scores
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
 
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
-        filters = [[energy_filter], [energy_filter]]
+            # Create a list of scores for each Tally to be created
+            scores = ['flux', 'scatter']
+            estimator = 'tracklength'
+            keys = scores
 
-        # Intialize the Tallies
-        super(ScatterXS, self).create_tallies(scores, filters, keys, estimator)
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energy_filter = openmc.Filter('energy', group_edges)
+            filters = [[energy_filter], [energy_filter]]
+
+            # Intialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
 
     def compute_xs(self):
         """Computes the scattering multi-group cross sections using
@@ -1439,7 +1597,7 @@ class ScatterXS(MultiGroupXS):
         super(ScatterXS, self).compute_xs()
 
 
-class NuScatterXS(MultiGroupXS):
+class NuScatterXS(MGXS):
     """A nu-scatter multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1448,7 +1606,8 @@ class NuScatterXS(MultiGroupXS):
                                           groups, by_nuclide, name)
         self._rxn_type = 'nu-scatter'
 
-    def create_tallies(self):
+    @property
+    def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs two analog tallies to compute the 'flux'
@@ -1457,19 +1616,23 @@ class NuScatterXS(MultiGroupXS):
 
         """
 
-        # Create a list of scores for each Tally to be created
-        scores = ['flux', 'nu-scatter']
-        estimator = 'tracklength'
-        keys = scores
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
 
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
-        filters = [[energy_filter], [energy_filter]]
+            # Create a list of scores for each Tally to be created
+            scores = ['flux', 'nu-scatter']
+            estimator = 'analog'
+            keys = scores
 
-        # Initialize the Tallies
-        super(NuScatterXS, self).create_tallies(scores, filters,
-                                                keys, estimator)
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energy_filter = openmc.Filter('energy', group_edges)
+            filters = [[energy_filter], [energy_filter]]
+
+            # Initialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
 
     def compute_xs(self):
         """Computes the nu-scattering multi-group cross section using OpenMC
@@ -1479,16 +1642,34 @@ class NuScatterXS(MultiGroupXS):
         super(NuScatterXS, self).compute_xs()
 
 
-class ScatterMatrixXS(MultiGroupXS):
-    """A scattering matrix multi-group cross section."""
+class ScatterMatrixXS(MGXS):
+    """A scattering matrix multi-group cross section.
+
+    Attributes
+    ----------
+    correction : 'P0' or None
+        Apply the P0 correction to scattering matrices if set to 'P0'
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
         super(ScatterMatrixXS, self).__init__(domain, domain_type,
                                               groups, by_nuclide, name)
         self._rxn_type = 'scatter matrix'
+        self._correction = 'P0'
 
-    def create_tallies(self):
+    def __deepcopy__(self, memo):
+        clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
+        clone._correction = self.correction
+        return clone
+
+    @property
+    def correction(self):
+        return self._correction
+
+    @property
+    def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs three analog tallies to compute the 'flux',
@@ -1497,35 +1678,40 @@ class ScatterMatrixXS(MultiGroupXS):
 
         """
 
-        group_edges = self.energy_groups.group_edges
-        energy = openmc.Filter('energy', group_edges)
-        energyout = openmc.Filter('energyout', group_edges)
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
 
-        # Create a list of scores for each Tally to be created
-        scores = ['flux', 'scatter', 'scatter-P1']
-        filters = [[energy], [energy, energyout], [energyout]]
+            group_edges = self.energy_groups.group_edges
+            energy = openmc.Filter('energy', group_edges)
+            energyout = openmc.Filter('energyout', group_edges)
 
-        estimator = 'analog'
-        keys = scores
+            # Create a list of scores for each Tally to be created
+            if self.correction == 'P0':
+                scores = ['flux', 'scatter', 'scatter-P1']
+                filters = [[energy], [energy, energyout], [energyout]]
+            else:
+                scores = ['flux', 'scatter']
+                filters = [[energy], [energy, energyout]]
 
-        # Initialize the Tallies
-        super(ScatterMatrixXS, self).create_tallies(scores, filters,
-                                                    keys, estimator)
+            estimator = 'analog'
+            keys = scores
 
-    def compute_xs(self, correction='P0'):
+            # Initialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
+
+    @correction.setter
+    def correction(self, correction):
+        cv.check_value('correction', correction, ('P0', None))
+        self._correction = correction
+
+    def compute_xs(self):
         """Computes the multi-group scattering matrix using OpenMC
-        tally arithmetic.
-
-        Parameters
-        ----------
-        correction : {'P0' or None}
-            If 'P0', applies the P0 transport correction to the diagonal of the
-            scattering matrix.
-
-        """
+        tally arithmetic."""
 
         # If using P0 correction subtract scatter-P1 from the diagonal
-        if correction == 'P0':
+        if self.correction == 'P0':
             scatter_p1 = self.tallies['scatter-P1']
             scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
             energy_filter = openmc.Filter(type='energy')
@@ -1549,24 +1735,26 @@ class ScatterMatrixXS(MultiGroupXS):
         Parameters
         ----------
         in_groups : Iterable of Integral or 'all'
-            Incoming energy groups of interest
+            Incoming energy groups of interest. Defaults to 'all'.
         out_groups : Iterable of Integral or 'all'
-            Outgoing energy groups of interest
+            Outgoing energy groups of interest. Defaults to 'all'.
         subdomains : Iterable of Integral or 'all'
-            Subdomain IDs of interest
+            Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
-            special string 'all' (default) will return the cross sections for
-            all nuclides in the spatial domain. The special string 'sum' will
-            return the cross section summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns
+            special string 'all' will return the cross sections for all nuclides
+            in the spatial domain. The special string 'sum' will return the
+            cross section summed over all nuclides. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
         order_groups: {'increasing', 'decreasing'}
-            Return the cross section indexed according to increasing (default)
-            or decreasing energy groups (decreasing or increasing energies)
+            Return the cross section indexed according to increasing or
+            decreasing energy groups (decreasing or increasing energies).
+            Defaults to 'increasing'.
         value : str
-            A string for the type of value to return - 'mean' (default),
-            'std_dev' or 'rel_err' are accepted
+            A string for the type of value to return - 'mean', 'std_dev', or
+            'rel_err' are accepted. Defaults to the empty string.
 
         Returns
         -------
@@ -1656,7 +1844,7 @@ class ScatterMatrixXS(MultiGroupXS):
                 num_out_groups = len(out_groups)
 
             # Reshape tally data array with separate axes for domain and energy
-            num_subdomains = xs.shape[0] / (num_in_groups * num_out_groups)
+            num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups))
             new_shape = (num_subdomains, num_in_groups, num_out_groups)
             new_shape += xs.shape[1:]
             xs = np.reshape(xs, new_shape)
@@ -1664,10 +1852,9 @@ class ScatterMatrixXS(MultiGroupXS):
             # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, ::-1, :]
 
-            # Reshape array to original axes (filters, nuclides, scores)
-            new_shape = (num_subdomains * num_in_groups * num_out_groups,)
-            new_shape += xs.shape[3:]
-            xs = np.reshape(xs, new_shape)
+            # Eliminate trivial dimensions
+            xs = np.squeeze(xs)
+            xs = np.atleast_2d(xs)
 
         return xs
 
@@ -1677,15 +1864,17 @@ class ScatterMatrixXS(MultiGroupXS):
         Parameters
         ----------
         subdomains : Iterable of Integral or 'all'
-            The subdomain IDs of the cross sections to include in the report
+            The subdomain IDs of the cross sections to include in the report.
+            Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
             may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
-            The special string 'all' (default) will report the cross sections
-            for all nuclides in the spatial domain. The special string 'sum'
-            will report the cross sections summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns
+            The special string 'all' will report the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will report
+            the cross sections summed over all nuclides. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
 
         """
 
@@ -1789,7 +1978,8 @@ class NuScatterMatrixXS(ScatterMatrixXS):
                                                 groups, by_nuclide, name)
         self._rxn_type = 'nu-scatter matrix'
 
-    def create_tallies(self):
+    @property
+    def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs three analog tallies to compute the 'flux',
@@ -1798,22 +1988,32 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
         """
 
-        # Create a list of scores for each Tally to be created
-        scores = ['flux', 'nu-scatter', 'scatter-P1']
-        estimator = 'analog'
-        keys = ['flux', 'scatter', 'scatter-P1']
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
 
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energy = openmc.Filter('energy', group_edges)
-        energyout = openmc.Filter('energyout', group_edges)
-        filters = [[energy], [energy, energyout], [energyout]]
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energy = openmc.Filter('energy', group_edges)
+            energyout = openmc.Filter('energyout', group_edges)
 
-        # Intialize the Tallies
-        super(ScatterMatrixXS, self).create_tallies(scores, filters,
-                                                    keys, estimator)
+            # Create a list of scores for each Tally to be created
+            if self.correction == 'P0':
+                scores = ['flux', 'nu-scatter', 'scatter-P1']
+                estimator = 'analog'
+                keys = ['flux', 'scatter', 'scatter-P1']
+                filters = [[energy], [energy, energyout], [energyout]]
+            else:
+                scores = ['flux', 'nu-scatter']
+                estimator = 'analog'
+                keys = ['flux', 'scatter']
+                filters = [[energy], [energy, energyout]]
 
-class Chi(MultiGroupXS):
+            # Intialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
+
+class Chi(MGXS):
     """The fission spectrum."""
 
     def __init__(self, domain=None, domain_type=None,
@@ -1821,7 +2021,8 @@ class Chi(MultiGroupXS):
         super(Chi, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'chi'
 
-    def create_tallies(self):
+    @property
+    def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs two analog tallies to compute 'nu-fission'
@@ -1830,19 +2031,24 @@ class Chi(MultiGroupXS):
 
         """
 
-        # Create a list of scores for each Tally to be created
-        scores = ['nu-fission', 'nu-fission']
-        estimator = 'analog'
-        keys = ['nu-fission-in', 'nu-fission-out']
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
 
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energyout = openmc.Filter('energyout', group_edges)
-        energyin = openmc.Filter('energy', [group_edges[0], group_edges[-1]])
-        filters = [[energyin], [energyout]]
+            # Create a list of scores for each Tally to be created
+            scores = ['nu-fission', 'nu-fission']
+            estimator = 'analog'
+            keys = ['nu-fission-in', 'nu-fission-out']
 
-        # Intialize the Tallies
-        super(Chi, self).create_tallies(scores, filters, keys, estimator)
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energyout = openmc.Filter('energyout', group_edges)
+            energyin = openmc.Filter('energy', [group_edges[0], group_edges[-1]])
+            filters = [[energyin], [energyout]]
+
+            # Intialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
 
     def compute_xs(self):
         """Computes chi fission spectrum using OpenMC tally arithmetic."""
@@ -1851,7 +2057,7 @@ class Chi(MultiGroupXS):
         nu_fission_in = self.tallies['nu-fission-in']
         nu_fission_out = self.tallies['nu-fission-out']
 
-        # Remove the coarse energy filter to keep it out of tally arithmetic
+        # Remove coarse energy filter to keep it out of tally arithmetic
         energy_filter = nu_fission_in.find_filter('energy')
         nu_fission_in.remove_filter(energy_filter)
 
@@ -1873,23 +2079,24 @@ class Chi(MultiGroupXS):
         Parameters
         ----------
         groups : Iterable of Integral or 'all'
-            Energy groups of interest
+            Energy groups of interest. Defaults to 'all'.
         subdomains : Iterable of Integral or 'all'
-            Subdomain IDs of interest
+            Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
-            special string 'all' (default) will return the cross sections for
-            all nuclides in the spatial domain. The special string 'sum' will
-            return the cross section summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
+            special string 'all' will return the cross sections for all nuclides
+            in the spatial domain. The special string 'sum' will return the
+            cross section summed over all nuclides. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
             This parameter is not relevant for chi but is included here to
-            mirror the parent MultiGroupXS.get_xs(...) class method
+            mirror the parent MGXS.get_xs(...) class method
         order_groups: {'increasing', 'decreasing'}
-            Return the cross section indexed according to increasing (default)
-            or decreasing energy groups (decreasing or increasing energies)
+            Return the cross section indexed according to increasing or
+            decreasing energy groups (decreasing or increasing energies).
+            Defaults to 'increasing'.
         value : str
-            A string for the type of value to return - 'mean' (default),
-            'std_dev' or 'rel_err' are accepted
+            A string for the type of value to return - 'mean', 'std_dev', or
+            'rel_err' are accepted. Defaults to 'mean'.
 
         Returns
         -------
@@ -1945,9 +2152,17 @@ class Chi(MultiGroupXS):
                 nu_fission_in = nu_fission_in.summation(nuclides=nuclides)
                 nu_fission_out = nu_fission_out.summation(nuclides=nuclides)
 
+                # Remove coarse energy filter to keep it out of tally arithmetic
+                energy_filter = nu_fission_in.find_filter('energy')
+                nu_fission_in.remove_filter(energy_filter)
+
                 # Compute chi and store it as the xs_tally attribute so we can
                 # use the generic get_xs(...) method
                 xs_tally = nu_fission_out / nu_fission_in
+
+                # Add the coarse energy filter back to the nu-fission tally
+                nu_fission_in.add_filter(energy_filter)
+
                 xs = xs_tally.get_values(filters=filters,
                                          filter_bins=filter_bins, value=value)
 
@@ -1979,23 +2194,23 @@ class Chi(MultiGroupXS):
                 num_groups = self.num_groups
             else:
                 num_groups = len(groups)
-            num_subdomains = xs.shape[0] / num_groups
+            num_subdomains = int(xs.shape[0] / num_groups)
             new_shape = (num_subdomains, num_groups) + xs.shape[1:]
             xs = np.reshape(xs, new_shape)
 
             # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, :]
 
-            # Reshape array to original axes (filters, nuclides, scores)
-            new_shape = (num_subdomains * num_groups,) + new_shape[2:]
-            xs = np.reshape(xs, new_shape)
+            # Eliminate trivial dimensions
+            xs = np.squeeze(xs)
+            xs = np.atleast_1d(xs)
 
         xs = np.nan_to_num(xs)
         return xs
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',
                              xs_type='macro', summary=None):
-        """Build a Pandas DataFrame for the MultiGroupXS data.
+        """Build a Pandas DataFrame for the MGXS data.
 
         This method leverages the Tally.get_pandas_dataframe(...) method, but
         renames the columns with terminology appropriate for cross section data.
@@ -2003,15 +2218,17 @@ class Chi(MultiGroupXS):
         Parameters
         ----------
         groups : Iterable of Integral or 'all'
-            Energy groups of interest
+            Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
             may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
-            The special string 'all' (default) will include the cross sections
-            for all nuclides in the spatial domain. The special string 'sum'
-            will include the cross sections summed over all nuclides.
-        xs_type: {'macro' or 'micro'}
-            Return macro or micro cross section in units of cm^-1 or barns
+            The special string 'all' will include the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will
+            include the cross sections summed over all nuclides. Defaults to
+            'all'.
+        xs_type: {'macro', 'micro'}
+            Return macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
         summary : None or Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric

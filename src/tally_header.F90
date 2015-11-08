@@ -74,7 +74,7 @@ module tally_header
     ! Basic data
 
     integer :: id                   ! user-defined identifier
-    character(len=52) :: name = "" ! user-defined name
+    character(len=104) :: name = "" ! user-defined name
     integer :: type                 ! volume, surface current
     integer :: estimator            ! collision, track-length
     real(8) :: volume               ! volume of region

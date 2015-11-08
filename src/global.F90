@@ -6,11 +6,12 @@ module global
   use cmfd_header
   use constants
   use dict_header,      only: DictCharInt, DictIntInt
-  use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer, Surface
+  use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
   use material_header,  only: Material
   use mesh_header,      only: RegularMesh
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
+  use surface_header,   only: SurfaceContainer
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use trigger_header,   only: KTrigger
@@ -27,12 +28,12 @@ module global
   ! GEOMETRY-RELATED VARIABLES
 
   ! Main arrays
-  type(Cell),              allocatable, target :: cells(:)
-  type(Universe),          allocatable, target :: universes(:)
-  type(LatticeContainer),  allocatable, target :: lattices(:)
-  type(Surface),           allocatable, target :: surfaces(:)
-  type(Material),          allocatable, target :: materials(:)
-  type(ObjectPlot),        allocatable, target :: plots(:)
+  type(Cell),             allocatable, target :: cells(:)
+  type(Universe),         allocatable, target :: universes(:)
+  type(LatticeContainer), allocatable, target :: lattices(:)
+  type(SurfaceContainer), allocatable, target :: surfaces(:)
+  type(Material),         allocatable, target :: materials(:)
+  type(ObjectPlot),       allocatable, target :: plots(:)
 
   ! Size of main arrays
   integer :: n_cells     ! # of cells
@@ -72,6 +73,10 @@ module global
   integer :: n_nuclides_total ! Number of nuclide cross section tables
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
   integer :: n_listings       ! Number of listings in cross_sections.xml
+
+  ! Minimum/maximum energies
+  real(8) :: energy_min_neutron = ZERO
+  real(8) :: energy_max_neutron = INFINITY
 
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict

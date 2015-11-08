@@ -23,9 +23,11 @@ element tallies {
       attribute estimator { ( "analog" | "tracklength" ) })? &
     element filter {
       (element type { ( "cell" | "cellborn" | "material" | "universe" |
-        "surface" | "distribcell" | "mesh" | "energy" | "energyout" ) } |
+        "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu" |
+        "polar" | "azimuthal" | "delayedgroup") } |
        attribute type { ( "cell" | "cellborn" | "material" | "universe" |
-        "surface" | "distribcell" | "mesh" | "energy" | "energyout" ) }) &
+        "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu" |
+        "polar" | "azimuthal" | "delayedgroup") }) &
       (element bins { list { xsd:double+ } } |
         attribute bins { list { xsd:double+ } })
     }* &

@@ -102,9 +102,9 @@ class Nuclide(object):
     @scattering.setter
     def scattering(self, scattering):
 
-        if not scattering in ['ace', 'lab']:
+        if not scattering in ['ace', 'iso-in-lab']:
             msg = 'Unable to set scattering for Nuclide to {0} ' \
-                  'which is not "ace" or "lab"'.format(scattering)
+                  'which is not "ace" or "iso-in-lab"'.format(scattering)
             raise ValueError(msg)
 
         self._scattering = scattering

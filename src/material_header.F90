@@ -13,6 +13,7 @@ module material_header
     integer, allocatable :: nuclide(:)      ! index in nuclides array
     real(8)              :: density         ! total atom density in atom/b-cm
     real(8), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
+    real(8)              :: density_gpcc    ! total density in g/cm^3
 
     ! Energy grid information
     integer              :: n_grid    ! # of union material grid points

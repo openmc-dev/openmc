@@ -259,7 +259,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 22
+  integer, parameter :: N_SCORE_TYPES = 23
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -282,7 +282,8 @@ module constants
        SCORE_NU_SCATTER_YN      = -19, & ! angular flux-weighted nu-scattering moment (0:N)
        SCORE_EVENTS             = -20, & ! number of events
        SCORE_DELAYED_NU_FISSION = -21, & ! delayed neutron production rate
-       SCORE_INVERSE_VELOCITY   = -22    ! flux-weighted inverse velocity
+       SCORE_INVERSE_VELOCITY   = -22, & ! flux-weighted inverse velocity
+       SCORE_KEFF               = -23    ! multiplication factor
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -347,6 +348,11 @@ module constants
        K_ABSORPTION  = 2, &
        K_TRACKLENGTH = 3, &
        LEAKAGE       = 4
+
+  ! Differential tally dependent variables
+  integer, parameter :: &
+       DIFF_DENSITY = 1, &
+       DIFF_NUCLIDE_DENSITY = 2
 
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS

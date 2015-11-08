@@ -199,6 +199,7 @@ contains
     type(Cell),     pointer :: c    ! pointer to cell
     class(Lattice), pointer :: lat  ! pointer to lattice
     type(Universe), pointer :: univ ! universe to search in
+    real(8) :: new_xyz(3)           ! perturbed location used to look for cell
 
     do j = p % n_coord + 1, MAX_COORD
       call p % coord(j) % reset()
@@ -285,7 +286,8 @@ contains
         lat => lattices(c % fill) % obj
 
         ! Determine lattice indices
-        i_xyz = lat % get_indices(p % coord(j) % xyz + TINY_BIT * p % coord(j) % uvw)
+        new_xyz = p % coord(j) % xyz + TINY_BIT * p % coord(j) % uvw
+        i_xyz = lat % get_indices(new_xyz)
 
         ! Store lower level coordinates
         p % coord(j + 1) % xyz = lat % get_local_xyz(p % coord(j) % xyz, i_xyz)

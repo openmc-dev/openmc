@@ -6,15 +6,15 @@
     in an eigenvalue calculation mode
   -->
   <eigenvalue>
-    <batches>2500</batches>
+    <batches>2000</batches>
     <inactive>500</inactive>
-    <particles> 1000 </particles>
+    <particles>1000</particles>
   </eigenvalue>
 
   <uniform_fs>
-    <lower_left>   0.0  21.42 -100 </lower_left>
-    <upper_right> 42.84 64.26  100 </upper_right>
-    <dimension>   34    34      1 </dimension>
+    <lower_left> 0.0 21.42 0.0 </lower_left>
+    <upper_right> 42.84 64.26 192.78 </upper_right>
+    <dimension> 34 34 54 </dimension>
   </uniform_fs>
 
   <!--
@@ -25,16 +25,15 @@
   <source>
     <space type="box">
       <parameters>
-         0.0  21.42 -100
-        42.84 64.26  100
+         0.0  21.42 0.0
+        42.84 64.26 192.78
       </parameters>
     </space>
   </source>
 
-  <!-- Establish statepoints to aid in examining convergence -->
+  <!-- Establish statepoints -->
   <state_point>
-    <interval> 2500 </interval>
-    <source_write>true</source_write>
+    <interval>2000</interval>
   </state_point>
 
   <output>
@@ -42,8 +41,6 @@
     <summary>true</summary>
     <tallies>true</tallies>
   </output>
-
-  <run_cmfd>true</run_cmfd>
 
   <cross_sections>../data.xml</cross_sections>
 

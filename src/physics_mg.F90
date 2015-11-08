@@ -241,6 +241,7 @@ contains
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
       fission_bank(i) % g = sample_fission_energy(xs, p % g, fission_bank(i) % uvw)
+      fission_bank(i) % E = energy_bin_avg(fission_bank(i) % g)
     end do
 
     ! increment number of bank sites

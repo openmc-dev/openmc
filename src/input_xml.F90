@@ -2705,6 +2705,8 @@ contains
               ! Allocate and store bins
               allocate(t % filters(j) % real_bins(n_words))
               call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+
+              if (.not. run_CE) t % energy_matches_groups = .false.
             else if (n_words == -1) then
               ! Set number of bins
               t % filters(j) % n_bins = energy_groups
@@ -2712,6 +2714,8 @@ contains
               ! Allocate and store bins
               allocate(t % filters(j) % real_bins(energy_groups))
               t % filters(j) % real_bins = energy_bins
+
+              if (.not. run_CE) t % energy_matches_groups = .true.
             end if
 
           case ('energyout')
@@ -2725,6 +2729,8 @@ contains
               ! Allocate and store bins
               allocate(t % filters(j) % real_bins(n_words))
               call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+
+              if (.not. run_CE) t % energyout_matches_groups = .false.
             else if (n_words == -1) then
               ! Set number of bins
               t % filters(j) % n_bins = energy_groups
@@ -2732,6 +2738,8 @@ contains
               ! Allocate and store bins
               allocate(t % filters(j) % real_bins(energy_groups))
               t % filters(j) % real_bins = energy_bins
+
+              if (.not. run_CE) t % energyout_matches_groups = .true.
             end if
 
             ! Set to analog estimator

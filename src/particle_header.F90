@@ -198,8 +198,8 @@ contains
     this % E              = src % E
     this % last_E         = src % E
     if (.not. run_CE) then
-      this % g              = src % g
-      this % last_g         = src % g
+      this % g            = src % g
+      this % last_g       = src % g
     end if
 
   end subroutine initialize_from_source

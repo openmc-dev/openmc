@@ -2047,7 +2047,7 @@ contains
         end if
 
         ! Set ace or iso-in-lab scattering for each nuclide in element
-        do k = 1, n_nuc_ele          
+        do k = 1, n_nuc_ele
           if (trim(adjustl(to_lower(temp_str))) == "iso-in-lab") then
             call list_iso_lab % append(1)
           else if (trim(adjustl(to_lower(temp_str))) == "ace") then

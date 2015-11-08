@@ -26,6 +26,8 @@ class Nuclide(object):
     zaid : int
         1000*(atomic number) + mass number. As an example, the zaid of U-235
         would be 92235.
+    scattering : 'ace' or 'iso-in-lab' or None
+        The type of angular scattering distribution to use
 
     """
 

@@ -24,6 +24,8 @@ class Element(object):
         Chemical symbol of the element, e.g. Pu
     xs : str
         Cross section identifier, e.g. 71c
+    scattering : 'ace' or 'iso-in-lab' or None
+        The type of angular scattering distribution to use
 
     """
 
@@ -31,6 +33,7 @@ class Element(object):
         # Initialize class attributes
         self._name = ''
         self._xs = None
+        self._scattering = None
 
         # Set class attributes
         self.name = name
@@ -60,6 +63,10 @@ class Element(object):
     def __repr__(self):
         string = 'Element    -    {0}\n'.format(self._name)
         string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
+        if self._scattering is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t',
+                                                self._scattering)
+
         return string
 
     @property
@@ -70,6 +77,10 @@ class Element(object):
     def name(self):
         return self._name
 
+    @property
+    def scattering(self):
+        return self._scattering
+
     @xs.setter
     def xs(self, xs):
         check_type('cross section identifier', xs, basestring)
@@ -79,3 +90,13 @@ class Element(object):
     def name(self, name):
         check_type('name', name, basestring)
         self._name = name
+
+    @scattering.setter
+    def scattering(self, scattering):
+
+        if not scattering in ['ace', 'iso-in-lab']:
+            msg = 'Unable to set scattering for Element to {0} ' \
+                  'which is not "ace" or "iso-in-lab"'.format(scattering)
+            raise ValueError(msg)
+
+        self._scattering = scattering

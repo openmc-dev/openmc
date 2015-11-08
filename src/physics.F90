@@ -316,7 +316,7 @@ contains
     type(Reaction), pointer :: rxn
     real(8) :: uvw_new(3) ! outgoing uvw for iso-in-lab scattering
     real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
-    real(8) :: mu_lab     ! polar angle cosine for iso-in-lab scattering 
+    real(8) :: mu_lab     ! polar angle cosine for iso-in-lab scattering
     real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
 
     ! copy incoming direction

@@ -63,9 +63,9 @@ class Element(object):
     def __repr__(self):
         string = 'Element    -    {0}\n'.format(self._name)
         string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
-        if self._scattering is not None:
+        if self.scattering is not None:
             string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t',
-                                                self._scattering)
+                                                self.scattering)
 
         return string
 

@@ -113,10 +113,10 @@ class Nuclide(object):
 
     def __repr__(self):
         string = 'Nuclide    -    {0}\n'.format(self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
-        if self._zaid is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
-        if self._scattering is not None:
+        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self.xs)
+        if self.zaid is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self.zaid)
+        if self.scattering is not None:
             string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t', 
-                                                self._scattering)
+                                                self.scattering)
         return string

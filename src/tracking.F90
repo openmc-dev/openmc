@@ -140,7 +140,7 @@ contains
 
       ! Sample a distance to collision
       if (dd_run .and. p % stored_distance > ZERO) then
-        if (abs(p % stored_distance - d_boundary) < FP_COINCIDENT) then
+        if (abs(p % stored_distance - d_boundary) < 100*FP_COINCIDENT) then
           d_boundary  = p % stored_distance
           d_collision = INFINITY
         else

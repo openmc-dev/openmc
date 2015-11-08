@@ -64,6 +64,18 @@ module tally_header
       procedure :: clear => tallyfilter_clear ! Deallocates TallyFilter
   end type TallyFilter
 
+
+!===============================================================================
+! TALLYDERIVATIVE
+!===============================================================================
+
+  type TallyDerivative
+    real(8) :: accumulator
+    integer :: dep_var
+    integer :: diff_material
+    integer :: diff_nuclide
+  end type TallyDerivative
+
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
 ! tally in is given by the TallyFilters and the results are stored in a
@@ -129,6 +141,9 @@ module tally_header
     ! Tally precision triggers
     integer                           :: n_triggers = 0  ! # of triggers
     type(TriggerObject),  allocatable :: triggers(:)     ! Array of triggers
+
+    ! Derivative for differentially tallies
+    type(TallyDerivative), allocatable :: deriv
 
     ! Type-Bound procedures
     contains
@@ -203,6 +218,9 @@ module tally_header
            deallocate (this % triggers)
 
       this % n_triggers = 0
+
+      if (allocated(this % deriv)) &
+           deallocate (this % deriv)
 
     end subroutine tallyobject_clear
 

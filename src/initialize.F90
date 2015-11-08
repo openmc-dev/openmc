@@ -831,6 +831,7 @@ contains
       ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
       ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
       if (.not. density_in_atom) then
+        mat % density_gpcc = -mat % density
         sum_percent = ZERO
         do j = 1, mat%n_nuclides
           index_list = xs_listing_dict%get_key(mat%names(j))

@@ -654,6 +654,13 @@ contains
           end if
         end if
 
+      case (SCORE_KEFF)
+        if (t % estimator == ESTIMATOR_COLLISION) then
+          score = p % last_wgt * material_xs % nu_fission / material_xs % total
+        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          score = flux * material_xs % nu_fission
+        end if
+
       case default
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Any other score is assumed to be a MT number. Thus, we just need
@@ -731,6 +738,35 @@ contains
 
 
       end select
+
+      !#########################################################################
+      ! Add derivative information on score for differential tallies.
+
+      if (allocated(t % deriv) .and. t % estimator == ESTIMATOR_COLLISION) then
+        select case (score_bin)
+
+        case (SCORE_KEFF)
+          select case (t % deriv % dep_var)
+
+          case (DIFF_DENSITY)
+            score = score * t % deriv % accumulator
+
+          case (DIFF_NUCLIDE_DENSITY)
+            mat => materials(p % material)
+            if (mat % id == t % deriv % diff_material .and. &
+                 micro_xs(t % deriv % diff_nuclide) % nu_fission /= ZERO) then
+              do l = 1, mat % n_nuclides
+                if (mat % nuclide(l) == t % deriv % diff_nuclide) exit
+              end do
+              score = score * (t % deriv % accumulator + ONE &
+                   / mat % atom_density(l))
+            else
+              score = score * t % deriv % accumulator
+            end if
+
+          end select
+        end select
+      end if
 
       !#########################################################################
       ! Expand score if necessary and add to tally results.
@@ -2209,6 +2245,80 @@ contains
     end do TALLY_LOOP
 
   end subroutine score_surface_current
+
+!===============================================================================
+! SCORE_DIFF_ACCUMULATORS
+!===============================================================================
+
+  subroutine score_diff_accumulators(p, distance, collision)
+    type(particle), intent(in) :: p
+    real(8),        intent(in) :: distance
+    logical,        intent(in) :: collision
+
+    integer :: i, j
+    type(TallyObject), pointer :: t
+    type(Material), pointer :: mat
+
+    do i = 1, n_user_tallies
+      t => user_tallies(i)
+
+      if (allocated(t % deriv)) then
+        select case (t % deriv % dep_var)
+
+        case (DIFF_DENSITY)
+          if (p % material == MATERIAL_VOID) cycle
+          mat => materials(p % material)
+          if (mat % id == t % deriv % diff_material) then
+            if (collision) then
+              t % deriv % accumulator = t % deriv % accumulator &
+                   + ONE / mat % density_gpcc &
+                   - distance * material_xs % total / mat % density_gpcc
+            else
+              t % deriv % accumulator = t % deriv % accumulator &
+                   - distance * material_xs % total / mat % density_gpcc
+            end if
+          end if
+
+        case (DIFF_NUCLIDE_DENSITY)
+          if (p % material == MATERIAL_VOID) cycle
+          mat => materials(p % material)
+          if (mat % id == t % deriv % diff_material) then
+            do j = 1, mat % n_nuclides
+              if (mat % nuclide(j) == t % deriv % diff_nuclide) exit
+            end do
+            if (mat % nuclide(j) /= t % deriv % diff_nuclide) then
+              call fatal_error("Couldn't find the right nuclide.")
+            end if
+            t % deriv % accumulator = t % deriv % accumulator &
+                 - distance * micro_xs(t % deriv % diff_nuclide) % total
+            if (collision) then
+              if (p % event == EVENT_SCATTER) then
+                  t % deriv % accumulator = t % deriv % accumulator &
+                       + micro_xs(t % deriv % diff_nuclide) % elastic &
+                       / material_xs % elastic
+              else if (p % event == EVENT_ABSORB) then
+                  t % deriv % accumulator = t % deriv % accumulator &
+                       + micro_xs(t % deriv % diff_nuclide) % absorption &
+                       / material_xs % absorption
+              end if
+            end if
+          end if
+        end select
+      end if
+    end do
+  end subroutine
+
+  subroutine clear_diff_accumulators()
+    integer :: i
+    type(TallyObject), pointer :: t
+
+    do i = 1, n_user_tallies
+      t => user_tallies(i)
+      if (allocated(t % deriv)) then
+        t % deriv % accumulator = ZERO
+      end if
+    end do
+  end subroutine
 
 !===============================================================================
 ! GET_NEXT_BIN determines the next scoring bin for a particular filter variable

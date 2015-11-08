@@ -34,7 +34,6 @@ module list_header
     type(ListElemChar), pointer :: prev => null()
   end type ListElemChar
 
-
 !===============================================================================
 ! LIST* types contain the linked list with convenience methods. We originally
 ! considered using unlimited polymorphism to provide a single type, but compiler

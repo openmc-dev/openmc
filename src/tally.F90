@@ -799,8 +799,7 @@ contains
     real(8) :: micro_abs            ! nuclidic microscopic abs
     class(Nuclide_MG),  pointer :: nuc
 
-    if (i_nuclide > 0) &
-         nuc => nuclides_MG(i_nuclide) % obj
+    if (i_nuclide > 0) nuc => nuclides_MG(i_nuclide) % obj
 
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins
@@ -1047,7 +1046,7 @@ contains
 
         else
           if (i_nuclide > 0) then
-            score = nuc % get_xs(p % g, 'absorption', UVW=p % coord(1) % uvw) &
+            score = nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw) &
                  * atom_density * flux
           else
             score = material_xs % absorption * flux
@@ -1061,10 +1060,10 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! fission
-            micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p % coord(1) % uvw)
+            micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw)
             if (micro_abs > ZERO) then
               score = p % absorb_wgt * &
-                   nuc % get_xs(p % g, 'fission', UVW=p % coord(1) % uvw) &
+                   nuc % get_xs(p % g, 'fission', UVW=p % coord(i) % uvw) &
                    / micro_abs
             else
               score = ZERO
@@ -1076,13 +1075,13 @@ contains
             ! particle's weight entering the collision as the estimate for the
             ! fission reaction rate
             score = p % last_wgt &
-                 * nuc % get_xs(p % g, 'fission', UVW=p % coord(1) % uvw) &
-                 / nuc % get_xs(p % g, 'absorption', UVW=p % coord(1) % uvw)
+                 * nuc % get_xs(p % g, 'fission', UVW=p % coord(i) % uvw) &
+                 / nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw)
           end if
 
         else
           if (i_nuclide > 0) then
-            score = nuc % get_xs(p % g, 'fission', UVW=p % coord(1) % uvw) * &
+            score = nuc % get_xs(p % g, 'fission', UVW=p % coord(i) % uvw) * &
                  atom_density * flux
           else
             score = material_xs % fission * flux
@@ -1107,10 +1106,11 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! nu-fission
-            if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+            micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw)
+            if (micro_abs > ZERO) then
               score = p % absorb_wgt * &
-                   nuc % get_xs(p % g, 'fission', UVW=p % coord(1) % uvw) / &
-                   nuc % get_xs(p % g, 'absorption', UVW=p % coord(1) % uvw)
+                   nuc % get_xs(p % g, 'fission', UVW=p % coord(i) % uvw) / &
+                   micro_abs
             else
               score = ZERO
             end if
@@ -1127,7 +1127,7 @@ contains
 
         else
           if (i_nuclide > 0) then
-            score = nuc % get_xs(p % g, 'nu_fission', UVW=p % coord(1) % uvw) &
+            score = nuc % get_xs(p % g, 'nu_fission', UVW=p % coord(i) % uvw) &
                  * atom_density * flux
           else
             score = material_xs % nu_fission * flux
@@ -1141,10 +1141,10 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! fission scale by kappa-fission
-            micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p % coord(1) % uvw)
+            micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw)
             if (micro_abs > ZERO) then
               score = p % absorb_wgt * &
-                   nuc % get_xs(p % g, 'k_fission', UVW=p % coord(1) % uvw) / &
+                   nuc % get_xs(p % g, 'k_fission', UVW=p % coord(i) % uvw) / &
                    micro_abs
             else
               score = ZERO
@@ -1156,13 +1156,13 @@ contains
             ! particle's weight entering the collision as the estimate for
             ! the fission energy production rate
             score = p % last_wgt * &
-                 nuc % get_xs(p % g, 'k_fission', UVW=p % coord(1) % uvw) / &
-                 nuc % get_xs(p % g, 'absorption', UVW=p % coord(1) % uvw)
+                 nuc % get_xs(p % g, 'k_fission', UVW=p % coord(i) % uvw) / &
+                 nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw)
           end if
 
         else
           if (i_nuclide > 0) then
-            score = nuc % get_xs(p % g, 'k_fission', UVW=p % coord(1) % uvw) &
+            score = nuc % get_xs(p % g, 'k_fission', UVW=p % coord(i) % uvw) &
                  * atom_density * flux
           else
             score = material_xs % kappa_fission * flux
@@ -1534,13 +1534,14 @@ contains
     integer :: i_filter      ! index for matching filter bin combination
     real(8) :: score         ! actual score
     integer :: gout          ! energy group of fission bank site
+    real(8) :: E_out
 
     ! save original outgoing energy bin and score index
     i = t % find_filter(FILTER_ENERGYOUT)
     bin_energyout = matching_bins(i)
 
     ! Get number of energies on filter
-    n = size(t % filters(i) % int_bins)
+    n = size(t % filters(i) % real_bins)
 
     ! Since the creation of fission sites is weighted such that it is
     ! expected to create n_particles sites, we need to multiply the
@@ -1552,11 +1553,23 @@ contains
       ! determine score based on bank site weight and keff
       score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
 
-      ! determine outgoing energy from fission bank
-      gout = fission_bank(n_bank - p % n_bank + k) % g
+      if (t % energyout_matches_groups) then
+        ! determine outgoing energy from fission bank
+        gout = fission_bank(n_bank - p % n_bank + k) % g
 
-      ! change outgoing energy bin
-      matching_bins(i) = gout
+        ! change outgoing energy bin
+        matching_bins(i) = gout
+      else
+        ! determine outgoing energy from fission bank
+        E_out = fission_bank(n_bank - p % n_bank + k) % E
+
+        ! check if outgoing energy is within specified range on filter
+        if (E_out < t % filters(i) % real_bins(1) .or. &
+             E_out > t % filters(i) % real_bins(n)) cycle
+
+        ! change outgoing energy bin
+        matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
+      end if
 
       ! determine scoring index
       i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
@@ -2427,8 +2440,8 @@ contains
     integer :: j
     integer :: n ! number of bins for single filter
     integer :: offset ! offset for distribcell
-    integer :: g ! particle energy group
     real(8) :: theta, phi ! Polar and Azimuthal Angles, respectively
+    real(8) :: E
     type(TallyObject),    pointer :: t
     type(RegularMesh), pointer :: m
 
@@ -2507,33 +2520,54 @@ contains
              p % surface, i_tally)
 
       case (FILTER_ENERGYIN)
-        ! make sure the correct energy is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          g = p % g
-        else
-          g = p % last_g
-        end if
-
-        ! Since all groups are filters, the filter bin is the group
-        matching_bins(i) = g
-
-      case (FILTER_ENERGYOUT)
-        ! Since all groups are filters, the filter bin is the group
-        matching_bins(i) = p % g
-
-      case (FILTER_DELAYEDGROUP)
-
-        if (survival_biasing .and. t % find_filter(FILTER_ENERGYOUT) <= 0) then
-          matching_bins(i) = 1
-        elseif (active_tracklength_tallies % size() > 0) then
-          matching_bins(i) = 1
-        else
-          if (p % delayed_group == 0) then
-            matching_bins = NO_BIN_FOUND
+        if (t % energy_matches_groups) then
+          ! make sure the correct energy group is used
+          ! Since all groups are filters, the filter bin is the group
+          if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+            matching_bins(i) = p % g
           else
-            matching_bins(i) = p % delayed_group
+            matching_bins(i) = p % last_g
+          end if
+        else
+          ! make sure the correct energy is used
+          if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+            E = p % E
+          else
+            E = p % last_E
+          end if
+          n = t % filters(i) % n_bins
+
+          ! check if energy of the particle is within energy bins
+          if (E < t % filters(i) % real_bins(1) .or. &
+               E > t % filters(i) % real_bins(n + 1)) then
+            matching_bins(i) = NO_BIN_FOUND
+          else
+            ! search to find incoming energy bin
+            matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+                 n + 1, E)
           end if
         end if
+
+
+      case (FILTER_ENERGYOUT)
+        if (t % energyout_matches_groups) then
+          ! Since all groups are filters, the filter bin is the group
+          matching_bins(i) = p % g
+        else
+          ! determine outgoing energy bin
+          n = t % filters(i) % n_bins
+
+          ! check if energy of the particle is within energy bins
+          if (p % E < t % filters(i) % real_bins(1) .or. &
+               p % E > t % filters(i) % real_bins(n + 1)) then
+            matching_bins(i) = NO_BIN_FOUND
+          else
+            ! search to find incoming energy bin
+            matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+                 n + 1, p % E)
+          end if
+        end if
+
 
       case (FILTER_MU)
         ! determine mu bin

@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections import Iterable, OrderedDict
 from copy import deepcopy
 from numbers import Real, Integral
 import warnings
@@ -64,15 +64,15 @@ class Material(object):
         self._density = None
         self._density_units = ''
 
-        # A dictionary of Nuclides
+        # An ordered dictionary of Nuclides (order affects OpenMC results)
         # Keys         - Nuclide names
         # Values     - tuple (nuclide, percent, percent type)
-        self._nuclides = {}
+        self._nuclides = OrderedDict()
 
-        # A dictionary of Elements
+        # An ordered dictionary of Elements (order affects OpenMC results)
         # Keys         - Element names
         # Values     - tuple (element, percent, percent type)
-        self._elements = {}
+        self._elements = OrderedDict()
 
         # If specified, a list of tuples of (table name, xs identifier)
         self._sab = []
@@ -82,6 +82,62 @@ class Material(object):
 
         # If specified, this file will be used instead of composition values
         self._distrib_otf_file = None
+
+    def __repr__(self):
+        string = 'Material\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+
+        string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
+        string += ' [{0}]\n'.format(self._density_units)
+
+        string += '{0: <16}\n'.format('\tS(a,b) Tables')
+
+        for sab in self._sab:
+            string += '{0: <16}{1}[{2}{3}]\n'.format('\tS(a,b)', '=\t',
+                                                     sab[0], sab[1])
+
+        string += '{0: <16}\n'.format('\tNuclides')
+
+        for nuclide in self._nuclides:
+            percent = self._nuclides[nuclide][1]
+            percent_type = self._nuclides[nuclide][2]
+            string += '{0: <16}'.format('\t{0}'.format(nuclide))
+            string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
+
+        string += '{0: <16}\n'.format('\tElements')
+
+        for element in self._elements:
+            percent = self._nuclides[element][1]
+            percent_type = self._nuclides[element][2]
+            string += '{0: >16}'.format('\t{0}'.format(element))
+            string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
+
+        return string
+
+    def __deepcopy__(self, memo):
+        existing = memo.get(id(self))
+
+        if existing is None:
+            # If this is the first time we have tried to copy this object, create a copy
+            clone = type(self).__new__(type(self))
+            clone._id = self._id
+            clone._name = self._name
+            clone._density = self._density
+            clone._density_units = self._density_units
+            clone._nuclides = deepcopy(self._nuclides, memo)
+            clone._elements = deepcopy(self._elements, memo)
+            clone._sab = deepcopy(self._sab, memo)
+            clone._convert_to_distrib_comps = self._convert_to_distrib_comps
+            clone._distrib_otf_file = self._distrib_otf_file
+
+            memo[id(self)] = clone
+
+            return clone
+
+        else:
+            # If this object has been copied before, return the first copy made
+            return existing
 
     @property
     def id(self):
@@ -125,7 +181,7 @@ class Material(object):
                 msg = 'Unable to set Material ID to "{0}" since a Material with ' \
                       'this ID was already initialized'.format(material_id)
                 raise ValueError(msg)
-            check_greater_than('material ID', material_id, 0)
+            check_greater_than('material ID', material_id, 0, equality=True)
 
             self._id = material_id
             MATERIAL_IDS.append(material_id)
@@ -137,7 +193,7 @@ class Material(object):
                        name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     def set_density(self, units, density=NO_DENSITY):
         """Set the density of the material
@@ -330,7 +386,7 @@ class Material(object):
 
         """
 
-        nuclides = {}
+        nuclides = OrderedDict()
 
         for nuclide_name, nuclide_tuple in self._nuclides.items():
             nuclide = nuclide_tuple[0]
@@ -338,38 +394,6 @@ class Material(object):
             nuclides[nuclide._name] = (nuclide, density)
 
         return nuclides
-
-    def __repr__(self):
-        string = 'Material\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-
-        string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
-        string += ' [{0}]\n'.format(self._density_units)
-
-        string += '{0: <16}\n'.format('\tS(a,b) Tables')
-
-        for sab in self._sab:
-            string += '{0: <16}{1}[{2}{3}]\n'.format('\tS(a,b)', '=\t',
-                                                     sab[0], sab[1])
-
-        string += '{0: <16}\n'.format('\tNuclides')
-
-        for nuclide in self._nuclides:
-            percent = self._nuclides[nuclide][1]
-            percent_type = self._nuclides[nuclide][2]
-            string += '{0: <16}'.format('\t{0}'.format(nuclide))
-            string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
-
-        string += '{0: <16}\n'.format('\tElements')
-
-        for element in self._elements:
-            percent = self._nuclides[element][1]
-            percent_type = self._nuclides[element][2]
-            string += '{0: >16}'.format('\t{0}'.format(element))
-            string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
-
-        return string
 
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")
@@ -591,6 +615,9 @@ class MaterialsFile(object):
         """Create a materials.xml file that can be used for a simulation.
 
         """
+
+        # Reset xml element tree
+        self._materials_file.clear()
 
         self._create_material_subelements()
 

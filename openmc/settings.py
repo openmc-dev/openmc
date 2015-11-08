@@ -1178,6 +1178,13 @@ class SettingsFile(object):
 
         """
 
+        # Reset xml element tree
+        self._settings_file.clear()
+        self._source_subelement = None
+        self._trigger_subelement = None
+        self._eigenvalue_subelement = None
+        self._source_element = None
+
         self._create_eigenvalue_subelement()
         self._create_source_subelement()
         self._create_output_subelement()

@@ -1,8 +1,10 @@
 module string
 
-  use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL
+  use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL, &
+       OP_LEFT_PAREN, OP_RIGHT_PAREN, OP_COMPLEMENT, OP_INTERSECTION, OP_UNION
   use error,     only: fatal_error, warning
   use global,    only: master
+  use stl_vector, only: VectorInt
 
   implicit none
 
@@ -63,63 +65,96 @@ contains
   end subroutine split_string
 
 !===============================================================================
-! SPLIT_STRING_WL takes a string that includes logical expressions for a list of
-! bounding surfaces in a cell and splits it into separate words. The characters
-! (, ), :, and # count as separate words since they represent operators.
-!
-! Arguments:
-!   string  = input line
-!   words   = array of words
-!   n       = number of words
+! TOKENIZE takes a string that includes logical expressions for a list of
+! bounding surfaces in a cell and splits it into separate tokens. The characters
+! (, ), |, and ~ count as separate tokens since they represent operators.
 !===============================================================================
 
-  subroutine split_string_wl(string, words, n)
+  subroutine tokenize(string, tokens)
+    character(*), intent(in) :: string
+    type(VectorInt), intent(inout) :: tokens
 
-    character(*), intent(in)  :: string
-    character(*), intent(out) :: words(MAX_WORDS)
-    integer,      intent(out) :: n
+    integer :: i       ! current index
+    integer :: i_start ! starting index of word
+    integer :: token
+    character(len=len_trim(string)) :: string_
 
-    character(1)  :: chr     ! current character
-    integer       :: i       ! current index
-    integer       :: i_start ! starting index of word
-    integer       :: i_end   ! ending index of word
+    ! Remove leading blanks
+    string_ = adjustl(string)
 
     i_start = 0
-    i_end = 0
-    n = 0
-    do i = 1, len_trim(string)
-      chr = string(i:i)
-
+    i = 1
+    do while (i <= len_trim(string_))
       ! Check for special characters
-      if (index('():#', chr) > 0) then
+      if (index('()|~ ', string_(i:i)) > 0) then
+        ! If the special character appears immediately after a non-operator,
+        ! create a token with the surface half-space
         if (i_start > 0) then
-          i_end = i - 1
-          n = n + 1
-          words(n) = string(i_start:i_end)
+          call tokens%push_back(int(str_to_int(&
+               string_(i_start:i - 1)), 4))
         end if
-        n = n + 1
-        words(n) = chr
+
+        select case (string_(i:i))
+        case ('(')
+          call tokens%push_back(OP_LEFT_PAREN)
+        case (')')
+          if (tokens%size() > 0) then
+            token = tokens%data(tokens%size())
+            if (token >= OP_UNION .and. token < OP_RIGHT_PAREN) then
+              call fatal_error("Right parentheses cannot follow an operator in &
+                   &region specification: " // trim(string))
+            end if
+          end if
+          call tokens%push_back(OP_RIGHT_PAREN)
+        case ('|')
+          if (tokens%size() > 0) then
+            token = tokens%data(tokens%size())
+            if (.not. (token < OP_UNION .or. token == OP_RIGHT_PAREN)) then
+              call fatal_error("Union cannot follow an operator in region &
+                   &specification: " // trim(string))
+            end if
+          end if
+          call tokens%push_back(OP_UNION)
+        case ('~')
+          call tokens%push_back(OP_COMPLEMENT)
+        case (' ')
+          ! Find next non-space character
+          do while (string_(i+1:i+1) == ' ')
+            i = i + 1
+          end do
+
+          ! If previous token is a halfspace or right parenthesis and next token
+          ! is not a left parenthese or union operator, that implies that the
+          ! whitespace is to be interpreted as an intersection operator
+          if (i_start > 0 .or. tokens%data(tokens%size()) == OP_RIGHT_PAREN) then
+            if (index(')|', string_(i+1:i+1)) == 0) then
+              call tokens%push_back(OP_INTERSECTION)
+            end if
+          end if
+        end select
+
         i_start = 0
-        i_end = 0
-        cycle
+      else
+        ! Check for invalid characters
+        if (index('-+0123456789', string_(i:i)) == 0) then
+          call fatal_error("Invalid character '" // string_(i:i) // "' in &
+               &region specification.")
+        end if
+
+        ! If we haven't yet reached the start of a word, start a new word
+        if (i_start == 0) i_start = i
       end if
 
-      if ((i_start == 0) .and. (chr /= ' ')) then
-        i_start = i
-      end if
-      if (i_start > 0) then
-        if (chr == ' ')           i_end = i - 1
-        if (i == len_trim(string)) i_end = i
-        if (i_end > 0) then
-          n = n + 1
-          words(n) = string(i_start:i_end)
-          ! reset indices
-          i_start = 0
-          i_end = 0
-        end if
-      end if
+      i = i + 1
     end do
-  end subroutine split_string_wl
+
+    ! If we've reached the end and we're still in a word, create a token from it
+    ! and add it to the list
+    if (i_start > 0) then
+      call tokens%push_back(int(str_to_int(&
+           string_(i_start:len_trim(string_))), 4))
+    end if
+  end subroutine tokenize
 
 !===============================================================================
 ! CONCATENATE takes an array of words and concatenates them together in one

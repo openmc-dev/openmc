@@ -57,6 +57,15 @@ on a given module or class.
     summary
     tallies
 
+**Multi-Group Cross Section Generation**
+
+.. toctree::
+    :maxdepth: 1
+
+    mgxs
+    energy_groups
+    mgxs_library
+
 **Example Jupyter Notebooks:**
 
 .. toctree::

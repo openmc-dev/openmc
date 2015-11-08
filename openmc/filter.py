@@ -15,7 +15,8 @@ if sys.version_info[0] >= 3:
 
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
-                 'mesh', 'energy', 'energyout', 'distribcell']
+                 'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
+                 'distribcell', 'delayedgroup']
 
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only
@@ -103,6 +104,13 @@ class Filter(object):
         else:
             return existing
 
+    def __repr__(self):
+        string = 'Filter\n'
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
+        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
+        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self.offset)
+        return string
+
     @property
     def type(self):
         return self._type
@@ -153,7 +161,7 @@ class Filter(object):
             raise ValueError(msg)
 
         # If the bin edge is a single value, it is a Cell, Material, etc. ID
-        if not cv._isinstance(bins, Iterable):
+        if not isinstance(bins, Iterable):
             bins = [bins]
 
         # If the bins are in a collection, convert it to a list
@@ -161,7 +169,7 @@ class Filter(object):
             bins = list(bins)
 
         if self.type in ['cell', 'cellborn', 'surface', 'material',
-                          'universe', 'distribcell']:
+                         'universe', 'distribcell', 'delayedgroup']:
             cv.check_iterable_type('filter bins', bins, Integral)
             for edge in bins:
                 cv.check_greater_than('filter bin', edge, 0, equality=True)
@@ -294,7 +302,7 @@ class Filter(object):
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = list(set(list(self.bins) + list(filter.bins)))
+        merged_bins = list(set(np.concatenate((self.bins, filter.bins))))
         merged_filter.bins = merged_bins
         merged_filter.num_bins = len(merged_bins)
 
@@ -323,7 +331,10 @@ class Filter(object):
         elif self.type != other.type:
             return False
         elif self.type in ['energy', 'energyout']:
-            return np.all(self.bins == other.bins)
+            if len(self.bins) != len(other.bins):
+                return False
+            else:
+                return np.allclose(self.bins, other.bins)
 
         for bin in other.bins:
             if bin not in self.bins:
@@ -375,8 +386,12 @@ class Filter(object):
 
             # Use lower energy bound to find index for energy Filters
             elif self.type in ['energy', 'energyout']:
-                val = np.where(self.bins == filter_bin[0])[0][0]
-                filter_index = val
+                deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
+                min_delta = np.min(deltas)
+                if min_delta < 1E-3:
+                    filter_index = deltas.argmin() - 1
+                else:
+                    raise ValueError
 
             # Filter bins for distribcells are "IDs" of each unique placement
             # of the Cell in the Geometry (integers starting at 0)
@@ -435,7 +450,7 @@ class Filter(object):
         if self.type == 'mesh':
 
             # Construct 3-tuple of x,y,z cell indices for a 3D mesh
-            if (len(self.mesh.dimension) == 3):
+            if len(self.mesh.dimension) == 3:
                 nx, ny, nz = self.mesh.dimension
                 x = bin_index / (ny * nz)
                 y = (bin_index - (x * ny * nz)) / nz
@@ -496,8 +511,9 @@ class Filter(object):
             surface, material or universe ID corresponding to each filter bin.
 
             For 'distribcell' filters, the DataFrame either includes:
-            1) a single column with the cell instance IDs (without summary info)
-            2) separate columns for the cell IDs, universe IDs, and lattice IDs
+
+            1. a single column with the cell instance IDs (without summary info)
+            2. separate columns for the cell IDs, universe IDs, and lattice IDs
                and x,y,z cell indices corresponding to each (with summary info).
 
             For 'energy' and 'energyout' filters, the DataFrame include a single
@@ -585,8 +601,7 @@ class Filter(object):
                           'to use a Summary for distribcell dataframes'
                     raise ImportError(msg)
 
-                # Create and extract the OpenCG geometry the Summary
-                summary.make_opencg_geometry()
+                # Extract the OpenCG geometry from the Summary
                 opencg_geometry = summary.opencg_geometry
                 openmc_geometry = summary.openmc_geometry
 
@@ -741,10 +756,3 @@ class Filter(object):
             df = pd.concat([df, pd.DataFrame({self.type : filter_bins})])
 
         return df
-
-    def __repr__(self):
-        string = 'Filter\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self.offset)
-        return string

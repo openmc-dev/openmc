@@ -92,7 +92,6 @@ contains
     character(len=52), intent(inout) :: name  ! "eigenvalue" or tally score
 
     integer :: i              ! index in tallies array
-    integer :: j              ! level in tally hierarchy
     integer :: n              ! loop index for nuclides
     integer :: s              ! loop index for triggers
     integer :: filter_index   ! index in results array for filters
@@ -167,28 +166,8 @@ contains
 
             ! Initialize bins, filter level
             matching_bins(1:t % n_filters) = 0
-            j = 1
 
-            ! Find filter index
-            FILTER_LOOP: do
-              find_bin: do
-                if (t % n_filters == 0) exit find_bin
-                matching_bins(j) = matching_bins(j) + 1
-                if (matching_bins(j) > t % filters(j) % n_bins) then
-                  if (j == 1) exit FILTER_LOOP
-                  matching_bins(j) = 0
-                  j = j - 1
-                else
-                  if (j == t % n_filters) exit find_bin
-                end if
-              end do find_bin
-
-              if (t % n_filters > 0) then
-                filter_index = sum((max(matching_bins(1:t%n_filters),1) - 1) * &
-                     t % stride) + 1
-              else
-                filter_index = 1
-              end if
+            FILTER_LOOP: do filter_index = 1, t % total_filter_bins
 
               ! Initialize score index
               score_index = trigger % score_index

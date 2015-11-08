@@ -56,7 +56,7 @@ contains
     if (grid_method == GRID_MAT_UNION) then
       call find_energy_index(p % E, p % material)
     else if (grid_method == GRID_LOGARITHM) then
-      u = int(log(p % E/1.0e-11_8)/log_spacing)
+      u = int(log(p % E/energy_min_neutron)/log_spacing)
     end if
 
     ! Determine if this material has S(a,b) tables

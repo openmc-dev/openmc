@@ -4,6 +4,7 @@ from xml.etree import ElementTree as ET
 import sys
 
 from openmc.checkvalue import check_type, check_value, check_greater_than
+from openmc.region import Region
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -38,17 +39,17 @@ class Surface(object):
 
     Attributes
     ----------
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coeffs : dict
+        Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
         Type of the surface, e.g. 'x-plane'
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
-        Boundary condition that defines the behavior for particles hitting the
-        surface.
-    coeffs : dict
-        Dictionary of surface coefficients
 
     """
 
@@ -67,6 +68,28 @@ class Surface(object):
         # An ordered list of the coefficient names to export to XML in the
         # proper order
         self._coeff_keys = []
+
+    def __neg__(self):
+        return Halfspace(self, '-')
+
+    def __pos__(self):
+        return Halfspace(self, '+')
+
+    def __repr__(self):
+        string = 'Surface\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
+        string += '{0: <16}{1}{2}\n'.format('\tBoundary', '=\t', self._boundary_type)
+
+        coeffs = '{0: <16}'.format('\tCoefficients') + '\n'
+
+        for coeff in self._coeffs:
+            coeffs += '{0: <16}{1}{2}\n'.format(coeff, '=\t', self._coeffs[coeff])
+
+        string += coeffs
+
+        return string
 
     @property
     def id(self):
@@ -96,7 +119,7 @@ class Surface(object):
             AUTO_SURFACE_ID += 1
         else:
             check_type('surface ID', surface_id, Integral)
-            check_greater_than('surface ID', surface_id, 0)
+            check_greater_than('surface ID', surface_id, 0, equality=True)
             self._id = surface_id
 
     @name.setter
@@ -105,29 +128,13 @@ class Surface(object):
             check_type('surface name', name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     @boundary_type.setter
     def boundary_type(self, boundary_type):
         check_type('boundary type', boundary_type, basestring)
         check_value('boundary type', boundary_type, _BC_TYPES)
         self._boundary_type = boundary_type
-
-    def __repr__(self):
-        string = 'Surface\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBoundary', '=\t', self._boundary_type)
-
-        coeffs = '{0: <16}'.format('\tCoefficients') + '\n'
-
-        for coeff in self._coeffs:
-            coeffs += '{0: <16}{1}{2}\n'.format(coeff, '=\t', self._coeffs[coeff])
-
-        string += coeffs
-
-        return string
 
     def create_xml_subelement(self):
         element = ET.Element("surface")
@@ -940,3 +947,214 @@ class ZCone(Cone):
                                     R2, name=name)
 
         self._type = 'z-cone'
+
+
+class Quadric(Surface):
+    """A sphere of the form :math:`Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy +
+    Jz + K`.
+
+    Parameters
+    ----------
+    surface_id : int
+        Unique identifier for the surface. If not specified, an identifier will
+        automatically be assigned.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface. Defaults to transmissive boundary condition where particles
+        freely pass through the surface.
+    a, b, c, d, e, f, g, h, j, k : float
+        coefficients for the surface
+    name : str
+        Name of the sphere. If not specified, the name will be the empty string.
+
+    Attributes
+    ----------
+    a, b, c, d, e, f, g, h, j, k : float
+        coefficients for the surface
+
+    """
+
+    def __init__(self, surface_id=None, boundary_type='transmission',
+                 a=None, b=None, c=None, d=None, e=None, f=None, g=None,
+                 h=None, j=None, k=None, name=''):
+        # Initialize Quadric class attributes
+        super(Quadric, self).__init__(surface_id, boundary_type, name=name)
+
+        self._type = 'quadric'
+        self._coeff_keys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k']
+
+        if a is not None:
+            self.a = a
+        if b is not None:
+            self.b = b
+        if c is not None:
+            self.c = c
+        if d is not None:
+            self.d = d
+        if e is not None:
+            self.e = e
+        if f is not None:
+            self.f = f
+        if g is not None:
+            self.g = g
+        if h is not None:
+            self.h = h
+        if j is not None:
+            self.j = j
+        if k is not None:
+            self.k = k
+
+    @property
+    def a(self):
+        return self.coeffs['a']
+
+    @property
+    def b(self):
+        return self.coeffs['b']
+
+    @property
+    def c(self):
+        return self.coeffs['c']
+
+    @property
+    def d(self):
+        return self.coeffs['d']
+
+    @property
+    def e(self):
+        return self.coeffs['e']
+
+    @property
+    def f(self):
+        return self.coeffs['f']
+
+    @property
+    def g(self):
+        return self.coeffs['g']
+
+    @property
+    def h(self):
+        return self.coeffs['h']
+
+    @property
+    def j(self):
+        return self.coeffs['j']
+
+    @property
+    def k(self):
+        return self.coeffs['k']
+
+    @a.setter
+    def a(self, a):
+        check_type('a coefficient', a, Real)
+        self._coeffs['a'] = a
+
+    @b.setter
+    def b(self, b):
+        check_type('b coefficient', b, Real)
+        self._coeffs['b'] = b
+
+    @c.setter
+    def c(self, c):
+        check_type('c coefficient', c, Real)
+        self._coeffs['c'] = c
+
+    @d.setter
+    def d(self, d):
+        check_type('d coefficient', d, Real)
+        self._coeffs['d'] = d
+
+    @e.setter
+    def e(self, e):
+        check_type('e coefficient', e, Real)
+        self._coeffs['e'] = e
+
+    @f.setter
+    def f(self, f):
+        check_type('f coefficient', f, Real)
+        self._coeffs['f'] = f
+
+    @g.setter
+    def g(self, g):
+        check_type('g coefficient', g, Real)
+        self._coeffs['g'] = g
+
+    @h.setter
+    def h(self, h):
+        check_type('h coefficient', h, Real)
+        self._coeffs['h'] = h
+
+    @j.setter
+    def j(self, j):
+        check_type('j coefficient', j, Real)
+        self._coeffs['j'] = j
+
+    @k.setter
+    def k(self, k):
+        check_type('k coefficient', k, Real)
+        self._coeffs['k'] = k
+
+
+class Halfspace(Region):
+    """A positive or negative half-space region.
+
+    A half-space is either of the two parts into which a two-dimension surface
+    divides the three-dimensional Euclidean space. If the equation of the
+    surface is :math:`f(x,y,z) = 0`, the region for which :math:`f(x,y,z) < 0`
+    is referred to as the negative half-space and the region for which
+    :math:`f(x,y,z) > 0` is referred to as the positive half-space.
+
+    Instances of Halfspace are generally not instantiated directly. Rather, they
+    can be created from an existing Surface through the __neg__ and __pos__
+    operators, as the following example demonstrates:
+
+    >>> sphere = openmc.surface.Sphere(surface_id=1, R=10.0)
+    >>> inside_sphere = -sphere
+    >>> outside_sphere = +sphere
+    >>> type(inside_sphere)
+    <class 'openmc.surface.Halfspace'>
+
+    Parameters
+    ----------
+    surface : Surface
+        Surface which divides Euclidean space.
+    side : {'+', '-'}
+        Indicates whether the positive or negative half-space is used.
+
+    Attributes
+    ----------
+    surface : Surface
+        Surface which divides Euclidean space.
+    side : {'+', '-'}
+        Indicates whether the positive or negative half-space is used.
+
+    """
+
+    def __init__(self, surface, side):
+        self.surface = surface
+        self.side = side
+
+    def __invert__(self):
+        return -self.surface if self.side == '+' else +self.surface
+
+    @property
+    def surface(self):
+        return self._surface
+
+    @surface.setter
+    def surface(self, surface):
+        check_type('surface', surface, Surface)
+        self._surface = surface
+
+    @property
+    def side(self):
+        return self._side
+
+    @side.setter
+    def side(self, side):
+        check_value('side', side, ('+', '-'))
+        self._side = side
+
+    def __str__(self):
+        return '-' + str(self.surface.id) if self.side == '-' \
+            else str(self.surface.id)

@@ -19,9 +19,9 @@
   <surface id="6" type="y-plane" coeffs="-0.62992" boundary="reflective" />
   <surface id="7" type="y-plane" coeffs=" 0.62992" boundary="reflective" />
 
-  <cell id="1" material="1" surfaces="  -1" />        <!-- UO2 Fuel -->
-  <cell id="2" material="2" surfaces="1 -2" />        <!-- Helium gap -->
-  <cell id="3" material="3" surfaces="2 -3" />        <!-- Zircaloy cladding -->
-  <cell id="4" material="4" surfaces="3 4 -5 6 -7" /> <!-- Borated water -->
+  <cell id="1" material="1" region="  -1" />        <!-- UO2 Fuel -->
+  <cell id="2" material="2" region="1 -2" />        <!-- Helium gap -->
+  <cell id="3" material="3" region="2 -3" />        <!-- Zircaloy cladding -->
+  <cell id="4" material="4" region="3 4 -5 6 -7" /> <!-- Borated water -->
 
 </geometry>

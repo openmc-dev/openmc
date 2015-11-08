@@ -183,22 +183,22 @@ contains
 
   subroutine initialize_mpi()
 
-    integer                   :: bank_blocks(4)  ! Count for each datatype
+    integer                   :: bank_blocks(5)   ! Count for each datatype
 #ifdef MPIF08
-    type(MPI_Datatype)        :: bank_types(4)
+    type(MPI_Datatype)        :: bank_types(5)
     type(MPI_Datatype)        :: result_types(1)
     type(MPI_Datatype)        :: temp_type
 #else
-    integer                   :: bank_types(4)   ! Datatypes
+    integer                   :: bank_types(5)    ! Datatypes
     integer                   :: result_types(1)  ! Datatypes
-    integer                   :: temp_type       ! temporary derived type
+    integer                   :: temp_type        ! temporary derived type
 #endif
-    integer(MPI_ADDRESS_KIND) :: bank_disp(4)    ! Displacements
+    integer(MPI_ADDRESS_KIND) :: bank_disp(5)     ! Displacements
     integer                   :: result_blocks(1) ! Count for each datatype
     integer(MPI_ADDRESS_KIND) :: result_disp(1)   ! Displacements
     integer(MPI_ADDRESS_KIND) :: result_base_disp ! Base displacement
-    integer(MPI_ADDRESS_KIND) :: lower_bound     ! Lower bound for TallyResult
-    integer(MPI_ADDRESS_KIND) :: extent          ! Extent for TallyResult
+    integer(MPI_ADDRESS_KIND) :: lower_bound      ! Lower bound for TallyResult
+    integer(MPI_ADDRESS_KIND) :: extent           ! Extent for TallyResult
     type(Bank)       :: b
     type(TallyResult) :: tr
 
@@ -223,18 +223,19 @@ contains
     ! CREATE MPI_BANK TYPE
 
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(b%wgt, bank_disp(1), mpi_err)
-    call MPI_GET_ADDRESS(b%xyz, bank_disp(2), mpi_err)
-    call MPI_GET_ADDRESS(b%uvw, bank_disp(3), mpi_err)
-    call MPI_GET_ADDRESS(b%E,   bank_disp(4), mpi_err)
+    call MPI_GET_ADDRESS(b % wgt,           bank_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(b % xyz,           bank_disp(2), mpi_err)
+    call MPI_GET_ADDRESS(b % uvw,           bank_disp(3), mpi_err)
+    call MPI_GET_ADDRESS(b % E,             bank_disp(4), mpi_err)
+    call MPI_GET_ADDRESS(b % delayed_group, bank_disp(5), mpi_err)
 
     ! Adjust displacements
     bank_disp = bank_disp - bank_disp(1)
 
     ! Define MPI_BANK for fission sites
-    bank_blocks = (/ 1, 3, 3, 1 /)
-    bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, &
+    bank_blocks = (/ 1, 3, 3, 1, 1 /)
+    bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_INTEGER /)
+    call MPI_TYPE_CREATE_STRUCT(5, bank_blocks, bank_disp, &
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
@@ -306,6 +307,8 @@ contains
          c_loc(tmpb(1)%uvw)), coordinates_t, hdf5_err)
     call h5tinsert_f(hdf5_bank_t, "E", h5offsetof(c_loc(tmpb(1)), &
          c_loc(tmpb(1)%E)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "delayed_group", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%delayed_group)), H5T_NATIVE_INTEGER, hdf5_err)
 
     ! Determine type for integer(8)
     hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)
@@ -568,19 +571,32 @@ contains
 
     do i = 1, n_cells
       ! =======================================================================
-      ! ADJUST SURFACE LIST FOR EACH CELL
+      ! ADJUST REGION SPECIFICATION FOR EACH CELL
 
       c => cells(i)
-      do j = 1, c%n_surfaces
-        id = c%surfaces(j)
-        if (id < OP_DIFFERENCE) then
+      do j = 1, size(c%region)
+        id = c%region(j)
+        ! Make sure that only regions are checked. Since OP_UNION is the
+        ! operator with the lowest integer value, anything below it must denote
+        ! a half-space
+        if (id < OP_UNION) then
           if (surface_dict%has_key(abs(id))) then
             i_array = surface_dict%get_key(abs(id))
-            c%surfaces(j) = sign(i_array, id)
+            c%region(j) = sign(i_array, id)
           else
             call fatal_error("Could not find surface " // trim(to_str(abs(id)))&
                  &// " specified on cell " // trim(to_str(c%id)))
           end if
+        end if
+      end do
+
+      ! Also adjust the indices in the reverse Polish notation
+      do j = 1, size(c%rpn)
+        id = c%rpn(j)
+        ! Again, make sure that only regions are checked
+        if (id < OP_UNION) then
+          i_array = surface_dict%get_key(abs(id))
+          c%rpn(j) = sign(i_array, id)
         end if
       end do
 

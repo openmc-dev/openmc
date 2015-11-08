@@ -55,8 +55,18 @@ class Nuclide(object):
         else:
             return False
 
+    def __ne__(self, other):
+        return not self == other
+
     def __hash__(self):
         return hash((self._name, self._xs))
+
+    def __repr__(self):
+        string = 'Nuclide    -    {0}\n'.format(self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
+        if self._zaid is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
+        return string
 
     @property
     def name(self):

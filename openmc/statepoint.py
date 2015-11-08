@@ -1,6 +1,5 @@
-import copy
 import sys
-
+import re
 import numpy as np
 
 import openmc
@@ -92,9 +91,14 @@ class StatePoint(object):
         self._f = h5py.File(filename, 'r')
 
         # Ensure filetype and revision are correct
-        if 'filetype' not in self._f or self._f[
-                'filetype'].value.decode() != 'statepoint':
-            raise IOError('{} is not a statepoint file.'.format(filename))
+        try:
+            if 'filetype' not in self._f or self._f[
+                    'filetype'].value.decode() != 'statepoint':
+                raise IOError('{} is not a statepoint file.'.format(filename))
+        except AttributeError:
+            raise IOError('Could not read statepoint file. This most likely '
+                          'means the statepoint file was produced by a different '
+                          'version of OpenMC than the one you are using.')
         if self._f['revision'].value != 14:
             raise IOError('Statepoint file has a file revision of {} '
                           'which is not consistent with the revision this '
@@ -116,31 +120,19 @@ class StatePoint(object):
 
     @property
     def cmfd_balance(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_balance'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_balance'].value if self.cmfd_on else None
 
     @property
     def cmfd_dominance(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_dominance'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_dominance'].value if self.cmfd_on else None
 
     @property
     def cmfd_entropy(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_entropy'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_entropy'].value if self.cmfd_on else None
 
     @property
     def cmfd_indices(self):
-        if self.cmfd_on:
-            return self._f['cmfd/indices'].value
-        else:
-            return None
+        return self._f['cmfd/indices'].value if self.cmfd_on else None
 
     @property
     def cmfd_src(self):
@@ -152,10 +144,7 @@ class StatePoint(object):
 
     @property
     def cmfd_srccmp(self):
-        if self.cmfd_on:
-            return self._f['cmfd/cmfd_srccmp'].value
-        else:
-            return None
+        return self._f['cmfd/cmfd_srccmp'].value if self.cmfd_on else None
 
     @property
     def current_batch(self):
@@ -323,10 +312,7 @@ class StatePoint(object):
 
     @property
     def source(self):
-        if self.source_present:
-            return self._f['source_bank'].value
-        else:
-            return None
+        return self._f['source_bank'].value if self.source_present else None
 
     @property
     def source_present(self):
@@ -358,7 +344,7 @@ class StatePoint(object):
 
                 # Create Tally object and assign basic properties
                 tally = openmc.Tally(tally_id=tally_key)
-                tally._statepoint = self
+                tally._sp_filename = self._f.filename
                 tally.estimator = self._f['{0}{1}/estimator'.format(
                     base, tally_key)].value.decode()
                 tally.num_realizations = n_realizations
@@ -430,13 +416,10 @@ class StatePoint(object):
                 # Add the scores to the Tally
                 for j, score in enumerate(scores):
                     score = score.decode()
-                    # If this is a scattering moment, insert the scattering order
-                    if '-n' in score:
-                        score = score.replace('-n', '-' + moments[j].decode())
-                    elif '-pn' in score:
-                        score = score.replace('-pn', '-' + moments[j].decode())
-                    elif '-yn' in score:
-                        score = score.replace('-yn', '-' + moments[j].decode())
+
+                    # If this is a moment, use generic moment order
+                    pattern = r'-n$|-pn$|-yn$'
+                    score = re.sub(pattern, '-' + moments[j].decode(), score)
 
                     tally.add_score(score)
 
@@ -463,10 +446,7 @@ class StatePoint(object):
 
     @property
     def with_summary(self):
-        if self.summary is None:
-            return False
-        else:
-            return True
+        return False if self.summary is None else True
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None):

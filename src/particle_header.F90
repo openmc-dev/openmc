@@ -1,7 +1,8 @@
 module particle_header
 
   use bank_header,     only: Bank
-  use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY
+  use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
+                             MAX_DELAYED_GROUPS
   use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
 
@@ -64,10 +65,13 @@ module particle_header
     integer    :: event         ! scatter, absorption
     integer    :: event_nuclide ! index in nuclides array
     integer    :: event_MT      ! reaction MT
+    integer    :: delayed_group ! delayed group
 
     ! Post-collision physical data
     integer    :: n_bank        ! number of fission sites banked
     real(8)    :: wgt_bank      ! weight of fission sites banked
+    integer    :: n_delayed_bank(MAX_DELAYED_GROUPS) ! number of delayed fission
+                                                     ! sites banked
 
     ! Indices for various arrays
     integer    :: surface       ! index for surface particle is on
@@ -111,17 +115,19 @@ contains
     this % alive = .true.
 
     ! clear attributes
-    this % surface       = NONE
-    this % cell_born     = NONE
-    this % material      = NONE
-    this % last_material = NONE
-    this % wgt           = ONE
-    this % last_wgt      = ONE
-    this % absorb_wgt    = ZERO
-    this % n_bank        = 0
-    this % wgt_bank      = ZERO
-    this % n_collision   = 0
-    this % fission       = .false.
+    this % surface           = NONE
+    this % cell_born         = NONE
+    this % material          = NONE
+    this % last_material     = NONE
+    this % wgt               = ONE
+    this % last_wgt          = ONE
+    this % absorb_wgt        = ZERO
+    this % n_bank            = 0
+    this % wgt_bank          = ZERO
+    this % n_collision       = 0
+    this % fission           = .false.
+    this % delayed_group     = 0
+    this % n_delayed_bank(:) = 0
 
     ! Set up base level coordinates
     this % coord(1) % universe = BASE_UNIVERSE

@@ -6,7 +6,7 @@ module output
   use constants
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
-  use geometry_header, only: Cell, Universe, Surface, Lattice, RectLattice, &
+  use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
                              HexLattice, BASE_UNIVERSE
   use global
   use math,            only: t_percentile
@@ -254,10 +254,9 @@ contains
     type(Particle), intent(in) :: p
 
     integer :: i ! index for coordinate levels
-    type(Cell),       pointer :: c => null()
-    type(Surface),    pointer :: s => null()
-    type(Universe),   pointer :: u => null()
-    class(Lattice),   pointer :: l => null()
+    type(Cell),       pointer :: c
+    type(Universe),   pointer :: u
+    class(Lattice),   pointer :: l
 
     ! display type of particle
     select case (p % type)
@@ -304,13 +303,13 @@ contains
 
     ! Print surface
     if (p % surface /= NONE) then
-      s => surfaces(abs(p % surface))
-      write(ou,*) '  Surface = ' // to_str(sign(s % id, p % surface))
+      write(ou,*) '  Surface = ' // to_str(sign(surfaces(i)%obj%id, p % surface))
     end if
 
     ! Display weight, energy, grid index, and interpolation factor
     write(ou,*) '  Weight = ' // to_str(p % wgt)
     write(ou,*) '  Energy = ' // to_str(p % E)
+    write(ou,*) '  Delayed Group = ' // to_str(p % delayed_group)
     write(ou,*)
 
   end subroutine print_particle
@@ -951,36 +950,42 @@ contains
     if (n_tallies == 0) return
 
     ! Initialize names for tally filter types
-    filter_name(FILTER_UNIVERSE)    = "Universe"
-    filter_name(FILTER_MATERIAL)    = "Material"
-    filter_name(FILTER_DISTRIBCELL) = "Distributed Cell"
-    filter_name(FILTER_CELL)        = "Cell"
-    filter_name(FILTER_CELLBORN)    = "Birth Cell"
-    filter_name(FILTER_SURFACE)     = "Surface"
-    filter_name(FILTER_MESH)        = "Mesh"
-    filter_name(FILTER_ENERGYIN)    = "Incoming Energy"
-    filter_name(FILTER_ENERGYOUT)   = "Outgoing Energy"
+    filter_name(FILTER_UNIVERSE)     = "Universe"
+    filter_name(FILTER_MATERIAL)     = "Material"
+    filter_name(FILTER_DISTRIBCELL)  = "Distributed Cell"
+    filter_name(FILTER_CELL)         = "Cell"
+    filter_name(FILTER_CELLBORN)     = "Birth Cell"
+    filter_name(FILTER_SURFACE)      = "Surface"
+    filter_name(FILTER_MESH)         = "Mesh"
+    filter_name(FILTER_ENERGYIN)     = "Incoming Energy"
+    filter_name(FILTER_ENERGYOUT)    = "Outgoing Energy"
+    filter_name(FILTER_MU)           = "Change-in-Angle"
+    filter_name(FILTER_POLAR)        = "Polar Angle"
+    filter_name(FILTER_AZIMUTHAL)    = "Azimuthal Angle"
+    filter_name(FILTER_DELAYEDGROUP) = "Delayed Group"
 
     ! Initialize names for scores
-    score_names(abs(SCORE_FLUX))          = "Flux"
-    score_names(abs(SCORE_TOTAL))         = "Total Reaction Rate"
-    score_names(abs(SCORE_SCATTER))       = "Scattering Rate"
-    score_names(abs(SCORE_NU_SCATTER))    = "Scattering Production Rate"
-    score_names(abs(SCORE_TRANSPORT))     = "Transport Rate"
-    score_names(abs(SCORE_N_1N))          = "(n,1n) Rate"
-    score_names(abs(SCORE_ABSORPTION))    = "Absorption Rate"
-    score_names(abs(SCORE_FISSION))       = "Fission Rate"
-    score_names(abs(SCORE_NU_FISSION))    = "Nu-Fission Rate"
-    score_names(abs(SCORE_KAPPA_FISSION)) = "Kappa-Fission Rate"
-    score_names(abs(SCORE_EVENTS))        = "Events"
-    score_names(abs(SCORE_FLUX_YN))       = "Flux Moment"
-    score_names(abs(SCORE_TOTAL_YN))      = "Total Reaction Rate Moment"
-    score_names(abs(SCORE_SCATTER_N))     = "Scattering Rate Moment"
-    score_names(abs(SCORE_SCATTER_PN))    = "Scattering Rate Moment"
-    score_names(abs(SCORE_SCATTER_YN))    = "Scattering Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_N))  = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_PN)) = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_YN)) = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_FLUX))               = "Flux"
+    score_names(abs(SCORE_TOTAL))              = "Total Reaction Rate"
+    score_names(abs(SCORE_SCATTER))            = "Scattering Rate"
+    score_names(abs(SCORE_NU_SCATTER))         = "Scattering Production Rate"
+    score_names(abs(SCORE_TRANSPORT))          = "Transport Rate"
+    score_names(abs(SCORE_N_1N))               = "(n,1n) Rate"
+    score_names(abs(SCORE_ABSORPTION))         = "Absorption Rate"
+    score_names(abs(SCORE_FISSION))            = "Fission Rate"
+    score_names(abs(SCORE_NU_FISSION))         = "Nu-Fission Rate"
+    score_names(abs(SCORE_KAPPA_FISSION))      = "Kappa-Fission Rate"
+    score_names(abs(SCORE_EVENTS))             = "Events"
+    score_names(abs(SCORE_FLUX_YN))            = "Flux Moment"
+    score_names(abs(SCORE_TOTAL_YN))           = "Total Reaction Rate Moment"
+    score_names(abs(SCORE_SCATTER_N))          = "Scattering Rate Moment"
+    score_names(abs(SCORE_SCATTER_PN))         = "Scattering Rate Moment"
+    score_names(abs(SCORE_SCATTER_YN))         = "Scattering Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_N))       = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_PN))      = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_NU_SCATTER_YN))      = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_DELAYED_NU_FISSION)) = "Delayed-Nu-Fission Rate"
+    score_names(abs(SCORE_INVERSE_VELOCITY))   = "Flux-Weighted Inverse Velocity"
 
     ! Create filename for tally output
     filename = trim(path_output) // "tallies.out"
@@ -1385,7 +1390,7 @@ contains
            univ, bin-1, offset, label)
     case (FILTER_SURFACE)
       i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(surfaces(i) % id)
+      label = to_str(surfaces(i)%obj%id)
     case (FILTER_MESH)
       m => meshes(t % filters(i_filter) % int_bins(1))
       allocate(ijk(m % n_dimension))
@@ -1397,10 +1402,14 @@ contains
         label = "Index (" // trim(to_str(ijk(1))) // ", " // &
              trim(to_str(ijk(2))) // ", " // trim(to_str(ijk(3))) // ")"
       end if
-    case (FILTER_ENERGYIN, FILTER_ENERGYOUT)
+    case (FILTER_ENERGYIN, FILTER_ENERGYOUT, FILTER_MU, FILTER_POLAR, &
+          FILTER_AZIMUTHAL)
       E0 = t % filters(i_filter) % real_bins(bin)
       E1 = t % filters(i_filter) % real_bins(bin + 1)
       label = "[" // trim(to_str(E0)) // ", " // trim(to_str(E1)) // ")"
+    case (FILTER_DELAYEDGROUP)
+      i = t % filters(i_filter) % int_bins(bin)
+      label = to_str(i)
     end select
 
   end function get_label

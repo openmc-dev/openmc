@@ -1,11 +1,21 @@
 import numpy as np
 
 import openmc
+from openmc.region import Region
 
 
 class Summary(object):
     """Information summarizing the geometry, materials, and tallies used in a
     simulation.
+
+    Attributes
+    ----------
+    openmc_geometry : openmc.Geometry
+        An OpenMC geometry object reconstructed from the summary file
+    opencg_geometry : opencg.Geometry
+        An OpenCG geometry object equivalent to the OpenMC geometry
+        encapsulated by the summary file. Use of this attribute requires
+        installation of the OpenCG Python module.
 
     """
 
@@ -22,12 +32,23 @@ class Summary(object):
             raise ValueError(msg)
 
         self._f = h5py.File(filename, 'r')
-        self.openmc_geometry = None
-        self.opencg_geometry = None
+        self._openmc_geometry = None
+        self._opencg_geometry = None
 
         self._read_metadata()
         self._read_geometry()
         self._read_tallies()
+
+    @property
+    def openmc_geometry(self):
+        return self._openmc_geometry
+
+    @property
+    def opencg_geometry(self):
+        if self._opencg_geometry is None:
+            from openmc.opencg_compatible import get_opencg_geometry
+            self._opencg_geometry = get_opencg_geometry(self.openmc_geometry)
+        return self._opencg_geometry
 
     def _read_metadata(self):
         # Read OpenMC version
@@ -177,6 +198,11 @@ class Summary(object):
                 if surf_type == 'z-cone':
                     surface = openmc.ZCone(surface_id, bc, x0, y0, z0, R2, name)
 
+            elif surf_type == 'quadric':
+                a, b, c, d, e, f, g, h, j, k = coeffs
+                surface = openmc.Quadric(surface_id, bc, a, b, c, d, e, f,
+                                         g, h, j, k, name)
+
             # Add Surface to global dictionary of all Surfaces
             self.surfaces[index] = surface
 
@@ -212,10 +238,10 @@ class Summary(object):
             else:
                 fill = self._f['geometry/cells'][key]['lattice'].value
 
-            if 'surfaces' in self._f['geometry/cells'][key].keys():
-                surfaces = self._f['geometry/cells'][key]['surfaces'][...]
+            if 'region' in self._f['geometry/cells'][key].keys():
+                region = self._f['geometry/cells'][key]['region'].value.decode()
             else:
-                surfaces = []
+                region = []
 
             # Create this Cell
             cell = openmc.Cell(cell_id=cell_id, name=name)
@@ -240,13 +266,10 @@ class Summary(object):
             # Store Cell fill information for after Universe/Lattice creation
             self._cell_fills[index] = (fill_type, fill)
 
-            # Iterate over all Surfaces and add them to the Cell
-            for surface_halfspace in surfaces:
-
-                halfspace = np.sign(surface_halfspace)
-                surface_id = abs(surface_halfspace)
-                surface = self.get_surface_by_id(surface_id)
-                cell.add_surface(surface, halfspace)
+            # Generate Region object given infix expression
+            if region:
+                cell.region = Region.from_expression(
+                    region, {s.id: s for s in self.surfaces.values()})
 
             # Add the Cell to the global dictionary of all Cells
             self.cells[index] = cell
@@ -441,7 +464,7 @@ class Summary(object):
 
     def _finalize_geometry(self):
         # Initialize Geometry object
-        self.openmc_geometry = openmc.Geometry()
+        self._openmc_geometry = openmc.Geometry()
 
         # Iterate over all Cells and add fill Materials, Universes and Lattices
         for cell_key in self._cell_fills.keys():
@@ -527,22 +550,6 @@ class Summary(object):
 
             # Add Tally to the global dictionary of all Tallies
             self.tallies[tally_id] = tally
-
-    def make_opencg_geometry(self):
-        """Create OpenCG geometry based on the information contained in the summary
-        file. The geometry is stored as the 'opencg_geometry' attribute.
-
-        """
-
-        try:
-            from openmc.opencg_compatible import get_opencg_geometry
-        except ImportError:
-            msg = 'Unable to import opencg which is needed ' \
-                  'by Summary.make_opencg_geometry()'
-            raise ImportError(msg)
-
-        if self.opencg_geometry is None:
-            self.opencg_geometry = get_opencg_geometry(self.openmc_geometry)
 
     def get_material_by_id(self, material_id):
         """Return a Material object given the material id

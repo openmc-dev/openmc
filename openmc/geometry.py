@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from xml.etree import ElementTree as ET
 
 import openmc
@@ -110,7 +111,7 @@ class Geometry(object):
 
         """
 
-        nuclides = {}
+        nuclides = OrderedDict()
         materials = self.get_all_materials()
 
         for material in materials:
@@ -134,7 +135,9 @@ class Geometry(object):
         for cell in material_cells:
             materials.add(cell._fill)
 
-        return list(materials)
+        materials = list(materials)
+        materials.sort(key=lambda x: x.id)
+        return materials
 
     def get_all_material_cells(self):
         all_cells = self.get_all_cells()
@@ -144,7 +147,9 @@ class Geometry(object):
             if cell._type == 'normal':
                 material_cells.add(cell)
 
-        return list(material_cells)
+        material_cells = list(material_cells)
+        material_cells.sort(key=lambda x: x.id)
+        return material_cells
 
     def get_all_material_universes(self):
         """Return all universes composed of at least one non-fill cell
@@ -165,7 +170,9 @@ class Geometry(object):
                 if cell._type == 'normal':
                     material_universes.add(universe)
 
-        return list(material_universes)
+        material_universes = list(material_universes)
+        material_universes.sort(key=lambda x: x.id)
+        return material_universes
 
 
 class GeometryFile(object):
@@ -198,7 +205,13 @@ class GeometryFile(object):
 
         """
 
-        root_universe = self._geometry._root_universe
+        # Clear OpenMC written IDs used to optimize XML generation
+        openmc.universe.WRITTEN_IDS = {}
+
+        # Reset xml element tree
+        self._geometry_file.clear()
+
+        root_universe = self.geometry.root_universe
         root_universe.create_xml_subelement(self._geometry_file)
 
         # Clean the indentation in the file to be user-readable

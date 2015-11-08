@@ -314,6 +314,13 @@ contains
     real(8) :: cutoff
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
+    real(8) :: uvw_new(3) ! outgoing uvw for iso-in-lab scattering
+    real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
+    real(8) :: mu_lab     ! polar angle cosine for iso-in-lab scattering 
+    real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
+
+    ! copy incoming direction
+    uvw_old(:) = p % coord(1) % uvw
 
     ! Get pointer to nuclide and grid index/interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -332,11 +339,9 @@ contains
       ! ELASTIC SCATTERING
 
       if (micro_xs(i_nuclide) % index_sab /= NONE) then
-
         ! S(a,b) scattering
         call sab_scatter(i_nuclide, micro_xs(i_nuclide) % index_sab, &
-             p % E, p % coord(1) % uvw, p % mu, &
-             materials(p % material) % p0(i_nuc_mat))
+             p % E, p % coord(1) % uvw, p % mu)
 
       else
         ! get pointer to elastic scattering reaction
@@ -344,8 +349,7 @@ contains
 
         ! Perform collision physics for elastic scattering
         call elastic_scatter(i_nuclide, rxn, &
-             p % E, p % coord(1) % uvw, p % mu, p % wgt, &
-             materials(p % material) % p0(i_nuc_mat))
+             p % E, p % coord(1) % uvw, p % mu, p % wgt)
       end if
 
       p % event_MT = ELASTIC
@@ -387,13 +391,27 @@ contains
       end do
 
       ! Perform collision physics for inelastic scattering
-      call inelastic_scatter(nuc, rxn, p, materials(p % material) % p0(i_nuc_mat))
+      call inelastic_scatter(nuc, rxn, p)
       p % event_MT = rxn % MT
 
     end if
 
     ! Set event component
     p % event = EVENT_SCATTER
+
+    ! sample new outgoing angle for isotropic in lab scattering
+    if (materials(p % material) % p0(i_nuc_mat)) then
+
+      ! sample isotropic-in-lab outgoing direction
+      uvw_new(1) = TWO * prn() - ONE
+      phi = TWO * PI * prn()
+      uvw_new(2) = cos(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
+      uvw_new(3) = sin(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
+      mu_lab = dot_product(uvw_old, uvw_new)
+
+      ! change direction of particle
+      p % coord(1) % uvw = rotate_angle(uvw_new, mu_lab)
+    end if
 
   end subroutine scatter
 
@@ -402,24 +420,21 @@ contains
 ! target.
 !===============================================================================
 
-  subroutine elastic_scatter(i_nuclide, rxn, E, uvw, mu_lab, wgt, iso_lab)
+  subroutine elastic_scatter(i_nuclide, rxn, E, uvw, mu_lab, wgt)
 
     integer, intent(in)     :: i_nuclide
     type(Reaction), pointer :: rxn
     real(8), intent(inout)  :: E
     real(8), intent(inout)  :: uvw(3)
+    real(8), intent(out)    :: mu_lab
     real(8), intent(inout)  :: wgt
-    real(8), intent(out)    :: mu_lab ! cosine of polar angle in lab system
-    logical, intent(in)     :: iso_lab
 
     real(8) :: awr       ! atomic weight ratio of target
     real(8) :: mu_cm     ! cosine of polar angle in center-of-mass
-    real(8) :: phi       ! azimuthal angle
     real(8) :: vel       ! magnitude of velocity
     real(8) :: v_n(3)    ! velocity of neutron
     real(8) :: v_cm(3)   ! velocity of center-of-mass
     real(8) :: v_t(3)    ! velocity of target nucleus
-    real(8) :: uvw_in(3) ! incoming direction
     real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
     type(Nuclide), pointer :: nuc
 
@@ -431,9 +446,6 @@ contains
 
     ! Neutron velocity in LAB
     v_n = vel * uvw
-
-    ! incoming direction
-    uvw_in(:) = uvw(:)
 
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
@@ -470,17 +482,11 @@ contains
     vel = sqrt(E)
 
     ! compute cosine of scattering angle in LAB frame by taking dot product of
-    ! neutron's pre- and post-collision unit vectors
-    if (iso_lab) then
-      uvw(1) = TWO * prn() - ONE
-      phi = TWO * PI * prn()
-      uvw(2) = cos(phi) * sqrt(ONE - uvw(1)*uvw(1))
-      uvw(3) = sin(phi) * sqrt(ONE - uvw(1)*uvw(1))
-    else
-      uvw = v_n / vel
-    end if
+    ! neutron's pre- and post-collision angle
+    mu_lab = dot_product(uvw, v_n) / vel
 
-    mu_lab = dot_product(uvw_in, uvw)
+    ! Set energy and direction of particle in LAB frame
+    uvw = v_n / vel
 
     ! Because of floating-point roundoff, it may be possible for mu_lab to be
     ! outside of the range [-1,1). In these cases, we just set mu_lab to exactly
@@ -495,15 +501,13 @@ contains
 ! according to a specified S(a,b) table.
 !===============================================================================
 
-  subroutine sab_scatter(i_nuclide, i_sab, E, uvw, mu_lab, iso_lab)
+  subroutine sab_scatter(i_nuclide, i_sab, E, uvw, mu)
 
     integer, intent(in)     :: i_nuclide ! index in micro_xs
     integer, intent(in)     :: i_sab     ! index in sab_tables
     real(8), intent(inout)  :: E         ! incoming/outgoing energy
     real(8), intent(inout)  :: uvw(3)    ! directional cosines
-    real(8)                 :: uvw_in(3) ! incoming direction
-    real(8), intent(out)    :: mu_lab    ! cosine of polar angle in lab system
-    logical, intent(in)     :: iso_lab
+    real(8), intent(out)    :: mu        ! scattering cosine
 
     integer :: i            ! incoming energy bin
     integer :: j            ! outgoing energy bin
@@ -527,13 +531,9 @@ contains
     real(8) :: c_j, c_j1      ! cumulative probability
     real(8) :: frac           ! interpolation factor on outgoing energy
     real(8) :: r1             ! RNG for outgoing energy
-    real(8) :: phi            ! azimuthal angle
 
     ! Get pointer to S(a,b) table
     sab => sab_tables(i_sab)
-
-    ! incoming direction
-    uvw_in(:) = uvw(:)
 
     ! Determine whether inelastic or elastic scattering will occur
     if (prn() < micro_xs(i_nuclide) % elastic_sab / &
@@ -564,7 +564,7 @@ contains
         mu_i1jk = sab % elastic_mu(k,i+1)
 
         ! Cosine of angle between incoming and outgoing neutron
-        mu_lab = (1 - f)*mu_ijk + f*mu_i1jk
+        mu = (1 - f)*mu_ijk + f*mu_i1jk
 
       elseif (sab % elastic_mode == SAB_ELASTIC_EXACT) then
         ! This treatment is used for data derived in the coherent
@@ -580,7 +580,7 @@ contains
         end if
 
         ! Characteristic scattering cosine for this Bragg edge
-        mu_lab = ONE - TWO*sab % elastic_e_in(k) / E
+        mu = ONE - TWO*sab % elastic_e_in(k) / E
 
       end if
 
@@ -655,7 +655,7 @@ contains
         mu_i1jk = sab % inelastic_mu(k,j,i+1)
 
         ! Cosine of angle between incoming and outgoing neutron
-        mu_lab = (1 - f)*mu_ijk + f*mu_i1jk
+        mu = (1 - f)*mu_ijk + f*mu_i1jk
 
       else if (sab % secondary_mode == SAB_SECONDARY_CONT) then
         ! Continuous secondary energy - this is to be similar to
@@ -732,7 +732,7 @@ contains
 
         ! Will use mu from the randomly chosen incoming and closest outgoing
         ! energy bins
-        mu_lab = sab % inelastic_data(l) % mu(k, j)
+        mu = sab % inelastic_data(l) % mu(k, j)
 
       else
         call fatal_error("Invalid secondary energy mode on S(a,b) table " &
@@ -744,20 +744,10 @@ contains
     ! outside of the range [-1,1). In these cases, we just set mu to exactly
     ! -1 or 1
 
-    if (abs(mu_lab) > ONE) mu_lab = sign(ONE,mu_lab)
+    if (abs(mu) > ONE) mu = sign(ONE,mu)
 
-    ! compute cosine of scattering angle in LAB frame by taking dot product of
-    ! neutron's pre- and post-collision unit vectors
-    if (iso_lab) then
-      uvw(1) = TWO * prn() - ONE
-      phi = TWO * PI * prn()
-      uvw(2) = cos(phi) * sqrt(ONE - uvw(1)*uvw(1))
-      uvw(3) = sin(phi) * sqrt(ONE - uvw(1)*uvw(1))
-      mu_lab = dot_product(uvw_in, uvw)
-    else
-      ! change direction of particle
-      uvw = rotate_angle(uvw, mu_lab)
-    end if
+    ! change direction of particle
+    uvw = rotate_angle(uvw, mu)
 
   end subroutine sab_scatter
 
@@ -1333,28 +1323,23 @@ contains
 ! than fission), i.e. level scattering, (n,np), (n,na), etc.
 !===============================================================================
 
-  subroutine inelastic_scatter(nuc, rxn, p, iso_lab)
-
-    type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
+  subroutine inelastic_scatter(nuc, rxn, p)
+    type(Nuclide),  pointer       :: nuc
+    type(Reaction), pointer       :: rxn
     type(Particle), intent(inout) :: p
-    logical, intent(in)     :: iso_lab
 
     integer :: i      ! loop index
-    integer :: law         ! secondary energy distribution law
-    real(8) :: mu     ! cosine of scattering angle in lab
-    real(8) :: A           ! atomic weight ratio of nuclide
+    integer :: law    ! secondary energy distribution law
     real(8) :: E      ! energy in lab (incoming/outgoing)
-    real(8) :: E_in        ! incoming energy
-    real(8) :: E_cm        ! outgoing energy in center-of-mass
-    real(8) :: Q           ! Q-value of reaction
-    real(8) :: yield       ! neutron yield
-    real(8) :: uvw_in(3)   ! incoming direction
-    real(8) :: phi         ! azimuthal angle
+    real(8) :: mu     ! cosine of scattering angle in lab
+    real(8) :: A      ! atomic weight ratio of nuclide
+    real(8) :: E_in   ! incoming energy
+    real(8) :: E_cm   ! outgoing energy in center-of-mass
+    real(8) :: Q      ! Q-value of reaction
+    real(8) :: yield  ! neutron yield
 
-    ! copy energy, direction of neutron
+    ! copy energy of neutron
     E_in = p % E
-    uvw_in(:) = p % coord(1) % uvw(:)
 
     ! determine A and Q
     A = nuc % awr
@@ -1399,22 +1384,12 @@ contains
       if (abs(mu) > ONE) mu = sign(ONE,mu)
     end if
 
-    ! compute cosine of scattering angle in LAB frame by taking dot product of
-    ! neutron's pre- and post-collision unit vectors
-    if (iso_lab) then
-      p % coord(1) % uvw(1) = TWO * prn() - ONE
-      phi = TWO * PI * prn()
-      p % coord(1) % uvw(2) = cos(phi) * sqrt(ONE - uvw_in(1) * uvw_in(1))
-      p % coord(1) % uvw(3) = sin(phi) * sqrt(ONE - uvw_in(1) * uvw_in(1))
-      mu = dot_product(uvw_in, p % coord(1) % uvw)
-    else
-      ! Set outgoing energy and scattering angle
-      p % E = E
-      p % mu = mu
+    ! Set outgoing energy and scattering angle
+    p % E = E
+    p % mu = mu
 
-      ! change direction of particle
-      p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
-    end if
+    ! change direction of particle
+    p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
 
     ! change weight of particle based on yield
     if (rxn % multiplicity_with_E) then

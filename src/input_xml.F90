@@ -1759,8 +1759,10 @@ contains
 
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
+    integer :: k             ! llop index for elements
     integer :: n             ! number of nuclides
     integer :: n_sab         ! number of sab tables for a material
+    integer :: n_nuc_ele     ! number of nuclides in an element
     integer :: index_list    ! index in xs_listings array
     integer :: index_nuclide ! index in nuclides
     integer :: index_sab     ! index in sab_tables
@@ -2021,6 +2023,9 @@ contains
                &element: " // trim(name))
         end if
 
+        ! Get current number of nuclides
+        n_nuc_ele = list_names % size()
+
         ! Expand element into naturally-occurring isotopes
         if (check_for_node(node_ele, "ao")) then
           call get_node_value(node_ele, "ao", temp_dble)
@@ -2030,6 +2035,29 @@ contains
           call fatal_error("The ability to expand a natural element based on &
                &weight percentage is not yet supported.")
         end if
+
+        ! Compute number of new nuclides from the natural element expansion
+        n_nuc_ele = list_names % size() - n_nuc_ele
+
+        ! Check enforced isotropic lab scattering
+        if (check_for_node(node_ele, "scattering")) then
+          call get_node_value(node_ele, "scattering", temp_str)
+        else
+          temp_str = "ace"
+        end if
+
+        ! Set ace or iso-in-lab scattering for each nuclide in element
+        do k = 1, n_nuc_ele          
+          if (trim(adjustl(to_lower(temp_str))) == "iso-in-lab") then
+            call list_iso_lab % append(1)
+          else if (trim(adjustl(to_lower(temp_str))) == "ace") then
+            call list_iso_lab % append(0)
+          else
+            call fatal_error("Scattering must be isotropic in lab or follow&
+                 & the ACE file data")
+          end if
+        end do
+
       end do NATURAL_ELEMENTS
 
       ! ========================================================================
@@ -4213,7 +4241,6 @@ contains
       call list_density % append(density * 0.999885_8)
       call list_names % append('1002.' // xs)
       call list_density % append(density * 0.000115_8)
-
     case ('he')
       call list_names % append('2003.' // xs)
       call list_density % append(density * 0.00000134_8)

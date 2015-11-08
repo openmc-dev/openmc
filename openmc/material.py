@@ -374,6 +374,8 @@ class Material(object):
     def make_isotropic_in_lab(self):
         for nuclide_name in self._nuclides:
             self._nuclides[nuclide_name][0].scattering = 'iso-in-lab'
+        for element_name in self._elements:
+            self._element[element_name][0].scattering = 'iso-in-lab'
 
     def get_all_nuclides(self):
         """Returns all nuclides in the material
@@ -405,11 +407,11 @@ class Material(object):
             else:
                 xml_element.set("wo", str(nuclide[1]))
 
-        if nuclide[0]._xs is not None:
-            xml_element.set("xs", nuclide[0]._xs)
+        if nuclide[0].xs is not None:
+            xml_element.set("xs", nuclide[0].xs)
 
-        if not nuclide[0]._scattering is None:
-            xml_element.set("scattering", nuclide[0]._scattering)
+        if not nuclide[0].scattering is None:
+            xml_element.set("scattering", nuclide[0].scattering)
 
         return xml_element
 
@@ -422,6 +424,9 @@ class Material(object):
                 xml_element.set("ao", str(element[1]))
             else:
                 xml_element.set("wo", str(element[1]))
+
+        if not element[0].scattering is None:
+            xml_element.set("scattering", element[0].scattering)
 
         return xml_element
 

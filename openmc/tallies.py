@@ -93,6 +93,9 @@ class Tally(object):
         self._scores = []
         self._estimator = None
         self._triggers = []
+        self._diff_variable = None
+        self._diff_material = None
+        self._diff_nuclide = None
 
         self._num_score_bins = 0
         self._num_realizations = 0
@@ -117,6 +120,9 @@ class Tally(object):
             clone.id = self.id
             clone.name = self.name
             clone.estimator = self.estimator
+            clone._diff_variable = self.diff_variable
+            clone._diff_material = self.diff_material
+            clone._diff_nuclide = self.diff_nuclide
             clone.num_score_bins = self.num_score_bins
             clone.num_realizations = self.num_realizations
             clone._sum = copy.deepcopy(self._sum, memo)
@@ -173,6 +179,14 @@ class Tally(object):
             if nuclide not in other.nuclides:
                 return False
 
+        # Check derivatives
+        if self.diff_variable != other.diff_variable:
+            return False
+        if self.diff_material != other.diff_material:
+            return False
+        if self.diff_nuclide != other.diff_nuclide:
+            return False
+
         # Check all scores
         if len(self.scores) != len(other.scores):
             return False
@@ -203,6 +217,9 @@ class Tally(object):
 
         hashable.append(self.estimator)
         hashable.append(self.name)
+        hashable.append(self._diff_variable)
+        hashable.append(self._diff_material)
+        hashable.append(self._diff_nuclide)
 
         return hash(tuple(hashable))
 
@@ -210,6 +227,21 @@ class Tally(object):
         string = 'Tally\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
+
+        if self.diff_variable is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tDerivative', '=\t',
+                                                self.diff_variable)
+            if self.diff_variable == 'density':
+                string += '{0: <16}{1}{2}\n'.format('\tDiff_material', '=\t',
+                                                    self.diff_material)
+            elif self.diff_variable == 'nuclide_density':
+                string += '{0: <16}{1}{2}\n'.format('\tDiff_material', '=\t',
+                                                    self.diff_material)
+                string += '{0: <16}{1}{2}\n'.format('\tDiff_nuclide', '=\t',
+                                                    self.diff_nuclide)
+            else:
+                raise RuntimeError("Encountered unrecognized differential "
+                                   "variable in a tally.")
 
         string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
 
@@ -379,6 +411,18 @@ class Tally(object):
     def derived(self):
         return self._derived
 
+    @property
+    def diff_variable(self):
+        return self._diff_variable
+
+    @property
+    def diff_material(self):
+        return self._diff_material
+
+    @property
+    def diff_nuclide(self):
+        return self._diff_nuclide
+
     @estimator.setter
     def estimator(self, estimator):
         cv.check_value('estimator', estimator,
@@ -421,6 +465,27 @@ class Tally(object):
             self._name = name
         else:
             self._name = ''
+
+    @diff_variable.setter
+    def diff_variable(self, var):
+        if var is not None:
+            cv.check_type('differential variable', var, basestring)
+            if var not in ('density', 'nuclide_density'):
+                raise ValueError("A tally differential variable must be either "
+                     "'density' or 'nuclide_density'")
+            self._diff_variable = var
+
+    @diff_material.setter
+    def diff_material(self, mat):
+        if mat is not None:
+            cv.check_type('differential material', mat, Integral)
+            self._diff_material = mat
+
+    @diff_nuclide.setter
+    def diff_nuclide(self, nuc):
+        if nuc is not None:
+            cv.check_type('differential nuclide', nuc, basestring)
+            self._diff_nuclide = nuc
 
     def add_filter(self, filter):
         """Add a filter to the tally
@@ -702,6 +767,21 @@ class Tally(object):
 
             subelement = ET.SubElement(element, "nuclides")
             subelement.text = nuclides.rstrip(' ')
+
+        # Optional derivative
+        if self.diff_variable is not None:
+            if self.diff_variable == 'density':
+                subelement = ET.SubElement(element, "derivative")
+                subelement.set("variable", self.diff_variable)
+                subelement.set("material", str(self.diff_material))
+            elif self.diff_variable == 'nuclide_density':
+                subelement = ET.SubElement(element, "derivative")
+                subelement.set("variable", self.diff_variable)
+                subelement.set("material", str(self.diff_material))
+                subelement.set("nuclide", self.diff_nuclide)
+            else:
+                raise RuntimeError("Encountered unrecognized differential "
+                                   "variable in a tally.")
 
         # Scores
         if len(self.scores) == 0:
@@ -1122,7 +1202,7 @@ class Tally(object):
         return data
 
     def get_pandas_dataframe(self, filters=True, nuclides=True,
-                             scores=True, summary=None):
+                             scores=True, derivative=True, summary=None):
         """Build a Pandas DataFrame for the Tally data.
 
         This method constructs a Pandas DataFrame object for the Tally data
@@ -1140,6 +1220,8 @@ class Tally(object):
             Include columns with nuclide bin information (default is True).
         scores : bool
             Include columns with score bin information (default is True).
+        derivative : bool
+            Include columns with differential tally info (default is True).
         summary : None or Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
@@ -1220,6 +1302,14 @@ class Tally(object):
         if scores:
             tile_factor = data_size / len(self.scores)
             df['score'] = np.tile(self.scores, tile_factor)
+
+        # Include columns for derivatives if user requested it
+        if derivative and (self.diff_variable is not None):
+            df['d_variable'] = self.diff_variable
+            if self.diff_material is not None:
+                df['d_material'] = self.diff_material
+            if self.diff_nuclide is not None:
+                df['d_nuclide'] = self.diff_nuclide
 
         # Append columns with mean, std. dev. for each tally bin
         df['mean'] = self.mean.ravel()

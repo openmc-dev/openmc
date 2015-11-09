@@ -33,8 +33,8 @@ NO_DENSITY = 99999.
 
 
 class Material(object):
-    """A material composed of a collection of nuclides/elements that can be assigned
-    to a region of space.
+    """A material composed of a collection of nuclides/elements that can be 
+    assigned to a region of space.
 
     Parameters
     ----------

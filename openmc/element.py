@@ -24,7 +24,7 @@ class Element(object):
         Chemical symbol of the element, e.g. Pu
     xs : str
         Cross section identifier, e.g. 71c
-    scattering : 'ace' or 'iso-in-lab' or None
+    scattering : 'data' or 'iso-in-lab' or None
         The type of angular scattering distribution to use
 
     """
@@ -94,9 +94,9 @@ class Element(object):
     @scattering.setter
     def scattering(self, scattering):
 
-        if not scattering in ['ace', 'iso-in-lab']:
+        if not scattering in ['data', 'iso-in-lab']:
             msg = 'Unable to set scattering for Element to {0} ' \
-                  'which is not "ace" or "iso-in-lab"'.format(scattering)
+                  'which is not "data" or "iso-in-lab"'.format(scattering)
             raise ValueError(msg)
 
         self._scattering = scattering

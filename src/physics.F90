@@ -316,7 +316,6 @@ contains
     type(Reaction), pointer :: rxn
     real(8) :: uvw_new(3) ! outgoing uvw for iso-in-lab scattering
     real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
-    real(8) :: mu_lab     ! polar angle cosine for iso-in-lab scattering
     real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
 
     ! copy incoming direction
@@ -407,10 +406,10 @@ contains
       phi = TWO * PI * prn()
       uvw_new(2) = cos(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
       uvw_new(3) = sin(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
-      mu_lab = dot_product(uvw_old, uvw_new)
+      p % mu = dot_product(uvw_old, uvw_new)
 
       ! change direction of particle
-      p % coord(1) % uvw = rotate_angle(uvw_new, mu_lab)
+      p % coord(1) % uvw = uvw_new
     end if
 
   end subroutine scatter

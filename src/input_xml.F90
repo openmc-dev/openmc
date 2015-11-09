@@ -1963,8 +1963,8 @@ contains
 
       ! Check to ensure material has at least one nuclide
       if ((.not. check_for_node(node_mat, "nuclide") .and. &
-          .not. check_for_node(node_mat, "element")) .and. &
-          (.not. check_for_node(node_mat, "macroscopic"))) then
+           .not. check_for_node(node_mat, "element")) .and. &
+           (.not. check_for_node(node_mat, "macroscopic"))) then
         call fatal_error("No macroscopic data, nuclides or natural elements &
                          &specified on material " // trim(to_str(mat % id)))
       end if
@@ -2001,7 +2001,7 @@ contains
         ! store full name
         call get_node_value(node_nuc, "name", temp_str)
         if (check_for_node(node_nuc, "xs")) &
-          call get_node_value(node_nuc, "xs", name)
+             call get_node_value(node_nuc, "xs", name)
         name = trim(temp_str) // "." // trim(name)
         name = to_lower(name)
 
@@ -2014,7 +2014,7 @@ contains
           call list_density % append(ONE)
         else
           call fatal_error("Units can only be macro for macroscopic data " &
-                 &// trim(name))
+               &// trim(name))
         end if
       else
 
@@ -2045,7 +2045,7 @@ contains
           ! store full name
           call get_node_value(node_nuc, "name", temp_str)
           if (check_for_node(node_nuc, "xs")) &
-            call get_node_value(node_nuc, "xs", name)
+               call get_node_value(node_nuc, "xs", name)
           name = trim(temp_str) // "." // trim(name)
           name = to_lower(name)
 
@@ -2058,7 +2058,7 @@ contains
             call list_density % append(ONE)
           else
             if (.not.check_for_node(node_nuc, "ao") .and. &
-                .not.check_for_node(node_nuc, "wo")) then
+                 .not.check_for_node(node_nuc, "wo")) then
               call fatal_error("No atom or weight percent specified for nuclide " &
                    &// trim(name))
             elseif (check_for_node(node_nuc, "ao") .and. &
@@ -2572,7 +2572,7 @@ contains
               ! If in MG mode, fail if user provides bins, as we are only
               ! allowing for all groups
               if (.not. run_CE .and. (temp_str == 'energy' .or. &
-                  temp_str == 'energyout')) then
+                   temp_str == 'energyout')) then
                 call fatal_error("No energy or energyout bins needed on tally " &
                      &// trim(to_str(t % id)))
               else
@@ -4360,9 +4360,9 @@ contains
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-       ! Could not find cross_sections.xml file
-       call fatal_error("Cross sections XML file '" &
-            &// trim(path_cross_sections) // "' does not exist!")
+      ! Could not find cross_sections.xml file
+      call fatal_error("Cross sections XML file '" &
+           &// trim(path_cross_sections) // "' does not exist!")
     end if
 
     call write_message("Reading cross sections XML file...", 5)
@@ -4371,18 +4371,18 @@ contains
     call open_xmldoc(doc, path_cross_sections)
 
     if (check_for_node(doc, "groups")) then
-       ! Get neutron group count
-       call get_node_value(doc, "groups", energy_groups)
+      ! Get neutron group count
+      call get_node_value(doc, "groups", energy_groups)
     else
-       call fatal_error("groups element must exist!")
+      call fatal_error("groups element must exist!")
     end if
 
     allocate(energy_bins(energy_groups + 1))
     if (check_for_node(doc, "group_structure")) then
-       ! Get neutron group structure
-       call get_node_array(doc, "group_structure", energy_bins)
+      ! Get neutron group structure
+      call get_node_array(doc, "group_structure", energy_bins)
     else
-       call fatal_error("group_structures element must exist!")
+      call fatal_error("group_structures element must exist!")
     end if
 
     allocate(energy_bin_avg(energy_groups))
@@ -4396,10 +4396,10 @@ contains
 
     ! Allocate xs_listings array
     if (n_listings == 0) then
-       call fatal_error("No XSDATA listings present in cross_sections.xml &
-            &file!")
+      call fatal_error("No XSDATA listings present in cross_sections.xml &
+           &file!")
     else
-       allocate(xs_listings(n_listings))
+      allocate(xs_listings(n_listings))
     end if
 
     do i = 1, n_listings
@@ -4413,7 +4413,7 @@ contains
       listing % name = to_lower(listing % name)
       listing % alias = listing % name
       if (check_for_node(node_xsdata, "alias")) &
-        call get_node_value(node_xsdata, "alias", listing % alias)
+           call get_node_value(node_xsdata, "alias", listing % alias)
       listing % alias = to_lower(listing % alias)
       if (check_for_node(node_xsdata, "zaid")) then
         call get_node_value(node_xsdata, "zaid", listing % zaid)
@@ -4421,7 +4421,7 @@ contains
         listing % zaid = 100
       end if
       if (check_for_node(node_xsdata, "kT")) &
-        call get_node_value(node_xsdata, "kT", listing % kT)
+           call get_node_value(node_xsdata, "kT", listing % kT)
       if (check_for_node(node_xsdata, "awr")) then
         call get_node_value(node_xsdata, "awr", listing % awr)
       else
@@ -4430,12 +4430,12 @@ contains
 
       ! determine type of cross section
       if (ends_with(listing % name, 'c')) then
-         listing % type = NEUTRON
+        listing % type = NEUTRON
       end if
 
-       ! create dictionary entry for both name and alias
-       call xs_listing_dict % add_key(to_lower(listing % name), i)
-       call xs_listing_dict % add_key(to_lower(listing % alias), i)
+      ! create dictionary entry for both name and alias
+      call xs_listing_dict % add_key(to_lower(listing % name), i)
+      call xs_listing_dict % add_key(to_lower(listing % alias), i)
     end do
 
     ! Close cross sections XML file

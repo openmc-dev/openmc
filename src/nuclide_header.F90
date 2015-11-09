@@ -374,7 +374,7 @@ module nuclide_header
       if (allocated(this % k_fission)) then
         deallocate(this % k_fission)
       end if
-       if (allocated(this % chi)) then
+      if (allocated(this % chi)) then
         deallocate(this % chi)
       end if
       if (allocated(this % mult)) then
@@ -400,7 +400,7 @@ module nuclide_header
       if (allocated(this % k_fission)) then
         deallocate(this % k_fission)
       end if
-       if (allocated(this % chi)) then
+      if (allocated(this % chi)) then
         deallocate(this % chi)
       end if
 

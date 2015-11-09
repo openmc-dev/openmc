@@ -249,16 +249,16 @@ contains
             do gin = 1, groups
               do gout = 1, groups
                 this % chi(gout,gin) = this % chi(gout,gin) + atom_density * &
-                  nuc % chi(gout) * nuc % nu_fission(gin,1)
+                     nuc % chi(gout) * nuc % nu_fission(gin,1)
               end do
             end do
             this % nu_fission = this % nu_fission + atom_density * &
-              nuc % nu_fission(:,1)
+                 nuc % nu_fission(:,1)
           else
             this % chi = this % chi + atom_density * nuc % nu_fission
             do gin = 1, groups
               this % nu_fission(gin) = this % nu_fission(gin) + atom_density * &
-                sum(nuc % nu_fission(:,gin))
+                   sum(nuc % nu_fission(:,gin))
             end do
           end if
           this % fission = this % fission + atom_density * nuc % fission
@@ -273,33 +273,33 @@ contains
             if (scatt_type == ANGLE_HISTOGRAM .or. scatt_type == ANGLE_TABULAR) then
               ! Transfer matrix
               temp_energy(gout,gin) = temp_energy(gout,gin) + atom_density * &
-                sum(nuc % scatter(gout,gin,:))
+                   sum(nuc % scatter(gout,gin,:))
 
               ! Determine the angular distribution
               do imu = 1, order
                 scatt_coeffs(imu, gout, gin) = scatt_coeffs(imu, gout, gin) + &
-                  nuc % scatter(gout,gin,imu) * &
-                  atom_density
+                     nuc % scatter(gout,gin,imu) * &
+                     atom_density
               end do
 
             else if (scatt_type == ANGLE_LEGENDRE) then
               ! Transfer matrix
               temp_energy(gout,gin) = temp_energy(gout,gin) + atom_density * &
-                nuc % scatter(gout,gin,1)
+                   nuc % scatter(gout,gin,1)
 
               ! Determine the angular distribution coefficients so we can later
               ! expand do the complete distribution
               do l = 1, min(nuc % order, order) + 1
                 scatt_coeffs(l, gout, gin) = scatt_coeffs(l, gout, gin) + &
-                  nuc % scatter(gout,gin,l) * &
-                  atom_density
+                     nuc % scatter(gout,gin,l) * &
+                     atom_density
               end do
 
             end if
 
             ! Multiplicity matrix
             temp_mult(gout,gin) = temp_mult(gout,gin) + atom_density * &
-              nuc % mult(gout,gin)
+                 nuc % mult(gout,gin)
           end do
         end do
       type is (Nuclide_Angle)
@@ -530,16 +530,16 @@ contains
             do gin = 1, groups
               do gout = 1, groups
                 this % chi(gout,gin,:,:) = this % chi(gout,gin,:,:) + atom_density * &
-                  nuc % chi(gout,:,:) * nuc % nu_fission(gin,1,:,:)
+                     nuc % chi(gout,:,:) * nuc % nu_fission(gin,1,:,:)
               end do
             end do
             this % nu_fission = this % nu_fission + atom_density * &
-              nuc % nu_fission(:,1,:,:)
+                 nuc % nu_fission(:,1,:,:)
           else
             this % chi = this % chi + atom_density * nuc % nu_fission
             do gin = 1, groups
               this % nu_fission(gin,:,:) = this % nu_fission(gin,:,:) + atom_density * &
-                sum(nuc % nu_fission(:,gin,:,:),dim=1)
+                   sum(nuc % nu_fission(:,gin,:,:),dim=1)
             end do
           end if
           this % fission = this % fission + atom_density * nuc % fission
@@ -554,31 +554,31 @@ contains
             if (scatt_type == ANGLE_HISTOGRAM .or. scatt_type == ANGLE_TABULAR) then
               ! Transfer matrix
               temp_energy(gout,gin,:,:) = temp_energy(gout,gin,:,:) + atom_density * &
-                sum(nuc % scatter(gout,gin,:,:,:),dim=1)
+                   sum(nuc % scatter(gout,gin,:,:,:),dim=1)
 
               ! Determine the angular distribution
               do imu = 1, order
                 scatt_coeffs(imu,gout,gin,:,:) = scatt_coeffs(imu,gout,gin,:,:) + &
-                  nuc % scatter(gout,gin,imu,:,:) * &
-                  atom_density
+                     nuc % scatter(gout,gin,imu,:,:) * &
+                     atom_density
               end do
             else if (scatt_type == ANGLE_LEGENDRE) then
               ! Transfer matrix
               temp_energy(gout,gin,:,:) = temp_energy(gout,gin,:,:) + atom_density * &
-                nuc % scatter(gout,gin,1,:,:)
+                   nuc % scatter(gout,gin,1,:,:)
 
               ! Determine the angular distribution coefficients so we can later
               ! expand do the complete distribution
               do l = 1, min(nuc % order, order) + 1
                 scatt_coeffs(l, gout, gin,:,:) = scatt_coeffs(l, gout, gin,:,:) + &
-                  nuc % scatter(gout,gin,l,:,:) * &
-                  atom_density
+                     nuc % scatter(gout,gin,l,:,:) * &
+                     atom_density
               end do
             end if
 
             ! Multiplicity matrix
             temp_mult(gout,gin,:,:) = temp_mult(gout,gin,:,:) + atom_density * &
-              nuc % mult(gout,gin,:,:)
+                 nuc % mult(gout,gin,:,:)
           end do
         end do
       end select

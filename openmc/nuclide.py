@@ -26,7 +26,7 @@ class Nuclide(object):
     zaid : int
         1000*(atomic number) + mass number. As an example, the zaid of U-235
         would be 92235.
-    scattering : 'ace' or 'iso-in-lab' or None
+    scattering : 'data' or 'iso-in-lab' or None
         The type of angular scattering distribution to use
 
     """
@@ -104,9 +104,9 @@ class Nuclide(object):
     @scattering.setter
     def scattering(self, scattering):
 
-        if not scattering in ['ace', 'iso-in-lab']:
+        if not scattering in ['data', 'iso-in-lab']:
             msg = 'Unable to set scattering for Nuclide to {0} ' \
-                  'which is not "ace" or "iso-in-lab"'.format(scattering)
+                  'which is not "data" or "iso-in-lab"'.format(scattering)
             raise ValueError(msg)
 
         self._scattering = scattering

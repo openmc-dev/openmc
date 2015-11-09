@@ -1940,9 +1940,9 @@ contains
         ! Check enforced isotropic lab scattering
         if (check_for_node(node_nuc, "scattering")) then
           call get_node_value(node_nuc, "scattering", temp_str)
-          if (trim(adjustl(to_lower(temp_str))) == "iso-in-lab") then
+          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
             call list_iso_lab % append(1)
-          else if (trim(adjustl(to_lower(temp_str))) == "ace") then
+          else if (adjustl(to_lower(temp_str)) == "data") then
             call list_iso_lab % append(0)
           else
             call fatal_error("Scattering must be isotropic in lab or follow&
@@ -2043,14 +2043,14 @@ contains
         if (check_for_node(node_ele, "scattering")) then
           call get_node_value(node_ele, "scattering", temp_str)
         else
-          temp_str = "ace"
+          temp_str = "data"
         end if
 
         ! Set ace or iso-in-lab scattering for each nuclide in element
         do k = 1, n_nuc_ele
-          if (trim(adjustl(to_lower(temp_str))) == "iso-in-lab") then
+          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
             call list_iso_lab % append(1)
-          else if (trim(adjustl(to_lower(temp_str))) == "ace") then
+          else if (adjustl(to_lower(temp_str)) == "data") then
             call list_iso_lab % append(0)
           else
             call fatal_error("Scattering must be isotropic in lab or follow&

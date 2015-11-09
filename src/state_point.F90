@@ -51,7 +51,7 @@ contains
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group, tally_group
     integer(HID_T) :: meshes_group, mesh_group
-    integer(HID_T) :: filter_group
+    integer(HID_T) :: filter_group, deriv_group
     character(20), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
     type(RegularMesh), pointer :: meshp
@@ -307,6 +307,34 @@ contains
           call write_dataset(tally_group, "nuclides", str_array)
           deallocate(str_array)
 
+          ! Write derivative information.
+          if (allocated(tally % deriv)) then
+            call write_dataset(tally_group, "derivative present", 1)
+            deriv_group = create_group(tally_group, "derivative")
+            select case (tally % deriv % dep_var)
+            case (DIFF_DENSITY)
+              call write_dataset(deriv_group, "dependent variable", "density")
+              call write_dataset(deriv_group, "material", &
+                   tally % deriv % diff_material)
+            case (DIFF_NUCLIDE_DENSITY)
+              call write_dataset(deriv_group, "dependent variable", &
+                   "nuclide_density")
+              call write_dataset(deriv_group, "material", &
+                   tally % deriv % diff_material)
+              i_list = nuclides(tally % deriv % diff_nuclide) % listing
+              call write_dataset(deriv_group, "nuclide", &
+                   xs_listings(i_list) % alias)
+            case default
+              call fatal_error("Differential tally dependent variable for &
+                   &tally " // trim(to_str(tally % id)) // " not defined in &
+                   &state_point.F90.")
+            end select
+            call close_group(deriv_group)
+          else
+            call write_dataset(tally_group, "derivative present", 0)
+          end if
+
+          ! Write scores.
           call write_dataset(tally_group, "n_score_bins", tally%n_score_bins)
           allocate(str_array(size(tally%score_bins)))
           do j = 1, size(tally%score_bins)
@@ -355,6 +383,8 @@ contains
               str_array(j) = "events"
             case (SCORE_INVERSE_VELOCITY)
               str_array(j) = "inverse-velocity"
+            case (SCORE_KEFF)
+              str_array(j) = "keff"
             case default
               str_array(j) = reaction_name(tally%score_bins(j))
             end select

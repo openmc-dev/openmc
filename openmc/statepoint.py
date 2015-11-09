@@ -349,6 +349,29 @@ class StatePoint(object):
                     base, tally_key)].value.decode()
                 tally.num_realizations = n_realizations
 
+                # Read derivative information.
+                derivatives_present = self._f[
+                     '{0}{1}/derivative present'.format(base, tally_key)].value
+                assert derivatives_present in (0, 1)
+                if derivatives_present == 1:
+                    tally.diff_variable = self._f[
+                         '{0}{1}/derivative/dependent variable'.format(
+                         base, tally_key)].value.decode()
+                    if tally.diff_variable == 'density':
+                        tally.diff_material = self._f[
+                             '{0}{1}/derivative/material'.format(
+                             base, tally_key)].value
+                    elif tally.diff_variable == 'nuclide_density':
+                        tally.diff_material = self._f[
+                             '{0}{1}/derivative/material'.format(
+                             base, tally_key)].value
+                        tally.diff_nuclide = self._f[
+                             '{0}{1}/derivative/nuclide'.format(
+                             base, tally_key)].value.decode()
+                    else:
+                        raise RuntimeError('Unrecognized tally differential'
+                             'variable')
+
                 # Read the number of Filters
                 n_filters = self._f['{0}{1}/n_filters'.format(base, tally_key)].value
 

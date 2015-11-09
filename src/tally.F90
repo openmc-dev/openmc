@@ -745,6 +745,9 @@ contains
       if (allocated(t % deriv) .and. t % estimator == ESTIMATOR_COLLISION) then
         select case (score_bin)
 
+        case (SCORE_FLUX)
+          score = score * t % deriv % accumulator
+
         case (SCORE_KEFF)
           select case (t % deriv % dep_var)
 
@@ -765,6 +768,10 @@ contains
             end if
 
           end select
+
+        case default
+          call fatal_error('Tally derivative not defined for a score on tally '&
+               // trim(to_str(t % id)))
         end select
       end if
 

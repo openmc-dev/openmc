@@ -9,7 +9,7 @@ module tracking
   use error,           only: fatal_error, warning
   use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
                              cross_lattice, check_cell_overlap, &
-                             distance_to_mesh_surface
+                             distance_to_mesh_surface, calibrate_coord
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
   use material_header
@@ -88,6 +88,12 @@ contains
 
         ! set birth cell attribute
         if (p % cell_born == NONE) p % cell_born = p % coord(p % n_coord) % cell
+              
+      else
+        ! calibrate coordinates to guarantee numerical precision
+        ! expecially for domain decom
+        if (dd_run) call calibrate_coord(p)
+        
       end if
 
       ! Write particle track.

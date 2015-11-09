@@ -12,6 +12,20 @@
               <data type="int"/>
             </attribute>
           </choice>
+          <optional>
+            <choice>
+              <element name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </element>
+              <attribute name="name">
+                <data type="string">
+                  <param name="maxLength">52</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
           <element name="density">
             <interleave>
               <optional>
@@ -67,6 +81,22 @@
                     </attribute>
                   </choice>
                 </optional>
+                <optional>
+                  <choice>
+                    <element name="scattering">
+                      <choice>
+                        <value>data</value>
+                        <value>iso-in-lab</value>
+                      </choice>
+                    </element>
+                    <attribute name="scattering">
+                      <choice>
+                        <value>data</value>
+                        <value>iso-in-lab</value>
+                      </choice>
+                    </attribute>
+                  </choice>
+                </optional>
                 <choice>
                   <choice>
                     <element name="ao">
@@ -114,6 +144,22 @@
                       <data type="string">
                         <param name="maxLength">3</param>
                       </data>
+                    </attribute>
+                  </choice>
+                </optional>
+                <optional>
+                  <choice>
+                    <element name="scattering">
+                      <choice>
+                        <value>data</value>
+                        <value>iso-in-lab</value>
+                      </choice>
+                    </element>
+                    <attribute name="scattering">
+                      <choice>
+                        <value>data</value>
+                        <value>iso-in-lab</value>
+                      </choice>
                     </attribute>
                   </choice>
                 </optional>

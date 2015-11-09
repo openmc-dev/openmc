@@ -289,9 +289,6 @@ module global
   character(MAX_FILE_LEN) :: path_particle_restart ! Path to particle restart
   character(MAX_FILE_LEN) :: path_output = ''      ! Path to output directory
 
-  ! Random number seed
-  integer(8) :: seed = 1_8
-
   ! The verbosity controls how much information will be printed to the
   ! screen and in logs
   integer :: verbosity = 7
@@ -455,10 +452,10 @@ contains
     ! Deallocate external source
     if (allocated(external_source % params_space)) &
          deallocate(external_source % params_space)
-    if (allocated(external_source % params_angle)) &
-         deallocate(external_source % params_angle)
-    if (allocated(external_source % params_energy)) &
-         deallocate(external_source % params_energy)
+    if (allocated(external_source % angle % mu)) &
+         deallocate(external_source % angle % mu)
+    if (allocated(external_source % energy)) &
+         deallocate(external_source % energy)
 
     ! Deallocate k and entropy
     if (allocated(k_generation)) deallocate(k_generation)

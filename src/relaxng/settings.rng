@@ -291,22 +291,12 @@
                 </choice>
                 <optional>
                   <choice>
-                    <element name="length">
-                      <data type="int"/>
-                    </element>
-                    <attribute name="length">
-                      <data type="int"/>
-                    </attribute>
-                  </choice>
-                </optional>
-                <optional>
-                  <choice>
                     <element name="interpolation">
                       <data type="string">
                         <param name="maxLength">10</param>
                       </data>
                     </element>
-                    <attribute name="interplation">
+                    <attribute name="interpolation">
                       <data type="string">
                         <param name="maxLength">10</param>
                       </data>
@@ -351,22 +341,12 @@
                 </choice>
                 <optional>
                   <choice>
-                    <element name="length">
-                      <data type="int"/>
-                    </element>
-                    <attribute name="length">
-                      <data type="int"/>
-                    </attribute>
-                  </choice>
-                </optional>
-                <optional>
-                  <choice>
                     <element name="interpolation">
                       <data type="string">
                         <param name="maxLength">10</param>
                       </data>
                     </element>
-                    <attribute name="interplation">
+                    <attribute name="interpolation">
                       <data type="string">
                         <param name="maxLength">10</param>
                       </data>
@@ -411,22 +391,12 @@
                 </choice>
                 <optional>
                   <choice>
-                    <element name="length">
-                      <data type="int"/>
-                    </element>
-                    <attribute name="length">
-                      <data type="int"/>
-                    </attribute>
-                  </choice>
-                </optional>
-                <optional>
-                  <choice>
                     <element name="interpolation">
                       <data type="string">
                         <param name="maxLength">10</param>
                       </data>
                     </element>
-                    <attribute name="interplation">
+                    <attribute name="interpolation">
                       <data type="string">
                         <param name="maxLength">10</param>
                       </data>

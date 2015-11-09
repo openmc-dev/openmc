@@ -440,7 +440,6 @@ attributes/sub-elements:
     has the following attributes:
 
     :type:
-
       The type of spatial distribution. Valid options are "box", "fission", and
       "point". A "box" spatial distribution has coordinates sampled uniformly in
       a parallelepiped. A "fission" spatial distribution samples locations from
@@ -468,13 +467,22 @@ attributes/sub-elements:
     has the following attributes:
 
     :type:
-      The type of angular distribution. Valid options are "isotropic" and
-      "monodirectional". The angle of the particle emitted from a source site is
-      isotropic if the "isotropic" option is given. The angle of the particle
-      emitted from a source site is the direction specified in the <parameters>
-      attribute if "monodirectional" option is given.
+      The type of angular distribution. Valid options are "isotropic",
+      "monodirectional", and "tabular". The angle of the particle emitted from a
+      source site is isotropic if the "isotropic" option is given. The angle of
+      the particle emitted from a source site is the direction specified in the
+      <parameters> attribute if "monodirectional" option is given. The "tabular"
+      option produces directions with polar angles sampled from a tabulated
+      distribution.
 
       *Default*: isotropic
+
+    :interpolation:
+       For a "tabular" angular distribution, ``interpolation`` can be set to
+       "histogram" or "linear-linear" thereby specifying how tabular points are
+       to be interpolated.
+
+       *Default*: histogram
 
     :parameters:
       For an "isotropic" angular distribution, ``parameters`` should not be
@@ -484,6 +492,22 @@ attributes/sub-elements:
       given as three real numbers which specify the angular cosines with respect
       to each axis.
 
+      For a "tabular" angular distribution, ``parameters`` provides the
+      :math:`(\mu,p)` pairs defining the tabular distribution. All :math:`\mu`
+      points are given first followed by corresponding :math:`p` points. The
+      following example gives a histogram distribution with even probability of
+      selecting a polar angle in the range [-1,-0.5] and [0.5,1] (Note that the
+      last :math:`p` point is inconsequential):
+
+      .. code-block:: xml
+
+          <angle type="tabular" interpolation="histogram">
+            <parameters>
+              -1.0 -0.5 0.5 1.0
+               1.0  0.0 1.0 0.0
+            </parameters>
+          </angle>
+
       *Default*: None
 
   :energy:
@@ -491,14 +515,22 @@ attributes/sub-elements:
     has the following attributes:
 
     :type:
-
       The type of energy distribution. Valid options are "monoenergetic",
-      "watt", and "maxwell". The "monoenergetic" option produces source sites at
-      a single energy. The "watt" option produces source sites whose energy is
-      sampled from a Watt fission spectrum. The "maxwell" option produce source
-      sites whose energy is sampled from a Maxwell fission spectrum.
+      "watt", "maxwell", and "tabular". The "monoenergetic" option produces
+      source sites at a single energy. The "watt" option produces source sites
+      whose energy is sampled from a Watt fission spectrum. The "maxwell" option
+      produce source sites whose energy is sampled from a Maxwell fission
+      spectrum. The "tabular" option produces source sites whose energy is
+      sampled from a tabulated distribution.
 
       *Default*: watt
+
+    :interpolation:
+       For a "tabular" angular distribution, ``interpolation`` can be set to
+       "histogram" or "linear-linear" thereby specifying how tabular points are
+       to be interpolated.
+
+       *Default*: histogram
 
     :parameters:
       For a "monoenergetic" energy distribution, ``parameters`` should be
@@ -512,6 +544,10 @@ attributes/sub-elements:
       real number :math:`a` that parameterizes the distribution :math:`p(E) dE =
       c E e^{-E/a} dE`.
 
+      For a "tabular" energy distribution, ``parameters`` provides the
+      :math:`(E,p)` pairs defining the tabular distribution. All :math:`E`
+      points are given first followed by corresponding :math:`p` points.
+
       *Default*: 0.988 2.249
 
   :write_initial:
@@ -519,7 +555,7 @@ attributes/sub-elements:
     the beginning of the first batch. The output file is named
     "initial_source.binary(h5)"
 
-      *Default*: false
+    *Default*: false
 
 ``<state_point>`` Element
 -------------------------

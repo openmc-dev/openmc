@@ -139,8 +139,10 @@ class SettingsFile(object):
         self._source_space_type = None
         self._source_space_params = None
         self._source_angle_type = None
+        self._source_angle_interpolation = None
         self._source_angle_params = None
         self._source_energy_type = None
+        self._source_energy_interpolation = None
         self._source_energy_params = None
 
         self._confidence_intervals = None
@@ -244,12 +246,20 @@ class SettingsFile(object):
         return self._source_angle_type
 
     @property
+    def source_angle_interpolation(self):
+        return self._source_angle_interpolation
+
+    @property
     def source_angle_params(self):
         return self._source_angle_params
 
     @property
     def source_energy_type(self):
         return self._source_energy_type
+
+    @property
+    def source_energy_interpolation(self):
+        return self._source_energy_interpolation
 
     @property
     def source_energy_params(self):
@@ -511,17 +521,19 @@ class SettingsFile(object):
         self._source_space_type = stype
         self._source_space_params = params
 
-    def set_source_angle(self, stype, params=[]):
+    def set_source_angle(self, stype, params=[], interp='histogram'):
         """Defined the angular distribution of the external/starting source.
 
         Parameters
         ----------
         stype : str
-            The type of angular distribution. Valid options are "isotropic" and
-            "monodirectional". The angle of the particle emitted from a source
-            site is isotropic if the "isotropic" option is given. The angle of
-            the particle emitted from a source site is the direction specified
-            in ``params`` if the "monodirectional" option is given.
+            The type of angular distribution. Valid options are "isotropic",
+            "monodirectional", and "tabular". The angle of the particle emitted
+            from a source site is isotropic if the "isotropic" option is
+            given. The angle of the particle emitted from a source site is the
+            direction specified in ``params`` if the "monodirectional" option is
+            given. The "tabular" option produces directions with polar angles
+            sampled from a tabulated distribution.
         params : Iterable of float
             For an "isotropic" angular distribution, ``params`` should not
             be specified.
@@ -530,11 +542,20 @@ class SettingsFile(object):
             be given as three floats which specify the angular cosines
             with respect to each axis.
 
+            For a "tabular" angular distribution, ``parameters`` provides the
+            :math:`(\mu,p)` pairs defining the tabular distribution. All
+            :math:`\mu` points are given first followed by corresponding
+            :math:`p` points.
+        interp : { 'histogram', 'linear-linear' }
+            For a "tabular" angular distribution, ``interpolation`` can be set
+            to "histogram" or "linear-linear" thereby specifying how tabular
+            points are to be interpolated.
+
         """
 
         check_type('source angle type', stype, basestring)
         check_value('source angle type', stype,
-                    ['isotropic', 'monodirectional'])
+                    ['isotropic', 'monodirectional', 'tabular'])
         check_type('source angle parameters', params, Iterable, Real)
         if stype == 'isotropic' and params is not None:
             msg = 'Unable to set source angle parameters since they are not ' \
@@ -543,22 +564,30 @@ class SettingsFile(object):
         elif stype == 'monodirectional':
             check_length('source angle parameters for a monodirectional '
                          'source', params, 3)
+        elif stype == 'tabular':
+            check_type('source angle interpolation', interp, basestring)
+            check_value('source angle interpolation', interp,
+                        ['histogram', 'linear-linear'])
+            self._source_angle_interpolation = interp
 
         self._source_angle_type = stype
         self._source_angle_params = params
 
-    def set_source_energy(self, stype, params=[]):
+    def set_source_energy(self, stype, params=[], interp='histogram'):
         """Defined the energy distribution of the external/starting source.
 
         Parameters
         ----------
         stype : str
+
             The type of energy distribution. Valid options are "monoenergetic",
-            "watt", and "maxwell". The "monoenergetic" option produces source
-            sites at a single energy. The "watt" option produces source sites
-            whose energy is sampled from a Watt fission spectrum. The "maxwell"
-            option produce source sites whose energy is sampled from a Maxwell
-            fission spectrum.
+            "watt", "maxwell", and "tabular". The "monoenergetic" option
+            produces source sites at a single energy. The "watt" option produces
+            source sites whose energy is sampled from a Watt fission
+            spectrum. The "maxwell" option produce source sites whose energy is
+            sampled from a Maxwell fission spectrum. The "tabular" option
+            produces source sites whose energy is sampled from a tabulated
+            distribution.
         params : Iterable of float
             For a "monoenergetic" energy distribution, ``params`` should be
             given as the energy in MeV of the source sites.
@@ -571,11 +600,19 @@ class SettingsFile(object):
             one real number :math:`a` that parameterizes the distribution
             :math:`p(E) dE = c E e^{-E/a} dE`.
 
+            For a "tabular" energy distribution, ``parameters`` provides the
+            :math:`(E,p)` pairs defining the tabular distribution. All :math:`E`
+            points are given first followed by corresponding :math:`p` points.
+        interp : { 'histogram', 'linear-linear' }
+            For a "tabular" energy distribution, ``interpolation`` can be set
+            to "histogram" or "linear-linear" thereby specifying how tabular
+            points are to be interpolated.
+
         """
 
         check_type('source energy type', stype, basestring)
         check_value('source energy type', stype,
-                    ['monoenergetic', 'watt', 'maxwell'])
+                    ['monoenergetic', 'watt', 'maxwell', 'tabular'])
         check_type('source energy parameters', params, Iterable, Real)
         if stype in ['monoenergetic', 'maxwell']:
             check_length('source energy parameters for a monoenergetic '
@@ -583,6 +620,11 @@ class SettingsFile(object):
         elif stype == 'watt':
             check_length('source energy parameters for a Watt source',
                          params, 2)
+        elif stype == 'tabular':
+            check_type('source energy interpolation', interp, basestring)
+            check_value('source energy interpolation', interp,
+                        ['histogram', 'linear-linear'])
+            self._source_energy_interpolation = interp
 
         self._source_energy_type = stype
         self._source_energy_params = params
@@ -949,6 +991,9 @@ class SettingsFile(object):
             element = ET.SubElement(self._source_subelement, "angle")
             element.set("type", self._source_angle_type)
 
+            if self.source_angle_interpolation is not None:
+                element.set("interpolation", self.source_angle_interpolation)
+
             subelement = ET.SubElement(element, "parameters")
             subelement.text = ' '.join(map(str, self._source_angle_params))
 
@@ -961,7 +1006,10 @@ class SettingsFile(object):
             element = ET.SubElement(self._source_subelement, "energy")
             element.set("type", self._source_energy_type)
 
-            subelement = ET.SubElement(element, "parameters")
+            if self.source_energy_interpolation is not None:
+                element.set("interpolation", self.source_energy_interpolation)
+
+                subelement = ET.SubElement(element, "parameters")
             subelement.text = ' '.join(map(str, self._source_energy_params))
 
     def _create_output_subelement(self):

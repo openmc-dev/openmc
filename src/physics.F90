@@ -73,10 +73,11 @@ contains
     type(Particle), intent(inout) :: p
 
     integer :: i_nuclide    ! index in nuclides array
+    integer :: i_nuc_mat    ! index in material's nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
     type(Nuclide), pointer :: nuc
 
-    i_nuclide = sample_nuclide(p, 'total  ')
+    call sample_nuclide(p, 'total  ', i_nuclide, i_nuc_mat)
 
     ! Get pointer to table
     nuc => nuclides(i_nuclide)
@@ -106,7 +107,7 @@ contains
 
     ! Sample a scattering reaction and determine the secondary energy of the
     ! exiting neutron
-    call scatter(p, i_nuclide)
+    call scatter(p, i_nuclide, i_nuc_mat)
 
     ! Play russian roulette if survival biasing is turned on
 
@@ -121,13 +122,13 @@ contains
 ! SAMPLE_NUCLIDE
 !===============================================================================
 
-  function sample_nuclide(p, base) result(i_nuclide)
+  subroutine sample_nuclide(p, base, i_nuclide, i_nuc_mat)
 
     type(Particle), intent(in) :: p
     character(7),   intent(in) :: base      ! which reaction to sample based on
-    integer                    :: i_nuclide
+    integer, intent(out)       :: i_nuclide
+    integer, intent(out)       :: i_nuc_mat
 
-    integer :: i
     real(8) :: prob
     real(8) :: cutoff
     real(8) :: atom_density ! atom density of nuclide in atom/b-cm
@@ -147,20 +148,20 @@ contains
       cutoff = prn() * material_xs % fission
     end select
 
-    i = 0
+    i_nuc_mat = 0
     prob = ZERO
     do while (prob < cutoff)
-      i = i + 1
+      i_nuc_mat = i_nuc_mat + 1
 
       ! Check to make sure that a nuclide was sampled
-      if (i > mat % n_nuclides) then
+      if (i_nuc_mat > mat % n_nuclides) then
         call write_particle_restart(p)
         call fatal_error("Did not sample any nuclide during collision.")
       end if
 
       ! Find atom density
-      i_nuclide    = mat % nuclide(i)
-      atom_density = mat % atom_density(i)
+      i_nuclide    = mat % nuclide(i_nuc_mat)
+      atom_density = mat % atom_density(i_nuc_mat)
 
       ! Determine microscopic cross section
       select case (base)
@@ -177,7 +178,7 @@ contains
       prob = prob + sigma
     end do
 
-  end function sample_nuclide
+  end subroutine sample_nuclide
 
 !===============================================================================
 ! SAMPLE_FISSION
@@ -300,10 +301,11 @@ contains
 ! SCATTER
 !===============================================================================
 
-  subroutine scatter(p, i_nuclide)
+  subroutine scatter(p, i_nuclide, i_nuc_mat)
 
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
+    integer,        intent(in)    :: i_nuc_mat
 
     integer :: i
     integer :: i_grid
@@ -312,6 +314,12 @@ contains
     real(8) :: cutoff
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
+    real(8) :: uvw_new(3) ! outgoing uvw for iso-in-lab scattering
+    real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
+    real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
+
+    ! copy incoming direction
+    uvw_old(:) = p % coord(1) % uvw
 
     ! Get pointer to nuclide and grid index/interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -389,6 +397,20 @@ contains
 
     ! Set event component
     p % event = EVENT_SCATTER
+
+    ! sample new outgoing angle for isotropic in lab scattering
+    if (materials(p % material) % p0(i_nuc_mat)) then
+
+      ! sample isotropic-in-lab outgoing direction
+      uvw_new(1) = TWO * prn() - ONE
+      phi = TWO * PI * prn()
+      uvw_new(2) = cos(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
+      uvw_new(3) = sin(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
+      p % mu = dot_product(uvw_old, uvw_new)
+
+      ! change direction of particle
+      p % coord(1) % uvw = uvw_new
+    end if
 
   end subroutine scatter
 

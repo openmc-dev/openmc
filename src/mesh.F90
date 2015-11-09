@@ -163,12 +163,12 @@ contains
        sites_outside)
 
     type(RegularMesh), pointer :: m             ! mesh to count sites
-    type(Bank), intent(in)        :: bank_array(:) ! fission or source bank
-    real(8),    intent(out)       :: cnt(:,:,:,:)  ! weight of sites in each
+    type(Bank), intent(in)     :: bank_array(:) ! fission or source bank
+    real(8),    intent(out)    :: cnt(:,:,:,:)  ! weight of sites in each
     ! cell and energy group
-    real(8),    optional          :: energies(:)   ! energy grid to search
-    integer(8), optional          :: size_bank     ! # of bank sites (on each proc)
-    logical,    optional          :: sites_outside ! were there sites outside mesh?
+    real(8),    optional       :: energies(:)   ! energy grid to search
+    integer(8), optional       :: size_bank     ! # of bank sites (on each proc)
+    logical,    optional       :: sites_outside ! were there sites outside mesh?
 
     integer :: i        ! loop index for local fission sites
     integer :: n_sites  ! size of bank array

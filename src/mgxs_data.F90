@@ -43,9 +43,9 @@ contains
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-       ! Could not find cross_sections.xml file
-       call fatal_error("Cross sections XML file '" &
-            &// trim(path_cross_sections) // "' does not exist!")
+      ! Could not find cross_sections.xml file
+      call fatal_error("Cross sections XML file '" &
+           &// trim(path_cross_sections) // "' does not exist!")
     end if
 
     call write_message("Loading Cross Section Data...", 5)
@@ -73,7 +73,7 @@ contains
         end if
       end do
       if (get_kfiss) &
-        exit
+           exit
     end do
 
     ! ==========================================================================
@@ -265,7 +265,7 @@ contains
           this % legendre_mu_points = 33
         end if
         if (enable_leg_mu .and. &
-            check_for_node(node_legendre_mu, "num_points")) then
+             check_for_node(node_legendre_mu, "num_points")) then
           call get_node_value(node_legendre_mu, "num_points", &
                               this % legendre_mu_points)
           if (this % legendre_mu_points <= 0) then
@@ -644,7 +644,7 @@ contains
         end if
       end do
       if (get_kfiss) &
-        exit
+           exit
     end do
 
     allocate(macro_xs(n_materials))

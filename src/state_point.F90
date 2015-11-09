@@ -537,7 +537,17 @@ contains
 
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
-    integer(HSIZE_T) :: dims1(1)
+    integer          :: hdf5_err   ! HDF5 error code
+    integer          :: hdf5_rank  ! rank of data
+    integer(HID_T)   :: dset       ! data set handle
+    integer(HID_T)   :: dspace     ! data or file space handle
+    integer(HID_T)   :: memspace   ! data space handle for individual procs
+    integer(HID_T)   :: plist      ! property list handleinteger(HSIZE_T) :: dims1(1)
+    integer(HSIZE_T) :: dims1(1)   ! dims type for 1-D array
+    integer(HSIZE_T) :: start1(1)  ! start type for 1-D array
+    integer(HSIZE_T) :: count1(1)  ! count type for 1-D array
+    integer(HSIZE_T) :: block1(1)  ! block type for 1-D array
+    type(c_ptr)      :: f_ptr      ! pointer to data
 
     ! Set up OTF tally datasets
     if (master) then
@@ -1626,7 +1636,18 @@ contains
 
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
+    integer(HSIZE_T) :: dims1(1)   ! dims type for 1-D array
+    integer(HSIZE_T) :: block1(1)  ! block type for 1-D array
     integer(HSIZE_T) :: chunk(1)
+    integer(HSIZE_T) :: count1(1)  ! count type for 1-D array
+    integer(HID_T)   :: dset       ! data set handle
+    integer(HID_T)   :: dspace     ! data or file space handle
+    type(c_ptr)      :: f_ptr      ! pointer to data
+    integer          :: hdf5_err   ! HDF5 error code
+    integer          :: hdf5_rank  ! rank of data
+    integer(HID_T)   :: memspace   ! data space handle for individual procs
+    integer(HID_T)   :: plist      ! property list handle
+    integer(HSIZE_T) :: start1(1)  ! start type for 1-D array
     integer(HID_T) :: chunk_plist
 
     ! Start matdump timer
@@ -1646,10 +1667,10 @@ contains
 
           ! Create file and write header
           file_id = file_open(filename, 'w')
-          matgroup = create_group(file_id, "filter " //trim(to_str(j)))
+          group_id = create_group(file_id, "filter " //trim(to_str(j)))
 
-          call write_dataset(matgroup, 'n_nuclides', mat % n_nuclides)
-          call write_dataset(matgroup, 'n_instances', mat % n_comp)
+          call write_dataset(group_id, 'n_nuclides', mat % n_nuclides)
+          call write_dataset(group_id, 'n_instances', mat % n_comp)
           call file_close(file_id)
 
           ! Create the full dataset initially so all other procs can write to it
@@ -1661,7 +1682,7 @@ contains
           call h5pcreate_f(H5P_DATASET_CREATE_F, chunk_plist, hdf5_err)
           ! Tune chunking and chunk caching to the filesystem if performance is needed
           chunk(1) = mat % n_nuclides *  800
-!          call h5pset_chunk_f(chunk_plist, 1, chunk, hdf5_err)
+          call h5pset_chunk_f(chunk_plist, 1, chunk, hdf5_err)
 !          call h5pset_chunk_cache_f(chunk_plist, 0_8, 0_8, 1.0_4, hdf5_err) ! Turn chunk caching off
 !          call h5pset_chunk_cache_f(chunk_plist, 211_8, 16777216_8, 1.0_4, hdf5_err) ! OR: tune chunk cache to filesystem
           ! Set the fill value if needed for debugging (slow for large datasets)

@@ -2247,7 +2247,7 @@ contains
           end if
 
           file_id = file_open(trim(mat %comp_file %path), 'r', parallel=.false.)
-          mat % comp_file % id = file_id
+          mat % comp_file % file_id = file_id
           !TODO: (important) check that the proper group exists
 
           mat_group = open_group(file_id, trim(mat % comp_file % group))

@@ -824,9 +824,9 @@ class MGXS(object):
             mean = tally.get_reshaped_data(value='mean')
             std_dev = tally.get_reshaped_data(value='std_dev')
 
-            # Get the mean of the mean, std. dev. across requested subdomains
-            mean = np.mean(mean[subdomains, ...], axis=0)
-            std_dev = np.mean(std_dev[subdomains, ...]**2, axis=0)
+            # Get the mean, std. dev. across requested subdomains
+            mean = np.sum(mean[subdomains, ...], axis=0)
+            std_dev = np.sum(std_dev[subdomains, ...]**2, axis=0)
             std_dev = np.sqrt(std_dev)
 
             # If domain is distribcell, make subdomain-averaged a 'cell' domain

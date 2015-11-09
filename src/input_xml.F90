@@ -3,6 +3,7 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
+  use distribution_header
   use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
@@ -11,7 +12,7 @@ module input_xml
   use mesh_header,      only: RegularMesh
   use output,           only: write_message
   use plot_header
-  use random_lcg,       only: prn
+  use random_lcg,       only: prn, seed
   use surface_header
   use stl_vector,       only: VectorInt
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
@@ -59,6 +60,7 @@ contains
     integer :: temp_int_array3(3)
     integer, allocatable :: temp_int_array(:)
     integer(8) :: temp_long
+    real(8), allocatable :: temp_real(:)
     integer :: n_tracks
     logical :: file_exists
     character(MAX_FILE_LEN) :: env_variable
@@ -423,24 +425,6 @@ contains
         ! Get pointer to angular distribution
         call get_node_ptr(node_source, "angle", node_dist)
 
-        ! Check for type of angular distribution
-        type = ''
-        if (check_for_node(node_dist, "type")) &
-             call get_node_value(node_dist, "type", type)
-        select case (to_lower(type))
-        case ('isotropic')
-          external_source % type_angle = SRC_ANGLE_ISOTROPIC
-          coeffs_reqd = 0
-        case ('monodirectional')
-          external_source % type_angle = SRC_ANGLE_MONO
-          coeffs_reqd = 3
-        case ('tabular')
-          external_source % type_angle = SRC_ANGLE_TABULAR
-        case default
-          call fatal_error("Invalid angular distribution for external source: "&
-               &// trim(type))
-        end select
-
         ! Determine number of parameters specified
         if (check_for_node(node_dist, "parameters")) then
           n = get_arraysize_double(node_dist, "parameters")
@@ -448,21 +432,76 @@ contains
           n = 0
         end if
 
+        ! Check for type of angular distribution
+        type = ''
+        if (check_for_node(node_dist, "type")) &
+             call get_node_value(node_dist, "type", type)
+        select case (to_lower(type))
+        case ('isotropic')
+          allocate(Uniform :: external_source%angle%mu)
+
+        case ('monodirectional')
+          allocate(Delta :: external_source%angle%mu)
+          if (n /= 3) then
+            call fatal_error('Monodirectional angular distribution must have &
+                 &three parameters specified.')
+          end if
+
+        case ('tabular')
+          allocate(Tabular :: external_source%angle%mu)
+
+        case default
+          call fatal_error("Invalid angular distribution for external source: "&
+               // trim(type))
+        end select
+
+        ! Set reference unit vector to be positive z-direction
+        external_source%angle%reference_uvw(:) = [ZERO, ZERO, ONE]
+
         ! Read parameters for angle distribution
-        if (n < coeffs_reqd) then
-          call fatal_error("Not enough parameters specified for angle &
-               &distribution of external source.")
-        elseif (n > coeffs_reqd) then
-          call fatal_error("Too many parameters specified for angle &
-               &distribution of external source.")
-        elseif (n > 0) then
-          allocate(external_source % params_angle(n))
+        select type (mu => external_source%angle%mu)
+        type is (Uniform)
+          mu%a = -ONE
+          mu%b = ONE
+
+        type is (Delta)
+          mu%x0 = ONE
           call get_node_array(node_dist, "parameters", &
-               external_source % params_angle)
-        end if
+               external_source%angle%reference_uvw)
+
+        type is (Tabular)
+          ! Read interpolation
+          if (check_for_node(node_source, "interpolation")) then
+            call get_node_value(node_source, "interpolation", temp_str)
+            select case(to_lower(temp_str))
+            case ('histogram')
+              temp_int = HISTOGRAM
+            case ('linear-linear')
+              temp_int = LINEAR_LINEAR
+            case default
+              call fatal_error("Unknown interpolation type for source &
+                   &angular distribution: " // trim(temp_str))
+            end select
+          else
+            temp_int = HISTOGRAM
+          end if
+
+          ! Read and initialize tabular distribution
+          allocate(temp_real(n))
+          call get_node_array(node_dist, "parameters", temp_real)
+          call mu%initialize(temp_real(1:n), temp_real(n+1:2*n), temp_int)
+          deallocate(temp_real)
+        end select
+
       else
         ! Set default angular distribution isotropic
-        external_source % type_angle  = SRC_ANGLE_ISOTROPIC
+        allocate(Uniform :: external_source%angle%mu)
+        select type(mu => external_source%angle%mu)
+        type is (Uniform)
+          mu%a = -ONE
+          mu%b = ONE
+        end select
+        external_source%angle%reference_uvw(:) = [ZERO, ZERO, ONE]
       end if
 
       ! Determine external source energy distribution
@@ -471,27 +510,6 @@ contains
         ! Get pointer to energy distribution
         call get_node_ptr(node_source, "energy", node_dist)
 
-        ! Check for type of energy distribution
-        type = ''
-        if (check_for_node(node_dist, "type")) &
-             call get_node_value(node_dist, "type", type)
-        select case (to_lower(type))
-        case ('monoenergetic')
-          external_source % type_energy = SRC_ENERGY_MONO
-          coeffs_reqd = 1
-        case ('maxwell')
-          external_source % type_energy = SRC_ENERGY_MAXWELL
-          coeffs_reqd = 1
-        case ('watt')
-          external_source % type_energy = SRC_ENERGY_WATT
-          coeffs_reqd = 2
-        case ('tabular')
-          external_source % type_energy = SRC_ENERGY_TABULAR
-        case default
-          call fatal_error("Invalid energy distribution for external source: " &
-               &// trim(type))
-        end select
-
         ! Determine number of parameters specified
         if (check_for_node(node_dist, "parameters")) then
           n = get_arraysize_double(node_dist, "parameters")
@@ -499,23 +517,87 @@ contains
           n = 0
         end if
 
+        ! Check for type of energy distribution
+        type = ''
+        if (check_for_node(node_dist, "type")) &
+             call get_node_value(node_dist, "type", type)
+        select case (to_lower(type))
+        case ('monoenergetic')
+          allocate(Delta :: external_source%energy)
+          if (n /= 1) then
+            call fatal_error('Monoenergetic energy distribution must have one &
+                 &parameter specified.')
+          end if
+
+        case ('maxwell')
+          allocate(Maxwell :: external_source%energy)
+          if (n /= 1) then
+            call fatal_error('Maxwell energy distribution must have one &
+                 &parameter specified.')
+          end if
+
+        case ('watt')
+          allocate(Watt :: external_source%energy)
+          if (n /= 2) then
+            call fatal_error('Watt energy distribution must have two &
+                 &parameter specified.')
+          end if
+
+        case ('tabular')
+          allocate(Tabular :: external_source%energy)
+
+        case default
+          call fatal_error("Invalid energy distribution for external source: " &
+               // trim(type))
+        end select
+
         ! Read parameters for energy distribution
-        if (n < coeffs_reqd) then
-          call fatal_error("Not enough parameters specified for energy &
-               &distribution of external source.")
-        elseif (n > coeffs_reqd) then
-          call fatal_error("Too many parameters specified for energy &
-               &distribution of external source.")
-        elseif (n > 0) then
-          allocate(external_source % params_energy(n))
-          call get_node_array(node_dist, "parameters", &
-               external_source % params_energy)
-        end if
+        select type(energy => external_source%energy)
+        type is (Delta)
+          call get_node_value(node_dist, "parameters", energy%x0)
+
+        type is (Maxwell)
+          call get_node_value(node_dist, "parameters", energy%theta)
+
+        type is (Watt)
+          allocate(temp_real(2))
+          call get_node_array(node_dist, "parameters", temp_real)
+          energy%a = temp_real(1)
+          energy%b = temp_real(2)
+          deallocate(temp_real)
+
+        type is (Tabular)
+          ! Read interpolation
+          if (check_for_node(node_dist, "interpolation")) then
+            call get_node_value(node_dist, "interpolation", temp_str)
+            select case(to_lower(temp_str))
+            case ('histogram')
+              temp_int = HISTOGRAM
+            case ('linear-linear')
+              temp_int = LINEAR_LINEAR
+            case default
+              call fatal_error("Unknown interpolation type for source &
+                   &angular distribution: " // trim(temp_str))
+            end select
+          else
+            temp_int = HISTOGRAM
+          end if
+
+          ! Read and initialize tabular distribution
+          allocate(temp_real(n))
+          call get_node_array(node_dist, "parameters", temp_real)
+          call energy%initialize(temp_real(1:n), temp_real(n+1:2*n), temp_int)
+          deallocate(temp_real)
+        end select
+
       else
-        ! Set default energy distribution to Watt fission spectrum
-        external_source % type_energy = SRC_ENERGY_WATT
-        allocate(external_source % params_energy(2))
-        external_source % params_energy = (/ 0.988_8, 2.249_8 /)
+        ! Default to a Watt spectrum with parameters 0.988 MeV and 2.249 MeV^-1
+        allocate(Watt :: external_source%energy)
+        select type(energy => external_source%energy)
+        type is (Watt)
+          energy%a = 0.988_8
+          energy%b = 2.249_8
+        end select
       end if
     end if
 

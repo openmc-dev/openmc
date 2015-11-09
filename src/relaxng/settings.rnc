@@ -69,27 +69,24 @@ element settings {
     element space {
       (element type { xsd:string { maxLength = "16" } } |
         attribute type { xsd:string { maxLength = "16" } }) &
-      (element length { xsd:int } | attribute length { xsd:int })? &
       (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interplation { xsd:string { maxLength = "10" } })? &
+        attribute interpolation { xsd:string { maxLength = "10" } })? &
       (element parameters { list { xsd:double+ } } |
         attribute parameters { list { xsd:double+ } })?
     }? &
     element angle {
       (element type { xsd:string { maxLength = "16" } } |
         attribute type { xsd:string { maxLength = "16" } }) &
-      (element length { xsd:int } | attribute length { xsd:int })? &
       (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interplation { xsd:string { maxLength = "10" } })? &
+        attribute interpolation { xsd:string { maxLength = "10" } })? &
       (element parameters { list { xsd:double+ } } |
         attribute parameters { list { xsd:double+ } })?
     }? &
     element energy {
       (element type { xsd:string { maxLength = "16" } } |
         attribute type { xsd:string { maxLength = "16" } }) &
-      (element length { xsd:int } | attribute length { xsd:int })? &
       (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interplation { xsd:string { maxLength = "10" } })? &
+        attribute interpolation { xsd:string { maxLength = "10" } })? &
       (element parameters { list { xsd:double+ } } |
         attribute parameters { list { xsd:double+ } })?
     }? &

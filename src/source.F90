@@ -2,6 +2,7 @@ module source
 
   use bank_header,      only: Bank
   use constants
+  use distribution_header, only: Delta
   use error,            only: fatal_error
   use geometry,         only: find_cell
   use geometry_header,  only: BASE_UNIVERSE
@@ -100,12 +101,8 @@ contains
 
     integer :: i          ! dummy loop index
     real(8) :: r(3)       ! sampled coordinates
-    real(8) :: phi        ! azimuthal angle
-    real(8) :: mu         ! cosine of polar angle
     real(8) :: p_min(3)   ! minimum coordinates of source
     real(8) :: p_max(3)   ! maximum coordinates of source
-    real(8) :: a          ! Arbitrary parameter 'a'
-    real(8) :: b          ! Arbitrary parameter 'b'
     logical :: found      ! Does the source particle exist within geometry?
     type(Particle) :: p   ! Temporary particle for using find_cell
     integer, save :: num_resamples = 0 ! Number of resamples encountered
@@ -188,57 +185,27 @@ contains
     end select
 
     ! Sample angle
-    select case (external_source%type_angle)
-    case (SRC_ANGLE_ISOTROPIC)
-      ! Sample isotropic distribution
-      phi = TWO*PI*prn()
-      mu = TWO*prn() - ONE
-      site%uvw(1) = mu
-      site%uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-      site%uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+    site%uvw(:) = external_source%angle%sample()
 
-    case (SRC_ANGLE_MONO)
-      ! Monodirectional source
-      site%uvw = external_source%params_angle
-
-    case default
-      call fatal_error("No angle distribution specified for external source!")
-    end select
-
-    ! Sample energy distribution
-    select case (external_source%type_energy)
-    case (SRC_ENERGY_MONO)
-      ! Monoenergtic source
-      site%E = external_source%params_energy(1)
-      if (site%E >= energy_max_neutron) then
+    ! Check for monoenergetic source above maximum neutron energy
+    select type (energy => external_source%energy)
+    type is (Delta)
+      if (energy%x0 >= energy_max_neutron) then
         call fatal_error("Source energy above range of energies of at least &
              &one cross section table")
       end if
-
-    case (SRC_ENERGY_MAXWELL)
-      a = external_source%params_energy(1)
-      do
-        ! Sample Maxwellian fission spectrum
-        site%E = maxwell_spectrum(a)
-
-        ! resample if energy is greater than maximum neutron energy
-        if (site%E < energy_max_neutron) exit
-      end do
-
-    case (SRC_ENERGY_WATT)
-      a = external_source%params_energy(1)
-      b = external_source%params_energy(2)
-      do
-        ! Sample Watt fission spectrum
-        site%E = watt_spectrum(a, b)
-
-        ! resample if energy is greater than maximum neutron energy
-        if (site%E < energy_max_neutron) exit
-      end do
-
-    case default
-      call fatal_error("No energy distribution specified for external source!")
     end select
+
+    do
+      ! Sample energy spectrum
+      site%E = external_source%energy%sample()
+
+      ! resample if energy is greater than maximum neutron energy
+      if (site%E < energy_max_neutron) exit
+    end do
+
+    ! Set delayed group
+    site%delayed_group = 0
 
     ! Set the random number generator back to the tracking stream.
     call prn_set_stream(STREAM_TRACKING)

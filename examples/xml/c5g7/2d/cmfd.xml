@@ -1,21 +1,12 @@
 <?xml version="1.0"?>
 
 <cmfd>
-  <begin>2</begin>
+  <begin>10</begin>
   <feedback>true</feedback>
   <mesh>
     <lower_left> 0.0 0.0 -100.0</lower_left>
     <upper_right> 64.26 64.26 100.0</upper_right>
     <dimension>6 6 1</dimension>
-    <!-- <energy>1.0E-11 0.0635E-6 10.0E-6 1.0E-4 1.0E-3 0.5 1.0 20.0</energy> -->
-    <map>
-      2 2 2 2 1 1
-      2 2 2 2 1 1
-      2 2 2 2 1 1
-      2 2 2 2 1 1
-      1 1 1 1 1 1
-      1 1 1 1 1 1
-    </map>
     <albedo>1 0 0 1 1 1</albedo>
   </mesh>
 </cmfd>

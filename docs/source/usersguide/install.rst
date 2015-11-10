@@ -366,11 +366,17 @@ Cross Section Configuration
 ---------------------------
 
 In order to run a simulation with OpenMC, you will need cross section data for
-each nuclide in your problem. Since OpenMC uses ACE format cross sections, you
-can use nuclear data that was processed with NJOY_, such as that distributed
-with MCNP_ or Serpent_. Several sources provide free processed ACE data as
-described below. The TALYS-based evaluated nuclear data library, TENDL_, is also
-openly available in ACE format.
+each nuclide or material in your problem. OpenMC can be run in
+continuous-energy or multi-group mode.
+
+In continuous-energy mode OpenMC uses ACE format cross sections; in this case
+you can use nuclear data that was processed with NJOY_, such as that
+distributed with MCNP_ or Serpent_.  Several sources provide free processed
+ACE data as described below. The TALYS-based evaluated nuclear data library,
+TENDL_, is also openly available in ACE format.
+
+In multi-group mode, OpenMC utilizes an XML-based library format which can be
+used to describe nuclidic- or material-specific quantities.
 
 Using ENDF/B-VII.1 Cross Sections from NNDC
 -------------------------------------------
@@ -434,6 +440,16 @@ distribution to the location of the Serpent cross sections. Then, either set the
 :ref:`cross_sections` in a settings.xml file or the :envvar:`CROSS_SECTIONS`
 environment variable to the absolute path of the ``cross_sections_serpent.xml``
 file.
+
+Using Multi-Group Cross Sections
+--------------------------------
+
+Multi-group cross section libraries are generally tailored to the specific
+calculation to be performed.  Therefore, at this point in time, OpenMC is not
+distributed with any pre-existing multi-group cross section libraries.
+However, if the user has obtained or generated their own library, the user
+should set the :envvar:`MG_CROSS_SECTIONS` environment variable
+to the absolute path of the file library expected to used most frequently.
 
 .. _NJOY: http://t2.lanl.gov/nis/codes.shtml
 .. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html

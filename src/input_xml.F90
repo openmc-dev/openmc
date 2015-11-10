@@ -1976,7 +1976,7 @@ contains
       ! Get pointer list of XML <nuclide>
       call get_node_list(node_mat, "macroscopic", node_macro_list)
       if (get_list_size(node_macro_list) > 1) then
-        call fatal_error("Only one macroscopic data permitted per material, " &
+        call fatal_error("Only one macroscopic object permitted per material, " &
              &// trim(to_str(mat % id)))
       else if (get_list_size(node_macro_list) == 1) then
 

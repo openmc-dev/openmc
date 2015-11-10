@@ -148,12 +148,16 @@ contains
           else
             score = p % last_wgt
           end if
+
+          ! Score the flux weighted inverse velocity with velocity in units of
+          ! cm/s
           score = score / material_xs % total &
-               / (sqrt(TWO * E / (MASS_NEUTRON_MEV)) * C_LIGHT)
+               / (sqrt(TWO * E / (MASS_NEUTRON_MEV)) * C_LIGHT * 100.0)
 
         else
-          ! For inverse velocity, we don't need a cross section
-          score = flux / (sqrt(TWO * E / (MASS_NEUTRON_MEV)) * C_LIGHT)
+          ! For inverse velocity, we don't need a cross section. The velocity is
+          ! in units of cm/s.
+          score = flux / (sqrt(TWO * E / (MASS_NEUTRON_MEV)) * C_LIGHT * 100.0)
         end if
 
 

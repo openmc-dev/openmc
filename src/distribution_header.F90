@@ -1,6 +1,6 @@
 module distribution_header
 
-  use constants, only: ZERO, HALF, ONE, HISTOGRAM, LINEAR_LINEAR
+  use constants, only: ZERO, HALF, ONE, TWO, PI, HISTOGRAM, LINEAR_LINEAR
   use error, only: fatal_error
   use math, only: rotate_angle, maxwell_spectrum, watt_spectrum
   use random_lcg, only: prn
@@ -203,14 +203,24 @@ contains
     class(AngleDistribution), intent(in) :: this
     real(8) :: uvw(3)
 
+    real(8) :: phi
     real(8) :: mu
 
-    mu = this%mu%sample()
-    if (mu == ONE) then
-      uvw(:) = this%reference_uvw
-    else
-      uvw(:) = rotate_angle(this%reference_uvw, mu)
-    end if
+    select type (polar_cos => this%mu)
+    type is (Uniform)
+      phi = TWO*PI*prn()
+      mu = TWO*prn() - ONE
+      uvw(1) = mu
+      uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+      uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+    class default
+      mu = polar_cos%sample()
+      if (mu == ONE) then
+        uvw(:) = this%reference_uvw
+      else
+        uvw(:) = rotate_angle(this%reference_uvw, mu)
+      end if
+    end select
   end function angle_sample
 
 end module distribution_header

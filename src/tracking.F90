@@ -73,8 +73,20 @@ contains
       call initialize_particle_track()
     endif
 
-    ! Make sure we start with the proper XS for DD runs
-    if (dd_run) call recalc_initial_xs(p)
+    ! Make sure we start with the proper XS and coordinates for DD runs
+    if (dd_run .and. current_stage > 1) then
+      call recalc_initial_xs(p)
+      
+      ! Move particle slightly forward to recover particle coordinates
+      ! (The lower coordinates will be recalculted by calibrate_coord function)
+      xyz_temp = p % coord(1) % xyz
+      p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
+      call find_cell(p, found_cell)
+      if (.not. found_cell) then
+        call fatal_error("Could not locate particle after crossing domain.")
+      end if
+      p % coord(1) % xyz = xyz_temp
+    end if
 
     EVENT_LOOP: do
       ! If the cell hasn't been determined based on the particle's location,

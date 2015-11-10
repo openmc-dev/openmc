@@ -128,7 +128,7 @@ class Surface(object):
             check_type('surface name', name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     @boundary_type.setter
     def boundary_type(self, boundary_type):

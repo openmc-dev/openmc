@@ -15,6 +15,8 @@ element materials {
         attribute name { xsd:string { maxLength = "7" } }) &
       (element xs { xsd:string { maxLength = "3" } } |
         attribute xs { xsd:string { maxLength = "3" } })? &
+      (element scattering { ( "data" | "iso-in-lab" ) } |
+        attribute scattering { ( "data" | "iso-in-lab" ) })? &
       (
         (element ao { xsd:double } | attribute ao { xsd:double }) |
         (element wo { xsd:double } | attribute wo { xsd:double })
@@ -26,6 +28,8 @@ element materials {
         attribute name { xsd:string { maxLength = "2" } }) &
       (element xs { xsd:string { maxLength = "3" } } |
         attribute xs { xsd:string { maxLength = "3" } })? &
+      (element scattering { ( "data" | "iso-in-lab" ) } |
+        attribute scattering { ( "data" | "iso-in-lab" ) })? &
       (
         (element ao { xsd:double } | attribute ao { xsd:double }) |
         (element wo { xsd:double } | attribute wo { xsd:double })

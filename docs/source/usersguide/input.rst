@@ -1507,7 +1507,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
     :inverse-velocity:
       The flux-weighted inverse velocity where the velocity is in units of
-      meters per second.
+      centimeters per second.
 
       .. note::
          The ``analog`` estimator is actually identical to the ``collision``

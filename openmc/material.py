@@ -33,8 +33,8 @@ NO_DENSITY = 99999.
 
 
 class Material(object):
-    """A material composed of a collection of nuclides/elements that can be assigned
-    to a region of space.
+    """A material composed of a collection of nuclides/elements that can be 
+    assigned to a region of space.
 
     Parameters
     ----------
@@ -193,7 +193,7 @@ class Material(object):
                        name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     def set_density(self, units, density=NO_DENSITY):
         """Set the density of the material
@@ -371,6 +371,12 @@ class Material(object):
 
         self._sab.append((name, xs))
 
+    def make_isotropic_in_lab(self):
+        for nuclide_name in self._nuclides:
+            self._nuclides[nuclide_name][0].scattering = 'iso-in-lab'
+        for element_name in self._elements:
+            self._element[element_name][0].scattering = 'iso-in-lab'
+
     def get_all_nuclides(self):
         """Returns all nuclides in the material
 
@@ -401,8 +407,11 @@ class Material(object):
             else:
                 xml_element.set("wo", str(nuclide[1]))
 
-        if nuclide[0]._xs is not None:
-            xml_element.set("xs", nuclide[0]._xs)
+        if nuclide[0].xs is not None:
+            xml_element.set("xs", nuclide[0].xs)
+
+        if not nuclide[0].scattering is None:
+            xml_element.set("scattering", nuclide[0].scattering)
 
         return xml_element
 
@@ -415,6 +424,9 @@ class Material(object):
                 xml_element.set("ao", str(element[1]))
             else:
                 xml_element.set("wo", str(element[1]))
+
+        if not element[0].scattering is None:
+            xml_element.set("scattering", element[0].scattering)
 
         return xml_element
 
@@ -589,6 +601,10 @@ class MaterialsFile(object):
             raise ValueError(msg)
 
         self._materials.remove(material)
+
+    def make_isotropic_in_lab(self):
+        for material in self._materials:
+            material.make_isotropic_in_lab()
 
     def _create_material_subelements(self):
         subelement = ET.SubElement(self._materials_file, "default_xs")

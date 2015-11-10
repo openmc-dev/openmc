@@ -673,7 +673,7 @@ class MGXS(object):
                 num_groups = len(groups)
 
             # Reshape tally data array with separate axes for domain and energy
-            num_subdomains = xs.shape[0] / num_groups
+            num_subdomains = int(xs.shape[0] / num_groups)
             new_shape = (num_subdomains, num_groups) + xs.shape[1:]
             xs = np.reshape(xs, new_shape)
 
@@ -824,9 +824,9 @@ class MGXS(object):
             mean = tally.get_reshaped_data(value='mean')
             std_dev = tally.get_reshaped_data(value='std_dev')
 
-            # Get the mean of the mean, std. dev. across requested subdomains
-            mean = np.mean(mean[subdomains, ...], axis=0)
-            std_dev = np.mean(std_dev[subdomains, ...]**2, axis=0)
+            # Get the mean, std. dev. across requested subdomains
+            mean = np.sum(mean[subdomains, ...], axis=0)
+            std_dev = np.sum(std_dev[subdomains, ...]**2, axis=0)
             std_dev = np.sqrt(std_dev)
 
             # If domain is distribcell, make subdomain-averaged a 'cell' domain
@@ -1844,7 +1844,7 @@ class ScatterMatrixXS(MGXS):
                 num_out_groups = len(out_groups)
 
             # Reshape tally data array with separate axes for domain and energy
-            num_subdomains = xs.shape[0] / (num_in_groups * num_out_groups)
+            num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups))
             new_shape = (num_subdomains, num_in_groups, num_out_groups)
             new_shape += xs.shape[1:]
             xs = np.reshape(xs, new_shape)
@@ -2194,7 +2194,7 @@ class Chi(MGXS):
                 num_groups = self.num_groups
             else:
                 num_groups = len(groups)
-            num_subdomains = xs.shape[0] / num_groups
+            num_subdomains = int(xs.shape[0] / num_groups)
             new_shape = (num_subdomains, num_groups) + xs.shape[1:]
             xs = np.reshape(xs, new_shape)
 

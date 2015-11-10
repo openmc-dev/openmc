@@ -4390,6 +4390,19 @@ contains
       energy_bin_avg(i) = 0.5_8 * (energy_bins(i) + energy_bins(i + 1))
     end do
 
+    allocate(inverse_velocities(energy_groups))
+    if (check_for_node(doc, "inverse_velocities")) then
+      ! Get inverse velocities
+      call get_node_array(doc, "inverse_velocities", inverse_velocities)
+    else
+      ! If not given, estimate them by using average energy in group which is
+      ! assumed to be the midpoint
+      do i = 1, energy_groups
+        inverse_velocities(i) = &
+             (sqrt(TWO * energy_bin_avg(i) / (MASS_NEUTRON_MEV)) * C_LIGHT)
+      end do
+    end if
+
     ! Get node list of all <xsdata>
     call get_node_list(doc, "xsdata", node_xsdata_list)
     n_listings = get_list_size(node_xsdata_list)

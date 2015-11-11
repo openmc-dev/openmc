@@ -292,12 +292,6 @@ module ace_header
 
       class(DistEnergy), intent(inout) :: this ! The DistEnergy object to clear
 
-      ! Clear p_valid
-      call this % p_valid % clear()
-
-      if (allocated(this % data)) &
-           deallocate(this % data)
-
       if (associated(this % next)) then
         ! recursively clear this item
         call this % next % clear()
@@ -346,7 +340,6 @@ module ace_header
         do i = 1, size(this % reactions)
           call this % reactions(i) % clear()
         end do
-        deallocate(this % reactions)
       end if
 
       call this % reaction_index % clear()

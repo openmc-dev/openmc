@@ -436,7 +436,12 @@ contains
       do i = 1, size(nuclides)
         call nuclides(i) % clear()
       end do
-      deallocate(nuclides)
+
+      ! WARNING: The following statement should work but doesn't under gfortran
+      ! 4.6 because of a bug. Technically, commenting this out leaves a memory
+      ! leak.
+
+      ! deallocate(nuclides)
     end if
 
     if (allocated(nuclides_0K)) then

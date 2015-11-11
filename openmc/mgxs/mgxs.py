@@ -1234,13 +1234,11 @@ class MGXS(object):
             columns.append('group out')
 
         # Loop over all energy groups and override the bounds with indices
-        template = '({0:.1e} - {1:.1e})'
-        bins = self.energy_groups.group_edges
+        groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
+        groups = np.repeat(groups, self.num_nuclides)
+        groups = np.tile(groups, self.num_subdomains)
         for column in columns:
-            for i in range(self.num_groups):
-                group = template.format(bins[i], bins[i+1])
-                row_indices = df[column] == group
-                df.loc[row_indices, column] = self.num_groups - i
+            df[column] = groups
 
         # Select out those groups the user requested
         if groups != 'all':

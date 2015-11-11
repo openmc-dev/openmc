@@ -266,10 +266,8 @@ contains
     part % event_MT        = buf % event_MT
     part % n_bank          = buf % n_bank
     part % wgt_bank        = buf % wgt_bank
-    part % surface         = NONE
+    part % surface         = buf % surface
     part % cell_born       = buf % cell_born
-    part % material        = NONE
-    part % last_material   = NONE
     part % n_collision     = buf % n_collision
     part % new_particle    = .false.
     part % stored_xyz      = buf % stored_xyz

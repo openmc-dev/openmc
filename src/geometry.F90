@@ -349,6 +349,54 @@ contains
   end subroutine find_cell
 
 !===============================================================================
+! CALIBRATE_COORD recalculates lower level coordinates based on level data, to 
+! make sure coord() consistent with each other
+!===============================================================================
+subroutine calibrate_coord(p)
+
+    type(Particle), intent(inout) :: p
+    integer :: j                    ! coordinate level index
+    integer :: i_xyz(3)             ! indices in lattice
+    type(Cell),     pointer :: c    ! pointer to cell
+    class(Lattice), pointer :: lat  ! pointer to lattice
+
+    if(p % n_coord <= 1) then
+      return
+    end if
+
+    do j = 2, p % n_coord
+      p % coord(j) % xyz = p % coord(j-1) % xyz
+      p % coord(j) % uvw = p % coord(j-1) % uvw
+
+      ! get pointer to cell, note this is from higher level
+      c => cells(p % coord(j - 1) % cell)
+
+      if (c % type == CELL_FILL) then        
+        ! Apply translation
+        if (allocated(c % translation)) then
+          p % coord(j) % xyz = p % coord(j-1) % xyz - c % translation
+        end if
+        ! Apply rotation
+        if (allocated(c % rotation_matrix)) then
+          p % coord(j) % xyz = matmul(c % rotation_matrix, p % coord(j-1) % xyz)
+          p % coord(j) % uvw = matmul(c % rotation_matrix, p % coord(j-1) % uvw)
+        end if
+        
+      elseif (c % type == CELL_LATTICE) then
+        ! Set current lattice
+        lat => lattices(p % coord(j) % lattice) % obj
+        i_xyz(1) = p % coord(j) % lattice_x
+        i_xyz(2) = p % coord(j) % lattice_y
+        i_xyz(3) = p % coord(j) % lattice_z
+        ! Store lower level coordinates
+        p % coord(j) % xyz = lat % get_local_xyz(p % coord(j-1) % xyz, i_xyz)
+        
+      end if
+    end do
+    
+end subroutine calibrate_coord
+    
+!===============================================================================
 ! CROSS_SURFACE handles all surface crossings, whether the particle leaks out of
 ! the geometry, is reflected, or crosses into a new lattice or cell
 !===============================================================================

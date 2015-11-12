@@ -41,6 +41,7 @@ inputs_error.dat
 # Test build files
 tests/build/
 tests/ctestscript.run
+tests/test_track_output/results_test.dat
 
 # HDF5 files
 *.h5

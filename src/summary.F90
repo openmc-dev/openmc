@@ -38,6 +38,12 @@ contains
     ! Write header information
     call write_header(file_id)
 
+    if (run_CE) then
+      call write_dataset(file_id, "run_CE", 1)
+    else
+      call write_dataset(file_id, "run_CE", 0)
+    end if
+
     ! Write number of particles
     call write_dataset(file_id, "n_particles", n_particles)
     call write_dataset(file_id, "n_batches", n_batches)

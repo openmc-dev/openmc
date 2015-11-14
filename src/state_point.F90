@@ -93,6 +93,11 @@ contains
       call write_dataset(file_id, "seed", seed)
 
       ! Write run information
+      if (run_CE) then
+        call write_dataset(file_id, "run_CE", 1)
+      else
+        call write_dataset(file_id, "run_CE", 0)
+      end if
       select case(run_mode)
       case (MODE_FIXEDSOURCE)
         call write_dataset(file_id, "run_mode", "fixed source")
@@ -695,6 +700,7 @@ contains
     integer(HID_T) :: tally_group
     real(8) :: real_array(3)
     logical :: source_present
+    integer :: sp_run_CE
     character(MAX_WORD_LEN) :: word
     type(TallyObject), pointer :: tally
 
@@ -718,6 +724,19 @@ contains
 
     ! Read and overwrite random number seed
     call read_dataset(file_id, "seed", seed)
+
+    ! It is not impossible for a state point to be generated from a CE run but
+    ! to be loaded in to an MG run (or vice versa), check to prevent that.
+    call read_dataset(file_id, "run_CE", sp_run_CE)
+    if (sp_run_CE == 0) then
+      if (run_CE) &
+           call fatal_error("State point file is from multi-group run but &
+                            & current run is continous-energy!")
+    else if (sp_run_CE == 1) then
+      if (.not. run_CE) &
+           call fatal_error("State point file is from continuous-energy run but &
+                            & current run is multi-group!")
+    end if
 
     ! Read and overwrite run information except number of batches
     call read_dataset(file_id, "run_mode", word)

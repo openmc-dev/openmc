@@ -168,7 +168,7 @@ attributes/sub-elements required to describe the meta-data:
       tabular format should be performed or not.  A value of ``true`` means
       the conversion should be performed, ``false`` means it should not.
 
-      *Default*: ``True``
+      *Default*: ``true``
 
     :num_points:
       If the conversion is to take place the number of tabular points is

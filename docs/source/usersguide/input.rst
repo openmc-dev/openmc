@@ -1243,7 +1243,7 @@ Each ``material`` element can have the following attributes or sub-elements:
 
         <macroscopic name="UO2" xs="71c" />
 
-    .. note:: This element is not used in the multi-group :ref:`energy_mode`.
+    .. note:: This element is only used in the multi-group :ref:`energy_mode`.
 
     *Default*: None
 

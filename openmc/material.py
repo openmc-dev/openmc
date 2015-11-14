@@ -26,14 +26,15 @@ def reset_auto_material_id():
 
 
 # Units for density supported by OpenMC
-DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum']
+DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
+                 'macro']
 
 # Constant for density when not needed
 NO_DENSITY = 99999.
 
 
 class Material(object):
-    """A material composed of a collection of nuclides/elements that can be 
+    """A material composed of a collection of nuclides/elements that can be
     assigned to a region of space.
 
     Parameters
@@ -53,7 +54,8 @@ class Material(object):
         Density of the material (units defined separately)
     density_units : str
         Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/cm3',
-        'atom/b-cm', 'atom/cm3', or 'sum'.
+        'atom/b-cm', 'atom/cm3', 'sum', or 'macro' (the latter only applies
+        if in multi-group mode).
 
     """
 
@@ -68,6 +70,10 @@ class Material(object):
         # Keys         - Nuclide names
         # Values     - tuple (nuclide, percent, percent type)
         self._nuclides = OrderedDict()
+
+        # The single instance of Macroscopic data present in this material
+        # (only one is allowed, hence this is different than _nuclides, etc)
+        self._macroscopic = None
 
         # An ordered dictionary of Elements (order affects OpenMC results)
         # Keys         - Element names
@@ -105,6 +111,10 @@ class Material(object):
             string += '{0: <16}'.format('\t{0}'.format(nuclide))
             string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
 
+        if self._macroscopic is not None:
+            string += '{0: <16}\n'.format('\tMacroscopic Data')
+            string += '{0: <16}'.format('\t{0}'.format(self._macroscopic))
+
         string += '{0: <16}\n'.format('\tElements')
 
         for element in self._elements:
@@ -126,6 +136,7 @@ class Material(object):
             clone._density = self._density
             clone._density_units = self._density_units
             clone._nuclides = deepcopy(self._nuclides, memo)
+            clone._macroscopic = self._macroscopic
             clone._elements = deepcopy(self._elements, memo)
             clone._sab = deepcopy(self._sab, memo)
             clone._convert_to_distrib_comps = self._convert_to_distrib_comps
@@ -256,6 +267,11 @@ class Material(object):
 
         """
 
+        if self._macroscopic is not None:
+            msg = 'Unable to add a Nuclide to Material ID="{0}" as a ' \
+                  'macroscopic data-set has already been added'.format(self._id)
+            raise ValueError(msg)
+
         if not isinstance(nuclide, (openmc.Nuclide, str)):
             msg = 'Unable to add a Nuclide to Material ID="{0}" with a ' \
                   'non-Nuclide value "{1}"'.format(self._id, nuclide)
@@ -299,6 +315,66 @@ class Material(object):
         if nuclide._name in self._nuclides:
             del self._nuclides[nuclide._name]
 
+    def add_macroscopic(self, macroscopic):
+        """Add a macroscopic to the material
+
+        Parameters
+        ----------
+        macroscopic : str or openmc.macroscopic.Macroscopic
+            Macroscopic to add
+
+        """
+
+        # Ensureno nuclides, elements, or sab are added since these would be
+        # incompatible with macroscopics
+        if (not. self._nuclides) and (not self._elements) and (not self._sab):
+            msg = 'Unable to add a Macroscopic data set to Material ID="{0}" ' \
+                  'with a macroscopic value "{1}" as an incompatible data ' \
+                  'member (i.e., nuclide, element, or S(a,b) table) ' \
+                  'has already been added'.format(self._id, macroscopic)
+            raise ValueError(msg)
+
+
+
+        if not isinstance(macroscopic, (openmc.Macroscopic, str)):
+            msg = 'Unable to add a Macroscopic to Material ID="{0}" with a ' \
+                  'non-Macroscopic value "{1}"'.format(self._id, macroscopic)
+            raise ValueError(msg)
+
+        if isinstance(macroscopic, openmc.Macroscopic):
+            # Copy this Macroscopic to separate it from the Macroscopic in
+            # other Materials
+            macroscopic = deepcopy(macroscopic)
+        else:
+            macroscopic = openmc.Macroscopic(macroscopic)
+
+        if self._macroscopic is not None:
+            self._macroscopic = macroscopic
+        else:
+            msg = 'Unable to add a Macroscopic to Material ID="{0}", ' \
+                  'Only One Macroscopic allowed per ' \
+                  'Material!'.format(self._id, macroscopic)
+            raise ValueError(msg)
+
+    def remove_macroscopic(self, macroscopic):
+        """Remove a macroscopic from the material
+
+        Parameters
+        ----------
+        macroscopic : openmc.macroscopic.Macroscopic
+            Macroscopic to remove
+
+        """
+
+        if not isinstance(macroscopic, openmc.Macroscopic):
+            msg = 'Unable to remove a Macroscopic "{0}" in Material ID="{1}" ' \
+                  'since it is not a Macroscopic'.format(self._id, macroscopic)
+            raise ValueError(msg)
+
+        # If the Material contains the Macroscopic, delete it
+        if macroscopic._name == self._macroscopic.name:
+            self._macroscopic = None
+
     def add_element(self, element, percent, percent_type='ao'):
         """Add a natural element to the material
 
@@ -312,6 +388,11 @@ class Material(object):
             'ao' for atom percent and 'wo' for weight percent
 
         """
+
+        if self._macroscopic is not None:
+            msg = 'Unable to add an Element to Material ID="{0}" as a ' \
+                  'macroscopic data-set has already been added'.format(self._id)
+            raise ValueError(msg)
 
         if not isinstance(element, openmc.Element):
             msg = 'Unable to add an Element to Material ID="{0}" with a ' \
@@ -358,6 +439,11 @@ class Material(object):
             Cross section identifier, e.g. '71t'
 
         """
+
+        if self._macroscopic is not None:
+            msg = 'Unable to add an S(a,b) table to Material ID="{0}" as a ' \
+                  'macroscopic data-set has already been added'.format(self._id)
+            raise ValueError(msg)
 
         if not isinstance(name, basestring):
             msg = 'Unable to add an S(a,b) table to Material ID="{0}" with a ' \
@@ -412,6 +498,15 @@ class Material(object):
 
         if not nuclide[0].scattering is None:
             xml_element.set("scattering", nuclide[0].scattering)
+
+        return xml_element
+
+    def _get_macroscopic_xml(self, macroscopic, distrib=False):
+        xml_element = ET.Element("macroscopic")
+        xml_element.set("name", macroscopic[0]._name)
+
+        if macroscopic[0].xs is not None:
+            xml_element.set("xs", macroscopic[0].xs)
 
         return xml_element
 
@@ -470,14 +565,19 @@ class Material(object):
         subelement.set("units", self._density_units)
 
         if not self._convert_to_distrib_comps:
-            # Create nuclide XML subelements
-            subelements = self._get_nuclides_xml(self._nuclides)
-            for subelement in subelements:
-                element.append(subelement)
+            if self._macroscopic is None:
+                # Create nuclide XML subelements
+                subelements = self._get_nuclides_xml(self._nuclides)
+                for subelement in subelements:
+                    element.append(subelement)
 
-            # Create element XML subelements
-            subelements = self._get_elements_xml(self._elements)
-            for subelement in subelements:
+                # Create element XML subelements
+                subelements = self._get_elements_xml(self._elements)
+                for subelement in subelements:
+                    element.append(subelement)
+            else:
+                # Create macroscopic XML subelements
+                subelement = self._get_macroscopic_xml(self, self._macroscopic)
                 element.append(subelement)
 
         else:
@@ -504,14 +604,21 @@ class Material(object):
                 subsubelement = ET.SubElement(subelement, "otf_file_path")
                 subsubelement.text = self._distrib_otf_file
 
-            # Create nuclide XML subelements
-            subelements = self.get_nuclides_xml(self._nuclides, distrib=True)
-            for subelement_nuc in subelements:
-                subelement.append(subelement_nuc)
+            if self._macroscopic is None:
+                # Create nuclide XML subelements
+                subelements = self.get_nuclides_xml(self._nuclides, distrib=True)
+                for subelement_nuc in subelements:
+                    subelement.append(subelement_nuc)
 
-            # Create element XML subelements
-            subelements = self._get_elements_xml(self._elements, distrib=True)
-            for subelement_ele in subelements:
+                # Create element XML subelements
+                subelements = self._get_elements_xml(self._elements, distrib=True)
+                for subelement_ele in subelements:
+                    subelement.append(subelement_ele)
+            else:
+                # Create macroscopic XML subelements
+                subelement_ele = self._get_macroscopic_xml(self,
+                                                           self._macroscopic,
+                                                           distrib=True)
                 subelement.append(subelement_ele)
 
         if len(self._sab) > 0:

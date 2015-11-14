@@ -1151,13 +1151,16 @@ Each ``material`` element can have the following attributes or sub-elements:
     The "sum" unit indicates that the density should be calculated as the sum
     of the atom fractions for each nuclide in the material. This should not be
     used in conjunction with weight percents.  The "macro" unit is used with
-    a ``macroscopic`` to indicate that the density is already included in the
-    library and thus not needed here.  However, if a value is provided for the
-    ``value``, then this is treated as a number density multiplier on the
-    macroscopic cross sections in the multi-group data.  This can be used,
+    a ``macroscopic`` quantity to indicate that the density is already included
+    in the library and thus not needed here.  However, if a value is provided
+    for the ``value``, then this is treated as a number density multiplier on
+    the macroscopic cross sections in the multi-group data.  This can be used,
     for example, when perturbing the density slightly.
 
     *Default*: None
+
+    .. note:: A ``macroscopic`` quantity can not be used in conjunction with a
+              ``nuclide``, ``element``, or ``sab`` quantity.
 
   :nuclide:
     An element with attributes/sub-elements called ``name``, ``xs``, and ``ao``

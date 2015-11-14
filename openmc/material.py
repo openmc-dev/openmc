@@ -327,7 +327,7 @@ class Material(object):
 
         # Ensureno nuclides, elements, or sab are added since these would be
         # incompatible with macroscopics
-        if (not. self._nuclides) and (not self._elements) and (not self._sab):
+        if (not self._nuclides) and (not self._elements) and (not self._sab):
             msg = 'Unable to add a Macroscopic data set to Material ID="{0}" ' \
                   'with a macroscopic value "{1}" as an incompatible data ' \
                   'member (i.e., nuclide, element, or S(a,b) table) ' \

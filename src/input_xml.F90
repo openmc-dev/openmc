@@ -4453,7 +4453,8 @@ contains
       ! assumed to be the midpoint
       do i = 1, energy_groups
         inverse_velocities(i) = &
-             (sqrt(TWO * energy_bin_avg(i) / (MASS_NEUTRON_MEV)) * C_LIGHT)
+             (sqrt(TWO * energy_bin_avg(i) / (MASS_NEUTRON_MEV)) * &
+              C_LIGHT * 100.0_8)
       end do
     end if
 
@@ -4485,14 +4486,12 @@ contains
       if (check_for_node(node_xsdata, "zaid")) then
         call get_node_value(node_xsdata, "zaid", listing % zaid)
       else
-        listing % zaid = 100
+        listing % zaid = -1
       end if
-      if (check_for_node(node_xsdata, "kT")) &
-           call get_node_value(node_xsdata, "kT", listing % kT)
-      if (check_for_node(node_xsdata, "awr")) then
-        call get_node_value(node_xsdata, "awr", listing % awr)
+      if (check_for_node(node_xsdata, "kT")) then
+        call get_node_value(node_xsdata, "kT", listing % kT)
       else
-        listing % awr = ONE
+        listing % kT = 2.53E-8_8
       end if
 
       ! determine type of cross section

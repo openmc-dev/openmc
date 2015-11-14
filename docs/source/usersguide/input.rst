@@ -1977,7 +1977,7 @@ attributes/sub-elements:
     automatically assumes a one energy group calculation over the entire
     energy range.
 
-    .. note:: When running in the multi-group :ref:`energy_mode`, these
+    .. note:: When running in the multi-group :ref:`energy_mode`, the
               energy bins must match the data library's group boundaries.
 
   :albedo:

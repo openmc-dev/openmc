@@ -1224,23 +1224,31 @@ class MGXS(object):
         else:
             df = df.drop('score', axis=1)
 
-        # Rename energy(out) columns
-        columns = []
-        if 'energy [MeV]' in df:
+        # Override energy groups bounds with indices
+        groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
+        groups = np.repeat(groups, self.num_nuclides)
+        if 'energy [MeV]' in df and 'energyout [MeV]' in df:
             df.rename(columns={'energy [MeV]': 'group in'}, inplace=True)
-            columns.append('group in')
-        if 'energyout [MeV]' in df:
-            df.rename(columns={'energyout [MeV]': 'group out'}, inplace=True)
-            columns.append('group out')
+            in_groups = np.tile(groups, self.num_subdomains)
+            in_groups = np.repeat(in_groups, self.num_groups)
+            df['group in'] = in_groups
 
-        # Loop over all energy groups and override the bounds with indices
-        template = '({0:.1e} - {1:.1e})'
-        bins = self.energy_groups.group_edges
-        for column in columns:
-            for i in range(self.num_groups):
-                group = template.format(bins[i], bins[i+1])
-                row_indices = df[column] == group
-                df.loc[row_indices, column] = self.num_groups - i
+            df.rename(columns={'energyout [MeV]': 'group out'}, inplace=True)
+            out_groups = np.tile(groups, self.num_subdomains * self.num_groups)
+            df['group out'] = out_groups
+            columns = ['group in', 'group out']
+
+        elif 'energyout [MeV]' in df:
+            df.rename(columns={'energyout [MeV]': 'group out'}, inplace=True)
+            in_groups = np.tile(groups, self.num_subdomains)
+            df['group out'] = in_groups
+            columns = ['group out']
+
+        elif 'energy [MeV]' in df:
+            df.rename(columns={'energy [MeV]': 'group in'}, inplace=True)
+            in_groups = np.tile(groups, self.num_subdomains)
+            df['group in'] = in_groups
+            columns = ['group in']
 
         # Select out those groups the user requested
         if groups != 'all':

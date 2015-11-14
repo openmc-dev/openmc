@@ -910,8 +910,8 @@ def get_opencg_lattice(openmc_lattice):
     opencg_lattice.dimension = dimension
     opencg_lattice.width = pitch
     opencg_lattice.universes = universe_array
-    if outside:
-        opencg_lattice.outside = outside
+    if outside != None:
+        opencg_lattice.outside = get_opencg_universe(outside)
 
     offset = np.array(lower_left, dtype=np.float64) - \
              ((np.array(pitch, dtype=np.float64) *
@@ -958,7 +958,7 @@ def get_openmc_lattice(opencg_lattice):
     width = opencg_lattice.width
     offset = opencg_lattice.offset
     universes = opencg_lattice.universes
-    outside = opencg_lattice.outside
+    outer = opencg_lattice.outside
 
     # Initialize an empty array for the OpenMC nested Universes in this Lattice
     universe_array = np.ndarray(tuple(np.array(dimension)),
@@ -989,8 +989,8 @@ def get_openmc_lattice(opencg_lattice):
     openmc_lattice.pitch = width
     openmc_lattice.universes = universe_array
     openmc_lattice.lower_left = lower_left
-    if outside:
-        openmc_lattice.outside = outside
+    if outer != None:
+        openmc_lattice.outer = get_openmc_universe(outer)
 
     # Add the OpenMC Lattice to the global collection of all OpenMC Lattices
     OPENMC_LATTICES[lattice_id] = openmc_lattice

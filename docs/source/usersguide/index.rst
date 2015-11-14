@@ -14,6 +14,7 @@ essential aspects of using OpenMC to perform simulations.
     beginners
     install
     input
+    mgxs_library
     output/index
     processing
     troubleshoot

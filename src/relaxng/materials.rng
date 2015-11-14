@@ -119,6 +119,36 @@
             </element>
           </zeroOrMore>
           <zeroOrMore>
+            <element name="macroscopic">
+              <interleave>
+                <choice>
+                  <element name="name">
+                    <data type="string">
+                      <param name="maxLength">7</param>
+                    </data>
+                  </element>
+                  <attribute name="name">
+                    <data type="string">
+                      <param name="maxLength">7</param>
+                    </data>
+                  </attribute>
+                </choice>
+                <choice>
+                  <element name="xs">
+                    <data type="string">
+                      <param name="maxLength">3</param>
+                    </data>
+                  </element>
+                  <attribute name="xs">
+                    <data type="string">
+                      <param name="maxLength">3</param>
+                    </data>
+                  </attribute>
+                </choice>
+              </interleave>
+            </element>
+          </zeroOrMore>
+          <zeroOrMore>
             <element name="element">
               <interleave>
                 <choice>

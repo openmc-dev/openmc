@@ -11,7 +11,7 @@ element materials {
     } &
 
     element nuclide {
-      (element name { xsd:string { maxLength = "7" } } | 
+      (element name { xsd:string { maxLength = "7" } } |
         attribute name { xsd:string { maxLength = "7" } }) &
       (element xs { xsd:string { maxLength = "3" } } |
         attribute xs { xsd:string { maxLength = "3" } })? &
@@ -23,8 +23,15 @@ element materials {
       )
     }*  &
 
+    element macroscopic {
+      (element name { xsd:string { maxLength = "7" } } |
+        attribute name { xsd:string { maxLength = "7" } }) &
+      (element xs { xsd:string { maxLength = "3" } } |
+        attribute xs { xsd:string { maxLength = "3" } })
+    }*  &
+
     element element {
-      (element name { xsd:string { maxLength = "2" } } | 
+      (element name { xsd:string { maxLength = "2" } } |
         attribute name { xsd:string { maxLength = "2" } }) &
       (element xs { xsd:string { maxLength = "3" } } |
         attribute xs { xsd:string { maxLength = "3" } })? &
@@ -37,7 +44,7 @@ element materials {
     }*  &
 
     element sab {
-      (element name { xsd:string { maxLength = "7" } } | 
+      (element name { xsd:string { maxLength = "7" } } |
         attribute name { xsd:string { maxLength = "7" } }) &
       (element xs { xsd:string { maxLength = "3" } } |
         attribute xs { xsd:string { maxLength = "3" } })?

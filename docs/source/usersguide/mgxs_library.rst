@@ -177,7 +177,7 @@ attributes/sub-elements required to describe the meta-data:
 
       *Default*: ``33``
 
-  The following attributes/sub-elements are the actual cross section values to
+  The following attributes/sub-elements are the cross section values to
   be used during the transport process.
 
   :total:

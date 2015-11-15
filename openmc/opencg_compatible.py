@@ -486,20 +486,22 @@ def get_opencg_cell(openmc_cell):
     # works if the region is a single half-space or an intersection of
     # half-spaces, i.e., no complex cells.
     region = openmc_cell.region
-    if isinstance(region, Halfspace):
-        surface = region.surface
-        halfspace = -1 if region.side == '-' else 1
-        opencg_cell.add_surface(get_opencg_surface(surface), halfspace)
-    elif isinstance(region, Intersection):
-        for node in region.nodes:
-            if not isinstance(node, Halfspace):
-                raise NotImplementedError("Complex cells not yet supported "
-                                          "in OpenCG.")
-            surface = node.surface
-            halfspace = -1 if node.side == '-' else 1
+    if region != None:
+        if isinstance(region, Halfspace):
+            surface = region.surface
+            halfspace = -1 if region.side == '-' else 1
             opencg_cell.add_surface(get_opencg_surface(surface), halfspace)
-    else:
-        raise NotImplementedError("Complex cells not yet supported in OpenCG.")
+        elif isinstance(region, Intersection):
+            for node in region.nodes:
+                if not isinstance(node, Halfspace):
+                    raise NotImplementedError("Complex cells not yet "
+                                              "supported in OpenCG.")
+                surface = node.surface
+                halfspace = -1 if node.side == '-' else 1
+                opencg_cell.add_surface(get_opencg_surface(surface), halfspace)
+        else:
+            raise NotImplementedError("Complex cells not yet supported "
+                                       "in OpenCG.")
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell

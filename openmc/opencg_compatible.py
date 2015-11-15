@@ -877,7 +877,7 @@ def get_opencg_lattice(openmc_lattice):
     pitch = openmc_lattice.pitch
     lower_left = openmc_lattice.lower_left
     universes = openmc_lattice.universes
-    outside = openmc_lattice.outside
+    outer = openmc_lattice.outer
 
     if len(pitch) == 2:
         new_pitch = np.ones(3, dtype=np.float64)
@@ -910,8 +910,8 @@ def get_opencg_lattice(openmc_lattice):
     opencg_lattice.dimension = dimension
     opencg_lattice.width = pitch
     opencg_lattice.universes = universe_array
-    if outside != None:
-        opencg_lattice.outside = get_opencg_universe(outside)
+    if outer != None:
+        opencg_lattice.outside = get_opencg_universe(outer)
 
     offset = np.array(lower_left, dtype=np.float64) - \
              ((np.array(pitch, dtype=np.float64) *

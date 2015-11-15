@@ -503,10 +503,10 @@ class Material(object):
 
     def _get_macroscopic_xml(self, macroscopic, distrib=False):
         xml_element = ET.Element("macroscopic")
-        xml_element.set("name", macroscopic[0]._name)
+        xml_element.set("name", macroscopic._name)
 
-        if macroscopic[0].xs is not None:
-            xml_element.set("xs", macroscopic[0].xs)
+        if macroscopic.xs is not None:
+            xml_element.set("xs", macroscopic.xs)
 
         return xml_element
 

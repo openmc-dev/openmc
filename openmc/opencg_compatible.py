@@ -486,20 +486,22 @@ def get_opencg_cell(openmc_cell):
     # works if the region is a single half-space or an intersection of
     # half-spaces, i.e., no complex cells.
     region = openmc_cell.region
-    if isinstance(region, Halfspace):
-        surface = region.surface
-        halfspace = -1 if region.side == '-' else 1
-        opencg_cell.add_surface(get_opencg_surface(surface), halfspace)
-    elif isinstance(region, Intersection):
-        for node in region.nodes:
-            if not isinstance(node, Halfspace):
-                raise NotImplementedError("Complex cells not yet supported "
-                                          "in OpenCG.")
-            surface = node.surface
-            halfspace = -1 if node.side == '-' else 1
+    if region is not None:
+        if isinstance(region, Halfspace):
+            surface = region.surface
+            halfspace = -1 if region.side == '-' else 1
             opencg_cell.add_surface(get_opencg_surface(surface), halfspace)
-    else:
-        raise NotImplementedError("Complex cells not yet supported in OpenCG.")
+        elif isinstance(region, Intersection):
+            for node in region.nodes:
+                if not isinstance(node, Halfspace):
+                    raise NotImplementedError("Complex cells not yet "
+                                              "supported in OpenCG.")
+                surface = node.surface
+                halfspace = -1 if node.side == '-' else 1
+                opencg_cell.add_surface(get_opencg_surface(surface), halfspace)
+        else:
+            raise NotImplementedError("Complex cells not yet supported "
+                                       "in OpenCG.")
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell
@@ -877,6 +879,7 @@ def get_opencg_lattice(openmc_lattice):
     pitch = openmc_lattice.pitch
     lower_left = openmc_lattice.lower_left
     universes = openmc_lattice.universes
+    outer = openmc_lattice.outer
 
     if len(pitch) == 2:
         new_pitch = np.ones(3, dtype=np.float64)
@@ -909,6 +912,8 @@ def get_opencg_lattice(openmc_lattice):
     opencg_lattice.dimension = dimension
     opencg_lattice.width = pitch
     opencg_lattice.universes = universe_array
+    if outer is not None:
+        opencg_lattice.outside = get_opencg_universe(outer)
 
     offset = np.array(lower_left, dtype=np.float64) - \
              ((np.array(pitch, dtype=np.float64) *
@@ -955,6 +960,7 @@ def get_openmc_lattice(opencg_lattice):
     width = opencg_lattice.width
     offset = opencg_lattice.offset
     universes = opencg_lattice.universes
+    outer = opencg_lattice.outside
 
     # Initialize an empty array for the OpenMC nested Universes in this Lattice
     universe_array = np.ndarray(tuple(np.array(dimension)),
@@ -985,6 +991,8 @@ def get_openmc_lattice(opencg_lattice):
     openmc_lattice.pitch = width
     openmc_lattice.universes = universe_array
     openmc_lattice.lower_left = lower_left
+    if outer is not None:
+        openmc_lattice.outer = get_openmc_universe(outer)
 
     # Add the OpenMC Lattice to the global collection of all OpenMC Lattices
     OPENMC_LATTICES[lattice_id] = openmc_lattice

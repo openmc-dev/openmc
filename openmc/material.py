@@ -325,16 +325,15 @@ class Material(object):
 
         """
 
-        # Ensureno nuclides, elements, or sab are added since these would be
+        # Ensure no nuclides, elements, or sab are added since these would be
         # incompatible with macroscopics
-        if (not self._nuclides) and (not self._elements) and (not self._sab):
+        if ((len(self._nuclides.keys()) != 0) and
+            (len(self._elements.keys()) != 0) and (len(self._sab) != 0)):
             msg = 'Unable to add a Macroscopic data set to Material ID="{0}" ' \
                   'with a macroscopic value "{1}" as an incompatible data ' \
                   'member (i.e., nuclide, element, or S(a,b) table) ' \
                   'has already been added'.format(self._id, macroscopic)
             raise ValueError(msg)
-
-
 
         if not isinstance(macroscopic, (openmc.Macroscopic, str)):
             msg = 'Unable to add a Macroscopic to Material ID="{0}" with a ' \
@@ -348,7 +347,7 @@ class Material(object):
         else:
             macroscopic = openmc.Macroscopic(macroscopic)
 
-        if self._macroscopic is not None:
+        if self._macroscopic is None:
             self._macroscopic = macroscopic
         else:
             msg = 'Unable to add a Macroscopic to Material ID="{0}", ' \
@@ -577,7 +576,7 @@ class Material(object):
                     element.append(subelement)
             else:
                 # Create macroscopic XML subelements
-                subelement = self._get_macroscopic_xml(self, self._macroscopic)
+                subelement = self._get_macroscopic_xml(self._macroscopic)
                 element.append(subelement)
 
         else:

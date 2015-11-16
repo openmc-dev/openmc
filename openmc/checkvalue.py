@@ -127,7 +127,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
                 # But first, have we exceeded the max depth?
                 if len(tree) > max_depth:
                     msg = 'Error setting {0}: Found an iterable at {1}, items '\
-                          'in that iterable excceed the maximum depth of {2}' \
+                          'in that iterable exceed the maximum depth of {2}' \
                           .format(name, ind_str, max_depth)
                     raise ValueError(msg)
 

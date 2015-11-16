@@ -10,7 +10,8 @@ import numpy as np
 
 import openmc
 from openmc.mgxs import EnergyGroups
-from openmc.checkvalue import check_type, check_value, check_greater_than
+from openmc.checkvalue import check_type, check_value, check_greater_than, \
+                              check_iterable_type
 from openmc.clean_xml import *
 
 # MGXS Representations supported by OpenMC
@@ -114,6 +115,7 @@ class Xsdata(object):
         self._nu_fission = None
         self._k_fission = None
         self._chi = None
+        self._use_chi = None
 
     @property
     def name(self):
@@ -122,6 +124,11 @@ class Xsdata(object):
     @property
     def energy_groups(self):
         return self._energy_groups
+
+    @property
+    def representation(self):
+        return self._representation
+
 
     @property
     def alias(self):
@@ -202,7 +209,9 @@ class Xsdata(object):
         check_type("energy_groups", energy_groups, EnergyGroups)
 
         # Check that there is one or more groups
-        if (energy_groups.num_energy_groups.num_group is None) or (energy_groups.num_energy_groups.num_group < 1):
+        if ((energy_groups.num_energy_groups.num_group is None) or
+            (energy_groups.num_energy_groups.num_group < 1)):
+
             msg = 'energy_groups object incorrectly initialized.'
             raise ValueError(msg)
 
@@ -262,13 +271,15 @@ class Xsdata(object):
             num_points = 33
         self._tabular_legendre = {'enable': enable, 'num_points': num_points}
 
-    @num_polar.setter(self, num_polar):
+    @num_polar.setter
+    def num_polar(self, num_polar):
         # Make sure we have positive ints
         check_value("num_polar", num_polar, Integral)
         check_greater_than("num_polar", num_polar, 0)
         self._num_polar = num_polar
 
-    @num_azimuthal.setter(self, num_azimuthal):
+    @num_azimuthal.setter
+    def num_azimuthal(self, num_azimuthal):
         check_value("num_azimuthal", num_azimuthal, Integral)
         check_greater_than("num_azimuthal", num_azimuthal, 0)
         self._num_azimuthal = num_azimuthal
@@ -276,10 +287,10 @@ class Xsdata(object):
     @total.setter
     def total(self, total):
         if self._representation is 'isotropic':
-            shape = (self._energy_groups.num_group)
+            shape = (self._energy_groups.num_groups,)
         elif self._representation is 'angle':
             shape = (self._num_polar, self._num_azimuthal,
-                     self._energy_groups.num_group)
+                     self._energy_groups.num_groups)
         # check we have a numpy list
         check_type("total", total, np.ndarray, expected_iter_type=Real)
         if total.shape == shape:
@@ -292,10 +303,10 @@ class Xsdata(object):
     @absorption.setter
     def absorption(self, absorption):
         if self._representation is 'isotropic':
-            shape = (self._energy_groups.num_group)
+            shape = (self._energy_groups.num_groups,)
         elif self._representation is 'angle':
             shape = (self._num_polar, self._num_azimuthal,
-                     self._energy_groups.num_group)
+                     self._energy_groups.num_groups)
         # check we have a numpy list
         check_type("absorption", absorption, np.ndarray, expected_iter_type=Real)
         if absorption.shape == shape:
@@ -308,10 +319,10 @@ class Xsdata(object):
     @fission.setter
     def fission(self, fission):
         if self._representation is 'isotropic':
-            shape = (self._energy_groups.num_group)
+            shape = (self._energy_groups.num_groups,)
         elif self._representation is 'angle':
             shape = (self._num_polar, self._num_azimuthal,
-                     self._energy_groups.num_group)
+                     self._energy_groups.num_groups)
         # check we have a numpy list
         check_type("fission", fission, np.ndarray, expected_iter_type=Real)
         if fission.shape == shape:
@@ -326,10 +337,10 @@ class Xsdata(object):
     @k_fission.setter
     def k_fission(self, k_fission):
         if self._representation is 'isotropic':
-            shape = (self._energy_groups.num_group)
+            shape = (self._energy_groups.num_groups,)
         elif self._representation is 'angle':
             shape = (self._num_polar, self._num_azimuthal,
-                     self._energy_groups.num_group)
+                     self._energy_groups.num_groups)
         # check we have a numpy list
         check_type("k_fission", k_fission, np.ndarray, expected_iter_type=Real)
         if k_fission.shape == shape:
@@ -343,14 +354,14 @@ class Xsdata(object):
 
     @chi.setter
     def chi(self, chi):
-        if self._use_chi is not None:
+        if not self._use_chi:
             msg = 'Providing chi when nu_fission already provided as matrix!'
             raise ValueError(msg)
         if self._representation is 'isotropic':
-            shape = (self._energy_groups.num_group)
+            shape = (self._energy_groups.num_groups,)
         elif self._representation is 'angle':
             shape = (self._num_polar, self._num_azimuthal,
-                     self._energy_groups.num_group)
+                     self._energy_groups.num_groups)
         # check we have a numpy list
         check_type("chi", chi, np.ndarray, expected_iter_type=Real)
         if chi.shape == shape:
@@ -365,14 +376,17 @@ class Xsdata(object):
     @scatter.setter
     def scatter(self, scatter):
         if self._representation is 'isotropic':
-            shape = (self.num_orders, self._energy_groups.num_group,
-                     self._energy_groups.num_group)
+            shape = (self.num_orders, self._energy_groups.num_groups,
+                     self._energy_groups.num_groups)
+            max_depth = 3
         elif self._representation is 'angle':
             shape = (self._num_polar, self._num_azimuthal, self.num_orders,
-                     self._energy_groups.num_group,
-                     self._energy_groups.num_group)
+                     self._energy_groups.num_groups,
+                     self._energy_groups.num_groups)
+            max_depth = 5
         # check we have a numpy list
-        check_type("scatter", scatter, np.ndarray, expected_iter_type=Real)
+        check_iterable_type("scatter", scatter, expected_type=Real,
+                            max_depth=max_depth)
         if scatter.shape == shape:
             self._scatter = np.copy(scatter)
         else:
@@ -384,14 +398,16 @@ class Xsdata(object):
     def multiplicity(self, multiplicity):
         if self._representation is 'isotropic':
             shape = (self._energy_groups.num_group,
-                     self._energy_groups.num_group)
+                     self._energy_groups.num_groups)
+            max_depth = 2
         elif self._representation is 'angle':
             shape = (self._num_polar, self._num_azimuthal,
                      self._energy_groups.num_group,
-                     self._energy_groups.num_group)
+                     self._energy_groups.num_groups)
+            max_depth = 4
         # check we have a numpy list
-        check_type("multiplicity", multiplicity, np.ndarray,
-                   expected_iter_type=Real)
+        check_iterable_type("multiplicity", multiplicity, expected_type=Real,
+                            max_depth=max_depth)
         if multiplicity.shape == shape:
             self._multiplicity = np.copy(multiplicity)
         else:
@@ -411,15 +427,15 @@ class Xsdata(object):
         # First lets set our dimensions here since they get used repeatedly
         # throughout this code.
         if self._representation is 'isotropic':
-            shape_vec = (self._energy_groups.num_group)
-            shape_mat = (self._num_polar, self._num_azimuthal,
-                         self._energy_groups.num_group)
+            shape_vec = (self._energy_groups.num_groups,)
+            shape_mat = (self._energy_groups.num_groups,
+                         self._energy_groups.num_groups)
         elif self._representation is 'angle':
             shape_vec = (self._num_polar, self._num_azimuthal,
-                         self._energy_groups.num_group)
+                         self._energy_groups.num_groups)
             shape_mat = (self._num_polar, self._num_azimuthal,
                          self._energy_groups.num_group,
-                         self._energy_groups.num_group)
+                         self._energy_groups.num_groups)
 
         # Begin by checking the case when chi has already been given and thus
         # the rules for filling in nu_fission are set.
@@ -428,7 +444,7 @@ class Xsdata(object):
                 shape = shape_vec
             else:
                 shape = shape_mat
-            if nu_fission.shape /= shape:
+            if nu_fission.shape != shape:
                 msg = "Invalid Shape of Nu_fission!"
                 raise ValueError(msg)
         else:
@@ -436,7 +452,7 @@ class Xsdata(object):
             if nu_fission.shape == shape_vec:
                 self._use_chi = True
                 shape = shape_vec
-            elif nu_fission.shape = shape_mat:
+            elif nu_fission.shape == shape_mat:
                 self._use_chi = False
                 shape = shape_mat
             else:
@@ -449,77 +465,77 @@ class Xsdata(object):
 
     def _get_xsdata_xml(self):
         element = ET.Element("xsdata")
-        element.set("name", xsdata._name)
+        element.set("name", self._name)
 
-        if xsdata._alias is not None:
+        if self._alias is not None:
             subelement = ET.SubElement(element, 'alias')
-            subelement.text(xsdata.alias)
+            subelement.text = self.alias
 
-        if xsdata._kT is not None:
+        if self._kT is not None:
             subelement = ET.SubElement(element, 'kT')
-            subelement.text(str(self._kT))
+            subelement.text = str(self._kT)
 
-        if xsdata._fissionable is not None:
+        if self._fissionable is not None:
             subelement = ET.SubElement(element, 'fissionable')
-            subelement.text(str(self._fissionable))
+            subelement.text = str(self._fissionable)
 
-        if xsdata._representation is not None:
+        if self._representation is not None:
             subelement = ET.SubElement(element, 'representation')
-            subelement.text(self._representation)
+            subelement.text = self._representation
 
-        if xsdata._representation == 'angle':
-            if xsdata._num_azimuthal is not None:
+        if self._representation == 'angle':
+            if self._num_azimuthal is not None:
                 subelement = ET.SubElement(element, 'num_azimuthal')
-                subelement.text(str(self._num_azimuthal))
-            if xsdata._num_polar is not None:
+                subelement.text = str(self._num_azimuthal)
+            if self._num_polar is not None:
                 subelement = ET.SubElement(element, 'num_polar')
-                subelement.text(str(self._num_polar))
+                subelement.text = str(self._num_polar)
 
-        if xsdata._scatt_type is not None:
+        if self._scatt_type is not None:
             subelement = ET.SubElement(element, 'scatt_type')
-            subelement.text(self._scatt_type)
+            subelement.text = self._scatt_type
 
-        if xsdata._order is not None:
+        if self._order is not None:
             subelement = ET.SubElement(element, 'order')
-            subelement.text(str(self._order))
+            subelement.text = str(self._order)
 
-        if xsdata._tabular_legendre is not None:
+        if self._tabular_legendre is not None:
             subelement = ET.SubElement(element, 'tabular_legendre')
-            subelement.set('enable', str(xsdata._tabular_legendre['enable']))
-            subelement.set('num_points', str(xsdata._tabular_legendre['num_points']))
+            subelement.set('enable', str(self._tabular_legendre['enable']))
+            subelement.set('num_points', str(self._tabular_legendre['num_points']))
 
         if self._total is not None:
             subelement = ET.SubElement(element, 'total')
-            subelement.text(ndarray_to_string(self._total))
+            subelement.text = ndarray_to_string(self._total)
 
         if self._absorption is not None:
             subelement = ET.SubElement(element, 'absorption')
-            subelement.text(ndarray_to_string(self._absorption))
+            subelement.text = ndarray_to_string(self._absorption)
 
         if self._scatter is not None:
             subelement = ET.SubElement(element, 'scatter')
-            subelement.text(ndarray_to_string(self._scatter))
+            subelement.text = ndarray_to_string(self._scatter)
 
         if self._multiplicity is not None:
             subelement = ET.SubElement(element, 'multiplicity')
-            subelement.text(ndarray_to_string(self._multiplicity))
+            subelement.text = ndarray_to_string(self._multiplicity)
 
         if self._fissionable:
             if self._fission is not None:
                 subelement = ET.SubElement(element, 'fission')
-                subelement.text(ndarray_to_string(self._fission))
+                subelement.text = ndarray_to_string(self._fission)
 
             if self._k_fission is not None:
                 subelement = ET.SubElement(element, 'k_fission')
-                subelement.text(ndarray_to_string(self._k_fission))
+                subelement.text = ndarray_to_string(self._k_fission)
 
             if self._nu_fission is not None:
                 subelement = ET.SubElement(element, 'nu_fission')
-                subelement.text(ndarray_to_string(self._nu_fission))
+                subelement.text = ndarray_to_string(self._nu_fission)
 
             if self._chi is not None:
                 subelement = ET.SubElement(element, 'chi')
-                subelement.text(ndarray_to_string(self._chi))
+                subelement.text = ndarray_to_string(self._chi)
 
         return element
 
@@ -581,7 +597,7 @@ class MGXSLibraryFile(object):
             raise ValueError(msg)
 
         # Make sure energy groups match.
-        if xsdata.energy_groups /= self._energy_groups:
+        if xsdata.energy_groups != self._energy_groups:
             msg = 'Energy groups of Xsdata do not match that of MGXSLibraryFile!'
             raise ValueError(msg)
 
@@ -625,7 +641,7 @@ class MGXSLibraryFile(object):
     def _create_groups_subelement(self):
         if self._energy_groups is not None:
             element = ET.SubElement(self._cross_sections_file, "groups")
-            element.text = str(self._energy_groups.num_group)
+            element.text = str(self._energy_groups.num_groups)
 
     def _create_group_structure_subelement(self):
         if self._energy_groups is not None:
@@ -641,7 +657,7 @@ class MGXSLibraryFile(object):
 
     def _create_xsdata_subelements(self):
         for xsdata in self._xsdatas:
-            xml_element = xsdata.get_xsdata_xml()
+            xml_element = xsdata._get_xsdata_xml()
             self._cross_sections_file.append(xml_element)
 
 

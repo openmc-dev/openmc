@@ -486,7 +486,7 @@ def get_opencg_cell(openmc_cell):
     # works if the region is a single half-space or an intersection of
     # half-spaces, i.e., no complex cells.
     region = openmc_cell.region
-    if region != None:
+    if region is not None:
         if isinstance(region, Halfspace):
             surface = region.surface
             halfspace = -1 if region.side == '-' else 1

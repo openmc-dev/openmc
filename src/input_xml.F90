@@ -2623,25 +2623,10 @@ contains
             if (temp_str == 'energy' .or. temp_str == 'energyout' .or. &
                  temp_str == 'mu' .or. temp_str == 'polar' .or. &
                  temp_str == 'azimuthal') then
-              ! If in MG mode, fail if user provides bins, as we are only
-              ! allowing for all groups
-              if (.not. run_CE .and. (temp_str == 'energy' .or. &
-                   temp_str == 'energyout')) then
-                call fatal_error("No energy or energyout bins needed on tally " &
-                     &// trim(to_str(t % id)))
-              else
-                n_words = get_arraysize_double(node_filt, "bins")
-              end if
+              n_words = get_arraysize_double(node_filt, "bins")
             else
               n_words = get_arraysize_integer(node_filt, "bins")
             end if
-          else if (.not. run_CE .and. (temp_str == 'energy' .or. &
-                   temp_str == 'energyout')) then
-            ! For MG calculations, dont require the user to put in all the
-            ! group boundaries, as there could be many. Assume that if no &
-            ! bins are entered that that means they want group-wise results.
-            n_words = -1
-
           else
             call fatal_error("Bins not set in filter on tally " &
                  &// trim(to_str(t % id)))
@@ -2752,48 +2737,38 @@ contains
             ! Set type of filter
             t % filters(j) % type = FILTER_ENERGYIN
 
-            if (n_words > 0) then
-              ! Set number of bins
-              t % filters(j) % n_bins = n_words - 1
+            ! Set number of bins
+            t % filters(j) % n_bins = n_words - 1
 
-              ! Allocate and store bins
-              allocate(t % filters(j) % real_bins(n_words))
-              call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+            ! Allocate and store bins
+            allocate(t % filters(j) % real_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
-              if (.not. run_CE) t % energy_matches_groups = .false.
-            else if (n_words == -1) then
-              ! Set number of bins
-              t % filters(j) % n_bins = energy_groups
-
-              ! Allocate and store bins
-              allocate(t % filters(j) % real_bins(energy_groups))
-              t % filters(j) % real_bins = energy_bins
-
-              if (.not. run_CE) t % energy_matches_groups = .true.
+            if (.not. run_CE) then
+              if (n_words /= energy_groups + 1) then
+                t % energy_matches_groups = .false.
+              else if (all(t % filters(j) % real_bins == energy_bins)) then
+                t % energy_matches_groups = .false.
+              end if
             end if
 
           case ('energyout')
             ! Set type of filter
             t % filters(j) % type = FILTER_ENERGYOUT
 
-            if (n_words > 0) then
-              ! Set number of bins
-              t % filters(j) % n_bins = n_words - 1
+            ! Set number of bins
+            t % filters(j) % n_bins = n_words - 1
 
-              ! Allocate and store bins
-              allocate(t % filters(j) % real_bins(n_words))
-              call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+            ! Allocate and store bins
+            allocate(t % filters(j) % real_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
-              if (.not. run_CE) t % energyout_matches_groups = .false.
-            else if (n_words == -1) then
-              ! Set number of bins
-              t % filters(j) % n_bins = energy_groups
-
-              ! Allocate and store bins
-              allocate(t % filters(j) % real_bins(energy_groups))
-              t % filters(j) % real_bins = energy_bins
-
-              if (.not. run_CE) t % energyout_matches_groups = .true.
+            if (.not. run_CE) then
+              if (n_words /= energy_groups + 1) then
+                t % energy_matches_groups = .false.
+              else if (all(t % filters(j) % real_bins == energy_bins)) then
+                t % energy_matches_groups = .false.
+              end if
             end if
 
             ! Set to analog estimator

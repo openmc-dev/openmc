@@ -1347,16 +1347,8 @@ The ``<tally>`` element accepts the following sub-elements:
           then two energy bins will be created, one with energies between 0 and
           1 MeV and the other with energies between 1 and 20 MeV.
 
-          In multi-group mode, however, the bounds of the filter are already
-          implied as being the same as the group boundaries of the problem.
-          Therefore no bins would be needed as they are implicitly applied by
-          the code.  For example, the above filter example for continuous-energy
-          mode would look like the following for multi-group mode, but the
-          resultant tallies would still be done for every group in the library:
-
-          .. code-block:: xml
-
-              <filter type="energy" />
+          In multi-group mode the bins provided must match group edges
+          defined in the multi-group library.
 
         :energyout:
           In continuous-energy mode, this filter should be provided as a
@@ -1371,16 +1363,8 @@ The ``<tally>`` element accepts the following sub-elements:
           energies between 0 and 1 MeV and the other with energies between
           1 and 20 MeV.
 
-          In multi-group mode, however, the bounds of the filter are already
-          implied as being the same as the group boundaries of the problem.
-          Therefore no bins would be needed as they are implicitly applied by
-          the code.  For example, the above filter example for continuous-energy
-          mode would look like the following for multi-group mode, but the
-          resultant tallies would still be done for every group in the library:
-
-          .. code-block:: xml
-
-              <filter type="energyout" />
+          In multi-group mode the bins provided must match group edges
+          defined in the multi-group library.
 
         :mu:
           A monotonically increasing list of bounding **post-collision** cosines

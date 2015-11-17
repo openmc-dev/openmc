@@ -133,44 +133,42 @@
           <zeroOrMore>
             <element name="filter">
               <interleave>
-                <optional>
-                  <choice>
-                    <element name="type">
-                      <choice>
-                        <value>cell</value>
-                        <value>cellborn</value>
-                        <value>material</value>
-                        <value>universe</value>
-                        <value>surface</value>
-                        <value>distribcell</value>
-                        <value>mesh</value>
-                        <value>energy</value>
-                        <value>energyout</value>
-                        <value>mu</value>
-                        <value>polar</value>
-                        <value>azimuthal</value>
-                        <value>delayedgroup</value>
-                      </choice>
-                    </element>
-                    <attribute name="type">
-                      <choice>
-                        <value>cell</value>
-                        <value>cellborn</value>
-                        <value>material</value>
-                        <value>universe</value>
-                        <value>surface</value>
-                        <value>distribcell</value>
-                        <value>mesh</value>
-                        <value>energy</value>
-                        <value>energyout</value>
-                        <value>mu</value>
-                        <value>polar</value>
-                        <value>azimuthal</value>
-                        <value>delayedgroup</value>
-                      </choice>
-                    </attribute>
-                  </choice>
-                </optional>
+                <choice>
+                  <element name="type">
+                    <choice>
+                      <value>cell</value>
+                      <value>cellborn</value>
+                      <value>material</value>
+                      <value>universe</value>
+                      <value>surface</value>
+                      <value>distribcell</value>
+                      <value>mesh</value>
+                      <value>energy</value>
+                      <value>energyout</value>
+                      <value>mu</value>
+                      <value>polar</value>
+                      <value>azimuthal</value>
+                      <value>delayedgroup</value>
+                    </choice>
+                  </element>
+                  <attribute name="type">
+                    <choice>
+                      <value>cell</value>
+                      <value>cellborn</value>
+                      <value>material</value>
+                      <value>universe</value>
+                      <value>surface</value>
+                      <value>distribcell</value>
+                      <value>mesh</value>
+                      <value>energy</value>
+                      <value>energyout</value>
+                      <value>mu</value>
+                      <value>polar</value>
+                      <value>azimuthal</value>
+                      <value>delayedgroup</value>
+                    </choice>
+                  </attribute>
+                </choice>
                 <choice>
                   <element name="bins">
                     <list>

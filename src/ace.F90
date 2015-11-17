@@ -913,7 +913,7 @@ contains
           cycle
         elseif (LOCB == 0) then
           ! No angular distribution data are given for this reaction, isotropic
-          ! scattering is asssumed (in CM if TY < 0 and in LAB if TY > 0)
+          ! scattering is assumed (in CM if TY < 0 and in LAB if TY > 0)
           cycle
         end if
         rxn % has_angle_dist = .true.

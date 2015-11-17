@@ -108,8 +108,7 @@ contains
 ! a given nuclide and incoming neutron energy in a given delayed group.
 !===============================================================================
 
-  function yield_delayed(nuc, E, g) result(yield)
-
+  pure function yield_delayed(nuc, E, g) result(yield)
     type(Nuclide), intent(in) :: nuc   ! nuclide from which to find nu
     real(8), intent(in)       :: E     ! energy of incoming neutron
     real(8)                   :: yield ! delayed neutron precursor yield

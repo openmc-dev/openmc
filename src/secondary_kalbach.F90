@@ -1,8 +1,7 @@
 module secondary_kalbach
 
   use constants, only: ZERO, ONE, TWO, HISTOGRAM, LINEAR_LINEAR
-  use error, only: fatal_error
-  use secondary_header, only: SecondaryDistribution
+  use secondary_header, only: AngleEnergy
   use random_lcg, only: prn
   use search, only: binary_search
 
@@ -16,7 +15,7 @@ module secondary_kalbach
     real(8), allocatable :: a(:)
   end type KalbachMannTable
 
-  type, extends(SecondaryDistribution) :: KalbachMann
+  type, extends(AngleEnergy) :: KalbachMann
     integer :: n_region
     integer, allocatable :: breakpoints(:)
     integer, allocatable :: interpolation(:)
@@ -48,12 +47,6 @@ contains
     real(8) :: c_k, c_k1      ! cumulative probability
     real(8) :: km_r, km_a     ! Kalbach-Mann parameters
     real(8) :: T
-
-    ! TODO: Write error during initialization
-    if (this%n_region > 1) then
-      call fatal_error("Multiple interpolation regions not supported while &
-           &attempting to sample Kalbach-Mann distribution.")
-    end if
 
     ! find energy bin and calculate interpolation factor -- if the energy is
     ! outside the range of the tabulated energies, choose the first or last bins
@@ -88,13 +81,6 @@ contains
 
     E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
     E_K = E_i_K + r*(E_i1_K - E_i_K)
-
-    ! TODO: Write error at initizliation
-    if (this%table(l)%n_discrete > 0) then
-      ! discrete lines present
-      call fatal_error("Discrete lines in continuous tabular distributed not &
-           &yet supported")
-    end if
 
     ! determine outgoing energy bin
     n_energy_out = size(this%table(l)%e_out)

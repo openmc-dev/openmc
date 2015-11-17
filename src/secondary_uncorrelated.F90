@@ -1,10 +1,12 @@
 module secondary_uncorrelated
 
   use angle_distribution, only: AngleDistribution
+  use constants, only: ONE, TWO
   use energy_distribution, only: EnergyDistribution
-  use secondary_header, only: SecondaryDistribution
+  use secondary_header, only: AngleEnergy
+  use random_lcg, only: prn
 
-  type, extends(SecondaryDistribution) :: UncorrelatedAngleEnergy
+  type, extends(AngleEnergy) :: UncorrelatedAngleEnergy
     type(AngleDistribution) :: angle
     class(EnergyDistribution), allocatable :: energy
   contains
@@ -20,7 +22,12 @@ contains
     real(8), intent(out) :: mu
 
     ! Sample cosine of scattering angle
-    mu = this%angle%sample(E_in)
+    if (allocated(this%angle%energy)) then
+      mu = this%angle%sample(E_in)
+    else
+      ! no angle distribution given => assume isotropic for all energies
+      mu = TWO*prn() - ONE
+    end if
 
     ! Sample outgoing energy
     E_out = this%energy%sample(E_in)

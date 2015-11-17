@@ -359,21 +359,24 @@ contains
     write(unit_,*) '  Reaction     Q-value  COM  Law    IE    size(angle) size(energy)'
     do i = 1, nuc % n_reaction
       associate (rxn => nuc % reactions(i))
-        ! Determine size of angle distribution
-        if (rxn % has_angle_dist) then
-          size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
-        else
-          size_angle = 0
-        end if
+!!$        ! Determine size of angle distribution
+!!$        if (rxn % has_angle_dist) then
+!!$          size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
+!!$        else
+!!$          size_angle = 0
+!!$        end if
+        size_angle = 0
 
-        ! Determine size of energy distribution and law
-        if (rxn % has_energy_dist) then
-          size_energy = size(rxn % edist % data) * 8
-          law = to_str(rxn % edist % law)
-        else
-          size_energy = 0
-          law = 'None'
-        end if
+!!$        ! Determine size of energy distribution and law
+!!$        if (rxn % has_energy_dist) then
+!!$          size_energy = size(rxn % edist % data) * 8
+!!$          law = to_str(rxn % edist % law)
+!!$        else
+!!$          size_energy = 0
+!!$          law = 'None'
+!!$        end if
+        size_energy = 0
+        law = 'None'
 
         write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
              reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &

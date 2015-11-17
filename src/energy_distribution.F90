@@ -2,7 +2,6 @@ module energy_distribution
 
   use constants, only: ZERO, ONE, TWO, PI, HISTOGRAM, LINEAR_LINEAR
   use endf_header, only: Tab1
-  use error, only: fatal_error
   use interpolation, only: interpolate_tab1
   use math, only: maxwell_spectrum, watt_spectrum
   use random_lcg, only: prn
@@ -27,13 +26,13 @@ module energy_distribution
     end function iSampleEnergy
   end interface
 
+  type :: EnergyDistributionContainer
+    class(EnergyDistribution), allocatable :: obj
+  end type EnergyDistributionContainer
+
 !===============================================================================
 ! Derived classes
 !===============================================================================
-
-  type Array1D
-    real(8), allocatable :: data(:)
-  end type Array1D
 
   type, extends(EnergyDistribution) :: TabularEquiprobable
     integer :: n_region
@@ -121,14 +120,6 @@ contains
     n_energy_in = size(this%energy_in)
     n_energy_out = size(this%energy_out, 1)
 
-    ! read number of interpolation regions, incoming energies, and outgoing
-    ! energies
-    ! TODO: Move this error to input
-    if (this%n_region > 0) then
-      call fatal_error("Multiple interpolation regions not supported while &
-           &attempting to sample equiprobable energy bins.")
-    end if
-
     ! determine index on incoming energy grid and interpolation factor
     i = binary_search(this%energy_in, size(this%energy_in), E_in)
     r = (E_in - this%energy_in(i)) / &
@@ -200,9 +191,6 @@ contains
     ! read number of interpolation regions and incoming energies
     if (this%n_region == 1) then
       histogram_interp = (this%interpolation(1) == 1)
-    else if (this%n_region > 1) then
-      call fatal_error("Multiple interpolation regions not supported while &
-           &attempting to sample continuous tabular distribution.")
     else
       histogram_interp = .false.
     end if
@@ -244,13 +232,6 @@ contains
 
     E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
     E_K = E_i_K + r*(E_i1_K - E_i_K)
-
-    ! TODO: Write error at initizliation
-    if (this%energy_out(l)%n_discrete > 0) then
-      ! discrete lines present
-      call fatal_error("Discrete lines in continuous tabular distributed not &
-           &yet supported")
-    end if
 
     ! determine outgoing energy bin
     n_energy_out = size(this%energy_out(l)%e_out)

@@ -13,13 +13,6 @@ module secondary_header
     class(AngleEnergy), allocatable :: obj
   end type AngleEnergyContainer
 
-  type :: SecondaryDistribution
-    type(Tab1), allocatable :: applicability(:)
-    type(AngleEnergyContainer), allocatable :: distribution(:)
-  contains
-    procedure :: sample => secondary_sample
-  end type SecondaryDistribution
-
   abstract interface
     subroutine iSampleAngleEnergy(this, E_in, E_out, mu)
       import AngleEnergy
@@ -29,6 +22,18 @@ module secondary_header
       real(8), intent(out) :: mu
     end subroutine iSampleAngleEnergy
   end interface
+
+!===============================================================================
+! SECONDARYDISTRIBUTION stores a secondary distribution for angle and energy,
+! whether correlated or uncorrelated.
+!===============================================================================
+
+  type :: SecondaryDistribution
+    type(Tab1), allocatable :: applicability(:)
+    type(AngleEnergyContainer), allocatable :: distribution(:)
+  contains
+    procedure :: sample => secondary_sample
+  end type SecondaryDistribution
 
 contains
 

@@ -1,18 +1,21 @@
 module secondary_correlated
 
   use constants, only: ZERO, ONE, TWO, HISTOGRAM, LINEAR_LINEAR
-  use distribution_univariate, only: Tabular
-  use error, only: fatal_error
-  use secondary_header, only: SecondaryDistribution
+  use distribution_univariate, only: DistributionContainer
+  use secondary_header, only: AngleEnergy
   use random_lcg, only: prn
   use search, only: binary_search
 
   type AngleEnergyTable
-    type(Tabular) :: energy
-    type(Tabular), allocatable :: angle(:)
+    integer :: interpolation
+    integer :: n_discrete
+    real(8), allocatable :: e_out(:)
+    real(8), allocatable :: p(:)
+    real(8), allocatable :: c(:)
+    type(DistributionContainer), allocatable :: angle(:)
   end type AngleEnergyTable
 
-  type, extends(SecondaryDistribution) :: CorrelatedAngleEnergy
+  type, extends(AngleEnergy) :: CorrelatedAngleEnergy
     integer :: n_region
     integer, allocatable :: breakpoints(:)
     integer, allocatable :: interpolation(:)
@@ -43,12 +46,6 @@ contains
     real(8) :: p_l_k, p_l_k1  ! adjacent p on outgoing grid l
     real(8) :: c_k, c_k1      ! cumulative probability
 
-    ! TODO: Write error during initialization
-    if (this%n_region > 1) then
-      call fatal_error("Multiple interpolation regions not supported while &
-           &attempting to sample Kalbach-Mann distribution.")
-    end if
-
     ! find energy bin and calculate interpolation factor -- if the energy is
     ! outside the range of the tabulated energies, choose the first or last bins
     n_energy_in = size(this%energy_in)
@@ -72,30 +69,23 @@ contains
     end if
 
     ! interpolation for energy E1 and EK
-    n_energy_out = size(this%table(i)%energy%x)
-    E_i_1 = this%table(i)%energy%x(1)
-    E_i_K = this%table(i)%energy%x(n_energy_out)
+    n_energy_out = size(this%table(i)%e_out)
+    E_i_1 = this%table(i)%e_out(1)
+    E_i_K = this%table(i)%e_out(n_energy_out)
 
-    n_energy_out = size(this%table(i+1)%energy%x)
-    E_i1_1 = this%table(i+1)%energy%x(1)
-    E_i1_K = this%table(i+1)%energy%x(n_energy_out)
+    n_energy_out = size(this%table(i+1)%e_out)
+    E_i1_1 = this%table(i+1)%e_out(1)
+    E_i1_K = this%table(i+1)%e_out(n_energy_out)
 
     E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
     E_K = E_i_K + r*(E_i1_K - E_i_K)
 
-!!$    ! TODO: Write error at initizliation
-!!$    if (this%table(l)%n_discrete > 0) then
-!!$      ! discrete lines present
-!!$      call fatal_error("Discrete lines in continuous tabular distributed not &
-!!$           &yet supported")
-!!$    end if
-
     ! determine outgoing energy bin
-    n_energy_out = size(this%table(l)%energy%x)
+    n_energy_out = size(this%table(l)%e_out)
     r1 = prn()
-    c_k = this%table(l)%energy%c(1)
+    c_k = this%table(l)%c(1)
     do k = 1, n_energy_out - 1
-      c_k1 = this%table(l)%energy%c(k+1)
+      c_k1 = this%table(l)%c(k+1)
       if (r1 < c_k1) exit
       c_k = c_k1
     end do
@@ -103,9 +93,9 @@ contains
     ! check to make sure k is <= NP - 1
     k = min(k, n_energy_out - 1)
 
-    E_l_k = this%table(l)%energy%x(k)
-    p_l_k = this%table(l)%energy%p(k)
-    if (this%table(l)%energy%interpolation == HISTOGRAM) then
+    E_l_k = this%table(l)%e_out(k)
+    p_l_k = this%table(l)%p(k)
+    if (this%table(l)%interpolation == HISTOGRAM) then
       ! Histogram interpolation
       if (p_l_k > ZERO) then
         E_out = E_l_k + (r1 - c_k)/p_l_k
@@ -113,10 +103,10 @@ contains
         E_out = E_l_k
       end if
 
-    elseif (this%table(l)%energy%interpolation == LINEAR_LINEAR) then
+    elseif (this%table(l)%interpolation == LINEAR_LINEAR) then
       ! Linear-linear interpolation
-      E_l_k1 = this%table(l)%energy%x(k+1)
-      p_l_k1 = this%table(l)%energy%p(k+1)
+      E_l_k1 = this%table(l)%e_out(k+1)
+      p_l_k1 = this%table(l)%p(k+1)
 
       frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
       if (frac == ZERO) then
@@ -136,9 +126,9 @@ contains
 
     ! Find correlated angular distribution for closest outgoing energy bin
     if (r1 - c_k < c_k1 - r1) then
-      mu = this%table(l)%angle(k)%sample()
+      mu = this%table(l)%angle(k)%obj%sample()
     else
-      mu = this%table(l)%angle(k + 1)%sample()
+      mu = this%table(l)%angle(k + 1)%obj%sample()
     end if
   end subroutine correlated_sample
 

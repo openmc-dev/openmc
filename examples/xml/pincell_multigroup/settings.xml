@@ -1,14 +1,16 @@
 <?xml version="1.0"?>
 <settings>
+
   <energy_mode>multi-group</energy_mode>
+
   <!--
     Define how many particles to run and for how many batches
     in an eigenvalue calculation mode
   -->
   <eigenvalue>
-    <batches>2000</batches>
-    <inactive>500</inactive>
-    <particles>10000</particles>
+    <batches>100</batches>
+    <inactive>10</inactive>
+    <particles>1000</particles>
   </eigenvalue>
 
   <!--
@@ -19,15 +21,15 @@
   <source>
     <space type="box">
       <parameters>
-         0.0  21.42 -100
-        42.84 64.26  100
+        -0.63 -0.63 -1E50
+         0.63  0.63  1E50
       </parameters>
     </space>
   </source>
 
   <!-- Establish statepoints to aid in examining convergence -->
   <state_point>
-    <interval> 2000 </interval>
+    <interval>2000</interval>
     <source_write>true</source_write>
   </state_point>
 
@@ -37,8 +39,8 @@
     <tallies>true</tallies>
   </output>
 
-  <run_cmfd>true</run_cmfd>
+  <survival_biasing>false</survival_biasing>
 
-  <cross_sections>../data.xml</cross_sections>
+  <cross_sections>./mg_cross_sections.xml</cross_sections>
 
 </settings>

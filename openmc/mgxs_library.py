@@ -24,35 +24,47 @@ def ndarray_to_string(arr):
 
     shape = arr.shape
     ndim = arr.ndim
-    text = ''
+    tab = '    '
+    indent = '\n' + tab + tab
+    text = indent
 
     if ndim == 1:
-        text += ' '.join(map(str, arr[:]))
+        text += tab
+        for i in range(shape[0]):
+            text += '{:.7E} '.format(arr[i])
+        text += indent
     elif ndim == 2:
-        for i in xrange(shape[0]):
-            text += ' '.join(map(str, arr[i,:]))
-            text += '\n'
+        for i in range(shape[0]):
+            text += tab
+            for j in range(shape[1]):
+                text += '{:.7E} '.format(arr[i,j])
+            text += indent
     elif ndim == 3:
-        for i in xrange(shape[0]):
-            for j in xrange(shape[1]):
-                text += ' '.join(map(str, arr[i,j,:]))
-                text += '\n'
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                text += tab
+                for k in range(shape[2]):
+                    text += '{:.7E} '.format(arr[i,j,k])
+                text += indent
     elif ndim == 4:
-        for i in xrange(shape[0]):
-            for j in xrange(shape[1]):
-                for k in xrange(shape[2]):
-                    text += ' '.join(map(str, arr[i,j,k,:]))
-                    text += '\n'
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                for k in range(shape[2]):
+                    text += tab
+                    for l in range(shape[3]):
+                        text += '{:.7E} '.format(arr[i,j,k,l])
+                    text += indent
     elif ndim == 5:
-        for i in xrange(shape[0]):
-            for j in xrange(shape[1]):
-                for k in xrange(shape[2]):
-                    for l in xrange(shape[3]):
-                        text += ' '.join(map(str, arr[i,j,k,l,:]))
-                        text += '\n'
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                for k in range(shape[2]):
+                    for l in range(shape[3]):
+                        text += tab
+                        for m in range(shape[4]):
+                            text += '{:.7E} '.format(arr[i,j,k,l,m])
+                        text += indent
 
     return text
-
 
 
 class Xsdata(object):

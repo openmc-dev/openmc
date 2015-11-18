@@ -240,14 +240,23 @@ class Library(object):
         else:
             if self.domain_type == 'material':
                 cv.check_iterable_type('domain', domains, openmc.Material)
+                all_domains = self.openmc_geometry.get_all_materials()
             elif self.domain_type in ['cell', 'distribcell']:
                 cv.check_iterable_type('domain', domains, openmc.Cell)
+                all_domains = self.openmc_geometry.get_all_material_cells()
             elif self.domain_type == 'universe':
                 cv.check_iterable_type('domain', domains, openmc.Universe)
+                all_domains = self.openmc_geometry.get_all_universes()
             else:
                 msg = 'Unable to set domains with ' \
                       'domain type "{}"'.format(self.domain_type)
                 raise ValueError(msg)
+
+            # Check that each domain can be found in the geometry
+            for domain in domains:
+                if domain not in all_domains:
+                    msg = 'Domain "{}" could not be found in the geometry'
+                    raise ValueError(msg)
 
             self._domains = domains
 

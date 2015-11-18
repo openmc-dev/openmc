@@ -284,7 +284,7 @@ class Plot(object):
         if self.color is 'mat':
             domains = geometry.get_all_materials()
         else:
-            domains = geometry.get_all_materials()
+            domains = geometry.get_all_cells()
 
         # Set the seed for the random number generator
         np.random.seed(seed)
@@ -295,7 +295,7 @@ class Plot(object):
             r = np.random.randint(0, 255)
             g = np.random.randint(0, 255)
             b = np.random.randint(0, 255)
-            self.col_spec[domain.id] = (r, g, b)
+            self.col_spec[domain] = (r, g, b)
 
 
     def get_plot_xml(self):

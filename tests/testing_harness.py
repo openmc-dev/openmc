@@ -12,7 +12,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from input_set import InputSet
+from input_set import InputSet, MGInputSet
 from openmc.statepoint import StatePoint
 from openmc.executor import Executor
 import openmc.particle_restart as pr
@@ -273,9 +273,12 @@ class ParticleRestartTestHarness(TestHarness):
 
 
 class PyAPITestHarness(TestHarness):
-    def __init__(self, statepoint_name, tallies_present=False):
+    def __init__(self, statepoint_name, tallies_present=False, mg=False):
         TestHarness.__init__(self, statepoint_name, tallies_present)
-        self._input_set = InputSet()
+        if mg:
+            self._input_set = MGInputSet()
+        else:
+            self._input_set = InputSet()
 
     def execute_test(self):
         """Build input XMLs, run OpenMC, and verify correct results."""

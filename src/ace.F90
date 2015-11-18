@@ -902,8 +902,6 @@ contains
     integer :: k      ! index over energy distributions
     integer :: interp
     integer, allocatable :: LC(:) ! locator
-    real(8), allocatable :: x(:)
-    real(8), allocatable :: p(:)
 
     ! loop over all reactions with secondary neutrons -- NXS(5) does not include
     ! elastic scattering
@@ -977,13 +975,10 @@ contains
 
                 ! Get probability density data
                 XSS_index = XSS_index + 2
-                allocate(x(NP), p(NP))
-                x(:) = get_real(NP)
-                p(:) = get_real(NP)
-
-                ! initialize distribution
-                call adist%initialize(x, p, interp)
-                deallocate(x, p)
+                allocate(adist%x(NP), adist%p(NP), adist%c(NP))
+                adist%x(:) = get_real(NP)
+                adist%p(:) = get_real(NP)
+                adist%c(:) = get_real(NP)
               end select
             end do
             deallocate(LC)
@@ -1069,8 +1064,6 @@ contains
     integer :: interp
     integer, allocatable :: L(:)  ! locations of distributions for each Ein
     integer, allocatable :: LC(:)  ! locations of distributions for each Ein
-    real(8), allocatable :: x(:)
-    real(8), allocatable :: p(:)
 
     XSS_index = LDIS + IDAT - 1
 
@@ -1355,13 +1348,10 @@ contains
 
             ! Get probability density data
             XSS_index = XSS_index + 2
-            allocate(x(NP), p(NP))
-            x(:) = get_real(NP)
-            p(:) = get_real(NP)
-
-            ! initialize distribution
-            call adist%initialize(x, p, interp)
-            deallocate(x, p)
+            allocate(adist%x(NP), adist%p(NP), adist%c(NP))
+            adist%x(:) = get_real(NP)
+            adist%p(:) = get_real(NP)
+            adist%c(:) = get_real(NP)
           end select
         end do
         deallocate(LC)

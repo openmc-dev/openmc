@@ -270,7 +270,7 @@ class Plot(object):
         Parameters
         ----------
         geometry : openmc.Geometry
-            The geometry for which the plot is created
+            The geometry for which the plot is defined
         seed : Integral
             The random number seed used to generate the color scheme
 
@@ -297,6 +297,60 @@ class Plot(object):
             b = np.random.randint(0, 256)
             self.col_spec[domain] = (r, g, b)
 
+    def highlight_domains(self, geometry, domains, seed=1,
+                          alpha=0.5, background='gray'):
+        """Use alpha compositing to highlight one or more domains in the plot.
+
+        This routine generates a color scheme and applies alpha compositing
+        to make all domains except the highlighted ones appear partially
+        transparent.
+
+        Parameters
+        ----------
+        geometry : openmc.Geometry
+            The geometry for which the plot is defined
+        domains : Iterable of Integral
+            A collection of the domain IDs to highlight in the plot
+        seed : Integral
+            The random number seed used to generate the color scheme
+        alpha : Real in [0,1]
+            The value to apply in alpha compisiting
+        background : 3-tuple of Integral or 'white' or 'black' or 'gray'
+            The background color to apply in alpha compisiting
+
+        """
+
+        cv.check_iterable_type('domains', domains, Integral)
+        cv.check_type('alpha', alpha, Real)
+        cv.check_greater_than('alpha', alpha, 0., equality=True)
+        cv.check_less_than('alpha', alpha, 1., equality=True)
+
+        # Get a background (R,G,B) tuple to apply in alpha compositing
+        if isinstance(background, basestring):
+            if background == 'white':
+                background = (255, 255, 255)
+            elif background == 'black':
+                background = (0, 0, 0)
+            elif background == 'gray':
+                background = (160, 160, 160)
+            else:
+                msg = 'The background "{}" is not defined'.format(background)
+                raise ValueError(msg)
+
+        cv.check_iterable_type('background', background, Integral)
+
+        # Generate a color scheme
+        self.colorize(geometry, seed)
+
+        # Apply alpha compositing to the colors for all domains
+        # other than those the user wishes to highlight
+        for domain_id in self.col_spec:
+            if domain_id not in domains:
+                r, g, b = self.col_spec[domain_id]
+                r = int(((1-alpha) * background[0]) + (alpha * r))
+                g = int(((1-alpha) * background[1]) + (alpha * g))
+                b = int(((1-alpha) * background[2]) + (alpha * b))
+                self._col_spec[domain_id] = (r, g, b)
 
     def get_plot_xml(self):
         """Return XML representation of the plot
@@ -404,6 +458,32 @@ class PlotsFile(object):
 
         for plot in self._plots:
             plot.colorize(geometry, seed)
+
+
+    def highlight_domains(self, geometry, domains, seed=1,
+                          alpha=0.5, background='gray'):
+        """Use alpha compositing to highlight one or more domains in the plot.
+
+        This routine generates a color scheme and applies alpha compositing
+        to make all domains except the highlighted ones partially transparent.
+
+        Parameters
+        ----------
+        geometry : openmc.Geometry
+            The geometry for which the plot is defined
+        domains : Iterable of Integral
+            A collection of the domain IDs to highlight in the plot
+        seed : Integral
+            The random number seed used to generate the color scheme
+        alpha : Real in [0,1]
+            The value to apply in alpha compisiting
+        background : 3-tuple of Integral or 'white' or 'black' or 'gray'
+            The background color to apply in alpha compisiting
+
+        """
+
+        for plot in self._plots:
+            plot.highlight_domains(geometry, domains, seed, alpha, background)
 
     def _create_plot_subelements(self):
         for plot in self._plots:

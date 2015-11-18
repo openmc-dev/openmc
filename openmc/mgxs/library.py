@@ -255,7 +255,8 @@ class Library(object):
             # Check that each domain can be found in the geometry
             for domain in domains:
                 if domain not in all_domains:
-                    msg = 'Domain "{}" could not be found in the geometry'
+                    msg = 'Domain "{}" could not be found in the ' \
+                          'geometry.'.format(domain)
                     raise ValueError(msg)
 
             self._domains = domains

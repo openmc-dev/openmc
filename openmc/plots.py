@@ -267,8 +267,8 @@ class Plot(object):
         This routine may be used to generate random, reproducible color schemes.
         The colors generated are based upon cell/material IDs in the geometry.
 
-        Params
-        ------
+        Parameters
+        ----------
         geometry : openmc.Geometry
             The geometry for which the plot is defined
         seed : Integral
@@ -292,11 +292,10 @@ class Plot(object):
         # Generate random colors for each feature
         self.col_spec = {}
         for domain in domains:
-            r = np.random.randint(0, 255)
-            g = np.random.randint(0, 255)
-            b = np.random.randint(0, 255)
+            r = np.random.randint(0, 256)
+            g = np.random.randint(0, 256)
+            b = np.random.randint(0, 256)
             self.col_spec[domain] = (r, g, b)
-
 
     def highlight_domains(self, geometry, domains, seed=1,
                           alpha=0.5, background='grey'):
@@ -447,8 +446,8 @@ class PlotsFile(object):
         The colors generated are based upon cell/material IDs in the geometry.
         The color schemes will be consistent for all plots in "plots.xml".
 
-        Params
-        ------
+        Parameters
+        ----------
         geometry : openmc.Geometry
             The geometry for which the plots are defined
         seed : Integral

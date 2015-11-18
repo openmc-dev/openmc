@@ -903,13 +903,17 @@ contains
     do i = 1, n_surfaces
       ! Copy positive neighbors to Surface instance
       j = neighbor_pos(i)%size()
-      allocate(surfaces(i)%obj%neighbor_pos(j))
-      surfaces(i)%obj%neighbor_pos(:) = neighbor_pos(i)%data(1:j)
+      if (j > 0) then
+        allocate(surfaces(i)%obj%neighbor_pos(j))
+        surfaces(i)%obj%neighbor_pos(:) = neighbor_pos(i)%data(1:j)
+      end if
 
       ! Copy negative neighbors to Surface instance
       j = neighbor_neg(i)%size()
-      allocate(surfaces(i)%obj%neighbor_neg(j))
-      surfaces(i)%obj%neighbor_neg(:) = neighbor_neg(i)%data(1:j)
+      if (j > 0) then
+        allocate(surfaces(i)%obj%neighbor_neg(j))
+        surfaces(i)%obj%neighbor_neg(:) = neighbor_neg(i)%data(1:j)
+      end if
     end do
 
   end subroutine neighbor_lists

@@ -43,18 +43,26 @@ contains
     real(8), intent(out) :: E_out
     real(8), intent(out) :: mu
 
+    integer :: n
     real(8) :: p_valid
 
-    do i = 1, size(this%applicability)
-      ! Determine probability that i-th energy distribution is sampled
-      p_valid = interpolate_tab1(this%applicability(i), E_in)
+    n = size(this%applicability)
+    if (n > 1) then
+      do i = 1, n
+        ! Determine probability that i-th energy distribution is sampled
+        p_valid = interpolate_tab1(this%applicability(i), E_in)
 
-      ! If i-th distribution is sampled, sample energy from the distribution
-      if (prn() <= p_valid) then
-        call this%distribution(i)%obj%sample(E_in, E_out, mu)
-        exit
-      end if
-    end do
+        ! If i-th distribution is sampled, sample energy from the distribution
+        if (prn() <= p_valid) then
+          call this%distribution(i)%obj%sample(E_in, E_out, mu)
+          exit
+        end if
+      end do
+    else
+      ! If only one distribution is present, go ahead and sample it
+      call this%distribution(1)%obj%sample(E_in, E_out, mu)
+    end if
+
   end subroutine secondary_sample
 
 end module secondary_header

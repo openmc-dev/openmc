@@ -459,6 +459,32 @@ class PlotsFile(object):
         for plot in self._plots:
             plot.colorize(geometry, seed)
 
+
+    def highlight_domains(self, geometry, domains, seed=1,
+                          alpha=0.5, background='grey'):
+        """Use alpha compositing to highlight one or more domains in the plot.
+
+        This routine generates a color scheme and applies alpha compositing
+        to make all domains except the highlighted ones partially transparent.
+
+        Params
+        ------
+        geometry : openmc.Geometry
+            The geometry for which the plot is defined
+        domains : Iterable of Integral
+            A collection of the domain IDs to highlight in the plot
+        seed : Integral
+            The random number seed used to generate the color scheme
+        alpha : Real in [0,1]
+            The value to apply in alpha compisiting
+        background : 3-tuple of Integral or 'white' or 'black' or 'grey'
+            The background color to apply in alpha compisiting
+
+        """
+
+        for plot in self._plots:
+            plot.highlight_domains(geometry, domains, seed, alpha, background)
+
     def _create_plot_subelements(self):
         for plot in self._plots:
             xml_element = plot.get_plot_xml()

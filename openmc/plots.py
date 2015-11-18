@@ -298,7 +298,7 @@ class Plot(object):
             self.col_spec[domain] = (r, g, b)
 
     def highlight_domains(self, geometry, domains, seed=1,
-                          alpha=0.5, background='grey'):
+                          alpha=0.5, background='gray'):
         """Use alpha compositing to highlight one or more domains in the plot.
 
         This routine generates a color scheme and applies alpha compositing
@@ -314,7 +314,7 @@ class Plot(object):
             The random number seed used to generate the color scheme
         alpha : Real in [0,1]
             The value to apply in alpha compisiting
-        background : 3-tuple of Integral or 'white' or 'black' or 'grey'
+        background : 3-tuple of Integral or 'white' or 'black' or 'gray'
             The background color to apply in alpha compisiting
 
         """
@@ -330,7 +330,7 @@ class Plot(object):
                 background = (255, 255, 255)
             elif background == 'black':
                 background = (0, 0, 0)
-            elif background == 'grey':
+            elif background == 'gray':
                 background = (160, 160, 160)
             else:
                 msg = 'The background "{}" is not defined'.format(background)
@@ -460,7 +460,7 @@ class PlotsFile(object):
 
 
     def highlight_domains(self, geometry, domains, seed=1,
-                          alpha=0.5, background='grey'):
+                          alpha=0.5, background='gray'):
         """Use alpha compositing to highlight one or more domains in the plot.
 
         This routine generates a color scheme and applies alpha compositing
@@ -476,7 +476,7 @@ class PlotsFile(object):
             The random number seed used to generate the color scheme
         alpha : Real in [0,1]
             The value to apply in alpha compisiting
-        background : 3-tuple of Integral or 'white' or 'black' or 'grey'
+        background : 3-tuple of Integral or 'white' or 'black' or 'gray'
             The background color to apply in alpha compisiting
 
         """

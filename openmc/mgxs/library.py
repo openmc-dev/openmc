@@ -166,7 +166,7 @@ class Library(object):
         if self._domains == 'all':
             if self.domain_type == 'material':
                 return self.openmc_geometry.get_all_materials()
-            elif self.domain_type == 'cell' or self.domain_type == 'distribcell':
+            elif self.domain_type in ['cell', 'distribcell']:
                 return self.openmc_geometry.get_all_material_cells()
             elif self.domain_type == 'universe':
                 return self.openmc_geometry.get_all_universes()
@@ -240,7 +240,7 @@ class Library(object):
         else:
             if self.domain_type == 'material':
                 cv.check_iterable_type('domain', domains, openmc.Material)
-            elif self.domain_type == 'cell':
+            elif self.domain_type in ['cell', 'distribcell']:
                 cv.check_iterable_type('domain', domains, openmc.Cell)
             elif self.domain_type == 'universe':
                 cv.check_iterable_type('domain', domains, openmc.Universe)

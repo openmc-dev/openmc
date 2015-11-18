@@ -302,10 +302,11 @@ class Plot(object):
         """Use alpha compositing to highlight one or more domains in the plot.
 
         This routine generates a color scheme and applies alpha compositing
-        to make all domains except the highlighted ones partially transparent.
+        to make all domains except the highlighted ones appear partially
+        transparent.
 
-        Params
-        ------
+        Parameters
+        ----------
         geometry : openmc.Geometry
             The geometry for which the plot is defined
         domains : Iterable of Integral
@@ -466,8 +467,8 @@ class PlotsFile(object):
         This routine generates a color scheme and applies alpha compositing
         to make all domains except the highlighted ones partially transparent.
 
-        Params
-        ------
+        Parameters
+        ----------
         geometry : openmc.Geometry
             The geometry for which the plot is defined
         domains : Iterable of Integral

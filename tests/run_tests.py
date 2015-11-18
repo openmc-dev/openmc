@@ -470,6 +470,7 @@ for key in iter(tests):
         logfilename = os.path.splitext(logfilename)[0]
         logfilename = logfilename + '_{0}.log'.format(test.name)
         shutil.copy(logfile[0], logfilename)
+        with open(logfilename) as fh: print(fh.read())
 
     # Clear build directory and remove binary and hdf5 files
     shutil.rmtree('build', ignore_errors=True)

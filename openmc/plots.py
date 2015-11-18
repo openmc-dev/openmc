@@ -386,6 +386,25 @@ class PlotsFile(object):
 
         self._plots.remove(plot)
 
+    def colorize(self, geometry, seed=1):
+        """Generate a consistent color scheme for each domain in each plot.
+
+        This routine may be used to generate random, reproducible color schemes.
+        The colors generated are based upon cell/material IDs in the geometry.
+        The color schemes will be consistent for all plots in "plots.xml".
+
+        Params
+        ------
+        geometry : openmc.Geometry
+            The geometry for which the plots are defined
+        seed : Integral
+            The random number seed used to generate the color scheme
+
+        """
+
+        for plot in self._plots:
+            plot.colorize(geometry, seed)
+
     def _create_plot_subelements(self):
         for plot in self._plots:
             xml_element = plot.get_plot_xml()

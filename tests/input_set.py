@@ -569,3 +569,165 @@ class InputSet(object):
         plot.color = 'mat'
 
         self.plots.add_plot(plot)
+
+class MGInputSet(InputSet):
+    def build_default_materials_and_geometry(self):
+        # Define materials needed for C5G7 2-D UO2 Assembly
+        uo2_data = openmc.Macroscopic('UO2', '71c')
+        uo2 = openmc.Material(name='UO2', material_id=1)
+        uo2.set_density('macro', 1.0)
+        uo2.add_macroscopic(uo2_data)
+
+        fiss_cham_data = openmc.Macroscopic('FC', '71c')
+        fiss_cham = openmc.Material(name='FC', material_id=2)
+        fiss_cham.set_density('macro', 1.0)
+        fiss_cham.add_macroscopic(fiss_cham_data)
+
+        guide_tube_data = openmc.Macroscopic('GT', '71c')
+        guide_tube = openmc.Material(name='GT', material_id=3)
+        guide_tube.set_density('macro', 1.0)
+        guide_tube.add_macroscopic(guide_tube_data)
+
+        water_data = openmc.Macroscopic('LWTR', '71c')
+        water = openmc.Material(name='LWTR', material_id=4)
+        water.set_density('macro', 1.0)
+        water.add_macroscopic(water_data)
+
+        # Define the materials file.
+        self.materials.default_xs = '71c'
+        self.materials.add_materials((uo2, fiss_cham, guide_tube, water))
+
+        # Define surfaces.
+
+        # Pin cell
+        s1 = openmc.ZCylinder(R=0.54, surface_id=1)
+        # Assembly/Problem Boundary
+        left   = openmc.XPlane(x0=0.0, surface_id=20,
+                               boundary_type='reflective')
+        right  = openmc.XPlane(x0=21.42, surface_id=21,
+                               boundary_type='reflective')
+        bottom = openmc.YPlane(y0=0.0, surface_id=22,
+                               boundary_type='reflective')
+        top    = openmc.YPlane(y0=21.42, surface_id=23,
+                               boundary_type='reflective')
+        down   = openmc.ZPlane(z0=0.0, surface_id=24,
+                               boundary_type='reflective')
+        up     = openmc.ZPlane(z0=21.42, surface_id=25,
+                               boundary_type='reflective')
+
+        # Define pin cells
+        # uo2 pin
+        c10 = openmc.Cell(cell_id=10)
+        c10.region = -s1
+        c10.fill = uo2
+        c11 = openmc.Cell(cell_id=11)
+        c11.region = +s1
+        c11.fill = water
+        fuel_pin = openmc.Universe(name='Fuel pin', universe_id=1)
+        fuel_pin.add_cells((c10, c11))
+
+        # Fission chamber pin
+        c20 = openmc.Cell(cell_id=20)
+        c20.region = -s1
+        c20.fill = fiss_cham
+        c21 = openmc.Cell(cell_id=21)
+        c21.region = +s1
+        c21.fill = water
+        fiss_chamber_pin = openmc.Universe(name='Fission Chamber', universe_id=2)
+        fiss_chamber_pin.add_cells((c20, c21))
+
+        # Guide Tube pin
+        c30 = openmc.Cell(cell_id=30)
+        c30.region = -s1
+        c30.fill = guide_tube
+        c31 = openmc.Cell(cell_id=31)
+        c31.region = +s1
+        c31.fill = water
+        gt_pin = openmc.Universe(name='Guide Tube', universe_id=3)
+        gt_pin.add_cells((c30, c31))
+
+        # Define fuel lattice
+        l100 = openmc.RectLattice(name='UO2 assembly', lattice_id=100)
+        l100.dimension = (17, 17)
+        l100.lower_left = (-10.71, -10.71)
+        l100.pitch = (1.26, 1.26)
+        l100.universes = [
+             [fuel_pin]*17,
+             [fuel_pin]*17,
+             [fuel_pin]*5 + [gt_pin] + [fuel_pin]*2 + [gt_pin]
+                + [fuel_pin]*2 + [gt_pin] + [fuel_pin]*5,
+             [fuel_pin]*3 + [gt_pin] + [fuel_pin]*9 + [gt_pin]
+                + [fuel_pin]*3,
+             [fuel_pin]*17,
+             [fuel_pin]*2 + [gt_pin] + [fuel_pin]*2 + [gt_pin]
+                + [fuel_pin]*2 + [gt_pin] + [fuel_pin]*2 + [gt_pin]
+                + [fuel_pin]*2 + [gt_pin] + [fuel_pin]*2,
+             [fuel_pin]*17,
+             [fuel_pin]*17,
+             [fuel_pin]*2 + [gt_pin] + [fuel_pin]*2 + [gt_pin]
+                + [fuel_pin]*2 + [fiss_chamber_pin] + [fuel_pin]*2 + [gt_pin]
+                + [fuel_pin]*2 + [gt_pin] + [fuel_pin]*2,
+             [fuel_pin]*17,
+             [fuel_pin]*17,
+             [fuel_pin]*2 + [gt_pin] + [fuel_pin]*2 + [gt_pin]
+                + [fuel_pin]*2 + [gt_pin] + [fuel_pin]*2 + [gt_pin]
+                + [fuel_pin]*2 + [gt_pin] + [fuel_pin]*2,
+             [fuel_pin]*17,
+             [fuel_pin]*3 + [gt_pin] + [fuel_pin]*9 + [gt_pin]
+                + [fuel_pin]*3,
+             [fuel_pin]*5 + [gt_pin] + [fuel_pin]*2 + [gt_pin]
+                + [fuel_pin]*2 + [gt_pin] + [fuel_pin]*5,
+             [fuel_pin]*17,
+             [fuel_pin]*17 ]
+
+        # Define assemblies.
+        fa = openmc.Universe(name='Fuel assembly', universe_id=10)
+        c100 = openmc.Cell(cell_id=110)
+        c100.region = +down & -up
+        c100.fill = l100
+        fa.add_cells((c100, ))
+
+        # Define core lattices
+        l200 = openmc.RectLattice(name='Core lattice', lattice_id=200)
+        l200.dimension = (1, 1)
+        l200.lower_left = (0.0, 0.0)
+        l200.pitch = (21.42, 21.42)
+        l200.universes = [[fa]]
+
+        # Define root universe.
+        root = openmc.Universe(universe_id=0, name='root universe')
+        c1 = openmc.Cell(cell_id=1)
+        c1.region = +left & -right & +bottom & -top & +down & -up
+        c1.fill = l200
+
+        root.add_cells((c1,))
+
+        # Define the geometry file.
+        geometry = openmc.Geometry()
+        geometry.root_universe = root
+
+        self.geometry.geometry = geometry
+
+
+    def build_default_settings(self):
+        self.settings.batches = 10
+        self.settings.inactive = 5
+        self.settings.particles = 100
+        self.settings.set_source_space('box', (0.0, 0.0, 0.0, 21.42, 21.42, 100.0))
+        self.settings.energy_mode = "multi-group"
+        self.settings.cross_sections = "../c5g7_mgxs.xml"
+
+    def build_defualt_plots(self):
+        plot = openmc.Plot()
+        plot.filename = 'mat'
+        plot.origin = (10.71, 10.71, 50.0)
+        plot.width = (21.42, 21.42)
+        plot.pixels = (3000, 3000)
+        plot.color = 'mat'
+
+        self.plots.add_plot(plot)
+
+
+
+
+

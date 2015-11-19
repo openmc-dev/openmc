@@ -882,17 +882,17 @@ class SettingsFile(object):
         if self.run_mode == 'eigenvalue':
             self._run_mode_subelement = \
                 ET.SubElement(self._settings_file, "eigenvalue")
-            self._create_batches_subelement()
-            self._create_generations_per_batch_subelement()
-            self._create_inactive_subelement()
             self._create_particles_subelement()
+            self._create_batches_subelement()
+            self._create_inactive_subelement()
+            self._create_generations_per_batch_subelement()
             self._create_keff_trigger_subelement()
         else:
             if self._run_mode_subelement is None:
                 self._run_mode_subelement = \
                     ET.SubElement(self._settings_file, "fixed_source")
-            self._create_batches_subelement()
             self._create_particles_subelement()
+            self._create_batches_subelement()
 
     def _create_batches_subelement(self):
         if self._batches is not None:

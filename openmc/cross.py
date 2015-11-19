@@ -356,7 +356,7 @@ class CrossFilter(object):
     def type(self, filter_type):
         if filter_type not in _FILTER_TYPES.values():
             msg = 'Unable to set Filter type to "{0}" since it is not one ' \
-                  'of the supported types'.format(type)
+                  'of the supported types'.format(filter_type)
             raise ValueError(msg)
 
         self._type = filter_type

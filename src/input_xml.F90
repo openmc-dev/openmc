@@ -4463,6 +4463,13 @@ contains
       else
         listing % zaid = -1
       end if
+      if (check_for_node(node_xsdata, "awr")) then
+        call get_node_value(node_xsdata, "awr", listing % awr)
+      else
+        ! Set to a default of 1; this allows a macroscopic library to still
+        ! be used with materials with atom/b-cm units for testing purposes
+        listing % awr = ONE
+      end if
       if (check_for_node(node_xsdata, "kT")) then
         call get_node_value(node_xsdata, "kT", listing % kT)
       else

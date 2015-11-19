@@ -653,18 +653,18 @@ contains
       mat => materials(i_mat)
 
       ! Check to see how our nuclides are represented
-      ! Assume all are the same type
-      ! Therefore type(nuclides(1) % obj) dictates type(macroxs)
+      ! Force all to be the same type
+      ! Therefore type(nuclides(mat % nuclide(1)) % obj) dictates type(macroxs)
       ! At the same time, we will find the scattering type, as that will dictate
       ! how we allocate the scatter object within macroxs
-      legendre_mu_points = nuclides_MG(1) % obj % legendre_mu_points
-      select type(nuc => nuclides_MG(1) % obj)
+      legendre_mu_points = nuclides_MG(mat % nuclide(1)) % obj % legendre_mu_points
+      select type(nuc => nuclides_MG(mat % nuclide(1)) % obj)
       type is (Nuclide_Iso)
         representation = ISOTROPIC
       type is (Nuclide_Angle)
         representation = ANGLE
       end select
-      scatt_type = nuclides_MG(1) % obj % scatt_type
+      scatt_type = nuclides_MG(mat % nuclide(1)) % obj % scatt_type
 
       ! Now allocate accordingly
       select case(representation)

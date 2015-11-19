@@ -2461,7 +2461,7 @@ class Tally(object):
             (e.g., ['U-235', 'U-238']; default is [])
         remove_filter : bool
             If a filter is being summed over, this bool indicates whether to
-            remove that filter in the returned tally.
+            remove that filter in the returned tally. Default is False.
 
         Returns
         -------

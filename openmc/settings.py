@@ -20,6 +20,8 @@ class SettingsFile(object):
 
     Attributes
     ----------
+    run_mode : {'eigenvalue' or 'fixed source'}
+        The type of calculation to perform (default is 'eigenvalue')
     batches : int
         Number of batches to simulate
     generations_per_batch : int
@@ -122,7 +124,9 @@ class SettingsFile(object):
     """
 
     def __init__(self):
-        # Eigenvalue subelement
+
+        # Run mode subelement (default is 'eigenvalue')
+        self._run_mode = 'eigenvalue'
         self._batches = None
         self._generations_per_batch = None
         self._inactive = None
@@ -196,8 +200,12 @@ class SettingsFile(object):
         self._dd_count_interactions = False
 
         self._settings_file = ET.Element("settings")
-        self._eigenvalue_subelement = None
+        self._run_mode_subelement = None
         self._source_element = None
+
+    @property
+    def run_mode(self):
+        return self._run_mode
 
     @property
     def batches(self):
@@ -398,6 +406,14 @@ class SettingsFile(object):
     @property
     def dd_count_interactions(self):
         return self._dd_count_interactions
+
+    @run_mode.setter
+    def run_mode(self, run_mode):
+        if not 'run_mode' in ['eigenvalue', 'fixed source']:
+            msg = 'Unable to set run mode to "{0}". Only "eigenvalue" ' \
+                  'and "fixed source" are supported."'.format(run_mode)
+            raise ValueError(msg)
+        self._run_mode = run_mode
 
     @batches.setter
     def batches(self, batches):
@@ -861,57 +877,47 @@ class SettingsFile(object):
 
         self._dd_count_interactions = interactions
 
-    def _create_eigenvalue_subelement(self):
-        self._create_particles_subelement()
-        self._create_batches_subelement()
-        self._create_inactive_subelement()
-        self._create_generations_per_batch_subelement()
-        self._create_keff_trigger_subelement()
+    def _create_run_mode_subelement(self):
+
+        if self.run_mode == 'eigenvalue':
+            self._run_mode_subelement = \
+                ET.SubElement(self._settings_file, "eigenvalue")
+            self._create_batches_subelement()
+            self._create_generations_per_batch_subelement()
+            self._create_inactive_subelement()
+            self._create_particles_subelement()
+            self._create_keff_trigger_subelement()
+        else:
+            if self._run_mode_subelement is None:
+                self._run_mode_subelement = \
+                    ET.SubElement(self._settings_file, "fixed_source")
+            self._create_batches_subelement()
+            self._create_particles_subelement()
 
     def _create_batches_subelement(self):
         if self._batches is not None:
-            if self._eigenvalue_subelement is None:
-                self._eigenvalue_subelement = ET.SubElement(self._settings_file,
-                                                         "eigenvalue")
-
-            element = ET.SubElement(self._eigenvalue_subelement, "batches")
+            element = ET.SubElement(self._run_mode_subelement, "batches")
             element.text = str(self._batches)
 
     def _create_generations_per_batch_subelement(self):
         if self._generations_per_batch is not None:
-            if self._eigenvalue_subelement is None:
-                self._eigenvalue_subelement = ET.SubElement(self._settings_file,
-                                                         "eigenvalue")
-
-            element = ET.SubElement(self._eigenvalue_subelement,
+            element = ET.SubElement(self._run_mode_subelement,
                                     "generations_per_batch")
             element.text = str(self._generations_per_batch)
 
     def _create_inactive_subelement(self):
         if self._inactive is not None:
-            if self._eigenvalue_subelement is None:
-                self._eigenvalue_subelement = ET.SubElement(self._settings_file,
-                                                         "eigenvalue")
-
-            element = ET.SubElement(self._eigenvalue_subelement, "inactive")
+            element = ET.SubElement(self._run_mode_subelement, "inactive")
             element.text = str(self._inactive)
 
     def _create_particles_subelement(self):
         if self._particles is not None:
-            if self._eigenvalue_subelement is None:
-                self._eigenvalue_subelement = ET.SubElement(self._settings_file,
-                                                         "eigenvalue")
-
-            element = ET.SubElement(self._eigenvalue_subelement, "particles")
+            element = ET.SubElement(self._run_mode_subelement, "particles")
             element.text = str(self._particles)
 
     def _create_keff_trigger_subelement(self):
         if self._keff_trigger is not None:
-            if self._eigenvalue_subelement is None:
-                self._eigenvalue_subelement = ET.SubElement(self._settings_file,
-                                                         "eigenvalue")
-
-            element = ET.SubElement(self._eigenvalue_subelement, "keff_trigger")
+            element = ET.SubElement(self._run_mode_subelement, "keff_trigger")
 
             for key in self._keff_trigger:
                 subelement = ET.SubElement(element, key)
@@ -1182,10 +1188,10 @@ class SettingsFile(object):
         self._settings_file.clear()
         self._source_subelement = None
         self._trigger_subelement = None
-        self._eigenvalue_subelement = None
+        self._run_mode_subelement = None
         self._source_element = None
 
-        self._create_eigenvalue_subelement()
+        self._create_run_mode_subelement()
         self._create_source_subelement()
         self._create_output_subelement()
         self._create_statepoint_subelement()

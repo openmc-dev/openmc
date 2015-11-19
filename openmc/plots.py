@@ -5,9 +5,9 @@ import sys
 
 import numpy as np
 
+import openmc
+import openmc.checkvalue as cv
 from openmc.clean_xml import *
-from openmc.checkvalue import (check_type, check_value, check_length,
-                               check_greater_than, check_less_than)
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -143,70 +143,70 @@ class Plot(object):
             self._id = AUTO_PLOT_ID
             AUTO_PLOT_ID += 1
         else:
-            check_type('plot ID', plot_id, Integral)
-            check_greater_than('plot ID', plot_id, 0, equality=True)
+            cv.check_type('plot ID', plot_id, Integral)
+            cv.check_greater_than('plot ID', plot_id, 0, equality=True)
             self._id = plot_id
 
     @name.setter
     def name(self, name):
-        check_type('plot name', name, basestring)
+        cv.check_type('plot name', name, basestring)
         self._name = name
 
     @width.setter
     def width(self, width):
-        check_type('plot width', width, Iterable, Real)
-        check_length('plot width', width, 2, 3)
+        cv.check_type('plot width', width, Iterable, Real)
+        cv.check_length('plot width', width, 2, 3)
         self._width = width
 
     @origin.setter
     def origin(self, origin):
-        check_type('plot origin', origin, Iterable, Real)
-        check_length('plot origin', origin, 3)
+        cv.check_type('plot origin', origin, Iterable, Real)
+        cv.check_length('plot origin', origin, 3)
         self._origin = origin
 
     @pixels.setter
     def pixels(self, pixels):
-        check_type('plot pixels', pixels, Iterable, Integral)
-        check_length('plot pixels', pixels, 2, 3)
+        cv.check_type('plot pixels', pixels, Iterable, Integral)
+        cv.check_length('plot pixels', pixels, 2, 3)
         for dim in pixels:
-            check_greater_than('plot pixels', dim, 0)
+            cv.check_greater_than('plot pixels', dim, 0)
         self._pixels = pixels
 
     @filename.setter
     def filename(self, filename):
-        check_type('filename', filename, basestring)
+        cv.check_type('filename', filename, basestring)
         self._filename = filename
 
     @color.setter
     def color(self, color):
-        check_type('plot color', color, basestring)
-        check_value('plot color', color, ['cell', 'mat'])
+        cv.check_type('plot color', color, basestring)
+        cv.check_value('plot color', color, ['cell', 'mat'])
         self._color = color
 
     @type.setter
     def type(self, plottype):
-        check_type('plot type', plottype, basestring)
-        check_value('plot type', plottype, ['slice', 'voxel'])
+        cv.check_type('plot type', plottype, basestring)
+        cv.check_value('plot type', plottype, ['slice', 'voxel'])
         self._type = plottype
 
     @basis.setter
     def basis(self, basis):
-        check_type('plot basis', basis, basestring)
-        check_value('plot basis', basis, ['xy', 'xz', 'yz'])
+        cv.check_type('plot basis', basis, basestring)
+        cv.check_value('plot basis', basis, ['xy', 'xz', 'yz'])
         self._basis = basis
 
     @background.setter
     def background(self, background):
-        check_type('plot background', background, Iterable, Integral)
-        check_length('plot background', background, 3)
+        cv.check_type('plot background', background, Iterable, Integral)
+        cv.check_length('plot background', background, 3)
         for rgb in background:
-            check_greater_than('plot background',rgb, 0, True)
-            check_less_than('plot background', rgb, 256)
+            cv.check_greater_than('plot background',rgb, 0, True)
+            cv.check_less_than('plot background', rgb, 256)
         self._background = background
 
     @col_spec.setter
     def col_spec(self, col_spec):
-        check_type('plot col_spec parameter', col_spec, dict, Integral)
+        cv.check_type('plot col_spec parameter', col_spec, dict, Integral)
 
         for key in col_spec:
             if key < 0:
@@ -229,18 +229,18 @@ class Plot(object):
 
     @mask_componenets.setter
     def mask_components(self, mask_components):
-        check_type('plot mask_components', mask_components, Iterable, Integral)
+        cv.check_type('plot mask_components', mask_components, Iterable, Integral)
         for component in mask_components:
-            check_greater_than('plot mask_components', component, 0, True)
+            cv.check_greater_than('plot mask_components', component, 0, True)
         self._mask_components = mask_components
 
     @mask_background.setter
     def mask_background(self, mask_background):
-        check_type('plot mask background', mask_background, Iterable, Integral)
-        check_length('plot mask background', mask_background, 3)
+        cv.check_type('plot mask background', mask_background, Iterable, Integral)
+        cv.check_length('plot mask background', mask_background, 3)
         for rgb in mask_background:
-            check_greater_than('plot mask background', rgb, 0, True)
-            check_less_than('plot mask background', rgb, 256)
+            cv.check_greater_than('plot mask background', rgb, 0, True)
+            cv.check_less_than('plot mask background', rgb, 256)
         self._mask_background = mask_background
 
     def __repr__(self):
@@ -260,6 +260,97 @@ class Plot(object):
                                             self._mask_background)
         string += '{0: <16}{1}{2}\n'.format('\tCol Spec', '=\t', self._col_spec)
         return string
+
+    def colorize(self, geometry, seed=1):
+        """Generate a color scheme for each domain in the plot.
+
+        This routine may be used to generate random, reproducible color schemes.
+        The colors generated are based upon cell/material IDs in the geometry.
+
+        Parameters
+        ----------
+        geometry : openmc.Geometry
+            The geometry for which the plot is defined
+        seed : Integral
+            The random number seed used to generate the color scheme
+
+        """
+        
+        cv.check_type('geometry', geometry, openmc.Geometry)
+        cv.check_type('seed', seed, Integral)
+        cv.check_greater_than('seed', seed, 1, equality=True)
+
+        # Get collections of the domains which will be plotted
+        if self.color is 'mat':
+            domains = geometry.get_all_materials()
+        else:
+            domains = geometry.get_all_cells()
+
+        # Set the seed for the random number generator
+        np.random.seed(seed)
+
+        # Generate random colors for each feature
+        self.col_spec = {}
+        for domain in domains:
+            r = np.random.randint(0, 256)
+            g = np.random.randint(0, 256)
+            b = np.random.randint(0, 256)
+            self.col_spec[domain] = (r, g, b)
+
+    def highlight_domains(self, geometry, domains, seed=1,
+                          alpha=0.5, background='gray'):
+        """Use alpha compositing to highlight one or more domains in the plot.
+
+        This routine generates a color scheme and applies alpha compositing
+        to make all domains except the highlighted ones appear partially
+        transparent.
+
+        Parameters
+        ----------
+        geometry : openmc.Geometry
+            The geometry for which the plot is defined
+        domains : Iterable of Integral
+            A collection of the domain IDs to highlight in the plot
+        seed : Integral
+            The random number seed used to generate the color scheme
+        alpha : Real in [0,1]
+            The value to apply in alpha compisiting
+        background : 3-tuple of Integral or 'white' or 'black' or 'gray'
+            The background color to apply in alpha compisiting
+
+        """
+
+        cv.check_iterable_type('domains', domains, Integral)
+        cv.check_type('alpha', alpha, Real)
+        cv.check_greater_than('alpha', alpha, 0., equality=True)
+        cv.check_less_than('alpha', alpha, 1., equality=True)
+
+        # Get a background (R,G,B) tuple to apply in alpha compositing
+        if isinstance(background, basestring):
+            if background == 'white':
+                background = (255, 255, 255)
+            elif background == 'black':
+                background = (0, 0, 0)
+            elif background == 'gray':
+                background = (160, 160, 160)
+            else:
+                msg = 'The background "{}" is not defined'.format(background)
+                raise ValueError(msg)
+
+        cv.check_iterable_type('background', background, Integral)
+
+        # Generate a color scheme
+        self.colorize(geometry, seed)
+
+        # Apply alpha compositing to the colors for all domains
+        # other than those the user wishes to highlight
+        for domain_id in self.col_spec:
+            if domain_id not in domains:
+                r, g, b = self.col_spec[domain_id]
+                r = int(((1-alpha) * background[0]) + (alpha * r))
+                g = int(((1-alpha) * background[1]) + (alpha * g))
+                b = int(((1-alpha) * background[2]) + (alpha * b))
+                self._col_spec[domain_id] = (r, g, b)
 
     def get_plot_xml(self):
         """Return XML representation of the plot
@@ -348,6 +439,51 @@ class PlotsFile(object):
         """
 
         self._plots.remove(plot)
+
+    def colorize(self, geometry, seed=1):
+        """Generate a consistent color scheme for each domain in each plot.
+
+        This routine may be used to generate random, reproducible color schemes.
+        The colors generated are based upon cell/material IDs in the geometry.
+        The color schemes will be consistent for all plots in "plots.xml".
+
+        Parameters
+        ----------
+        geometry : openmc.Geometry
+            The geometry for which the plots are defined
+        seed : Integral
+            The random number seed used to generate the color scheme
+
+        """
+
+        for plot in self._plots:
+            plot.colorize(geometry, seed)
+
+
+    def highlight_domains(self, geometry, domains, seed=1,
+                          alpha=0.5, background='gray'):
+        """Use alpha compositing to highlight one or more domains in the plot.
+
+        This routine generates a color scheme and applies alpha compositing
+        to make all domains except the highlighted ones partially transparent.
+
+        Parameters
+        ----------
+        geometry : openmc.Geometry
+            The geometry for which the plot is defined
+        domains : Iterable of Integral
+            A collection of the domain IDs to highlight in the plot
+        seed : Integral
+            The random number seed used to generate the color scheme
+        alpha : Real in [0,1]
+            The value to apply in alpha compisiting
+        background : 3-tuple of Integral or 'white' or 'black' or 'gray'
+            The background color to apply in alpha compisiting
+
+        """
+
+        for plot in self._plots:
+            plot.highlight_domains(geometry, domains, seed, alpha, background)
 
     def _create_plot_subelements(self):
         for plot in self._plots:

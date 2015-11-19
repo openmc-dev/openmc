@@ -1130,11 +1130,19 @@ contains
       nu = int(nu_t) + 1
     end if
 
-    ! Check for fission bank size getting hit
+    ! Check for bank size getting hit. For fixed source calculations, this is a
+    ! fatal error. For eigenvalue calculations, it just means that k-effective
+    ! was too high for a single batch.
     if (size_bank + nu > size(bank_array)) then
-      if (master) call warning("Maximum number of sites in fission bank &
-           &reached. This can result in irreproducible results using different &
-           &numbers of processes/threads.")
+      if (run_mode == MODE_FIXEDSOURCE) then
+        call fatal_error("Secondary particle bank size limit reached. If you &
+             &are running a subcritical multiplication problem, k-effective &
+             &may be too close to one.")
+      else
+        if (master) call warning("Maximum number of sites in fission bank &
+             &reached. This can result in irreproducible results using different &
+             &numbers of processes/threads.")
+      end if
     end if
 
     ! Bank source neutrons

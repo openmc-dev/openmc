@@ -2430,7 +2430,7 @@ class Tally(object):
         return new_tally
 
     def summation(self, scores=[], filter_type=None,
-                  filter_bins=[], nuclides=[]):
+                  filter_bins=[], nuclides=[], remove_filter=False):
         """Vectorized sum of tally data across scores, filter bins and/or
         nuclides using tally addition.
 
@@ -2459,19 +2459,15 @@ class Tally(object):
         nuclides : list of str
             A list of nuclide name strings to sum across
             (e.g., ['U-235', 'U-238']; default is [])
+        remove_filter : bool
+            If a filter is being summed over, this bool indicates whether to
+            remove that filter in the returned tally.
 
         Returns
         -------
         Tally
             A new tally which encapsulates the sum of data requested.
         """
-
-        # If user input filter type but no bins, sum across all bins and
-        # remove the filter
-        if filter_type in _FILTER_TYPES and len(filter_bins) == 0:
-            remove_filter = True
-        else:
-            remove_filter = False
 
         # If user did not specify any scores, do not sum across scores
         if len(scores) == 0:
@@ -2523,7 +2519,7 @@ class Tally(object):
 
         # Add back the filter(s) which were summed across to derived tally,
         # if filter bins were input; otherwise, leave out summed filter(s)
-        if remove_filter:
+        if remove_filter and filter_type is not None:
             # Rename tally sum indicating a summation over a particular filter
             tally_sum.name = 'sum({0}, {1})'.format(self.name, filter_type)
         else:

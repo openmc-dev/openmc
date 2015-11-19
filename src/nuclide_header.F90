@@ -543,8 +543,9 @@ module nuclide_header
       ! Basic nuclide information
       write(unit_,*) 'Nuclide ' // trim(this % name)
       if (this % zaid > 0) then
-        ! Dont print if data was macroscopic and thus zaid would be nonsense
+        ! Dont print if data was macroscopic and thus zaid & AWR would be nonsense
         write(unit_,*) '  zaid = ' // trim(to_str(this % zaid))
+        write(unit_,*) '  awr = ' // trim(to_str(this % awr))
       end if
       write(unit_,*) '  kT = ' // trim(to_str(this % kT))
       if (this % scatt_type == ANGLE_LEGENDRE) then

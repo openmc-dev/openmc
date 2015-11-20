@@ -1136,6 +1136,15 @@ Each ``material`` element can have the following attributes or sub-elements:
     .. note:: If one nuclide is specified in atom percent, all others must also
               be given in atom percent. The same applies for weight percentages.
 
+    An optional attribute/sub-element for each nuclide is ``scattering``. This
+    attribute may be set to "data" to use the scattering laws specified by the
+    cross section library (default). Alternatively, when set to "iso-in-lab",
+    the scattering laws are used to sample the outgoing energy but an
+    isotropic-in-lab  distribution is used to sample the outgoing angle at each
+    scattering interaction. The ``scattering`` attribute may be most useful
+    when using OpenMC to compute multi-group cross-sections for deterministic
+    transport codes and to quantify the effects of anisotropic scattering.
+
     *Default*: None
 
   :element:
@@ -1162,6 +1171,16 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+    An optional attribute/sub-element for each element is ``scattering``. This
+    attribute may be set to "data" to use the scattering laws specified by the
+    cross section library (default). Alternatively, when set to "iso-in-lab",
+    the scattering laws are used to sample the outgoing energy but an
+    isotropic-in-lab  distribution is used to sample the outgoing angle at each
+    scattering interaction. The ``scattering`` attribute may be most useful
+    when using OpenMC to compute multi-group cross-sections for deterministic
+    transport codes and to quantify the effects of anisotropic scattering.
+
+    *Default*: None
 
   :sab:
     Associates an S(a,b) table with the material. This element has
@@ -1488,7 +1507,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
     :inverse-velocity:
       The flux-weighted inverse velocity where the velocity is in units of
-      meters per second.
+      centimeters per second.
 
       .. note::
          The ``analog`` estimator is actually identical to the ``collision``

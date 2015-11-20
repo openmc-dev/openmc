@@ -7,7 +7,7 @@ module input_xml
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
   use global
-  use list_header,      only: ListChar, ListReal
+  use list_header,      only: ListChar, ListInt, ListReal
   use mesh_header,      only: RegularMesh
   use output,           only: write_message
   use plot_header
@@ -994,7 +994,7 @@ contains
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    character(MAX_LINE_LEN) :: region_spec
+    character(1000) :: region_spec
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
     class(Lattice), pointer :: lat
@@ -1759,8 +1759,10 @@ contains
 
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
+    integer :: k             ! loop index for elements
     integer :: n             ! number of nuclides
     integer :: n_sab         ! number of sab tables for a material
+    integer :: n_nuc_ele     ! number of nuclides in an element
     integer :: index_list    ! index in xs_listings array
     integer :: index_nuclide ! index in nuclides
     integer :: index_sab     ! index in sab_tables
@@ -1775,6 +1777,7 @@ contains
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
     type(ListChar) :: list_names   ! temporary list of nuclide names
     type(ListReal) :: list_density ! temporary list of nuclide densities
+    type(ListInt)  :: list_iso_lab ! temporary list of isotropic lab scatterers
     type(Material),    pointer :: mat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
@@ -1934,6 +1937,21 @@ contains
           end if
         end if
 
+        ! Check enforced isotropic lab scattering
+        if (check_for_node(node_nuc, "scattering")) then
+          call get_node_value(node_nuc, "scattering", temp_str)
+          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+            call list_iso_lab % append(1)
+          else if (adjustl(to_lower(temp_str)) == "data") then
+            call list_iso_lab % append(0)
+          else
+            call fatal_error("Scattering must be isotropic in lab or follow&
+                 & the ACE file data")
+          end if
+        else
+          call list_iso_lab % append(0)
+        end if
+
         ! store full name
         call get_node_value(node_nuc, "name", temp_str)
         if (check_for_node(node_nuc, "xs")) &
@@ -2005,6 +2023,9 @@ contains
                &element: " // trim(name))
         end if
 
+        ! Get current number of nuclides
+        n_nuc_ele = list_names % size()
+
         ! Expand element into naturally-occurring isotopes
         if (check_for_node(node_ele, "ao")) then
           call get_node_value(node_ele, "ao", temp_dble)
@@ -2014,6 +2035,29 @@ contains
           call fatal_error("The ability to expand a natural element based on &
                &weight percentage is not yet supported.")
         end if
+
+        ! Compute number of new nuclides from the natural element expansion
+        n_nuc_ele = list_names % size() - n_nuc_ele
+
+        ! Check enforced isotropic lab scattering
+        if (check_for_node(node_ele, "scattering")) then
+          call get_node_value(node_ele, "scattering", temp_str)
+        else
+          temp_str = "data"
+        end if
+
+        ! Set ace or iso-in-lab scattering for each nuclide in element
+        do k = 1, n_nuc_ele
+          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+            call list_iso_lab % append(1)
+          else if (adjustl(to_lower(temp_str)) == "data") then
+            call list_iso_lab % append(0)
+          else
+            call fatal_error("Scattering must be isotropic in lab or follow&
+                 & the ACE file data")
+          end if
+        end do
+
       end do NATURAL_ELEMENTS
 
       ! ========================================================================
@@ -2025,6 +2069,7 @@ contains
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
       allocate(mat % atom_density(n))
+      allocate(mat % p0(n))
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
@@ -2061,6 +2106,14 @@ contains
         ! Copy name and atom/weight percent
         mat % names(j) = name
         mat % atom_density(j) = list_density % get_item(j)
+
+        ! Cast integer isotropic lab scattering flag to boolean
+        if (list_iso_lab % get_item(j) == 1) then
+          mat % p0(j) = .true.
+        else
+          mat % p0(j) = .false.
+        end if
+
       end do ALL_NUCLIDES
 
       ! Check to make sure either all atom percents or all weight percents are
@@ -2077,6 +2130,7 @@ contains
       ! Clear lists
       call list_names % clear()
       call list_density % clear()
+      call list_iso_lab % clear()
 
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
@@ -4245,7 +4299,6 @@ contains
       call list_density % append(density * 0.999885_8)
       call list_names % append('1002.' // xs)
       call list_density % append(density * 0.000115_8)
-
     case ('he')
       call list_names % append('2003.' // xs)
       call list_density % append(density * 0.00000134_8)

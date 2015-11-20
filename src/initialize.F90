@@ -9,8 +9,7 @@ module initialize
   use distribcell,      only: prepare_distribcell, distribution_help
   use energy_grid,      only: logarithmic_grid, grid_method, unionized_grid
   use error,            only: fatal_error, warning
-  use geometry,         only: neighbor_lists, count_instance, calc_offsets,    &
-                              maximum_levels
+  use geometry,         only: neighbor_lists, maximum_levels
   use geometry_header,  only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                               &BASE_UNIVERSE
   use global
@@ -1060,124 +1059,5 @@ contains
     end if
 
   end subroutine allocate_banks
-
-!===============================================================================
-! ALLOCATE_OFFSETS determines the number of maps needed and allocates required
-! memory for distribcell offset tables
-!===============================================================================
-
-  recursive subroutine allocate_offsets(univ_list, counts, found)
-
-    integer, intent(out), allocatable     :: univ_list(:) ! Target offsets
-    integer, intent(out), allocatable     :: counts(:,:)  ! Target count
-    logical, intent(out), allocatable     :: found(:,:)   ! Target found
-
-    integer :: i, j, k, l, m                    ! Loop counters
-    type(SetInt)               :: cell_list     ! distribells to track
-    type(Universe),    pointer :: univ          ! pointer to universe
-    class(Lattice),    pointer :: lat           ! pointer to lattice
-    type(TallyObject), pointer :: t             ! pointer to tally
-    type(TallyFilter), pointer :: filter        ! pointer to filter
-
-    ! Begin gathering list of cells in distribcell tallies
-    n_maps = 0
-
-    ! Populate list of distribcells to track
-    do i = 1, n_tallies
-      t => tallies(i)
-
-      do j = 1, t%n_filters
-        filter => t%filters(j)
-
-        if (filter%type == FILTER_DISTRIBCELL) then
-          if (.not. cell_list%contains(filter%int_bins(1))) then
-            call cell_list%add(filter%int_bins(1))
-          end if
-        end if
-
-      end do
-    end do
-
-    ! Compute the number of unique universes containing these distribcells
-    ! to determine the number of offset tables to allocate
-    do i = 1, n_universes
-      univ => universes(i)
-      do j = 1, univ%n_cells
-        if (cell_list%contains(univ%cells(j))) then
-          n_maps = n_maps + 1
-        end if
-      end do
-    end do
-
-    ! Allocate the list of offset tables for each unique universe
-    allocate(univ_list(n_maps))
-
-    ! Allocate list to accumulate target distribccell counts in each universe
-    allocate(counts(n_universes, n_maps))
-
-    ! Allocate list to track if target distribcells are found in each universe
-    allocate(found(n_universes, n_maps))
-
-    counts(:,:) = 0
-    found(:,:) = .false.
-    k = 1
-
-    do i = 1, n_universes
-      univ => universes(i)
-
-      do j = 1, univ%n_cells
-
-        if (cell_list%contains(univ%cells(j))) then
-
-            ! Loop over all tallies
-            do l = 1, n_tallies
-              t => tallies(l)
-
-              do m = 1, t%n_filters
-                filter => t%filters(m)
-
-                ! Loop over only distribcell filters
-                ! If filter points to cell we just found, set offset index
-                if (filter%type == FILTER_DISTRIBCELL) then
-                  if (filter%int_bins(1) == univ%cells(j)) then
-                    filter%offset = k
-                  end if
-                end if
-
-              end do
-            end do
-
-          univ_list(k) = univ%id
-          k = k + 1
-        end if
-      end do
-    end do
-
-    ! Allocate the offset tables for lattices
-    do i = 1, n_lattices
-      lat => lattices(i)%obj
-
-      select type(lat)
-
-      type is (RectLattice)
-        allocate(lat%offset(n_maps, lat%n_cells(1), lat%n_cells(2), &
-                 lat%n_cells(3)))
-      type is (HexLattice)
-        allocate(lat%offset(n_maps, 2 * lat%n_rings - 1, &
-             2 * lat%n_rings - 1, lat%n_axial))
-      end select
-
-      lat%offset(:, :, :, :) = 0
-
-    end do
-
-    ! Allocate offset table for fill cells
-    do i = 1, n_cells
-      if (cells(i)%material == NONE) then
-        allocate(cells(i)%offset(n_maps))
-      end if
-    end do
-
-  end subroutine allocate_offsets
 
 end module initialize

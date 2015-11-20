@@ -29,7 +29,9 @@ contains
     integer                    :: j           ! coordinate level index
     integer                    :: n_coord     ! saved number of coordinate levels
 
-    integer                   :: offset
+    integer                    :: offset
+    integer                    :: i_xyz(3)    ! indices in lattice
+    class(Lattice),   pointer  :: lat
 
     instance = NO_BIN_FOUND
 
@@ -40,9 +42,17 @@ contains
       if (cells(p % coord(j) % cell) % type == CELL_FILL) then
         offset = offset + cells(p % coord(j) % cell) % offset(map_num)
       elseif (cells(p % coord(j) % cell) % type == CELL_LATTICE) then
-        offset = offset + lattices(p % coord(j + 1) % lattice) % obj % &
-             offset(map_num, p % coord(j + 1) % lattice_x, &
-                    p % coord(j + 1) % lattice_y, p % coord(j + 1) % lattice_z)
+        i_xyz(1) = p % coord(j + 1) % lattice_x 
+        i_xyz(2) = p % coord(j + 1) % lattice_y 
+        i_xyz(3) = p % coord(j + 1) % lattice_z
+        lat => lattices(p % coord(j + 1) % lattice) % obj
+        if (lat % are_valid_indices(i_xyz)) then
+          ! Particle is inside the lattice.
+          offset = offset + lat % offset(map_num, i_xyz(1), i_xyz(2), i_xyz(3))
+        else
+          ! Particle is outside the lattice.
+          ! offset = offset + cells(p % coord(j) % cell) % offset(map_num)
+        end if
       elseif (p % coord(j) % cell == target_cell) then
         instance = offset + 1
         exit

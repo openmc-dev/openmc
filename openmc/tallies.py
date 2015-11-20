@@ -1494,11 +1494,11 @@ class Tally(object):
 
             # If necessary, swap self filter
             if self_filter != filter:
-                self = self.swap_filters(filter, self_filter)
+                self.swap_filters(filter, self_filter, inline=True)
 
             # If necessary, swap other filter
             if other_filter != filter:
-                other = other.swap_filters(filter, other_filter)
+                other.swap_filters(filter, other_filter, inline=True)
 
         data = self._align_tally_data(other)
 
@@ -1729,7 +1729,7 @@ class Tally(object):
         data['other']['std. dev.'] = other_std_dev
         return data
 
-    def swap_filters(self, filter1, filter2):
+    def swap_filters(self, filter1, filter2, inline=False):
         """Reverse the ordering of two filters in this tally
 
         This is a helper method for tally arithmetic which helps align the data
@@ -1744,10 +1744,14 @@ class Tally(object):
         filter2 : Filter
             The filter to swap with filter1
 
+        inline : bool, optional
+            Whether to inline operator or return new tally with swapped filters.
+
         Returns
         -------
         swap_tally
-            A copy of this tally with the filters swapped
+            If inline is true, a copy of this tally with the filters swapped.
+            Otherwise, nothing is returned.
 
         Raises
         ------
@@ -1778,7 +1782,15 @@ class Tally(object):
                   'does not contain such a filter'.format(filter2.type, self.id)
             raise ValueError(msg)
 
-        swap_tally = copy.deepcopy(self)
+        # Create a copy of the tally that preserves the original data formatting
+        # throughout swapping process
+        tally_copy = copy.deepcopy(self)
+
+        # Set the swap tally
+        if inline:
+            swap_tally = self
+        else:
+            swap_tally = copy.deepcopy(self)
 
         # Swap the filters in the copied version of this Tally
         filter1_index = swap_tally.filters.index(filter1)
@@ -1808,8 +1820,8 @@ class Tally(object):
         if self.sum is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='sum')
+                data = tally_copy.get_values(
+                    filters=filters, filter_bins=filter_bins, value='sum')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally.sum[indices, :, :] = data
 
@@ -1817,8 +1829,8 @@ class Tally(object):
         if self.sum_sq is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='sum_sq')
+                data = tally_copy.get_values(
+                    filters=filters, filter_bins=filter_bins, value='sum_sq')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally.sum_sq[indices, :, :] = data
 
@@ -1826,8 +1838,8 @@ class Tally(object):
         if self.mean is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='mean')
+                data = tally_copy.get_values(
+                    filters=filters, filter_bins=filter_bins, value='mean')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally._mean[indices, :, :] = data
 
@@ -1835,12 +1847,13 @@ class Tally(object):
         if self.std_dev is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='std_dev')
+                data = tally_copy.get_values(
+                    filters=filters, filter_bins=filter_bins, value='std_dev')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally._std_dev[indices, :, :] = data
 
-        return swap_tally
+        if not inline:
+            return swap_tally
 
     def __add__(self, other):
         """Adds this tally to another tally or scalar value.

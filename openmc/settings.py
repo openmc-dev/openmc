@@ -409,7 +409,7 @@ class SettingsFile(object):
 
     @run_mode.setter
     def run_mode(self, run_mode):
-        if not 'run_mode' in ['eigenvalue', 'fixed source']:
+        if 'run_mode' not in ['eigenvalue', 'fixed source']:
             msg = 'Unable to set run mode to "{0}". Only "eigenvalue" ' \
                   'and "fixed source" are supported."'.format(run_mode)
             raise ValueError(msg)

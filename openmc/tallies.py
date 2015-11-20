@@ -1482,25 +1482,30 @@ class Tally(object):
             new_name = '({0} {1} {2})'.format(self.name, binary_op, other.name)
             new_tally.name = new_name
 
+        # Create copies of self and other tallies to rearrange for tally
+        # arithmetic
+        self_copy = copy.deepcopy(self)
+        other_copy = copy.deepcopy(other)
+
         # Find any shared filters between the two tallies
-        self_filters = set(self.filters)
-        other_filters = set(other.filters)
+        self_filters = set(self_copy.filters)
+        other_filters = set(other_copy.filters)
         filter_intersect = self_filters.intersection(other_filters)
 
         # Align the shared filters in successive order
         for i, filter in enumerate(filter_intersect):
-            self_filter = self.filters[i]
-            other_filter = other.filters[i]
+            self_index = self_copy.filters.index(filter)
+            other_index = other_copy.filters.index(filter)
 
             # If necessary, swap self filter
-            if self_filter != filter:
-                self.swap_filters(filter, self_filter, inline=True)
+            if self_index != i:
+                self_copy.swap_filters(filter, self_copy.filters[i], inline=True)
 
             # If necessary, swap other filter
-            if other_filter != filter:
-                other.swap_filters(filter, other_filter, inline=True)
+            if other_index != i:
+                other_copy.swap_filters(filter, other_copy.filters[i], inline=True)
 
-        data = self._align_tally_data(other)
+        data = self_copy._align_tally_data(other_copy)
 
         if binary_op == '+':
             new_tally._mean = data['self']['mean'] + data['other']['mean']
@@ -1531,16 +1536,16 @@ class Tally(object):
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(first_term**2 + second_term**2)
 
-        if self.estimator == other.estimator:
-            new_tally.estimator = self.estimator
-        if self.with_summary and other.with_summary:
-            new_tally.with_summary = self.with_summary
-        if self.num_realizations == other.num_realizations:
-            new_tally.num_realizations = self.num_realizations
+        if self_copy.estimator == other_copy.estimator:
+            new_tally.estimator = self_copy.estimator
+        if self_copy.with_summary and other_copy.with_summary:
+            new_tally.with_summary = self_copy.with_summary
+        if self_copy.num_realizations == other_copy.num_realizations:
+            new_tally.num_realizations = self_copy.num_realizations
 
         # If filters are identical, simply reuse them in derived tally
-        if self.filters == other.filters:
-            for self_filter in self.filters:
+        if self_copy.filters == other_copy.filters:
+            for self_filter in self_copy.filters:
                 new_tally.add_filter(self_filter)
 
         # Generate filter "outer products" for non-identical filters
@@ -1548,24 +1553,24 @@ class Tally(object):
 
             # Find the common longest sequence of shared filters
             match = 0
-            for self_filter, other_filter in zip(self.filters, other.filters):
+            for self_filter, other_filter in zip(self_copy.filters, other_copy.filters):
                 if self_filter == other_filter:
                     match += 1
                 else:
                     break
 
-            match_filters = self.filters[:match]
-            cross_filters = [self.filters[match:], other.filters[match:]]
+            match_filters = self_copy.filters[:match]
+            cross_filters = [self_copy.filters[match:], other_copy.filters[match:]]
 
             # Simply reuse shared filters in derived tally
             for filter in match_filters:
                 new_tally.add_filter(filter)
 
             # Use cross filters to combine non-shared filters in derived tally
-            if len(self.filters) != match and len(other.filters) == match:
+            if len(self_copy.filters) != match and len(other_copy.filters) == match:
                 for filter in cross_filters[0]:
                     new_tally.add_filter(filter)
-            elif len(self.filters) == match and len(other.filters) != match:
+            elif len(self_copy.filters) == match and len(other_copy.filters) != match:
                 for filter in cross_filters[1]:
                     new_tally.add_filter(filter)
             else:
@@ -1574,23 +1579,23 @@ class Tally(object):
                     new_tally.add_filter(new_filter)
 
         # Generate score "outer products"
-        if self.scores == other.scores:
-            new_tally.num_score_bins = self.num_score_bins
-            for self_score in self.scores:
+        if self_copy.scores == other_copy.scores:
+            new_tally.num_score_bins = self_copy.num_score_bins
+            for self_score in self_copy.scores:
                 new_tally.add_score(self_score)
         else:
-            new_tally.num_score_bins = self.num_score_bins * other.num_score_bins
-            all_scores = [self.scores, other.scores]
+            new_tally.num_score_bins = self_copy.num_score_bins * other_copy.num_score_bins
+            all_scores = [self_copy.scores, other_copy.scores]
             for self_score, other_score in itertools.product(*all_scores):
                 new_score = CrossScore(self_score, other_score, binary_op)
                 new_tally.add_score(new_score)
 
         # Generate nuclide "outer products"
-        if self.nuclides == other.nuclides:
-            for self_nuclide in self.nuclides:
+        if self_copy.nuclides == other_copy.nuclides:
+            for self_nuclide in self_copy.nuclides:
                 new_tally.nuclides.append(self_nuclide)
         else:
-            all_nuclides = [self.nuclides, other.nuclides]
+            all_nuclides = [self_copy.nuclides, other_copy.nuclides]
             for self_nuclide, other_nuclide in itertools.product(*all_nuclides):
                 new_nuclide = CrossNuclide(self_nuclide, other_nuclide, binary_op)
                 new_tally.add_nuclide(new_nuclide)
@@ -1750,7 +1755,7 @@ class Tally(object):
         Returns
         -------
         swap_tally
-            If inline is true, a copy of this tally with the filters swapped.
+            If inline is false, a copy of this tally with the filters swapped.
             Otherwise, nothing is returned.
 
         Raises
@@ -1817,7 +1822,7 @@ class Tally(object):
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
         # Adjust the sum data array to relect the new filter order
-        if self.sum is not None:
+        if swap_tally.sum is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
                 data = tally_copy.get_values(
@@ -1826,7 +1831,7 @@ class Tally(object):
                 swap_tally.sum[indices, :, :] = data
 
         # Adjust the sum_sq data array to relect the new filter order
-        if self.sum_sq is not None:
+        if swap_tally.sum_sq is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
                 data = tally_copy.get_values(
@@ -1835,7 +1840,7 @@ class Tally(object):
                 swap_tally.sum_sq[indices, :, :] = data
 
         # Adjust the mean data array to relect the new filter order
-        if self.mean is not None:
+        if swap_tally.mean is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
                 data = tally_copy.get_values(
@@ -1844,7 +1849,7 @@ class Tally(object):
                 swap_tally._mean[indices, :, :] = data
 
         # Adjust the std_dev data array to relect the new filter order
-        if self.std_dev is not None:
+        if swap_tally.std_dev is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
                 data = tally_copy.get_values(

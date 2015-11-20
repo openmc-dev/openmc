@@ -309,7 +309,7 @@ class CrossFilter(object):
             clone._right_filter = self.right_filter
             clone._binary_op = self.binary_op
             clone._type = self.type
-            clone._bins = self.bins
+            clone._bins = self._bins
             clone._num_bins = self.num_bins
             clone._stride = self.stride
 

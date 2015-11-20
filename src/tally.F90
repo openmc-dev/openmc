@@ -2548,6 +2548,9 @@ contains
           else
             matching_bins(i) = p % last_g
           end if
+          ! Tallies are ordered in increasing groups, group indices
+          ! however are the opposite, so switch
+          matching_bins(i) = energy_groups - matching_bins(i) + 1
         else
           ! make sure the correct energy is used
           if (t % estimator == ESTIMATOR_TRACKLENGTH) then
@@ -2573,6 +2576,10 @@ contains
         if (t % energyout_matches_groups) then
           ! Since all groups are filters, the filter bin is the group
           matching_bins(i) = p % g
+
+          ! Tallies are ordered in increasing groups, group indices
+          ! however are the opposite, so switch
+          matching_bins(i) = energy_groups - matching_bins(i) + 1
         else
           ! determine outgoing energy bin
           n = t % filters(i) % n_bins

@@ -17,8 +17,8 @@ contains
 
   pure function nu_total(nuc, E) result(nu)
     type(Nuclide), intent(in) :: nuc ! nuclide from which to find nu
-    real(8), intent(in)    :: E   ! energy of incoming neutron
-    real(8)                :: nu  ! number of total neutrons emitted per fission
+    real(8),       intent(in) :: E   ! energy of incoming neutron
+    real(8)                   :: nu  ! number of total neutrons emitted per fission
 
     integer :: i  ! loop index
     integer :: NC ! number of polynomial coefficients
@@ -50,8 +50,8 @@ contains
 
   pure function nu_prompt(nuc, E) result(nu)
     type(Nuclide), intent(in) :: nuc ! nuclide from which to find nu
-    real(8), intent(in) :: E   ! energy of incoming neutron
-    real(8) :: nu  ! number of prompt neutrons emitted per fission
+    real(8),       intent(in) :: E   ! energy of incoming neutron
+    real(8)                   :: nu  ! number of prompt neutrons emitted per fission
 
     integer :: i  ! loop index
     integer :: NC ! number of polynomial coefficients
@@ -87,7 +87,7 @@ contains
 
   pure function nu_delayed(nuc, E) result(nu)
     type(Nuclide), intent(in) :: nuc ! nuclide from which to find nu
-    real(8), intent(in)       :: E   ! energy of incoming neutron
+    real(8),       intent(in) :: E   ! energy of incoming neutron
     real(8)                   :: nu  ! number of delayed neutrons emitted per fission
 
     if (nuc % nu_d_type == NU_NONE) then

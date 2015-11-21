@@ -733,13 +733,13 @@ contains
     ! sigma array is not allocated or stored for elastic scattering since it is
     ! already stored in nuc % elastic
     associate (rxn => nuc % reactions(1))
-      rxn % MT            = 2
-      rxn % Q_value       = ZERO
-      rxn % multiplicity  = 1
-      rxn % threshold     = 1
-      rxn % scatter_in_cm = .true.
-      rxn % has_angle_dist = .false.
-      rxn % has_energy_dist = .false.
+      rxn%MT            = 2
+      rxn%Q_value       = ZERO
+      rxn%multiplicity  = 1
+      rxn%threshold     = 1
+      rxn%scatter_in_cm = .true.
+      rxn%has_angle_dist = .false.
+      rxn%has_energy_dist = .false.
     end associate
 
     ! Add contribution of elastic scattering to total cross section
@@ -1013,8 +1013,8 @@ contains
 
   recursive subroutine get_energy_dist(edist, loc_law, delayed_n)
     type(DistEnergy), intent(inout) :: edist     ! energy distribution
-    integer, intent(in) :: loc_law   ! locator for data
-    logical, intent(in), optional :: delayed_n ! is this for delayed neutrons?
+    integer, intent(in)             :: loc_law   ! locator for data
+    logical, intent(in), optional   :: delayed_n ! is this for delayed neutrons?
 
     integer :: LDIS   ! location of all energy distributions
     integer :: LNW    ! location of next energy distribution if multiple

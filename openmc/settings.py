@@ -953,6 +953,16 @@ class SettingsFile(object):
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(self._keff_trigger[key]).lower()
 
+    def _create_energy_mode_subelement(self):
+        if self._energy_mode is not None:
+            element = ET.SubElement(self._settings_file, "energy_mode")
+            element.text = str(self._energy_mode)
+
+    def _create_max_order_subelement(self):
+        if self._max_order is not None:
+            element = ET.SubElement(self._settings_file, "max_order")
+            element.text = str(self._max_order)
+
     def _create_source_subelement(self):
         self._create_source_space_subelement()
         self._create_source_energy_subelement()

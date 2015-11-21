@@ -66,6 +66,7 @@ contains
     real(8) :: macro_scatt          ! material macro scatt xs
     real(8) :: uvw(3)               ! particle direction
     real(8) :: E                    ! particle energy
+    logical :: scoring_diff_nuclide
     type(Material),    pointer :: mat
     type(Reaction),    pointer :: rxn
     type(Nuclide),     pointer :: nuc
@@ -762,36 +763,87 @@ contains
       !#########################################################################
       ! Add derivative information on score for differential tallies.
 
-      if (allocated(t % deriv) .and. t % estimator == ESTIMATOR_COLLISION) then
-        select case (score_bin)
+      if (allocated(t % deriv)) then
+        select case (t % estimator)
 
-        case (SCORE_FLUX)
+        case (ESTIMATOR_ANALOG)
           score = score * t % deriv % accumulator
 
-        case (SCORE_KEFF)
-          select case (t % deriv % dep_var)
-
-          case (DIFF_DENSITY)
-            score = score * t % deriv % accumulator
-
-          case (DIFF_NUCLIDE_DENSITY)
+        case (ESTIMATOR_COLLISION)
+          if (t % deriv % dep_var == DIFF_NUCLIDE_DENSITY) then
             mat => materials(p % material)
-            if (mat % id == t % deriv % diff_material .and. &
-                 micro_xs(t % deriv % diff_nuclide) % nu_fission /= ZERO) then
+            scoring_diff_nuclide = (mat % id == t % deriv % diff_material) &
+                 .and. (i_nuclide <= 0 &
+                        .or. (i_nuclide == t % deriv % diff_nuclide))
+            select case (score_bin)
+            case (SCORE_ABSORPTION)
+                scoring_diff_nuclide = scoring_diff_nuclide .and. &
+                     micro_xs(t % deriv % diff_nuclide) % absorption /= ZERO
+            case (SCORE_FISSION)
+                scoring_diff_nuclide = scoring_diff_nuclide .and. &
+                     micro_xs(t % deriv % diff_nuclide) % fission /= ZERO
+            case (SCORE_NU_FISSION)
+                scoring_diff_nuclide = scoring_diff_nuclide .and. &
+                     micro_xs(t % deriv % diff_nuclide) % nu_fission /= ZERO
+            case (SCORE_KAPPA_FISSION)
+                scoring_diff_nuclide = scoring_diff_nuclide .and. &
+                     micro_xs(t % deriv % diff_nuclide) % kappa_fission &
+                     /= ZERO
+            case (SCORE_KEFF)
+                scoring_diff_nuclide = scoring_diff_nuclide .and. &
+                     micro_xs(t % deriv % diff_nuclide) % nu_fission /= ZERO
+            end select
+
+            if (scoring_diff_nuclide) then
               do l = 1, mat % n_nuclides
                 if (mat % nuclide(l) == t % deriv % diff_nuclide) exit
               end do
-              score = score * (t % deriv % accumulator + ONE &
-                   / mat % atom_density(l))
-            else
-              score = score * t % deriv % accumulator
             end if
+          end if
 
+          select case (score_bin)
+
+          case (SCORE_FLUX)
+            score = score * t % deriv % accumulator
+
+          case (SCORE_ABSORPTION, SCORE_FISSION, SCORE_NU_FISSION, &
+                SCORE_KAPPA_FISSION)
+            select case (t % deriv % dep_var)
+
+            case (DIFF_NUCLIDE_DENSITY)
+              if (scoring_diff_nuclide) then
+                score = score * (t % deriv % accumulator + ONE &
+                     / mat % atom_density(l))
+              else
+                score = score * t % deriv % accumulator
+              end if
+
+            end select
+
+          case (SCORE_KEFF)
+            select case (t % deriv % dep_var)
+
+            case (DIFF_DENSITY)
+              score = score * t % deriv % accumulator
+
+            case (DIFF_NUCLIDE_DENSITY)
+              if (scoring_diff_nuclide) then
+                score = score * (t % deriv % accumulator + ONE &
+                     / mat % atom_density(l))
+              else
+                score = score * t % deriv % accumulator
+              end if
+
+            end select
+
+          case default
+            call fatal_error('Tally derivative not defined for a score on &
+                 &tally ' // trim(to_str(t % id)))
           end select
 
         case default
-          call fatal_error('Tally derivative not defined for a score on tally '&
-               // trim(to_str(t % id)))
+            call fatal_error("Differential tallies are only implemented for &
+                 &analog and collision estimators.")
         end select
       end if
 
@@ -1090,6 +1142,9 @@ contains
     do k = 1, p % n_bank
       ! determine score based on bank site weight and keff
       score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
+
+      ! Add derivative information for differenetial tallies.
+      if (allocated(t % deriv)) score = score * t % deriv % accumulator
 
       ! determine outgoing energy from fission bank
       E_out = fission_bank(n_bank - p % n_bank + k) % E

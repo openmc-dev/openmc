@@ -15,18 +15,17 @@ contains
 ! given nuclide and incoming neutron energy
 !===============================================================================
 
-  function nu_total(nuc, E) result(nu)
-
-    type(Nuclide), pointer :: nuc ! nuclide from which to find nu
-    real(8), intent(in)    :: E   ! energy of incoming neutron
-    real(8)                :: nu  ! number of total neutrons emitted per fission
+  pure function nu_total(nuc, E) result(nu)
+    type(Nuclide), intent(in) :: nuc ! nuclide from which to find nu
+    real(8),       intent(in) :: E   ! energy of incoming neutron
+    real(8)                   :: nu  ! number of total neutrons emitted per fission
 
     integer :: i  ! loop index
     integer :: NC ! number of polynomial coefficients
     real(8) :: c  ! polynomial coefficient
 
     if (nuc % nu_t_type == NU_NONE) then
-      call fatal_error("No neutron emission data for table: " // nuc % name)
+      nu = ERROR_REAL
     elseif (nuc % nu_t_type == NU_POLYNOMIAL) then
       ! determine number of coefficients
       NC = int(nuc % nu_t_data(1))
@@ -49,11 +48,10 @@ contains
 ! for a given nuclide and incoming neutron energy
 !===============================================================================
 
-  function nu_prompt(nuc, E) result(nu)
-
-    type(Nuclide), pointer :: nuc ! nuclide from which to find nu
-    real(8), intent(in)    :: E   ! energy of incoming neutron
-    real(8)                :: nu  ! number of prompt neutrons emitted per fission
+  pure function nu_prompt(nuc, E) result(nu)
+    type(Nuclide), intent(in) :: nuc ! nuclide from which to find nu
+    real(8),       intent(in) :: E   ! energy of incoming neutron
+    real(8)                   :: nu  ! number of prompt neutrons emitted per fission
 
     integer :: i  ! loop index
     integer :: NC ! number of polynomial coefficients
@@ -87,10 +85,9 @@ contains
 ! for a given nuclide and incoming neutron energy
 !===============================================================================
 
-  function nu_delayed(nuc, E) result(nu)
-
+  pure function nu_delayed(nuc, E) result(nu)
     type(Nuclide), intent(in) :: nuc ! nuclide from which to find nu
-    real(8), intent(in)       :: E   ! energy of incoming neutron
+    real(8),       intent(in) :: E   ! energy of incoming neutron
     real(8)                   :: nu  ! number of delayed neutrons emitted per fission
 
     if (nuc % nu_d_type == NU_NONE) then
@@ -111,8 +108,7 @@ contains
 ! a given nuclide and incoming neutron energy in a given delayed group.
 !===============================================================================
 
-  function yield_delayed(nuc, E, g) result(yield)
-
+  pure function yield_delayed(nuc, E, g) result(yield)
     type(Nuclide), intent(in) :: nuc   ! nuclide from which to find nu
     real(8), intent(in)       :: E     ! energy of incoming neutron
     real(8)                   :: yield ! delayed neutron precursor yield

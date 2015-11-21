@@ -1,8 +1,9 @@
 module ace_header
 
-  use constants,     only: MAX_FILE_LEN, ZERO
-  use endf_header,   only: Tab1
-  use list_header,   only: ListInt
+  use constants,   only: MAX_FILE_LEN, ZERO
+  use dict_header, only: DictIntInt
+  use endf_header, only: Tab1
+  use stl_vector,  only: VectorInt
 
   implicit none
 
@@ -17,10 +18,6 @@ module ace_header
     integer, allocatable :: type(:)     ! type of distribution
     integer, allocatable :: location(:) ! location of each table
     real(8), allocatable :: data(:)     ! angular distribution data
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => distangle_clear ! Deallocates DistAngle
   end type DistAngle
 
 !===============================================================================
@@ -51,7 +48,7 @@ module ace_header
     integer :: MT                      ! ENDF MT value
     real(8) :: Q_value                 ! Reaction Q value
     integer :: multiplicity            ! Number of secondary particles released
-    type(Tab1), pointer :: multiplicity_E => null() ! Energy-dependent neutron yield
+    type(Tab1), allocatable :: multiplicity_E ! Energy-dependent neutron yield
     integer :: threshold               ! Energy grid index of threshold
     logical :: scatter_in_cm           ! scattering system in center-of-mass?
     logical :: multiplicity_with_E = .false. ! Flag to indicate E-dependent multiplicity
@@ -79,26 +76,9 @@ module ace_header
     logical :: multiply_smooth ! multiply by smooth cross section?
     real(8), allocatable :: energy(:)   ! incident energies
     real(8), allocatable :: prob(:,:,:) ! actual probabibility tables
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => urrdata_clear ! Deallocates UrrData
   end type UrrData
 
   contains
-
-!===============================================================================
-! DISTANGLE_CLEAR resets and deallocates data in Reaction.
-!===============================================================================
-
-    subroutine distangle_clear(this)
-
-      class(DistAngle), intent(inout) :: this ! The DistAngle object to clear
-
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % type, this % location, this % data)
-
-    end subroutine distangle_clear
 
 !===============================================================================
 ! DISTENERGY_CLEAR resets and deallocates data in DistEnergy.
@@ -107,12 +87,6 @@ module ace_header
     recursive subroutine distenergy_clear(this)
 
       class(DistEnergy), intent(inout) :: this ! The DistEnergy object to clear
-
-      ! Clear p_valid
-      call this % p_valid % clear()
-
-      if (allocated(this % data)) &
-           deallocate(this % data)
 
       if (associated(this % next)) then
         ! recursively clear this item
@@ -130,31 +104,11 @@ module ace_header
 
       class(Reaction), intent(inout) :: this ! The Reaction object to clear
 
-      if (allocated(this % sigma)) deallocate(this % sigma)
-
-      if (associated(this % multiplicity_E)) deallocate(this % multiplicity_E)
-
       if (associated(this % edist)) then
         call this % edist % clear()
         deallocate(this % edist)
       end if
 
-      call this % adist % clear()
-
     end subroutine reaction_clear
-
-!===============================================================================
-! URRDATA_CLEAR resets and deallocates data in Reaction.
-!===============================================================================
-
-    subroutine urrdata_clear(this)
-
-      class(UrrData), intent(inout) :: this ! The UrrData object to clear
-
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % prob)
-
-    end subroutine urrdata_clear
-
 
 end module ace_header

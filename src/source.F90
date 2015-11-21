@@ -97,8 +97,7 @@ contains
 !===============================================================================
 
   subroutine sample_external_source(site)
-
-    type(Bank), pointer :: site ! source site
+    type(Bank), intent(inout) :: site ! source site
 
     integer :: i          ! dummy loop index
     real(8) :: r(3)       ! sampled coordinates

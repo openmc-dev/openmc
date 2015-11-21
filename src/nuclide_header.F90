@@ -26,7 +26,7 @@ module nuclide_header
     real(8)       :: kT      ! temperature in MeV (k*T)
 
     ! Linked list of indices in nuclides array of instances of this same nuclide
-    type(ListInt) :: nuc_list
+    type(VectorInt) :: nuc_list
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -37,6 +37,12 @@ module nuclide_header
   end type Nuclide_Base
 
   abstract interface
+
+    subroutine nuclide_base_clear_(this)
+      import Nuclide_Base
+      class(Nuclide_Base), intent(inout) :: this
+    end subroutine nuclide_base_clear_
+
     subroutine print_nuclide_(this, unit)
       import Nuclide_Base
       class(Nuclide_Base),intent(in) :: this
@@ -97,7 +103,9 @@ module nuclide_header
 
     ! Reactions
     integer :: n_reaction ! # of reactions
-    type(Reaction), pointer :: reactions(:) => null()
+    type(Reaction), allocatable :: reactions(:)
+    type(DictIntInt) :: reaction_index ! map MT values to index in reactions
+                                       ! array; used at tally-time
 
     ! Type-Bound procedures
     contains
@@ -243,7 +251,6 @@ module nuclide_header
     real(8) :: absorption      ! microscopic absorption xs
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
-    real(8) :: kappa_fission   ! microscopic energy-released from fission
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)
@@ -266,7 +273,6 @@ module nuclide_header
     real(8) :: absorption    ! macroscopic absorption xs
     real(8) :: fission       ! macroscopic fission xs
     real(8) :: nu_fission    ! macroscopic production xs
-    real(8) :: kappa_fission ! macroscopic energy-released from fission
   end type MaterialMacroXS
 
 !===============================================================================
@@ -296,43 +302,11 @@ module nuclide_header
 ! or Nuclide_Angle
 !===============================================================================
 
-    subroutine nuclide_base_clear_(this)
-
-      class(Nuclide_Base), intent(inout) :: this
-
-      call this % nuc_list % clear()
-    end subroutine nuclide_base_clear_
-
     subroutine nuclide_ce_clear(this)
 
       class(Nuclide_CE), intent(inout) :: this ! The Nuclide object to clear
 
       integer :: i ! Loop counter
-
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % total, this % elastic, &
-           & this % fission, this % nu_fission, this % absorption)
-
-      if (allocated(this % energy_0K)) &
-           deallocate(this % energy_0K)
-
-      if (allocated(this % elastic_0K)) &
-           deallocate(this % elastic_0K)
-
-      if (allocated(this % xs_cdf)) &
-           deallocate(this % xs_cdf)
-
-      if (allocated(this % heating)) &
-           deallocate(this % heating)
-
-      if (allocated(this % index_fission)) deallocate(this % index_fission)
-
-      if (allocated(this % nu_t_data)) deallocate(this % nu_t_data)
-      if (allocated(this % nu_p_data)) deallocate(this % nu_p_data)
-      if (allocated(this % nu_d_data)) deallocate(this % nu_d_data)
-
-      if (allocated(this % nu_d_precursor_data)) &
-           deallocate(this % nu_d_precursor_data)
 
       if (associated(this % nu_d_edist)) then
         do i = 1, size(this % nu_d_edist)
@@ -342,27 +316,22 @@ module nuclide_header
       end if
 
       if (associated(this % urr_data)) then
-        call this % urr_data % clear()
         deallocate(this % urr_data)
       end if
 
-      if (associated(this % reactions)) then
+      if (allocated(this % reactions)) then
         do i = 1, size(this % reactions)
           call this % reactions(i) % clear()
         end do
-        deallocate(this % reactions)
       end if
 
-      call nuclide_base_clear_(this)
+      call this % reaction_index % clear()
 
     end subroutine nuclide_ce_clear
 
     subroutine nuclide_iso_clear(this)
 
       class(Nuclide_Iso), intent(inout) :: this ! The Nuclide object to clear
-
-      ! Clear the base object
-      call nuclide_base_clear_(this)
 
       ! Cler the extended information
       if (allocated(this % total)) then
@@ -386,9 +355,6 @@ module nuclide_header
     subroutine nuclide_angle_clear(this)
 
       class(Nuclide_Angle), intent(inout) :: this ! The Nuclide object to clear
-
-      ! Clear the base object
-      call nuclide_base_clear_(this)
 
       ! Cler the extended information
       if (allocated(this % total)) then
@@ -436,8 +402,7 @@ module nuclide_header
       integer :: size_energy       ! memory used for a  energy distributions (bytes)
       integer :: size_urr          ! memory used for probability tables (bytes)
       character(11) :: law         ! secondary energy distribution law
-      type(Reaction), pointer :: rxn => null()
-      type(UrrData),  pointer :: urr => null()
+      type(UrrData),  pointer :: urr
 
       ! set default unit for writing information
       if (present(unit)) then
@@ -465,32 +430,33 @@ module nuclide_header
       ! Information on each reaction
       write(unit_,*) '  Reaction     Q-value  COM  Law    IE    size(angle) size(energy)'
       do i = 1, this % n_reaction
-        rxn => this % reactions(i)
+        associate (rxn => this % reactions(i))
 
-        ! Determine size of angle distribution
-        if (rxn % has_angle_dist) then
-          size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
-        else
-          size_angle = 0
-        end if
+          ! Determine size of angle distribution
+          if (rxn % has_angle_dist) then
+            size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
+          else
+            size_angle = 0
+          end if
 
-        ! Determine size of energy distribution and law
-        if (rxn % has_energy_dist) then
-          size_energy = size(rxn % edist % data) * 8
-          law = to_str(rxn % edist % law)
-        else
-          size_energy = 0
-          law = 'None'
-        end if
+          ! Determine size of energy distribution and law
+          if (rxn % has_energy_dist) then
+            size_energy = size(rxn % edist % data) * 8
+            law = to_str(rxn % edist % law)
+          else
+            size_energy = 0
+            law = 'None'
+          end if
 
-        write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
-             reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
-             law(1:4), rxn % threshold, size_angle, size_energy
+          write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
+               reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
+               law(1:4), rxn % threshold, size_angle, size_energy
 
-        ! Accumulate data size
-        size_xs = size_xs + (this % n_grid - rxn%threshold + 1) * 8
-        size_angle_total = size_angle_total + size_angle
-        size_energy_total = size_energy_total + size_energy
+          ! Accumulate data size
+          size_xs = size_xs + (this % n_grid - rxn%threshold + 1) * 8
+          size_angle_total = size_angle_total + size_angle
+          size_energy_total = size_energy_total + size_energy
+        end associate
       end do
 
       ! Add memory required for summary reactions (total, absorption, fission,
@@ -574,7 +540,6 @@ module nuclide_header
 
       integer :: unit_             ! unit to write to
       integer :: size_total, size_scattmat, size_mgxs
-      character(MAX_LINE_LEN) :: temp_str
 
       ! set default unit for writing information
       if (present(unit)) then
@@ -615,7 +580,6 @@ module nuclide_header
 
       integer :: unit_             ! unit to write to
       integer :: size_total, size_scattmat, size_mgxs
-      character(MAX_LINE_LEN) :: temp_str
 
       ! set default unit for writing information
       if (present(unit)) then
@@ -667,9 +631,6 @@ module nuclide_header
       integer, optional, intent(in)  :: i_azi  ! Azimuthal Index
       integer, optional, intent(in)  :: i_pol  ! Polar Index
       real(8)                        :: xs     ! Resultant xs
-
-      integer :: imu
-      real(8) :: dmu, r, f
 
       xs = ZERO
 
@@ -723,8 +684,6 @@ module nuclide_header
       real(8)                          :: xs     ! Resultant xs
 
       integer :: i_azi_, i_pol_
-      integer :: imu
-      real(8) :: dmu, r, f
 
       xs = ZERO
 

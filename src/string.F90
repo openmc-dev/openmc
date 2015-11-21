@@ -22,7 +22,6 @@ contains
 !===============================================================================
 
   subroutine split_string(string, words, n)
-
     character(*), intent(in)  :: string
     character(*), intent(out) :: words(MAX_WORDS)
     integer,      intent(out) :: n
@@ -163,7 +162,7 @@ contains
 !   string  = concatenated string
 !===============================================================================
 
-  function concatenate(words, n_words) result(string)
+  pure function concatenate(words, n_words) result(string)
 
     integer,        intent(in)  :: n_words
     character(*),   intent(in)  :: words(n_words)
@@ -218,7 +217,7 @@ contains
 ! STR_TO_INT converts a string to an integer.
 !===============================================================================
 
-  function str_to_int(str) result(num)
+  pure function str_to_int(str) result(num)
 
     character(*), intent(in) :: str
     integer(8) :: num
@@ -243,7 +242,7 @@ contains
 ! STR_TO_REAL converts an arbitrary string to a real(8)
 !===============================================================================
 
-  function str_to_real(string) result(num)
+  pure function str_to_real(string) result(num)
 
     character(*), intent(in) :: string
     real(8)                  :: num

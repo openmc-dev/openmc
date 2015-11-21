@@ -9,6 +9,7 @@ module geometry
   use particle_header,        only: LocalCoord, Particle
   use particle_restart_write, only: write_particle_restart
   use surface_header
+  use stl_vector,             only: VectorInt
   use simple_string,          only: to_str
   use tally,                  only: score_surface_current
 
@@ -188,8 +189,8 @@ contains
   recursive subroutine find_cell(p, found, search_cells)
 
     type(Particle), intent(inout) :: p
-    logical,              intent(inout) :: found
-    integer,              optional      :: search_cells(:)
+    logical,        intent(inout) :: found
+    integer,        optional      :: search_cells(:)
     integer :: i                    ! index over cells
     integer :: j                    ! coordinate level index
     integer :: i_xyz(3)             ! indices in lattice
@@ -199,7 +200,6 @@ contains
     type(Cell),     pointer :: c    ! pointer to cell
     class(Lattice), pointer :: lat  ! pointer to lattice
     type(Universe), pointer :: univ ! universe to search in
-    real(8) :: new_xyz(3)           ! perturbed location used to look for cell
 
     do j = p % n_coord + 1, MAX_COORD
       call p % coord(j) % reset()
@@ -286,8 +286,7 @@ contains
         lat => lattices(c % fill) % obj
 
         ! Determine lattice indices
-        new_xyz = p % coord(j) % xyz + TINY_BIT * p % coord(j) % uvw
-        i_xyz = lat % get_indices(new_xyz)
+        i_xyz = lat % get_indices(p % coord(j) % xyz + TINY_BIT * p % coord(j) % uvw)
 
         ! Store lower level coordinates
         p % coord(j + 1) % xyz = lat % get_local_xyz(p % coord(j) % xyz, i_xyz)
@@ -342,7 +341,7 @@ contains
 
   subroutine cross_surface(p, last_cell)
     type(Particle), intent(inout) :: p
-    integer,        intent(in)          :: last_cell  ! last cell particle was in
+    integer,        intent(in)    :: last_cell  ! last cell particle was in
 
     real(8) :: u         ! x-component of direction
     real(8) :: v         ! y-component of direction
@@ -504,7 +503,7 @@ contains
   subroutine cross_lattice(p, lattice_translation)
 
     type(Particle), intent(inout) :: p
-    integer,              intent(in)    :: lattice_translation(3)
+    integer,        intent(in)    :: lattice_translation(3)
     integer :: j
     integer :: i_xyz(3)       ! indices in lattice
     logical :: found          ! particle found in cell?
@@ -577,10 +576,10 @@ contains
   subroutine distance_to_boundary(p, dist, surface_crossed, lattice_translation, &
        next_level)
     type(Particle), intent(inout) :: p
-    real(8),              intent(out)   :: dist
-    integer,              intent(out)   :: surface_crossed
-    integer,              intent(out)   :: lattice_translation(3)
-    integer,              intent(out)   :: next_level
+    real(8),        intent(out)   :: dist
+    integer,        intent(out)   :: surface_crossed
+    integer,        intent(out)   :: lattice_translation(3)
+    integer,        intent(out)   :: next_level
 
     integer :: i                  ! index for surface in cell
     integer :: j
@@ -873,80 +872,50 @@ contains
 
   subroutine neighbor_lists()
 
-    integer :: i          ! index in cells/surfaces array
-    integer :: j          ! index of surface in cell
-    integer :: i_surface  ! index in count arrays
-    integer, allocatable :: count_positive(:) ! # of cells on positive side
-    integer, allocatable :: count_negative(:) ! # of cells on negative side
-    logical :: positive   ! positive side specified in surface list
-    type(Cell), pointer  :: c
+    integer :: i  ! index in cells/surfaces array
+    integer :: j  ! index in region specification
+    integer :: k  ! surface half-space spec
+    integer :: n  ! size of vector
+    type(VectorInt), allocatable :: neighbor_pos(:)
+    type(VectorInt), allocatable :: neighbor_neg(:)
 
     call write_message("Building neighboring cells lists for each surface...", &
-         &4)
+         4)
 
-    allocate(count_positive(n_surfaces))
-    allocate(count_negative(n_surfaces))
-    count_positive = 0
-    count_negative = 0
+    allocate(neighbor_pos(n_surfaces))
+    allocate(neighbor_neg(n_surfaces))
 
     do i = 1, n_cells
-      c => cells(i)
+      do j = 1, size(cells(i)%region)
+        ! Get token from region specification and skip any tokens that
+        ! correspond to operators rather than regions
+        k = cells(i)%region(j)
+        if (abs(k) >= OP_UNION) cycle
 
-      ! loop over each region specification
-      do j = 1, size(c%region)
-        i_surface = c % region(j)
-        positive = (i_surface > 0)
-
-        ! Skip any tokens that correspond to operators rather than regions
-        i_surface = abs(i_surface)
-        if (i_surface >= OP_UNION) cycle
-
-        if (positive) then
-          count_positive(i_surface) = count_positive(i_surface) + 1
+        ! Add this cell ID to neighbor list for k-th surface
+        if (k > 0) then
+          call neighbor_pos(abs(k))%push_back(i)
         else
-          count_negative(i_surface) = count_negative(i_surface) + 1
+          call neighbor_neg(abs(k))%push_back(i)
         end if
       end do
     end do
 
-    ! allocate neighbor lists for each surface
     do i = 1, n_surfaces
-      if (count_positive(i) > 0) then
-        allocate(surfaces(i)%obj%neighbor_pos(count_positive(i)))
+      ! Copy positive neighbors to Surface instance
+      n = neighbor_pos(i)%size()
+      if (n > 0) then
+        allocate(surfaces(i)%obj%neighbor_pos(n))
+        surfaces(i)%obj%neighbor_pos(:) = neighbor_pos(i)%data(1:n)
       end if
-      if (count_negative(i) > 0) then
-        allocate(surfaces(i)%obj%neighbor_neg(count_negative(i)))
+
+      ! Copy negative neighbors to Surface instance
+      n = neighbor_neg(i)%size()
+      if (n > 0) then
+        allocate(surfaces(i)%obj%neighbor_neg(n))
+        surfaces(i)%obj%neighbor_neg(:) = neighbor_neg(i)%data(1:n)
       end if
     end do
-
-    count_positive = 0
-    count_negative = 0
-
-    ! loop over all cells
-    do i = 1, n_cells
-      c => cells(i)
-
-      ! loop through the region specification
-      do j = 1, size(c%region)
-        i_surface = c % region(j)
-        positive = (i_surface > 0)
-
-        ! Skip any tokens that correspond to operators rather than regions
-        i_surface = abs(i_surface)
-        if (i_surface >= OP_UNION) cycle
-
-        if (positive) then
-          count_positive(i_surface) = count_positive(i_surface) + 1
-          surfaces(i_surface)%obj%neighbor_pos(count_positive(i_surface)) = i
-        else
-          count_negative(i_surface) = count_negative(i_surface) + 1
-          surfaces(i_surface)%obj%neighbor_neg(count_negative(i_surface)) = i
-        end if
-      end do
-    end do
-
-    deallocate(count_positive)
-    deallocate(count_negative)
 
   end subroutine neighbor_lists
 
@@ -957,7 +926,7 @@ contains
   subroutine handle_lost_particle(p, message)
 
     type(Particle), intent(inout) :: p
-    character(*)                        :: message
+    character(*)                  :: message
 
     ! Print warning and write lost particle file
     call warning(message)

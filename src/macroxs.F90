@@ -34,9 +34,6 @@ contains
       xs % absorption    = this % absorption(gin)
       xs % fission       = this % fission(gin)
       xs % nu_fission    = this % nu_fission(gin)
-      if (allocated(this % k_fission)) then
-        xs % kappa_fission = this % k_fission(gin)
-      end if
 
     type is (MacroXS_Angle)
       call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
@@ -45,9 +42,6 @@ contains
       xs % absorption    = this % absorption(gin, iazi, ipol)
       xs % fission       = this % fission(gin, iazi, ipol)
       xs % nu_fission    = this % nu_fission(gin, iazi, ipol)
-      if (allocated(this % k_fission)) then
-        xs % kappa_fission = this % k_fission(gin, iazi, ipol)
-      end if
     end select
 
   end subroutine calculate_mgxs

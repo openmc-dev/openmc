@@ -180,7 +180,7 @@ contains
     do i = 1, n_nuclides_total
       do j = 1, n_nuclides_total
         if (nuclides_MG(i) % obj % zaid == nuclides_MG(j) % obj % zaid) then
-          call nuclides_MG(i) % obj % nuc_list % append(j)
+          call nuclides_MG(i) % obj % nuc_list % push_back(j)
         end if
       end do
     end do

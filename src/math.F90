@@ -11,7 +11,7 @@ contains
 ! distribution with a specified probability level
 !===============================================================================
 
-  function normal_percentile(p) result(z)
+  elemental function normal_percentile(p) result(z)
 
     real(8), intent(in) :: p ! probability level
     real(8)             :: z ! corresponding z-value
@@ -70,7 +70,7 @@ contains
 ! specified probability level and number of degrees of freedom
 !===============================================================================
 
-  function t_percentile(p, df) result(t)
+  elemental function t_percentile(p, df) result(t)
 
     real(8), intent(in) :: p  ! probability level
     integer, intent(in) :: df ! degrees of freedom
@@ -122,7 +122,7 @@ contains
 ! the return value will be 1.0.
 !===============================================================================
 
-  pure function calc_pn(n,x) result(pnx)
+  elemental function calc_pn(n,x) result(pnx)
 
     integer, intent(in) :: n   ! Legendre order requested
     real(8), intent(in) :: x   ! Independent variable the Legendre is to be

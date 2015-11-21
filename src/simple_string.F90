@@ -14,8 +14,7 @@ contains
 ! TO_LOWER converts a string to all lower case characters
 !===============================================================================
 
-  function to_lower(word) result(word_lower)
-
+  pure function to_lower(word) result(word_lower)
     character(*), intent(in) :: word
     character(len=len(word)) :: word_lower
 
@@ -37,8 +36,7 @@ contains
 ! TO_UPPER converts a string to all upper case characters
 !===============================================================================
 
-  function to_upper(word) result(word_upper)
-
+  pure function to_upper(word) result(word_upper)
     character(*), intent(in) :: word
     character(len=len(word)) :: word_upper
 
@@ -60,8 +58,7 @@ contains
 ! IS_NUMBER determines whether a string of characters is all 0-9 characters
 !===============================================================================
 
-  function is_number(word) result(number)
-
+  pure function is_number(word) result(number)
     character(*), intent(in) :: word
     logical                  :: number
 
@@ -81,10 +78,9 @@ contains
 ! sequence of characters
 !===============================================================================
 
-  logical function starts_with(str, seq)
-
-    character(*) :: str ! string to check
-    character(*) :: seq ! sequence of characters
+  pure logical function starts_with(str, seq)
+    character(*), intent(in) :: str ! string to check
+    character(*), intent(in) :: seq ! sequence of characters
 
     integer :: i
     integer :: i_start
@@ -116,10 +112,9 @@ contains
 ! of characters
 !===============================================================================
 
-  logical function ends_with(str, seq)
-
-    character(*) :: str ! string to check
-    character(*) :: seq ! sequence of characters
+  pure logical function ends_with(str, seq)
+    character(*), intent(in) :: str ! string to check
+    character(*), intent(in) :: seq ! sequence of characters
 
     integer :: i_start
     integer :: str_len
@@ -145,7 +140,7 @@ contains
 ! integer.
 !===============================================================================
 
-  function count_digits(num) result(n_digits)
+  pure function count_digits(num) result(n_digits)
     integer, intent(in) :: num
     integer             :: n_digits
 
@@ -163,7 +158,7 @@ contains
 ! INT4_TO_STR converts an integer(4) to a string.
 !===============================================================================
 
-  function int4_to_str(num) result(str)
+  pure function int4_to_str(num) result(str)
 
     integer, intent(in) :: num
     character(11) :: str
@@ -177,7 +172,7 @@ contains
 ! INT8_TO_STR converts an integer(8) to a string.
 !===============================================================================
 
-  function int8_to_str(num) result(str)
+  pure function int8_to_str(num) result(str)
 
     integer(8), intent(in) :: num
     character(21) :: str
@@ -193,7 +188,7 @@ contains
 ! are used.
 !===============================================================================
 
-  function real_to_str(num, sig_digits) result(string)
+  pure function real_to_str(num, sig_digits) result(string)
 
     real(8),           intent(in) :: num        ! number to convert
     integer, optional, intent(in) :: sig_digits ! # of significant digits

@@ -18,7 +18,7 @@ contains
 ! value lies in the array. This is used extensively for energy grid searching
 !===============================================================================
 
-  function binary_search_real(array, n, val) result(array_index)
+  pure function binary_search_real(array, n, val) result(array_index)
 
     integer, intent(in) :: n
     real(8), intent(in) :: array(n)
@@ -33,7 +33,8 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-      call fatal_error("Value outside of array during binary search")
+      array_index = -1
+      return
     end if
 
     n_iteration = 0
@@ -49,8 +50,8 @@ contains
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        call fatal_error("Reached maximum number of iterations on binary &
-             &search.")
+        array_index = -2
+        return
       end if
     end do
 
@@ -58,7 +59,7 @@ contains
 
   end function binary_search_real
 
-  function binary_search_int4(array, n, val) result(array_index)
+  pure function binary_search_int4(array, n, val) result(array_index)
 
     integer, intent(in) :: n
     integer, intent(in) :: array(n)
@@ -73,7 +74,8 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-      call fatal_error("Value outside of array during binary search")
+      array_index = -1
+      return
     end if
 
     n_iteration = 0
@@ -89,8 +91,8 @@ contains
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        call fatal_error("Reached maximum number of iterations on binary &
-             &search.")
+        array_index = -2
+        return
       end if
     end do
 
@@ -98,7 +100,7 @@ contains
 
   end function binary_search_int4
 
-  function binary_search_int8(array, n, val) result(array_index)
+  pure function binary_search_int8(array, n, val) result(array_index)
 
     integer,    intent(in) :: n
     integer(8), intent(in) :: array(n)
@@ -113,7 +115,8 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-      call fatal_error("Value outside of array during binary search")
+      array_index = -1
+      return
     end if
 
     n_iteration = 0
@@ -129,8 +132,8 @@ contains
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        call fatal_error("Reached maximum number of iterations on binary &
-             &search.")
+        array_index = -2
+        return
       end if
     end do
 

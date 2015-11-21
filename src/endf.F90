@@ -11,7 +11,7 @@ contains
 ! REACTION_NAME gives the name of the reaction for a given MT value
 !===============================================================================
 
-  function reaction_name(MT) result(string)
+  pure function reaction_name(MT) result(string)
 
     integer, intent(in) :: MT
     character(20)       :: string

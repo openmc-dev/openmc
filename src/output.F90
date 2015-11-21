@@ -102,10 +102,9 @@ contains
 !===============================================================================
 
   subroutine header(msg, unit, level)
-
-    character(*), intent(in) :: msg ! header message
-    integer, optional :: unit       ! unit to write to
-    integer, optional :: level      ! specified header level
+    character(*), intent(in)      :: msg   ! header message
+    integer, intent(in), optional :: unit  ! unit to write to
+    integer, intent(in), optional :: level ! specified header level
 
     integer :: n            ! number of = signs on left
     integer :: m            ! number of = signs on right
@@ -197,9 +196,8 @@ contains
 !===============================================================================
 
   subroutine write_message(message, level)
-
-    character(*) :: message
-    integer, optional :: level ! verbosity level
+    character(*), intent(in)           :: message ! message to write
+    integer,      intent(in), optional :: level   ! verbosity level
 
     integer :: i_start    ! starting position
     integer :: i_end      ! ending position
@@ -252,7 +250,6 @@ contains
 !===============================================================================
 
   subroutine print_particle(p)
-
     type(Particle), intent(in) :: p
 
     integer :: i ! index for coordinate levels
@@ -486,7 +483,7 @@ contains
   subroutine print_plot()
 
     integer :: i ! loop index for plots
-    type(ObjectPlot), pointer :: pl => null()
+    type(ObjectPlot), pointer :: pl
 
     ! Display header for plotting
     call header("PLOTTING SUMMARY")
@@ -988,7 +985,7 @@ contains
 !===============================================================================
 
   subroutine write_surface_current(t, unit_tally)
-    type(TallyObject), pointer :: t
+    type(TallyObject), intent(in) :: t
     integer, intent(in) :: unit_tally
 
     integer :: i                    ! mesh index for x
@@ -1160,10 +1157,9 @@ contains
 !===============================================================================
 
   function get_label(t, i_filter) result(label)
-
-    type(TallyObject), pointer :: t        ! tally object
-    integer, intent(in)        :: i_filter ! index in filters array
-    character(100)              :: label    ! user-specified identifier
+    type(TallyObject), intent(in) :: t        ! tally object
+    integer,           intent(in) :: i_filter ! index in filters array
+    character(100)                :: label    ! user-specified identifier
 
     integer :: i      ! index in cells/surfaces/etc array
     integer :: bin
@@ -1227,12 +1223,12 @@ contains
 
   recursive subroutine find_offset(map, goal, univ, final, offset, path)
 
-    integer, intent(in) :: map                   ! Index in maps vector
-    integer, intent(in) :: goal                  ! The target cell ID
-    type(Universe), pointer, intent(in) :: univ  ! Universe to begin search
-    integer, intent(in) :: final                 ! Target offset
-    integer, intent(inout) :: offset             ! Current offset
-    character(100) :: path                       ! Path to offset
+    integer, intent(in) :: map          ! Index in maps vector
+    integer, intent(in) :: goal         ! The target cell ID
+    type(Universe), intent(in) :: univ  ! Universe to begin search
+    integer, intent(in) :: final        ! Target offset
+    integer, intent(inout) :: offset    ! Current offset
+    character(*), intent(inout) :: path ! Path to offset
 
     integer :: i, j                 ! Index over cells
     integer :: k, l, m              ! Indices in lattice
@@ -1244,7 +1240,7 @@ contains
     integer :: temp_offset          ! Looped sum of offsets
     logical :: this_cell = .false.  ! Advance in this cell?
     logical :: later_cell = .false. ! Fill cells after this one?
-    type(Cell),     pointer:: c           ! Pointer to current cell
+    type(Cell), pointer :: c           ! Pointer to current cell
     type(Universe), pointer :: next_univ  ! Next universe to loop through
     class(Lattice), pointer :: lat        ! Pointer to current lattice
 

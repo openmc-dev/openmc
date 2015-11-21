@@ -875,6 +875,7 @@ contains
     integer :: i  ! index in cells/surfaces array
     integer :: j  ! index in region specification
     integer :: k  ! surface half-space spec
+    integer :: n  ! size of vector
     type(VectorInt), allocatable :: neighbor_pos(:)
     type(VectorInt), allocatable :: neighbor_neg(:)
 
@@ -902,17 +903,17 @@ contains
 
     do i = 1, n_surfaces
       ! Copy positive neighbors to Surface instance
-      j = neighbor_pos(i)%size()
-      if (j > 0) then
-        allocate(surfaces(i)%obj%neighbor_pos(j))
-        surfaces(i)%obj%neighbor_pos(:) = neighbor_pos(i)%data(1:j)
+      n = neighbor_pos(i)%size()
+      if (n > 0) then
+        allocate(surfaces(i)%obj%neighbor_pos(n))
+        surfaces(i)%obj%neighbor_pos(:) = neighbor_pos(i)%data(1:n)
       end if
 
       ! Copy negative neighbors to Surface instance
-      j = neighbor_neg(i)%size()
-      if (j > 0) then
-        allocate(surfaces(i)%obj%neighbor_neg(j))
-        surfaces(i)%obj%neighbor_neg(:) = neighbor_neg(i)%data(1:j)
+      n = neighbor_neg(i)%size()
+      if (n > 0) then
+        allocate(surfaces(i)%obj%neighbor_neg(n))
+        surfaces(i)%obj%neighbor_neg(:) = neighbor_neg(i)%data(1:n)
       end if
     end do
 

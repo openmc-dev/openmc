@@ -608,13 +608,13 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! fission scale by kappa-fission
-            associate (nuc => nuclides(p % event_nuclide))
-              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
-                   nuc % fissionable) then
-                score = p % absorb_wgt * &
+            associate (nuc => nuclides(p%event_nuclide))
+              if (micro_xs(p%event_nuclide)%absorption > ZERO .and. &
+                   nuc%fissionable) then
+                score = p%absorb_wgt * &
                      nuc%reactions(nuc%index_fission(1))%Q_value * &
-                     micro_xs(p % event_nuclide) % fission / &
-                     micro_xs(p % event_nuclide) % absorption
+                     micro_xs(p%event_nuclide)%fission / &
+                     micro_xs(p%event_nuclide)%absorption
               end if
             end associate
           else
@@ -623,12 +623,12 @@ contains
             ! All fission events will contribute, so again we can use
             ! particle's weight entering the collision as the estimate for
             ! the fission energy production rate
-            associate (nuc => nuclides(p % event_nuclide))
-              if (nuc % fissionable) then
-                score = p % last_wgt * &
+            associate (nuc => nuclides(p%event_nuclide))
+              if (nuc%fissionable) then
+                score = p%last_wgt * &
                      nuc%reactions(nuc%index_fission(1))%Q_value * &
-                     micro_xs(p % event_nuclide) % fission / &
-                     micro_xs(p % event_nuclide) % absorption
+                     micro_xs(p%event_nuclide)%fission / &
+                     micro_xs(p%event_nuclide)%absorption
               end if
             end associate
           end if
@@ -636,7 +636,7 @@ contains
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides(i_nuclide))
-              if (nuc % fissionable) then
+              if (nuc%fissionable) then
                 score = nuc%reactions(nuc%index_fission(1))%Q_value * &
                      micro_xs(i_nuclide)%fission * atom_density * flux
               end if

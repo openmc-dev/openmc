@@ -194,8 +194,8 @@ contains
 !===============================================================================
 
   subroutine write_message(message, level)
-    character(*), intent(in) :: message
-    integer, intent(in), optional :: level ! verbosity level
+    character(*), intent(in)           :: message ! message to write
+    integer,      intent(in), optional :: level   ! verbosity level
 
     integer :: i_start    ! starting position
     integer :: i_end      ! ending position
@@ -1349,10 +1349,9 @@ contains
 !===============================================================================
 
   function get_label(t, i_filter) result(label)
-
     type(TallyObject), intent(in) :: t        ! tally object
-    integer, intent(in)  :: i_filter ! index in filters array
-    character(100) :: label    ! user-specified identifier
+    integer,           intent(in) :: i_filter ! index in filters array
+    character(100)                :: label    ! user-specified identifier
 
     integer :: i      ! index in cells/surfaces/etc array
     integer :: bin

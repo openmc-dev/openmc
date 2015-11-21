@@ -510,8 +510,8 @@ contains
 
   pure function find_energy_index(mat, E) result(i)
     type(Material), intent(in) :: mat ! pointer to current material
-    real(8), intent(in) :: E  ! energy of particle
-    integer :: i  ! energy grid index
+    real(8),        intent(in) :: E   ! energy of particle
+    integer                    :: i   ! energy grid index
 
     ! if the energy is outside of energy grid range, set to first or last
     ! index. Otherwise, do a binary search through the union energy grid.
@@ -531,9 +531,9 @@ contains
 !===============================================================================
 
   pure function elastic_xs_0K(E, nuc) result(xs_out)
-    real(8), intent(in) :: E  ! trial energy
-    type(Nuclide), intent(in) :: nuc  ! target nuclide at temperature
-    real(8) :: xs_out ! 0K xs at trial energy
+    real(8),       intent(in) :: E      ! trial energy
+    type(Nuclide), intent(in) :: nuc    ! target nuclide at temperature
+    real(8)                   :: xs_out ! 0K xs at trial energy
 
     integer :: i_grid ! index on nuclide energy grid
     real(8) :: f      ! interp factor on nuclide energy grid

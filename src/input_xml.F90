@@ -3093,10 +3093,6 @@ contains
                    &filter.")
             end if
 
-            if (allocated(t % deriv)) then
-              t % estimator = ESTIMATOR_COLLISION
-            end if
-
           case ('flux-yn')
             ! Prohibit user from tallying flux for an individual nuclide
             if (.not. (t % n_nuclide_bins == 1 .and. &
@@ -3296,9 +3292,6 @@ contains
 
           case ('keff')
             t % score_bins(j) = SCORE_KEFF
-            if (allocated(t % deriv)) then
-              t % estimator = ESTIMATOR_COLLISION
-            end if
 
           case ('elastic', '(n,elastic)')
             t % score_bins(j) = ELASTIC
@@ -3403,6 +3396,13 @@ contains
       else
         call fatal_error("No <scores> specified on tally " &
              &// trim(to_str(t % id)) // ".")
+      end if
+
+      ! If a derivative is present, we can only use analog or collision
+      ! estimators.
+      if (allocated(t % deriv) .and. t % estimator == ESTIMATOR_TRACKLENGTH) &
+           then
+        t % estimator = ESTIMATOR_COLLISION
       end if
 
       ! If settings.xml trigger is turned on, create tally triggers

@@ -257,7 +257,7 @@ contains
         ! Store the distribcell instance index
         if (p % material == NONE) then
           p % inst = NONE
-        else
+        else if (p % material /= MATERIAL_VOID) then
           mat => materials(p % material)
           p % last_inst = p % inst
           p % inst = get_distribcell_instance(p, mat % distribmap, index_cell)

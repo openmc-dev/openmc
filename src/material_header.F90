@@ -126,7 +126,12 @@ contains
     if (this % otf_compositions) then
       density = this % otf_comp(j, this % otf_comp_index(i))
     else
-      density = this % comp(i) % atom_density(j)
+      if(this % n_comp == 1) then
+        ! no distribmats
+        density = this % comp(1) % atom_density(j)
+      else
+        density = this % comp(i) % atom_density(j)
+      end if
     end if
 
   end function get_density

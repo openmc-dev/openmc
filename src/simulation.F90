@@ -277,10 +277,6 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       ! Reset number of fission bank sites
       n_bank = 0
-      
-      ! Set control flags
-      current_stage = 0
-      generation_incomplete = .true.
 
       ! Count source sites if using uniform fission source weighting
       if (ufs) call count_source_for_ufs()
@@ -288,6 +284,10 @@ contains
       ! Store current value of tracklength k
       keff_generation = global_tallies(K_TRACKLENGTH) % value
     end if
+    
+    ! Set control flags of dd
+    current_stage = 0
+    generation_incomplete = .true.
 
   end subroutine initialize_generation
 

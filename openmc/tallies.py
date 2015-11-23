@@ -1499,11 +1499,11 @@ class Tally(object):
 
             # If necessary, swap self filter
             if self_index != i:
-                self_copy.swap_filters(filter, self_copy.filters[i], inline=True)
+                self_copy.swap_filters(filter, self_copy.filters[i], inplace=True)
 
             # If necessary, swap other filter
             if other_index != i:
-                other_copy.swap_filters(filter, other_copy.filters[i], inline=True)
+                other_copy.swap_filters(filter, other_copy.filters[i], inplace=True)
 
         data = self_copy._align_tally_data(other_copy)
 
@@ -1734,7 +1734,7 @@ class Tally(object):
         data['other']['std. dev.'] = other_std_dev
         return data
 
-    def swap_filters(self, filter1, filter2, inline=False):
+    def swap_filters(self, filter1, filter2, inplace=False):
         """Reverse the ordering of two filters in this tally
 
         This is a helper method for tally arithmetic which helps align the data
@@ -1749,13 +1749,14 @@ class Tally(object):
         filter2 : Filter
             The filter to swap with filter1
 
-        inline : bool, optional
-            Whether to inline operator or return new tally with swapped filters.
+        inplace : bool, optional
+            Whether to perform operation inplace or return new tally with the
+            filters swapped.
 
         Returns
         -------
         swap_tally
-            If inline is false, a copy of this tally with the filters swapped.
+            If inplace is false, a copy of this tally with the filters swapped.
             Otherwise, nothing is returned.
 
         Raises
@@ -1792,7 +1793,7 @@ class Tally(object):
         tally_copy = copy.deepcopy(self)
 
         # Set the swap tally
-        if inline:
+        if inplace:
             swap_tally = self
         else:
             swap_tally = copy.deepcopy(self)
@@ -1857,7 +1858,7 @@ class Tally(object):
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally._std_dev[indices, :, :] = data
 
-        if not inline:
+        if not inplace:
             return swap_tally
 
     def __add__(self, other):

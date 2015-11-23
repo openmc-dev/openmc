@@ -200,7 +200,7 @@ latex_elements = {
 \usepackage{enumitem}
 \usepackage{amsfonts}
 \usepackage{amsmath}
-\setlistdepth{9}
+\setlistdepth{99}
 \usepackage{tikz}
 \usetikzlibrary{shapes,snakes,shadows,arrows,calc,decorations.markings,patterns,fit,matrix,spy}
 \usepackage{fixltx2e}

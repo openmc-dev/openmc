@@ -1,11 +1,12 @@
 module string
 
-  use constants,  only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL, &
-                        OP_LEFT_PAREN, OP_RIGHT_PAREN, OP_COMPLEMENT, &
-                        OP_INTERSECTION, OP_UNION
-  use error,      only: fatal_error, warning
-  use global,     only: master
-  use stl_vector, only: VectorInt
+  use constants,     only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL, &
+                           OP_LEFT_PAREN, OP_RIGHT_PAREN, OP_COMPLEMENT, &
+                           OP_INTERSECTION, OP_UNION
+  use error,         only: fatal_error, warning
+  use global,        only: master
+  use simple_string, only: str_to_int, str_to_real
+  use stl_vector,    only: VectorInt
 
   implicit none
 
@@ -152,33 +153,6 @@ contains
     end if
   end subroutine tokenize
 
-!===============================================================================
-! CONCATENATE takes an array of words and concatenates them together in one
-! string with a single space between words
-!
-! Arguments:
-!   words   = array of words
-!   n_words = total number of words
-!   string  = concatenated string
-!===============================================================================
-
-  pure function concatenate(words, n_words) result(string)
-
-    integer,        intent(in)  :: n_words
-    character(*),   intent(in)  :: words(n_words)
-    character(MAX_LINE_LEN)     :: string
-
-    integer :: i ! index
-
-    string = words(1)
-    if (n_words == 1) return
-    do i = 2, n_words
-      string = trim(string) // ' ' // words(i)
-    end do
-
-  end function concatenate
-
-
 
 !===============================================================================
 ! ZERO_PADDED returns a string of the input integer padded with zeros to the
@@ -212,47 +186,5 @@ contains
     ! Format the number.
     write(str, zp_form) num
   end function zero_padded
-
-!===============================================================================
-! STR_TO_INT converts a string to an integer.
-!===============================================================================
-
-  pure function str_to_int(str) result(num)
-
-    character(*), intent(in) :: str
-    integer(8) :: num
-
-    character(5) :: fmt
-    integer      :: w
-    integer      :: ioError
-
-    ! Determine width of string
-    w = len_trim(str)
-
-    ! Create format specifier for reading string
-    write(UNIT=fmt, FMT='("(I",I2,")")') w
-
-    ! read string into integer
-    read(UNIT=str, FMT=fmt, IOSTAT=ioError) num
-    if (ioError > 0) num = ERROR_INT
-
-  end function str_to_int
-
-!===============================================================================
-! STR_TO_REAL converts an arbitrary string to a real(8)
-!===============================================================================
-
-  pure function str_to_real(string) result(num)
-
-    character(*), intent(in) :: string
-    real(8)                  :: num
-
-    integer :: ioError
-
-    ! Read string
-    read(UNIT=string, FMT=*, IOSTAT=ioError) num
-    if (ioError > 0) num = ERROR_REAL
-
-  end function str_to_real
 
 end module string

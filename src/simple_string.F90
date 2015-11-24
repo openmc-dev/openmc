@@ -1,6 +1,6 @@
 module simple_string
 
-  use constants, only: ERROR_REAL, ERROR_INT
+  use constants, only: ERROR_REAL, ERROR_INT, MAX_LINE_LEN
 
   implicit none
 
@@ -236,5 +236,73 @@ contains
     string = adjustl(string)
 
   end function real_to_str
+
+!===============================================================================
+! STR_TO_INT converts a string to an integer.
+!===============================================================================
+
+  pure function str_to_int(str) result(num)
+
+    character(*), intent(in) :: str
+    integer(8) :: num
+
+    character(5) :: fmt
+    integer      :: w
+    integer      :: ioError
+
+    ! Determine width of string
+    w = len_trim(str)
+
+    ! Create format specifier for reading string
+    write(UNIT=fmt, FMT='("(I",I2,")")') w
+
+    ! read string into integer
+    read(UNIT=str, FMT=fmt, IOSTAT=ioError) num
+    if (ioError > 0) num = ERROR_INT
+
+  end function str_to_int
+
+!===============================================================================
+! STR_TO_REAL converts an arbitrary string to a real(8)
+!===============================================================================
+
+  pure function str_to_real(string) result(num)
+
+    character(*), intent(in) :: string
+    real(8)                  :: num
+
+    integer :: ioError
+
+    ! Read string
+    read(UNIT=string, FMT=*, IOSTAT=ioError) num
+    if (ioError > 0) num = ERROR_REAL
+
+  end function str_to_real
+
+!===============================================================================
+! CONCATENATE takes an array of words and concatenates them together in one
+! string with a single space between words
+!
+! Arguments:
+!   words   = array of words
+!   n_words = total number of words
+!   string  = concatenated string
+!===============================================================================
+
+  pure function concatenate(words, n_words) result(string)
+
+    integer,        intent(in)  :: n_words
+    character(*),   intent(in)  :: words(n_words)
+    character(MAX_LINE_LEN)     :: string
+
+    integer :: i ! index
+
+    string = words(1)
+    if (n_words == 1) return
+    do i = 2, n_words
+      string = trim(string) // ' ' // words(i)
+    end do
+
+  end function concatenate
 
 end module simple_string

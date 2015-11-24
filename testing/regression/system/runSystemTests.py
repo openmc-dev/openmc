@@ -12,5 +12,5 @@ for i in range(0,n):
 for i in range(1,ndirs+1):
   os.chdir('./case-'+str(i))
   call(['echo', 'Running system test case-'+str(i)+'...'])
-  call(['/home/walshjon/shutmc/src/build/bin/shutmc', '.'])
+  call(['/home/walshjon/dev/shutmc/src/build/bin/shutmc', '.'])
   os.chdir('..')

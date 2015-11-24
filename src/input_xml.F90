@@ -3410,8 +3410,9 @@ contains
           call get_node_value(nuc_node, 'E_upper', isotopes(i) % EH_user)
         else
           isotopes(i) % EH_user = INF
-          call warning('No URR upper energy bound specified for nuclide ' &
-               // trim(to_str(i)) // ' in urr.xml file')
+          if (master)&
+               call write_message('No URR upper energy bound specified&
+                    & for nuclide '//trim(to_str(i))//' in urr.xml file')
         end if
       end do
 

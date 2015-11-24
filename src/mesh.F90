@@ -106,10 +106,13 @@ contains
     integer :: n_y ! number of mesh cells in y direction
     integer :: n_z ! number of mesh cells in z direction
 
-    if (any(ijk < (/1, 1, 1/)) .or. &
-        any(ijk(1:m % n_dimension) > m % dimension)) then
-      bin = NO_BIN_FOUND
-      return
+    ! For surface_current, it is allowed to be out of mesh; for dd, it is not
+    if(.not. present(surface_current)) then
+      if (any(ijk < (/1, 1, 1/)) .or. &
+          any(ijk(1:m % n_dimension) > m % dimension)) then
+        bin = NO_BIN_FOUND
+        return
+      end if
     end if
 
     if (present(surface_current)) then

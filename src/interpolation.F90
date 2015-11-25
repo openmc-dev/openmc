@@ -21,7 +21,7 @@ contains
 ! tabulated x's and y's.
 !===============================================================================
 
-  function interpolate_tab1_array(data, x, loc_start) result(y)
+  pure function interpolate_tab1_array(data, x, loc_start) result(y)
 
     real(8), intent(in)           :: data(:)   ! array of data
     real(8), intent(in)           :: x         ! x value to find y at
@@ -106,18 +106,16 @@ contains
     select case (interp)
     case (LINEAR_LINEAR)
       r = (x - x0)/(x1 - x0)
-      y = (1 - r)*y0 + r*y1
+      y = y0 + r*(y1 - y0)
     case (LINEAR_LOG)
-      r = (log(x) - log(x0))/(log(x1) - log(x0))
-      y = (1 - r)*y0 + r*y1
+      r = log(x/x0)/log(x1/x0)
+      y = y0 + r*(y1 - y0)
     case (LOG_LINEAR)
       r = (x - x0)/(x1 - x0)
-      y = exp((1-r)*log(y0) + r*log(y1))
+      y = y0*exp(r*log(y1/y0))
     case (LOG_LOG)
-      r = (log(x) - log(x0))/(log(x1) - log(x0))
-      y = exp((1-r)*log(y0) + r*log(y1))
-    case default
-      call fatal_error("Unsupported interpolation scheme: " // to_str(interp))
+      r = log(x/x0)/log(x1/x0)
+      y = y0*exp(r*log(y1/y0))
     end select
 
   end function interpolate_tab1_array
@@ -129,7 +127,7 @@ contains
 ! tabulated x's and y's.
 !===============================================================================
 
-  function interpolate_tab1_object(obj, x) result(y)
+  pure function interpolate_tab1_object(obj, x) result(y)
 
     type(Tab1), intent(in) :: obj ! ENDF Tab1 interpolable function
     real(8),    intent(in) :: x   ! x value to find y at
@@ -191,18 +189,16 @@ contains
     select case (interp)
     case (LINEAR_LINEAR)
       r = (x - x0)/(x1 - x0)
-      y = (1 - r)*y0 + r*y1
+      y = y0 + r*(y1 - y0)
     case (LINEAR_LOG)
-      r = (log(x) - log(x0))/(log(x1) - log(x0))
-      y = (1 - r)*y0 + r*y1
+      r = log(x/x0)/log(x1/x0)
+      y = y0 + r*(y1 - y0)
     case (LOG_LINEAR)
       r = (x - x0)/(x1 - x0)
-      y = exp((1-r)*log(y0) + r*log(y1))
+      y = y0*exp(r*log(y1/y0))
     case (LOG_LOG)
-      r = (log(x) - log(x0))/(log(x1) - log(x0))
-      y = exp((1-r)*log(y0) + r*log(y1))
-    case default
-      call fatal_error("Unsupported interpolation scheme: " // to_str(interp))
+      r = log(x/x0)/log(x1/x0)
+      y = y0*exp(r*log(y1/y0))
     end select
 
   end function interpolate_tab1_object

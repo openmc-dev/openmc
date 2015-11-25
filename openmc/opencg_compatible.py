@@ -726,7 +726,7 @@ def get_openmc_cell(opencg_cell):
         openmc_cell.fill = get_openmc_material(fill)
 
     if opencg_cell.rotation:
-        rotation = np.asarray(opencg_cell.rotation, dtype=np.int)
+        rotation = np.asarray(opencg_cell.rotation, dtype=np.float64)
         openmc_cell.rotation = rotation
 
     if opencg_cell.translation:

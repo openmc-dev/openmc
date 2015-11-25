@@ -32,7 +32,6 @@ contains
       xs % total         = this % total(gin)
       xs % elastic       = this % scattxs(gin)
       xs % absorption    = this % absorption(gin)
-      xs % fission       = this % fission(gin)
       xs % nu_fission    = this % nu_fission(gin)
 
     type is (MacroXS_Angle)
@@ -40,7 +39,6 @@ contains
       xs % total         = this % total(gin, iazi, ipol)
       xs % elastic       = this % scattxs(gin, iazi, ipol)
       xs % absorption    = this % absorption(gin, iazi, ipol)
-      xs % fission       = this % fission(gin, iazi, ipol)
       xs % nu_fission    = this % nu_fission(gin, iazi, ipol)
     end select
 

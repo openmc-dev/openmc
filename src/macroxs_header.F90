@@ -26,7 +26,7 @@ module macroxs_header
   end type MacroXS_Base
 
   abstract interface
-    subroutine macroxs_init_(this, mat, nuclides, groups, get_kfiss, &
+    subroutine macroxs_init_(this, mat, nuclides, groups, get_kfiss, get_fiss, &
                              max_order, scatt_type, legendre_mu_points, &
                              error_code, error_text)
 
@@ -39,6 +39,7 @@ module macroxs_header
       type(NuclideMGContainer), intent(in) :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                  :: groups ! Number of E groups
       logical, intent(in)                  :: get_kfiss ! Should we get kfiss data?
+      logical, intent(in)                  :: get_fiss ! Should we get fiss data?
       integer, intent(in)                  :: max_order ! Maximum requested order
       integer, intent(in)                  :: scatt_type ! Legendre or Tabular Scatt?
       integer, intent(in)                  :: legendre_mu_points ! Treat as Leg or Tabular?
@@ -119,7 +120,7 @@ contains
 ! MACROXS*_INIT sets the MacroXS Data
 !===============================================================================
 
-  subroutine macroxs_iso_init(this, mat, nuclides, groups, get_kfiss, &
+  subroutine macroxs_iso_init(this, mat, nuclides, groups, get_kfiss, get_fiss, &
        max_order, scatt_type, legendre_mu_points, error_code, error_text)
 
     class(MacroXS_Iso), intent(inout)    :: this ! The MacroXS to initialize
@@ -127,6 +128,7 @@ contains
     type(NuclideMGContainer), intent(in) :: nuclides(:) ! List of nuclides to harvest from
     integer, intent(in)                  :: groups ! Number of E groups
     logical, intent(in)                  :: get_kfiss ! Should we get kfiss data?
+    logical, intent(in)                  :: get_fiss ! Should we get fiss data?
     integer, intent(in)                  :: max_order ! Maximum requested order
     integer, intent(in)                  :: scatt_type ! How is data presented
     integer, intent(in)                  :: legendre_mu_points ! Treat as Leg or Tabular?
@@ -215,8 +217,10 @@ contains
     this % total = ZERO
     allocate(this % absorption(groups))
     this % absorption = ZERO
-    allocate(this % fission(groups))
-    this % fission = ZERO
+    if (get_fiss) then
+      allocate(this % fission(groups))
+      this % fission = ZERO
+    end if
     if (get_kfiss) then
       allocate(this % k_fission(groups))
       this % k_fission = ZERO
@@ -261,7 +265,9 @@ contains
                    sum(nuc % nu_fission(:,gin))
             end do
           end if
-          this % fission = this % fission + atom_density * nuc % fission
+          if (get_fiss) then
+            this % fission = this % fission + atom_density * nuc % fission
+          end if
           if (get_kfiss) then
             this % k_fission = this % k_fission + atom_density * nuc % k_fission
           end if
@@ -359,7 +365,7 @@ contains
 
   end subroutine macroxs_iso_init
 
-  subroutine macroxs_angle_init(this, mat, nuclides, groups, get_kfiss, &
+  subroutine macroxs_angle_init(this, mat, nuclides, groups, get_kfiss, get_fiss, &
        max_order, scatt_type, legendre_mu_points, error_code, error_text)
 
     class(MacroXS_Angle), intent(inout)  :: this ! The MacroXS to initialize
@@ -367,6 +373,7 @@ contains
     type(NuclideMGContainer), intent(in) :: nuclides(:) ! List of nuclides to harvest from
     integer, intent(in)                  :: groups ! Number of E groups
     logical, intent(in)                  :: get_kfiss ! Should we get kfiss data?
+    logical, intent(in)                  :: get_fiss ! Should we get fiss data?
     integer, intent(in)                  :: max_order ! Maximum requested order
     integer, intent(in)                  :: scatt_type ! Legendre or Tabular Scatt?
     integer, intent(in)                  :: legendre_mu_points ! Treat as Leg or Tabular?
@@ -493,8 +500,10 @@ contains
     this % total = ZERO
     allocate(this % absorption(groups,nazi,npol))
     this % absorption = ZERO
-    allocate(this % fission(groups,nazi,npol))
-    this % fission = ZERO
+    if (get_fiss) then
+      allocate(this % fission(groups,nazi,npol))
+      this % fission = ZERO
+    end if
     if (get_kfiss) then
       allocate(this % k_fission(groups,nazi,npol))
       this % k_fission = ZERO
@@ -542,7 +551,9 @@ contains
                    sum(nuc % nu_fission(:,gin,:,:),dim=1)
             end do
           end if
-          this % fission = this % fission + atom_density * nuc % fission
+          if (get_fiss) then
+            this % fission = this % fission + atom_density * nuc % fission
+          end if
           if (get_kfiss) then
             this % k_fission = this % k_fission + atom_density * nuc % k_fission
           end if

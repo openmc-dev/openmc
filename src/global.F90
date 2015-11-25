@@ -436,7 +436,12 @@ contains
       do i = 1, size(nuclides)
         call nuclides(i) % clear()
       end do
-      deallocate(nuclides)
+
+      ! WARNING: The following statement should work but doesn't under gfortran
+      ! 4.6 because of a bug. Technically, commenting this out leaves a memory
+      ! leak.
+
+      ! deallocate(nuclides)
     end if
 
     if (allocated(nuclides_0K)) then
@@ -463,14 +468,7 @@ contains
     ! Deallocate tally-related arrays
     if (allocated(global_tallies)) deallocate(global_tallies)
     if (allocated(meshes)) deallocate(meshes)
-    if (allocated(tallies)) then
-    ! First call the clear routines
-      do i = 1, size(tallies)
-        call tallies(i) % clear()
-      end do
-      ! Now deallocate the tally array
-      deallocate(tallies)
-    end if
+    if (allocated(tallies)) deallocate(tallies)
     if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
 

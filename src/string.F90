@@ -25,7 +25,6 @@ contains
 !===============================================================================
 
   subroutine split_string(string, words, n)
-
     character(*), intent(in)  :: string
     character(*), intent(out) :: words(MAX_WORDS)
     integer,      intent(out) :: n
@@ -166,7 +165,7 @@ contains
 !   string  = concatenated string
 !===============================================================================
 
-  function concatenate(words, n_words) result(string)
+  pure function concatenate(words, n_words) result(string)
 
     integer,        intent(in)  :: n_words
     character(*),   intent(in)  :: words(n_words)
@@ -186,8 +185,7 @@ contains
 ! TO_LOWER converts a string to all lower case characters
 !===============================================================================
 
-  function to_lower(word) result(word_lower)
-
+  pure function to_lower(word) result(word_lower)
     character(*), intent(in) :: word
     character(len=len(word)) :: word_lower
 
@@ -209,8 +207,7 @@ contains
 ! TO_UPPER converts a string to all upper case characters
 !===============================================================================
 
-  function to_upper(word) result(word_upper)
-
+  pure function to_upper(word) result(word_upper)
     character(*), intent(in) :: word
     character(len=len(word)) :: word_upper
 
@@ -234,39 +231,38 @@ contains
 ! integers.
 !===============================================================================
 
-function zero_padded(num, n_digits) result(str)
-  integer, intent(in) :: num
-  integer, intent(in) :: n_digits
-  character(11)       :: str
+  function zero_padded(num, n_digits) result(str)
+    integer, intent(in) :: num
+    integer, intent(in) :: n_digits
+    character(11)       :: str
 
-  character(8)        :: zp_form
+    character(8)        :: zp_form
 
-  ! Make sure n_digits is reasonable. 10 digits is the maximum needed for the
-  ! largest integer(4).
-  if (n_digits > 10) then
-    call fatal_error('zero_padded called with an unreasonably large &
-         &n_digits (>10)')
-  end if
+    ! Make sure n_digits is reasonable. 10 digits is the maximum needed for the
+    ! largest integer(4).
+    if (n_digits > 10) then
+      call fatal_error('zero_padded called with an unreasonably large &
+           &n_digits (>10)')
+    end if
 
-  ! Write a format string of the form '(In.m)' where n is the max width and
-  ! m is the min width.  If a sign is present, then n must be one greater
-  ! than m.
-  if (num < 0) then
-    write(zp_form, '("(I", I0, ".", I0, ")")') n_digits+1, n_digits
-  else
-    write(zp_form, '("(I", I0, ".", I0, ")")') n_digits, n_digits
-  end if
+    ! Write a format string of the form '(In.m)' where n is the max width and
+    ! m is the min width.  If a sign is present, then n must be one greater
+    ! than m.
+    if (num < 0) then
+      write(zp_form, '("(I", I0, ".", I0, ")")') n_digits+1, n_digits
+    else
+      write(zp_form, '("(I", I0, ".", I0, ")")') n_digits, n_digits
+    end if
 
-  ! Format the number.
-  write(str, zp_form) num
-end function zero_padded
+    ! Format the number.
+    write(str, zp_form) num
+  end function zero_padded
 
 !===============================================================================
 ! IS_NUMBER determines whether a string of characters is all 0-9 characters
 !===============================================================================
 
-  function is_number(word) result(number)
-
+  pure function is_number(word) result(number)
     character(*), intent(in) :: word
     logical                  :: number
 
@@ -286,10 +282,9 @@ end function zero_padded
 ! sequence of characters
 !===============================================================================
 
-  logical function starts_with(str, seq)
-
-    character(*) :: str ! string to check
-    character(*) :: seq ! sequence of characters
+  pure logical function starts_with(str, seq)
+    character(*), intent(in) :: str ! string to check
+    character(*), intent(in) :: seq ! sequence of characters
 
     integer :: i
     integer :: i_start
@@ -321,10 +316,9 @@ end function zero_padded
 ! of characters
 !===============================================================================
 
-  logical function ends_with(str, seq)
-
-    character(*) :: str ! string to check
-    character(*) :: seq ! sequence of characters
+  pure logical function ends_with(str, seq)
+    character(*), intent(in) :: str ! string to check
+    character(*), intent(in) :: seq ! sequence of characters
 
     integer :: i_start
     integer :: str_len
@@ -350,7 +344,7 @@ end function zero_padded
 ! integer.
 !===============================================================================
 
-  function count_digits(num) result(n_digits)
+  pure function count_digits(num) result(n_digits)
     integer, intent(in) :: num
     integer             :: n_digits
 
@@ -368,7 +362,7 @@ end function zero_padded
 ! INT4_TO_STR converts an integer(4) to a string.
 !===============================================================================
 
-  function int4_to_str(num) result(str)
+  pure function int4_to_str(num) result(str)
 
     integer, intent(in) :: num
     character(11) :: str
@@ -382,7 +376,7 @@ end function zero_padded
 ! INT8_TO_STR converts an integer(8) to a string.
 !===============================================================================
 
-  function int8_to_str(num) result(str)
+  pure function int8_to_str(num) result(str)
 
     integer(8), intent(in) :: num
     character(21) :: str
@@ -396,7 +390,7 @@ end function zero_padded
 ! STR_TO_INT converts a string to an integer.
 !===============================================================================
 
-  function str_to_int(str) result(num)
+  pure function str_to_int(str) result(num)
 
     character(*), intent(in) :: str
     integer(8) :: num
@@ -421,7 +415,7 @@ end function zero_padded
 ! STR_TO_REAL converts an arbitrary string to a real(8)
 !===============================================================================
 
-  function str_to_real(string) result(num)
+  pure function str_to_real(string) result(num)
 
     character(*), intent(in) :: string
     real(8)                  :: num
@@ -440,7 +434,7 @@ end function zero_padded
 ! are used.
 !===============================================================================
 
-  function real_to_str(num, sig_digits) result(string)
+  pure function real_to_str(num, sig_digits) result(string)
 
     real(8),           intent(in) :: num        ! number to convert
     integer, optional, intent(in) :: sig_digits ! # of significant digits

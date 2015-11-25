@@ -361,6 +361,8 @@ class Library(object):
             raise ValueError(msg)
 
         self._sp_filename = statepoint._f.filename
+        self._openmc_geometry = statepoint.summary.openmc_geometry
+        self._opencg_geometry = None
 
         # Load tallies for each MGXS for each domain and mgxs type
         for domain in self.domains:

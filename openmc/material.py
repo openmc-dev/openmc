@@ -90,14 +90,16 @@ class Material(object):
             return False
         elif self.name != other.name:
             return False
-        elif self.density != other.density:
-            return False
-        elif self.density_units != other.density_units:
-            return False
-        elif self._nuclides != other.nuclides:
-            return False
-        elif self._elements != other._elements:
-            return False
+        # FIXME: This won't work since OpenMC only outputs densities in units
+        # of atom/b-cm in summary.h5 irregardless of input units, and it we
+        # cannot compute the sum percent in Python since we lack AWR
+        # elif self.density != other.density:
+        #    return False
+        # FIXME: The nuclide densities are different in summary.h5???
+        # elif self._nuclides != other._nuclides:
+        #    return False
+        # elif self._elements != other._elements:
+        #    return False
         elif self._sab != other._sab:
             return False
         else:

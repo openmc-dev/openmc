@@ -80,10 +80,8 @@ class Cell(object):
             return False
         elif self.name != other.name:
             return False
-        # FIXME: This won't work for materials fills since OpenMC only outputs
-        # nuclide densities in units of atom/b-cm irregardless of input units
-        # elif self.fill != other.fill:
-        #     return False
+        elif self.fill != other.fill:
+             return False
         elif self.region != other.region:
             return False
         elif self.rotation != other.rotation:

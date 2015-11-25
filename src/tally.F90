@@ -1114,7 +1114,9 @@ contains
                    atom_density * flux
             end associate
           else
-            score = material_xs % fission * flux
+            score = flux * macro_xs(p % material) % obj % get_xs(p % g, &
+                 'fission', UVW=p % coord(i) % uvw)
+
           end if
         end if
 
@@ -1205,8 +1207,8 @@ contains
                    * atom_density * flux
             end associate
           else
-            score = macro_xs(p % material) % obj % get_xs(p % g, 'k_fission', &
-                                                          UVW=p % coord(i) % uvw)
+            score = flux * macro_xs(p % material) % obj % get_xs(p % g, &
+                 'k_fission', UVW=p % coord(i) % uvw)
           end if
         end if
 

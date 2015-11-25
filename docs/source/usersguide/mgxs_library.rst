@@ -244,7 +244,8 @@ attributes/sub-elements required to describe the meta-data:
     with the inner-dimension being groups, intermediate-dimension being
     azimuthal angles and outer-dimension being the polar angles.
 
-    *Default*: None, this must be provided if the material is fissionable.
+    *Default*: None, this is required only if ``fission`` tallies are
+    requested and the material is fissionable.
 
   :k_fission:
     This element requires the group-wise kappa-fission cross section ordered by

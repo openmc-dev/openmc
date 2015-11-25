@@ -37,7 +37,7 @@ contains
     logical :: file_exists
     integer :: error_code
     character(MAX_LINE_LEN) :: error_text, temp_str
-    logical :: get_kfiss
+    logical :: get_kfiss, get_fiss
     integer :: l
 
     ! Check if cross_sections.xml exists
@@ -63,16 +63,20 @@ contains
     allocate(micro_xs(n_nuclides_total))
 !$omp end parallel
 
-    ! Find out if we need kappa fission (are there any k_fiss tallies?)
+    ! Find out if we need fission & kappa fission
+    ! (i.e., are there any SCORE_FISSION or SCORE_KAPPA_FISSION tallies?)
     get_kfiss = .false.
+    get_fiss  = .false.
     do i = 1, n_tallies
       do l = 1, tallies(i) % n_score_bins
         if (tallies(i) % score_bins(l) == SCORE_KAPPA_FISSION) then
           get_kfiss = .true.
-          exit
+        end if
+        if (tallies(i) % score_bins(l) == SCORE_FISSION) then
+          get_fiss = .true.
         end if
       end do
-      if (get_kfiss) &
+      if (get_kfiss .and. get_fiss) &
            exit
     end do
 
@@ -123,7 +127,7 @@ contains
 
           ! Now read in the data specific to the type we just declared
           call nuclide_mg_init(nuclides_MG(i_nuclide) % obj, node_xsdata, &
-                               energy_groups, get_kfiss, error_code, &
+                               energy_groups, get_kfiss, get_fiss, error_code, &
                                error_text)
 
           ! Keep track of what listing is associated with this nuclide
@@ -191,12 +195,13 @@ contains
 ! NUCLIDE_*_INIT reads in the data from the XML file, as already accessed
 !===============================================================================
 
-    subroutine nuclide_mg_init(this, node_xsdata, groups, get_kfiss, &
+    subroutine nuclide_mg_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
                                   error_code, error_text)
       class(Nuclide_MG), intent(inout) :: this        ! Working Object
       type(Node), pointer, intent(in)  :: node_xsdata ! Data from data.xml
       integer, intent(in)              :: groups      ! Number of Energy groups
       logical, intent(in)              :: get_kfiss   ! Need Kappa-Fission?
+      logical, intent(in)              :: get_fiss ! Should we get fiss data?
       integer, intent(inout)           :: error_code  ! Code signifying error
       character(MAX_LINE_LEN), intent(inout) :: error_text ! Error message to print
 
@@ -293,21 +298,22 @@ contains
 
       select type(this)
       type is (Nuclide_Iso)
-        call nuclide_iso_init(this, node_xsdata, groups, get_kfiss, &
+        call nuclide_iso_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
                               error_code, error_text)
       type is (Nuclide_Angle)
-        call nuclide_angle_init(this, node_xsdata, groups, get_kfiss, &
+        call nuclide_angle_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
                                 error_code, error_text)
       end select
 
     end subroutine nuclide_mg_init
 
-    subroutine nuclide_iso_init(this, node_xsdata, groups, get_kfiss, &
+    subroutine nuclide_iso_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
                                 error_code, error_text)
       class(Nuclide_Iso), intent(inout)  :: this        ! Working Object
       type(Node), pointer, intent(in)    :: node_xsdata ! Data from data.xml
       integer, intent(in)                :: groups      ! Number of Energy groups
       logical, intent(in)                :: get_kfiss   ! Need Kappa-Fission?
+      logical, intent(in)                :: get_fiss    ! Need fiss data?
       integer, intent(inout)             :: error_code  ! Code signifying error
       character(MAX_LINE_LEN), intent(inout) :: error_text ! Error message to print
 
@@ -317,7 +323,6 @@ contains
 
       ! Load the more specific data
       if (this % fissionable) then
-        allocate(this % fission(groups))
 
         if (check_for_node(node_xsdata, "chi")) then
           ! Get chi
@@ -352,12 +357,16 @@ contains
             return
           end if
         end if
-        if (check_for_node(node_xsdata, "fission")) then
-          call get_node_array(node_xsdata, "fission", this % fission)
-        else
-          error_code = 1
-          error_text = "If fissionable, must provide fission!"
-          return
+        if (get_fiss) then
+          allocate(this % fission(groups))
+          if (check_for_node(node_xsdata, "fission")) then
+            call get_node_array(node_xsdata, "fission", this % fission)
+          else
+            error_code = 1
+            error_text = "Fission data missing, required due to fission&
+                         & tallies in tallies.xml file!"
+            return
+          end if
         end if
         if (get_kfiss) then
           allocate(this % k_fission(groups))
@@ -429,13 +438,14 @@ contains
 
     end subroutine nuclide_iso_init
 
-    subroutine nuclide_angle_init(this, node_xsdata, groups, get_kfiss, &
+    subroutine nuclide_angle_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
                                   error_code, error_text)
       class(Nuclide_Angle), intent(inout) :: this        ! Working Object
-      type(Node), pointer, intent(in)    :: node_xsdata ! Data from data.xml
-      integer, intent(in)                :: groups      ! Number of Energy groups
-      logical, intent(in)                :: get_kfiss   ! Need Kappa-Fission?
-      integer, intent(inout)             :: error_code  ! Code signifying error
+      type(Node), pointer, intent(in)     :: node_xsdata ! Data from data.xml
+      integer, intent(in)                 :: groups      ! Number of Energy groups
+      logical, intent(in)                 :: get_kfiss   ! Need Kappa-Fission?
+      logical, intent(in)                 :: get_fiss    ! Should we get fiss data?
+      integer, intent(inout)              :: error_code  ! Code signifying error
       character(MAX_LINE_LEN), intent(inout) :: error_text ! Error message to print
 
       real(8), allocatable :: temp_arr(:)
@@ -535,16 +545,19 @@ contains
             return
           end if
         end if
-        if (check_for_node(node_xsdata, "fission")) then
-          allocate(temp_arr(groups * this % Nazi * this % Npol))
-          call get_node_array(node_xsdata, "fission", temp_arr)
-          allocate(this % fission(groups, this % Nazi, this % Npol))
-          this % fission = reshape(temp_arr, (/groups, this % Nazi, this % Npol/))
-          deallocate(temp_arr)
-        else
-          error_code = 1
-          error_text = "If fissionable, must provide fission!"
-          return
+        if (get_fiss) then
+          if (check_for_node(node_xsdata, "fission")) then
+            allocate(temp_arr(groups * this % Nazi * this % Npol))
+            call get_node_array(node_xsdata, "fission", temp_arr)
+            allocate(this % fission(groups, this % Nazi, this % Npol))
+            this % fission = reshape(temp_arr, (/groups, this % Nazi, this % Npol/))
+            deallocate(temp_arr)
+          else
+            error_code = 1
+            error_text = "Fission data missing, required due to kappa-fission&
+                         & tallies in tallies.xml file!"
+            return
+          end if
         end if
         if (get_kfiss) then
           if (check_for_node(node_xsdata, "k_fission")) then
@@ -627,23 +640,27 @@ contains
     integer :: i             ! loop index over nuclides
     integer :: l             ! Loop over score bins
     type(Material), pointer :: mat ! current material
-    logical :: get_kfiss
+    logical :: get_kfiss, get_fiss
     integer :: error_code
     character(MAX_LINE_LEN) :: error_text
     integer :: representation
     integer :: scatt_type
     integer :: legendre_mu_points
 
-    ! Find out if we need kappa fission (are there any k_fiss tallies?)
+    ! Find out if we need fission & kappa fission
+    ! (i.e., are there any SCORE_FISSION or SCORE_KAPPA_FISSION tallies?)
     get_kfiss = .false.
+    get_fiss  = .false.
     do i = 1, n_tallies
       do l = 1, tallies(i) % n_score_bins
         if (tallies(i) % score_bins(l) == SCORE_KAPPA_FISSION) then
           get_kfiss = .true.
-          exit
+        end if
+        if (tallies(i) % score_bins(l) == SCORE_FISSION) then
+          get_fiss = .true.
         end if
       end do
-      if (get_kfiss) &
+      if (get_kfiss .and. get_fiss) &
            exit
     end do
 
@@ -675,9 +692,9 @@ contains
       end select
 
       call macro_xs(i_mat) % obj % init(mat, nuclides_MG, energy_groups, &
-                                        get_kfiss, max_order, scatt_type, &
-                                        legendre_mu_points, error_code, &
-                                        error_text)
+                                        get_kfiss, get_fiss, max_order, &
+                                        scatt_type, legendre_mu_points, &
+                                        error_code, error_text)
       ! Handle any errors
       if (error_code /= 0) then
         call fatal_error(trim(error_text))

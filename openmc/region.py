@@ -29,6 +29,17 @@ class Region(object):
     def __str__(self):
         return ''
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return False
+        elif str(self) != str(other):
+            return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self == other
+
     @staticmethod
     def from_expression(expression, surfaces):
         """Generate a region given an infix expression.

@@ -83,6 +83,29 @@ class Material(object):
         # If specified, this file will be used instead of composition values
         self._distrib_otf_file = None
 
+    def __eq__(self, other):
+        if not isinstance(other, Material):
+            return False
+        elif self.id != other.id:
+            return False
+        elif self.name != other.name:
+            return False
+        elif self.density != other.density:
+            return False
+        elif self.density_units != other.density_units:
+            return False
+        elif self._nuclides != other.nuclides:
+            return False
+        elif self._elements != other._elements:
+            return False
+        elif self._sab != other._sab:
+            return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self == other
+
     def __repr__(self):
         string = 'Material\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)

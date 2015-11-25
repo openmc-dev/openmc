@@ -29,13 +29,11 @@ contains
 !===============================================================================
 
   subroutine timer_start(self)
-
     class(Timer), intent(inout) :: self
 
     ! Turn timer on and measure starting time
     self % running = .true.
     call system_clock(self % start_counts)
-
   end subroutine timer_start
 
 !===============================================================================
@@ -43,7 +41,6 @@ contains
 !===============================================================================
 
   function timer_get_value(self) result(elapsed)
-
     class(Timer), intent(in) :: self   ! the timer
     real(8)                 :: elapsed ! total elapsed time
 
@@ -58,7 +55,6 @@ contains
     else
       elapsed = self % elapsed
     end if
-
   end function timer_get_value
 
 !===============================================================================
@@ -66,30 +62,26 @@ contains
 !===============================================================================
 
   subroutine timer_stop(self)
-
     class(Timer), intent(inout) :: self
 
     ! Check to make sure timer was running
     if (.not. self % running) return
 
     ! Stop timer and add time
-    self % elapsed = timer_get_value(self)
+    self % elapsed = self % get_value()
     self % running = .false.
-
   end subroutine timer_stop
 
 !===============================================================================
 ! TIMER_RESET resets a timer to have a zero value
 !===============================================================================
 
-  subroutine timer_reset(self)
-
+  pure subroutine timer_reset(self)
     class(Timer), intent(inout) :: self
 
     self % running      = .false.
     self % start_counts = 0
     self % elapsed      = ZERO
-
   end subroutine timer_reset
 
 end module timer_header

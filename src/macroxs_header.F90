@@ -667,7 +667,11 @@ contains
 
     if (allocated(this % total)) then
       deallocate(this % total, this % absorption, &
-                 this % nu_fission, this % fission)
+                 this % nu_fission)
+    end if
+
+    if (allocated(this % fission)) then
+      deallocate(this % fission)
     end if
 
     if (allocated(this % k_fission)) then
@@ -689,7 +693,11 @@ contains
 
     if (allocated(this % total)) then
       deallocate(this % total, this % absorption, &
-                 this % nu_fission, this % fission)
+                 this % nu_fission)
+    end if
+
+    if (allocated(this % fission)) then
+      deallocate(this % fission)
     end if
 
     if (allocated(this % k_fission)) then

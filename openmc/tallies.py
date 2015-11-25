@@ -1488,9 +1488,10 @@ class Tally(object):
         other_copy = copy.deepcopy(other)
 
         # Find any shared filters between the two tallies
-        self_filters = set(self_copy.filters)
-        other_filters = set(other_copy.filters)
-        filter_intersect = self_filters.intersection(other_filters)
+        filter_intersect = []
+        for filter in self_copy.filters:
+            if filter in other_copy.filters:
+                filter_intersect.append(filter)
 
         # Align the shared filters in successive order
         for i, filter in enumerate(filter_intersect):

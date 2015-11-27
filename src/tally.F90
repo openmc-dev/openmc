@@ -773,8 +773,7 @@ contains
           if (t % deriv % dep_var == DIFF_NUCLIDE_DENSITY) then
             mat => materials(p % material)
             scoring_diff_nuclide = (mat % id == t % deriv % diff_material) &
-                 .and. (i_nuclide <= 0 &
-                        .or. (i_nuclide == t % deriv % diff_nuclide))
+                 .and. (i_nuclide == t % deriv % diff_nuclide)
             select case (score_bin)
             case (SCORE_ABSORPTION)
                 scoring_diff_nuclide = scoring_diff_nuclide .and. &
@@ -793,12 +792,6 @@ contains
                 scoring_diff_nuclide = scoring_diff_nuclide .and. &
                      micro_xs(t % deriv % diff_nuclide) % nu_fission /= ZERO
             end select
-
-            if (scoring_diff_nuclide) then
-              do l = 1, mat % n_nuclides
-                if (mat % nuclide(l) == t % deriv % diff_nuclide) exit
-              end do
-            end if
           end if
 
           select case (score_bin)
@@ -806,14 +799,68 @@ contains
           case (SCORE_FLUX)
             score = score * t % deriv % accumulator
 
-          case (SCORE_ABSORPTION, SCORE_FISSION, SCORE_NU_FISSION, &
-                SCORE_KAPPA_FISSION)
+          case (SCORE_ABSORPTION)
             select case (t % deriv % dep_var)
 
             case (DIFF_NUCLIDE_DENSITY)
-              if (scoring_diff_nuclide) then
+              if (i_nuclide == -1) then
+                score = score * (t % deriv % accumulator &
+                     + micro_xs(t % deriv % diff_nuclide) % absorption &
+                     / material_xs % absorption)
+              else if (scoring_diff_nuclide) then
                 score = score * (t % deriv % accumulator + ONE &
-                     / mat % atom_density(l))
+                     / atom_density)
+              else
+                score = score * t % deriv % accumulator
+              end if
+
+            end select
+
+          case (SCORE_FISSION)
+            select case (t % deriv % dep_var)
+
+            case (DIFF_NUCLIDE_DENSITY)
+              if (i_nuclide == -1) then
+                score = score * (t % deriv % accumulator &
+                     + micro_xs(t % deriv % diff_nuclide) % fission &
+                     / material_xs % fission)
+              else if (scoring_diff_nuclide) then
+                score = score * (t % deriv % accumulator + ONE &
+                     / atom_density)
+              else
+                score = score * t % deriv % accumulator
+              end if
+
+            end select
+
+          case (SCORE_NU_FISSION)
+            select case (t % deriv % dep_var)
+
+            case (DIFF_NUCLIDE_DENSITY)
+              if (i_nuclide == -1) then
+                score = score * (t % deriv % accumulator &
+                     + micro_xs(t % deriv % diff_nuclide) % nu_fission &
+                     / material_xs % nu_fission)
+              else if (scoring_diff_nuclide) then
+                score = score * (t % deriv % accumulator + ONE &
+                     / atom_density)
+              else
+                score = score * t % deriv % accumulator
+              end if
+
+            end select
+
+          case (SCORE_KAPPA_FISSION)
+            select case (t % deriv % dep_var)
+
+            case (DIFF_NUCLIDE_DENSITY)
+              if (i_nuclide == -1) then
+                score = score * (t % deriv % accumulator &
+                     + micro_xs(t % deriv % diff_nuclide) % kappa_fission &
+                     / material_xs % kappa_fission)
+              else if (scoring_diff_nuclide) then
+                score = score * (t % deriv % accumulator + ONE &
+                     / atom_density)
               else
                 score = score * t % deriv % accumulator
               end if

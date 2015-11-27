@@ -775,6 +775,9 @@ contains
             scoring_diff_nuclide = (mat % id == t % deriv % diff_material) &
                  .and. (i_nuclide == t % deriv % diff_nuclide)
             select case (score_bin)
+            case (SCORE_TOTAL)
+                scoring_diff_nuclide = scoring_diff_nuclide .and. &
+                     micro_xs(t % deriv % diff_nuclide) % total /= ZERO
             case (SCORE_ABSORPTION)
                 scoring_diff_nuclide = scoring_diff_nuclide .and. &
                      micro_xs(t % deriv % diff_nuclide) % absorption /= ZERO
@@ -799,14 +802,33 @@ contains
           case (SCORE_FLUX)
             score = score * t % deriv % accumulator
 
+          case (SCORE_TOTAL)
+            select case (t % deriv % dep_var)
+
+            case (DIFF_NUCLIDE_DENSITY)
+              if (i_nuclide == -1 .and. &
+                   materials(p % material)%id== t % deriv % diff_material) then
+                score = score * (t % deriv % accumulator &
+                     + micro_xs(t % deriv % diff_nuclide) % total &
+                     / material_xs % total)
+              else if (scoring_diff_nuclide) then
+                score = score * (t % deriv % accumulator + ONE &
+                     / atom_density)
+              else
+                score = score * t % deriv % accumulator
+              end if
+
+            end select
+
           case (SCORE_ABSORPTION)
             select case (t % deriv % dep_var)
 
             case (DIFF_NUCLIDE_DENSITY)
-              if (i_nuclide == -1) then
+              if (i_nuclide == -1 .and. &
+                   materials(p % material)%id== t % deriv % diff_material) then
                 score = score * (t % deriv % accumulator &
                      + micro_xs(t % deriv % diff_nuclide) % absorption &
-                     / material_xs % absorption)
+                     / material_xs % absorption )
               else if (scoring_diff_nuclide) then
                 score = score * (t % deriv % accumulator + ONE &
                      / atom_density)
@@ -820,7 +842,8 @@ contains
             select case (t % deriv % dep_var)
 
             case (DIFF_NUCLIDE_DENSITY)
-              if (i_nuclide == -1) then
+              if (i_nuclide == -1 .and. &
+                   materials(p % material)%id== t % deriv % diff_material) then
                 score = score * (t % deriv % accumulator &
                      + micro_xs(t % deriv % diff_nuclide) % fission &
                      / material_xs % fission)
@@ -837,7 +860,8 @@ contains
             select case (t % deriv % dep_var)
 
             case (DIFF_NUCLIDE_DENSITY)
-              if (i_nuclide == -1) then
+              if (i_nuclide == -1 .and. &
+                   materials(p % material)%id== t % deriv % diff_material) then
                 score = score * (t % deriv % accumulator &
                      + micro_xs(t % deriv % diff_nuclide) % nu_fission &
                      / material_xs % nu_fission)
@@ -854,7 +878,8 @@ contains
             select case (t % deriv % dep_var)
 
             case (DIFF_NUCLIDE_DENSITY)
-              if (i_nuclide == -1) then
+              if (i_nuclide == -1 .and. &
+                   materials(p % material)%id== t % deriv % diff_material) then
                 score = score * (t % deriv % accumulator &
                      + micro_xs(t % deriv % diff_nuclide) % kappa_fission &
                      / material_xs % kappa_fission)

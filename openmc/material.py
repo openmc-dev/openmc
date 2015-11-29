@@ -108,6 +108,9 @@ class Material(object):
     def __ne__(self, other):
         return not self == other
 
+    def __hash__(self):
+        return hash(str(self))
+
     def __repr__(self):
         string = 'Material\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)

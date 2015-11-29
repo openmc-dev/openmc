@@ -91,8 +91,15 @@ contains
       else
         ! Since the MGXS can be angle dependent, this needs to be done
         ! After every collision for the MGXS mode
-        call calculate_mgxs(macro_xs(p % material) % obj, p % g, &
-                            p % coord(p % n_coord) % uvw, material_xs)
+        if (p % material /= MATERIAL_VOID) then
+          call calculate_mgxs(macro_xs(p % material) % obj, p % g, &
+                              p % coord(p % n_coord) % uvw, material_xs)
+        else
+          material_xs % total      = ZERO
+          material_xs % elastic    = ZERO
+          material_xs % absorption = ZERO
+          material_xs % nu_fission = ZERO
+        end if
       end if
 
       ! Find the distance to the nearest boundary

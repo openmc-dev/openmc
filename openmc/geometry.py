@@ -147,7 +147,7 @@ class Geometry(object):
             if cell._type == 'normal':
                 material_cells.add(cell)
 
-        material_cells = list(material_cells)
+        material_cells = list(set(material_cells))
         material_cells.sort(key=lambda x: x.id)
         return material_cells
 

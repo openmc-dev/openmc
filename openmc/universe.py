@@ -94,6 +94,9 @@ class Cell(object):
     def __ne__(self, other):
         return not self == other
 
+    def __hash__(self):
+        return hash(str(self))
+
     def __repr__(self):
         string = 'Cell\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
@@ -478,6 +481,9 @@ class Universe(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __hash__(self):
+        return hash(str(self))
 
     def __repr__(self):
         string = 'Universe\n'
@@ -964,6 +970,9 @@ class RectLattice(Lattice):
     def __ne__(self, other):
         return not self == other
 
+    def __hash__(self):
+        return hash(str(self))
+
     def __repr__(self):
         string = 'RectLattice\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
@@ -1197,6 +1206,9 @@ class HexLattice(Lattice):
 
     def __ne__(self, other):
         return not self == other
+
+    def __hash__(self):
+        return hash(str(self))
 
     def __repr__(self):
         string = 'HexLattice\n'

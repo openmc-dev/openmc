@@ -3,6 +3,8 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
+import numpy as np
+
 from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.region import Region
 
@@ -136,6 +138,33 @@ class Surface(object):
         check_value('boundary type', boundary_type, _BC_TYPES)
         self._boundary_type = boundary_type
 
+    def bounding_box(self, side):
+        """Determine an axis-aligned bounding box.
+
+        An axis-aligned bounding box for surface half-spaces is represented by
+        its lower-left and upper-right coordinates. If the half-space is
+        unbounded in a particular direction, numpy.inf is used to represent
+        infinity.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the negative or positive half-space
+
+        Returns
+        -------
+        numpy.array
+            Lower-left coordinates of the axis-aligned bounding box for the
+            desired half-space
+        numpy.array
+            Upper-right coordinates of the axis-aligned bounding box for the
+            desired half-space
+
+        """
+
+        return (np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf]))
+
     def create_xml_subelement(self):
         element = ET.Element("surface")
         element.set("id", str(self._id))
@@ -194,6 +223,10 @@ class Plane(Surface):
 
         self._type = 'plane'
         self._coeff_keys = ['A', 'B', 'C', 'D']
+        self._coeffs['A'] = 1.
+        self._coeffs['B'] = 0.
+        self._coeffs['C'] = 0.
+        self._coeffs['D'] = 0.
 
         if A is not None:
             self.a = A
@@ -276,6 +309,7 @@ class XPlane(Plane):
 
         self._type = 'x-plane'
         self._coeff_keys = ['x0']
+        self._coeffs['x0'] = 0.
 
         if x0 is not None:
             self.x0 = x0
@@ -288,6 +322,37 @@ class XPlane(Plane):
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
         self._coeffs['x0'] = x0
+
+    def bounding_box(self, side):
+        """Determine an axis-aligned bounding box.
+
+        An axis-aligned bounding box for surface half-spaces is represented by
+        its lower-left and upper-right coordinates. If the half-space is
+        unbounded in a particular direction, numpy.inf is used to represent
+        infinity.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the negative or positive half-space
+
+        Returns
+        -------
+        numpy.array
+            Lower-left coordinates of the axis-aligned bounding box for the
+            desired half-space
+        numpy.array
+            Upper-right coordinates of the axis-aligned bounding box for the
+            desired half-space
+
+        """
+
+        if side == '-':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([self.x0, np.inf, np.inf]))
+        elif side == '+':
+            return (np.array([self.x0, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
 
 class YPlane(Plane):
@@ -322,6 +387,7 @@ class YPlane(Plane):
 
         self._type = 'y-plane'
         self._coeff_keys = ['y0']
+        self._coeffs['y0'] = 0.
 
         if y0 is not None:
             self.y0 = y0
@@ -334,6 +400,37 @@ class YPlane(Plane):
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
         self._coeffs['y0'] = y0
+
+    def bounding_box(self, side):
+        """Determine an axis-aligned bounding box.
+
+        An axis-aligned bounding box for surface half-spaces is represented by
+        its lower-left and upper-right coordinates. If the half-space is
+        unbounded in a particular direction, numpy.inf is used to represent
+        infinity.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the negative or positive half-space
+
+        Returns
+        -------
+        numpy.array
+            Lower-left coordinates of the axis-aligned bounding box for the
+            desired half-space
+        numpy.array
+            Upper-right coordinates of the axis-aligned bounding box for the
+            desired half-space
+
+        """
+
+        if side == '-':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, self.y0, np.inf]))
+        elif side == '+':
+            return (np.array([-np.inf, -self.y0, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
 
 class ZPlane(Plane):
@@ -368,6 +465,7 @@ class ZPlane(Plane):
 
         self._type = 'z-plane'
         self._coeff_keys = ['z0']
+        self._coeffs['z0'] = 0.
 
         if z0 is not None:
             self.z0 = z0
@@ -380,6 +478,37 @@ class ZPlane(Plane):
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
         self._coeffs['z0'] = z0
+
+    def bounding_box(self, side):
+        """Determine an axis-aligned bounding box.
+
+        An axis-aligned bounding box for surface half-spaces is represented by
+        its lower-left and upper-right coordinates. If the half-space is
+        unbounded in a particular direction, numpy.inf is used to represent
+        infinity.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the negative or positive half-space
+
+        Returns
+        -------
+        numpy.array
+            Lower-left coordinates of the axis-aligned bounding box for the
+            desired half-space
+        numpy.array
+            Upper-right coordinates of the axis-aligned bounding box for the
+            desired half-space
+
+        """
+
+        if side == '-':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, self.z0]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -self.z0]),
+                    np.array([np.inf, np.inf, np.inf]))
 
 
 class Cylinder(Surface):
@@ -415,6 +544,7 @@ class Cylinder(Surface):
         super(Cylinder, self).__init__(surface_id, boundary_type, name=name)
 
         self._coeff_keys = ['R']
+        self._coeffs['R'] = 1.
 
         if R is not None:
             self.r = R
@@ -468,6 +598,8 @@ class XCylinder(Cylinder):
 
         self._type = 'x-cylinder'
         self._coeff_keys = ['y0', 'z0', 'R']
+        self._coeffs['y0'] = 0.
+        self._coeffs['z0'] = 0.
 
         if y0 is not None:
             self.y0 = y0
@@ -492,6 +624,37 @@ class XCylinder(Cylinder):
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
         self._coeffs['z0'] = z0
+
+    def bounding_box(self, side):
+        """Determine an axis-aligned bounding box.
+
+        An axis-aligned bounding box for surface half-spaces is represented by
+        its lower-left and upper-right coordinates. If the half-space is
+        unbounded in a particular direction, numpy.inf is used to represent
+        infinity.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the negative or positive half-space
+
+        Returns
+        -------
+        numpy.array
+            Lower-left coordinates of the axis-aligned bounding box for the
+            desired half-space
+        numpy.array
+            Upper-right coordinates of the axis-aligned bounding box for the
+            desired half-space
+
+        """
+
+        if side == '-':
+            return (np.array([-np.inf, self.y0 - self.r, self.z0 - self.r]),
+                    np.array([np.inf, self.y0 + self.r, self.y0 + self.r]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
 
 class YCylinder(Cylinder):
@@ -533,6 +696,8 @@ class YCylinder(Cylinder):
 
         self._type = 'y-cylinder'
         self._coeff_keys = ['x0', 'z0', 'R']
+        self._coeffs['x0'] = 0.
+        self._coeffs['z0'] = 0.
 
         if x0 is not None:
             self.x0 = x0
@@ -557,6 +722,37 @@ class YCylinder(Cylinder):
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
         self._coeffs['z0'] = z0
+
+    def bounding_box(self, side):
+        """Determine an axis-aligned bounding box.
+
+        An axis-aligned bounding box for surface half-spaces is represented by
+        its lower-left and upper-right coordinates. If the half-space is
+        unbounded in a particular direction, numpy.inf is used to represent
+        infinity.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the negative or positive half-space
+
+        Returns
+        -------
+        numpy.array
+            Lower-left coordinates of the axis-aligned bounding box for the
+            desired half-space
+        numpy.array
+            Upper-right coordinates of the axis-aligned bounding box for the
+            desired half-space
+
+        """
+
+        if side == '-':
+            return (np.array([self.x0 - self.r, -np.inf, self.z0 - self.r]),
+                    np.array([self.x0 + self.r, np.inf, self.y0 + self.r]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
 
 class ZCylinder(Cylinder):
@@ -598,6 +794,8 @@ class ZCylinder(Cylinder):
 
         self._type = 'z-cylinder'
         self._coeff_keys = ['x0', 'y0', 'R']
+        self._coeffs['x0'] = 0.
+        self._coeffs['y0'] = 0.
 
         if x0 is not None:
             self.x0 = x0
@@ -622,6 +820,37 @@ class ZCylinder(Cylinder):
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
         self._coeffs['y0'] = y0
+
+    def bounding_box(self, side):
+        """Determine an axis-aligned bounding box.
+
+        An axis-aligned bounding box for surface half-spaces is represented by
+        its lower-left and upper-right coordinates. If the half-space is
+        unbounded in a particular direction, numpy.inf is used to represent
+        infinity.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the negative or positive half-space
+
+        Returns
+        -------
+        numpy.array
+            Lower-left coordinates of the axis-aligned bounding box for the
+            desired half-space
+        numpy.array
+            Upper-right coordinates of the axis-aligned bounding box for the
+            desired half-space
+
+        """
+
+        if side == '-':
+            return (np.array([self.x0 - self.r, self.y0 - self.r, -np.inf]),
+                    np.array([self.x0 + self.r, self.y0 + self.r, np.inf]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
 
 
 class Sphere(Surface):
@@ -667,6 +896,10 @@ class Sphere(Surface):
 
         self._type = 'sphere'
         self._coeff_keys = ['x0', 'y0', 'z0', 'R']
+        self._coeffs['x0'] = 0.
+        self._coeffs['y0'] = 0.
+        self._coeffs['z0'] = 0.
+        self._coeffs['R'] = 1.
 
         if x0 is not None:
             self.x0 = x0
@@ -716,6 +949,39 @@ class Sphere(Surface):
         check_type('R coefficient', R, Real)
         self._coeffs['R'] = R
 
+    def bounding_box(self, side):
+        """Determine an axis-aligned bounding box.
+
+        An axis-aligned bounding box for surface half-spaces is represented by
+        its lower-left and upper-right coordinates. If the half-space is
+        unbounded in a particular direction, numpy.inf is used to represent
+        infinity.
+
+        Parameters
+        ----------
+        side : {'+', '-'}
+            Indicates the negative or positive half-space
+
+        Returns
+        -------
+        numpy.array
+            Lower-left coordinates of the axis-aligned bounding box for the
+            desired half-space
+        numpy.array
+            Upper-right coordinates of the axis-aligned bounding box for the
+            desired half-space
+
+        """
+
+        if side == '-':
+            return (np.array([self.x0 - self.r, self.y0 - self.r,
+                              self.z0 - self.r]),
+                    np.array([self.x0 + self.r, self.y0 + self.r,
+                              self.z0 + self.r]))
+        elif side == '+':
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
+
 
 class Cone(Surface):
     """A conical surface parallel to the x-, y-, or z-axis.
@@ -761,6 +1027,10 @@ class Cone(Surface):
         super(Cone, self).__init__(surface_id, boundary_type, name=name)
 
         self._coeff_keys = ['x0', 'y0', 'z0', 'R2']
+        self._coeffs['x0'] = 0.
+        self._coeffs['y0'] = 0.
+        self._coeffs['z0'] = 0.
+        self._coeffs['R2'] = 1.
 
         if x0 is not None:
             self.x0 = x0
@@ -982,6 +1252,8 @@ class Quadric(Surface):
 
         self._type = 'quadric'
         self._coeff_keys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k']
+        for key in self._coeff_keys:
+            self._coeffs[key] = 0.
 
         if a is not None:
             self.a = a
@@ -1127,6 +1399,8 @@ class Halfspace(Region):
         Surface which divides Euclidean space.
     side : {'+', '-'}
         Indicates whether the positive or negative half-space is used.
+    bounding_box : tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """
 
@@ -1154,6 +1428,10 @@ class Halfspace(Region):
     def side(self, side):
         check_value('side', side, ('+', '-'))
         self._side = side
+
+    @property
+    def bounding_box(self):
+        return self.surface.bounding_box(self.side)
 
     def __str__(self):
         return '-' + str(self.surface.id) if self.side == '-' \

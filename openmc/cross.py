@@ -309,7 +309,7 @@ class CrossFilter(object):
             clone._right_filter = self.right_filter
             clone._binary_op = self.binary_op
             clone._type = self.type
-            clone._bins = self.bins
+            clone._bins = self._bins
             clone._num_bins = self.num_bins
             clone._stride = self.stride
 
@@ -356,7 +356,7 @@ class CrossFilter(object):
     def type(self, filter_type):
         if filter_type not in _FILTER_TYPES.values():
             msg = 'Unable to set Filter type to "{0}" since it is not one ' \
-                  'of the supported types'.format(type)
+                  'of the supported types'.format(filter_type)
             raise ValueError(msg)
 
         self._type = filter_type

@@ -190,21 +190,7 @@ class Tally(object):
         return not self == other
 
     def __hash__(self):
-        hashable = []
-
-        for filter in self.filters:
-            hashable.append((filter.type, tuple(filter.bins)))
-
-        for nuclide in self.nuclides:
-            hashable.append(nuclide.name)
-
-        for score in self.scores:
-            hashable.append(score)
-
-        hashable.append(self.estimator)
-        hashable.append(self.name)
-
-        return hash(tuple(hashable))
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'Tally\n'

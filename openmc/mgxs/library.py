@@ -203,6 +203,7 @@ class Library(object):
     def openmc_geometry(self, openmc_geometry):
         cv.check_type('openmc_geometry', openmc_geometry, openmc.Geometry)
         self._openmc_geometry = openmc_geometry
+        self._opencg_geometry = None
 
     @name.setter
     def name(self, name):
@@ -362,7 +363,6 @@ class Library(object):
 
         self._sp_filename = statepoint._f.filename
         self._openmc_geometry = statepoint.summary.openmc_geometry
-        self._opencg_geometry = None
 
         # Load tallies for each MGXS for each domain and mgxs type
         for domain in self.domains:

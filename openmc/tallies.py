@@ -1468,19 +1468,31 @@ class Tally(object):
             new_name = '({0} {1} {2})'.format(self.name, binary_op, other.name)
             new_tally.name = new_name
 
+        # Create copies of self and other tallies to rearrange for tally
+        # arithmetic
+        self_copy = copy.deepcopy(self)
+        other_copy = copy.deepcopy(other)
+
         # Find any shared filters between the two tallies
-        self_filters = set(self.filters)
-        other_filters = set(other.filters)
-        filter_intersect = self_filters.intersection(other_filters)
+        filter_intersect = []
+        for filter in self_copy.filters:
+            if filter in other_copy.filters:
+                filter_intersect.append(filter)
 
-        # Align the shared filters to follow in each tally operand
+        # Align the shared filters in successive order
         for i, filter in enumerate(filter_intersect):
-            self_index = self.filters.index(filter)
-            other_filter = other.filters[self_index]
-            if other_filter != filter:
-                other = other.swap_filters(filter, other_filter)
+            self_index = self_copy.filters.index(filter)
+            other_index = other_copy.filters.index(filter)
 
-        data = self._align_tally_data(other)
+            # If necessary, swap self filter
+            if self_index != i:
+                self_copy.swap_filters(filter, self_copy.filters[i], inplace=True)
+
+            # If necessary, swap other filter
+            if other_index != i:
+                other_copy.swap_filters(filter, other_copy.filters[i], inplace=True)
+
+        data = self_copy._align_tally_data(other_copy)
 
         if binary_op == '+':
             new_tally._mean = data['self']['mean'] + data['other']['mean']
@@ -1511,16 +1523,16 @@ class Tally(object):
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(first_term**2 + second_term**2)
 
-        if self.estimator == other.estimator:
-            new_tally.estimator = self.estimator
-        if self.with_summary and other.with_summary:
-            new_tally.with_summary = self.with_summary
-        if self.num_realizations == other.num_realizations:
-            new_tally.num_realizations = self.num_realizations
+        if self_copy.estimator == other_copy.estimator:
+            new_tally.estimator = self_copy.estimator
+        if self_copy.with_summary and other_copy.with_summary:
+            new_tally.with_summary = self_copy.with_summary
+        if self_copy.num_realizations == other_copy.num_realizations:
+            new_tally.num_realizations = self_copy.num_realizations
 
         # If filters are identical, simply reuse them in derived tally
-        if self.filters == other.filters:
-            for self_filter in self.filters:
+        if self_copy.filters == other_copy.filters:
+            for self_filter in self_copy.filters:
                 new_tally.add_filter(self_filter)
 
         # Generate filter "outer products" for non-identical filters
@@ -1528,24 +1540,24 @@ class Tally(object):
 
             # Find the common longest sequence of shared filters
             match = 0
-            for self_filter, other_filter in zip(self.filters, other.filters):
+            for self_filter, other_filter in zip(self_copy.filters, other_copy.filters):
                 if self_filter == other_filter:
                     match += 1
                 else:
                     break
 
-            match_filters = self.filters[:match]
-            cross_filters = [self.filters[match:], other.filters[match:]]
+            match_filters = self_copy.filters[:match]
+            cross_filters = [self_copy.filters[match:], other_copy.filters[match:]]
 
             # Simply reuse shared filters in derived tally
             for filter in match_filters:
                 new_tally.add_filter(filter)
 
             # Use cross filters to combine non-shared filters in derived tally
-            if len(self.filters) != match and len(other.filters) == match:
+            if len(self_copy.filters) != match and len(other_copy.filters) == match:
                 for filter in cross_filters[0]:
                     new_tally.add_filter(filter)
-            elif len(other.filters) == match and len(other.filters) != match:
+            elif len(self_copy.filters) == match and len(other_copy.filters) != match:
                 for filter in cross_filters[1]:
                     new_tally.add_filter(filter)
             else:
@@ -1554,23 +1566,23 @@ class Tally(object):
                     new_tally.add_filter(new_filter)
 
         # Generate score "outer products"
-        if self.scores == other.scores:
-            new_tally.num_score_bins = self.num_score_bins
-            for self_score in self.scores:
+        if self_copy.scores == other_copy.scores:
+            new_tally.num_score_bins = self_copy.num_score_bins
+            for self_score in self_copy.scores:
                 new_tally.add_score(self_score)
         else:
-            new_tally.num_score_bins = self.num_score_bins * other.num_score_bins
-            all_scores = [self.scores, other.scores]
+            new_tally.num_score_bins = self_copy.num_score_bins * other_copy.num_score_bins
+            all_scores = [self_copy.scores, other_copy.scores]
             for self_score, other_score in itertools.product(*all_scores):
                 new_score = CrossScore(self_score, other_score, binary_op)
                 new_tally.add_score(new_score)
 
         # Generate nuclide "outer products"
-        if self.nuclides == other.nuclides:
-            for self_nuclide in self.nuclides:
+        if self_copy.nuclides == other_copy.nuclides:
+            for self_nuclide in self_copy.nuclides:
                 new_tally.nuclides.append(self_nuclide)
         else:
-            all_nuclides = [self.nuclides, other.nuclides]
+            all_nuclides = [self_copy.nuclides, other_copy.nuclides]
             for self_nuclide, other_nuclide in itertools.product(*all_nuclides):
                 new_nuclide = CrossNuclide(self_nuclide, other_nuclide, binary_op)
                 new_tally.add_nuclide(new_nuclide)
@@ -1630,8 +1642,8 @@ class Tally(object):
                 self_repeat_factor *= filter.num_bins
 
             # Tile / repeat the tally data for the tally outer product
-            self_shape = list(self.mean.shape)
-            other_shape = list(other.mean.shape)
+            self_shape = list(self_mean.shape)
+            other_shape = list(other_mean.shape)
             self_shape[0] *= self_repeat_factor
             self_mean = np.repeat(self_mean, self_repeat_factor)
             self_std_dev = np.repeat(self_std_dev, self_repeat_factor)
@@ -1639,7 +1651,8 @@ class Tally(object):
             if self_repeat_factor == 1:
                 other_shape[0] *= other_tile_factor
                 other_mean = np.repeat(other_mean, other_tile_factor, axis=0)
-                other_std_dev = np.repeat(other_std_dev, other_tile_factor, axis=0)
+                other_std_dev = np.repeat(other_std_dev, other_tile_factor,
+                                          axis=0)
             else:
                 other_mean = np.tile(other_mean, (other_tile_factor, 1, 1))
                 other_std_dev = np.tile(other_std_dev, (other_tile_factor, 1, 1))
@@ -1658,7 +1671,11 @@ class Tally(object):
             self_repeat_factor = other.num_nuclides
             other_tile_factor = self.num_nuclides
 
-            # Replicate the data
+            # Tile / repeat the tally data for the tally outer product
+            self_shape = list(self_mean.shape)
+            other_shape = list(other_mean.shape)
+            self_shape[1] *= self_repeat_factor
+            other_shape[1] *= other_tile_factor
             self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
             other_mean = np.tile(other_mean, (1, other_tile_factor, 1))
             self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=1)
@@ -1666,10 +1683,10 @@ class Tally(object):
 
             # NumPy repeat and tile routines return 1D flattened arrays
             # Reshape arrays as 3D with filters, nuclides and scores axes
-            self_shape = list(self.mean.shape)
-            self_shape[1] *= self_repeat_factor
             self_mean.shape = tuple(self_shape)
             self_std_dev.shape = tuple(self_shape)
+            other_mean.shape = tuple(other_shape)
+            other_std_dev.shape = tuple(other_shape)
 
         if self.scores != other.scores:
 
@@ -1678,7 +1695,11 @@ class Tally(object):
             self_repeat_factor = other.num_score_bins
             other_tile_factor = self.num_score_bins
 
-            # Replicate the data
+            # Tile / repeat the tally data for the tally outer product
+            self_shape = list(self_mean.shape)
+            other_shape = list(other_mean.shape)
+            self_shape[2] *= self_repeat_factor
+            other_shape[2] *= other_tile_factor
             self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)
             other_mean = np.tile(other_mean, (1, 1, other_tile_factor))
             self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=2)
@@ -1686,10 +1707,10 @@ class Tally(object):
 
             # NumPy repeat and tile routines return 1D flattened arrays
             # Reshape arrays as 3D with filters, nuclides and scores axes
-            self_shape = list(self.mean.shape)
-            self_shape[2] *= self_repeat_factor
             self_mean.shape = tuple(self_shape)
             self_std_dev.shape = tuple(self_shape)
+            other_mean.shape = tuple(other_shape)
+            other_std_dev.shape = tuple(other_shape)
 
         data = {}
         data['self'] = {}
@@ -1700,7 +1721,7 @@ class Tally(object):
         data['other']['std. dev.'] = other_std_dev
         return data
 
-    def swap_filters(self, filter1, filter2):
+    def swap_filters(self, filter1, filter2, inplace=False):
         """Reverse the ordering of two filters in this tally
 
         This is a helper method for tally arithmetic which helps align the data
@@ -1715,10 +1736,15 @@ class Tally(object):
         filter2 : Filter
             The filter to swap with filter1
 
+        inplace : bool, optional
+            Whether to perform operation inplace or return new tally with the
+            filters swapped.
+
         Returns
         -------
         swap_tally
-            A copy of this tally with the filters swapped
+            If inplace is false, a copy of this tally with the filters swapped.
+            Otherwise, nothing is returned.
 
         Raises
         ------
@@ -1749,7 +1775,15 @@ class Tally(object):
                   'does not contain such a filter'.format(filter2.type, self.id)
             raise ValueError(msg)
 
-        swap_tally = copy.deepcopy(self)
+        # Create a copy of the tally that preserves the original data formatting
+        # throughout swapping process
+        tally_copy = copy.deepcopy(self)
+
+        # Set the swap tally
+        if inplace:
+            swap_tally = self
+        else:
+            swap_tally = copy.deepcopy(self)
 
         # Swap the filters in the copied version of this Tally
         filter1_index = swap_tally.filters.index(filter1)
@@ -1776,42 +1810,43 @@ class Tally(object):
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
         # Adjust the sum data array to relect the new filter order
-        if self.sum is not None:
+        if swap_tally.sum is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='sum')
+                data = tally_copy.get_values(
+                    filters=filters, filter_bins=filter_bins, value='sum')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally.sum[indices, :, :] = data
 
         # Adjust the sum_sq data array to relect the new filter order
-        if self.sum_sq is not None:
+        if swap_tally.sum_sq is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='sum_sq')
+                data = tally_copy.get_values(
+                    filters=filters, filter_bins=filter_bins, value='sum_sq')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally.sum_sq[indices, :, :] = data
 
         # Adjust the mean data array to relect the new filter order
-        if self.mean is not None:
+        if swap_tally.mean is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='mean')
+                data = tally_copy.get_values(
+                    filters=filters, filter_bins=filter_bins, value='mean')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally._mean[indices, :, :] = data
 
         # Adjust the std_dev data array to relect the new filter order
-        if self.std_dev is not None:
+        if swap_tally.std_dev is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(filters=filters,
-                                       filter_bins=filter_bins, value='std_dev')
+                data = tally_copy.get_values(
+                    filters=filters, filter_bins=filter_bins, value='std_dev')
                 indices = swap_tally.get_filter_indices(filters, filter_bins)
                 swap_tally._std_dev[indices, :, :] = data
 
-        return swap_tally
+        if not inplace:
+            return swap_tally
 
     def __add__(self, other):
         """Adds this tally to another tally or scalar value.
@@ -2401,7 +2436,7 @@ class Tally(object):
         return new_tally
 
     def summation(self, scores=[], filter_type=None,
-                  filter_bins=[], nuclides=[]):
+                  filter_bins=[], nuclides=[], remove_filter=False):
         """Vectorized sum of tally data across scores, filter bins and/or
         nuclides using tally addition.
 
@@ -2430,6 +2465,9 @@ class Tally(object):
         nuclides : list of str
             A list of nuclide name strings to sum across
             (e.g., ['U-235', 'U-238']; default is [])
+        remove_filter : bool
+            If a filter is being summed over, this bool indicates whether to
+            remove that filter in the returned tally. Default is False.
 
         Returns
         -------
@@ -2453,7 +2491,14 @@ class Tally(object):
 
         # Sum across any filter bins specified by the user
         if filter_type in _FILTER_TYPES:
-            filter_bins = [[(filter_bin,)] for filter_bin in filter_bins]
+
+            # If user did not specify filter bins, sum across all bins
+            if len(filter_bins) == 0:
+                filter = self.find_filter(filter_type)
+                filter_bins = [[(filter.get_bin(i),)] for i in range(filter.num_bins)]
+            else:
+                filter_bins = [[(filter_bin,)] for filter_bin in filter_bins]
+
             filters = [[filter_type]]
         # If user did not specify a filter type, do not sum across filter bins
         else:
@@ -2478,12 +2523,17 @@ class Tally(object):
             # Accumulate this Tally slice into the Tally sum
             tally_sum += tally_slice
 
-        # Add back the filter(s) which were summed across to derived tally
-        for filter_type in summed_filters:
-            filters = summed_filters[filter_type]
-            for i in range(1, len(filters)):
-                filters[i] = CrossFilter(filters[i-1], filters[i], '+')
-            tally_sum.add_filter(filters[-1])
+        # Add back the filter(s) which were summed across to derived tally,
+        # if filter bins were input; otherwise, leave out summed filter(s)
+        if remove_filter and filter_type is not None:
+            # Rename tally sum indicating a summation over a particular filter
+            tally_sum.name = 'sum({0}, {1})'.format(self.name, filter_type)
+        else:
+            for summed_filter_type in summed_filters:
+                filters = summed_filters[summed_filter_type]
+                for i in range(1, len(filters)):
+                    filters[i] = CrossFilter(filters[i-1], filters[i], '+')
+                tally_sum.add_filter(filters[-1])
 
         return tally_sum
 

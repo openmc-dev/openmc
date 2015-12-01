@@ -74,7 +74,9 @@ on a given module or class.
     examples/post-processing
     examples/pandas-dataframes
     examples/tally-arithmetic
-    examples/multi-group-cross-sections
+    examples/mgxs-part-i
+    examples/mgxs-part-ii
+    examples/mgxs-part-iii
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

@@ -95,7 +95,7 @@ class Cell(object):
         return not self == other
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'Cell\n'
@@ -483,7 +483,7 @@ class Universe(object):
         return not self == other
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'Universe\n'
@@ -971,7 +971,7 @@ class RectLattice(Lattice):
         return not self == other
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'RectLattice\n'
@@ -1208,7 +1208,7 @@ class HexLattice(Lattice):
         return not self == other
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'HexLattice\n'

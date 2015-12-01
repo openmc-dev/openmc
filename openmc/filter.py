@@ -81,7 +81,7 @@ class Filter(object):
         return not self == other
 
     def __hash__(self):
-        return hash((self.type, tuple(self.bins)))
+        return hash(repr(self))
 
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))

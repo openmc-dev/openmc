@@ -80,10 +80,8 @@ class Cell(object):
             return False
         elif self.name != other.name:
             return False
-        # FIXME: This won't work for materials fills since OpenMC only outputs
-        # nuclide densities in units of atom/b-cm irregardless of input units
-        # elif self.fill != other.fill:
-        #     return False
+        elif self.fill != other.fill:
+             return False
         elif self.region != other.region:
             return False
         elif self.rotation != other.rotation:
@@ -95,6 +93,9 @@ class Cell(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __hash__(self):
+        return hash(str(self))
 
     def __repr__(self):
         string = 'Cell\n'
@@ -480,6 +481,9 @@ class Universe(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __hash__(self):
+        return hash(str(self))
 
     def __repr__(self):
         string = 'Universe\n'
@@ -966,6 +970,9 @@ class RectLattice(Lattice):
     def __ne__(self, other):
         return not self == other
 
+    def __hash__(self):
+        return hash(str(self))
+
     def __repr__(self):
         string = 'RectLattice\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
@@ -1199,6 +1206,9 @@ class HexLattice(Lattice):
 
     def __ne__(self, other):
         return not self == other
+
+    def __hash__(self):
+        return hash(str(self))
 
     def __repr__(self):
         string = 'HexLattice\n'

@@ -90,14 +90,15 @@ class Material(object):
             return False
         elif self.name != other.name:
             return False
-        elif self.density != other.density:
-            return False
-        elif self.density_units != other.density_units:
-            return False
-        elif self._nuclides != other.nuclides:
-            return False
-        elif self._elements != other._elements:
-            return False
+        # FIXME: We cannot compare densities since OpenMC outputs densities
+        # in atom/b-cm in summary.h5 irregardless of input units, and we
+        # cannot compute the sum percent in Python since we lack AWR
+        #elif self.density != other.density:
+        #    return False
+        #elif self._nuclides != other._nuclides:
+        #    return False
+        #elif self._elements != other._elements:
+        #   return False
         elif self._sab != other._sab:
             return False
         else:
@@ -105,6 +106,9 @@ class Material(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __hash__(self):
+        return hash(str(self))
 
     def __repr__(self):
         string = 'Material\n'

@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from collections import Iterable
 
+import numpy as np
+
 from openmc.checkvalue import check_type
 
 
@@ -218,6 +220,8 @@ class Intersection(Region):
     ----------
     nodes : tuple of Region
         Regions to take the intersection of
+    bounding_box : tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """
 
@@ -230,6 +234,16 @@ class Intersection(Region):
     @property
     def nodes(self):
         return self._nodes
+
+    @property
+    def bounding_box(self):
+        ll = np.array([-np.inf, -np.inf, -np.inf])
+        ur = np.array([np.inf, np.inf, np.inf])
+        for n in self.nodes:
+            ll_n, ur_n = n.bounding_box
+            ll[:] = np.maximum(ll, ll_n)
+            ur[:] = np.minimum(ur, ur_n)
+        return ll, ur
 
     @nodes.setter
     def nodes(self, nodes):
@@ -257,6 +271,8 @@ class Union(Region):
     ----------
     nodes : tuple of Region
         Regions to take the union of
+    bounding_box : tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """
 
@@ -269,6 +285,16 @@ class Union(Region):
     @property
     def nodes(self):
         return self._nodes
+
+    @property
+    def bounding_box(self):
+        ll = np.array([np.inf, np.inf, np.inf])
+        ur = np.array([-np.inf, -np.inf, -np.inf])
+        for n in self.nodes:
+            ll_n, ur_n = n.bounding_box
+            ll[:] = np.minimum(ll, ll_n)
+            ur[:] = np.maximum(ur, ur_n)
+        return ll, ur
 
     @nodes.setter
     def nodes(self, nodes):
@@ -300,6 +326,8 @@ class Complement(Region):
     ----------
     node : Region
         Regions to take the complement of
+    bounding_box : tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """
 
@@ -317,3 +345,16 @@ class Complement(Region):
     def node(self, node):
         check_type('node', node, Region)
         self._node = node
+
+    @property
+    def bounding_box(self):
+        # Use De Morgan's laws to distribute the complement operator so that it
+        # only applies to surface half-spaces, thus allowing us to calculate the
+        # bounding box in the usual recursive manner.
+        if isinstance(self.node, Union):
+            temp_region = Intersection(*[~n for n in self.node.nodes])
+        elif isinstance(self.node, Intersection):
+            temp_region = Union(*[~n for n in self.node.nodes])
+        else:
+            temp_region = ~n
+        return temp_region.bounding_box

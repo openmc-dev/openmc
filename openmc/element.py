@@ -58,7 +58,7 @@ class Element(object):
         return not self == other
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'Element    -    {0}\n'.format(self._name)

@@ -190,7 +190,7 @@ class Mesh(object):
         self._width = width
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'Mesh\n'

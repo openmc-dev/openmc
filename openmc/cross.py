@@ -52,7 +52,7 @@ class CrossScore(object):
             self.binary_op = binary_op
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(repr(self))
 
     def __eq__(self, other):
         return str(other) == str(self)
@@ -152,7 +152,7 @@ class CrossNuclide(object):
             self.binary_op = binary_op
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(repr(self))
 
     def __eq__(self, other):
         return str(other) == str(self)

@@ -429,7 +429,7 @@ class YPlane(Plane):
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, self.y0, np.inf]))
         elif side == '+':
-            return (np.array([-np.inf, -self.y0, -np.inf]),
+            return (np.array([-np.inf, self.y0, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
 
 
@@ -507,7 +507,7 @@ class ZPlane(Plane):
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, self.z0]))
         elif side == '+':
-            return (np.array([-np.inf, -np.inf, -self.z0]),
+            return (np.array([-np.inf, -np.inf, self.z0]),
                     np.array([np.inf, np.inf, np.inf]))
 
 

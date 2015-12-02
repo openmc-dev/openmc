@@ -10,7 +10,7 @@
 
   <!-- Starting source -->
   <source>
-    <space type="point" parameters="0. 0. 0." />
+    <space type="box" parameters="-10. -10. -10. 10. 10. 10." />
   </source>
 
 </settings>

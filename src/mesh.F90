@@ -108,7 +108,7 @@ contains
 
     ! For surface_current, it is allowed to be out of mesh; for dd, it is not
     if(.not. present(surface_current)) then
-      if (any(ijk < (/1, 1, 1/)) .or. &
+      if (any(ijk(1:m % n_dimension) < 1) .or. &
           any(ijk(1:m % n_dimension) > m % dimension)) then
         bin = NO_BIN_FOUND
         return

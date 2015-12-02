@@ -4,12 +4,14 @@
   <cell id="1" fill="5" surfaces="1 -2 3 -4" />
   <cell id="101" universe="10" material="1" surfaces="-5" />
   <cell id="102" universe="10" material="2" surfaces="5" />
+  <cell id="301" universe="3" material="void" />
 
   <lattice id="5">
     <type>rectangular</type>
     <dimension>2 2</dimension>
     <lower_left>-2.0 -2.0</lower_left>
     <width>1.0 1.0</width>
+	<outer>3</outer>
     <universes>
       10 10
       10 10 

@@ -599,7 +599,7 @@ contains
     real(8) :: d_lat              ! distance to lattice boundary
     real(8) :: d_surf             ! distance to surface
     real(8) :: x0,y0,z0           ! coefficients for surface
-    real(8) :: xyz_cross(3)
+    real(8) :: xyz_cross(3)       ! coordinates at projected surface crossing
     logical :: coincident         ! is particle on surface?
     type(Cell),       pointer :: c
     class(Surface),   pointer :: surf

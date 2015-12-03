@@ -327,9 +327,9 @@ class XPlane(Plane):
         """Determine an axis-aligned bounding box.
 
         An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. If the half-space is
-        unbounded in a particular direction, numpy.inf is used to represent
-        infinity.
+        its lower-left and upper-right coordinates. For the x-plane surface, the
+        half-spaces are unbounded in their y- and z- directions. To represent
+        infinity, numpy.inf is used.
 
         Parameters
         ----------
@@ -405,9 +405,9 @@ class YPlane(Plane):
         """Determine an axis-aligned bounding box.
 
         An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. If the half-space is
-        unbounded in a particular direction, numpy.inf is used to represent
-        infinity.
+        its lower-left and upper-right coordinates. For the y-plane surface, the
+        half-spaces are unbounded in their x- and z- directions. To represent
+        infinity, numpy.inf is used.
 
         Parameters
         ----------
@@ -483,9 +483,9 @@ class ZPlane(Plane):
         """Determine an axis-aligned bounding box.
 
         An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. If the half-space is
-        unbounded in a particular direction, numpy.inf is used to represent
-        infinity.
+        its lower-left and upper-right coordinates. For the z-plane surface, the
+        half-spaces are unbounded in their x- and y- directions. To represent
+        infinity, numpy.inf is used.
 
         Parameters
         ----------
@@ -629,9 +629,10 @@ class XCylinder(Cylinder):
         """Determine an axis-aligned bounding box.
 
         An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. If the half-space is
-        unbounded in a particular direction, numpy.inf is used to represent
-        infinity.
+        its lower-left and upper-right coordinates. For the x-cylinder surface,
+        the negative half-space is unbounded in the x- direction and the
+        positive half-space is unbounded in all directions. To represent
+        infinity, numpy.inf is used.
 
         Parameters
         ----------
@@ -651,7 +652,7 @@ class XCylinder(Cylinder):
 
         if side == '-':
             return (np.array([-np.inf, self.y0 - self.r, self.z0 - self.r]),
-                    np.array([np.inf, self.y0 + self.r, self.y0 + self.r]))
+                    np.array([np.inf, self.y0 + self.r, self.z0 + self.r]))
         elif side == '+':
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
@@ -727,9 +728,10 @@ class YCylinder(Cylinder):
         """Determine an axis-aligned bounding box.
 
         An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. If the half-space is
-        unbounded in a particular direction, numpy.inf is used to represent
-        infinity.
+        its lower-left and upper-right coordinates. For the y-cylinder surface,
+        the negative half-space is unbounded in the y- direction and the
+        positive half-space is unbounded in all directions. To represent
+        infinity, numpy.inf is used.
 
         Parameters
         ----------
@@ -749,7 +751,7 @@ class YCylinder(Cylinder):
 
         if side == '-':
             return (np.array([self.x0 - self.r, -np.inf, self.z0 - self.r]),
-                    np.array([self.x0 + self.r, np.inf, self.y0 + self.r]))
+                    np.array([self.x0 + self.r, np.inf, self.z0 + self.r]))
         elif side == '+':
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
@@ -825,9 +827,10 @@ class ZCylinder(Cylinder):
         """Determine an axis-aligned bounding box.
 
         An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. If the half-space is
-        unbounded in a particular direction, numpy.inf is used to represent
-        infinity.
+        its lower-left and upper-right coordinates. For the z-cylinder surface,
+        the negative half-space is unbounded in the z- direction and the
+        positive half-space is unbounded in all directions. To represent
+        infinity, numpy.inf is used.
 
         Parameters
         ----------
@@ -953,9 +956,9 @@ class Sphere(Surface):
         """Determine an axis-aligned bounding box.
 
         An axis-aligned bounding box for surface half-spaces is represented by
-        its lower-left and upper-right coordinates. If the half-space is
-        unbounded in a particular direction, numpy.inf is used to represent
-        infinity.
+        its lower-left and upper-right coordinates. The positive half-space of a
+        sphere is unbounded in all directions. To represent infinity, numpy.inf
+        is used.
 
         Parameters
         ----------

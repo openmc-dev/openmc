@@ -237,13 +237,13 @@ class Intersection(Region):
 
     @property
     def bounding_box(self):
-        ll = np.array([-np.inf, -np.inf, -np.inf])
-        ur = np.array([np.inf, np.inf, np.inf])
+        lower_left = np.array([-np.inf, -np.inf, -np.inf])
+        upper_right = np.array([np.inf, np.inf, np.inf])
         for n in self.nodes:
-            ll_n, ur_n = n.bounding_box
-            ll[:] = np.maximum(ll, ll_n)
-            ur[:] = np.minimum(ur, ur_n)
-        return ll, ur
+            lower_left_n, upper_right_n = n.bounding_box
+            lower_left[:] = np.maximum(lower_left, lower_left_n)
+            upper_right[:] = np.minimum(upper_right, upper_right_n)
+        return lower_left, upper_right
 
     @nodes.setter
     def nodes(self, nodes):
@@ -288,13 +288,13 @@ class Union(Region):
 
     @property
     def bounding_box(self):
-        ll = np.array([np.inf, np.inf, np.inf])
-        ur = np.array([-np.inf, -np.inf, -np.inf])
+        lower_left = np.array([np.inf, np.inf, np.inf])
+        upper_right = np.array([-np.inf, -np.inf, -np.inf])
         for n in self.nodes:
-            ll_n, ur_n = n.bounding_box
-            ll[:] = np.minimum(ll, ll_n)
-            ur[:] = np.maximum(ur, ur_n)
-        return ll, ur
+            lower_left_n, upper_right_n = n.bounding_box
+            lower_left[:] = np.minimum(lower_left, lower_left_n)
+            upper_right[:] = np.maximum(upper_right, upper_right_n)
+        return lower_left, upper_right
 
     @nodes.setter
     def nodes(self, nodes):

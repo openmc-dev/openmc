@@ -236,6 +236,14 @@ endif()
 add_subdirectory(src/xml/fox)
 
 #===============================================================================
+# RPATH information
+#===============================================================================
+
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+#===============================================================================
 # Build OpenMC executable
 #===============================================================================
 

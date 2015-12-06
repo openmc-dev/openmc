@@ -240,7 +240,7 @@ class Cell(object):
 
         """
 
-        warnings.simplefilter('always', DeprecationWarning)
+        warnings.simplefilter('once', DeprecationWarning)
         warnings.warn("Cell.add_surface(...) has been deprecated and may be "
                       "removed in a future version. The region for a Cell "
                       "should be defined using the region property directly.",

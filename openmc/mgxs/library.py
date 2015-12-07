@@ -373,7 +373,7 @@ class Library(object):
         self._sp_filename = statepoint._f.filename
         self._openmc_geometry = statepoint.summary.openmc_geometry
 
-        if statepoint.run_mode == 'k-effective':
+        if statepoint.run_mode == 'k-eigenvalue':
             self._keff = statepoint.k_combined[0]
 
         # Load tallies for each MGXS for each domain and mgxs type

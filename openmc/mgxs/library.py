@@ -67,6 +67,9 @@ class Library(object):
     sp_filename : str
         The filename of the statepoint with tally data used to the
         compute cross sections
+    keff : Real or None
+        The combined keff from the statepoint file with tally data used to 
+        compute cross sections
     name : str, optional
         Name of the multi-group cross section library. Used as a label to
         identify tallies in OpenMC 'tallies.xml' file.
@@ -88,6 +91,7 @@ class Library(object):
         self._tally_trigger = None
         self._all_mgxs = OrderedDict()
         self._sp_filename = None
+        self._keff = None
 
         self.name = name
         self.openmc_geometry = openmc_geometry
@@ -114,6 +118,7 @@ class Library(object):
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = self.all_mgxs
             clone._sp_filename = self._sp_filename
+            clone._keff = self._keff
 
             clone._all_mgxs = OrderedDict()
             for domain in self.domains:
@@ -198,6 +203,10 @@ class Library(object):
     @property
     def sp_filename(self):
         return self._sp_filename
+
+    @property
+    def keff(self):
+        return self._keff
 
     @openmc_geometry.setter
     def openmc_geometry(self, openmc_geometry):
@@ -363,6 +372,7 @@ class Library(object):
 
         self._sp_filename = statepoint._f.filename
         self._openmc_geometry = statepoint.summary.openmc_geometry
+        self._keff = statepoint.k_combined[0]
 
         # Load tallies for each MGXS for each domain and mgxs type
         for domain in self.domains:

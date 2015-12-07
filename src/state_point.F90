@@ -1667,7 +1667,7 @@ contains
 
           ! Create file and write header
           file_id = file_open(filename, 'w')
-          group_id = create_group(file_id, "filter " //trim(to_str(j)))
+          group_id = create_group(file_id, groupname)
 
           call write_dataset(group_id, 'n_nuclides', mat % n_nuclides)
           call write_dataset(group_id, 'n_instances', mat % n_comp)

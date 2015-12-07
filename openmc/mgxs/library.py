@@ -69,7 +69,7 @@ class Library(object):
         compute cross sections
     keff : Real or None
         The combined keff from the statepoint file with tally data used to 
-        compute cross sections
+        compute cross sections (for eigenvalue calculations only)
     name : str, optional
         Name of the multi-group cross section library. Used as a label to
         identify tallies in OpenMC 'tallies.xml' file.
@@ -372,7 +372,9 @@ class Library(object):
 
         self._sp_filename = statepoint._f.filename
         self._openmc_geometry = statepoint.summary.openmc_geometry
-        self._keff = statepoint.k_combined[0]
+
+        if statepoint.run_mode == 'k-effective':
+            self._keff = statepoint.k_combined[0]
 
         # Load tallies for each MGXS for each domain and mgxs type
         for domain in self.domains:

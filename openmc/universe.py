@@ -15,6 +15,10 @@ from openmc.region import Region, Intersection, Complement
 if sys.version_info[0] >= 3:
     basestring = str
 
+
+# DeprecationWarning filter for the Cell.add_surface(...) method
+warnings.simplefilter('always', DeprecationWarning)
+
 # A static variable for auto-generated Cell IDs
 AUTO_CELL_ID = 10000
 
@@ -240,7 +244,6 @@ class Cell(object):
 
         """
 
-        warnings.simplefilter('always', DeprecationWarning)
         warnings.warn("Cell.add_surface(...) has been deprecated and may be "
                       "removed in a future version. The region for a Cell "
                       "should be defined using the region property directly.",

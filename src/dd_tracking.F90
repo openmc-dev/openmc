@@ -41,14 +41,16 @@ contains
     ! don't need to communicate the particle.  Here we rely on lattice
     ! boundaries NOT being selected by distance_to_boundary when they are
     ! coincident with boundary condition surfaces.
-    if (any(lattice_translation /= 0) .or. & ! communicate if lattice trans
-        .not. (surfaces(abs(surface_crossed))%obj % bc /= BC_TRANSMIT .and. &
-               d_collision > d_boundary .and. &
-               abs(d_dd_mesh - d_boundary) < FP_COINCIDENT)) then
-
+    if (any(lattice_translation /= 0)) then ! communicate if lattice trans
       ! Exit the particle tracking loop without killing the particle
       boundary_crossed = .true.
-
+    elseif (surface_crossed /= None) then
+      if(.not. (surfaces(abs(surface_crossed))%obj % bc /= BC_TRANSMIT .and. &
+               d_collision > d_boundary .and. &
+               abs(d_dd_mesh - d_boundary) < FP_COINCIDENT)) then
+        ! Exit the particle tracking loop without killing the particle
+        boundary_crossed = .true.
+      end if
     end if
                
   end subroutine check_domain_boundary_crossing

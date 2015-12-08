@@ -9,6 +9,7 @@ import shutil
 
 parser = OptionParser()
 parser.add_option('--mpi_exec', dest='mpi_exec', default='')
+parser.add_option('--mpi_np', dest='mpi_np', default='3')
 parser.add_option('--exe', dest='exe')
 (opts, args) = parser.parse_args()
 cwd = os.getcwd()

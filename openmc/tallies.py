@@ -1625,6 +1625,10 @@ class Tally(object):
         other_mean = copy.deepcopy(other.mean)
         other_std_dev = copy.deepcopy(other.std_dev)
 
+        # Initialize list of tile and repeat factors
+        repeat_factors = [1, 1, 1]
+        tile_factors = [1, 1, 1]
+
         if self.filters != other.filters:
 
             # Determine the number of paired combinations of filter bins
@@ -1634,83 +1638,33 @@ class Tally(object):
 
             # Determine the factors by which each tally operands' data arrays
             # must be tiled or repeated for the tally outer product
-            other_tile_factor = 1
-            self_repeat_factor = 1
             for filter in diff1:
-                other_tile_factor *= filter.num_bins
+                tile_factors[0] *= filter.num_bins
             for filter in diff2:
-                self_repeat_factor *= filter.num_bins
-
-            # Tile / repeat the tally data for the tally outer product
-            self_shape = list(self_mean.shape)
-            other_shape = list(other_mean.shape)
-            self_shape[0] *= self_repeat_factor
-            self_mean = np.repeat(self_mean, self_repeat_factor)
-            self_std_dev = np.repeat(self_std_dev, self_repeat_factor)
-
-            if self_repeat_factor == 1:
-                other_shape[0] *= other_tile_factor
-                other_mean = np.repeat(other_mean, other_tile_factor, axis=0)
-                other_std_dev = np.repeat(other_std_dev, other_tile_factor,
-                                          axis=0)
-            else:
-                other_mean = np.tile(other_mean, (other_tile_factor, 1, 1))
-                other_std_dev = np.tile(other_std_dev, (other_tile_factor, 1, 1))
-
-            # NumPy repeat and tile routines return 1D flattened arrays
-            # Reshape arrays as 3D with filters, nuclides and scores axes
-            self_mean.shape = tuple(self_shape)
-            self_std_dev.shape = tuple(self_shape)
-            other_mean.shape = tuple(other_shape)
-            other_std_dev.shape = tuple(other_shape)
+                repeat_factors[0] *= filter.num_bins
 
         if self.nuclides != other.nuclides:
 
             # Determine the number of paired combinations of nuclides
             # between the two tallies and repeat arrays along nuclide axes
-            self_repeat_factor = other.num_nuclides
-            other_tile_factor = self.num_nuclides
-
-            # Tile / repeat the tally data for the tally outer product
-            self_shape = list(self_mean.shape)
-            other_shape = list(other_mean.shape)
-            self_shape[1] *= self_repeat_factor
-            other_shape[1] *= other_tile_factor
-            self_mean = np.repeat(self_mean, self_repeat_factor, axis=1)
-            other_mean = np.tile(other_mean, (1, other_tile_factor, 1))
-            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=1)
-            other_std_dev = np.tile(other_std_dev, (1, other_tile_factor, 1))
-
-            # NumPy repeat and tile routines return 1D flattened arrays
-            # Reshape arrays as 3D with filters, nuclides and scores axes
-            self_mean.shape = tuple(self_shape)
-            self_std_dev.shape = tuple(self_shape)
-            other_mean.shape = tuple(other_shape)
-            other_std_dev.shape = tuple(other_shape)
+            repeat_factors[1] = other.num_nuclides
+            tile_factors[1] = self.num_nuclides
 
         if self.scores != other.scores:
 
             # Determine the number of paired combinations of score bins
             # between the two tallies and repeat arrays along score axes
-            self_repeat_factor = other.num_score_bins
-            other_tile_factor = self.num_score_bins
+            repeat_factors[2] = other.num_score_bins
+            tile_factors[2] = self.num_score_bins
 
-            # Tile / repeat the tally data for the tally outer product
-            self_shape = list(self_mean.shape)
-            other_shape = list(other_mean.shape)
-            self_shape[2] *= self_repeat_factor
-            other_shape[2] *= other_tile_factor
-            self_mean = np.repeat(self_mean, self_repeat_factor, axis=2)
-            other_mean = np.tile(other_mean, (1, 1, other_tile_factor))
-            self_std_dev = np.repeat(self_std_dev, self_repeat_factor, axis=2)
-            other_std_dev = np.tile(other_std_dev, (1, 1, other_tile_factor))
+        # Repeat the self tally
+        for i in range(3):
+            self_mean = np.repeat(self_mean, repeat_factors[i], axis=i)
+            self_std_dev = np.repeat(self_std_dev, repeat_factors[i], axis=i)
 
-            # NumPy repeat and tile routines return 1D flattened arrays
-            # Reshape arrays as 3D with filters, nuclides and scores axes
-            self_mean.shape = tuple(self_shape)
-            self_std_dev.shape = tuple(self_shape)
-            other_mean.shape = tuple(other_shape)
-            other_std_dev.shape = tuple(other_shape)
+        # Tile the other tally
+        other_mean = np.tile(other_mean, tile_factors)
+        other_std_dev = np.tile(other_std_dev, tile_factors)
 
         data = {}
         data['self'] = {}

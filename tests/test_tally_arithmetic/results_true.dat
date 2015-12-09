@@ -2,8 +2,9 @@ Tally
 	ID             =	10000
 	Name           =	(tally 1 + tally 2)
 	Filters        =	
+                		cell	[1]
                 		energy	[  0.  20.]
-                		(cell + material)	(array([1]), array([1]))
+                		material	[1]
 	Nuclides       =	(U-235 + U-235) (U-235 + Pu-239) (U-238 + U-235) (U-238 + Pu-239) 
 	Scores         =	[(fission + fission), (fission + absorption), (nu-fission + fission), (nu-fission + absorption)]
 	Estimator      =	tracklength
@@ -14,8 +15,9 @@ Tally
 	ID             =	10001
 	Name           =	(tally 1 - tally 2)
 	Filters        =	
+                		cell	[1]
                 		energy	[  0.  20.]
-                		(cell - material)	(array([1]), array([1]))
+                		material	[1]
 	Nuclides       =	(U-235 - U-235) (U-235 - Pu-239) (U-238 - U-235) (U-238 - Pu-239) 
 	Scores         =	[(fission - fission), (fission - absorption), (nu-fission - fission), (nu-fission - absorption)]
 	Estimator      =	tracklength
@@ -26,8 +28,9 @@ Tally
 	ID             =	10002
 	Name           =	(tally 1 * tally 2)
 	Filters        =	
+                		cell	[1]
                 		energy	[  0.  20.]
-                		(cell * material)	(array([1]), array([1]))
+                		material	[1]
 	Nuclides       =	(U-235 * U-235) (U-235 * Pu-239) (U-238 * U-235) (U-238 * Pu-239) 
 	Scores         =	[(fission * fission), (fission * absorption), (nu-fission * fission), (nu-fission * absorption)]
 	Estimator      =	tracklength
@@ -38,8 +41,9 @@ Tally
 	ID             =	10003
 	Name           =	(tally 1 / tally 2)
 	Filters        =	
+                		cell	[1]
                 		energy	[  0.  20.]
-                		(cell / material)	(array([1]), array([1]))
+                		material	[1]
 	Nuclides       =	(U-235 / U-235) (U-235 / Pu-239) (U-238 / U-235) (U-238 / Pu-239) 
 	Scores         =	[(fission / fission), (fission / absorption), (nu-fission / fission), (nu-fission / absorption)]
 	Estimator      =	tracklength

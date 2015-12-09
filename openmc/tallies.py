@@ -1200,12 +1200,12 @@ class Tally(object):
             # Tile the nuclide bins into a DataFrame column
             nuclides = np.repeat(nuclides, len(self.scores))
             tile_factor = data_size / len(nuclides)
-            df['nuclide'] = np.tile(nuclides, tile_factor)
+            df['nuclide'] = np.tile(nuclides, int(tile_factor))
 
         # Include column for scores if user requested it
         if scores:
             tile_factor = data_size / len(self.scores)
-            df['score'] = np.tile(self.scores, tile_factor)
+            df['score'] = np.tile(self.scores, int(tile_factor))
 
         # Append columns with mean, std. dev. for each tally bin
         df['mean'] = self.mean.ravel()
@@ -1425,25 +1425,30 @@ class Tally(object):
             # Pickle the Tally results to a file
             pickle.dump(tally_results, open(filename, 'wb'))
 
-    def _outer_product(self, other, binary_op):
+    def _hybrid_product(self, other, binary_op):
         """Combines filters, scores and nuclides with another tally.
 
-        This is a helper method for the tally arithmetic methods. The filters,
-        scores and nuclides from both tallies are enumerated into all possible
-        combinations and expressed as CrossFilter, CrossScore and
-        CrossNuclide objects in the new derived tally.
+        This is a helper method for the tally arithmetic methods. It is called a
+        "hybrid product" because it performs a combination of a tensor
+        (or Kronecker) product and entrywise (or Hadamard) product. The filters,
+        nuclides, and scores from both tallies are combined using an entrywise
+        (or Hadamard) product on matching filters. If all nuclides are identical
+        in the two tallies, the entrywise product is performed across nuclides;
+        else the tensor product is performed. If all scores are identical in the
+        two tallies, the entrywise product is performed across scores; else the
+        tensor product is performed.
 
         Parameters
         ----------
         other : Tally
-            The tally on the right hand side of the outer product
+            The tally on the right hand side of the hybrid product
         binary_op : {'+', '-', '*', '/', '^'}
-            The binary operation in the outer product
+            The binary operation in the hybrid product
 
         Returns
         -------
         Tally
-            A new Tally that is the outer product with this one.
+            A new Tally that is the hybrid product with this one.
 
         Raises
         ------
@@ -1472,25 +1477,6 @@ class Tally(object):
         # arithmetic
         self_copy = copy.deepcopy(self)
         other_copy = copy.deepcopy(other)
-
-        # Find any shared filters between the two tallies
-        filter_intersect = []
-        for filter in self_copy.filters:
-            if filter in other_copy.filters:
-                filter_intersect.append(filter)
-
-        # Align the shared filters in successive order
-        for i, filter in enumerate(filter_intersect):
-            self_index = self_copy.filters.index(filter)
-            other_index = other_copy.filters.index(filter)
-
-            # If necessary, swap self filter
-            if self_index != i:
-                self_copy.swap_filters(filter, self_copy.filters[i], inplace=True)
-
-            # If necessary, swap other filter
-            if other_index != i:
-                other_copy.swap_filters(filter, other_copy.filters[i], inplace=True)
 
         data = self_copy._align_tally_data(other_copy)
 
@@ -1535,7 +1521,7 @@ class Tally(object):
             for self_filter in self_copy.filters:
                 new_tally.add_filter(self_filter)
 
-        # Generate filter "outer products" for non-identical filters
+        # Generate filter entrywise product for non-identical filters
         else:
 
             # Find the common longest sequence of shared filters
@@ -1600,7 +1586,7 @@ class Tally(object):
 
         This is a helper method to construct a dict of dicts of the "aligned"
         data arrays from each tally for tally arithmetic. The method analyzes
-        the filters, scores and nuclides in both tally's and determines how to
+        the filters, scores and nuclides in both tallies and determines how to
         appropriately align the data for vectorized arithmetic. For example,
         if the two tallies have different filters, this method will use NumPy
         'tile' and 'repeat' operations to the new data arrays such that all
@@ -1620,51 +1606,71 @@ class Tally(object):
 
         """
 
+        # Get the set of filters that each tally is missing
+        other_missing_filters = set(self.filters).difference(set(other.filters))
+        self_missing_filters = set(other.filters).difference(set(self.filters))
+
+        # Add other_missing_filters to other
+        for filter in other_missing_filters:
+            filter = copy.deepcopy(filter)
+            repeat_factor = filter.num_bins
+            other._mean = np.repeat(other.mean, repeat_factor, axis=0)
+            other.sum = np.repeat(other.sum, repeat_factor, axis=0)
+            other._std_dev = np.repeat(other.std_dev, repeat_factor, axis=0)
+            other.sum_sq = np.repeat(other.sum_sq, repeat_factor, axis=0)
+            other.add_filter(filter)
+
+        # Correct the stride for other filters
+        stride = other.num_nuclides * other.num_score_bins
+        for filter in reversed(other.filters):
+            filter.stride = stride
+            stride *= filter.num_bins
+
+        # Add self_missing_filters to self
+        for filter in self_missing_filters:
+            filter = copy.deepcopy(filter)
+            repeat_factor = filter.num_bins
+            self._mean = np.repeat(self.mean, repeat_factor, axis=0)
+            self.sum = np.repeat(self.sum, repeat_factor, axis=0)
+            self._std_dev = np.repeat(self.std_dev, repeat_factor, axis=0)
+            self.sum_sq = np.repeat(self.sum_sq, repeat_factor, axis=0)
+            self.add_filter(filter)
+
+        # Correct the stride for self filters
+        stride = self.num_nuclides * self.num_score_bins
+        for filter in reversed(self.filters):
+            filter.stride = stride
+            stride *= filter.num_bins
+
+        # Align other filters with self filters
+        for i, filter in enumerate(self.filters):
+            other_index = other.filters.index(filter)
+
+            # If necessary, swap other filter
+            if other_index != i:
+                other.swap_filters(filter, other.filters[i], inplace=True)
+
+        # Deep copy the mean and std dev data
         self_mean = copy.deepcopy(self.mean)
         self_std_dev = copy.deepcopy(self.std_dev)
         other_mean = copy.deepcopy(other.mean)
         other_std_dev = copy.deepcopy(other.std_dev)
 
-        # Initialize list of tile and repeat factors
-        repeat_factors = [1, 1, 1]
-        tile_factors = [1, 1, 1]
-
-        if self.filters != other.filters:
-
-            # Determine the number of paired combinations of filter bins
-            # between the two tallies and repeat arrays along filter axes
-            diff1 = list(set(self.filters).difference(set(other.filters)))
-            diff2 = list(set(other.filters).difference(set(self.filters)))
-
-            # Determine the factors by which each tally operands' data arrays
-            # must be tiled or repeated for the tally outer product
-            for filter in diff1:
-                tile_factors[0] *= filter.num_bins
-            for filter in diff2:
-                repeat_factors[0] *= filter.num_bins
-
+        # If the tallies do not have identical sets of nuclides, tile and repeat
+        # to perform cross product of data for each nuclide
         if self.nuclides != other.nuclides:
+            self_mean = np.repeat(self_mean, other.num_nuclides, axis=1)
+            self_std_dev = np.repeat(self_std_dev, other.num_nuclides, axis=1)
+            other_mean = np.tile(other_mean, (1, self.num_nuclides, 1))
+            other_std_dev = np.tile(other_std_dev, (1, self.num_nuclides, 1))
 
-            # Determine the number of paired combinations of nuclides
-            # between the two tallies and repeat arrays along nuclide axes
-            repeat_factors[1] = other.num_nuclides
-            tile_factors[1] = self.num_nuclides
-
+        # If the tallies do not have identical sets of scores, tile and repeat
+        # to perform cross product of data for each score
         if self.scores != other.scores:
-
-            # Determine the number of paired combinations of score bins
-            # between the two tallies and repeat arrays along score axes
-            repeat_factors[2] = other.num_score_bins
-            tile_factors[2] = self.num_score_bins
-
-        # Repeat the self tally
-        for i in range(3):
-            self_mean = np.repeat(self_mean, repeat_factors[i], axis=i)
-            self_std_dev = np.repeat(self_std_dev, repeat_factors[i], axis=i)
-
-        # Tile the other tally
-        other_mean = np.tile(other_mean, tile_factors)
-        other_std_dev = np.tile(other_std_dev, tile_factors)
+            self_mean = np.repeat(self_mean, other.num_score_bins, axis=2)
+            self_std_dev = np.repeat(self_std_dev, other.num_score_bins, axis=2)
+            other_mean = np.tile(other_mean, (1, 1, self.num_score_bins))
+            other_std_dev = np.tile(other_std_dev, (1, 1, self.num_score_bins))
 
         data = {}
         data['self'] = {}
@@ -1845,7 +1851,7 @@ class Tally(object):
             raise ValueError(msg)
 
         if isinstance(other, Tally):
-            new_tally = self._outer_product(other, binary_op='+')
+            new_tally = self._hybrid_product(other, binary_op='+')
 
         elif isinstance(other, Real):
             new_tally = Tally(name='derived')
@@ -1915,7 +1921,7 @@ class Tally(object):
             raise ValueError(msg)
 
         if isinstance(other, Tally):
-            new_tally = self._outer_product(other, binary_op='-')
+            new_tally = self._hybrid_product(other, binary_op='-')
 
         elif isinstance(other, Real):
             new_tally = Tally(name='derived')
@@ -1985,7 +1991,7 @@ class Tally(object):
             raise ValueError(msg)
 
         if isinstance(other, Tally):
-            new_tally = self._outer_product(other, binary_op='*')
+            new_tally = self._hybrid_product(other, binary_op='*')
 
         elif isinstance(other, Real):
             new_tally = Tally(name='derived')
@@ -2055,7 +2061,7 @@ class Tally(object):
             raise ValueError(msg)
 
         if isinstance(other, Tally):
-            new_tally = self._outer_product(other, binary_op='/')
+            new_tally = self._hybrid_product(other, binary_op='/')
 
         elif isinstance(other, Real):
             new_tally = Tally(name='derived')
@@ -2128,7 +2134,7 @@ class Tally(object):
             raise ValueError(msg)
 
         if isinstance(power, Tally):
-            new_tally = self._outer_product(power, binary_op='^')
+            new_tally = self._hybrid_product(power, binary_op='^')
 
         elif isinstance(power, Real):
             new_tally = Tally(name='derived')

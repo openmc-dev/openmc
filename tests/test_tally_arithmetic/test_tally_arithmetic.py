@@ -29,19 +29,19 @@ class TallyArithmeticTestHarness(TestHarness):
         # Perform all the tally arithmetic operations and output results
         outstr = ''
         tally_3 = tally_1 + tally_2
-        outstr += tally_3.__repr__()
+        outstr += repr(tally_3)
         outstr += str(tally_3.mean)
 
         tally_3 = tally_1 - tally_2
-        outstr += tally_3.__repr__()
+        outstr += repr(tally_3)
         outstr += str(tally_3.mean)
 
         tally_3 = tally_1 * tally_2
-        outstr += tally_3.__repr__()
+        outstr += repr(tally_3)
         outstr += str(tally_3.mean)
 
         tally_3 = tally_1 / tally_2
-        outstr += tally_3.__repr__()
+        outstr += repr(tally_3)
         outstr += str(tally_3.mean)
 
         print(outstr)
@@ -55,5 +55,5 @@ class TallyArithmeticTestHarness(TestHarness):
         return outstr
 
 if __name__ == '__main__':
-    harness = TallyArithmeticTestHarness('statepoint.10.*', True)
+    harness = TallyArithmeticTestHarness('statepoint.10.h5', True)
     harness.main()

@@ -1681,7 +1681,8 @@ contains
           call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
           call h5pcreate_f(H5P_DATASET_CREATE_F, chunk_plist, hdf5_err)
           ! Tune chunking and chunk caching to the filesystem if performance is needed
-          chunk(1) = mat % n_nuclides *  800
+          ! chunk size must be <= maximum dimension size for fixed-sized dimensions
+          chunk(1) = mat % n_nuclides *  mat % n_comp ! 800
           call h5pset_chunk_f(chunk_plist, 1, chunk, hdf5_err)
 !          call h5pset_chunk_cache_f(chunk_plist, 0_8, 0_8, 1.0_4, hdf5_err) ! Turn chunk caching off
 !          call h5pset_chunk_cache_f(chunk_plist, 211_8, 16777216_8, 1.0_4, hdf5_err) ! OR: tune chunk cache to filesystem
@@ -1722,7 +1723,9 @@ contains
           if (dd_run) then
             call synchronize_otf_materials(mat, domain_decomp % comm)
           else
+# ifdef MPI
             call synchronize_otf_materials(mat, MPI_COMM_WORLD)
+# endif
           end if
 
           ! For on-the-fly distributes materials, we need to unscramble. We

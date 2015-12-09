@@ -1,39 +1,55 @@
 #!/usr/bin/env python
 
-import glob
 import os
-import sys
-sys.path.insert(0, os.pardir)
-from testing_harness import TestHarness
-from openmc.statepoint import StatePoint
+from subprocess import Popen, STDOUT, PIPE, call
+import filecmp
+import glob
+from optparse import OptionParser
 
+parser = OptionParser()
+parser.add_option('--mpi_exec', dest='mpi_exec', default='')
+parser.add_option('--exe', dest='exe')
+(opts, args) = parser.parse_args()
+cwd = os.getcwd()
 
-class DistribDumpMatsTestHarness(TestHarness):
-    def _test_output_created(self):
-        """Make sure statepoint.* files have been created."""
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
-        assert len(statepoint) == 1, 'Either multiple or no statepoint files ' \
-             'exist.'
-        assert statepoint[0].endswith('h5'), \
-             'Statepoint file is not a HDF5 file.'
-        if self._tallies:
-            assert os.path.exists(os.path.join(os.getcwd(), 'tallies.out')), \
-                 'Tally output file does not exist.'
-		assert os.path.exists('material.m1.binary') or os.path.exists('material.m1.h5'), 'Materials file does not exist.'
-		assert os.path.exists('material.m2.binary') or os.path.exists('material.m2.h5'), 'Materials file does not exist.'
-		assert os.path.exists('material.m3.binary') or os.path.exists('material.m3.h5'), 'Materials file does not exist.'
-	
-	def _cleanup(self):
-        """Delete statepoints, tally, and test files."""
-        output = glob.glob(os.path.join(os.getcwd(), 'statepoint.*.*'))
-		output += glob.glob(os.path.join(cwd, 'material.m*'))
-        output.append(os.path.join(os.getcwd(), 'tallies.out'))
-        output.append(os.path.join(os.getcwd(), 'results_test.dat'))
-        for f in output:
-            if os.path.exists(f):
-                os.remove(f)
+def test_run():
+    if opts.mpi_exec != '':
+        proc = Popen([opts.mpi_exec, '-np', opts.mpi_np, opts.exe, cwd],
+               stderr=STDOUT, stdout=PIPE)
+    else:
+        proc = Popen([opts.exe, cwd], stderr=STDOUT, stdout=PIPE)
+    print(proc.communicate()[0])
+    returncode = proc.returncode
+    assert returncode == 0, 'OpenMC did not exit successfully.'
 
+def test_output_exists():
+    assert os.path.exists('materials-out.h5'), 'Materials file does not exist.'
+
+def test_results():
+    call(['python', 'results.py'])
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+    if not compare:
+      os.rename('results_test.dat', 'results_error.dat')
+    assert compare, 'Results do not agree.'
+
+def teardown():
+    output = glob.glob(os.path.join(cwd, 'statepoint.20.*'))
+    output.append(os.path.join(cwd, 'materials-out.h5'))
+    output.append(os.path.join(cwd, 'results_test.dat'))
+    for f in output:
+        if os.path.exists(f):
+            os.remove(f)
 
 if __name__ == '__main__':
-    harness = DistribDumpMatsTestHarness('statepoint.20.*')
-    harness.main()
+
+    # test for openmc executable
+    if opts.exe is None:
+        raise Exception('Must specify OpenMC executable from command line with --exe.')
+
+    # run tests
+    try:
+        test_run()
+        test_output_exists()
+        test_results()
+    finally:
+        teardown()

@@ -15,12 +15,7 @@ parser.add_option('--exe', dest='exe')
 cwd = os.getcwd()
 
 def test_run():
-    shutil.copy('mat1.binary.keep','mat1.binary')
-    shutil.copy('mat2.binary.keep','mat2.binary')
-    shutil.copy('mat3.binary.keep','mat3.binary')
-    shutil.copy('mat1.h5.keep','mat1.h5')
-    shutil.copy('mat2.h5.keep','mat2.h5')
-    shutil.copy('mat3.h5.keep','mat3.h5')
+    shutil.copy('materials.h5.keep','materials.h5')
     if opts.mpi_exec != '':
         proc = Popen([opts.mpi_exec, '-np', '4', opts.exe, cwd],
                stderr=STDOUT, stdout=PIPE)
@@ -35,9 +30,7 @@ def test_output_exists():
     if opts.mpi_exec == '':
         # This test is only relevant if MPI is enabled
         return
-    assert os.path.exists('material.m1.binary') or os.path.exists('material.m1.h5'), 'Materials file does not exist.'
-    assert os.path.exists('material.m2.binary') or os.path.exists('material.m2.h5'), 'Materials file does not exist.'
-    assert os.path.exists('material.m3.binary') or os.path.exists('material.m3.h5'), 'Materials file does not exist.'
+    assert os.path.exists('materials-out.h5'), 'Materials file does not exist.'
 
 def test_results():
     if opts.mpi_exec == '':
@@ -54,7 +47,7 @@ def teardown():
         # This test is only relevant if MPI is enabled
         return
     output = glob.glob(os.path.join(cwd, 'statepoint.20.*'))
-    output += glob.glob(os.path.join(cwd, 'material.m*'))
+    output += glob.glob(os.path.join(cwd, 'materials-out.h5'))
     output.append(os.path.join(cwd, 'results_test.dat'))
     for f in output:
         if os.path.exists(f):

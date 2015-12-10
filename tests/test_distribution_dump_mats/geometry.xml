@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
 <geometry>
 
-  <cell id="1"                fill="6" surfaces="1 -2 3 -4 8 -9" />
-  <cell id="2"   universe="5" fill="4" surfaces="1 -2 3 -4" />
-  <cell id="101" universe="1" material="1" surfaces="-5" />
-  <cell id="102" universe="1" material="10" surfaces="5" />
-  <cell id="201" universe="2" material="2" surfaces="-6" />
-  <cell id="202" universe="2" material="10" surfaces="6" />
-  <cell id="301" universe="3" material="3" surfaces="-7" />
-  <cell id="302" universe="3" material="10" surfaces="7" />
+  <cell id="1"                fill="6" region="1 -2 3 -4 8 -9" />
+  <cell id="2"   universe="5" fill="4" region="1 -2 3 -4" />
+  <cell id="101" universe="1" material="1" region="-5" />
+  <cell id="102" universe="1" material="10" region="5" />
+  <cell id="201" universe="2" material="2" region="-6" />
+  <cell id="202" universe="2" material="10" region="6" />
+  <cell id="301" universe="3" material="3" region="-7" />
+  <cell id="302" universe="3" material="10" region="7" />
 
   <!-- 4 x 4 assembly -->
   <lattice id="4">

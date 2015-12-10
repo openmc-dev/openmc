@@ -1,13 +1,13 @@
 <geometry>
 
-  <cell fill="6" id="1" surfaces="1 -2 3 -4 8 -9" />
-  <cell fill="4" id="2" surfaces="1 -2 3 -4" universe="5" />
-  <cell id="101" material="1" surfaces="-5" universe="1" />
-  <cell id="102" material="10" surfaces="5" universe="1" />
-  <cell id="201" material="2" surfaces="-6" universe="2" />
-  <cell id="202" material="10" surfaces="6" universe="2" />
-  <cell id="301" material="3" surfaces="-7" universe="3" />
-  <cell id="302" material="10" surfaces="7" universe="3" />
+  <cell fill="6" id="1" region="1 -2 3 -4 8 -9" />
+  <cell fill="4" id="2" region="1 -2 3 -4" universe="5" />
+  <cell id="101" material="1" region="-5" universe="1" />
+  <cell id="102" material="10" region="5" universe="1" />
+  <cell id="201" material="2" region="-6" universe="2" />
+  <cell id="202" material="10" region="6" universe="2" />
+  <cell id="301" material="3" region="-7" universe="3" />
+  <cell id="302" material="10" region="7" universe="3" />
 
   
   <lattice id="4" outer="7">

@@ -111,44 +111,22 @@ class DomainDecomOTFTalliesTestHarness(TestHarness):
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), 'statepoint.20.domain_1.h5'))[0]
         sp = StatePoint(statepoint)
-        sp.read_domain_tally_metadata()
-        #sp.read_results()
+        # extract tally results (means only) and convert to vector
+        results = sp.tallies[1].mean[:,:,0]
+        otf_filter_bin_map = sp._f['tallies/tally 1/otf_filter_bin_map']
+        results = order_by(results, otf_filter_bin_map)
+        shape = results.shape
+        size = (np.product(shape))
+        results = np.reshape(results, size)
         # set up output string
         outstr = ''
-        spec_list = [('distribcell', [0, 1, (6,1,1,1), 5, 2, (4,1,2,1), 1, 101])]
-        outstr += '%s\n' % sp.get_value(1, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,1,2,1), 5, 2, (4,1,2,1), 1, 101])]
-        outstr += '%s\n' % sp.get_value(1, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,2,1,1), 5, 2, (4,1,2,1), 1, 101])]
-        outstr += '%s\n' % sp.get_value(1, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,2,2,1), 5, 2, (4,1,2,1), 1, 101])]
-        outstr += '%s\n' % sp.get_value(1, spec_list, 0)[0]
-        
-        spec_list = [('distribcell', [0, 1, (6,1,1,1), 5, 2, (4,1,1,1), 2, 201])]
-        outstr += '%s\n' % sp.get_value(2, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,1,1,1), 5, 2, (4,2,2,1), 2, 201])]
-        outstr += '%s\n' % sp.get_value(2, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,2,1,1), 5, 2, (4,1,1,1), 2, 201])]
-        outstr += '%s\n' % sp.get_value(2, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,2,1,1), 5, 2, (4,2,2,1), 2, 201])]
-        outstr += '%s\n' % sp.get_value(2, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,1,2,1), 5, 2, (4,1,1,1), 2, 201])]
-        outstr += '%s\n' % sp.get_value(2, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,1,2,1), 5, 2, (4,2,2,1), 2, 201])]
-        outstr += '%s\n' % sp.get_value(2, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,2,2,1), 5, 2, (4,1,1,1), 2, 201])]
-        outstr += '%s\n' % sp.get_value(2, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,2,2,1), 5, 2, (4,2,2,1), 2, 201])]
-        outstr += '%s\n' % sp.get_value(2, spec_list, 0)[0]
-        
-        spec_list = [('distribcell', [0, 1, (6,1,1,1), 5, 2, (4,2,1,1), 3, 301])]
-        outstr += '%s\n' % sp.get_value(3, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,1,2,1), 5, 2, (4,2,1,1), 3, 301])]
-        outstr += '%s\n' % sp.get_value(3, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,2,1,1), 5, 2, (4,2,1,1), 3, 301])]
-        outstr += '%s\n' % sp.get_value(3, spec_list, 0)[0]
-        spec_list = [('distribcell', [0, 1, (6,2,2,1), 5, 2, (4,2,1,1), 3, 301])]
-        outstr += '%s\n' % sp.get_value(3, spec_list, 0)[0]
+        # write out k-combined
+        outstr += 'k-combined:\n'
+        outstr += "{0:12.6E} {1:12.6E}\n".format(sp.k_combined[0], sp.k_combined[1])
+        # write out tally results
+        outstr += 'tallies:\n'
+        for item in results:
+          outstr += "{0:12.6E}\n".format(item)
         return outstr
 
     def _cleanup(self):

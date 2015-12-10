@@ -117,10 +117,10 @@ class DomainDecomTestHarness(TestHarness):
             # Read the statepoint file.
             statepoint = glob.glob(os.path.join(os.getcwd(), 'statepoint.20.domain_1.h5'))[0]
             sp = StatePoint(statepoint)
-            #sp.read_results()
             # extract tally results (means only) and convert to vector
-            results = sp.tallies[0].results[:,:,0]
-            results = order_by(results, sp.tallies[0].otf_filter_bin_map)
+            results = sp.tallies[1].mean[:,:,0]
+            otf_filter_bin_map = sp._f['tallies/tally 1/otf_filter_bin_map']
+            results = order_by(results, otf_filter_bin_map)
             shape = results.shape
             size = (np.product(shape))
             results = np.reshape(results, size)
@@ -138,37 +138,38 @@ class DomainDecomTestHarness(TestHarness):
             # read in statepoint files
             spfile = 'statepoint.20.domain_1.h5'
             statepoint = glob.glob(os.path.join(os.getcwd(), spfile))[0]
-            sp1 = statepoint.StatePoint(statepoint)
+            sp1 = StatePoint(statepoint)
             spfile = 'statepoint.20.domain_2.h5'
             statepoint = glob.glob(os.path.join(os.getcwd(), spfile))[0]
-            sp2 = statepoint.StatePoint(statepoint)
+            sp2 = StatePoint(statepoint)
             spfile = 'statepoint.20.domain_3.h5'
             statepoint = glob.glob(os.path.join(os.getcwd(), spfile))[0]
-            sp3 = statepoint.StatePoint(statepoint)
+            sp3 = StatePoint(statepoint)
             spfile = 'statepoint.20.domain_4.h5'
             statepoint = glob.glob(os.path.join(os.getcwd(), spfile))[0]
-            sp4 = statepoint.StatePoint(statepoint)
-            #sp1.read_results()
-            #sp2.read_results()
-            #sp3.read_results()
-            #sp4.read_results()
+            sp4 = StatePoint(statepoint)
             # extract tally results, means only since sum_sq won't match the 1_domain case
-            results = [sp1.tallies[0].results[:,:,0],
-                       sp2.tallies[0].results[:,:,0],
-                       sp3.tallies[0].results[:,:,0],
-                       sp4.tallies[0].results[:,:,0]]
+            mean1=sp1._f['tallies/tally 1/results'].value['sum']/sp1.tallies[1].num_realizations
+            mean2=sp2._f['tallies/tally 1/results'].value['sum']/sp2.tallies[1].num_realizations
+            mean3=sp3._f['tallies/tally 1/results'].value['sum']/sp3.tallies[1].num_realizations
+            mean4=sp4._f['tallies/tally 1/results'].value['sum']/sp4.tallies[1].num_realizations
+            results = [mean1, mean2, mean3, mean4]
             # combine results for bins that were on more than one domain, in real_bin order
-            maps = np.array([sp1.tallies[0].otf_filter_bin_map,
-                             sp2.tallies[0].otf_filter_bin_map,
-                             sp3.tallies[0].otf_filter_bin_map,
-                             sp4.tallies[0].otf_filter_bin_map])
-            maxbin = max(maps.flatten())
+            otf_filter_bin_map1 = sp1._f['tallies/tally 1/otf_filter_bin_map']
+            otf_filter_bin_map2 = sp2._f['tallies/tally 1/otf_filter_bin_map']
+            otf_filter_bin_map3 = sp3._f['tallies/tally 1/otf_filter_bin_map']
+            otf_filter_bin_map4 = sp4._f['tallies/tally 1/otf_filter_bin_map']
+            maps = np.array([otf_filter_bin_map1,
+                             otf_filter_bin_map2,
+                             otf_filter_bin_map3,
+                             otf_filter_bin_map4])
+            maxbin = max(max(maps.flatten()))
             tmp_results = np.zeros((maxbin, 1))
             for i in range(maxbin):
                 for j, map_ in enumerate(maps):
-                  if i+1 in map_:
-                      bin_ = np.nonzero(map_ == i+1)[0][0]
-                      tmp_results[i] += results[j][bin_]
+                    for k, index in enumerate(map_):
+                        if i+1 == index:
+                            tmp_results[i] += results[j][k]
             results = np.reshape(tmp_results, (np.product(tmp_results.shape)))
             # set up output string
             outstr = ''

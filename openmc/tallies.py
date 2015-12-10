@@ -1519,7 +1519,7 @@ class Tally(object):
             new_tally.name = new_name
 
         # Query the mean and std dev so the tally data is read in from file
-        # if it has not present
+        # if it has not already been read in.
         self.mean
         self.std_dev
         other.mean
@@ -1636,14 +1636,14 @@ class Tally(object):
         other : Tally
             The tally to outer product with this tally
         filter_product : str
-            The type of product (tensor or entry) to be performed between filter
-            data.
+            The type of product (tensor or entrywise) to be performed between
+            filter data.
         nuclide_product : str
-            The type of product (tensor or entry) to be performed between nuclide
-            data.
+            The type of product (tensor or entrywise) to be performed between
+            nuclide data.
         score_product : str
-            The type of product (tensor or entry) to be performed between score
-            data.
+            The type of product (tensor or entrywise) to be performed between
+            score data.
 
         Returns
         -------
@@ -1660,17 +1660,15 @@ class Tally(object):
         # Add filters present in self but not in other to other
         for filter in other_missing_filters:
             filter = copy.deepcopy(filter)
-            repeat_factor = filter.num_bins
-            other._mean = np.repeat(other.mean, repeat_factor, axis=0)
-            other._std_dev = np.repeat(other.std_dev, repeat_factor, axis=0)
+            other._mean = np.repeat(other.mean, filter.num_bins, axis=0)
+            other._std_dev = np.repeat(other.std_dev, filter.num_bins, axis=0)
             other.add_filter(filter)
 
         # Add filters present in other but not in self to self
         for filter in self_missing_filters:
             filter = copy.deepcopy(filter)
-            repeat_factor = filter.num_bins
-            self._mean = np.repeat(self.mean, repeat_factor, axis=0)
-            self._std_dev = np.repeat(self.std_dev, repeat_factor, axis=0)
+            self._mean = np.repeat(self.mean, filter.num_bins, axis=0)
+            self._std_dev = np.repeat(self.std_dev, filter.num_bins, axis=0)
             self.add_filter(filter)
 
         # Align other filters with self filters

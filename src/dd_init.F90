@@ -35,7 +35,7 @@ contains
     call write_message("Initializing domain decomposition parameters...", 6)
 
 #ifdef _OPENMP
-    call fatal_error("Domain decomposition not implemented in " \\ &
+    call fatal_error("Domain decomposition not implemented in " // &
         "conjunction with OpenMP.")
 #endif
 

@@ -10,6 +10,11 @@ from openmc.executor import Executor
 from openmc.statepoint import StatePoint
 import numpy as np
 
+def order_by(arr, ordering):
+    ordered = np.zeros(arr.shape)
+    for i,val in enumerate(arr):
+        ordered[ordering[i]-1] = val
+    return ordered 
 
 class DomainDecomOTFTalliesTestHarness(TestHarness):
     def __init__(self, statepoint_name):

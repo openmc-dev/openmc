@@ -10,6 +10,7 @@ from xml.etree import ElementTree as ET
 import sys
 
 import numpy as np
+import scipy.sparse as sps
 
 from openmc import Mesh, Filter, Trigger, Nuclide
 from openmc.cross import CrossScore, CrossNuclide, CrossFilter
@@ -104,6 +105,7 @@ class Tally(object):
         self._std_dev = None
         self._with_batch_statistics = False
         self._derived = False
+        self._sparse = False
 
         self._sp_filename = None
         self._results_read = False
@@ -126,6 +128,7 @@ class Tally(object):
             clone._with_summary = self.with_summary
             clone._with_batch_statistics = self.with_batch_statistics
             clone._derived = self.derived
+            clone._sparse = self.sparse
             clone._sp_filename = self._sp_filename
             clone._results_read = self._results_read
 
@@ -315,13 +318,21 @@ class Tally(object):
             self._sum = sum
             self._sum_sq = sum_sq
 
+            # Convert NumPy arrays to SciPy sparse matrices
+            if self.sparse:
+                self._sum = sps.lil_matrix(self._sum)
+                self._sum_sq = sps.lil_matrix(self._sum_sq)
+
             # Indicate that Tally results have been read
             self._results_read = True
 
             # Close the HDF5 statepoint file
             f.close()
 
-        return self._sum
+        if self.sparse:
+            return self._sum.toarray()
+        else:
+            return self._sum
 
     @property
     def sum_sq(self):
@@ -332,7 +343,10 @@ class Tally(object):
             # Force reading of sum and sum_sq
             self.sum
 
-        return self._sum_sq
+        if self.sparse:
+            return self._sum_sq.toarray()
+        else:
+            return self._sum_sq
 
     @property
     def mean(self):
@@ -341,7 +355,15 @@ class Tally(object):
                 return None
 
             self._mean = self.sum / self.num_realizations
-        return self._mean
+
+            # Convert NumPy arrays to SciPy sparse matrices
+            if self.sparse:
+                self._mean = sps.lil_matrix(self._mean)
+
+        if self.sparse:
+            return self._mean.toarray()
+        else:
+            return self._mean
 
     @property
     def std_dev(self):
@@ -354,8 +376,17 @@ class Tally(object):
             self._std_dev = np.zeros_like(self.mean)
             self._std_dev[nonzero] = np.sqrt((self.sum_sq[nonzero]/n -
                                               self.mean[nonzero]**2)/(n - 1))
+
+            # Convert NumPy arrays to SciPy sparse matrices
+            if self.sparse:
+                self._std_dev = sps.lil_matrix(self._std_dev)
+
             self.with_batch_statistics = True
-        return self._std_dev
+
+        if self.sparse:
+            return self._std_dev.toarray()
+        else:
+            return self._std_dev
 
     @property
     def with_batch_statistics(self):
@@ -364,6 +395,10 @@ class Tally(object):
     @property
     def derived(self):
         return self._derived
+
+    @property
+    def sparse(self):
+        return self._sparse
 
     @estimator.setter
     def estimator(self, estimator):
@@ -619,7 +654,8 @@ class Tally(object):
         """
 
         if not self.can_merge(tally):
-            msg = 'Unable to merge tally ID="{0}" with "{1}"'.format(tally.id, self.id)
+            msg = 'Unable to merge tally ID="{0}" with ' + \
+                   '"{1}"'.format(tally.id, self.id)
             raise ValueError(msg)
 
         # Create deep copy of tally to return as merged tally
@@ -1106,6 +1142,25 @@ class Tally(object):
             raise LookupError(msg)
 
         return data
+
+    def sparsify(self):
+        """
+        """
+
+        self._sparse = True
+
+        # FIXME: get_values
+        # FIXME: each of the properties which load in the data
+        # FIXME: pandas dataframes
+        # summation, slicing
+        if self._sum:
+            self._sum = sps.lil_matrix(self._sum)
+        if self._sum_sq:
+            self._sum_sq = sps.lil_matrix(self._sum_sq)
+        if self._mean:
+            self._mean = sps.lil_matrix(self._mean)
+        if self._std_dev:
+            self._std_dev = sps.lil_matrix(self._std_dev)
 
     def get_pandas_dataframe(self, filters=True, nuclides=True,
                              scores=True, summary=None):

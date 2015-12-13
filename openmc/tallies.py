@@ -1195,7 +1195,7 @@ class Tally(object):
         """
 
         # If the tally is already dense, simply return
-        if not self._sparse:
+        if not self.sparse:
             return
 
         # Convert SciPy sparse LIL matrices to NumPy arrays

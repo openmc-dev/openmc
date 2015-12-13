@@ -92,7 +92,7 @@ class MGXS(object):
     xs_tally : Tally
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
-    num_sumbdomains : Integral
+    num_subdomains : Integral
         The number of subdomains is unity for 'material', 'cell' and 'universe'
         domain types. When the  This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
@@ -1421,7 +1421,7 @@ class AbsorptionXS(MGXS):
 class CaptureXS(MGXS):
     """A capture multi-group cross section.
 
-    The Neutron capture reaction rate is defined as the difference between
+    The neutron capture reaction rate is defined as the difference between
     OpenMC's 'absorption' and 'fission' reaction rate score types. This includes
     not only radiative capture, but all forms of neutron disappearance aside
     from fission (e.g., MT > 100).
@@ -1723,8 +1723,8 @@ class ScatterMatrixXS(MGXS):
         if self.correction == 'P0':
             scatter_p1 = self.tallies['scatter-P1']
             scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
-            energy_filter = copy.deepcopy(self.tallies['scatter'].
-                                          find_filter('energy'))
+            energy_filter = self.tallies['scatter'].find_filter('energy')
+            energy_filter = copy.deepcopy(energy_filter)
             scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
             rxn_tally = self.tallies['scatter'] - scatter_p1
         else:

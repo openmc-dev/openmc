@@ -1,7 +1,7 @@
 def sort_xml_elements(tree):
 
     # Retrieve all children of the root XML node in the tree
-    elements = tree.getchildren()
+    elements = list(tree)
 
     # Initialize empty lists for the sorted and comment elements
     sorted_elements = []

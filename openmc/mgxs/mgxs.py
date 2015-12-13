@@ -47,7 +47,7 @@ _DOMAINS = [openmc.Cell,
 
 
 class MGXS(object):
-    """An abstract multi-group cross section for some energy group structure 
+    """An abstract multi-group cross section for some energy group structure
     within some spatial domain.
 
     This class can be used for both OpenMC input generation and tally data
@@ -95,7 +95,7 @@ class MGXS(object):
     num_sumbdomains : Integral
         The number of subdomains is unity for 'material', 'cell' and 'universe'
         domain types. When the  This is equal to the number of cell instances
-        for 'distribcell' domain types (it is equal to unity prior to loading 
+        for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : Integral
         The number of nuclides for which the multi-group cross section is
@@ -103,6 +103,9 @@ class MGXS(object):
     nuclides : list of str or 'sum'
         A list of nuclide string names (e.g., 'U-238', 'O-16') when by_nuclide
         is True and 'sum' when by_nuclide is False.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
 
     """
 
@@ -121,6 +124,7 @@ class MGXS(object):
         self._tally_trigger = None
         self._tallies = None
         self._xs_tally = None
+        self._sparse = False
 
         self.name = name
         self.by_nuclide = by_nuclide
@@ -146,6 +150,7 @@ class MGXS(object):
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._xs_tally = copy.deepcopy(self.xs_tally, memo)
+            clone._sparse = self.sparse
 
             clone._tallies = OrderedDict()
             for tally_type, tally in self.tallies.items():
@@ -200,6 +205,10 @@ class MGXS(object):
         return self._xs_tally
 
     @property
+    def sparse(self):
+        return self._sparse
+
+    @property
     def num_subdomains(self):
         tally = list(self.tallies.values())[0]
         domain_filter = tally.find_filter(self.domain_type)
@@ -248,6 +257,29 @@ class MGXS(object):
     def tally_trigger(self, tally_trigger):
         cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
         self._tally_trigger = tally_trigger
+
+    @sparse.setter
+    def sparse(self, sparse):
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices, and vice versa.
+
+        This property may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within the Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        """
+
+        cv.check_type('sparse', sparse, bool)
+
+        # Sparsify or densify the derived MGXS tally and its base tallies
+        if self.xs_tally:
+            self.xs_tally.sparse = sparse
+
+        for tally_name in self.tallies:
+                self.tallies[tally_name].sparse = sparse
+
+        self._sparse = sparse
 
     @staticmethod
     def get_mgxs(mgxs_type, domain=None, domain_type=None,
@@ -503,6 +535,7 @@ class MGXS(object):
         # Remove NaNs which may have resulted from divide-by-zero operations
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
         self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        self.xs_tally.sparse = self.sparse
 
     def load_from_statepoint(self, statepoint):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
@@ -565,6 +598,7 @@ class MGXS(object):
                                             estimator=tally.estimator)
             sp_tally = sp_tally.get_slice(tally.scores, filters,
                                           filter_bins, tally.nuclides)
+            sp_tally.sparse = self.sparse
             self.tallies[tally_type] = sp_tally
 
         # Compute the cross section from the tallies
@@ -716,6 +750,7 @@ class MGXS(object):
 
         # Clone this MGXS to initialize the condensed version
         condensed_xs = copy.deepcopy(self)
+        condensed_xs.sparse = False
         condensed_xs.energy_groups = coarse_groups
 
         # Build energy indices to sum across
@@ -765,6 +800,7 @@ class MGXS(object):
 
         # Compute the energy condensed multi-group cross section
         condensed_xs.compute_xs()
+        condensed_xs.sparse = self.sparse
         return condensed_xs
 
     def get_subdomain_avg_xs(self, subdomains='all'):
@@ -807,8 +843,9 @@ class MGXS(object):
 
         # Clone this MGXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
+        avg_xs.sparse = False
 
-            # If domain is distribcell, make the new domain 'cell'
+        # If domain is distribcell, make the new domain 'cell'
         if self.domain_type == 'distribcell':
             avg_xs.domain_type = 'cell'
 
@@ -847,7 +884,7 @@ class MGXS(object):
 
         # Compute the subdomain-averaged multi-group cross section
         avg_xs.compute_xs()
-
+        avg_xs.sparse = self.sparse
         return avg_xs
 
     def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
@@ -1420,8 +1457,8 @@ class AbsorptionXS(MGXS):
 
 class CaptureXS(MGXS):
     """A capture multi-group cross section.
-    
-    The Neutron capture reaction rate is defined as the difference between 
+
+    The Neutron capture reaction rate is defined as the difference between
     OpenMC's 'absorption' and 'fission' reaction rate score types. This includes
     not only radiative capture, but all forms of neutron disappearance aside
     from fission (e.g., MT > 100).
@@ -1723,8 +1760,8 @@ class ScatterMatrixXS(MGXS):
         if self.correction == 'P0':
             scatter_p1 = self.tallies['scatter-P1']
             scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
-            energy_filter = openmc.Filter(type='energy')
-            energy_filter.bins = self.energy_groups.group_edges
+            energy_filter = copy.deepcopy(self.tallies['scatter'].
+                                          find_filter('energy'))
             scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
             rxn_tally = self.tallies['scatter'] - scatter_p1
         else:

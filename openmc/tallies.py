@@ -1800,13 +1800,13 @@ class Tally(object):
         Raises
         ------
         ValueError
-            If this method is called before the mean and std dev is computed
-            for this tally.
+            If this is a derived tally or this method is called before the tally
+            is populated with data by the StatePoint.read_results() method.
 
         """
 
         # Check that results have been read
-        if self.sum is None or self.std_dev is None:
+        if not self.derived and self.sum is None:
             msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -1851,6 +1851,24 @@ class Tally(object):
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
+        # Adjust the sum data array to relect the new filter order
+        if self.sum is not None:
+            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
+                filter_bins = [(bin1,), (bin2,)]
+                data = self.get_values(
+                    filters=filters, filter_bins=filter_bins, value='sum')
+                indices = self.get_filter_indices(filters, filter_bins)
+                self.sum[indices, :, :] = data
+
+        # Adjust the sum_sq data array to relect the new filter order
+        if self.sum_sq is not None:
+            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
+                filter_bins = [(bin1,), (bin2,)]
+                data = self.get_values(
+                    filters=filters, filter_bins=filter_bins, value='sum_sq')
+                indices = self.get_filter_indices(filters, filter_bins)
+                self.sum_sq[indices, :, :] = data
+
         # Adjust the mean data array to relect the new filter order
         if self.mean is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
@@ -1887,13 +1905,13 @@ class Tally(object):
         Raises
         ------
         ValueError
-            If this method is called before the mean and std dev is computed
-            for this tally.
+            If this is a derived tally or this method is called before the tally
+            is populated with data by the StatePoint.read_results() method.
 
         """
 
         # Check that results have been read
-        if self.sum is None or self.std_dev is None:
+        if not self.derived and self.sum is None:
             msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -1922,15 +1940,33 @@ class Tally(object):
         self.nuclides[nuclide1_index] = nuclide2
         self.nuclides[nuclide2_index] = nuclide1
 
-        # Swap the mean and std dev data
-        nuclide1_mean = self._mean[:,nuclide1_index,:].copy()
-        nuclide2_mean = self._mean[:,nuclide2_index,:].copy()
-        nuclide1_std_dev = self._std_dev[:,nuclide1_index,:].copy()
-        nuclide2_std_dev = self._std_dev[:,nuclide2_index,:].copy()
-        self._mean[:,nuclide2_index,:] = nuclide1_mean
-        self._mean[:,nuclide1_index,:] = nuclide2_mean
-        self._std_dev[:,nuclide2_index,:] = nuclide1_std_dev
-        self._std_dev[:,nuclide1_index,:] = nuclide2_std_dev
+        # Adjust the sum data array to relect the new nuclide order
+        if self.sum is not None:
+            nuclide1_sum = self._sum[:,nuclide1_index,:].copy()
+            nuclide2_sum = self._sum[:,nuclide2_index,:].copy()
+            self._sum[:,nuclide2_index,:] = nuclide1_sum
+            self._sum[:,nuclide1_index,:] = nuclide2_sum
+
+        # Adjust the sum_sq data array to relect the new nuclide order
+        if self.sum_sq is not None:
+            nuclide1_sum_sq = self._sum_sq[:,nuclide1_index,:].copy()
+            nuclide2_sum_sq = self._sum_sq[:,nuclide2_index,:].copy()
+            self._sum_sq[:,nuclide2_index,:] = nuclide1_sum_sq
+            self._sum_sq[:,nuclide1_index,:] = nuclide2_sum_sq
+
+        # Adjust the mean data array to relect the new nuclide order
+        if self.mean is not None:
+            nuclide1_mean = self._mean[:,nuclide1_index,:].copy()
+            nuclide2_mean = self._mean[:,nuclide2_index,:].copy()
+            self._mean[:,nuclide2_index,:] = nuclide1_mean
+            self._mean[:,nuclide1_index,:] = nuclide2_mean
+
+        # Adjust the std_dev data array to relect the new nuclide order
+        if self.std_dev is not None:
+            nuclide1_std_dev = self._std_dev[:,nuclide1_index,:].copy()
+            nuclide2_std_dev = self._std_dev[:,nuclide2_index,:].copy()
+            self._std_dev[:,nuclide2_index,:] = nuclide1_std_dev
+            self._std_dev[:,nuclide1_index,:] = nuclide2_std_dev
 
     def _swap_scores(self, score1, score2):
         """Reverse the ordering of two scores in this tally
@@ -1950,13 +1986,13 @@ class Tally(object):
         Raises
         ------
         ValueError
-            If this method is called before the mean and std dev is computed
-            for this tally.
+            If this is a derived tally or this method is called before the tally
+            is populated with data by the StatePoint.read_results() method.
 
         """
 
         # Check that results have been read
-        if self.sum is None or self.std_dev is None:
+        if not self.derived and self.sum is None:
             msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
@@ -1990,15 +2026,33 @@ class Tally(object):
         self.scores[score1_index] = score2
         self.scores[score2_index] = score1
 
-        # Swap the mean and std dev data
-        score1_mean = self._mean[:,:,score1_index].copy()
-        score2_mean = self._mean[:,:,score2_index].copy()
-        score1_std_dev = self._std_dev[:,:,score1_index].copy()
-        score2_std_dev = self._std_dev[:,:,score2_index].copy()
-        self._mean[:,:,score2_index] = score1_mean
-        self._mean[:,:,score1_index] = score2_mean
-        self._std_dev[:,:,score2_index] = score1_std_dev
-        self._std_dev[:,:,score1_index] = score2_std_dev
+        # Adjust the sum data array to relect the new nuclide order
+        if self.sum is not None:
+            score1_sum = self._sum[:,:,score1_index].copy()
+            score2_sum = self._sum[:,:,score2_index].copy()
+            self._sum[:,:,score2_index] = score1_sum
+            self._sum[:,:,score1_index] = score2_sum
+
+        # Adjust the sum_sq data array to relect the new nuclide order
+        if self.sum_sq is not None:
+            score1_sum_sq = self._sum_sq[:,:,score1_index].copy()
+            score2_sum_sq = self._sum_sq[:,:,score2_index].copy()
+            self._sum_sq[:,:,score2_index] = score1_sum_sq
+            self._sum_sq[:,:,score1_index] = score2_sum_sq
+
+        # Adjust the mean data array to relect the new nuclide order
+        if self.mean is not None:
+            score1_mean = self._mean[:,:,score1_index].copy()
+            score2_mean = self._mean[:,:,score2_index].copy()
+            self._mean[:,:,score2_index] = score1_mean
+            self._mean[:,:,score1_index] = score2_mean
+
+        # Adjust the std_dev data array to relect the new nuclide order
+        if self.std_dev is not None:
+            score1_std_dev = self._std_dev[:,:,score1_index].copy()
+            score2_std_dev = self._std_dev[:,:,score2_index].copy()
+            self._std_dev[:,:,score2_index] = score1_std_dev
+            self._std_dev[:,:,score1_index] = score2_std_dev
 
     def __add__(self, other):
         """Adds this tally to another tally or scalar value.

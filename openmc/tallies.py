@@ -1150,10 +1150,21 @@ class Tally(object):
         return data
 
     def sparsify(self):
-        """
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices.
+
+        This method may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within the Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        See also
+        --------
+        Tally.densify()
+       
         """
 
-        # FIXME: pandas dataframes, summation
+        # Convert NumPy arrays to SciPy sparse LIL matrices
         if self._sum is not None:
             self._sum = \
                 sps.lil_matrix(self._sum.flatten(), self._sum.shape)
@@ -1170,14 +1181,24 @@ class Tally(object):
         self._sparse = True
 
     def densify(self):
-        """
+        """Convert tally data from SciPy list of lists (LIL) sparse matrices
+        to NumPy arrrays.
+
+        This method may be used to restore a sparse tally to its original
+        state. This method will have no effect on the state of the tally 
+        unless the Tally.sparse() method has been called.
+
+        See also
+        --------
+        Tally.sparsify()
+        
         """
 
         # If the tally is already dense, simply return
         if not self._sparse:
             return
 
-        # FIXME: pandas dataframes, summation
+        # Convert SciPy sparse LIL matrices to NumPy arrays
         if self._sum is not None:
             self._sum = np.reshape(self._sum.toarray(), self.shape)
         if self._sum_sq is not None:

@@ -83,6 +83,11 @@ class Tally(object):
         An array containing the sample mean for each bin
     std_dev : ndarray
         An array containing the sample standard deviation for each bin
+    derived : bool
+        Whether or not the tally is derived from one or more other tallies
+    sparse : bool
+        Whether or not the tally uses SciPy's LIL sparse matrix format for
+        compressed data storage
 
     """
 
@@ -247,6 +252,10 @@ class Tally(object):
         return self._scores
 
     @property
+    def shape(self):
+        return (self.num_filter_bins, self.num_nuclides, self.num_score_bins)
+
+    @property
     def num_scores(self):
         return len(self._scores)
 
@@ -308,21 +317,18 @@ class Tally(object):
                 return 1 if not val else val
 
             # Reshape the results arrays
-            new_shape = (nonzero(self.num_filter_bins),
-                         nonzero(self.num_nuclides),
-                         nonzero(self.num_score_bins))
-
-            sum = np.reshape(sum, new_shape)
-            sum_sq = np.reshape(sum_sq, new_shape)
+            sum = np.reshape(sum, self.shape)
+            sum_sq = np.reshape(sum_sq, self.shape)
 
             # Set the data for this Tally
             self._sum = sum
             self._sum_sq = sum_sq
 
-            # Convert NumPy arrays to SciPy sparse matrices
+            # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
-                self._sum = sps.lil_matrix(self._sum)
-                self._sum_sq = sps.lil_matrix(self._sum_sq)
+                self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
+                self._sum_sq = \
+                    sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
 
             # Indicate that Tally results have been read
             self._results_read = True
@@ -331,7 +337,7 @@ class Tally(object):
             f.close()
 
         if self.sparse:
-            return self._sum.toarray()
+            return np.reshape(self._sum.toarray(), self.shape)
         else:
             return self._sum
 
@@ -345,7 +351,7 @@ class Tally(object):
             self.sum
 
         if self.sparse:
-            return self._sum_sq.toarray()
+            return np.reshape(self._sum_sq.toarray(), self.shape)
         else:
             return self._sum_sq
 
@@ -357,12 +363,13 @@ class Tally(object):
 
             self._mean = self.sum / self.num_realizations
 
-            # Convert NumPy arrays to SciPy sparse matrices
+            # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._mean = sps.lil_matrix(self._mean)
+                self._mean = \
+                    sps.lil_matrix(self._mean.flatten(), self._mean.shape)
 
         if self.sparse:
-            return self._mean.toarray()
+            return np.reshape(self._mean.toarray(), self.shape)
         else:
             return self._mean
 
@@ -378,14 +385,15 @@ class Tally(object):
             self._std_dev[nonzero] = np.sqrt((self.sum_sq[nonzero]/n -
                                               self.mean[nonzero]**2)/(n - 1))
 
-            # Convert NumPy arrays to SciPy sparse matrices
+            # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                self._std_dev = sps.lil_matrix(self._std_dev)
+                self._std_dev = \
+                    sps.lil_matrix(self._std_dev.flatten(), self._std_dev.shape)
 
             self.with_batch_statistics = True
 
         if self.sparse:
-            return self._std_dev.toarray()
+            return np.reshape(self._std_dev.toarray(), self.shape)
         else:
             return self._std_dev
 
@@ -1099,22 +1107,19 @@ class Tally(object):
         Raises
         ------
         ValueError
-            When this method is called before the Tally is populated with data
-            by the StatePoint.read_results() method. ValueError is also thrown
-            if the input parameters do not correspond to the Tally's attributes,
+            When this method is called before the Tally is populated with data,
+            or the input parameters do not correspond to the Tally's attributes,
             e.g., if the score(s) do not match those in the Tally.
 
         """
 
-        # Ensure that StatePoint.read_results() was called first
+        # Ensure that the tally has data
         if (value == 'mean' and self.mean is None) or \
            (value == 'std_dev' and self.std_dev is None) or \
            (value == 'rel_err' and self.mean is None) or \
            (value == 'sum' and self.sum is None) or \
            (value == 'sum_sq' and self.sum_sq is None):
-            msg = 'The Tally ID="{0}" has no data to return. Call the ' \
-                  'StatePoint.read_results() method before using ' \
-                  'Tally.get_values(...)'.format(self.id)
+            msg = 'The Tally ID="{0}" has no data to return'.format(self.id)
             raise ValueError(msg)
 
         # Get filter, nuclide and score indices
@@ -1148,20 +1153,41 @@ class Tally(object):
         """
         """
 
+        # FIXME: pandas dataframes, summation
+        if self._sum is not None:
+            self._sum = \
+                sps.lil_matrix(self._sum.flatten(), self._sum.shape)
+        if self._sum_sq is not None:
+            self._sum_sq = \
+                sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
+        if self._mean is not None:
+            self._mean = \
+                sps.lil_matrix(self._mean.flatten(), self._mean.shape)
+        if self._std_dev is not None:
+            self._std_dev = \
+                sps.lil_matrix(self._std_dev.flatten(), self._std_dev.shape)
+
         self._sparse = True
 
-        # FIXME: get_values
-        # FIXME: each of the properties which load in the data
-        # FIXME: pandas dataframes
-        # summation, slicing
-        if self._sum:
-            self._sum = sps.lil_matrix(self._sum)
-        if self._sum_sq:
-            self._sum_sq = sps.lil_matrix(self._sum_sq)
-        if self._mean:
-            self._mean = sps.lil_matrix(self._mean)
-        if self._std_dev:
-            self._std_dev = sps.lil_matrix(self._std_dev)
+    def densify(self):
+        """
+        """
+
+        # If the tally is already dense, simply return
+        if not self._sparse:
+            return
+
+        # FIXME: pandas dataframes, summation
+        if self._sum is not None:
+            self._sum = np.reshape(self._sum.toarray(), self.shape)
+        if self._sum_sq is not None:
+            self._sum_sq = np.reshape(self._sum_sq.toarray(), self.shape)
+        if self._mean is not None:
+            self._mean = np.reshape(self._mean.toarray(), self.shape)
+        if self._std_dev is not None:
+            self._std_dev = np.reshape(self._std_dev.toarray(), self.shape)
+
+        self._sparse = False
 
     def get_pandas_dataframe(self, filters=True, nuclides=True,
                              scores=True, summary=None):
@@ -1200,17 +1226,14 @@ class Tally(object):
         ------
         KeyError
             When this method is called before the Tally is populated with data
-            by the StatePoint.read_results() method.
         ImportError
             When Pandas can not be found on the caller's system
 
         """
 
-        # Ensure that StatePoint.read_results() was called first
+        # Ensure that the tally has data
         if self.mean is None or self.std_dev is None:
-            msg = 'The Tally ID="{0}" has no data to return. Call the ' \
-                  'StatePoint.read_results() method before using ' \
-                  'Tally.get_pandas_dataframe(...)'.format(self.id)
+            msg = 'The Tally ID="{0}" has no data to return'.format(self.id)
             raise KeyError(msg)
 
         # If using Summary, ensure StatePoint.link_with_summary(...) was called
@@ -1356,16 +1379,13 @@ class Tally(object):
         Raises
         ------
         KeyError
-            When this method is called before the Tally is populated with data
-            by the StatePoint.read_results() method.
+            When this method is called before the Tally is populated with data.
 
         """
 
-        # Ensure that StatePoint.read_results() was called first
+        # Ensure that the tally has data
         if self._sum is None or self._sum_sq is None and not self.derived:
-            msg = 'The Tally ID="{0}" has no data to export. Call the ' \
-                  'StatePoint.read_results() method before using ' \
-                  'Tally.export_results(...)'.format(self.id)
+            msg = 'The Tally ID="{0}" has no data to export'.format(self.id)
             raise KeyError(msg)
 
         if not isinstance(filename, basestring):
@@ -1527,7 +1547,7 @@ class Tally(object):
         ------
         ValueError
             When this method is called before the other tally is populated
-            with data by the StatePoint.read_results() method.
+            with data.
 
         """
 
@@ -1708,6 +1728,12 @@ class Tally(object):
 
         """
 
+        # Use dense NumPy arrays for data alignment operations
+        self_sparse = self.sparse
+        other_sparse = other.sparse
+        self.densify()
+        other.densify()
+
         # Get the set of filters that each tally is missing
         other_missing_filters = set(self.filters).difference(set(other.filters))
         self_missing_filters = set(other.filters).difference(set(self.filters))
@@ -1769,7 +1795,7 @@ class Tally(object):
 
                 # If necessary, swap other nuclide
                 if other_index != i:
-                    other.swap_nuclides(nuclide, other.nuclides[i])
+                     other.swap_nuclides(nuclide, other.nuclides[i])
 
         # Repeat and tile the data by score in preparation for performing
         # the tensor product across scores.
@@ -1820,6 +1846,12 @@ class Tally(object):
             filter.stride = stride
             stride *= filter.num_bins
 
+        # Restore tally operands to sparse storage
+        if self.sparse:
+            self.sparsify()
+        if other.sparse:
+            other.sparsify()
+
         # Deep copy the mean and std dev data
         self_mean = copy.deepcopy(self.mean)
         self_std_dev = copy.deepcopy(self.std_dev)
@@ -1864,7 +1896,7 @@ class Tally(object):
         ------
         ValueError
             If this is a derived tally or this method is called before the tally
-            is populated with data by the StatePoint.read_results() method.
+            is populated with data.
 
         """
 
@@ -1981,7 +2013,7 @@ class Tally(object):
         ------
         ValueError
             If this is a derived tally or this method is called before the tally
-            is populated with data by the StatePoint.read_results() method.
+            is populated with data.
 
         """
 
@@ -2036,7 +2068,7 @@ class Tally(object):
         ------
         ValueError
             If this is a derived tally or this method is called before the tally
-            is populated with data by the StatePoint.read_results() method.
+            is populated with data.
 
         """
 
@@ -2103,8 +2135,7 @@ class Tally(object):
         Raises
         ------
         ValueError
-            When this method is called before the Tally is populated with data
-            by the StatePoint.read_results() method.
+            When this method is called before the Tally is populated with data.
 
         """
 
@@ -2135,6 +2166,10 @@ class Tally(object):
                 new_tally.add_nuclide(nuclide)
             for score in self.scores:
                 new_tally.add_score(score)
+
+            # If original tally operands were sparse, sparsify the sliced tally
+            if self.sparse and other.sparse:
+                new_tally.sparsify()
 
         else:
             msg = 'Unable to add "{0}" to Tally ID="{1}"'.format(other, self.id)
@@ -2173,8 +2208,7 @@ class Tally(object):
         Raises
         ------
         ValueError
-            When this method is called before the Tally is populated with data
-            by the StatePoint.read_results() method.
+            When this method is called before the Tally is populated with data.
 
         """
 
@@ -2204,6 +2238,10 @@ class Tally(object):
                 new_tally.add_nuclide(nuclide)
             for score in self.scores:
                 new_tally.add_score(score)
+
+            # If original tally operands were sparse, sparsify the sliced tally
+            if self.sparse and other.sparse:
+                new_tally.sparsify()
 
         else:
             msg = 'Unable to subtract "{0}" from Tally ' \
@@ -2243,8 +2281,7 @@ class Tally(object):
         Raises
         ------
         ValueError
-            When this method is called before the Tally is populated with data
-            by the StatePoint.read_results() method.
+            When this method is called before the Tally is populated with data.
 
         """
 
@@ -2274,6 +2311,10 @@ class Tally(object):
                 new_tally.add_nuclide(nuclide)
             for score in self.scores:
                 new_tally.add_score(score)
+
+            # If original tally operands were sparse, sparsify the sliced tally
+            if self.sparse and other.sparse:
+                new_tally.sparsify()
 
         else:
             msg = 'Unable to multiply Tally ID="{0}" ' \
@@ -2313,8 +2354,7 @@ class Tally(object):
         Raises
         ------
         ValueError
-            When this method is called before the Tally is populated with data
-            by the StatePoint.read_results() method.
+            When this method is called before the Tally is populated with data.
 
         """
 
@@ -2344,6 +2384,10 @@ class Tally(object):
                 new_tally.add_nuclide(nuclide)
             for score in self.scores:
                 new_tally.add_score(score)
+
+            # If original tally operands were sparse, sparsify the sliced tally
+            if self.sparse and other.sparse:
+                new_tally.sparsify()
 
         else:
             msg = 'Unable to divide Tally ID="{0}" ' \
@@ -2386,8 +2430,7 @@ class Tally(object):
         Raises
         ------
         ValueError
-            When this method is called before the Tally is populated with data
-            by the StatePoint.read_results() method.
+            When this method is called before the Tally is populated with data.
 
         """
 
@@ -2418,6 +2461,10 @@ class Tally(object):
                 new_tally.add_nuclide(nuclide)
             for score in self.scores:
                 new_tally.add_score(score)
+
+            # If original tally was sparse, sparsify the exponentiated tally
+            if self.sparse:
+                new_tally.sparsify()
 
         else:
             msg = 'Unable to raise Tally ID="{0}" to ' \
@@ -2569,12 +2616,11 @@ class Tally(object):
         Raises
         ------
         ValueError
-            When this method is called before the Tally is populated with data
-            by the StatePoint.read_results() method.
+            When this method is called before the Tally is populated with data.
 
         """
 
-        # Ensure that StatePoint.read_results() was called first
+        # Ensure that the tally has data
         if not self.derived and self.sum is None:
             msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
                   'since it does not contain any results.'.format(self.id)
@@ -2656,6 +2702,10 @@ class Tally(object):
         for filter in reversed(new_tally.filters):
             filter.stride = stride
             stride *= filter.num_bins
+
+        # If original tally was sparse, sparsify the sliced tally
+        if self.sparse:
+            new_tally.sparsify()
 
         return new_tally
 
@@ -2759,6 +2809,10 @@ class Tally(object):
                     filters[i] = CrossFilter(filters[i-1], filters[i], '+')
                 tally_sum.add_filter(filters[-1])
 
+        # If original tally was sparse, sparsify the tally summation
+        if self.sparse:
+            tally_sum.sparsify()
+
         return tally_sum
 
     def diagonalize_filter(self, new_filter):
@@ -2799,7 +2853,6 @@ class Tally(object):
         num_filter_bins = new_tally.num_filter_bins
         num_nuclides = new_tally.num_nuclides
         num_score_bins = new_tally.num_score_bins
-        new_shape = (num_filter_bins, num_nuclides, num_score_bins)
 
         # Determine "base" indices along the new "diagonal", and the factor
         # by which the "base" indices should be repeated to account for all
@@ -2816,16 +2869,16 @@ class Tally(object):
 
         # Inject this Tally's data along the diagonal of the diagonalized Tally
         if self.sum is not None:
-            new_tally._sum = np.zeros(new_shape, dtype=np.float64)
+            new_tally._sum = np.zeros(self.shape, dtype=np.float64)
             new_tally._sum[diag_indices, :, :] = self.sum
         if self.sum_sq is not None:
-            new_tally._sum_sq = np.zeros(new_shape, dtype=np.float64)
+            new_tally._sum_sq = np.zeros(self.shape, dtype=np.float64)
             new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
         if self.mean is not None:
-            new_tally._mean = np.zeros(new_shape, dtype=np.float64)
+            new_tally._mean = np.zeros(self.shape, dtype=np.float64)
             new_tally._mean[diag_indices, :, :] = self.mean
         if self.std_dev is not None:
-            new_tally._std_dev = np.zeros(new_shape, dtype=np.float64)
+            new_tally._std_dev = np.zeros(self.shape, dtype=np.float64)
             new_tally._std_dev[diag_indices, :, :] = self.std_dev
 
         # Correct each Filter's stride
@@ -2833,6 +2886,10 @@ class Tally(object):
         for filter in reversed(new_tally.filters):
             filter.stride = stride
             stride *= filter.num_bins
+
+        # If original tally was sparse, sparsify the diagonalized tally
+        if self.sparse:
+            new_tally.sparsify
 
         return new_tally
 

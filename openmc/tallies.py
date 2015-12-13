@@ -2869,16 +2869,16 @@ class Tally(object):
 
         # Inject this Tally's data along the diagonal of the diagonalized Tally
         if self.sum is not None:
-            new_tally._sum = np.zeros(self.shape, dtype=np.float64)
+            new_tally._sum = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum[diag_indices, :, :] = self.sum
         if self.sum_sq is not None:
-            new_tally._sum_sq = np.zeros(self.shape, dtype=np.float64)
+            new_tally._sum_sq = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
         if self.mean is not None:
-            new_tally._mean = np.zeros(self.shape, dtype=np.float64)
+            new_tally._mean = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._mean[diag_indices, :, :] = self.mean
         if self.std_dev is not None:
-            new_tally._std_dev = np.zeros(self.shape, dtype=np.float64)
+            new_tally._std_dev = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._std_dev[diag_indices, :, :] = self.std_dev
 
         # Correct each Filter's stride

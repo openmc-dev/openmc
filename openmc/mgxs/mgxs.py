@@ -103,6 +103,9 @@ class MGXS(object):
     nuclides : list of str or 'sum'
         A list of nuclide string names (e.g., 'U-238', 'O-16') when by_nuclide
         is True and 'sum' when by_nuclide is False.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
 
     """
 
@@ -121,6 +124,7 @@ class MGXS(object):
         self._tally_trigger = None
         self._tallies = None
         self._xs_tally = None
+        self._sparse = False
 
         self.name = name
         self.by_nuclide = by_nuclide
@@ -146,6 +150,7 @@ class MGXS(object):
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._xs_tally = copy.deepcopy(self.xs_tally, memo)
+            clone._sparse = self.sparse
 
             clone._tallies = OrderedDict()
             for tally_type, tally in self.tallies.items():
@@ -198,6 +203,10 @@ class MGXS(object):
     @property
     def xs_tally(self):
         return self._xs_tally
+
+    @property
+    def sparse(self):
+        return self._sparse
 
     @property
     def num_subdomains(self):
@@ -504,6 +513,10 @@ class MGXS(object):
         self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
         self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
 
+        # Sparsify the MGXS derived tally
+        if self.sparse:
+            self.xs_tally.sparsify()
+
     def load_from_statepoint(self, statepoint):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
         compute multi-group cross sections.
@@ -566,6 +579,9 @@ class MGXS(object):
             sp_tally = sp_tally.get_slice(tally.scores, filters,
                                           filter_bins, tally.nuclides)
             self.tallies[tally_type] = sp_tally
+
+            if self.sparse:
+                sp_tally.sparsify()
 
         # Compute the cross section from the tallies
         self.compute_xs()
@@ -765,6 +781,11 @@ class MGXS(object):
 
         # Compute the energy condensed multi-group cross section
         condensed_xs.compute_xs()
+
+        # Sparsify the condensed MGXS
+        if self.sparse:
+            condensed_xs.sparsify()
+
         return condensed_xs
 
     def get_subdomain_avg_xs(self, subdomains='all'):
@@ -847,6 +868,10 @@ class MGXS(object):
 
         # Compute the subdomain-averaged multi-group cross section
         avg_xs.compute_xs()
+
+        # Sparsify the subdomain-averaged MGXS
+        if self.sparse:
+            avg_xs.sparsify()
 
         return avg_xs
 
@@ -2077,6 +2102,59 @@ class Chi(MGXS):
         nu_fission_in.add_filter(energy_filter)
 
         super(Chi, self).compute_xs()
+
+    def sparsify(self):
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices.
+
+        This method may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within the Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        See also
+        --------
+        MGXS.densify(), Tally.sparsify(), Tally.densify()
+
+        """
+
+        # Sparsify the derived MGXS tally
+        if self.xs_tally:
+            self.xs_tally.sparsify()
+
+        # Sparsify the MGXS' base tallies
+        for tally_name in self.tallies:
+            self.tallies[tally_name].sparsify()
+
+        self._sparse = True
+
+    def densify(self):
+        """Convert tally data from SciPy list of lists (LIL) sparse matrices
+        to NumPy arrrays.
+
+        This method may be used to restore a sparse tally to its original
+        state. This method will have no effect on the state of the tally
+        unless the Tally.sparse() method has been called.
+
+        See also
+        --------
+        MGXS.sparsify(), Tally.sparsify(), Tally.densify()
+
+        """
+
+        # If the MGXS is already dense, simply return
+        if not self.sparse:
+            return
+
+        # Densify the derived MGXS tally
+        if self.xs_tally:
+            self.xs_tally.densify()
+
+        # Densify the MGXS' base tallies
+        for tally_name in self.tallies:
+            self.tallies[tally_name].densify()
+
+        self._sparse = False
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing', value='mean'):

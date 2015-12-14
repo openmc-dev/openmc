@@ -394,8 +394,6 @@ class StatePoint(object):
                 # Read score bins
                 n_score_bins = self._f['{0}{1}/n_score_bins'.format(base, tally_key)].value
 
-                tally.num_score_bins = n_score_bins
-
                 scores = self._f['{0}{1}/score_bins'.format(
                     base, tally_key)].value
                 n_user_scores = self._f['{0}{1}/n_user_score_bins'

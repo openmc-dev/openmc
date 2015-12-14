@@ -64,10 +64,6 @@ class Tally(object):
         Type of estimator for the tally
     triggers : list of openmc.trigger.Trigger
         List of tally triggers
-    num_score_bins : Integral
-        Total number of scores, accounting for the fact that a single
-        user-specified score, e.g. scatter-P3 or flux-Y2,2, might have multiple
-        bins
     num_scores : Integral
         Total number of user-specified scores
     num_filter_bins : Integral
@@ -100,7 +96,6 @@ class Tally(object):
         self._estimator = None
         self._triggers = []
 
-        self._num_score_bins = 0
         self._num_realizations = 0
         self._with_summary = False
 
@@ -123,7 +118,6 @@ class Tally(object):
             clone.id = self.id
             clone.name = self.name
             clone.estimator = self.estimator
-            clone.num_score_bins = self.num_score_bins
             clone.num_realizations = self.num_realizations
             clone._sum = copy.deepcopy(self._sum, memo)
             clone._sum_sq = copy.deepcopy(self._sum_sq, memo)
@@ -253,10 +247,6 @@ class Tally(object):
         return len(self._scores)
 
     @property
-    def num_score_bins(self):
-        return self._num_score_bins
-
-    @property
     def num_filter_bins(self):
         num_bins = 1
 
@@ -269,7 +259,7 @@ class Tally(object):
     def num_bins(self):
         num_bins = self.num_filter_bins
         num_bins *= self.num_nuclides
-        num_bins *= self.num_score_bins
+        num_bins *= self.num_scores
         return num_bins
 
     @property
@@ -312,7 +302,7 @@ class Tally(object):
             # Reshape the results arrays
             new_shape = (nonzero(self.num_filter_bins),
                          nonzero(self.num_nuclides),
-                         nonzero(self.num_score_bins))
+                         nonzero(self.num_scores))
 
             sum = np.reshape(sum, new_shape)
             sum_sq = np.reshape(sum_sq, new_shape)
@@ -467,10 +457,6 @@ class Tally(object):
         # CrossScores
         else:
             self._scores.append(score)
-
-    @num_score_bins.setter
-    def num_score_bins(self, num_score_bins):
-        self._num_score_bins = num_score_bins
 
     @num_realizations.setter
     def num_realizations(self, num_realizations):
@@ -1286,7 +1272,7 @@ class Tally(object):
         for filter in self.filters:
             new_shape += (filter.num_bins, )
         new_shape += (self.num_nuclides,)
-        new_shape += (self.num_score_bins,)
+        new_shape += (self.num_scores,)
 
         # Reshape the data with one dimension for each filter
         data = np.reshape(data, new_shape)
@@ -1607,18 +1593,16 @@ class Tally(object):
 
         # Add scores to the new tally
         if score_product == 'entrywise':
-            new_tally.num_score_bins = self_copy.num_score_bins
             for self_score in self_copy.scores:
                 new_tally.add_score(self_score)
         else:
-            new_tally.num_score_bins = self_copy.num_score_bins * other_copy.num_score_bins
             all_scores = [self_copy.scores, other_copy.scores]
             for self_score, other_score in itertools.product(*all_scores):
                 new_score = CrossScore(self_score, other_score, binary_op)
                 new_tally.add_score(new_score)
 
         # Correct each Filter's stride
-        stride = new_tally.num_nuclides * new_tally.num_score_bins
+        stride = new_tally.num_nuclides * new_tally.num_scores
         for filter in reversed(new_tally.filters):
             filter.stride = stride
             stride *= filter.num_bins
@@ -1726,10 +1710,10 @@ class Tally(object):
         # Repeat and tile the data by score in preparation for performing
         # the tensor product across scores.
         if score_product == 'tensor':
-            self._mean = np.repeat(self.mean, other.num_score_bins, axis=2)
-            self._std_dev = np.repeat(self.std_dev, other.num_score_bins, axis=2)
-            other._mean = np.tile(other.mean, (1, 1, self.num_score_bins))
-            other._std_dev = np.tile(other.std_dev, (1, 1, self.num_score_bins))
+            self._mean = np.repeat(self.mean, other.num_scores, axis=2)
+            self._std_dev = np.repeat(self.std_dev, other.num_scores, axis=2)
+            other._mean = np.tile(other.mean, (1, 1, self.num_scores))
+            other._std_dev = np.tile(other.std_dev, (1, 1, self.num_scores))
 
         # Add scores to each tally such that each tally contains the complete set
         # of scores necessary to perform an entrywise product. New scores added
@@ -1742,16 +1726,15 @@ class Tally(object):
 
             # Add scores present in self but not in other to other
             for score in other_missing_scores:
-                other._mean = np.insert(other.mean, other.num_score_bins, 0, axis=2)
-                other._std_dev = np.insert(other.std_dev, other.num_score_bins, 0, axis=2)
+                other._mean = np.insert(other.mean, other.num_scores, 0, axis=2)
+                other._std_dev = np.insert(other.std_dev, other.num_scores, 0, axis=2)
                 other.add_score(score)
 
             # Add scores present in other but not in self to self
             for score in self_missing_scores:
-                self._mean = np.insert(self.mean, self.num_score_bins, 0, axis=2)
-                self._std_dev = np.insert(self.std_dev, self.num_score_bins, 0, axis=2)
+                self._mean = np.insert(self.mean, self.num_scores, 0, axis=2)
+                self._std_dev = np.insert(self.std_dev, self.num_scores, 0, axis=2)
                 self.add_score(score)
-                self.num_score_bins = self.num_score_bins + 1
 
             # Align other scores with self scores
             for i, score in enumerate(self.scores):
@@ -1762,13 +1745,13 @@ class Tally(object):
                     other._swap_scores(score, other.scores[i])
 
         # Correct the stride for other filters
-        stride = other.num_nuclides * other.num_score_bins
+        stride = other.num_nuclides * other.num_scores
         for filter in reversed(other.filters):
             filter.stride = stride
             stride *= filter.num_bins
 
         # Correct the stride for self filters
-        stride = self.num_nuclides * self.num_score_bins
+        stride = self.num_nuclides * self.num_scores
         for filter in reversed(self.filters):
             filter.stride = stride
             stride *= filter.num_bins
@@ -1834,7 +1817,7 @@ class Tally(object):
         self.filters[filter2_index] = filter1
 
         # Update the strides for each of the filters
-        stride = self.num_nuclides * self.num_score_bins
+        stride = self.num_nuclides * self.num_scores
         for filter in reversed(self.filters):
             filter.stride = stride
             stride *= filter.num_bins
@@ -1850,24 +1833,6 @@ class Tally(object):
             filter2_bins = np.arange(filter2.num_bins)
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
-
-        # Adjust the sum data array to relect the new filter order
-        if self.sum is not None:
-            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(
-                    filters=filters, filter_bins=filter_bins, value='sum')
-                indices = self.get_filter_indices(filters, filter_bins)
-                self.sum[indices, :, :] = data
-
-        # Adjust the sum_sq data array to relect the new filter order
-        if self.sum_sq is not None:
-            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(
-                    filters=filters, filter_bins=filter_bins, value='sum_sq')
-                indices = self.get_filter_indices(filters, filter_bins)
-                self.sum_sq[indices, :, :] = data
 
         # Adjust the mean data array to relect the new filter order
         if self.mean is not None:
@@ -1939,20 +1904,6 @@ class Tally(object):
         nuclide2_index = self.get_nuclide_index(nuclide2)
         self.nuclides[nuclide1_index] = nuclide2
         self.nuclides[nuclide2_index] = nuclide1
-
-        # Adjust the sum data array to relect the new nuclide order
-        if self.sum is not None:
-            nuclide1_sum = self._sum[:,nuclide1_index,:].copy()
-            nuclide2_sum = self._sum[:,nuclide2_index,:].copy()
-            self._sum[:,nuclide2_index,:] = nuclide1_sum
-            self._sum[:,nuclide1_index,:] = nuclide2_sum
-
-        # Adjust the sum_sq data array to relect the new nuclide order
-        if self.sum_sq is not None:
-            nuclide1_sum_sq = self._sum_sq[:,nuclide1_index,:].copy()
-            nuclide2_sum_sq = self._sum_sq[:,nuclide2_index,:].copy()
-            self._sum_sq[:,nuclide2_index,:] = nuclide1_sum_sq
-            self._sum_sq[:,nuclide1_index,:] = nuclide2_sum_sq
 
         # Adjust the mean data array to relect the new nuclide order
         if self.mean is not None:
@@ -2026,20 +1977,6 @@ class Tally(object):
         self.scores[score1_index] = score2
         self.scores[score2_index] = score1
 
-        # Adjust the sum data array to relect the new nuclide order
-        if self.sum is not None:
-            score1_sum = self._sum[:,:,score1_index].copy()
-            score2_sum = self._sum[:,:,score2_index].copy()
-            self._sum[:,:,score2_index] = score1_sum
-            self._sum[:,:,score1_index] = score2_sum
-
-        # Adjust the sum_sq data array to relect the new nuclide order
-        if self.sum_sq is not None:
-            score1_sum_sq = self._sum_sq[:,:,score1_index].copy()
-            score2_sum_sq = self._sum_sq[:,:,score2_index].copy()
-            self._sum_sq[:,:,score2_index] = score1_sum_sq
-            self._sum_sq[:,:,score1_index] = score2_sum_sq
-
         # Adjust the mean data array to relect the new nuclide order
         if self.mean is not None:
             score1_mean = self._mean[:,:,score1_index].copy()
@@ -2109,7 +2046,6 @@ class Tally(object):
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
-            new_tally.num_score_bins = self.num_score_bins
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
@@ -2178,7 +2114,6 @@ class Tally(object):
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
-            new_tally.num_score_bins = self.num_score_bins
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
@@ -2248,7 +2183,6 @@ class Tally(object):
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
-            new_tally.num_score_bins = self.num_score_bins
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
@@ -2318,7 +2252,6 @@ class Tally(object):
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
-            new_tally.num_score_bins = self.num_score_bins
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
@@ -2392,7 +2325,6 @@ class Tally(object):
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
-            new_tally.num_score_bins = self.num_score_bins
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
@@ -2594,7 +2526,6 @@ class Tally(object):
             # Loop over indices in reverse to remove excluded scores
             for score_index in reversed(score_indices):
                 new_tally.remove_score(self.scores[score_index])
-                new_tally.num_score_bins -= 1
 
         # NUCLIDES
         if nuclides:
@@ -2634,7 +2565,7 @@ class Tally(object):
                 filter.num_bins = len(filter_bins[i])
 
         # Correct each Filter's stride
-        stride = new_tally.num_nuclides * new_tally.num_score_bins
+        stride = new_tally.num_nuclides * new_tally.num_scores
         for filter in reversed(new_tally.filters):
             filter.stride = stride
             stride *= filter.num_bins
@@ -2780,8 +2711,8 @@ class Tally(object):
         # Determine the shape of data in the new diagonalized Tally
         num_filter_bins = new_tally.num_filter_bins
         num_nuclides = new_tally.num_nuclides
-        num_score_bins = new_tally.num_score_bins
-        new_shape = (num_filter_bins, num_nuclides, num_score_bins)
+        num_scores = new_tally.num_scores
+        new_shape = (num_filter_bins, num_nuclides, num_scores)
 
         # Determine "base" indices along the new "diagonal", and the factor
         # by which the "base" indices should be repeated to account for all
@@ -2811,7 +2742,7 @@ class Tally(object):
             new_tally._std_dev[diag_indices, :, :] = self.std_dev
 
         # Correct each Filter's stride
-        stride = new_tally.num_nuclides * new_tally.num_score_bins
+        stride = new_tally.num_nuclides * new_tally.num_scores
         for filter in reversed(new_tally.filters):
             filter.stride = stride
             stride *= filter.num_bins

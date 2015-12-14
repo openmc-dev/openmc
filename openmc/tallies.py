@@ -70,6 +70,9 @@ class Tally(object):
         Total number of filter bins accounting for all filters
     num_bins : Integral
         Total number of bins for the tally
+    shape : 3-tuple of Integral
+        The shape of the tally data array ordered as the number of filter bins, 
+        nuclide bins and score bins
     num_realizations : Integral
         Total number of realizations
     with_summary : bool
@@ -252,10 +255,6 @@ class Tally(object):
         return self._scores
 
     @property
-    def shape(self):
-        return (self.num_filter_bins, self.num_nuclides, self.num_score_bins)
-
-    @property
     def num_scores(self):
         return len(self._scores)
 
@@ -278,6 +277,10 @@ class Tally(object):
         num_bins *= self.num_nuclides
         num_bins *= self.num_score_bins
         return num_bins
+
+    @property
+    def shape(self):
+        return (self.num_filter_bins, self.num_nuclides, self.num_score_bins)
 
     @property
     def estimator(self):
@@ -311,10 +314,6 @@ class Tally(object):
                 self.id)].value
             sum = data['sum']
             sum_sq = data['sum_sq']
-
-            # Define a routine to convert 0 to 1
-            def nonzero(val):
-                return 1 if not val else val
 
             # Reshape the results arrays
             sum = np.reshape(sum, self.shape)

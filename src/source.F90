@@ -2,7 +2,7 @@ module source
 
   use bank_header,      only: Bank
   use constants
-  use distribution_header, only: Delta
+  use distribution_univariate, only: Delta
   use error,            only: fatal_error
   use geometry,         only: find_cell
   use geometry_header,  only: BASE_UNIVERSE

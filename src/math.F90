@@ -563,12 +563,13 @@ contains
 ! with direct sampling rather than rejection as is done in MCNP and SERPENT.
 !===============================================================================
 
-  function rotate_angle(uvw0, mu) result(uvw)
+  function rotate_angle(uvw0, mu, phi) result(uvw)
     real(8), intent(in) :: uvw0(3) ! directional cosine
     real(8), intent(in) :: mu      ! cosine of angle in lab or CM
+    real(8), optional   :: phi     ! azimuthal angle
     real(8)             :: uvw(3)  ! rotated directional cosine
 
-    real(8) :: phi    ! azimuthal angle
+    real(8) :: phi_   ! azimuthal angle
     real(8) :: sinphi ! sine of azimuthal angle
     real(8) :: cosphi ! cosine of azimuthal angle
     real(8) :: a      ! sqrt(1 - mu^2)
@@ -582,12 +583,16 @@ contains
     v0 = uvw0(2)
     w0 = uvw0(3)
 
-    ! Sample azimuthal angle in [0,2pi)
-    phi = TWO * PI * prn()
+    ! Sample azimuthal angle in [0,2pi) if none provided
+    if (present(phi)) then
+      phi_ = phi
+    else
+      phi_ = TWO * PI * prn()
+    end if
 
     ! Precompute factors to save flops
-    sinphi = sin(phi)
-    cosphi = cos(phi)
+    sinphi = sin(phi_)
+    cosphi = cos(phi_)
     a = sqrt(max(ZERO, ONE - mu*mu))
     b = sqrt(max(ZERO, ONE - w0*w0))
 

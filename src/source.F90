@@ -2,7 +2,7 @@ module source
 
   use bank_header,      only: Bank
   use constants
-  use distribution_univariate, only: Delta
+  use distribution_univariate, only: Discrete
   use error,            only: fatal_error
   use geometry,         only: find_cell
   use geometry_header,  only: BASE_UNIVERSE
@@ -189,8 +189,8 @@ contains
 
     ! Check for monoenergetic source above maximum neutron energy
     select type (energy => external_source%energy)
-    type is (Delta)
-      if (energy%x0 >= energy_max_neutron) then
+    type is (Discrete)
+      if (any(energy%x >= energy_max_neutron)) then
         call fatal_error("Source energy above range of energies of at least &
              &one cross section table")
       end if

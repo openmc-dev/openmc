@@ -529,7 +529,7 @@ contains
              call get_node_value(node_dist, "type", type)
         select case (to_lower(type))
         case ('monoenergetic')
-          allocate(Delta :: external_source%energy)
+          allocate(Discrete :: external_source%energy)
           if (n /= 1) then
             call fatal_error('Monoenergetic energy distribution must have one &
                  &parameter specified.')
@@ -559,8 +559,10 @@ contains
 
         ! Read parameters for energy distribution
         select type(energy => external_source%energy)
-        type is (Delta)
-          call get_node_value(node_dist, "parameters", energy%x0)
+        type is (Discrete)
+          allocate(energy%x(1), energy%p(1))
+          call get_node_value(node_dist, "parameters", energy%x(1))
+          energy%p(1) = ONE
 
         type is (Maxwell)
           call get_node_value(node_dist, "parameters", energy%theta)

@@ -1,9 +1,12 @@
 module distribution_univariate
 
-  use constants, only: ZERO, HALF, HISTOGRAM, LINEAR_LINEAR
+  use constants, only: ZERO, HALF, HISTOGRAM, LINEAR_LINEAR, MAX_LINE_LEN, &
+       MAX_WORD_LEN
   use error, only: fatal_error
   use math, only: maxwell_spectrum, watt_spectrum
   use random_lcg, only: prn
+  use string, only: to_lower
+  use xml_interface
 
 !===============================================================================
 ! DISTRIBUTION type defines a probability density function
@@ -231,5 +234,110 @@ contains
     this%p(:) = this%p(:)/this%c(n)
     this%c(:) = this%c(:)/this%c(n)
   end subroutine tabular_initialize
+
+  subroutine distribution_from_xml(dist, node_dist)
+    class(Distribution), allocatable, intent(inout) :: dist
+    type(Node), pointer :: node_dist
+
+    character(MAX_WORD_LEN) :: type
+    character(MAX_LINE_LEN) :: temp_str
+    integer :: temp_int
+    real(8), allocatable :: temp_real(:)
+
+    if (check_for_node(node_dist, "type")) then
+      ! Determine type of distribution
+      call get_node_value(node_dist, "type", type)
+
+      ! Determine number of parameters specified
+      if (check_for_node(node_dist, "parameters")) then
+        n = get_arraysize_double(node_dist, "parameters")
+      else
+        n = 0
+      end if
+
+      ! Allocate extension of Distribution
+      select case (to_lower(type))
+      case ('uniform')
+        allocate (Uniform :: dist)
+        if (n /= 2) then
+          call fatal_error('Uniform distribution must have two &
+               &parameters specified.')
+        end if
+
+      case ('maxwell')
+        allocate (Maxwell :: dist)
+        if (n /= 1) then
+          call fatal_error('Maxwell energy distribution must have one &
+               &parameter specified.')
+        end if
+
+      case ('watt')
+        allocate(Watt :: dist)
+        if (n /= 2) then
+          call fatal_error('Watt energy distribution must have two &
+               &parameters specified.')
+        end if
+
+      case ('discrete')
+        allocate(Discrete :: dist)
+
+      case ('tabular')
+        allocate(Tabular :: dist)
+
+      case default
+        call fatal_error('Invalid distribution type: ' // trim(type) // '.')
+
+      end select
+
+      ! Read parameters and interpolation for distribution
+      select type (dist)
+      type is (Uniform)
+        allocate(temp_real(2))
+        call get_node_array(node_dist, "parameters", temp_real)
+        dist%a = temp_real(1)
+        dist%b = temp_real(2)
+        deallocate(temp_real)
+
+      type is (Maxwell)
+        call get_node_value(node_dist, "parameters", dist%theta)
+
+      type is (Watt)
+        allocate(temp_real(2))
+        call get_node_array(node_dist, "parameters", temp_real)
+        dist%a = temp_real(1)
+        dist%b = temp_real(2)
+        deallocate(temp_real)
+
+      type is (Discrete)
+        allocate(temp_real(n))
+        call get_node_array(node_dist, "parameters", temp_real)
+        call dist%initialize(temp_real(1:n/2), temp_real(n/2+1:n))
+        deallocate(temp_real)
+
+      type is (Tabular)
+        ! Read interpolation
+        if (check_for_node(node_dist, "interpolation")) then
+          call get_node_value(node_dist, "interpolation", temp_str)
+          select case(to_lower(temp_str))
+          case ('histogram')
+            temp_int = HISTOGRAM
+          case ('linear-linear')
+            temp_int = LINEAR_LINEAR
+          case default
+            call fatal_error("Unknown interpolation type for distribution: " &
+                 // trim(temp_str))
+          end select
+        else
+          temp_int = HISTOGRAM
+        end if
+
+        ! Read and initialize tabular distribution
+        allocate(temp_real(n))
+        call get_node_array(node_dist, "parameters", temp_real)
+        call dist%initialize(temp_real(1:n/2), temp_real(n/2+1:n), temp_int)
+        deallocate(temp_real)
+      end select
+    end if
+  end subroutine distribution_from_xml
 
 end module distribution_univariate

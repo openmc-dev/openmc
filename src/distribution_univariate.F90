@@ -30,12 +30,14 @@ module distribution_univariate
 ! Derived classes of Distribution
 !===============================================================================
 
-  ! delta function at a single point
-  type, extends(Distribution) :: Delta
-    real(8) :: x0
+  ! Discrete distribution
+  type, extends(Distribution) :: Discrete
+    real(8), allocatable :: x(:)
+    real(8), allocatable :: p(:)
   contains
-    procedure :: sample => delta_sample
-  end type Delta
+    procedure :: sample => discrete_sample
+    procedure :: initialize => discrete_initialize
+  end type Discrete
 
   ! Uniform distribution over the interval [a,b]
   type, extends(Distribution) :: Uniform
@@ -73,12 +75,50 @@ module distribution_univariate
 
 contains
 
-  function delta_sample(this) result(x)
-    class(Delta), intent(in) :: this
+  function discrete_sample(this) result(x)
+    class(Discrete), intent(in) :: this
     real(8) :: x
 
-    x = this%x0
-  end function delta_sample
+    integer :: n  ! size of distribution
+    real(8) :: c  ! cumulative frequency
+    real(8) :: xi ! sampled CDF value
+
+    n = size(this%x)
+    if (n > 1) then
+      xi = prn()
+      c = ZERO
+      do i = 1, size(this%x)
+        c = c + this%p(i)
+        if (xi < c) exit
+      end do
+      x = this%x(i)
+    else
+      x = this%x(1)
+    end if
+  end function discrete_sample
+
+  subroutine discrete_initialize(this, x, p)
+    class(Discrete), intent(inout) :: this
+    real(8), intent(in) :: x(:)
+    real(8), intent(in) :: p(:)
+
+    integer :: n
+
+    ! Check length of x, p arrays
+    if (size(x) /= size(p)) then
+      call fatal_error('Tabulated probabilities not of same length as &
+           &independent variable.')
+    end if
+
+    ! Copy probability density function
+    n = size(x)
+    allocate(this%x(n), this%p(n))
+    this%x(:) = x(:)
+    this%p(:) = p(:)
+
+    ! Normalize density function
+    this%p(:) = this%p(:)/sum(this%p)
+  end subroutine
 
   function uniform_sample(this) result(x)
     class(Uniform), intent(in) :: this

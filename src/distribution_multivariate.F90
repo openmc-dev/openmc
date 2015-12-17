@@ -49,6 +49,46 @@ module distribution_multivariate
     procedure :: sample => monodirectional_sample
   end type Monodirectional
 
+!===============================================================================
+! SPATIALDISTRIBUTION type defines a probability density function for arbitrary
+! points in Euclidean space.
+!===============================================================================
+
+  type, abstract :: SpatialDistribution
+  contains
+    procedure(iSampleSpatial), deferred :: sample
+  end type SpatialDistribution
+
+  abstract interface
+    function iSampleSpatial(this) result(xyz)
+      import SpatialDistribution
+      class(SpatialDistribution), intent(in) :: this
+      real(8) :: xyz(3)
+    end function iSampleSpatial
+  end interface
+
+  type, extends(SpatialDistribution) :: SpatialIndependent
+    class(Distribution), allocatable :: x
+    class(Distribution), allocatable :: y
+    class(Distribution), allocatable :: z
+  contains
+    procedure :: sample => spatial_independent_sample
+  end type SpatialIndependent
+
+  type, extends(SpatialDistribution) :: SpatialBox
+    real(8) :: lower_left(3)
+    real(8) :: upper_right(3)
+    logical :: only_fissionable = .false.
+  contains
+    procedure :: sample => spatial_box_sample
+  end type SpatialBox
+
+  type, extends(SpatialDistribution) :: SpatialPoint
+    real(8) :: xyz(3)
+  contains
+    procedure :: sample => spatial_point_sample
+  end type SpatialPoint
+
 contains
 
   function polar_azimuthal_sample(this) result(uvw)
@@ -89,5 +129,32 @@ contains
 
     uvw(:) = this%reference_uvw
   end function monodirectional_sample
+
+  function spatial_independent_sample(this) result(xyz)
+    class(SpatialIndependent), intent(in) :: this
+    real(8) :: xyz(3)
+
+    xyz(1) = this%x%sample()
+    xyz(2) = this%y%sample()
+    xyz(3) = this%z%sample()
+  end function spatial_independent_sample
+
+  function spatial_box_sample(this) result(xyz)
+    class(SpatialBox), intent(in) :: this
+    real(8) :: xyz(3)
+
+    integer :: i
+    real(8) :: r(3)
+
+    r = [ (prn(), i = 1,3) ]
+    xyz(:) = this%lower_left + r*(this%upper_right - this%lower_left)
+  end function spatial_box_sample
+
+  function spatial_point_sample(this) result(xyz)
+    class(SpatialPoint), intent(in) :: this
+    real(8) :: xyz(3)
+
+    xyz(:) = this%xyz
+  end function spatial_point_sample
 
 end module distribution_multivariate

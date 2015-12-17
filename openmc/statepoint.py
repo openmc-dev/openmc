@@ -9,9 +9,9 @@ if sys.version > '3':
 
 
 class StatePoint(object):
-    """State information on a simulation at a certain point in time (at the end of a
-    given batch). Statepoints can be used to analyze tally results as well as
-    restart a simulation.
+    """State information on a simulation at a certain point in time (at the end
+    of a given batch). Statepoints can be used to analyze tally results as well
+    as restart a simulation.
 
     Attributes
     ----------
@@ -393,6 +393,8 @@ class StatePoint(object):
 
                 # Read score bins
                 n_score_bins = self._f['{0}{1}/n_score_bins'.format(base, tally_key)].value
+
+                tally.num_score_bins = n_score_bins
 
                 scores = self._f['{0}{1}/score_bins'.format(
                     base, tally_key)].value

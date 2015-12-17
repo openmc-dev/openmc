@@ -524,6 +524,8 @@ class Summary(object):
             scores = self._f['{0}/score_bins'.format(subbase)].value
             for score in scores:
                 tally.add_score(score.decode())
+            num_score_bins = self._f['{0}/n_score_bins'.format(subbase)][...]
+            tally.num_score_bins = num_score_bins
 
             # Read filter metadata
             num_filters = self._f['{0}/n_filters'.format(subbase)].value

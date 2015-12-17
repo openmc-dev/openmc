@@ -9,7 +9,7 @@
 
   <source>
     <space type="box" parameters="-4 -4 -4  4  4  4" />
-    <angle type="monodirectional" parameters="1 0 0" />
+    <angle type="monodirectional" reference_uvw="1 0 0" />
   </source>
 
 </settings>

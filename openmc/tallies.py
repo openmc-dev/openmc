@@ -1607,9 +1607,11 @@ class Tally(object):
 
         # Add scores to the new tally
         if score_product == 'entrywise':
+            new_tally.num_score_bins = self_copy.num_score_bins
             for self_score in self_copy.scores:
                 new_tally.add_score(self_score)
         else:
+            new_tally.num_score_bins = self_copy.num_score_bins * other_copy.num_score_bins
             all_scores = [self_copy.scores, other_copy.scores]
             for self_score, other_score in itertools.product(*all_scores):
                 new_score = CrossScore(self_score, other_score, binary_op)
@@ -1749,6 +1751,7 @@ class Tally(object):
                 self._mean = np.insert(self.mean, self.num_score_bins, 0, axis=2)
                 self._std_dev = np.insert(self.std_dev, self.num_score_bins, 0, axis=2)
                 self.add_score(score)
+                self.num_score_bins += 1
 
             # Align other scores with self scores
             for i, score in enumerate(self.scores):
@@ -2060,6 +2063,7 @@ class Tally(object):
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
@@ -2128,6 +2132,7 @@ class Tally(object):
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
@@ -2197,6 +2202,7 @@ class Tally(object):
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
@@ -2266,6 +2272,7 @@ class Tally(object):
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
@@ -2339,6 +2346,7 @@ class Tally(object):
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
+            new_tally.num_score_bins = self.num_score_bins
 
             for filter in self.filters:
                 new_tally.add_filter(filter)
@@ -2540,6 +2548,7 @@ class Tally(object):
             # Loop over indices in reverse to remove excluded scores
             for score_index in reversed(score_indices):
                 new_tally.remove_score(self.scores[score_index])
+                new_tally.num_score_bins -= 1
 
         # NUCLIDES
         if nuclides:

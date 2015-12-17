@@ -450,12 +450,9 @@ contains
     if (allocated(micro_xs)) deallocate(micro_xs)
 
     ! Deallocate external source
-    if (allocated(external_source % params_space)) &
-         deallocate(external_source % params_space)
-    if (allocated(external_source % angle)) &
-         deallocate(external_source % angle)
-    if (allocated(external_source % energy)) &
-         deallocate(external_source % energy)
+    if (allocated(external_source % space)) deallocate(external_source % space)
+    if (allocated(external_source % angle)) deallocate(external_source % angle)
+    if (allocated(external_source % energy)) deallocate(external_source % energy)
 
     ! Deallocate k and entropy
     if (allocated(k_generation)) deallocate(k_generation)

@@ -358,28 +358,6 @@ module constants
   integer, parameter :: STREAM_SOURCE   = 3
 
   ! ============================================================================
-  ! EXTERNAL SOURCE PARAMETERS
-
-  ! Source spatial distribution types
-  integer, parameter :: &
-       SRC_SPACE_BOX     = 1, & ! Source in a rectangular prism
-       SRC_SPACE_POINT   = 2, & ! Source at a single point
-       SRC_SPACE_FISSION = 3    ! Source in prism filtered by fissionable mats
-
-  ! Source angular distribution types
-  integer, parameter :: &
-       SRC_ANGLE_ISOTROPIC = 1, & ! Isotropic angular
-       SRC_ANGLE_MONO      = 2, & ! Monodirectional source
-       SRC_ANGLE_TABULAR   = 3    ! Tabular distribution
-
-  ! Source energy distribution types
-  integer, parameter :: &
-       SRC_ENERGY_MONO    = 1, & ! Monoenergetic source
-       SRC_ENERGY_MAXWELL = 2, & ! Maxwell fission spectrum
-       SRC_ENERGY_WATT    = 3, & ! Watt fission spectrum
-       SRC_ENERGY_TABULAR = 4    ! Tabular distribution
-
-  ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
 
   ! indicates that an array index hasn't been set

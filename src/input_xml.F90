@@ -70,6 +70,7 @@ contains
     type(Node), pointer :: doc            => null()
     type(Node), pointer :: node_mode      => null()
     type(Node), pointer :: node_source    => null()
+    type(Node), pointer :: node_space     => null()
     type(Node), pointer :: node_angle     => null()
     type(Node), pointer :: node_dist      => null()
     type(Node), pointer :: node_cutoff    => null()
@@ -376,46 +377,106 @@ contains
       if (check_for_node(node_source, "space")) then
 
         ! Get pointer to spatial distribution
-        call get_node_ptr(node_source, "space", node_dist)
+        call get_node_ptr(node_source, "space", node_space)
 
         ! Check for type of spatial distribution
         type = ''
-        if (check_for_node(node_dist, "type")) &
-             call get_node_value(node_dist, "type", type)
+        if (check_for_node(node_space, "type")) &
+             call get_node_value(node_space, "type", type)
         select case (to_lower(type))
+        case ('independent')
+          allocate(SpatialIndependent :: external_source%space)
+
         case ('box')
-          external_source % type_space = SRC_SPACE_BOX
-          coeffs_reqd = 6
+          allocate(SpatialBox :: external_source%space)
+
         case ('fission')
-          external_source % type_space = SRC_SPACE_FISSION
-          coeffs_reqd = 6
+          allocate(SpatialBox :: external_source%space)
+          select type(space => external_source%space)
+          type is (SpatialBox)
+            space%only_fissionable = .true.
+          end select
+
         case ('point')
-          external_source % type_space = SRC_SPACE_POINT
-          coeffs_reqd = 3
+          allocate(SpatialPoint :: external_source%space)
+
         case default
           call fatal_error("Invalid spatial distribution for external source: "&
-               &// trim(type))
+               // trim(type))
         end select
 
-        ! Determine number of parameters specified
-        if (check_for_node(node_dist, "parameters")) then
-          n = get_arraysize_double(node_dist, "parameters")
-        else
-          n = 0
-        end if
+        select type (space => external_source%space)
+        type is (SpatialIndependent)
+          ! Read distribution for x coordinate
+          if (check_for_node(node_space, "x")) then
+            call get_node_ptr(node_space, "x", node_dist)
+            call distribution_from_xml(space%x, node_dist)
+          else
+            allocate(Discrete :: space%x)
+            select type (dist => space%x)
+            type is (Discrete)
+              allocate(dist%x(1), dist%p(1))
+              dist%x(1) = ZERO
+              dist%p(1) = ONE
+            end select
+          end if
 
-        ! Read parameters for spatial distribution
-        if (n < coeffs_reqd) then
-          call fatal_error("Not enough parameters specified for spatial &
-               &distribution of external source.")
-        elseif (n > coeffs_reqd) then
-          call fatal_error("Too many parameters specified for spatial &
-               &distribution of external source.")
-        elseif (n > 0) then
-          allocate(external_source % params_space(n))
-          call get_node_array(node_dist, "parameters", &
-               external_source % params_space)
-        end if
+          ! Read distribution for y coordinate
+          if (check_for_node(node_space, "y")) then
+            call get_node_ptr(node_space, "y", node_dist)
+            call distribution_from_xml(space%y, node_dist)
+          else
+            allocate(Discrete :: space%y)
+            select type (dist => space%y)
+            type is (Discrete)
+              allocate(dist%x(1), dist%p(1))
+              dist%x(1) = ZERO
+              dist%p(1) = ONE
+            end select
+          end if
+
+          if (check_for_node(node_space, "z")) then
+            call get_node_ptr(node_space, "z", node_dist)
+            call distribution_from_xml(space%z, node_dist)
+          else
+            allocate(Discrete :: space%z)
+            select type (dist => space%z)
+            type is (Discrete)
+              allocate(dist%x(1), dist%p(1))
+              dist%x(1) = ZERO
+              dist%p(1) = ONE
+            end select
+          end if
+
+        type is (SpatialBox)
+          ! Make sure correct number of parameters are given
+          if (get_arraysize_double(node_space, "parameters") /= 6) then
+            call fatal_error('Box/fission spatial source must have &
+                 &six parameters specified.')
+          end if
+
+          ! Read lower-right/upper-left coordinates
+          allocate(temp_real(6))
+          call get_node_array(node_space, "parameters", temp_real)
+          space%lower_left(:) = temp_real(1:3)
+          space%upper_right(:) = temp_real(4:6)
+          deallocate(temp_real)
+
+        type is (SpatialPoint)
+          ! Make sure correct number of parameters are given
+          if (get_arraysize_double(node_space, "parameters") /= 3) then
+            call fatal_error('Point spatial source must have &
+                 &three parameters specified.')
+          end if
+
+          ! Read location of point source
+          allocate(temp_real(3))
+          call get_node_array(node_space, "parameters", temp_real)
+          space%xyz(:) = temp_real
+          deallocate(temp_real)
+
+        end select
+
       else
         call fatal_error("No spatial distribution specified for external &
              &source.")

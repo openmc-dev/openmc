@@ -3,6 +3,7 @@ module source
   use bank_header,      only: Bank
   use constants
   use distribution_univariate, only: Discrete
+  use distribution_multivariate, only: SpatialBox
   use error,            only: fatal_error
   use geometry,         only: find_cell
   use geometry_header,  only: BASE_UNIVERSE
@@ -113,76 +114,43 @@ contains
     ! Set the random number generator to the source stream.
     call prn_set_stream(STREAM_SOURCE)
 
-    ! Sample position
-    select case (external_source%type_space)
-    case (SRC_SPACE_BOX)
-      ! Set particle defaults
-      call p%initialize()
-      ! Repeat sampling source location until a good site has been found
-      found = .false.
-      do while (.not.found)
-        ! Coordinates sampled uniformly over a box
-        p_min = external_source%params_space(1:3)
-        p_max = external_source%params_space(4:6)
-        r = (/ (prn(), i = 1,3) /)
-        site%xyz = p_min + r*(p_max - p_min)
+    ! Set particle defaults
+    call p%initialize()
 
-        ! Fill p with needed data
-        p%coord(1)%xyz = site%xyz
-        p%coord(1)%uvw = [ ONE, ZERO, ZERO ]
+    ! Repeat sampling source location until a good site has been found
+    found = .false.
+    do while (.not.found)
+      ! Sample spatial distribution
+      site%xyz(:) = external_source%space%sample()
 
-        ! Now search to see if location exists in geometry
-        call find_cell(p, found)
-        if (.not. found) then
-          num_resamples = num_resamples + 1
-          if (num_resamples == MAX_EXTSRC_RESAMPLES) then
-            call fatal_error("Maximum number of external source spatial &
-                 &resamples reached!")
+      ! Fill p with needed data
+      p%coord(1)%xyz(:) = site%xyz
+      p%coord(1)%uvw(:) = [ ONE, ZERO, ZERO ]
+
+      ! Now search to see if location exists in geometry
+      call find_cell(p, found)
+      if (.not. found) then
+        num_resamples = num_resamples + 1
+        if (num_resamples == MAX_EXTSRC_RESAMPLES) then
+          call fatal_error("Maximum number of external source spatial &
+               &resamples reached!")
+        end if
+      end if
+
+      ! Check if spatial site is in fissionable material
+      select type (space => external_source%space)
+      type is (SpatialBox)
+        if (space%only_fissionable) then
+          if (p%material == MATERIAL_VOID) then
+            found = .false.
+          elseif (.not. materials(p%material)%fissionable) then
+            found = .false.
           end if
         end if
-      end do
-      call p%clear()
+      end select
+    end do
 
-    case (SRC_SPACE_FISSION)
-      ! Repeat sampling source location until a good site has been found
-      found = .false.
-      do while (.not.found)
-        ! Set particle defaults
-        call p%initialize()
-
-        ! Coordinates sampled uniformly over a box
-        p_min = external_source%params_space(1:3)
-        p_max = external_source%params_space(4:6)
-        r = (/ (prn(), i = 1,3) /)
-        site%xyz = p_min + r*(p_max - p_min)
-
-        ! Fill p with needed data
-        p%coord(1)%xyz = site%xyz
-        p%coord(1)%uvw = [ ONE, ZERO, ZERO ]
-
-        ! Now search to see if location exists in geometry
-        call find_cell(p, found)
-        if (.not. found) then
-          num_resamples = num_resamples + 1
-          if (num_resamples == MAX_EXTSRC_RESAMPLES) then
-            call fatal_error("Maximum number of external source spatial &
-                 &resamples reached!")
-          end if
-          cycle
-        end if
-        if (p%material == MATERIAL_VOID) then
-          found = .false.
-          cycle
-        end if
-        if (.not. materials(p%material)%fissionable) found = .false.
-      end do
-      call p%clear()
-
-    case (SRC_SPACE_POINT)
-      ! Point source
-      site%xyz = external_source%params_space
-
-    end select
+    call p%clear()
 
     ! Sample angle
     site%uvw(:) = external_source%angle%sample()

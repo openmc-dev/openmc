@@ -64,33 +64,37 @@ element settings {
 
   element seed { xsd:positiveInteger }? &
 
+
+
   element source {
-    element file { xsd:string { maxLength = "255" } }? &
-    element space {
-      (element type { xsd:string { maxLength = "16" } } |
-        attribute type { xsd:string { maxLength = "16" } }) &
-      (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interpolation { xsd:string { maxLength = "10" } })? &
-      (element parameters { list { xsd:double+ } } |
-        attribute parameters { list { xsd:double+ } })?
-    }? &
-    element angle {
-      (element type { xsd:string { maxLength = "16" } } |
-        attribute type { xsd:string { maxLength = "16" } }) &
-      (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interpolation { xsd:string { maxLength = "10" } })? &
-      (element parameters { list { xsd:double+ } } |
-        attribute parameters { list { xsd:double+ } })?
-    }? &
-    element energy {
-      (element type { xsd:string { maxLength = "16" } } |
-        attribute type { xsd:string { maxLength = "16" } }) &
-      (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interpolation { xsd:string { maxLength = "10" } })? &
-      (element parameters { list { xsd:double+ } } |
-        attribute parameters { list { xsd:double+ } })?
-    }? &
-    (element write_initial { xsd:boolean } | attribute write_initial { xsd:boolean })?
+    grammar {
+      start =
+        element file { xsd:string { maxLength = "255" } }? &
+        element space {
+          (element type { xsd:string } | attribute type { xsd:string }) &
+          (element parameters { xsd:double+ } |
+            attribute parameters { xsd:double+ })? &
+          element x { distribution }? &
+          element y { distribution }? &
+          element z { distribution }?
+        }? &
+        element angle {
+          (element type { xsd:string } | attribute type { xsd:string }) &
+          (element reference_uvw { xsd:double, xsd:double, xsd:double } |
+            attribute reference_uvw { xsd:double, xsd:double, xsd:double })? &
+          element mu { distribution }? &
+          element phi { distribution }?
+        }? &
+        element energy { distribution }? &
+        (element write_initial { xsd:boolean } | attribute write_initial { xsd:boolean })?
+      distribution =
+        (element type { xsd:string { maxLength = "16" } } |
+          attribute type { xsd:string { maxLength = "16" } }) &
+        (element interpolation { xsd:string { maxLength = "10" } } |
+          attribute interpolation { xsd:string { maxLength = "10" } })? &
+        (element parameters { list { xsd:double+ } } |
+          attribute parameters { list { xsd:double+ } })?
+    }
   }? &
 
   element state_point {

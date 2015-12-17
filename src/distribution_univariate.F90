@@ -1,8 +1,8 @@
-module distribution_header
+module distribution_univariate
 
-  use constants, only: ZERO, HALF, ONE, TWO, PI, HISTOGRAM, LINEAR_LINEAR
+  use constants, only: ZERO, HALF, HISTOGRAM, LINEAR_LINEAR
   use error, only: fatal_error
-  use math, only: rotate_angle, maxwell_spectrum, watt_spectrum
+  use math, only: maxwell_spectrum, watt_spectrum
   use random_lcg, only: prn
 
 !===============================================================================
@@ -13,6 +13,10 @@ module distribution_header
   contains
     procedure(iSample), deferred :: sample
   end type Distribution
+
+  type DistributionContainer
+    class(Distribution), allocatable :: obj
+  end type DistributionContainer
 
   abstract interface
     function iSample(this) result(x)
@@ -61,22 +65,11 @@ module distribution_header
     integer :: interpolation
     real(8), allocatable :: x(:) ! tabulated independent variable
     real(8), allocatable :: p(:) ! tabulated probability density
-    real(8), allocatable, private :: c(:) ! cumulative distribution at tabulated values
+    real(8), allocatable :: c(:) ! cumulative distribution at tabulated values
   contains
     procedure :: sample => tabular_sample
     procedure :: initialize => tabular_initialize
   end type Tabular
-
-!===============================================================================
-! AngleDistribution
-!===============================================================================
-
-  type :: AngleDistribution
-    real(8) :: reference_uvw(3)
-    class(Distribution), allocatable :: mu
-  contains
-    procedure :: sample => angle_sample
-  end type AngleDistribution
 
 contains
 
@@ -199,28 +192,4 @@ contains
     this%c(:) = this%c(:)/this%c(n)
   end subroutine tabular_initialize
 
-  function angle_sample(this) result(uvw)
-    class(AngleDistribution), intent(in) :: this
-    real(8) :: uvw(3)
-
-    real(8) :: phi
-    real(8) :: mu
-
-    select type (polar_cos => this%mu)
-    type is (Uniform)
-      phi = TWO*PI*prn()
-      mu = TWO*prn() - ONE
-      uvw(1) = mu
-      uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-      uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
-    class default
-      mu = polar_cos%sample()
-      if (mu == ONE) then
-        uvw(:) = this%reference_uvw
-      else
-        uvw(:) = rotate_angle(this%reference_uvw, mu)
-      end if
-    end select
-  end function angle_sample
-
-end module distribution_header
+end module distribution_univariate

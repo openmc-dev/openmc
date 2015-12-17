@@ -3,7 +3,8 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
-  use distribution_header
+  use distribution_multivariate
+  use distribution_univariate
   use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
@@ -438,17 +439,29 @@ contains
              call get_node_value(node_dist, "type", type)
         select case (to_lower(type))
         case ('isotropic')
-          allocate(Uniform :: external_source%angle%mu)
+          allocate(Isotropic :: external_source%angle)
 
         case ('monodirectional')
-          allocate(Delta :: external_source%angle%mu)
+          allocate(Monodirectional :: external_source%angle)
           if (n /= 3) then
             call fatal_error('Monodirectional angular distribution must have &
                  &three parameters specified.')
           end if
 
         case ('tabular')
-          allocate(Tabular :: external_source%angle%mu)
+          allocate(PolarAzimuthal :: external_source%angle)
+          select type (angle => external_source%angle)
+          type is (PolarAzimuthal)
+            allocate(Tabular :: angle%mu)
+
+            ! For now, azimuthal is uniform
+            allocate(Uniform :: angle%phi)
+            select type (phi => angle%phi)
+            type is (Uniform)
+              phi%a = ZERO
+              phi%b = TWO*PI
+            end select
+          end select
 
         case default
           call fatal_error("Invalid angular distribution for external source: "&
@@ -459,48 +472,41 @@ contains
         external_source%angle%reference_uvw(:) = [ZERO, ZERO, ONE]
 
         ! Read parameters for angle distribution
-        select type (mu => external_source%angle%mu)
-        type is (Uniform)
-          mu%a = -ONE
-          mu%b = ONE
-
-        type is (Delta)
-          mu%x0 = ONE
+        select type (angle => external_source%angle)
+        type is (Monodirectional)
           call get_node_array(node_dist, "parameters", &
                external_source%angle%reference_uvw)
 
-        type is (Tabular)
-          ! Read interpolation
-          if (check_for_node(node_source, "interpolation")) then
-            call get_node_value(node_source, "interpolation", temp_str)
-            select case(to_lower(temp_str))
-            case ('histogram')
+        type is (PolarAzimuthal)
+          select type (mu => angle%mu)
+          type is (Tabular)
+            ! Read interpolation
+            if (check_for_node(node_source, "interpolation")) then
+              call get_node_value(node_source, "interpolation", temp_str)
+              select case(to_lower(temp_str))
+              case ('histogram')
+                temp_int = HISTOGRAM
+              case ('linear-linear')
+                temp_int = LINEAR_LINEAR
+              case default
+                call fatal_error("Unknown interpolation type for source &
+                     &angular distribution: " // trim(temp_str))
+              end select
+            else
               temp_int = HISTOGRAM
-            case ('linear-linear')
-              temp_int = LINEAR_LINEAR
-            case default
-              call fatal_error("Unknown interpolation type for source &
-                   &angular distribution: " // trim(temp_str))
-            end select
-          else
-            temp_int = HISTOGRAM
-          end if
+            end if
 
-          ! Read and initialize tabular distribution
-          allocate(temp_real(n))
-          call get_node_array(node_dist, "parameters", temp_real)
-          call mu%initialize(temp_real(1:n), temp_real(n+1:2*n), temp_int)
-          deallocate(temp_real)
+            ! Read and initialize tabular distribution
+            allocate(temp_real(n))
+            call get_node_array(node_dist, "parameters", temp_real)
+            call mu%initialize(temp_real(1:n), temp_real(n+1:2*n), temp_int)
+            deallocate(temp_real)
+          end select
         end select
 
       else
         ! Set default angular distribution isotropic
-        allocate(Uniform :: external_source%angle%mu)
-        select type(mu => external_source%angle%mu)
-        type is (Uniform)
-          mu%a = -ONE
-          mu%b = ONE
-        end select
+        allocate(Isotropic :: external_source%angle)
         external_source%angle%reference_uvw(:) = [ZERO, ZERO, ONE]
       end if
 

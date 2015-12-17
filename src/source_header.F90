@@ -1,6 +1,7 @@
 module source_header
 
-  use distribution_header, only: Distribution, AngleDistribution
+  use distribution_univariate, only: Distribution
+  use distribution_multivariate, only: UnitSphereDistribution
 
   implicit none
 
@@ -12,7 +13,7 @@ module source_header
   type ExtSource
     integer :: type_space              ! spacial distribution, e.g. 'box' or 'point'
     real(8), allocatable :: params_space(:)  ! parameters for spatial distribution
-    type(AngleDistribution) :: angle           ! angle distribution
+    class(UnitSphereDistribution), allocatable :: angle  ! angle distribution
     class(Distribution), allocatable :: energy ! energy distribution
   end type ExtSource
 

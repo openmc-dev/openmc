@@ -452,8 +452,8 @@ contains
     ! Deallocate external source
     if (allocated(external_source % params_space)) &
          deallocate(external_source % params_space)
-    if (allocated(external_source % angle % mu)) &
-         deallocate(external_source % angle % mu)
+    if (allocated(external_source % angle)) &
+         deallocate(external_source % angle)
     if (allocated(external_source % energy)) &
          deallocate(external_source % energy)
 

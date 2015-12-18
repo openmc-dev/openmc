@@ -9,6 +9,7 @@ import numpy as np
 from openmc.clean_xml import *
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
+from openmc.source import Source
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -36,8 +37,8 @@ class SettingsFile(object):
         type are 'variance', 'std_dev', and 'rel_err'. The threshold value
         should be a float indicating the variance, standard deviation, or
         relative error used.
-    source_file : str
-        Path to a source file
+    source : openmc.source.Source
+        Distribution of source sites in space, angle, and energy
     output : dict
         Dictionary indicating what files to output. Valid keys are 'summary',
         'cross_sections', 'tallies', and 'distribmats'. Values corresponding to
@@ -134,16 +135,7 @@ class SettingsFile(object):
         self._keff_trigger = None
 
         # Source subelement
-        self._source_subelement = None
-        self._source_file = None
-        self._source_space_type = None
-        self._source_space_params = None
-        self._source_angle_type = None
-        self._source_angle_interpolation = None
-        self._source_angle_params = None
-        self._source_energy_type = None
-        self._source_energy_interpolation = None
-        self._source_energy_params = None
+        self._source = None
 
         self._confidence_intervals = None
         self._cross_sections = None
@@ -230,40 +222,8 @@ class SettingsFile(object):
         return self._keff_trigger
 
     @property
-    def source_file(self):
-        return self._source_file
-
-    @property
-    def source_space_type(self):
-        return self._source_space_type
-
-    @property
-    def source_space_params(self):
-        return self._source_space_params
-
-    @property
-    def source_angle_type(self):
-        return self._source_angle_type
-
-    @property
-    def source_angle_interpolation(self):
-        return self._source_angle_interpolation
-
-    @property
-    def source_angle_params(self):
-        return self._source_angle_params
-
-    @property
-    def source_energy_type(self):
-        return self._source_energy_type
-
-    @property
-    def source_energy_interpolation(self):
-        return self._source_energy_interpolation
-
-    @property
-    def source_energy_params(self):
-        return self._source_energy_params
+    def source(self):
+        return self._source
 
     @property
     def confidence_intervals(self):
@@ -478,156 +438,10 @@ class SettingsFile(object):
 
         self._keff_trigger = keff_trigger
 
-    @source_file.setter
-    def source_file(self, source_file):
-        check_type('source file', source_file, basestring)
-        self._source_file = source_file
-
-    def set_source_space(self, stype, params):
-        """Defined the spatial bounds of the external/starting source.
-
-        Parameters
-        ----------
-        stype : str
-            The type of spatial distribution. Valid options are "box",
-            "fission", and "point". A "box" spatial distribution has coordinates
-            sampled uniformly in a parallelepiped. A "fission" spatial
-            distribution samples locations from a "box" distribution but only
-            locations in fissionable materials are accepted. A "point" spatial
-            distribution has coordinates specified by a triplet.
-        params : Iterable of float
-            For a "box" or "fission" spatial distribution, ``params`` should be
-            given as six real numbers, the first three of which specify the
-            lower-left corner of a parallelepiped and the last three of which
-            specify the upper-right corner. Source sites are sampled uniformly
-            through that parallelepiped.
-
-            For a "point" spatial distribution, ``params`` should be given as
-            three real numbers which specify the (x,y,z) location of an
-            isotropic point source
-
-        """
-
-        check_type('source space type', stype, basestring)
-        check_value('source space type', stype, ['box', 'fission', 'point'])
-        check_type('source space parameters', params, Iterable, Real)
-        if stype in ['box', 'fission']:
-            check_length('source space parameters for a '
-                         'box/fission distribution', params, 6)
-        elif stype == 'point':
-            check_length('source space parameters for a point source',
-                         params, 3)
-
-        self._source_space_type = stype
-        self._source_space_params = params
-
-    def set_source_angle(self, stype, params=[], interp='histogram'):
-        """Defined the angular distribution of the external/starting source.
-
-        Parameters
-        ----------
-        stype : str
-            The type of angular distribution. Valid options are "isotropic",
-            "monodirectional", and "tabular". The angle of the particle emitted
-            from a source site is isotropic if the "isotropic" option is
-            given. The angle of the particle emitted from a source site is the
-            direction specified in ``params`` if the "monodirectional" option is
-            given. The "tabular" option produces directions with polar angles
-            sampled from a tabulated distribution.
-        params : Iterable of float
-            For an "isotropic" angular distribution, ``params`` should not
-            be specified.
-
-            For a "monodirectional" angular distribution, ``params`` should
-            be given as three floats which specify the angular cosines
-            with respect to each axis.
-
-            For a "tabular" angular distribution, ``parameters`` provides the
-            :math:`(\mu,p)` pairs defining the tabular distribution. All
-            :math:`\mu` points are given first followed by corresponding
-            :math:`p` points.
-        interp : { 'histogram', 'linear-linear' }
-            For a "tabular" angular distribution, ``interpolation`` can be set
-            to "histogram" or "linear-linear" thereby specifying how tabular
-            points are to be interpolated.
-
-        """
-
-        check_type('source angle type', stype, basestring)
-        check_value('source angle type', stype,
-                    ['isotropic', 'monodirectional', 'tabular'])
-        check_type('source angle parameters', params, Iterable, Real)
-        if stype == 'isotropic' and params is not None:
-            msg = 'Unable to set source angle parameters since they are not ' \
-                  'it is not supported for isotropic type sources'
-            raise ValueError(msg)
-        elif stype == 'monodirectional':
-            check_length('source angle parameters for a monodirectional '
-                         'source', params, 3)
-        elif stype == 'tabular':
-            check_type('source angle interpolation', interp, basestring)
-            check_value('source angle interpolation', interp,
-                        ['histogram', 'linear-linear'])
-            self._source_angle_interpolation = interp
-
-        self._source_angle_type = stype
-        self._source_angle_params = params
-
-    def set_source_energy(self, stype, params=[], interp='histogram'):
-        """Defined the energy distribution of the external/starting source.
-
-        Parameters
-        ----------
-        stype : str
-
-            The type of energy distribution. Valid options are "monoenergetic",
-            "watt", "maxwell", and "tabular". The "monoenergetic" option
-            produces source sites at a single energy. The "watt" option produces
-            source sites whose energy is sampled from a Watt fission
-            spectrum. The "maxwell" option produce source sites whose energy is
-            sampled from a Maxwell fission spectrum. The "tabular" option
-            produces source sites whose energy is sampled from a tabulated
-            distribution.
-        params : Iterable of float
-            For a "monoenergetic" energy distribution, ``params`` should be
-            given as the energy in MeV of the source sites.
-
-            For a "watt" energy distribution, ``params`` should be given as two
-            real numbers :math:`a` and :math:`b` that parameterize the
-            distribution :math:`p(E) dE = c e^{-E/a} \sinh \sqrt{b \, E} dE`.
-
-            For a "maxwell" energy distribution, ``params`` should be given as
-            one real number :math:`a` that parameterizes the distribution
-            :math:`p(E) dE = c E e^{-E/a} dE`.
-
-            For a "tabular" energy distribution, ``parameters`` provides the
-            :math:`(E,p)` pairs defining the tabular distribution. All :math:`E`
-            points are given first followed by corresponding :math:`p` points.
-        interp : { 'histogram', 'linear-linear' }
-            For a "tabular" energy distribution, ``interpolation`` can be set
-            to "histogram" or "linear-linear" thereby specifying how tabular
-            points are to be interpolated.
-
-        """
-
-        check_type('source energy type', stype, basestring)
-        check_value('source energy type', stype,
-                    ['monoenergetic', 'watt', 'maxwell', 'tabular'])
-        check_type('source energy parameters', params, Iterable, Real)
-        if stype in ['monoenergetic', 'maxwell']:
-            check_length('source energy parameters for a monoenergetic '
-                         'or Maxwell source', params, 1)
-        elif stype == 'watt':
-            check_length('source energy parameters for a Watt source',
-                         params, 2)
-        elif stype == 'tabular':
-            check_type('source energy interpolation', interp, basestring)
-            check_value('source energy interpolation', interp,
-                        ['histogram', 'linear-linear'])
-            self._source_energy_interpolation = interp
-
-        self._source_energy_type = stype
-        self._source_energy_params = params
+    @source.setter
+    def source(self, source):
+        check_type('source distribution', source, Source)
+        self._source = source
 
     @output.setter
     def output(self, output):
@@ -966,51 +780,8 @@ class SettingsFile(object):
                 subelement.text = str(self._keff_trigger[key]).lower()
 
     def _create_source_subelement(self):
-        self._create_source_space_subelement()
-        self._create_source_energy_subelement()
-        self._create_source_angle_subelement()
-
-    def _create_source_space_subelement(self):
-        if self._source_space_params is not None:
-            if self._source_subelement is None:
-                self._source_subelement = ET.SubElement(self._settings_file,
-                                                        "source")
-
-            element = ET.SubElement(self._source_subelement, "space")
-            element.set("type", self._source_space_type)
-
-            subelement = ET.SubElement(element, "parameters")
-            subelement.text = ' '.join(map(str, self._source_space_params))
-
-    def _create_source_angle_subelement(self):
-        if self._source_angle_params is not None:
-            if self._source_subelement is None:
-                self._source_subelement = ET.SubElement(self._settings_file,
-                                                        "source")
-
-            element = ET.SubElement(self._source_subelement, "angle")
-            element.set("type", self._source_angle_type)
-
-            if self.source_angle_interpolation is not None:
-                element.set("interpolation", self.source_angle_interpolation)
-
-            subelement = ET.SubElement(element, "parameters")
-            subelement.text = ' '.join(map(str, self._source_angle_params))
-
-    def _create_source_energy_subelement(self):
-        if self._source_energy_params is not None:
-            if self._source_subelement is None:
-                self._source_subelement = ET.SubElement(self._settings_file,
-                                                        "source")
-
-            element = ET.SubElement(self._source_subelement, "energy")
-            element.set("type", self._source_energy_type)
-
-            if self.source_energy_interpolation is not None:
-                element.set("interpolation", self.source_energy_interpolation)
-
-                subelement = ET.SubElement(element, "parameters")
-            subelement.text = ' '.join(map(str, self._source_energy_params))
+        if self.source is not None:
+            self._settings_file.append(self.source.to_xml())
 
     def _create_output_subelement(self):
         if self._output is not None:

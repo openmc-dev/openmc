@@ -1846,7 +1846,7 @@ class Tally(object):
         else:
             filter1_bins = [(filter1.get_bin(i)) for i in range(filter1.num_bins)]
 
-        if filter1.type == 'distribcell':
+        if filter2.type == 'distribcell':
             filter2_bins = np.arange(filter2.num_bins)
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]

@@ -22,8 +22,6 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         u235 = openmc.Nuclide('U-235')
         u238 = openmc.Nuclide('U-238')
         pu239 = openmc.Nuclide('Pu-239')
-        zr90 = openmc.Nuclide('Zr-90')
-        o16 = openmc.Nuclide('O-16')
 
         # Initialize Mesh
         mesh = openmc.Mesh(mesh_id=1)
@@ -36,7 +34,6 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         energy_filter = openmc.Filter(type='energy', bins=(0.0, 0.253e-6,
                                                            1.0e-3, 1.0, 20.0))
         material_filter  = openmc.Filter(type='material', bins=(1, 3))
-        universe_filter  = openmc.Filter(type='universe', bins=(1, 3))
         distrib_filter   = openmc.Filter(type='distribcell', bins=(60))
         mesh_filter      = openmc.Filter(type='mesh')
         mesh_filter.mesh = mesh
@@ -45,6 +42,7 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         tally = openmc.Tally(name='tally 1')
         tally.add_filter(material_filter)
         tally.add_filter(energy_filter)
+        tally.add_filter(distrib_filter)
         tally.add_score('nu-fission')
         tally.add_score('total')
         tally.add_nuclide(u235)
@@ -53,32 +51,12 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
 
         # Instantiate reaction rate Tally in fuel
         tally = openmc.Tally(name='tally 2')
-        tally.add_filter(universe_filter)
         tally.add_filter(energy_filter)
+        tally.add_filter(mesh_filter)
         tally.add_score('total')
         tally.add_score('fission')
         tally.add_nuclide(u238)
         tally.add_nuclide(u235)
-        tallies_file.add_tally(tally)
-
-        # Instantiate reaction rate Tally in moderator
-        tally = openmc.Tally(name='tally 3')
-        tally.add_filter(distrib_filter)
-        tally.add_filter(energy_filter)
-        tally.add_score('absorption')
-        tally.add_score('total')
-        tally.add_nuclide(u235)
-        tally.add_nuclide(o16)
-        tallies_file.add_tally(tally)
-
-        # Instantiate reaction rate Tally in moderator
-        tally = openmc.Tally(name='tally 4')
-        tally.add_filter(mesh_filter)
-        tally.add_filter(energy_filter)
-        tally.add_score('scatter')
-        tally.add_score('total')
-        tally.add_nuclide(u235)
-        tally.add_nuclide(zr90)
         tallies_file.add_tally(tally)
         tallies_file.add_mesh(mesh)
 
@@ -98,87 +76,35 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         su = openmc.Summary(summary)
         sp.link_with_summary(su)
 
-        print 'reading in tallies'
-
         # Load the tallies
         tally_1 = sp.get_tally(name='tally 1')
         tally_2 = sp.get_tally(name='tally 2')
-        tally_3 = sp.get_tally(name='tally 3')
-        tally_4 = sp.get_tally(name='tally 4')
 
         # Perform all the tally arithmetic operations and output results
         outstr = ''
-        tally_5 = tally_1 * tally_2
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
+        tally_3 = tally_1 * tally_2
+        outstr += repr(tally_3)
+        outstr += str(tally_3.mean)
 
-        tally_5 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'tensor',
+        tally_3 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'tensor',
                                          'tensor')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
+        outstr += repr(tally_3)
+        outstr += str(tally_3.mean)
 
-        tally_5 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'entrywise',
+        tally_3 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'entrywise',
                                          'tensor')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
+        outstr += repr(tally_3)
+        outstr += str(tally_3.mean)
 
-        tally_5 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'tensor',
+        tally_3 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'tensor',
                                          'entrywise')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
+        outstr += repr(tally_3)
+        outstr += str(tally_3.mean)
 
-        tally_5 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'entrywise',
+        tally_3 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'entrywise',
                                          'entrywise')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
-
-        tally_5 = tally_1 * tally_3
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
-
-        tally_5 = tally_1.hybrid_product(tally_3, '*', 'entrywise', 'tensor',
-                                         'tensor')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
-
-        tally_5 = tally_1.hybrid_product(tally_3, '*', 'entrywise', 'entrywise',
-                                         'tensor')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
-
-        tally_5 = tally_1.hybrid_product(tally_3, '*', 'entrywise', 'tensor',
-                                         'entrywise')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
-
-        tally_5 = tally_1.hybrid_product(tally_3, '*', 'entrywise', 'entrywise',
-                                         'entrywise')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
-
-        tally_5 = tally_1 * tally_4
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
-
-        tally_5 = tally_1.hybrid_product(tally_4, '*', 'entrywise', 'tensor',
-                                         'tensor')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
-
-        tally_5 = tally_1.hybrid_product(tally_4, '*', 'entrywise', 'entrywise',
-                                         'tensor')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
-
-        tally_5 = tally_1.hybrid_product(tally_4, '*', 'entrywise', 'tensor',
-                                         'entrywise')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
-
-        tally_5 = tally_1.hybrid_product(tally_4, '*', 'entrywise', 'entrywise',
-                                         'entrywise')
-        outstr += repr(tally_5)
-        outstr += str(tally_5.mean)
+        outstr += repr(tally_3)
+        outstr += str(tally_3.mean)
 
         print(outstr)
 

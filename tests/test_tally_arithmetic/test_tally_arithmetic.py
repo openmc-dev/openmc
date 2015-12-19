@@ -83,27 +83,22 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         # Perform all the tally arithmetic operations and output results
         outstr = ''
         tally_3 = tally_1 * tally_2
-        outstr += repr(tally_3)
         outstr += str(tally_3.mean)
 
         tally_3 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'tensor',
                                          'tensor')
-        outstr += repr(tally_3)
         outstr += str(tally_3.mean)
 
         tally_3 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'entrywise',
                                          'tensor')
-        outstr += repr(tally_3)
         outstr += str(tally_3.mean)
 
         tally_3 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'tensor',
                                          'entrywise')
-        outstr += repr(tally_3)
         outstr += str(tally_3.mean)
 
         tally_3 = tally_1.hybrid_product(tally_2, '*', 'entrywise', 'entrywise',
                                          'entrywise')
-        outstr += repr(tally_3)
         outstr += str(tally_3.mean)
 
         print(outstr)

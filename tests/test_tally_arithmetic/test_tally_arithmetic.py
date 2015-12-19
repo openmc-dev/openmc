@@ -49,7 +49,6 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         tally.add_nuclide(pu239)
         tallies_file.add_tally(tally)
 
-        # Instantiate reaction rate Tally in fuel
         tally = openmc.Tally(name='tally 2')
         tally.add_filter(energy_filter)
         tally.add_filter(mesh_filter)

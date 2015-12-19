@@ -1461,7 +1461,7 @@ class Tally(object):
             The type of product (tensor or entrywise) to be performed between
             filter data. The default is the entrywise product. Currently only
             the entrywise product is supported since a tally cannot contain
-            two of the same tallies.
+            two of the same filter.
         nuclide_product : str, optional
             The type of product (tensor or entrywise) to be performed between
             nuclide data. The default is the entrywise product if all nuclides

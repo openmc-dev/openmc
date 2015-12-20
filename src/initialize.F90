@@ -614,13 +614,13 @@ contains
       ! =======================================================================
       ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
 
-      id = c%material
+      id = c%material(1)
       if (id == MATERIAL_VOID) then
         c%type = CELL_NORMAL
       elseif (id /= 0) then
         if (material_dict%has_key(id)) then
           c%type = CELL_NORMAL
-          c%material = material_dict%get_key(id)
+          c%material(1) = material_dict%get_key(id)
         else
           call fatal_error("Could not find material " // trim(to_str(id)) &
                &// " specified on cell " // trim(to_str(c%id)))
@@ -1137,7 +1137,7 @@ contains
 
     ! Allocate offset table for fill cells
     do i = 1, n_cells
-      if (cells(i)%material == NONE) then
+      if (cells(i) % type /= CELL_NORMAL) then
         allocate(cells(i)%offset(n_maps))
       end if
     end do

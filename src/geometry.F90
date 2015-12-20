@@ -248,7 +248,7 @@ contains
 
         ! set material
         p % last_material = p % material
-        p % material = c % material
+        p % material = c % material(1)
 
       elseif (c % type == CELL_FILL) then CELL_TYPE
         ! ======================================================================

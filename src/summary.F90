@@ -150,10 +150,10 @@ contains
       select case (c%type)
       case (CELL_NORMAL)
         call write_dataset(cell_group, "fill_type", "normal")
-        if (c%material == MATERIAL_VOID) then
+        if (c%material(1) == MATERIAL_VOID) then
           call write_dataset(cell_group, "material", -1)
         else
-          call write_dataset(cell_group, "material", materials(c%material)%id)
+          call write_dataset(cell_group, "material", materials(c%material(1))%id)
         end if
 
       case (CELL_FILL)

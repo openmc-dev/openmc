@@ -1085,36 +1085,37 @@ contains
       end if
 
       ! Read material
+      allocate(c % material(1))
       word = ''
       if (check_for_node(node_cell, "material")) &
            call get_node_value(node_cell, "material", word)
       select case(to_lower(word))
       case ('void')
-        c % material = MATERIAL_VOID
+        c % material(1) = MATERIAL_VOID
 
       case ('')
         ! This case is called if no material was specified
-        c % material = NONE
+        c % material(1) = NONE
 
       case default
-        c % material = int(str_to_int(word), 4)
+        c % material(1) = int(str_to_int(word), 4)
 
         ! Check for error
-        if (c % material == ERROR_INT) then
+        if (c % material(1) == ERROR_INT) then
           call fatal_error("Invalid material specified on cell " &
                &// to_str(c % id))
         end if
       end select
 
       ! Check to make sure that either material or fill was specified
-      if (c % material == NONE .and. c % fill == NONE) then
+      if (c % material(1) == NONE .and. c % fill == NONE) then
         call fatal_error("Neither material nor fill was specified for cell " &
              &// trim(to_str(c % id)))
       end if
 
       ! Check to make sure that both material and fill haven't been
       ! specified simultaneously
-      if (c % material /= NONE .and. c % fill /= NONE) then
+      if (c % material(1) /= NONE .and. c % fill /= NONE) then
         call fatal_error("Cannot specify material and fill simultaneously")
       end if
 

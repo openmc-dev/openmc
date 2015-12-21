@@ -264,17 +264,30 @@
         <data type="positiveInteger"/>
       </element>
     </optional>
-    <optional>
+    <zeroOrMore>
       <element name="source">
         <grammar>
           <start>
             <interleave>
               <optional>
-                <element name="file">
-                  <data type="string">
-                    <param name="maxLength">255</param>
-                  </data>
-                </element>
+                <choice>
+                  <element name="strength">
+                    <data type="double"/>
+                  </element>
+                  <attribute name="strength">
+                    <data type="double"/>
+                  </attribute>
+                </choice>
+              </optional>
+              <optional>
+                <choice>
+                  <element name="file">
+                    <data type="string"/>
+                  </element>
+                  <attribute name="file">
+                    <data type="string"/>
+                  </attribute>
+                </choice>
               </optional>
               <optional>
                 <element name="space">
@@ -290,14 +303,18 @@
                     <optional>
                       <choice>
                         <element name="parameters">
-                          <oneOrMore>
-                            <data type="double"/>
-                          </oneOrMore>
+                          <list>
+                            <oneOrMore>
+                              <data type="double"/>
+                            </oneOrMore>
+                          </list>
                         </element>
                         <attribute name="parameters">
-                          <oneOrMore>
-                            <data type="double"/>
-                          </oneOrMore>
+                          <list>
+                            <oneOrMore>
+                              <data type="double"/>
+                            </oneOrMore>
+                          </list>
                         </attribute>
                       </choice>
                     </optional>
@@ -426,7 +443,7 @@
           </define>
         </grammar>
       </element>
-    </optional>
+    </zeroOrMore>
     <optional>
       <element name="state_point">
         <choice>

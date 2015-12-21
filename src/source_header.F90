@@ -6,14 +6,15 @@ module source_header
   implicit none
 
 !===============================================================================
-! EXTSOURCE describes an external source of neutrons for a fixed-source problem
-! or for the starting source in a k eigenvalue problem
+! SOURCEDISTRIBUTION describes an external source of particles for a
+! fixed-source problem or for the starting source in a k eigenvalue problem
 !===============================================================================
 
-  type ExtSource
+  type SourceDistribution
+    real(8) :: strength ! source strength
     class(SpatialDistribution),    allocatable :: space  ! spatial distribution
     class(UnitSphereDistribution), allocatable :: angle  ! angle distribution
     class(Distribution),           allocatable :: energy ! energy distribution
-  end type ExtSource
+  end type SourceDistribution
 
 end module source_header

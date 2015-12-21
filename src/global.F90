@@ -12,7 +12,7 @@ module global
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use surface_header,   only: SurfaceContainer
-  use source_header,    only: ExtSource
+  use source_header,    only: SourceDistribution
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
@@ -182,7 +182,7 @@ module global
   logical :: satisfy_triggers = .false.       ! whether triggers are satisfied
 
   ! External source
-  type(ExtSource), target :: external_source
+  type(SourceDistribution), allocatable :: external_source(:)
 
   ! Source and fission bank
   type(Bank), allocatable, target :: source_bank(:)
@@ -450,9 +450,7 @@ contains
     if (allocated(micro_xs)) deallocate(micro_xs)
 
     ! Deallocate external source
-    if (allocated(external_source % space)) deallocate(external_source % space)
-    if (allocated(external_source % angle)) deallocate(external_source % angle)
-    if (allocated(external_source % energy)) deallocate(external_source % energy)
+    if (allocated(external_source)) deallocate(external_source)
 
     ! Deallocate k and entropy
     if (allocated(k_generation)) deallocate(k_generation)

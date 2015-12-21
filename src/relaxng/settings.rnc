@@ -64,24 +64,23 @@ element settings {
 
   element seed { xsd:positiveInteger }? &
 
-
-
   element source {
     grammar {
       start =
-        element file { xsd:string { maxLength = "255" } }? &
+        (element strength { xsd:double } | attribute strength { xsd:double })? &
+        (element file { xsd:string } | attribute file { xsd:string })? &
         element space {
           (element type { xsd:string } | attribute type { xsd:string }) &
-          (element parameters { xsd:double+ } |
-            attribute parameters { xsd:double+ })? &
+          (element parameters { list { xsd:double+ } } |
+            attribute parameters { list { xsd:double+ } })? &
           element x { distribution }? &
           element y { distribution }? &
           element z { distribution }?
         }? &
         element angle {
           (element type { xsd:string } | attribute type { xsd:string }) &
-          (element reference_uvw { xsd:double, xsd:double, xsd:double } |
-            attribute reference_uvw { xsd:double, xsd:double, xsd:double })? &
+          (element reference_uvw { list { xsd:double, xsd:double, xsd:double } } |
+            attribute reference_uvw { list { xsd:double, xsd:double, xsd:double } })? &
           element mu { distribution }? &
           element phi { distribution }?
         }? &
@@ -95,7 +94,7 @@ element settings {
         (element parameters { list { xsd:double+ } } |
           attribute parameters { list { xsd:double+ } })?
     }
-  }? &
+  }* &
 
   element state_point {
     (

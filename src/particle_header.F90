@@ -3,6 +3,7 @@ module particle_header
   use bank_header,     only: Bank
   use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
                              MAX_DELAYED_GROUPS
+! asking for help: circular error, compiling failed
 !XX  use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
   use random_lcg_header, only: N_STREAMS
@@ -357,6 +358,7 @@ contains
 
     ! Check to make sure that the hard-limit on secondary particles is not
     ! exceeded.
+!asking for help: circular error, compiling failed
 !XX    if (this % n_secondary == MAX_SECONDARY) then
 !XX      call fatal_error("Too many secondary particles created.")
 !XX    end if

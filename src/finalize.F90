@@ -13,7 +13,7 @@ module finalize
 #endif
 
   use hdf5_interface, only: hdf5_bank_t, hdf5_tallyresult_t
-  use hdf5, only: h5tclose_f, h5close_f
+  use hdf5, only: h5tclose_f, h5close_f, h5fclose_f
 
   implicit none
 
@@ -70,7 +70,7 @@ contains
     if (otf_matfile_open) then
       do i = 1, n_materials
         if (materials(i) % otf_compositions) then
-          !XXcall h5fclose_f(materials(i) % comp_file % file_id, hdf5_err)
+          call h5fclose_f(materials(i) % comp_file % file_id, hdf5_err)
           otf_matfile_open = .false.
           exit
         end if

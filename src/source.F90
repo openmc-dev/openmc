@@ -101,6 +101,8 @@ contains
     type(Bank), intent(inout) :: site ! source site
 
     integer :: i          ! dummy loop index
+    integer :: n_source   ! number of source distributions
+    real(8) :: c          ! cumulative frequency
     real(8) :: r(3)       ! sampled coordinates
     real(8) :: p_min(3)   ! minimum coordinates of source
     real(8) :: p_max(3)   ! maximum coordinates of source
@@ -117,11 +119,24 @@ contains
     ! Set particle defaults
     call p%initialize()
 
+    ! Sample from among multiple source distributions
+    n_source = size(external_source)
+    if (n_source > 1) then
+      r(1) = prn()*sum(external_source(:)%strength)
+      c = ZERO
+      do i = 1, n_source
+        c = c + external_source(i)%strength
+        if (r(1) < c) exit
+      end do
+    else
+      i = 1
+    end if
+
     ! Repeat sampling source location until a good site has been found
     found = .false.
     do while (.not.found)
       ! Sample spatial distribution
-      site%xyz(:) = external_source%space%sample()
+      site%xyz(:) = external_source(i)%space%sample()
 
       ! Fill p with needed data
       p%coord(1)%xyz(:) = site%xyz
@@ -138,7 +153,7 @@ contains
       end if
 
       ! Check if spatial site is in fissionable material
-      select type (space => external_source%space)
+      select type (space => external_source(i)%space)
       type is (SpatialBox)
         if (space%only_fissionable) then
           if (p%material == MATERIAL_VOID) then
@@ -153,10 +168,10 @@ contains
     call p%clear()
 
     ! Sample angle
-    site%uvw(:) = external_source%angle%sample()
+    site%uvw(:) = external_source(i)%angle%sample()
 
     ! Check for monoenergetic source above maximum neutron energy
-    select type (energy => external_source%energy)
+    select type (energy => external_source(i)%energy)
     type is (Discrete)
       if (any(energy%x >= energy_max_neutron)) then
         call fatal_error("Source energy above range of energies of at least &
@@ -166,7 +181,7 @@ contains
 
     do
       ! Sample energy spectrum
-      site%E = external_source%energy%sample()
+      site%E = external_source(i)%energy%sample()
 
       ! resample if energy is greater than maximum neutron energy
       if (site%E < energy_max_neutron) exit

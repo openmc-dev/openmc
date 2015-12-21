@@ -1,3 +1,4 @@
+from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
 
@@ -22,6 +23,8 @@ class Source(object):
         Energy distribution of source sites
     filename : str, optional
         Source file from which sites should be sampled
+    strength : Real
+        Strength of the source
 
     Attributes
     ----------
@@ -33,14 +36,15 @@ class Source(object):
         Energy distribution of source sites
     file : str or None
         Source file from which sites should be sampled
+    strength : Real
+        Strength of the source
 
     """
 
-    def __init__(self, space=None, angle=None, energy=None, filename=None):
+    def __init__(self, space=None, angle=None, energy=None, filename=None, strength=1.0):
         self._space = None
         self._angle = None
         self._energy = None
-        self._probability = None
         self._file = None
 
         if space is not None:
@@ -51,6 +55,7 @@ class Source(object):
             self.energy = energy
         if filename is not None:
             self.file = filename
+        self.strength = strength
 
     @property
     def file(self):
@@ -67,6 +72,10 @@ class Source(object):
     @property
     def energy(self):
         return self._energy
+
+    @property
+    def strength(self):
+        return self._strength
 
     @file.setter
     def file(self, filename):
@@ -88,8 +97,15 @@ class Source(object):
         cv.check_type('energy distribution', energy, Univariate)
         self._energy = energy
 
+    @strength.setter
+    def strength(self, strength):
+        cv.check_type('source strength', strength, Real)
+        cv.check_greater_than('source strength', strength, 0.0, True)
+        self._strength = strength
+
     def to_xml(self):
         element = ET.Element("source")
+        element.set("strength", str(self.strength))
         if self.file is not None:
             element.set("file", self.file)
         if self.space is not None:

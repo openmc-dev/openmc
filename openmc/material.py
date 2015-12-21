@@ -194,10 +194,6 @@ class Material(object):
     def id(self, material_id):
         global AUTO_MATERIAL_ID, MATERIAL_IDS
 
-        # If the Material already has an ID, remove it from global list
-        if hasattr(self, '_id') and self._id is not None:
-            MATERIAL_IDS.remove(self._id)
-
         if material_id is None:
             self._id = AUTO_MATERIAL_ID
             MATERIAL_IDS.append(AUTO_MATERIAL_ID)

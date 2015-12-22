@@ -393,13 +393,13 @@ class StatePoint(object):
 
                 scores = self._f['{0}{1}/score_bins'.format(
                     base, tally_key)].value
-                n_user_scores = self._f['{0}{1}/n_user_score_bins'
-                                        .format(base, tally_key)].value
+                n_score_bins = self._f['{0}{1}/n_score_bins'
+                                       .format(base, tally_key)].value
 
                 # Compute and set the filter strides
                 for i in range(n_filters):
                     filter = tally.filters[i]
-                    filter.stride = n_user_scores * len(nuclide_names)
+                    filter.stride = n_score_bins * len(nuclide_names)
 
                     for j in range(i+1, n_filters):
                         filter.stride *= tally.filters[j].num_bins

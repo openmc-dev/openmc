@@ -755,7 +755,7 @@ class MGXS(object):
 
             # Reshape condensed data arrays with one dimension for all filters
             new_shape = \
-                (tally.num_filter_bins, tally.num_nuclides, tally.num_score_bins,)
+                (tally.num_filter_bins, tally.num_nuclides, tally.num_scores,)
             mean = np.reshape(mean, new_shape)
             std_dev = np.reshape(std_dev, new_shape)
 
@@ -837,7 +837,7 @@ class MGXS(object):
 
             # Reshape averaged data arrays with one dimension for all filters
             new_shape = \
-                (tally.num_filter_bins, tally.num_nuclides, tally.num_score_bins,)
+                (tally.num_filter_bins, tally.num_nuclides, tally.num_scores,)
             mean = np.reshape(mean, new_shape)
             std_dev = np.reshape(std_dev, new_shape)
 

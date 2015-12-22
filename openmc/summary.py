@@ -1,4 +1,5 @@
 import numpy as np
+import re
 
 import openmc
 from openmc.region import Region

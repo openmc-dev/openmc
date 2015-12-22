@@ -31,6 +31,7 @@ AUTO_TALLY_ID = 10000
 # specified axis.
 _PRODUCT_TYPES = ['tensor', 'entrywise']
 
+
 def reset_auto_tally_id():
     global AUTO_TALLY_ID
     AUTO_TALLY_ID = 10000
@@ -1116,7 +1117,7 @@ class Tally(object):
                   '\'rel_err\', \'sum\', or \'sum_sq\''.format(self.id, value)
             raise LookupError(msg)
 
-        return data.copy()
+        return data
 
     def get_pandas_dataframe(self, filters=True, nuclides=True,
                              scores=True, summary=None):
@@ -1440,16 +1441,16 @@ class Tally(object):
                         nuclide_product=None, score_product=None):
         """Combines filters, scores and nuclides with another tally.
 
-        This is a helper method for the tally arithmetic methods. It is called a
-        "hybrid product" because it performs a combination of tensor
-        (or Kronecker) and entrywise (or Hadamard) products. The filters from
-        both tallies are combined using an entrywise (or Hadamard) product on
-        matching filters. By default, if all nuclides are identical in the two
-        tallies, the entrywise product is performed across nuclides; else the
-        tensor product is performed. By default, if all scores are identical in
-        the two tallies, the entrywise product is performed across scores; else
-        the tensor product is performed. Users can also call the method
-        explicitly and specify the desired product.
+        This is a helper method for the tally arithmetic operator overloaded
+        methods. It is called a "hybrid product" because it performs a
+        combination of tensor (or Kronecker) and entrywise (or Hadamard)
+        products. The filters from both tallies are combined using an entrywise
+        (or Hadamard) product on matching filters. By default, if all nuclides
+        are identical in the two tallies, the entrywise product is performed
+        across nuclides; else the tensor product is performed. By default, if
+        all scores are identical in the two tallies, the entrywise product is
+        performed across scores; else the tensor product is performed. Users
+        can also call the method explicitly and specify the desired product.
 
         Parameters
         ----------
@@ -1457,17 +1458,17 @@ class Tally(object):
             The tally on the right hand side of the hybrid product
         binary_op : {'+', '-', '*', '/', '^'}
             The binary operation in the hybrid product
-        filter_product : str, optional
+        filter_product : {'tensor', 'entrywise' or None}
             The type of product (tensor or entrywise) to be performed between
             filter data. The default is the entrywise product. Currently only
             the entrywise product is supported since a tally cannot contain
             two of the same filter.
-        nuclide_product : str, optional
+        nuclide_product : {'tensor', 'entrywise' or None}
             The type of product (tensor or entrywise) to be performed between
             nuclide data. The default is the entrywise product if all nuclides
             between the two tallies are the same; otherwise the default is
             the tensor product.
-        score_product : str, optional
+        score_product : {'tensor', 'entrywise' or None}
             The type of product (tensor or entrywise) to be performed between
             score data. The default is the entrywise product if all scores
             between the two tallies are the same; otherwise the default is
@@ -1491,7 +1492,7 @@ class Tally(object):
             filter_product = 'entrywise'
         elif filter_product == 'tensor':
             msg = 'Unable to perform Tally arithmetic with a tensor product' \
-                  'for the filter data as this not currently supported.'
+                  'for the filter data as this is not currently supported.'
             raise ValueError(msg)
 
         # Set default value for nuclide product if it was not set
@@ -1642,13 +1643,13 @@ class Tally(object):
         ----------
         other : Tally
             The tally to outer product with this tally
-        filter_product : str
-            The type of product (tensor or entrywise) to be performed between
-            filter data.
-        nuclide_product : str
+        filter_product : {'entrywise'}
+            The type of product to be performed between filter data. Currently,
+            only the entrywise product is supported for the filter product.
+        nuclide_product : {'tensor', 'entrywise'}
             The type of product (tensor or entrywise) to be performed between
             nuclide data.
-        score_product : str
+        score_product : {'tensor', 'entrywise'}
             The type of product (tensor or entrywise) to be performed between
             score data.
 
@@ -1786,8 +1787,8 @@ class Tally(object):
         """Reverse the ordering of two filters in this tally
 
         This is a helper method for tally arithmetic which helps align the data
-        in two tallies with shared filters. This method copies this tally and
-        reverses the order of the two filters.
+        in two tallies with shared filters. This method reverses the order of
+        the two filters in place.
 
         Parameters
         ----------
@@ -1924,23 +1925,23 @@ class Tally(object):
 
         # Adjust the mean data array to relect the new nuclide order
         if self.mean is not None:
-            nuclide1_mean = self._mean[:,nuclide1_index,:].copy()
-            nuclide2_mean = self._mean[:,nuclide2_index,:].copy()
-            self._mean[:,nuclide2_index,:] = nuclide1_mean
-            self._mean[:,nuclide1_index,:] = nuclide2_mean
+            nuclide1_mean = self._mean[:, nuclide1_index, :].copy()
+            nuclide2_mean = self._mean[:, nuclide2_index, :].copy()
+            self._mean[:, nuclide2_index, :] = nuclide1_mean
+            self._mean[:, nuclide1_index, :] = nuclide2_mean
 
         # Adjust the std_dev data array to relect the new nuclide order
         if self.std_dev is not None:
-            nuclide1_std_dev = self._std_dev[:,nuclide1_index,:].copy()
-            nuclide2_std_dev = self._std_dev[:,nuclide2_index,:].copy()
-            self._std_dev[:,nuclide2_index,:] = nuclide1_std_dev
-            self._std_dev[:,nuclide1_index,:] = nuclide2_std_dev
+            nuclide1_std_dev = self._std_dev[:, nuclide1_index, :].copy()
+            nuclide2_std_dev = self._std_dev[:, nuclide2_index, :].copy()
+            self._std_dev[:, nuclide2_index, :] = nuclide1_std_dev
+            self._std_dev[:, nuclide1_index, :] = nuclide2_std_dev
 
     def _swap_scores(self, score1, score2):
         """Reverse the ordering of two scores in this tally
 
         This is a helper method for tally arithmetic which helps align the data
-        in two tallies with shared scores. This method copies reverses the order
+        in two tallies with shared scores. This method reverses the order
         of the two scores in place.
 
         Parameters
@@ -1967,11 +1968,11 @@ class Tally(object):
 
         # Check that the scores are valid
         if not isinstance(score1, (basestring, CrossScore)):
-            msg = 'Unable to swap score "{0}" in Tally ID="{1}" since it is ' \
+            msg = 'Unable to swap score1 "{0}" in Tally ID="{1}" since it is ' \
                   'not a string or CrossScore'.format(score1, self.id)
             raise ValueError(msg)
         elif not isinstance(score2, (basestring, CrossScore)):
-            msg = 'Unable to swap score "{0}" in Tally ID="{1}" since it is ' \
+            msg = 'Unable to swap score2 "{0}" in Tally ID="{1}" since it is ' \
                   'not a string or CrossScore'.format(score2, self.id)
             raise ValueError(msg)
 
@@ -1996,17 +1997,17 @@ class Tally(object):
 
         # Adjust the mean data array to relect the new nuclide order
         if self.mean is not None:
-            score1_mean = self._mean[:,:,score1_index].copy()
-            score2_mean = self._mean[:,:,score2_index].copy()
-            self._mean[:,:,score2_index] = score1_mean
-            self._mean[:,:,score1_index] = score2_mean
+            score1_mean = self._mean[:, :, score1_index].copy()
+            score2_mean = self._mean[:, :, score2_index].copy()
+            self._mean[:, :, score2_index] = score1_mean
+            self._mean[:, :, score1_index] = score2_mean
 
         # Adjust the std_dev data array to relect the new nuclide order
         if self.std_dev is not None:
-            score1_std_dev = self._std_dev[:,:,score1_index].copy()
-            score2_std_dev = self._std_dev[:,:,score2_index].copy()
-            self._std_dev[:,:,score2_index] = score1_std_dev
-            self._std_dev[:,:,score1_index] = score2_std_dev
+            score1_std_dev = self._std_dev[:, :, score1_index].copy()
+            score2_std_dev = self._std_dev[:, :, score2_index].copy()
+            self._std_dev[:, :, score2_index] = score1_std_dev
+            self._std_dev[:, :, score1_index] = score2_std_dev
 
     def __add__(self, other):
         """Adds this tally to another tally or scalar value.

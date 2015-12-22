@@ -449,13 +449,9 @@ class Tally(object):
                   'not a string'.format(score, self.id)
             raise ValueError(msg)
 
-        # If the score is already in the Tally, raise an error
+        # If the score is already in the Tally, don't add it again
         if score in self.scores:
-            msg = 'Unable to add a duplicate score {0} to Tally ID="{1}" ' \
-                  'since duplicate scores are not supported in the OpenMC ' \
-                  'Python API'.format(score, self.id)
-            raise ValueError(msg)
-
+            return
         # Normal score strings
         if isinstance(score, basestring):
             self._scores.append(score.strip())
@@ -2716,6 +2712,7 @@ class Tally(object):
         # Determine the shape of data in the new diagonalized Tally
         num_filter_bins = new_tally.num_filter_bins
         num_nuclides = new_tally.num_nuclides
+        num_scores = new_tally.num_scores
         new_shape = (num_filter_bins, num_nuclides, num_scores)
 
         # Determine "base" indices along the new "diagonal", and the factor

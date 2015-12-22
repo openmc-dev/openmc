@@ -48,6 +48,14 @@ contains
     real(8) :: km_r, km_a     ! Kalbach-Mann parameters
     real(8) :: T
 
+    ! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    ! Before the secondary distribution refactor, an isotropic polar cosine was
+    ! always sampled but then overwritten with the polar cosine sampled from the
+    ! correlated distribution. To preserve the random number stream, we keep
+    ! this dummy sampling here but can remove it later (will change answers)
+    mu = TWO*prn() - ONE
+    ! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
     ! find energy bin and calculate interpolation factor -- if the energy is
     ! outside the range of the tabulated energies, choose the first or last bins
     n_energy_in = size(this%energy_in)
@@ -144,6 +152,7 @@ contains
       r1 = prn()
       mu = log(r1*exp(km_a) + (ONE - r1)*exp(-km_a))/km_a
     end if
+
   end subroutine kalbachmann_sample
 
 end module secondary_kalbach

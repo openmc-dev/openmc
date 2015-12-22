@@ -7,6 +7,7 @@ module secondary_uncorrelated
   use random_lcg, only: prn
 
   type, extends(AngleEnergy) :: UncorrelatedAngleEnergy
+    logical :: fission = .false.
     type(AngleDistribution) :: angle
     class(EnergyDistribution), allocatable :: energy
   contains
@@ -22,7 +23,12 @@ contains
     real(8), intent(out) :: mu
 
     ! Sample cosine of scattering angle
-    if (allocated(this%angle%energy)) then
+    if (this%fission) then
+      ! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+      ! For fission, the angle is not used, so just assign a dummy value
+      mu = ONE
+      ! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    elseif (allocated(this%angle%energy)) then
       mu = this%angle%sample(E_in)
     else
       ! no angle distribution given => assume isotropic for all energies

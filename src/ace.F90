@@ -1035,6 +1035,22 @@ contains
           call get_energy_dist(secondary%distribution(n)%obj, LAW, &
                JXS(11), IDAT, nuc%awr, nuc%reactions(i)%Q_value)
 
+          ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<
+          ! Before the secondary distribution refactor, when the angle/energy
+          ! distribution was uncorrelated, no angle was actually sampled. With
+          ! the refactor, an angle is always sampled for an uncorrelated
+          ! distribution even when no angle distribution exists in the ACE file
+          ! (isotropic is assumed). To preserve the RNG stream, we explicitly
+          ! mark fission reactions so that we avoid the angle sampling.
+          if (any(nuc%reactions(i + 1)%MT == &
+               [N_FISSION, N_F, N_NF, N_2NF, N_3NF])) then
+            select type (aedist => secondary%distribution(n)%obj)
+            type is (UncorrelatedAngleEnergy)
+              aedist%fission = .true.
+            end select
+          end if
+          ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<
+
           ! Get locator for next distribution
           LNW = nint(XSS(JXS(11) + LNW - 1))
         end do

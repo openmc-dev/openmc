@@ -12,17 +12,13 @@ from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.clean_xml import *
 
 
-# A list of all IDs for all Materials created
-MATERIAL_IDS = []
-
 # A static variable for auto-generated Material IDs
 AUTO_MATERIAL_ID = 10000
 
 
 def reset_auto_material_id():
-    global AUTO_MATERIAL_ID, MATERIAL_IDS
+    global AUTO_MATERIAL_ID
     AUTO_MATERIAL_ID = 10000
-    MATERIAL_IDS = []
 
 
 # Units for density supported by OpenMC
@@ -192,22 +188,15 @@ class Material(object):
 
     @id.setter
     def id(self, material_id):
-        global AUTO_MATERIAL_ID, MATERIAL_IDS
 
         if material_id is None:
+            global AUTO_MATERIAL_ID
             self._id = AUTO_MATERIAL_ID
-            MATERIAL_IDS.append(AUTO_MATERIAL_ID)
             AUTO_MATERIAL_ID += 1
         else:
             check_type('material ID', material_id, Integral)
-            if material_id in MATERIAL_IDS:
-                msg = 'Unable to set Material ID to "{0}" since a Material with ' \
-                      'this ID was already initialized'.format(material_id)
-                raise ValueError(msg)
             check_greater_than('material ID', material_id, 0, equality=True)
-
             self._id = material_id
-            MATERIAL_IDS.append(material_id)
 
     @name.setter
     def name(self, name):

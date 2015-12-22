@@ -46,6 +46,14 @@ contains
     real(8) :: p_l_k, p_l_k1  ! adjacent p on outgoing grid l
     real(8) :: c_k, c_k1      ! cumulative probability
 
+    ! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    ! Before the secondary distribution refactor, an isotropic polar cosine was
+    ! always sampled but then overwritten with the polar cosine sampled from the
+    ! correlated distribution. To preserve the random number stream, we keep
+    ! this dummy sampling here but can remove it later (will change answers)
+    mu = TWO*prn() - ONE
+    ! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
     ! find energy bin and calculate interpolation factor -- if the energy is
     ! outside the range of the tabulated energies, choose the first or last bins
     n_energy_in = size(this%energy_in)

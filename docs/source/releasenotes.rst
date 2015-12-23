@@ -82,6 +82,7 @@ This release contains new contributions from the following people:
 
 - `Will Boyd <wbinventor@gmail.com>`_
 - `Sterling Harper <sterlingmharper@mit.edu>`_
+- `Bryan Herman <hermab53@gmail.com>`_
 - `Colin Josey <cjosey@mit.edu>`_
 - `Adam Nelson <nelsonag@umich.edu>`_
 - `Paul Romano <paul.k.romano@gmail.com>`_

@@ -26,6 +26,10 @@ Overviews
 Benchmarking
 ------------
 
+- Khurrum S. Chaudri and Sikander M. Mirza, "Burnup dependent Monte Carlo
+  neutron physics calculations of IAEA MTR benchmark," *Prog. Nucl. Energy*,
+  **81**, 43-52 (2015). `<http://dx.doi.org/j.pnucene.2014.12.018>`_
+
 - Daniel J. Kelly, Brian N. Aviles, Paul K. Romano, Bryan R. Herman,
   Nicholas E. Horelik, and Benoit Forget, "Analysis of select BEAVRS PWR
   benchmark cycle 1 results using MC21 and OpenMC," *Proc. PHYSOR*, Kyoto,
@@ -57,13 +61,8 @@ Coupling and Multi-physics
 
 - Bryan R. Herman, Benoit Forget, and Kord Smith, "Progress toward Monte
   Carlo-thermal hydraulic coupling using low-order nonlinear diffusion
-  acceleration methods." In press, *Ann. Nucl. Energy*,
-  (2014). `<http://dx.doi.org/10.1016/j.anucene/2014.10.029>`_
-
-- Adam G. Nelson and William R. Martin, "Improved Convergence of Monte Carlo
-  Generated Multi-Group Scattering Moments," *Proc. Int. Conf. Mathematics and
-  Computational Methods Applied to Nuclear Science and Engineering*, Sun Valley,
-  Idaho, May 5--9 (2013).
+  acceleration methods." *Ann. Nucl. Energy*, **84**, 63-72
+  (2015). `<http://dx.doi.org/10.1016/j.anucene.2014.10.029>`_
 
 - Bryan R. Herman, Benoit Forget, and Kord Smith, "Utilizing CMFD in OpenMC to
   Estimate Dominance Ratio and Adjoint," *Trans. Am. Nucl. Soc.*, **109**,
@@ -81,18 +80,64 @@ Geometry
 Miscellaneous
 -------------
 
+- William Boyd, Sterling Harper, and Paul K. Romano, "Equipping OpenMC for the
+  big data era," Accepted, *PHYSOR 2016*, Sun Valley, Idaho, May 1-5, 2016.
+
+- Qicang Shen, William Boyd, Benoit Forget, and Kord Smith, "Tally precision
+  triggers for the OpenMC Monte Carlo code," *Trans. Am. Nucl. Soc.*, **112**,
+  637-640 (2015).
+
 - Timothy P. Burke, Brian C. Kiedrowski, and William R. Martin, "Flux and
   Reaction Rate Kernel Density Estimators in OpenMC," *Trans. Am. Nucl. Soc.*,
   **109**, 683-686 (2013).
+
+------------------------------------
+Multi-group Cross Section Generation
+------------------------------------
+
+- Adam G. Nelson and William R. Martin, "Improved Monte Carlo tallying of
+  multi-group scattering moments using the NDPP code," *Trans. Am. Nucl. Soc.*,
+  **113**, 645-648 (2015)
+
+- Adam G. Nelson and William R. Martin, "Improved Monte Carlo tallying of
+  multi-group scattering moment matrices," *Trans. Am. Nucl. Soc.*, **110**,
+  217-220 (2014).
+
+- Adam G. Nelson and William R. Martin, "Improved Convergence of Monte Carlo
+  Generated Multi-Group Scattering Moments," *Proc. Int. Conf. Mathematics and
+  Computational Methods Applied to Nuclear Science and Engineering*, Sun Valley,
+  Idaho, May 5--9 (2013).
 
 ------------
 Nuclear Data
 ------------
 
+- Colin Josey, Pablo Ducru, Benoit Forget, and Kord Smith, "Windowed multipole
+  for cross section Doppler broadening," *J. Comput. Phys.*, In Press
+  (2016). `<http://dx.doi.org/10.1016/jcp.2015.08.013>`_
+
+- Colin Josey, Benoit Forget, and Kord Smith, "Windowed multipole sensitivity to
+  target accuracy of the optimization procedure," *J. Nucl. Sci. Technol.*,
+  **52**, 987-992 (2015). `<http://dx.doi.org/10.1080/00223131.2015.1035353>`_
+
+- Jonathan A. Walsh, Paul K. Romano, Benoit Forget, and Kord S. Smith,
+  "Optimizations of the energy grid search algorithm in continuous-energy Monte
+  Carlo particle transport codes", *Comput. Phys. Commun.*, **196**, 134-142
+  (2015). `<http://dx.doi.org/10.1016/j.cpc.2015.05.025>`_
+
 - Jonathan A. Walsh, Benoit Forget, Kord S. Smith, Brian C. Kiedrowski, and
   Forrest B. Brown, "Direct, on-the-fly calculation of unresolved resonance
   region cross sections in Monte Carlo simulations," *Proc. Joint
   Int. Conf. M&C+SNA+MC*, Nashville, Tennessee, Apr. 19--23 (2015).
+
+- Amanda L. Lund, Andrew R. Siegel, Benoit Forget, Colin Josey, and
+  Paul K. Romano, "Using fractional cascading to accelerate cross section
+  lookups in Monte Carlo particle transport calculations," *Proc. Joint
+  Int. Conf. M&C+SNA+MC*, Nashville, Tennessee, Apr. 19--23 (2015).
+
+- Ronald O. Rahaman, Andrew R. Siegel, and Paul K. Romano, "Monte Carlo
+  performance analysis for varying cross section parameter regimes,"
+  *Proc. Joint Int. Conf. M&C+SNA+MC*, Nashville, Tennessee, Apr. 19--23 (2015).
 
 - Paul K. Romano and Timothy H. Trumbull, "Comparison of algorithms for Doppler
   broadening pointwise tabulated cross sections," *Ann. Nucl. Energy*, **75**,
@@ -113,6 +158,10 @@ Nuclear Data
 -----------
 Parallelism
 -----------
+
+- Paul K. Romano, John R. Tramm, and Andrew R. Siegel, "Efficacy of hardware
+  threading for Monte Carlo particle transport calculations on multi- and
+  many-core systems," Accepted, *PHYSOR 2016*, Sun Valley, Idaho, May 1-5, 2016.
 
 - David Ozog, Allen D. Malony, and Andrew R. Siegel, "A performance analysis of
   SIMD algorithms for Monte Carlo simulations of nuclear reactor cores,"

@@ -1147,10 +1147,12 @@ Each ``material`` element can have the following attributes or sub-elements:
   :density:
     An element with attributes/sub-elements called ``value`` and ``units``. The
     ``value`` attribute is the numeric value of the density while the ``units``
-    can be "g/cm3", "kg/m3", "atom/b-cm", "atom/cm3", "sum", or "macro".
-    The "sum" unit indicates that the density should be calculated as the sum
-    of the atom fractions for each nuclide in the material. This should not be
-    used in conjunction with weight percents.  The "macro" unit is used with
+    can be "g/cm3", "kg/m3", "atom/b-cm", "atom/cm3", or "sum". The "sum" unit
+    indicates that values appearing in ``ao`` attributes for ``<nuclide>`` and
+    ``<element>`` sub-elements are to be interpreted as nuclide/element
+    densities in atom/b-cm, and the total density of the material is taken as
+    the sum of all nuclides/elements. The "sum" option cannot be used in
+    conjunction with weight percents.  The "macro" unit is used with
     a ``macroscopic`` quantity to indicate that the density is already included
     in the library and thus not needed here.  However, if a value is provided
     for the ``value``, then this is treated as a number density multiplier on
@@ -1963,9 +1965,6 @@ attributes/sub-elements:
     for CMFD tallies and acceleration. If no energy bins are listed, OpenMC
     automatically assumes a one energy group calculation over the entire
     energy range.
-
-    .. note:: When running in the multi-group :ref:`energy_mode`, the
-              energy bins must match the data library's group boundaries.
 
   :albedo:
     Surface ratio of incoming to outgoing partial currents on global boundary

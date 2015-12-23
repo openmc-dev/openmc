@@ -120,6 +120,7 @@ contains
           stack(i_stack) = (actual_sense .eqv. (token > 0))
         end if
       end select
+
     end do
 
     if (i_stack == 1) then
@@ -598,8 +599,9 @@ contains
     real(8) :: d_lat              ! distance to lattice boundary
     real(8) :: d_surf             ! distance to surface
     real(8) :: x0,y0,z0           ! coefficients for surface
+    real(8) :: xyz_cross(3)       ! coordinates at projected surface crossing
     logical :: coincident         ! is particle on surface?
-    type(Cell),       pointer :: cl
+    type(Cell),       pointer :: c
     class(Surface),   pointer :: surf
     class(Lattice),   pointer :: lat
 
@@ -615,7 +617,7 @@ contains
     LEVEL_LOOP: do j = 1, p % n_coord
 
       ! get pointer to cell on this level
-      cl => cells(p % coord(j) % cell)
+      c => cells(p % coord(j) % cell)
 
       ! copy directional cosines
       u = p % coord(j) % uvw(1)
@@ -625,8 +627,8 @@ contains
       ! =======================================================================
       ! FIND MINIMUM DISTANCE TO SURFACE IN THIS CELL
 
-      SURFACE_LOOP: do i = 1, size(cl%region)
-        index_surf = cl%region(i)
+      SURFACE_LOOP: do i = 1, size(c % region)
+        index_surf = c % region(i)
         coincident = (index_surf == p % surface)
 
         ! ignore this token if it corresponds to an operator rather than a
@@ -635,14 +637,14 @@ contains
         if (index_surf >= OP_UNION) cycle
 
         ! Calculate distance to surface
-        surf => surfaces(index_surf)%obj
-        d = surf%distance(p%coord(j)%xyz, p%coord(j)%uvw, coincident)
+        surf => surfaces(index_surf) % obj
+        d = surf % distance(p % coord(j) % xyz, p % coord(j) % uvw, coincident)
 
         ! Check if calculated distance is new minimum
         if (d < d_surf) then
           if (abs(d - d_surf)/d_surf >= FP_PRECISION) then
             d_surf = d
-            level_surf_cross = -cl % region(i)
+            level_surf_cross = -c % region(i)
           end if
         end if
       end do SURFACE_LOOP
@@ -848,14 +850,31 @@ contains
       if (d_surf < d_lat) then
         if ((dist - d_surf)/dist >= FP_REL_PRECISION) then
           dist = d_surf
-          surface_crossed = level_surf_cross
+
+          ! If the cell is not simple, it is possible that both the negative and
+          ! positive half-space were given in the region specification. Thus, we
+          ! have to explicitly check which half-space the particle would be
+          ! traveling into if the surface is crossed
+          if (.not. c % simple) then
+            xyz_cross(:) = p % coord(j) % xyz + d_surf*p % coord(j) % uvw
+            surf => surfaces(abs(level_surf_cross)) % obj
+            if (dot_product(p % coord(j) % uvw, &
+                 surf % normal(xyz_cross)) > ZERO) then
+              surface_crossed = abs(level_surf_cross)
+            else
+              surface_crossed = -abs(level_surf_cross)
+            end if
+          else
+            surface_crossed = level_surf_cross
+          end if
+
           lattice_translation(:) = [0, 0, 0]
           next_level = j
         end if
       else
         if ((dist - d_lat)/dist >= FP_REL_PRECISION) then
           dist = d_lat
-          surface_crossed = None
+          surface_crossed = NONE
           lattice_translation(:) = level_lat_trans
           next_level = j
         end if

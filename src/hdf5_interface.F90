@@ -1483,7 +1483,7 @@ contains
     integer(HID_T) :: dspace  ! data or file space handle
     integer(HID_T) :: filetype
     integer(HID_T) :: memtype
-    integer(HSIZE_T) :: n
+    integer(SIZE_T) :: n
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1544,8 +1544,8 @@ contains
     integer(HID_T) :: dspace  ! data or file space handle
     integer(HID_T) :: filetype
     integer(HID_T) :: memtype
-    integer(HSIZE_T) :: size
-    integer(HSIZE_T) :: n
+    integer(SIZE_T) :: size
+    integer(SIZE_T) :: n
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1628,7 +1628,7 @@ contains
     integer(HID_T) :: dspace  ! data or file space handle
     integer(HID_T) :: filetype
     integer(HID_T) :: memtype
-    integer(HSIZE_T) :: n
+    integer(SIZE_T) :: n
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1644,7 +1644,7 @@ contains
 
     ! Create datatype in memory based on Fortran character
     call h5tcopy_f(H5T_FORTRAN_S1, memtype, hdf5_err)
-    call h5tset_size_f(memtype, int(len(buffer(1)), HSIZE_T), hdf5_err)
+    call h5tset_size_f(memtype, int(len(buffer(1)), SIZE_T), hdf5_err)
 
     ! Create dataspace/dataset
     call h5screate_simple_f(1, dims, dspace, hdf5_err)
@@ -1706,8 +1706,8 @@ contains
     integer(HID_T) :: dspace  ! data or file space handle
     integer(HID_T) :: filetype
     integer(HID_T) :: memtype
-    integer(HSIZE_T) :: size
-    integer(HSIZE_T) :: n
+    integer(SIZE_T) :: size
+    integer(SIZE_T) :: n
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O

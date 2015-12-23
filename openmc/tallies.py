@@ -633,9 +633,10 @@ class Tally(object):
                     merged_tally.filters[i] = merged_filter
                     break
 
-        # Add scores from second tally to merged tally
+        # Add unique scores from second tally to merged tally
         for score in tally.scores:
-            merged_tally.add_score(score)
+            if score not in merged_tally.scores:
+                merged_tally.add_score(score)
 
         # Add triggers from second tally to merged tally
         for trigger in tally.triggers:

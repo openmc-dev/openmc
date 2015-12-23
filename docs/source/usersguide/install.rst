@@ -8,7 +8,7 @@ Installation and Configuration
 Installing on Ubuntu with PPA
 -----------------------------
 
-For users with Ubuntu 11.10 or later, a binary package for OpenMC is available
+For users with Ubuntu 15.04 or later, a binary package for OpenMC is available
 through a Personal Package Archive (PPA) and can be installed through the APT
 package manager. First, add the following PPA to the repository sources:
 
@@ -27,6 +27,9 @@ Now OpenMC should be recognized within the repository and can be installed:
 .. code-block:: sh
 
     sudo apt-get install openmc
+
+Binary packages from this PPA may exist for earlier versions of Ubuntu, but they
+are no longer supported.
 
 --------------------
 Building from Source
@@ -73,6 +76,12 @@ Prerequisites
                        --enable-fortran2003 --enable-parallel
 
       You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
+
+      .. important::
+
+          OpenMC uses various parts of the HDF5 Fortran 2003 API; as such you
+          must include ``--enable-fortran2003`` or else OpenMC will not be able
+          to compile.
 
       On Debian derivatives, HDF5 and/or parallel HDF5 can be installed through
       the APT package manager:

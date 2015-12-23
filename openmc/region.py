@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from collections import Iterable
 
+import numpy as np
+
 from openmc.checkvalue import check_type
 
 
@@ -28,6 +30,17 @@ class Region(object):
     @abstractmethod
     def __str__(self):
         return ''
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return False
+        elif str(self) != str(other):
+            return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self == other
 
     @staticmethod
     def from_expression(expression, surfaces):
@@ -207,6 +220,8 @@ class Intersection(Region):
     ----------
     nodes : tuple of Region
         Regions to take the intersection of
+    bounding_box : tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """
 
@@ -219,6 +234,16 @@ class Intersection(Region):
     @property
     def nodes(self):
         return self._nodes
+
+    @property
+    def bounding_box(self):
+        lower_left = np.array([-np.inf, -np.inf, -np.inf])
+        upper_right = np.array([np.inf, np.inf, np.inf])
+        for n in self.nodes:
+            lower_left_n, upper_right_n = n.bounding_box
+            lower_left[:] = np.maximum(lower_left, lower_left_n)
+            upper_right[:] = np.minimum(upper_right, upper_right_n)
+        return lower_left, upper_right
 
     @nodes.setter
     def nodes(self, nodes):
@@ -246,6 +271,8 @@ class Union(Region):
     ----------
     nodes : tuple of Region
         Regions to take the union of
+    bounding_box : tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """
 
@@ -258,6 +285,16 @@ class Union(Region):
     @property
     def nodes(self):
         return self._nodes
+
+    @property
+    def bounding_box(self):
+        lower_left = np.array([np.inf, np.inf, np.inf])
+        upper_right = np.array([-np.inf, -np.inf, -np.inf])
+        for n in self.nodes:
+            lower_left_n, upper_right_n = n.bounding_box
+            lower_left[:] = np.minimum(lower_left, lower_left_n)
+            upper_right[:] = np.maximum(upper_right, upper_right_n)
+        return lower_left, upper_right
 
     @nodes.setter
     def nodes(self, nodes):
@@ -289,6 +326,8 @@ class Complement(Region):
     ----------
     node : Region
         Regions to take the complement of
+    bounding_box : tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """
 
@@ -306,3 +345,18 @@ class Complement(Region):
     def node(self, node):
         check_type('node', node, Region)
         self._node = node
+
+    @property
+    def bounding_box(self):
+        # Use De Morgan's laws to distribute the complement operator so that it
+        # only applies to surface half-spaces, thus allowing us to calculate the
+        # bounding box in the usual recursive manner.
+        if isinstance(self.node, Union):
+            temp_region = Intersection(*[~n for n in self.node.nodes])
+        elif isinstance(self.node, Intersection):
+            temp_region = Union(*[~n for n in self.node.nodes])
+        elif isinstance(self.node, Complement):
+            temp_region = self.node.node
+        else:
+            temp_region = ~self.node
+        return temp_region.bounding_box

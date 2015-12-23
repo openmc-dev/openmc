@@ -726,7 +726,7 @@ def get_openmc_cell(opencg_cell):
         openmc_cell.fill = get_openmc_material(fill)
 
     if opencg_cell.rotation:
-        rotation = np.asarray(opencg_cell.rotation, dtype=np.int)
+        rotation = np.asarray(opencg_cell.rotation, dtype=np.float64)
         openmc_cell.rotation = rotation
 
     if opencg_cell.translation:
@@ -882,7 +882,7 @@ def get_opencg_lattice(openmc_lattice):
     outer = openmc_lattice.outer
 
     if len(pitch) == 2:
-        new_pitch = np.ones(3, dtype=np.float64)
+        new_pitch = np.ones(3, dtype=np.float64) * np.inf
         new_pitch[:2] = pitch
         pitch = new_pitch
 

@@ -24,7 +24,7 @@ module geometry_header
 
   type, abstract :: Lattice
     integer              :: id               ! Universe number for lattice
-    character(len=52) :: name = ""          ! User-defined name
+    character(len=104)   :: name = ""        ! User-defined name
     real(8), allocatable :: pitch(:)         ! Pitch along each axis
     integer, allocatable :: universes(:,:,:) ! Specified universes
     integer              :: outside          ! Material to fill area outside
@@ -114,28 +114,12 @@ module geometry_header
   end type LatticeContainer
 
 !===============================================================================
-! SURFACE type defines a first- or second-order surface that can be used to
-! construct closed volumes (cells)
-!===============================================================================
-
-  type Surface
-    integer :: id                     ! Unique ID
-    character(len=52) :: name = ""    ! User-defined name
-    integer :: type                   ! Type of surface
-    real(8), allocatable :: coeffs(:) ! Definition of surface
-    integer, allocatable :: &
-         neighbor_pos(:), &           ! List of cells on positive side
-         neighbor_neg(:)              ! List of cells on negative side
-    integer :: bc                     ! Boundary condition
-  end type Surface
-
-!===============================================================================
 ! CELL defines a closed volume by its bounding surfaces
 !===============================================================================
 
   type Cell
     integer :: id                          ! Unique ID
-    character(len=52) :: name = ""         ! User-defined name
+    character(len=104) :: name = ""        ! User-defined name
     integer :: type                        ! Type of cell (normal, universe,
                                            !  lattice)
     integer :: universe                    ! universe # this cell is in
@@ -144,14 +128,13 @@ module geometry_header
                                            !  the geom
     integer :: material                    ! Material within cell (0 for
                                            !  universe)
-    integer :: n_surfaces                  ! Number of surfaces within
     integer, allocatable :: offset (:)     ! Distribcell offset for tally
                                            !  counter
-    integer, allocatable :: &
-         & surfaces(:)                     ! List of surfaces bounding cell
-                                           !  -- note that parentheses, union,
-                                           !  etc operators will be listed here
-                                           !  too
+    integer, allocatable :: region(:)      ! Definition of spatial region as
+                                           ! Boolean expression of half-spaces
+    integer, allocatable :: rpn(:)         ! Reverse Polish notation for region
+                                           ! expression
+    logical :: simple                      ! Is the region simple (intersections only)
 
     ! Rotation matrix and translation vector
     real(8), allocatable :: translation(:)

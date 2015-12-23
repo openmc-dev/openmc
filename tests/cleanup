@@ -5,6 +5,6 @@
 # folders. This can occur if a previous error
 # occurred and the test suite was rerun without
 # deleting left over binary files. This will
-# cause an assertion error in some of the 
+# cause an assertion error in some of the
 # tests.
-find . \( -name "*.binary" -o -name "*.h5" -o -name "*.ppm" \) -exec rm -f {} \;
+find . \( -name "*.h5" -o -name "*.ppm" \) -exec rm -f {} \;

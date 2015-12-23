@@ -18,7 +18,7 @@ contains
 ! value lies in the array. This is used extensively for energy grid searching
 !===============================================================================
 
-  function binary_search_real(array, n, val) result(array_index)
+  pure function binary_search_real(array, n, val) result(array_index)
 
     integer, intent(in) :: n
     real(8), intent(in) :: array(n)
@@ -28,41 +28,30 @@ contains
     integer :: L
     integer :: R
     integer :: n_iteration
-    real(8) :: testval
 
     L = 1
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-      call fatal_error("Value outside of array during binary search")
+      array_index = -1
+      return
     end if
 
     n_iteration = 0
     do while (R - L > 1)
-
-      ! Check boundaries
-      if (val > array(L) .and. val < array(L+1)) then
-        array_index = L
-        return
-      elseif (val > array(R-1) .and. val < array(R)) then
-        array_index = R - 1
-        return
-      end if
-
       ! Find values at midpoint
       array_index = L + (R - L)/2
-      testval = array(array_index)
-      if (val >= testval) then
+      if (val >= array(array_index)) then
         L = array_index
-      elseif (val < testval) then
+      else
         R = array_index
       end if
 
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        call fatal_error("Reached maximum number of iterations on binary &
-             &search.")
+        array_index = -2
+        return
       end if
     end do
 
@@ -70,7 +59,7 @@ contains
 
   end function binary_search_real
 
-  function binary_search_int4(array, n, val) result(array_index)
+  pure function binary_search_int4(array, n, val) result(array_index)
 
     integer, intent(in) :: n
     integer, intent(in) :: array(n)
@@ -80,41 +69,30 @@ contains
     integer :: L
     integer :: R
     integer :: n_iteration
-    real(8) :: testval
 
     L = 1
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-      call fatal_error("Value outside of array during binary search")
+      array_index = -1
+      return
     end if
 
     n_iteration = 0
     do while (R - L > 1)
-
-      ! Check boundaries
-      if (val > array(L) .and. val < array(L+1)) then
-        array_index = L
-        return
-      elseif (val > array(R-1) .and. val < array(R)) then
-        array_index = R - 1
-        return
-      end if
-
       ! Find values at midpoint
       array_index = L + (R - L)/2
-      testval = array(array_index)
-      if (val >= testval) then
+      if (val >= array(array_index)) then
         L = array_index
-      elseif (val < testval) then
+      else
         R = array_index
       end if
 
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        call fatal_error("Reached maximum number of iterations on binary &
-             &search.")
+        array_index = -2
+        return
       end if
     end do
 
@@ -122,7 +100,7 @@ contains
 
   end function binary_search_int4
 
-  function binary_search_int8(array, n, val) result(array_index)
+  pure function binary_search_int8(array, n, val) result(array_index)
 
     integer,    intent(in) :: n
     integer(8), intent(in) :: array(n)
@@ -132,41 +110,30 @@ contains
     integer :: L
     integer :: R
     integer :: n_iteration
-    real(8) :: testval
 
     L = 1
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-      call fatal_error("Value outside of array during binary search")
+      array_index = -1
+      return
     end if
 
     n_iteration = 0
     do while (R - L > 1)
-
-      ! Check boundaries
-      if (val > array(L) .and. val < array(L+1)) then
-        array_index = L
-        return
-      elseif (val > array(R-1) .and. val < array(R)) then
-        array_index = R - 1
-        return
-      end if
-
       ! Find values at midpoint
       array_index = L + (R - L)/2
-      testval = array(array_index)
-      if (val >= testval) then
+      if (val >= array(array_index)) then
         L = array_index
-      elseif (val < testval) then
+      else
         R = array_index
       end if
 
       ! check for large number of iterations
       n_iteration = n_iteration + 1
       if (n_iteration == MAX_ITERATION) then
-        call fatal_error("Reached maximum number of iterations on binary &
-             &search.")
+        array_index = -2
+        return
       end if
     end do
 

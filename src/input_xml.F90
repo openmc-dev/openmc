@@ -5,15 +5,17 @@ module input_xml
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
-  use geometry_header,  only: Cell, Surface, Lattice, RectLattice, HexLattice
+  use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
   use global
-  use list_header,      only: ListChar, ListReal
-  use mesh_header,      only: StructuredMesh
+  use list_header,      only: ListChar, ListInt, ListReal
+  use mesh_header,      only: RegularMesh
   use output,           only: write_message
   use plot_header
   use random_lcg,       only: prn
+  use surface_header
+  use stl_vector,       only: VectorInt
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
-                              starts_with, ends_with
+                              starts_with, ends_with, tokenize
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
   use xml_interface
@@ -987,13 +989,15 @@ contains
     integer :: coeffs_reqd
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
+    real(8), allocatable :: coeffs(:)
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    type(Cell),     pointer :: c => null()
-    type(Surface),  pointer :: s => null()
-    class(Lattice), pointer :: lat => null()
+    character(1000) :: region_spec
+    type(Cell),     pointer :: c
+    class(Surface), pointer :: s
+    class(Lattice), pointer :: lat
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_cell => null()
     type(Node), pointer :: node_surf => null()
@@ -1002,6 +1006,8 @@ contains
     type(NodeList), pointer :: node_surf_list => null()
     type(NodeList), pointer :: node_rlat_list => null()
     type(NodeList), pointer :: node_hlat_list => null()
+    type(VectorInt) :: tokens
+    type(VectorInt) :: rpn
 
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
@@ -1112,17 +1118,42 @@ contains
         call fatal_error("Cannot specify material and fill simultaneously")
       end if
 
-      ! Allocate array for surfaces and copy
+      ! Check for region specification (also under deprecated name surfaces)
+      region_spec = ''
       if (check_for_node(node_cell, "surfaces")) then
-        n = get_arraysize_integer(node_cell, "surfaces")
-      else
-        n = 0
+        call warning("The use of 'surfaces' is deprecated and will be &
+             &disallowed in a future release.  Use 'region' instead. The &
+             &openmc-update-inputs utility can be used to automatically &
+             &update geometry.xml files.")
+        call get_node_value(node_cell, "surfaces", region_spec)
+      elseif (check_for_node(node_cell, "region")) then
+        call get_node_value(node_cell, "region", region_spec)
       end if
-      c % n_surfaces = n
 
-      if (n > 0) then
-        allocate(c % surfaces(n))
-        call get_node_array(node_cell, "surfaces", c % surfaces)
+      if (len_trim(region_spec) > 0) then
+        ! Create surfaces array from string
+        call tokenize(region_spec, tokens)
+
+        ! Use shunting-yard algorithm to determine RPN for surface algorithm
+        call generate_rpn(c%id, tokens, rpn)
+
+        ! Copy region spec and RPN form to cell arrays
+        allocate(c % region(tokens%size()))
+        allocate(c % rpn(rpn%size()))
+        c % region(:) = tokens%data(1:tokens%size())
+        c % rpn(:) = rpn%data(1:rpn%size())
+
+        call tokens%clear()
+        call rpn%clear()
+      end if
+      if (.not. allocated(c%region)) allocate(c%region(0))
+      if (.not. allocated(c%rpn)) allocate(c%rpn(0))
+
+      ! Check if this is a simple cell
+      if (any(c%rpn == OP_COMPLEMENT) .or. any(c%rpn == OP_UNION)) then
+        c%simple = .false.
+      else
+        c%simple = .true.
       end if
 
       ! Rotation matrix
@@ -1222,28 +1253,8 @@ contains
     allocate(surfaces(n_surfaces))
 
     do i = 1, n_surfaces
-      s => surfaces(i)
-
       ! Get pointer to i-th surface node
       call get_list_item(node_surf_list, i, node_surf)
-
-      ! Copy data into cells
-      if (check_for_node(node_surf, "id")) then
-        call get_node_value(node_surf, "id", s % id)
-      else
-        call fatal_error("Must specify id of surface in geometry XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (surface_dict % has_key(s % id)) then
-        call fatal_error("Two or more surfaces use the same unique ID: " &
-             &// to_str(s % id))
-      end if
-
-      ! Copy surface name
-      if (check_for_node(node_surf, "name")) then
-        call get_node_value(node_surf, "name", s % name)
-      end if
 
       ! Copy and interpret surface type
       word = ''
@@ -1251,41 +1262,64 @@ contains
            call get_node_value(node_surf, "type", word)
       select case(to_lower(word))
       case ('x-plane')
-        s % type = SURF_PX
         coeffs_reqd  = 1
+        allocate(SurfaceXPlane :: surfaces(i)%obj)
       case ('y-plane')
-        s % type = SURF_PY
         coeffs_reqd  = 1
+        allocate(SurfaceYPlane :: surfaces(i)%obj)
       case ('z-plane')
-        s % type = SURF_PZ
         coeffs_reqd  = 1
+        allocate(SurfaceZPlane :: surfaces(i)%obj)
       case ('plane')
-        s % type = SURF_PLANE
         coeffs_reqd  = 4
+        allocate(SurfacePlane :: surfaces(i)%obj)
       case ('x-cylinder')
-        s % type = SURF_CYL_X
         coeffs_reqd  = 3
+        allocate(SurfaceXCylinder :: surfaces(i)%obj)
       case ('y-cylinder')
-        s % type = SURF_CYL_Y
         coeffs_reqd  = 3
+        allocate(SurfaceYCylinder :: surfaces(i)%obj)
       case ('z-cylinder')
-        s % type = SURF_CYL_Z
         coeffs_reqd  = 3
+        allocate(SurfaceZCylinder :: surfaces(i)%obj)
       case ('sphere')
-        s % type = SURF_SPHERE
         coeffs_reqd  = 4
+        allocate(SurfaceSphere :: surfaces(i)%obj)
       case ('x-cone')
-        s % type = SURF_CONE_X
         coeffs_reqd  = 4
+        allocate(SurfaceXCone :: surfaces(i)%obj)
       case ('y-cone')
-        s % type = SURF_CONE_Y
         coeffs_reqd  = 4
+        allocate(SurfaceYCone :: surfaces(i)%obj)
       case ('z-cone')
-        s % type = SURF_CONE_Z
         coeffs_reqd  = 4
+        allocate(SurfaceZCone :: surfaces(i)%obj)
+      case ('quadric')
+        coeffs_reqd  = 10
+        allocate(SurfaceQuadric :: surfaces(i)%obj)
       case default
         call fatal_error("Invalid surface type: " // trim(word))
       end select
+
+      s => surfaces(i)%obj
+
+      ! Copy data into cells
+      if (check_for_node(node_surf, "id")) then
+        call get_node_value(node_surf, "id", s%id)
+      else
+        call fatal_error("Must specify id of surface in geometry XML file.")
+      end if
+
+      ! Check to make sure 'id' hasn't been used
+      if (surface_dict % has_key(s%id)) then
+        call fatal_error("Two or more surfaces use the same unique ID: " &
+             &// to_str(s%id))
+      end if
+
+      ! Copy surface name
+      if (check_for_node(node_surf, "name")) then
+        call get_node_value(node_surf, "name", s%name)
+      end if
 
       ! Check to make sure that the proper number of coefficients
       ! have been specified for the given type of surface. Then copy
@@ -1294,14 +1328,74 @@ contains
       n = get_arraysize_double(node_surf, "coeffs")
       if (n < coeffs_reqd) then
         call fatal_error("Not enough coefficients specified for surface: " &
-             &// trim(to_str(s % id)))
+             &// trim(to_str(s%id)))
       elseif (n > coeffs_reqd) then
         call fatal_error("Too many coefficients specified for surface: " &
-             &// trim(to_str(s % id)))
-      else
-        allocate(s % coeffs(n))
-        call get_node_array(node_surf, "coeffs", s % coeffs)
+             &// trim(to_str(s%id)))
       end if
+
+      allocate(coeffs(n))
+      call get_node_array(node_surf, "coeffs", coeffs)
+
+      select type(s)
+      type is (SurfaceXPlane)
+        s%x0 = coeffs(1)
+      type is (SurfaceYPlane)
+        s%y0 = coeffs(1)
+      type is (SurfaceZPlane)
+        s%z0 = coeffs(1)
+      type is (SurfacePlane)
+        s%A = coeffs(1)
+        s%B = coeffs(2)
+        s%C = coeffs(3)
+        s%D = coeffs(4)
+      type is (SurfaceXCylinder)
+        s%y0 = coeffs(1)
+        s%z0 = coeffs(2)
+        s%r = coeffs(3)
+      type is (SurfaceYCylinder)
+        s%x0 = coeffs(1)
+        s%z0 = coeffs(2)
+        s%r = coeffs(3)
+      type is (SurfaceZCylinder)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%r = coeffs(3)
+      type is (SurfaceSphere)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r = coeffs(4)
+      type is (SurfaceXCone)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r2 = coeffs(4)
+      type is (SurfaceYCone)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r2 = coeffs(4)
+      type is (SurfaceZCone)
+        s%x0 = coeffs(1)
+        s%y0 = coeffs(2)
+        s%z0 = coeffs(3)
+        s%r2 = coeffs(4)
+      type is (SurfaceQuadric)
+        s%A = coeffs(1)
+        s%B = coeffs(2)
+        s%C = coeffs(3)
+        s%D = coeffs(4)
+        s%E = coeffs(5)
+        s%F = coeffs(6)
+        s%G = coeffs(7)
+        s%H = coeffs(8)
+        s%J = coeffs(9)
+        s%K = coeffs(10)
+      end select
+
+      ! No longer need coefficients
+      deallocate(coeffs)
 
       ! Boundary conditions
       word = ''
@@ -1309,21 +1403,20 @@ contains
            call get_node_value(node_surf, "boundary", word)
       select case (to_lower(word))
       case ('transmission', 'transmit', '')
-        s % bc = BC_TRANSMIT
+        s%bc = BC_TRANSMIT
       case ('vacuum')
-        s % bc = BC_VACUUM
+        s%bc = BC_VACUUM
         boundary_exists = .true.
       case ('reflective', 'reflect', 'reflecting')
-        s % bc = BC_REFLECT
+        s%bc = BC_REFLECT
         boundary_exists = .true.
       case default
         call fatal_error("Unknown boundary condition '" // trim(word) // &
-             &"' specified on surface " // trim(to_str(s % id)))
+             &"' specified on surface " // trim(to_str(s%id)))
       end select
 
       ! Add surface to dictionary
-      call surface_dict % add_key(s % id, i)
-
+      call surface_dict % add_key(s%id, i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -1666,8 +1759,10 @@ contains
 
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
+    integer :: k             ! loop index for elements
     integer :: n             ! number of nuclides
     integer :: n_sab         ! number of sab tables for a material
+    integer :: n_nuc_ele     ! number of nuclides in an element
     integer :: index_list    ! index in xs_listings array
     integer :: index_nuclide ! index in nuclides
     integer :: index_sab     ! index in sab_tables
@@ -1682,6 +1777,7 @@ contains
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
     type(ListChar) :: list_names   ! temporary list of nuclide names
     type(ListReal) :: list_density ! temporary list of nuclide densities
+    type(ListInt)  :: list_iso_lab ! temporary list of isotropic lab scatterers
     type(Material),    pointer :: mat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
@@ -1841,6 +1937,21 @@ contains
           end if
         end if
 
+        ! Check enforced isotropic lab scattering
+        if (check_for_node(node_nuc, "scattering")) then
+          call get_node_value(node_nuc, "scattering", temp_str)
+          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+            call list_iso_lab % append(1)
+          else if (adjustl(to_lower(temp_str)) == "data") then
+            call list_iso_lab % append(0)
+          else
+            call fatal_error("Scattering must be isotropic in lab or follow&
+                 & the ACE file data")
+          end if
+        else
+          call list_iso_lab % append(0)
+        end if
+
         ! store full name
         call get_node_value(node_nuc, "name", temp_str)
         if (check_for_node(node_nuc, "xs")) &
@@ -1912,6 +2023,9 @@ contains
                &element: " // trim(name))
         end if
 
+        ! Get current number of nuclides
+        n_nuc_ele = list_names % size()
+
         ! Expand element into naturally-occurring isotopes
         if (check_for_node(node_ele, "ao")) then
           call get_node_value(node_ele, "ao", temp_dble)
@@ -1921,6 +2035,29 @@ contains
           call fatal_error("The ability to expand a natural element based on &
                &weight percentage is not yet supported.")
         end if
+
+        ! Compute number of new nuclides from the natural element expansion
+        n_nuc_ele = list_names % size() - n_nuc_ele
+
+        ! Check enforced isotropic lab scattering
+        if (check_for_node(node_ele, "scattering")) then
+          call get_node_value(node_ele, "scattering", temp_str)
+        else
+          temp_str = "data"
+        end if
+
+        ! Set ace or iso-in-lab scattering for each nuclide in element
+        do k = 1, n_nuc_ele
+          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+            call list_iso_lab % append(1)
+          else if (adjustl(to_lower(temp_str)) == "data") then
+            call list_iso_lab % append(0)
+          else
+            call fatal_error("Scattering must be isotropic in lab or follow&
+                 & the ACE file data")
+          end if
+        end do
+
       end do NATURAL_ELEMENTS
 
       ! ========================================================================
@@ -1932,6 +2069,7 @@ contains
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
       allocate(mat % atom_density(n))
+      allocate(mat % p0(n))
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
@@ -1968,6 +2106,14 @@ contains
         ! Copy name and atom/weight percent
         mat % names(j) = name
         mat % atom_density(j) = list_density % get_item(j)
+
+        ! Cast integer isotropic lab scattering flag to boolean
+        if (list_iso_lab % get_item(j) == 1) then
+          mat % p0(j) = .true.
+        else
+          mat % p0(j) = .false.
+        end if
+
       end do ALL_NUCLIDES
 
       ! Check to make sure either all atom percents or all weight percents are
@@ -1984,6 +2130,7 @@ contains
       ! Clear lists
       call list_names % clear()
       call list_density % clear()
+      call list_iso_lab % clear()
 
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
@@ -2062,6 +2209,7 @@ contains
 
   subroutine read_tallies_xml()
 
+    integer :: d             ! delayed group index
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
     integer :: k             ! another loop index
@@ -2085,15 +2233,18 @@ contains
     integer :: imomstr       ! Index of MOMENT_STRS & MOMENT_N_STRS
     logical :: file_exists   ! does tallies.xml file exist?
     real(8) :: rarray3(3)    ! temporary double prec. array
+    integer :: Nangle        ! Number of angular bins
+    real(8) :: dangle        ! Mu spacing if using automatic allocation
+    integer :: iangle        ! Loop counter for building mu filter bins
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: score_name
     character(MAX_WORD_LEN) :: temp_str
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     type(DictCharInt) :: trigger_scores
-    type(ElemKeyValueCI), pointer :: pair_list => null()
-    type(TallyObject),    pointer :: t => null()
-    type(StructuredMesh), pointer :: m => null()
+    type(ElemKeyValueCI), pointer :: pair_list
+    type(TallyObject),    pointer :: t
+    type(RegularMesh), pointer :: m
     type(TallyFilter), allocatable :: filters(:) ! temporary filters
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mesh => null()
@@ -2188,9 +2339,11 @@ contains
            call get_node_value(node_mesh, "type", temp_str)
       select case (to_lower(temp_str))
       case ('rect', 'rectangle', 'rectangular')
-        m % type = LATTICE_RECT
-      case ('hex', 'hexagon', 'hexagonal')
-        m % type = LATTICE_HEX
+        call warning("Mesh type '" // trim(temp_str) // "' is deprecated. &
+             &Please use 'regular' instead.")
+        m % type = MESH_REGULAR
+      case ('regular')
+        m % type = MESH_REGULAR
       case default
         call fatal_error("Invalid mesh type: " // trim(temp_str))
       end select
@@ -2350,8 +2503,9 @@ contains
 
           ! Determine number of bins
           if (check_for_node(node_filt, "bins")) then
-            if (trim(temp_str) == 'energy' .or. &
-                 trim(temp_str) == 'energyout') then
+            if (temp_str == 'energy' .or. temp_str == 'energyout' .or. &
+                 temp_str == 'mu' .or. temp_str == 'polar' .or. &
+                 temp_str == 'azimuthal') then
               n_words = get_arraysize_double(node_filt, "bins")
             else
               n_words = get_arraysize_integer(node_filt, "bins")
@@ -2487,6 +2641,125 @@ contains
             ! Set to analog estimator
             t % estimator = ESTIMATOR_ANALOG
 
+          case ('delayedgroup')
+            ! Set type of filter
+            t % filters(j) % type = FILTER_DELAYEDGROUP
+
+            ! Set number of bins
+            t % filters(j) % n_bins = n_words
+
+            ! Allocate and store bins
+            allocate(t % filters(j) % int_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
+
+            ! Check bins to make sure all are between 1 and MAX_DELAYED_GROUPS
+            do d = 1, n_words
+              if (t % filters(j) % int_bins(d) < 1 .or. &
+                   t % filters(j) % int_bins(d) > MAX_DELAYED_GROUPS) then
+                call fatal_error("Encountered delayedgroup bin with index " &
+                     // trim(to_str(t % filters(j) % int_bins(d))) // " that is&
+                     & outside the range of 1 to MAX_DELAYED_GROUPS ( " &
+                     // trim(to_str(MAX_DELAYED_GROUPS)) // ")")
+              end if
+            end do
+
+          case ('mu')
+            ! Set type of filter
+            t % filters(j) % type = FILTER_MU
+
+            ! Set number of bins
+            t % filters(j) % n_bins = n_words - 1
+
+            ! Allocate and store bins
+            allocate(t % filters(j) % real_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+
+            ! Allow a user to input a lone number which will mean that
+            ! you subivide [-1,1] evenly with the input being the number of bins
+            if (n_words == 1) then
+              Nangle = int(t % filters(j) % real_bins(1))
+              if (Nangle > 1) then
+                t % filters(j) % n_bins = Nangle
+                dangle = TWO / real(Nangle,8)
+                deallocate(t % filters(j) % real_bins)
+                allocate(t % filters(j) % real_bins(Nangle + 1))
+                do iangle = 1, Nangle
+                  t % filters(j) % real_bins(iangle) = -ONE + (iangle - 1) * dangle
+                end do
+                t % filters(j) % real_bins(Nangle + 1) = ONE
+              else
+                call fatal_error("Number of bins for mu filter must be&
+                     & greater than 1 on tally " // trim(to_str(t % id)) // ".")
+              end if
+
+            end if
+
+            ! Set to analog estimator
+            t % estimator = ESTIMATOR_ANALOG
+
+          case ('polar')
+            ! Set type of filter
+            t % filters(j) % type = FILTER_POLAR
+
+            ! Set number of bins
+            t % filters(j) % n_bins = n_words - 1
+
+            ! Allocate and store bins
+            allocate(t % filters(j) % real_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+
+            ! Allow a user to input a lone number which will mean that
+            ! you subivide [0,pi] evenly with the input being the number of bins
+            if (n_words == 1) then
+              Nangle = int(t % filters(j) % real_bins(1))
+              if (Nangle > 1) then
+                t % filters(j) % n_bins = Nangle
+                dangle = PI / real(Nangle,8)
+                deallocate(t % filters(j) % real_bins)
+                allocate(t % filters(j) % real_bins(Nangle + 1))
+                do iangle = 1, Nangle
+                  t % filters(j) % real_bins(iangle) = (iangle - 1) * dangle
+                end do
+                t % filters(j) % real_bins(Nangle + 1) = PI
+              else
+                call fatal_error("Number of bins for polar filter must be&
+                     & greater than 1 on tally " // trim(to_str(t % id)) // ".")
+              end if
+
+            end if
+
+          case ('azimuthal')
+            ! Set type of filter
+            t % filters(j) % type = FILTER_AZIMUTHAL
+
+            ! Set number of bins
+            t % filters(j) % n_bins = n_words - 1
+
+            ! Allocate and store bins
+            allocate(t % filters(j) % real_bins(n_words))
+            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
+
+            ! Allow a user to input a lone number which will mean that
+            ! you sub-divide [-pi,pi) evenly with the input being the number of
+            ! bins
+            if (n_words == 1) then
+              Nangle = int(t % filters(j) % real_bins(1))
+              if (Nangle > 1) then
+                t % filters(j) % n_bins = Nangle
+                dangle = TWO * PI / real(Nangle,8)
+                deallocate(t % filters(j) % real_bins)
+                allocate(t % filters(j) % real_bins(Nangle + 1))
+                do iangle = 1, Nangle
+                  t % filters(j) % real_bins(iangle) = -PI + (iangle - 1) * dangle
+                end do
+                t % filters(j) % real_bins(Nangle + 1) = PI
+              else
+                call fatal_error("Number of bins for azimuthal filter must be&
+                     & greater than 1 on tally " // trim(to_str(t % id)) // ".")
+              end if
+
+            end if
+
           case default
             ! Specified tally filter is invalid, raise error
             call fatal_error("Unknown filter type '" &
@@ -2545,6 +2818,21 @@ contains
 
             ! Check if total material was specified
             if (trim(sarray(j)) == 'total') then
+
+              ! Check if a delayedgroup filter is present for this tally
+              do l = 1, t % n_filters
+                if (t % filters(l) % type == FILTER_DELAYEDGROUP) then
+                  call warning("A delayedgroup filter was used on a total &
+                       &nuclide tally. Cross section libraries are not &
+                       &guaranteed to have the same delayed group structure &
+                       &across all isotopes. In particular, ENDF/B-VII.1 does &
+                       &not have a consistent delayed group structure across &
+                       &all isotopes while the JEFF 3.1.1 library has the same &
+                       &delayed group structure across all isotopes. Use with &
+                       &caution!")
+                end if
+              end do
+
               t % nuclide_bins(j) = -1
               cycle
             end if
@@ -2594,6 +2882,19 @@ contains
         allocate(t % nuclide_bins(1))
         t % nuclide_bins(1) = -1
         t % n_nuclide_bins = 1
+
+        ! Check if a delayedgroup filter is present for this tally
+        do l = 1, t % n_filters
+          if (t % filters(l) % type == FILTER_DELAYEDGROUP) then
+            call warning("A delayedgroup filter was used on a total nuclide &
+                 &tally. Cross section libraries are not guaranteed to have the&
+                 & same delayed group structure across all isotopes. In &
+                 &particular, ENDF/B-VII.1 does not have a consistent delayed &
+                 &group structure across all isotopes while the JEFF 3.1.1 &
+                 &library has the same delayed group structure across all &
+                 &isotopes. Use with caution!")
+          end if
+        end do
       end if
 
       ! =======================================================================
@@ -2614,6 +2915,10 @@ contains
           ! MOMENT_STRS(:)
           ! If so, check the order, store if OK, then reset the number to 'n'
           score_name = trim(sarray(j))
+
+          ! Append the score to the list of possible trigger scores
+          if (trigger_on) call trigger_scores % add_key(trim(score_name), j)
+
           do imomstr = 1, size(MOMENT_STRS)
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
               n_order_pos = scan(score_name,'0123456789')
@@ -2656,6 +2961,7 @@ contains
           ! scores then strip off the n and store it as an integer to be used
           ! later. Then perform the select case on this modified (number
           ! removed) string
+          n_order = -1
           score_name = sarray(l)
           do imomstr = 1, size(MOMENT_STRS)
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
@@ -2701,6 +3007,31 @@ contains
             end do
           end if
 
+          ! Check if delayed group filter is used with any score besides
+          ! delayed-nu-fission
+          if (score_name /= 'delayed-nu-fission' .and. &
+               t % find_filter(FILTER_DELAYEDGROUP) > 0) then
+            call fatal_error("Cannot tally " // trim(score_name) // " with a &
+                 &delayedgroup filter.")
+          end if
+
+          ! Check to see if the mu filter is applied and if that makes sense.
+          if ((.not. starts_with(score_name,'scatter')) .and. &
+               (.not. starts_with(score_name,'nu-scatter'))) then
+            if (t % find_filter(FILTER_MU) > 0) then
+              call fatal_error("Cannot tally " // trim(score_name) //" with a &
+                               &change of angle (mu) filter.")
+            end if
+          ! Also check to see if this is a legendre expansion or not.
+          ! If so, we can accept this score and filter combo for p0, but not
+          ! elsewhere.
+          else if (n_order > 0) then
+            if (t % find_filter(FILTER_MU) > 0) then
+              call fatal_error("Cannot tally " // trim(score_name) //" with a &
+                               &change of angle (mu) filter unless order is 0.")
+            end if
+          end if
+
           select case (trim(score_name))
           case ('flux')
             ! Prohibit user from tallying flux for an individual nuclide
@@ -2730,7 +3061,7 @@ contains
             t % moment_order(j : j + n_bins - 1) = n_order
             j = j + n_bins  - 1
 
-          case ('total')
+          case ('total', '(n,total)')
             t % score_bins(j) = SCORE_TOTAL
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               call fatal_error("Cannot tally total reaction rate with an &
@@ -2816,13 +3147,13 @@ contains
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
-          case ('n2n')
+          case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
 
-          case ('n3n')
+          case ('n3n', '(n,3n)')
             t % score_bins(j) = N_3N
 
-          case ('n4n')
+          case ('n4n', '(n,4n)')
             t % score_bins(j) = N_4N
 
           case ('absorption')
@@ -2843,8 +3174,16 @@ contains
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
+          case ('delayed-nu-fission')
+            t % score_bins(j) = SCORE_DELAYED_NU_FISSION
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              ! Set tally estimator to analog
+              t % estimator = ESTIMATOR_ANALOG
+            end if
           case ('kappa-fission')
             t % score_bins(j) = SCORE_KAPPA_FISSION
+          case ('inverse-velocity')
+            t % score_bins(j) = SCORE_INVERSE_VELOCITY
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
             t % type = TALLY_SURFACE_CURRENT
@@ -2903,6 +3242,79 @@ contains
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
 
+          case ('elastic', '(n,elastic)')
+            t % score_bins(j) = ELASTIC
+          case ('(n,2nd)')
+            t % score_bins(j) = N_2ND
+          case ('(n,na)')
+            t % score_bins(j) = N_2NA
+          case ('(n,n3a)')
+            t % score_bins(j) = N_N3A
+          case ('(n,2na)')
+            t % score_bins(j) = N_2NA
+          case ('(n,3na)')
+            t % score_bins(j) = N_3NA
+          case ('(n,np)')
+            t % score_bins(j) = N_NP
+          case ('(n,n2a)')
+            t % score_bins(j) = N_N2A
+          case ('(n,2n2a)')
+            t % score_bins(j) = N_2N2A
+          case ('(n,nd)')
+            t % score_bins(j) = N_ND
+          case ('(n,nt)')
+            t % score_bins(j) = N_NT
+          case ('(n,nHe-3)')
+            t % score_bins(j) = N_N3HE
+          case ('(n,nd2a)')
+            t % score_bins(j) = N_ND2A
+          case ('(n,nt2a)')
+            t % score_bins(j) = N_NT2A
+          case ('(n,3nf)')
+            t % score_bins(j) = N_3NF
+          case ('(n,2np)')
+            t % score_bins(j) = N_2NP
+          case ('(n,3np)')
+            t % score_bins(j) = N_3NP
+          case ('(n,n2p)')
+            t % score_bins(j) = N_N2P
+          case ('(n,npa)')
+            t % score_bins(j) = N_NPA
+          case ('(n,n1)')
+            t % score_bins(j) = N_N1
+          case ('(n,nc)')
+            t % score_bins(j) = N_NC
+          case ('(n,gamma)')
+            t % score_bins(j) = N_GAMMA
+          case ('(n,p)')
+            t % score_bins(j) = N_P
+          case ('(n,d)')
+            t % score_bins(j) = N_D
+          case ('(n,t)')
+            t % score_bins(j) = N_T
+          case ('(n,3He)')
+            t % score_bins(j) = N_3HE
+          case ('(n,a)')
+            t % score_bins(j) = N_A
+          case ('(n,2a)')
+            t % score_bins(j) = N_2A
+          case ('(n,3a)')
+            t % score_bins(j) = N_3A
+          case ('(n,2p)')
+            t % score_bins(j) = N_2P
+          case ('(n,pa)')
+            t % score_bins(j) = N_PA
+          case ('(n,t2a)')
+            t % score_bins(j) = N_T2A
+          case ('(n,d2a)')
+            t % score_bins(j) = N_D2A
+          case ('(n,pd)')
+            t % score_bins(j) = N_PD
+          case ('(n,pt)')
+            t % score_bins(j) = N_PT
+          case ('(n,da)')
+            t % score_bins(j) = N_DA
+
           case default
             ! Assume that user has specified an MT number
             MT = int(str_to_int(score_name))
@@ -2923,11 +3335,8 @@ contains
             end if
 
           end select
-
-          ! Append the score to the list of possible trigger scores
-          if (trigger_on) call trigger_scores % add_key(trim(score_name), l)
-
         end do
+
         t % n_score_bins = n_scores
         t % n_user_score_bins = n_words
 
@@ -3132,15 +3541,26 @@ contains
           ! tally needs post-collision information
           if (t % estimator == ESTIMATOR_ANALOG) then
             call fatal_error("Cannot use track-length estimator for tally " &
-                 &// to_str(t % id))
+                 // to_str(t % id))
           end if
 
           ! Set estimator to track-length estimator
           t % estimator = ESTIMATOR_TRACKLENGTH
 
+        case ('collision')
+          ! If the estimator was set to an analog estimator, this means the
+          ! tally needs post-collision information
+          if (t % estimator == ESTIMATOR_ANALOG) then
+            call fatal_error("Cannot use collision estimator for tally " &
+                 // to_str(t % id))
+          end if
+
+          ! Set estimator to collision estimator
+          t % estimator = ESTIMATOR_COLLISION
+
         case default
           call fatal_error("Invalid estimator '" // trim(temp_str) &
-               &// "' on tally " // to_str(t % id))
+               // "' on tally " // to_str(t % id))
         end select
       end if
 
@@ -3821,7 +4241,6 @@ contains
       call list_density % append(density * 0.999885_8)
       call list_names % append('1002.' // xs)
       call list_density % append(density * 0.000115_8)
-
     case ('he')
       call list_names % append('2003.' // xs)
       call list_density % append(density * 0.00000134_8)
@@ -4629,5 +5048,92 @@ contains
     end select
 
   end subroutine expand_natural_element
+
+!===============================================================================
+! GENERATE_RPN implements the shunting-yard algorithm to generate a Reverse
+! Polish notation (RPN) expression for the region specification of a cell given
+! the infix notation.
+!===============================================================================
+
+  subroutine generate_rpn(cell_id, tokens, output)
+    integer, intent(in) :: cell_id
+    type(VectorInt), intent(in) :: tokens    ! infix notation
+    type(VectorInt), intent(inout) :: output ! RPN notation
+
+    integer :: i
+    integer :: token
+    integer :: op
+    type(VectorInt) :: stack
+
+    do i = 1, tokens%size()
+      token = tokens%data(i)
+
+      if (token < OP_UNION) then
+        ! If token is not an operator, add it to output
+        call output%push_back(token)
+
+      elseif (token < OP_RIGHT_PAREN) then
+        ! Regular operators union, intersection, complement
+        do while (stack%size() > 0)
+          op = stack%data(stack%size())
+
+          if (op < OP_RIGHT_PAREN .and. &
+               ((token == OP_COMPLEMENT .and. token < op) .or. &
+               (token /= OP_COMPLEMENT .and. token <= op))) then
+            ! While there is an operator, op, on top of the stack, if the token
+            ! is left-associative and its precedence is less than or equal to
+            ! that of op or if the token is right-associative and its precedence
+            ! is less than that of op, move op to the output queue and push the
+            ! token on to the stack. Note that only complement is
+            ! right-associative.
+            call output%push_back(op)
+            call stack%pop_back()
+          else
+            exit
+          end if
+        end do
+
+        call stack%push_back(token)
+
+      elseif (token == OP_LEFT_PAREN) then
+        ! If the token is a left parenthesis, push it onto the stack
+        call stack%push_back(token)
+
+      else
+        ! If the token is a right parenthesis, move operators from the stack to
+        ! the output queue until reaching the left parenthesis.
+        do
+          ! If we run out of operators without finding a left parenthesis, it
+          ! means there are mismatched parentheses.
+          if (stack%size() == 0) then
+            call fatal_error('Mimatched parentheses in region specification &
+                 &for cell ' // trim(to_str(cell_id)) // '.')
+          end if
+
+          op = stack%data(stack%size())
+          if (op == OP_LEFT_PAREN) exit
+          call output%push_back(op)
+          call stack%pop_back()
+        end do
+
+        ! Pop the left parenthesis.
+        call stack%pop_back()
+      end if
+    end do
+
+    ! While there are operators on the stack, move them to the output queue
+    do while (stack%size() > 0)
+      op = stack%data(stack%size())
+
+      ! If the operator is a parenthesis, it is mismatched
+      if (op >= OP_RIGHT_PAREN) then
+        call fatal_error('Mimatched parentheses in region specification &
+             &for cell ' // trim(to_str(cell_id)) // '.')
+      end if
+
+      call output%push_back(op)
+      call stack%pop_back()
+    end do
+  end subroutine generate_rpn
 
 end module input_xml

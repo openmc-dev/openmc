@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 """Convert binary particle track to VTK poly data.
 
 Usage information can be obtained by running 'track.py --help':
@@ -18,6 +18,7 @@ Usage information can be obtained by running 'track.py --help':
 
 import os
 import argparse
+import h5py
 import struct
 import vtk
 
@@ -39,23 +40,11 @@ def main():
     # Parse commandline arguments.
     args = _parse_args()
 
-    # Check input file extensions.
-    for fname in args.input:
-        if not (fname.endswith('.h5') or fname.endswith('.binary')):
-            raise ValueError("Input file names must either end with '.h5' or"
-                             "'.binary'.")
-
     # Make sure that the output filename ends with '.pvtp'.
     if not args.out:
         args.out = 'tracks.pvtp'
     elif not args.out.endswith('.pvtp'):
         args.out += '.pvtp'
-
-    # Import HDF library if HDF files are present
-    for fname in args.input:
-        if fname.endswith('.h5'):
-            import h5py
-            break
 
     # Initialize data arrays and offset.
     points = vtk.vtkPoints()
@@ -63,27 +52,26 @@ def main():
     point_offset = 0
     for fname in args.input:
         # Write coordinate values to points array.
-        if fname.endswith('.binary'):
-            track = open(fname, 'rb').read()
-            coords = [struct.unpack("ddd", track[24*i : 24*(i+1)])
-                      for i in range(len(track)/24)]
-            n_points = len(coords)
-            for triplet in coords:
-                points.InsertNextPoint(triplet)
-        else:
-            coords = h5py.File(fname).get('coordinates')
-            n_points = coords.shape[0]
-            for i in range(n_points):
-                points.InsertNextPoint(coords[i, :])
+        track = h5py.File(fname)
+        n_particles = track['n_particles'].value
+        n_coords = track['n_coords']
+        coords = []
+        for i in range(n_particles):
+            coords.append(track['coordinates_' + str(i + 1)].value)
+            for j in range(n_coords[i]):
+                points.InsertNextPoint(coords[i][j,:])
 
-        # Create VTK line and assign points to line.
-        line = vtk.vtkPolyLine()
-        line.GetPointIds().SetNumberOfIds(n_points)
-        for i in range(n_points):
-            line.GetPointIds().SetId(i, point_offset+i)
+        for i in range(n_particles):
+            # Create VTK line and assign points to line.
+            line = vtk.vtkPolyLine()
+            line.GetPointIds().SetNumberOfIds(n_coords[i])
+            for j in range(n_coords[i]):
+                line.GetPointIds().SetId(j, point_offset + j)
 
-        cells.InsertNextCell(line)
-        point_offset += n_points
+            # Add line to cell array
+            cells.InsertNextCell(line)
+            point_offset += n_coords[i]
+
     data = vtk.vtkPolyData()
     data.SetPoints(points)
     data.SetLines(cells)

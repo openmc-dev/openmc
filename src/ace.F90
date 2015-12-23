@@ -45,9 +45,9 @@ contains
     integer :: temp_table   ! temporary value for sorting
     character(12)  :: name  ! name of isotope, e.g. 92235.03c
     character(12)  :: alias ! alias of nuclide, e.g. U-235.03c
-    type(Material),   pointer :: mat => null()
-    type(Nuclide),    pointer :: nuc => null()
-    type(SAlphaBeta), pointer :: sab => null()
+    type(Material),   pointer :: mat
+    type(Nuclide),    pointer :: nuc
+    type(SAlphaBeta), pointer :: sab
     type(SetChar) :: already_read
 
     ! allocate arrays for ACE table storage and cross section cache
@@ -215,6 +215,16 @@ contains
 
     end do MATERIAL_LOOP3
 
+    ! Show which nuclide results in lowest energy for neutron transport
+    do i = 1, n_nuclides_total
+      if (nuclides(i)%energy(nuclides(i)%n_grid) == energy_max_neutron) then
+        call write_message("Maximum neutron transport energy: " // &
+             trim(to_str(energy_max_neutron)) // " MeV for " // &
+             trim(adjustl(nuclides(i)%name)), 6)
+        exit
+      end if
+    end do
+
   end subroutine read_xs
 
 !===============================================================================
@@ -224,7 +234,6 @@ contains
 !===============================================================================
 
   subroutine read_ace_table(i_table, i_listing)
-
     integer, intent(in) :: i_table   ! index in nuclides/sab_tables
     integer, intent(in) :: i_listing ! index in xs_listings
 
@@ -234,7 +243,7 @@ contains
     integer       :: location      ! location of ACE table
     integer       :: entries       ! number of entries on each record
     integer       :: length        ! length of ACE table
-    integer       :: in = 7        ! file unit
+    integer       :: unit_ace      ! file unit
     integer       :: zaids(16)     ! list of ZAIDs (only used for S(a,b))
     integer       :: filetype      ! filetype (ASCII or BINARY)
     real(8)       :: kT            ! temperature of table
@@ -248,9 +257,9 @@ contains
     character(10) :: mat           ! material identifier
     character(70) :: comment       ! comment for ACE table
     character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
-    type(Nuclide),   pointer :: nuc => null()
-    type(SAlphaBeta), pointer :: sab => null()
-    type(XsListing), pointer :: listing => null()
+    type(Nuclide),   pointer :: nuc
+    type(SAlphaBeta), pointer :: sab
+    type(XsListing), pointer :: listing
 
     ! determine path, record length, and location of table
     listing => xs_listings(i_listing)
@@ -277,14 +286,14 @@ contains
       ! READ ACE TABLE IN ASCII FORMAT
 
       ! Find location of table
-      open(UNIT=in, FILE=filename, STATUS='old', ACTION='read')
-      rewind(UNIT=in)
+      open(NEWUNIT=unit_ace, FILE=filename, STATUS='old', ACTION='read')
+      rewind(UNIT=unit_ace)
       do i = 1, location - 1
-        read(UNIT=in, FMT=*)
+        read(UNIT=unit_ace, FMT=*)
       end do
 
       ! Read first line of header
-      read(UNIT=in, FMT='(A10,2G12.0,1X,A10)') name, awr, kT, date_
+      read(UNIT=unit_ace, FMT='(A10,2G12.0,1X,A10)') name, awr, kT, date_
 
       ! Check that correct xs was found -- if cross_sections.xml is broken, the
       ! location of the table may be wrong
@@ -294,7 +303,7 @@ contains
       end if
 
       ! Read more header and NXS and JXS
-      read(UNIT=in, FMT=100) comment, mat, &
+      read(UNIT=unit_ace, FMT=100) comment, mat, &
            (zaids(i), awrs(i), i=1,16), NXS, JXS
 100   format(A70,A10/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/&
            ,8I9/8I9/8I9/8I9/8I9/8I9)
@@ -304,21 +313,21 @@ contains
       allocate(XSS(length))
 
       ! Read XSS array
-      read(UNIT=in, FMT='(4G20.0)') XSS
+      read(UNIT=unit_ace, FMT='(4G20.0)') XSS
 
       ! Close ACE file
-      close(UNIT=in)
+      close(UNIT=unit_ace)
 
     elseif (filetype == BINARY) then
       ! =======================================================================
       ! READ ACE TABLE IN BINARY FORMAT
 
       ! Open ACE file
-      open(UNIT=in, FILE=filename, STATUS='old', ACTION='read', &
+      open(NEWUNIT=unit_ace, FILE=filename, STATUS='old', ACTION='read', &
            ACCESS='direct', RECL=record_length)
 
       ! Read all header information
-      read(UNIT=in, REC=location) name, awr, kT, date_, &
+      read(UNIT=unit_ace, REC=location) name, awr, kT, date_, &
            comment, mat, (zaids(i), awrs(i), i=1,16), NXS, JXS
 
       ! determine table length
@@ -329,11 +338,11 @@ contains
       do i = 1, (length + entries - 1)/entries
         j1 = 1 + (i-1)*entries
         j2 = min(length, j1 + entries - 1)
-        read(UNIT=IN, REC=location + i) (XSS(j), j=j1,j2)
+        read(UNIT=UNIT_ACE, REC=location + i) (XSS(j), j=j1,j2)
       end do
 
       ! Close ACE file
-      close(UNIT=in)
+      close(UNIT=unit_ace)
     end if
 
     ! ==========================================================================
@@ -396,8 +405,6 @@ contains
     end select
 
     deallocate(XSS)
-    if(associated(nuc)) nullify(nuc)
-    if(associated(sab)) nullify(sab)
 
   end subroutine read_ace_table
 
@@ -407,10 +414,8 @@ contains
 !===============================================================================
 
   subroutine read_esz(nuc, data_0K)
-
-    type(Nuclide), pointer :: nuc
-
-    logical :: data_0K ! are we reading 0K data?
+    type(Nuclide), intent(inout) :: nuc
+    logical, intent(in) :: data_0K ! are we reading 0K data?
 
     integer :: NE ! number of energy points for total and elastic cross sections
     integer :: i  ! index in 0K elastic xs array for this nuclide
@@ -482,6 +487,10 @@ contains
       ! Continue reading elastic scattering and heating
       nuc % elastic = get_real(NE)
 
+      ! Determine if minimum/maximum energy for this nuclide is greater/less
+      ! than the previous
+      energy_min_neutron = max(energy_min_neutron, nuc%energy(1))
+      energy_max_neutron = min(energy_max_neutron, nuc%energy(NE))
     end if
 
   end subroutine read_esz
@@ -493,8 +502,7 @@ contains
 !===============================================================================
 
   subroutine read_nu_data(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i      ! loop index
     integer :: JXS2   ! location for fission nu data
@@ -510,7 +518,7 @@ contains
     integer :: LOCC   ! location of energy distributions for given MT
     integer :: lc     ! locator
     integer :: length ! length of data to allocate
-    type(DistEnergy), pointer :: edist => null()
+    type(DistEnergy), pointer :: edist
 
     JXS2  = JXS(2)
     JXS24 = JXS(24)
@@ -635,6 +643,15 @@ contains
 
       ! Allocate space for secondary energy distribution
       NPCR = NXS(8)
+
+      ! Check to make sure nuclide does not have more than the maximum number
+      ! of delayed groups
+      if (NPCR > MAX_DELAYED_GROUPS) then
+        call fatal_error("Encountered nuclide with " // trim(to_str(NPCR)) &
+             // " delayed groups while the maximum number of delayed groups &
+             &set in constants.F90 is " // trim(to_str(MAX_DELAYED_GROUPS)))
+      end if
+
       nuc % n_precursor = NPCR
       allocate(nuc % nu_d_edist(NPCR))
 
@@ -672,6 +689,7 @@ contains
 
     else
       nuc % nu_d_type = NU_NONE
+      nuc % n_precursor = 0
     end if
 
   end subroutine read_nu_data
@@ -683,8 +701,7 @@ contains
 !===============================================================================
 
   subroutine read_reactions(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i         ! loop indices
     integer :: i_fission ! index in nuc % index_fission
@@ -698,7 +715,6 @@ contains
     integer :: IE        ! reaction's starting index on energy grid
     integer :: NE        ! number of energies
     integer :: NR        ! number of interpolation regions
-    type(Reaction), pointer :: rxn => null()
     type(ListInt) :: MTs
 
     LMT  = JXS(3)
@@ -716,14 +732,15 @@ contains
     ! Store elastic scattering cross-section on reaction one -- note that the
     ! sigma array is not allocated or stored for elastic scattering since it is
     ! already stored in nuc % elastic
-    rxn => nuc % reactions(1)
-    rxn % MT            = 2
-    rxn % Q_value       = ZERO
-    rxn % multiplicity  = 1
-    rxn % threshold     = 1
-    rxn % scatter_in_cm = .true.
-    rxn % has_angle_dist = .false.
-    rxn % has_energy_dist = .false.
+    associate (rxn => nuc % reactions(1))
+      rxn%MT            = 2
+      rxn%Q_value       = ZERO
+      rxn%multiplicity  = 1
+      rxn%threshold     = 1
+      rxn%scatter_in_cm = .true.
+      rxn%has_angle_dist = .false.
+      rxn%has_energy_dist = .false.
+    end associate
 
     ! Add contribution of elastic scattering to total cross section
     nuc % total = nuc % total + nuc % elastic
@@ -736,123 +753,125 @@ contains
     i_fission = 0
 
     do i = 1, NMT
-      rxn => nuc % reactions(i+1)
+      associate (rxn => nuc % reactions(i+1))
+        ! set defaults
+        rxn % has_angle_dist  = .false.
+        rxn % has_energy_dist = .false.
 
-      ! set defaults
-      rxn % has_angle_dist  = .false.
-      rxn % has_energy_dist = .false.
+        ! read MT number, Q-value, and neutrons produced
+        rxn % MT            = int(XSS(LMT + i - 1))
+        rxn % Q_value       = XSS(JXS4 + i - 1)
+        rxn % multiplicity  = abs(nint(XSS(JXS5 + i - 1)))
+        rxn % scatter_in_cm = (nint(XSS(JXS5 + i - 1)) < 0)
 
-      ! read MT number, Q-value, and neutrons produced
-      rxn % MT            = int(XSS(LMT + i - 1))
-      rxn % Q_value       = XSS(JXS4 + i - 1)
-      rxn % multiplicity  = abs(nint(XSS(JXS5 + i - 1)))
-      rxn % scatter_in_cm = (nint(XSS(JXS5 + i - 1)) < 0)
+        ! Read energy-dependent multiplicities
+        if (rxn % multiplicity > 100) then
+          ! Set flag and allocate space for Tab1 to store yield
+          rxn % multiplicity_with_E = .true.
+          allocate(rxn % multiplicity_E)
 
-      ! Read energy-dependent multiplicities
-      if (rxn % multiplicity > 100) then
-        ! Set flag and allocate space for Tab1 to store yield
-        rxn % multiplicity_with_E = .true.
-        allocate(rxn % multiplicity_E)
+          XSS_index = JXS(11) + rxn % multiplicity - 101
+          NR = nint(XSS(XSS_index))
+          rxn % multiplicity_E % n_regions = NR
 
-        XSS_index = JXS(11) + rxn % multiplicity - 101
-        NR = nint(XSS(XSS_index))
-        rxn % multiplicity_E % n_regions = NR
+          ! allocate space for ENDF interpolation parameters
+          if (NR > 0) then
+            allocate(rxn % multiplicity_E % nbt(NR))
+            allocate(rxn % multiplicity_E % int(NR))
+          end if
 
-        ! allocate space for ENDF interpolation parameters
-        if (NR > 0) then
-          allocate(rxn % multiplicity_E % nbt(NR))
-          allocate(rxn % multiplicity_E % int(NR))
+          ! read ENDF interpolation parameters
+          XSS_index = XSS_index + 1
+          if (NR > 0) then
+            rxn % multiplicity_E % nbt = get_int(NR)
+            rxn % multiplicity_E % int = get_int(NR)
+          end if
+
+          ! allocate space for yield data
+          XSS_index = XSS_index + 2*NR
+          NE = nint(XSS(XSS_index))
+          rxn % multiplicity_E % n_pairs = NE
+          allocate(rxn % multiplicity_E % x(NE))
+          allocate(rxn % multiplicity_E % y(NE))
+
+          ! read yield data
+          XSS_index = XSS_index + 1
+          rxn % multiplicity_E % x = get_real(NE)
+          rxn % multiplicity_E % y = get_real(NE)
         end if
 
-        ! read ENDF interpolation parameters
-        XSS_index = XSS_index + 1
-        if (NR > 0) then
-          rxn % multiplicity_E % nbt = get_int(NR)
-          rxn % multiplicity_E % int = get_int(NR)
-        end if
+        ! read starting energy index
+        LOCA = int(XSS(LXS + i - 1))
+        IE   = int(XSS(JXS7 + LOCA - 1))
+        rxn % threshold = IE
 
-        ! allocate space for yield data
-        XSS_index = XSS_index + 2*NR
-        NE = nint(XSS(XSS_index))
-        rxn % multiplicity_E % n_pairs = NE
-        allocate(rxn % multiplicity_E % x(NE))
-        allocate(rxn % multiplicity_E % y(NE))
-
-        ! read yield data
-        XSS_index = XSS_index + 1
-        rxn % multiplicity_E % x = get_real(NE)
-        rxn % multiplicity_E % y = get_real(NE)
-      end if
-
-      ! read starting energy index
-      LOCA = int(XSS(LXS + i - 1))
-      IE   = int(XSS(JXS7 + LOCA - 1))
-      rxn % threshold = IE
-
-      ! read number of energies cross section values
-      NE = int(XSS(JXS7 + LOCA))
-      allocate(rxn % sigma(NE))
-      XSS_index = JXS7 + LOCA + 1
-      rxn % sigma = get_real(NE)
+        ! read number of energies cross section values
+        NE = int(XSS(JXS7 + LOCA))
+        allocate(rxn % sigma(NE))
+        XSS_index = JXS7 + LOCA + 1
+        rxn % sigma = get_real(NE)
+      end associate
     end do
 
     ! Create set of MT values
     do i = 1, size(nuc % reactions)
       call MTs % append(nuc % reactions(i) % MT)
+      call nuc%reaction_index%add_key(nuc%reactions(i)%MT, i)
     end do
 
     ! Create total, absorption, and fission cross sections
     do i = 2, size(nuc % reactions)
-      rxn => nuc % reactions(i)
-      IE = rxn % threshold
-      NE = size(rxn % sigma)
+      associate (rxn => nuc % reactions(i))
+        IE = rxn % threshold
+        NE = size(rxn % sigma)
 
-      ! Skip total inelastic level scattering, gas production cross sections
-      ! (MT=200+), etc.
-      if (rxn % MT == N_LEVEL) cycle
-      if (rxn % MT > N_5N2P .and. rxn % MT < N_P0) cycle
+        ! Skip total inelastic level scattering, gas production cross sections
+        ! (MT=200+), etc.
+        if (rxn % MT == N_LEVEL) cycle
+        if (rxn % MT > N_5N2P .and. rxn % MT < N_P0) cycle
 
-      ! Skip level cross sections if total is available
-      if (rxn % MT >= N_P0 .and. rxn % MT <= N_PC .and. MTs % contains(N_P)) cycle
-      if (rxn % MT >= N_D0 .and. rxn % MT <= N_DC .and. MTs % contains(N_D)) cycle
-      if (rxn % MT >= N_T0 .and. rxn % MT <= N_TC .and. MTs % contains(N_T)) cycle
-      if (rxn % MT >= N_3HE0 .and. rxn % MT <= N_3HEC .and. MTs % contains(N_3HE)) cycle
-      if (rxn % MT >= N_A0 .and. rxn % MT <= N_AC .and. MTs % contains(N_A)) cycle
-      if (rxn % MT >= N_2N0 .and. rxn % MT <= N_2NC .and. MTs % contains(N_2N)) cycle
+        ! Skip level cross sections if total is available
+        if (rxn % MT >= N_P0 .and. rxn % MT <= N_PC .and. MTs % contains(N_P)) cycle
+        if (rxn % MT >= N_D0 .and. rxn % MT <= N_DC .and. MTs % contains(N_D)) cycle
+        if (rxn % MT >= N_T0 .and. rxn % MT <= N_TC .and. MTs % contains(N_T)) cycle
+        if (rxn % MT >= N_3HE0 .and. rxn % MT <= N_3HEC .and. MTs % contains(N_3HE)) cycle
+        if (rxn % MT >= N_A0 .and. rxn % MT <= N_AC .and. MTs % contains(N_A)) cycle
+        if (rxn % MT >= N_2N0 .and. rxn % MT <= N_2NC .and. MTs % contains(N_2N)) cycle
 
-      ! Add contribution to total cross section
-      nuc % total(IE:IE+NE-1) = nuc % total(IE:IE+NE-1) + rxn % sigma
+        ! Add contribution to total cross section
+        nuc % total(IE:IE+NE-1) = nuc % total(IE:IE+NE-1) + rxn % sigma
 
-      ! Add contribution to absorption cross section
-      if (is_disappearance(rxn % MT)) then
-        nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
-      end if
+        ! Add contribution to absorption cross section
+        if (is_disappearance(rxn % MT)) then
+          nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
+        end if
 
-      ! Information about fission reactions
-      if (rxn % MT == N_FISSION) then
-        allocate(nuc % index_fission(1))
-      elseif (rxn % MT == N_F) then
-        allocate(nuc % index_fission(PARTIAL_FISSION_MAX))
-        nuc % has_partial_fission = .true.
-      end if
+        ! Information about fission reactions
+        if (rxn % MT == N_FISSION) then
+          allocate(nuc % index_fission(1))
+        elseif (rxn % MT == N_F) then
+          allocate(nuc % index_fission(PARTIAL_FISSION_MAX))
+          nuc % has_partial_fission = .true.
+        end if
 
-      ! Add contribution to fission cross section
-      if (is_fission(rxn % MT)) then
-        nuc % fissionable = .true.
-        nuc % fission(IE:IE+NE-1) = nuc % fission(IE:IE+NE-1) + rxn % sigma
+        ! Add contribution to fission cross section
+        if (is_fission(rxn % MT)) then
+          nuc % fissionable = .true.
+          nuc % fission(IE:IE+NE-1) = nuc % fission(IE:IE+NE-1) + rxn % sigma
 
-        ! Also need to add fission cross sections to absorption
-        nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
+          ! Also need to add fission cross sections to absorption
+          nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
 
-        ! If total fission reaction is present, there's no need to store the
-        ! reaction cross-section since it was copied to nuc % fission
-        if (rxn % MT == N_FISSION) deallocate(rxn % sigma)
+          ! If total fission reaction is present, there's no need to store the
+          ! reaction cross-section since it was copied to nuc % fission
+          if (rxn % MT == N_FISSION) deallocate(rxn % sigma)
 
-        ! Keep track of this reaction for easy searching later
-        i_fission = i_fission + 1
-        nuc % index_fission(i_fission) = i
-        nuc % n_fission = nuc % n_fission + 1
-      end if
+          ! Keep track of this reaction for easy searching later
+          i_fission = i_fission + 1
+          nuc % index_fission(i_fission) = i
+          nuc % n_fission = nuc % n_fission + 1
+        end if
+      end associate
     end do
 
     ! Clear MTs set
@@ -866,8 +885,7 @@ contains
 !===============================================================================
 
   subroutine read_angular_dist(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: JXS8   ! location of angular distribution locators
     integer :: JXS9   ! location of angular distributions
@@ -878,7 +896,6 @@ contains
     integer :: i      ! index in reactions array
     integer :: j      ! index over incoming energies
     integer :: length ! length of data array to allocate
-    type(Reaction), pointer :: rxn => null()
 
     JXS8 = JXS(8)
     JXS9 = JXS(9)
@@ -886,71 +903,72 @@ contains
     ! loop over all reactions with secondary neutrons -- NXS(5) does not include
     ! elastic scattering
     do i = 1, NXS(5) + 1
-      rxn => nuc%reactions(i)
+      associate (rxn => nuc%reactions(i))
 
-      ! find location of angular distribution
-      LOCB = int(XSS(JXS8 + i - 1))
-      if (LOCB == -1) then
-        ! Angular distribution data are specified through LAWi = 44 in the DLW
-        ! block
-        cycle
-      elseif (LOCB == 0) then
-        ! No angular distribution data are given for this reaction, isotropic
-        ! scattering is asssumed (in CM if TY < 0 and in LAB if TY > 0)
-        cycle
-      end if
-      rxn % has_angle_dist = .true.
-
-      ! allocate space for incoming energies and locations
-      NE = int(XSS(JXS9 + LOCB - 1))
-      rxn % adist % n_energy = NE
-      allocate(rxn % adist % energy(NE))
-      allocate(rxn % adist % type(NE))
-      allocate(rxn % adist % location(NE))
-
-      ! read incoming energy grid and location of nucs
-      XSS_index = JXS9 + LOCB
-      rxn % adist % energy   = get_real(NE)
-      rxn % adist % location = get_int(NE)
-
-      ! determine dize of data block
-      length = 0
-      do j = 1, NE
-        LC = rxn % adist % location(j)
-        if (LC == 0) then
-          ! isotropic
-          rxn % adist % type(j) = ANGLE_ISOTROPIC
-        elseif (LC > 0) then
-          ! 32 equiprobable bins
-          rxn % adist % type(j) = ANGLE_32_EQUI
-          length = length + 33
-        elseif (LC < 0) then
-          ! tabular distribution
-          rxn % adist % type(j) = ANGLE_TABULAR
-          NP = int(XSS(JXS9 + abs(LC)))
-          length = length + 2 + 3*NP
+        ! find location of angular distribution
+        LOCB = int(XSS(JXS8 + i - 1))
+        if (LOCB == -1) then
+          ! Angular distribution data are specified through LAWi = 44 in the DLW
+          ! block
+          cycle
+        elseif (LOCB == 0) then
+          ! No angular distribution data are given for this reaction, isotropic
+          ! scattering is assumed (in CM if TY < 0 and in LAB if TY > 0)
+          cycle
         end if
-      end do
+        rxn % has_angle_dist = .true.
 
-      ! allocate angular distribution data and read
-      allocate(rxn % adist % data(length))
+        ! allocate space for incoming energies and locations
+        NE = int(XSS(JXS9 + LOCB - 1))
+        rxn % adist % n_energy = NE
+        allocate(rxn % adist % energy(NE))
+        allocate(rxn % adist % type(NE))
+        allocate(rxn % adist % location(NE))
 
-      ! read angular distribution -- currently this does not actually parse the
-      ! angular distribution tables for each incoming energy, that must be done
-      ! on-the-fly
-      XSS_index = JXS9 + LOCB + 2 * NE
-      rxn % adist % data = get_real(length)
+        ! read incoming energy grid and location of nucs
+        XSS_index = JXS9 + LOCB
+        rxn % adist % energy   = get_real(NE)
+        rxn % adist % location = get_int(NE)
 
-      ! change location pointers since they are currently relative to JXS(9)
-      LC = LOCB + 2 * NE + 1
-      do j = 1, NE
-        ! For consistency, leave location as 0 if type is isotropic.
-        ! This is not necessary for current correctness, but can avoid
-        ! future issues
-        if (rxn % adist % location(j) /= 0) then
-          rxn % adist % location(j) = abs(rxn % adist % location(j)) - LC
-        end if
-      end do
+        ! determine dize of data block
+        length = 0
+        do j = 1, NE
+          LC = rxn % adist % location(j)
+          if (LC == 0) then
+            ! isotropic
+            rxn % adist % type(j) = ANGLE_ISOTROPIC
+          elseif (LC > 0) then
+            ! 32 equiprobable bins
+            rxn % adist % type(j) = ANGLE_32_EQUI
+            length = length + 33
+          elseif (LC < 0) then
+            ! tabular distribution
+            rxn % adist % type(j) = ANGLE_TABULAR
+            NP = int(XSS(JXS9 + abs(LC)))
+            length = length + 2 + 3*NP
+          end if
+        end do
+
+        ! allocate angular distribution data and read
+        allocate(rxn % adist % data(length))
+
+        ! read angular distribution -- currently this does not actually parse the
+        ! angular distribution tables for each incoming energy, that must be done
+        ! on-the-fly
+        XSS_index = JXS9 + LOCB + 2 * NE
+        rxn % adist % data = get_real(length)
+
+        ! change location pointers since they are currently relative to JXS(9)
+        LC = LOCB + 2 * NE + 1
+        do j = 1, NE
+          ! For consistency, leave location as 0 if type is isotropic.
+          ! This is not necessary for current correctness, but can avoid
+          ! future issues
+          if (rxn % adist % location(j) /= 0) then
+            rxn % adist % location(j) = abs(rxn % adist % location(j)) - LC
+          end if
+        end do
+      end associate
     end do
 
   end subroutine read_angular_dist
@@ -961,29 +979,28 @@ contains
 !===============================================================================
 
   subroutine read_energy_dist(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: LED   ! location of energy distribution locators
     integer :: LOCC  ! location of energy distributions for given MT
     integer :: i     ! loop index
-    type(Reaction), pointer :: rxn => null()
 
     LED  = JXS(10)
 
     ! Loop over all reactions
     do i = 1, NXS(5)
-      rxn => nuc % reactions(i+1) ! skip over elastic scattering
-      rxn % has_energy_dist = .true.
+      associate (rxn => nuc % reactions(i+1)) ! skip over elastic scattering
+        rxn % has_energy_dist = .true.
 
-      ! find location of energy distribution data
-      LOCC = int(XSS(LED + i - 1))
+        ! find location of energy distribution data
+        LOCC = int(XSS(LED + i - 1))
 
-      ! allocate energy distribution
-      allocate(rxn % edist)
+        ! allocate energy distribution
+        allocate(rxn % edist)
 
-      ! read data for energy distribution
-      call get_energy_dist(rxn % edist, LOCC)
+        ! read data for energy distribution
+        call get_energy_dist(rxn % edist, LOCC)
+      end associate
     end do
 
   end subroutine read_energy_dist
@@ -995,10 +1012,9 @@ contains
 !===============================================================================
 
   recursive subroutine get_energy_dist(edist, loc_law, delayed_n)
-
-    type(DistEnergy), pointer :: edist     ! energy distribution
-    integer, intent(in)       :: loc_law   ! locator for data
-    logical, optional         :: delayed_n ! is this for delayed neutrons?
+    type(DistEnergy), intent(inout) :: edist     ! energy distribution
+    integer, intent(in)             :: loc_law   ! locator for data
+    logical, intent(in), optional   :: delayed_n ! is this for delayed neutrons?
 
     integer :: LDIS   ! location of all energy distributions
     integer :: LNW    ! location of next energy distribution if multiple
@@ -1078,7 +1094,6 @@ contains
 !===============================================================================
 
   function length_energy_dist(lc, law, LOCC, lid) result(length)
-
     integer, intent(in) :: lc     ! location in XSS array
     integer, intent(in) :: law    ! energy distribution law
     integer, intent(in) :: LOCC   ! location of energy distribution
@@ -1122,7 +1137,7 @@ contains
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
       allocate(L(NE))
-      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
 
       ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
@@ -1180,7 +1195,7 @@ contains
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
       allocate(L(NE))
-      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
 
       ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
@@ -1210,7 +1225,7 @@ contains
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
       allocate(L(NE))
-      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
 
       ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
@@ -1261,7 +1276,7 @@ contains
       ! in a way inconsistent with the current form of the ACE Format Guide
       ! (MCNP5 Manual, Vol 3)
       allocate(L(NE))
-      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
       ! Don't currently do anything with L
       deallocate(L)
       ! Continue with finding data length
@@ -1277,8 +1292,7 @@ contains
 !===============================================================================
 
   subroutine read_unr_res(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: JXS23 ! location of URR data
     integer :: lc    ! locator
@@ -1366,8 +1380,7 @@ contains
 !===============================================================================
 
   subroutine generate_nu_fission(nuc)
-
-    type(Nuclide), pointer :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i  ! index on nuclide energy grid
     real(8) :: E  ! energy
@@ -1393,8 +1406,7 @@ contains
 !===============================================================================
 
   subroutine read_thermal_data(table)
-
-    type(SAlphaBeta), pointer :: table
+    type(SAlphaBeta), intent(inout) :: table
 
     integer :: i      ! index for incoming energies
     integer :: j      ! index for outgoing energies
@@ -1576,7 +1588,7 @@ contains
     do i = 1, n_nuclides_total
       do j = 1, n_nuclides_total
         if (nuclides(i) % zaid == nuclides(j) % zaid) then
-          call nuclides(i) % nuc_list % append(j)
+          call nuclides(i) % nuc_list % push_back(j)
         end if
       end do
     end do

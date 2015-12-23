@@ -1,8 +1,9 @@
 module ace_header
 
   use constants,   only: MAX_FILE_LEN, ZERO
+  use dict_header, only: DictIntInt
   use endf_header, only: Tab1
-  use list_header, only: ListInt
+  use stl_vector,  only: VectorInt
 
   implicit none
 
@@ -17,10 +18,6 @@ module ace_header
     integer, allocatable :: type(:)     ! type of distribution
     integer, allocatable :: location(:) ! location of each table
     real(8), allocatable :: data(:)     ! angular distribution data
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => distangle_clear ! Deallocates DistAngle
   end type DistAngle
 
 !===============================================================================
@@ -51,7 +48,7 @@ module ace_header
     integer :: MT                      ! ENDF MT value
     real(8) :: Q_value                 ! Reaction Q value
     integer :: multiplicity            ! Number of secondary particles released
-    type(Tab1), pointer :: multiplicity_E => null() ! Energy-dependent neutron yield
+    type(Tab1), allocatable :: multiplicity_E ! Energy-dependent neutron yield
     integer :: threshold               ! Energy grid index of threshold
     logical :: scatter_in_cm           ! scattering system in center-of-mass?
     logical :: multiplicity_with_E = .false. ! Flag to indicate E-dependent multiplicity
@@ -79,10 +76,6 @@ module ace_header
     logical :: multiply_smooth ! multiply by smooth cross section?
     real(8), allocatable :: energy(:)   ! incident energies
     real(8), allocatable :: prob(:,:,:) ! actual probabibility tables
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => urrdata_clear ! Deallocates UrrData
   end type UrrData
 
 !===============================================================================
@@ -99,7 +92,7 @@ module ace_header
     real(8)       :: kT      ! temperature in MeV (k*T)
 
     ! Linked list of indices in nuclides array of instances of this same nuclide
-    type(ListInt) :: nuc_list
+    type(VectorInt) :: nuc_list
 
     ! Energy grid information
     integer :: n_grid                     ! # of nuclide grid points
@@ -153,7 +146,9 @@ module ace_header
 
     ! Reactions
     integer :: n_reaction ! # of reactions
-    type(Reaction), pointer :: reactions(:) => null()
+    type(Reaction), allocatable :: reactions(:)
+    type(DictIntInt) :: reaction_index ! map MT values to index in reactions
+                                       ! array; used at tally-time
 
     ! Type-Bound procedures
     contains
@@ -166,14 +161,12 @@ module ace_header
 !===============================================================================
 
   type Nuclide0K
-
     character(10) :: nuclide             ! name of nuclide, e.g. U-238
     character(16) :: scheme = 'ares'     ! target velocity sampling scheme
     character(10) :: name                ! name of nuclide, e.g. 92235.03c
     character(10) :: name_0K             ! name of 0K nuclide, e.g. 92235.00c
     real(8)       :: E_min = 0.01e-6_8   ! lower cutoff energy for res scattering
     real(8)       :: E_max = 1000.0e-6_8 ! upper cutoff energy for res scattering
-
   end type Nuclide0K
 
 !===============================================================================
@@ -265,7 +258,6 @@ module ace_header
     real(8) :: absorption      ! microscopic absorption xs
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
-    real(8) :: kappa_fission   ! microscopic energy-released from fission
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)
@@ -288,23 +280,9 @@ module ace_header
     real(8) :: absorption    ! macroscopic absorption xs
     real(8) :: fission       ! macroscopic fission xs
     real(8) :: nu_fission    ! macroscopic production xs
-    real(8) :: kappa_fission ! macroscopic energy-released from fission
   end type MaterialMacroXS
 
   contains
-
-!===============================================================================
-! DISTANGLE_CLEAR resets and deallocates data in Reaction.
-!===============================================================================
-
-    subroutine distangle_clear(this)
-
-      class(DistAngle), intent(inout) :: this ! The DistAngle object to clear
-
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % type, this % location, this % data)
-
-    end subroutine distangle_clear
 
 !===============================================================================
 ! DISTENERGY_CLEAR resets and deallocates data in DistEnergy.
@@ -313,12 +291,6 @@ module ace_header
     recursive subroutine distenergy_clear(this)
 
       class(DistEnergy), intent(inout) :: this ! The DistEnergy object to clear
-
-      ! Clear p_valid
-      call this % p_valid % clear()
-
-      if (allocated(this % data)) &
-           deallocate(this % data)
 
       if (associated(this % next)) then
         ! recursively clear this item
@@ -336,31 +308,12 @@ module ace_header
 
       class(Reaction), intent(inout) :: this ! The Reaction object to clear
 
-      if (allocated(this % sigma)) deallocate(this % sigma)
-
-      if (associated(this % multiplicity_E)) deallocate(this % multiplicity_E)
-
       if (associated(this % edist)) then
         call this % edist % clear()
         deallocate(this % edist)
       end if
 
-      call this % adist % clear()
-
     end subroutine reaction_clear
-
-!===============================================================================
-! URRDATA_CLEAR resets and deallocates data in Reaction.
-!===============================================================================
-
-    subroutine urrdata_clear(this)
-
-      class(UrrData), intent(inout) :: this ! The UrrData object to clear
-
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % prob)
-
-    end subroutine urrdata_clear
 
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide.
@@ -372,31 +325,6 @@ module ace_header
 
       integer :: i ! Loop counter
 
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % total, this % elastic, &
-           & this % fission, this % nu_fission, this % absorption)
-
-      if (allocated(this % energy_0K)) &
-           deallocate(this % energy_0K)
-
-      if (allocated(this % elastic_0K)) &
-           deallocate(this % elastic_0K)
-
-      if (allocated(this % xs_cdf)) &
-           deallocate(this % xs_cdf)
-
-      if (allocated(this % heating)) &
-           deallocate(this % heating)
-
-      if (allocated(this % index_fission)) deallocate(this % index_fission)
-
-      if (allocated(this % nu_t_data)) deallocate(this % nu_t_data)
-      if (allocated(this % nu_p_data)) deallocate(this % nu_p_data)
-      if (allocated(this % nu_d_data)) deallocate(this % nu_d_data)
-
-      if (allocated(this % nu_d_precursor_data)) &
-           deallocate(this % nu_d_precursor_data)
-
       if (associated(this % nu_d_edist)) then
         do i = 1, size(this % nu_d_edist)
           call this % nu_d_edist(i) % clear()
@@ -405,18 +333,16 @@ module ace_header
       end if
 
       if (associated(this % urr_data)) then
-        call this % urr_data % clear()
         deallocate(this % urr_data)
       end if
 
-      if (associated(this % reactions)) then
+      if (allocated(this % reactions)) then
         do i = 1, size(this % reactions)
           call this % reactions(i) % clear()
         end do
-        deallocate(this % reactions)
       end if
 
-      call this % nuc_list % clear()
+      call this % reaction_index % clear()
 
     end subroutine nuclide_clear
 

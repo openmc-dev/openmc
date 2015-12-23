@@ -73,10 +73,11 @@ contains
     type(Particle), intent(inout) :: p
 
     integer :: i_nuclide    ! index in nuclides array
+    integer :: i_nuc_mat    ! index in material's nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
     type(Nuclide), pointer :: nuc
 
-    i_nuclide = sample_nuclide(p, 'total  ')
+    call sample_nuclide(p, 'total  ', i_nuclide, i_nuc_mat)
 
     ! Get pointer to table
     nuc => nuclides(i_nuclide)
@@ -106,7 +107,7 @@ contains
 
     ! Sample a scattering reaction and determine the secondary energy of the
     ! exiting neutron
-    call scatter(p, i_nuclide)
+    call scatter(p, i_nuclide, i_nuc_mat)
 
     ! Play russian roulette if survival biasing is turned on
 
@@ -121,13 +122,13 @@ contains
 ! SAMPLE_NUCLIDE
 !===============================================================================
 
-  function sample_nuclide(p, base) result(i_nuclide)
+  subroutine sample_nuclide(p, base, i_nuclide, i_nuc_mat)
 
     type(Particle), intent(in) :: p
     character(7),   intent(in) :: base      ! which reaction to sample based on
-    integer                    :: i_nuclide
+    integer, intent(out)       :: i_nuclide
+    integer, intent(out)       :: i_nuc_mat
 
-    integer :: i
     real(8) :: prob
     real(8) :: cutoff
     real(8) :: atom_density ! atom density of nuclide in atom/b-cm
@@ -147,20 +148,20 @@ contains
       cutoff = prn() * material_xs % fission
     end select
 
-    i = 0
+    i_nuc_mat = 0
     prob = ZERO
     do while (prob < cutoff)
-      i = i + 1
+      i_nuc_mat = i_nuc_mat + 1
 
       ! Check to make sure that a nuclide was sampled
-      if (i > mat % n_nuclides) then
+      if (i_nuc_mat > mat % n_nuclides) then
         call write_particle_restart(p)
         call fatal_error("Did not sample any nuclide during collision.")
       end if
 
       ! Find atom density
-      i_nuclide    = mat % nuclide(i)
-      atom_density = mat % atom_density(i)
+      i_nuclide    = mat % nuclide(i_nuc_mat)
+      atom_density = mat % atom_density(i_nuc_mat)
 
       ! Determine microscopic cross section
       select case (base)
@@ -177,14 +178,13 @@ contains
       prob = prob + sigma
     end do
 
-  end function sample_nuclide
+  end subroutine sample_nuclide
 
 !===============================================================================
 ! SAMPLE_FISSION
 !===============================================================================
 
   subroutine sample_fission(i_nuclide, i_reaction)
-
     integer, intent(in)  :: i_nuclide  ! index in nuclides array
     integer, intent(out) :: i_reaction ! index in nuc % reactions array
 
@@ -194,7 +194,6 @@ contains
     real(8) :: prob
     real(8) :: cutoff
     type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
 
     ! Get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -219,14 +218,15 @@ contains
 
     FISSION_REACTION_LOOP: do i = 1, nuc % n_fission
       i_reaction = nuc % index_fission(i)
-      rxn => nuc % reactions(i_reaction)
 
-      ! if energy is below threshold for this reaction, skip it
-      if (i_grid < rxn % threshold) cycle
+      associate (rxn => nuc % reactions(i_reaction))
+        ! if energy is below threshold for this reaction, skip it
+        if (i_grid < rxn % threshold) cycle
 
-      ! add to cumulative probability
-      prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
-           + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+        ! add to cumulative probability
+        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
+             + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+      end associate
 
       ! Create fission bank sites if fission occurs
       if (prob > cutoff) exit FISSION_REACTION_LOOP
@@ -300,18 +300,24 @@ contains
 ! SCATTER
 !===============================================================================
 
-  subroutine scatter(p, i_nuclide)
+  subroutine scatter(p, i_nuclide, i_nuc_mat)
 
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
+    integer,        intent(in)    :: i_nuc_mat
 
     integer :: i
     integer :: i_grid
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
+    real(8) :: uvw_new(3) ! outgoing uvw for iso-in-lab scattering
+    real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
+    real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
     type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
+
+    ! copy incoming direction
+    uvw_old(:) = p % coord(1) % uvw
 
     ! Get pointer to nuclide and grid index/interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -335,11 +341,8 @@ contains
              p % E, p % coord(1) % uvw, p % mu)
 
       else
-        ! get pointer to elastic scattering reaction
-        rxn => nuc % reactions(1)
-
         ! Perform collision physics for elastic scattering
-        call elastic_scatter(i_nuclide, rxn, &
+        call elastic_scatter(i_nuclide, nuc % reactions(1), &
              p % E, p % coord(1) % uvw, p % mu, p % wgt)
       end if
 
@@ -362,34 +365,47 @@ contains
                &// trim(nuc % name))
         end if
 
-        rxn => nuc % reactions(i)
+        associate (rxn => nuc % reactions(i))
+          ! Skip fission reactions
+          if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
+               .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
 
-        ! Skip fission reactions
-        if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
-             .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
+          ! some materials have gas production cross sections with MT > 200 that
+          ! are duplicates. Also MT=4 is total level inelastic scattering which
+          ! should be skipped
+          if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
 
-        ! some materials have gas production cross sections with MT > 200 that
-        ! are duplicates. Also MT=4 is total level inelastic scattering which
-        ! should be skipped
-        if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
+          ! if energy is below threshold for this reaction, skip it
+          if (i_grid < rxn % threshold) cycle
 
-        ! if energy is below threshold for this reaction, skip it
-        if (i_grid < rxn % threshold) cycle
-
-        ! add to cumulative probability
-        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
-             + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+          ! add to cumulative probability
+          prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
+               + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+        end associate
       end do
 
       ! Perform collision physics for inelastic scattering
-      call inelastic_scatter(nuc, rxn, p % E, p % coord(1) % uvw, &
-           p % mu, p % wgt)
-      p % event_MT = rxn % MT
+      call inelastic_scatter(nuc, nuc%reactions(i), p)
+      p % event_MT = nuc%reactions(i)%MT
 
     end if
 
     ! Set event component
     p % event = EVENT_SCATTER
+
+    ! sample new outgoing angle for isotropic in lab scattering
+    if (materials(p % material) % p0(i_nuc_mat)) then
+
+      ! sample isotropic-in-lab outgoing direction
+      uvw_new(1) = TWO * prn() - ONE
+      phi = TWO * PI * prn()
+      uvw_new(2) = cos(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
+      uvw_new(3) = sin(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
+      p % mu = dot_product(uvw_old, uvw_new)
+
+      ! change direction of particle
+      p % coord(1) % uvw = uvw_new
+    end if
 
   end subroutine scatter
 
@@ -399,9 +415,8 @@ contains
 !===============================================================================
 
   subroutine elastic_scatter(i_nuclide, rxn, E, uvw, mu_lab, wgt)
-
     integer, intent(in)     :: i_nuclide
-    type(Reaction), pointer :: rxn
+    type(Reaction), intent(in) :: rxn
     real(8), intent(inout)  :: E
     real(8), intent(inout)  :: uvw(3)
     real(8), intent(out)    :: mu_lab
@@ -465,6 +480,12 @@ contains
 
     ! Set energy and direction of particle in LAB frame
     uvw = v_n / vel
+
+    ! Because of floating-point roundoff, it may be possible for mu_lab to be
+    ! outside of the range [-1,1). In these cases, we just set mu_lab to exactly
+    ! -1 or 1
+
+    if (abs(mu_lab) > ONE) mu_lab = sign(ONE,mu_lab)
 
   end subroutine elastic_scatter
 
@@ -712,6 +733,12 @@ contains
       end if  ! (inelastic secondary energy treatment)
     end if  ! (elastic or inelastic)
 
+    ! Because of floating-point roundoff, it may be possible for mu to be
+    ! outside of the range [-1,1). In these cases, we just set mu to exactly
+    ! -1 or 1
+
+    if (abs(mu) > ONE) mu = sign(ONE,mu)
+
     ! change direction of particle
     uvw = rotate_angle(uvw, mu)
 
@@ -726,9 +753,7 @@ contains
 !===============================================================================
 
   subroutine sample_target_velocity(nuc, v_target, E, uvw, v_neut, wgt, xs_eff)
-
-    type(Nuclide), pointer :: nuc ! target nuclide at temperature T
-
+    type(Nuclide), intent(in) :: nuc ! target nuclide at temperature T
     real(8), intent(out)   :: v_target(3) ! target velocity
     real(8), intent(in)    :: v_neut(3)   ! neutron velocity
     real(8), intent(in)    :: E           ! particle energy
@@ -973,8 +998,7 @@ contains
 !===============================================================================
 
   subroutine sample_cxs_target_velocity(nuc, v_target, E, uvw)
-
-    type(Nuclide),  pointer :: nuc ! target nuclide at temperature
+    type(Nuclide), intent(in) :: nuc ! target nuclide at temperature
     real(8), intent(out)    :: v_target(3)
     real(8), intent(in)     :: E
     real(8), intent(in)     :: uvw(3)
@@ -1047,25 +1071,23 @@ contains
 !===============================================================================
 
   subroutine create_fission_sites(p, i_nuclide, i_reaction)
-
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
     integer,        intent(in)    :: i_reaction
 
-    integer :: i            ! loop index
-    integer :: nu           ! actual number of neutrons produced
-    integer :: ijk(3)       ! indices in ufs mesh
-    real(8) :: nu_t         ! total nu
-    real(8) :: mu           ! fission neutron angular cosine
-    real(8) :: phi          ! fission neutron azimuthal angle
-    real(8) :: weight       ! weight adjustment for ufs method
-    logical :: in_mesh      ! source site in ufs mesh?
+    integer :: nu_d(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
+    integer :: i                        ! loop index
+    integer :: nu                       ! actual number of neutrons produced
+    integer :: ijk(3)                   ! indices in ufs mesh
+    real(8) :: nu_t                     ! total nu
+    real(8) :: mu                       ! fission neutron angular cosine
+    real(8) :: phi                      ! fission neutron azimuthal angle
+    real(8) :: weight                   ! weight adjustment for ufs method
+    logical :: in_mesh                  ! source site in ufs mesh?
     type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
 
     ! Get pointers
     nuc => nuclides(i_nuclide)
-    rxn => nuc % reactions(i_reaction)
 
     ! TODO: Heat generation from fission
 
@@ -1109,6 +1131,11 @@ contains
 
     ! Bank source neutrons
     if (nu == 0 .or. n_bank == size(fission_bank)) return
+
+    ! Initialize counter of delayed neutrons encountered for each delayed group
+    ! to zero.
+    nu_d(:) = 0
+
     p % fission = .true. ! Fission neutrons will be banked
     do i = int(n_bank,4) + 1, int(min(n_bank + nu, int(size(fission_bank),8)),4)
       ! Bank source neutrons by copying particle data
@@ -1131,15 +1158,25 @@ contains
 
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
-      fission_bank(i) % E = sample_fission_energy(nuc, rxn, p % E)
+      fission_bank(i) % E = sample_fission_energy(nuc, nuc%reactions(&
+           i_reaction), p)
+
+      ! Set the delayed group of the neutron
+      fission_bank(i) % delayed_group = p % delayed_group
+
+      ! Increment the number of neutrons born delayed
+      if (p % delayed_group > 0) then
+        nu_d(p % delayed_group) = nu_d(p % delayed_group) + 1
+      end if
     end do
 
     ! increment number of bank sites
     n_bank = min(n_bank + nu, int(size(fission_bank),8))
 
-    ! Store total weight banked for analog fission tallies
+    ! Store total and delayed weight banked for analog fission tallies
     p % n_bank   = nu
     p % wgt_bank = nu/weight
+    p % n_delayed_bank(:) = nu_d(:)
 
   end subroutine create_fission_sites
 
@@ -1147,12 +1184,12 @@ contains
 ! SAMPLE_FISSION_ENERGY
 !===============================================================================
 
-  function sample_fission_energy(nuc, rxn, E) result(E_out)
+  function sample_fission_energy(nuc, rxn, p) result(E_out)
 
-    type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
-    real(8), intent(in)     :: E     ! incoming energy of neutron
-    real(8)                 :: E_out ! outgoing energy of fission neutron
+    type(Nuclide),  intent(in) :: nuc
+    type(Reaction), intent(in) :: rxn
+    type(Particle), intent(inout) :: p     ! Particle causing fission
+    real(8)                       :: E_out ! outgoing energy of fission neutron
 
     integer :: j            ! index on nu energy grid / precursor group
     integer :: lc           ! index before start of energies/nu values
@@ -1170,10 +1207,10 @@ contains
     type(DistEnergy), pointer :: edist
 
     ! Determine total nu
-    nu_t = nu_total(nuc, E)
+    nu_t = nu_total(nuc, p % E)
 
     ! Determine delayed nu
-    nu_d = nu_delayed(nuc, E)
+    nu_d = nu_delayed(nuc, p % E)
 
     ! Determine delayed neutron fraction
     beta = nu_d / nu_t
@@ -1193,7 +1230,7 @@ contains
 
         ! determine delayed neutron precursor yield for group j
         yield = interpolate_tab1(nuc % nu_d_precursor_data( &
-             lc+1:lc+2+2*NR+2*NE), E)
+             lc+1:lc+2+2*NR+2*NE), p % E)
 
         ! Check if this group is sampled
         prob = prob + yield
@@ -1208,6 +1245,9 @@ contains
       ! n_precursor -- check for this condition
       j = min(j, nuc % n_precursor)
 
+      ! set the delayed group for the particle born from fission
+      p % delayed_group = j
+
       ! select energy distribution for group j
       law = nuc % nu_d_edist(j) % law
       edist => nuc % nu_d_edist(j)
@@ -1216,13 +1256,13 @@ contains
       n_sample = 0
       do
         if (law == 44 .or. law == 61) then
-          call sample_energy(edist, E, E_out, mu)
+          call sample_energy(edist, p % E, E_out, mu)
         else
-          call sample_energy(edist, E, E_out)
+          call sample_energy(edist, p % E, E_out)
         end if
 
-        ! resample if energy is >= 20 MeV
-        if (E_out < 20) exit
+        ! resample if energy is greater than maximum neutron energy
+        if (E_out < energy_max_neutron) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1
@@ -1237,18 +1277,21 @@ contains
       ! ====================================================================
       ! PROMPT NEUTRON SAMPLED
 
+      ! set the delayed group for the particle born from fission to 0
+      p % delayed_group = 0
+
       ! sample from prompt neutron energy distribution
       law = rxn % edist % law
       n_sample = 0
       do
         if (law == 44 .or. law == 61) then
-          call sample_energy(rxn%edist, E, E_out, prob)
+          call sample_energy(rxn%edist, p % E, E_out, prob)
         else
-          call sample_energy(rxn%edist, E, E_out)
+          call sample_energy(rxn%edist, p % E, E_out)
         end if
 
-        ! resample if energy is >= 20 MeV
-        if (E_out < 20) exit
+        ! resample if energy is greater than maximum neutron energy
+        if (E_out < energy_max_neutron) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1
@@ -1268,24 +1311,23 @@ contains
 ! than fission), i.e. level scattering, (n,np), (n,na), etc.
 !===============================================================================
 
-  subroutine inelastic_scatter(nuc, rxn, E, uvw, mu, wgt)
+  subroutine inelastic_scatter(nuc, rxn, p)
+    type(Nuclide),  intent(in)    :: nuc
+    type(Reaction), intent(in)    :: rxn
+    type(Particle), intent(inout) :: p
 
-    type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
-    real(8), intent(inout)  :: E      ! energy in lab (incoming/outgoing)
-    real(8), intent(inout)  :: uvw(3) ! directional cosines
-    real(8), intent(out)    :: mu     ! cosine of scattering angle in lab
-    real(8), intent(inout)  :: wgt    ! particle weight
-
-    integer :: law         ! secondary energy distribution law
-    real(8) :: A           ! atomic weight ratio of nuclide
-    real(8) :: E_in        ! incoming energy
-    real(8) :: E_cm        ! outgoing energy in center-of-mass
-    real(8) :: Q           ! Q-value of reaction
-    real(8) :: yield       ! neutron yield
+    integer :: i      ! loop index
+    integer :: law    ! secondary energy distribution law
+    real(8) :: E      ! energy in lab (incoming/outgoing)
+    real(8) :: mu     ! cosine of scattering angle in lab
+    real(8) :: A      ! atomic weight ratio of nuclide
+    real(8) :: E_in   ! incoming energy
+    real(8) :: E_cm   ! outgoing energy in center-of-mass
+    real(8) :: Q      ! Q-value of reaction
+    real(8) :: yield  ! neutron yield
 
     ! copy energy of neutron
-    E_in = E
+    E_in = p % E
 
     ! determine A and Q
     A = nuc % awr
@@ -1300,6 +1342,11 @@ contains
     ! sample outgoing energy
     if (law == 44 .or. law == 61) then
       call sample_energy(rxn%edist, E_in, E, mu)
+      ! Because of floating-point roundoff, it may be possible for mu to be
+      ! outside of the range [-1,1). In these cases, we just set mu to exactly
+      ! -1 or 1
+
+      if (abs(mu) > ONE) mu = sign(ONE,mu)
     elseif (law == 66) then
       call sample_energy(rxn%edist, E_in, E, A=A, Q=Q)
     else
@@ -1317,18 +1364,30 @@ contains
 
       ! determine outgoing angle in lab
       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
+
+      ! Because of floating-point roundoff, it may be possible for mu to be
+      ! outside of the range [-1,1). In these cases, we just set mu to exactly
+      ! -1 or 1
+
+      if (abs(mu) > ONE) mu = sign(ONE,mu)
     end if
 
+    ! Set outgoing energy and scattering angle
+    p % E = E
+    p % mu = mu
+
     ! change direction of particle
-    uvw = rotate_angle(uvw, mu)
+    p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
 
     ! change weight of particle based on yield
     if (rxn % multiplicity_with_E) then
       yield = interpolate_tab1(rxn % multiplicity_E, E_in)
+      p % wgt = yield * p % wgt
     else
-      yield = rxn % multiplicity
+      do i = 1, rxn % multiplicity - 1
+        call p % create_secondary(p % coord(1) % uvw, NEUTRON)
+      end do
     end if
-    wgt = yield * wgt
 
   end subroutine inelastic_scatter
 
@@ -1339,8 +1398,7 @@ contains
 !===============================================================================
 
   function sample_angle(rxn, E) result(mu)
-
-    type(Reaction), pointer    :: rxn ! reaction
+    type(Reaction), intent(in) :: rxn ! reaction
     real(8),        intent(in) :: E   ! incoming energy
 
     real(8)        :: xi      ! random number on [0,1)
@@ -1466,7 +1524,6 @@ contains
 !===============================================================================
 
   function rotate_angle(uvw0, mu) result(uvw)
-
     real(8), intent(in) :: uvw0(3) ! directional cosine
     real(8), intent(in) :: mu      ! cosine of angle in lab or CM
     real(8)             :: uvw(3)  ! rotated directional cosine
@@ -1515,8 +1572,7 @@ contains
 !===============================================================================
 
   recursive subroutine sample_energy(edist, E_in, E_out, mu_out, A, Q)
-
-    type(DistEnergy),  pointer       :: edist
+    type(DistEnergy),  intent(in)    :: edist
     real(8), intent(in)              :: E_in   ! incoming energy of neutron
     real(8), intent(out)             :: E_out  ! outgoing energy
     real(8), intent(inout), optional :: mu_out ! outgoing cosine of angle

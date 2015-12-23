@@ -24,6 +24,8 @@ class Element(object):
         Chemical symbol of the element, e.g. Pu
     xs : str
         Cross section identifier, e.g. 71c
+    scattering : 'data' or 'iso-in-lab' or None
+        The type of angular scattering distribution to use
 
     """
 
@@ -31,6 +33,7 @@ class Element(object):
         # Initialize class attributes
         self._name = ''
         self._xs = None
+        self._scattering = None
 
         # Set class attributes
         self.name = name
@@ -38,21 +41,33 @@ class Element(object):
         if xs is not None:
             self.xs = xs
 
-    def __eq__(self, element2):
-        # Check type
-        if not isinstance(element2, Element):
+    def __eq__(self, other):
+        if isinstance(other, Element):
+            if self._name != other._name:
+                return False
+            elif self._xs != other._xs:
+                return False
+            else:
+                return True
+        elif isinstance(other, basestring) and other == self.name:
+            return True
+        else:
             return False
 
-        # Check name and xs
-        if self._name != element2._name:
-            return False
-        elif self._xs != element2._xs:
-            return False
-        else:
-            return True
+    def __ne__(self, other):
+        return not self == other
 
     def __hash__(self):
-        return hash((self._name, self._xs))
+        return hash(repr(self))
+
+    def __repr__(self):
+        string = 'Element    -    {0}\n'.format(self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
+        if self.scattering is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t',
+                                                self.scattering)
+
+        return string
 
     @property
     def xs(self):
@@ -61,6 +76,10 @@ class Element(object):
     @property
     def name(self):
         return self._name
+
+    @property
+    def scattering(self):
+        return self._scattering
 
     @xs.setter
     def xs(self, xs):
@@ -72,7 +91,12 @@ class Element(object):
         check_type('name', name, basestring)
         self._name = name
 
-    def __repr__(self):
-        string = 'Element    -    {0}\n'.format(self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
-        return string
+    @scattering.setter
+    def scattering(self, scattering):
+
+        if not scattering in ['data', 'iso-in-lab']:
+            msg = 'Unable to set scattering for Element to {0} ' \
+                  'which is not "data" or "iso-in-lab"'.format(scattering)
+            raise ValueError(msg)
+
+        self._scattering = scattering

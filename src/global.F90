@@ -6,19 +6,17 @@ module global
   use cmfd_header
   use constants
   use dict_header,      only: DictCharInt, DictIntInt
-  use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer, Surface
+  use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
   use material_header,  only: Material
-  use mesh_header,      only: StructuredMesh
+  use mesh_header,      only: RegularMesh
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
+  use surface_header,   only: SurfaceContainer
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
 
-#ifdef HDF5
-  use hdf5_interface,  only: HID_T
-#endif
 #ifdef MPIF08
   use mpi_f08
 #endif
@@ -30,12 +28,12 @@ module global
   ! GEOMETRY-RELATED VARIABLES
 
   ! Main arrays
-  type(Cell),              allocatable, target :: cells(:)
-  type(Universe),          allocatable, target :: universes(:)
-  type(LatticeContainer),  allocatable, target :: lattices(:)
-  type(Surface),           allocatable, target :: surfaces(:)
-  type(Material),          allocatable, target :: materials(:)
-  type(ObjectPlot),        allocatable, target :: plots(:)
+  type(Cell),             allocatable, target :: cells(:)
+  type(Universe),         allocatable, target :: universes(:)
+  type(LatticeContainer), allocatable, target :: lattices(:)
+  type(SurfaceContainer), allocatable, target :: surfaces(:)
+  type(Material),         allocatable, target :: materials(:)
+  type(ObjectPlot),       allocatable, target :: plots(:)
 
   ! Size of main arrays
   integer :: n_cells     ! # of cells
@@ -76,6 +74,10 @@ module global
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
   integer :: n_listings       ! Number of listings in cross_sections.xml
 
+  ! Minimum/maximum energies
+  real(8) :: energy_min_neutron = ZERO
+  real(8) :: energy_max_neutron = INFINITY
+
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: sab_dict
@@ -93,7 +95,7 @@ module global
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
-  type(StructuredMesh), allocatable, target :: meshes(:)
+  type(RegularMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
   integer, allocatable :: matching_bins(:)
 
@@ -109,9 +111,11 @@ module global
   type(SetInt) :: active_analog_tallies
   type(SetInt) :: active_tracklength_tallies
   type(SetInt) :: active_current_tallies
+  type(SetInt) :: active_collision_tallies
   type(SetInt) :: active_tallies
 !$omp threadprivate(active_analog_tallies, active_tracklength_tallies, &
-!$omp&              active_current_tallies, active_tallies)
+!$omp&              active_current_tallies, active_collision_tallies, &
+!$omp&              active_tallies)
 
   ! Global tallies
   !   1) collision estimate of k-eff
@@ -204,11 +208,11 @@ module global
   logical :: entropy_on = .false.
   real(8), allocatable :: entropy(:)         ! shannon entropy at each generation
   real(8), allocatable :: entropy_p(:,:,:,:) ! % of source sites in each cell
-  type(StructuredMesh), pointer :: entropy_mesh
+  type(RegularMesh), pointer :: entropy_mesh
 
   ! Uniform fission source weighting
   logical :: ufs = .false.
-  type(StructuredMesh), pointer :: ufs_mesh => null()
+  type(RegularMesh), pointer :: ufs_mesh => null()
   real(8), allocatable :: source_frac(:,:,:,:)
 
   ! Write source at end of simulation
@@ -268,24 +272,10 @@ module global
   real(8) :: weight_survive = ONE
 
   ! ============================================================================
-  ! HDF5 VARIABLES
-
-#ifdef HDF5
-  integer(HID_T) :: hdf5_output_file   ! identifier for output file
-  integer(HID_T) :: hdf5_tallyresult_t ! Compound type for TallyResult
-  integer(HID_T) :: hdf5_bank_t        ! Compound type for Bank
-  integer(HID_T) :: hdf5_integer8_t    ! type for integer(8)
-#endif
-
-  ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer :: run_mode = NONE
-
-  ! Fixed source particle bank
-  type(Bank), pointer :: source_site => null()
-!$omp threadprivate(source_site)
 
   ! Restart run
   logical :: restart_run = .false.
@@ -446,7 +436,12 @@ contains
       do i = 1, size(nuclides)
         call nuclides(i) % clear()
       end do
-      deallocate(nuclides)
+
+      ! WARNING: The following statement should work but doesn't under gfortran
+      ! 4.6 because of a bug. Technically, commenting this out leaves a memory
+      ! leak.
+
+      ! deallocate(nuclides)
     end if
 
     if (allocated(nuclides_0K)) then
@@ -473,14 +468,7 @@ contains
     ! Deallocate tally-related arrays
     if (allocated(global_tallies)) deallocate(global_tallies)
     if (allocated(meshes)) deallocate(meshes)
-    if (allocated(tallies)) then
-    ! First call the clear routines
-      do i = 1, size(tallies)
-        call tallies(i) % clear()
-      end do
-      ! Now deallocate the tally array
-      deallocate(tallies)
-    end if
+    if (allocated(tallies)) deallocate(tallies)
     if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
 
@@ -504,6 +492,7 @@ contains
     call active_analog_tallies % clear()
     call active_tracklength_tallies % clear()
     call active_current_tallies % clear()
+    call active_collision_tallies % clear()
     call active_tallies % clear()
 
     ! Deallocate track_identifiers

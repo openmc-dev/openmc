@@ -1,5 +1,6 @@
-import openmc
+import numpy as np
 
+import openmc
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -52,13 +53,8 @@ surf6.boundary_type = 'reflective'
 # Instantiate Cell
 cell = openmc.Cell(cell_id=1, name='cell 1')
 
-# Register Surfaces with Cell
-cell.add_surface(surface=surf1, halfspace=+1)
-cell.add_surface(surface=surf2, halfspace=-1)
-cell.add_surface(surface=surf3, halfspace=+1)
-cell.add_surface(surface=surf4, halfspace=-1)
-cell.add_surface(surface=surf5, halfspace=+1)
-cell.add_surface(surface=surf6, halfspace=-1)
+# Use surface half-spaces to define region
+cell.region = +surf1 & -surf2 & +surf3 & -surf4 & +surf5 & -surf6
 
 # Register Material with Cell
 cell.fill = fuel
@@ -88,5 +84,5 @@ settings_file = openmc.SettingsFile()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
-settings_file.set_source_space('box', [-1, -1, -1, 1, 1, 1])
+settings_file.set_source_space('box', np.concatenate(cell.region.bounding_box))
 settings_file.export_to_xml()

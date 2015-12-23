@@ -484,8 +484,10 @@ contains
   subroutine write_tallies(file_id)
     integer(HID_T), intent(in) :: file_id
 
-    integer :: i, j
+    integer :: i, j, k
     integer :: i_list, i_xs
+    integer :: n_order      ! loop index for moment orders
+    integer :: nm_order     ! loop index for Ynm moment orders
     integer(HID_T) :: tallies_group
     integer(HID_T) :: mesh_group
     integer(HID_T) :: tally_group
@@ -662,6 +664,37 @@ contains
       end do
       call write_dataset(tally_group, "score_bins", str_array)
 
+      deallocate(str_array)
+
+      ! Write explicit moment order strings for each score bin
+      k = 1
+      allocate(str_array(t%n_score_bins))
+      MOMENT_LOOP: do j = 1, t%n_user_score_bins
+        select case(t%score_bins(k))
+        case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+          str_array(k) = 'P' // trim(to_str(t%moment_order(k)))
+          k = k + 1
+        case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+          do n_order = 0, t%moment_order(k)
+            str_array(k) = 'P' // trim(to_str(n_order))
+            k = k + 1
+          end do
+        case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+             SCORE_TOTAL_YN)
+          do n_order = 0, t%moment_order(k)
+            do nm_order = -n_order, n_order
+              str_array(k) = 'Y' // trim(to_str(n_order)) // ',' // &
+                   trim(to_str(nm_order))
+              k = k + 1
+            end do
+          end do
+        case default
+          str_array(k) = ''
+          k = k + 1
+        end select
+      end do MOMENT_LOOP
+
+      call write_dataset(tally_group, "moment_orders", str_array)
       deallocate(str_array)
 
       call close_group(tally_group)

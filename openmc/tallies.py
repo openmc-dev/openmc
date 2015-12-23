@@ -449,9 +449,13 @@ class Tally(object):
                   'not a string'.format(score, self.id)
             raise ValueError(msg)
 
-        # If the score is already in the Tally, don't add it again
+        # If the score is already in the Tally, raise an error
         if score in self.scores:
-            return
+            msg = 'Unable to add a duplicate score {0} to Tally ID="{1}" ' \
+                  'since duplicate scores are not supported in the OpenMC ' \
+                  'Python API'.format(score, self.id)
+            raise ValueError(msg)
+
         # Normal score strings
         if isinstance(score, basestring):
             self._scores.append(score.strip())

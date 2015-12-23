@@ -521,10 +521,19 @@ class Summary(object):
             # Create Tally object and assign basic properties
             tally = openmc.Tally(tally_id, tally_name)
 
+            # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
+            moments = self._f['{0}/moment_orders'.format(subbase)].value
+
             # Read score metadata
             scores = self._f['{0}/score_bins'.format(subbase)].value
-            for score in scores:
-                tally.add_score(score.decode())
+            for j, score in enumerate(scores):
+                score = score.decode()
+
+                # If this is a moment, use generic moment order
+                pattern = r'-n$|-pn$|-yn$'
+                score = re.sub(pattern, '-' + moments[j].decode(), score)
+
+                tally.add_score(score)
 
             # Read filter metadata
             num_filters = self._f['{0}/n_filters'.format(subbase)].value

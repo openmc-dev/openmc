@@ -1,6 +1,9 @@
 module particle_header
 
-  use constants,       only: NEUTRON, ONE, NONE, ZERO
+  use bank_header,     only: Bank
+  use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
+                             MAX_DELAYED_GROUPS
+  use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
 
   implicit none
@@ -62,10 +65,13 @@ module particle_header
     integer    :: event         ! scatter, absorption
     integer    :: event_nuclide ! index in nuclides array
     integer    :: event_MT      ! reaction MT
+    integer    :: delayed_group ! delayed group
 
     ! Post-collision physical data
     integer    :: n_bank        ! number of fission sites banked
     real(8)    :: wgt_bank      ! weight of fission sites banked
+    integer    :: n_delayed_bank(MAX_DELAYED_GROUPS) ! number of delayed fission
+                                                     ! sites banked
 
     ! Indices for various arrays
     integer    :: surface       ! index for surface particle is on
@@ -79,9 +85,15 @@ module particle_header
     ! Track output
     logical    :: write_track = .false.
 
+    ! Secondary particles created
+    integer    :: n_secondary = 0
+    type(Bank) :: secondary_bank(MAX_SECONDARY)
+
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle
+    procedure :: initialize_from_source
+    procedure :: create_secondary
   end type Particle
 
 contains
@@ -103,17 +115,19 @@ contains
     this % alive = .true.
 
     ! clear attributes
-    this % surface       = NONE
-    this % cell_born     = NONE
-    this % material      = NONE
-    this % last_material = NONE
-    this % wgt           = ONE
-    this % last_wgt      = ONE
-    this % absorb_wgt    = ZERO
-    this % n_bank        = 0
-    this % wgt_bank      = ZERO
-    this % n_collision   = 0
-    this % fission       = .false.
+    this % surface           = NONE
+    this % cell_born         = NONE
+    this % material          = NONE
+    this % last_material     = NONE
+    this % wgt               = ONE
+    this % last_wgt          = ONE
+    this % absorb_wgt        = ZERO
+    this % n_bank            = 0
+    this % wgt_bank          = ZERO
+    this % n_collision       = 0
+    this % fission           = .false.
+    this % delayed_group     = 0
+    this % n_delayed_bank(:) = 0
 
     ! Set up base level coordinates
     this % coord(1) % universe = BASE_UNIVERSE
@@ -122,7 +136,7 @@ contains
   end subroutine initialize_particle
 
 !===============================================================================
-! CLEAR_PARTICLE
+! CLEAR_PARTICLE resets all coordinate levels for the particle
 !===============================================================================
 
   subroutine clear_particle(this)
@@ -138,7 +152,7 @@ contains
   end subroutine clear_particle
 
 !===============================================================================
-! RESET_COORD
+! RESET_COORD clears data from a single coordinate level
 !===============================================================================
 
   elemental subroutine reset_coord(this)
@@ -153,5 +167,57 @@ contains
     this % rotated = .false.
 
   end subroutine reset_coord
+
+!===============================================================================
+! INITIALIZE_FROM_SOURCE initializes a particle from data stored in a source
+! site. The source site may have been produced from an external source, from
+! fission, or simply as a secondary particle.
+!===============================================================================
+
+  subroutine initialize_from_source(this, src)
+    class(Particle), intent(inout) :: this
+    type(Bank),      intent(in)    :: src
+
+    ! set defaults
+    call this % initialize()
+
+    ! copy attributes from source bank site
+    this % wgt            = src % wgt
+    this % last_wgt       = src % wgt
+    this % coord(1) % xyz = src % xyz
+    this % coord(1) % uvw = src % uvw
+    this % last_xyz       = src % xyz
+    this % last_uvw       = src % uvw
+    this % E              = src % E
+    this % last_E         = src % E
+
+  end subroutine initialize_from_source
+
+!===============================================================================
+! CREATE_SECONDARY stores the current phase space attributes of the particle in
+! the secondary bank and increments the number of sites in the secondary bank.
+!===============================================================================
+
+  subroutine create_secondary(this, uvw, type)
+    class(Particle), intent(inout) :: this
+    real(8),         intent(in)    :: uvw(3)
+    integer,         intent(in)    :: type
+
+    integer :: n
+
+    ! Check to make sure that the hard-limit on secondary particles is not
+    ! exceeded.
+    if (this % n_secondary == MAX_SECONDARY) then
+      call fatal_error("Too many secondary particles created.")
+    end if
+
+    n = this % n_secondary + 1
+    this % secondary_bank(n) % wgt    = this % wgt
+    this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
+    this % secondary_bank(n) % uvw(:) = uvw
+    this % secondary_bank(n) % E      = this % E
+    this % n_secondary = n
+
+  end subroutine create_secondary
 
 end module particle_header

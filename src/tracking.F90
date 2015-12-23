@@ -13,9 +13,9 @@ module tracking
   use random_lcg,      only: prn
   use string,          only: to_str
   use tally,           only: score_analog_tally, score_tracklength_tally, &
-                             score_surface_current
+                             score_collision_tally, score_surface_current
   use track_output,    only: initialize_particle_track, write_particle_track, &
-                             finalize_particle_track
+                             add_particle_track, finalize_particle_track
 
   implicit none
 
@@ -45,20 +45,6 @@ contains
       call write_message("Simulating Particle " // trim(to_str(p % id)))
     end if
 
-    ! If the cell hasn't been determined based on the particle's location,
-    ! initiate a search for the current cell
-    if (p % coord(p % n_coord) % cell == NONE) then
-      call find_cell(p, found_cell)
-
-      ! Particle couldn't be located
-      if (.not. found_cell) then
-        call fatal_error("Could not locate particle " // trim(to_str(p % id)))
-      end if
-
-      ! set birth cell attribute
-      p % cell_born = p % coord(p % n_coord) % cell
-    end if
-
     ! Initialize number of events to zero
     n_event = 0
 
@@ -74,7 +60,19 @@ contains
       call initialize_particle_track()
     endif
 
-    do while (p % alive)
+    EVENT_LOOP: do
+      ! If the cell hasn't been determined based on the particle's location,
+      ! initiate a search for the current cell. This generally happens at the
+      ! beginning of the history and again for any secondary particles
+      if (p % coord(p % n_coord) % cell == NONE) then
+        call find_cell(p, found_cell)
+        if (.not. found_cell) then
+          call fatal_error("Could not locate particle " // trim(to_str(p % id)))
+        end if
+
+        ! set birth cell attribute
+        if (p % cell_born == NONE) p % cell_born = p % coord(p % n_coord) % cell
+      end if
 
       ! Write particle track.
       if (p % write_track) call write_particle_track(p)
@@ -159,11 +157,13 @@ contains
         ! has occurred rather than before because we need information on the
         ! outgoing energy for any tallies with an outgoing energy filter
 
+        if (active_collision_tallies % size() > 0) call score_collision_tally(p)
         if (active_analog_tallies % size() > 0) call score_analog_tally(p)
 
         ! Reset banked weight during collision
         p % n_bank   = 0
         p % wgt_bank = ZERO
+        p % n_delayed_bank(:) = 0
 
         ! Reset fission logical
         p % fission = .false.
@@ -197,7 +197,19 @@ contains
         p % alive = .false.
       end if
 
-    end do
+      ! Check for secondary particles if this particle is dead
+      if (.not. p % alive) then
+        if (p % n_secondary > 0) then
+          call p % initialize_from_source(p % secondary_bank(p % n_secondary))
+          p % n_secondary = p % n_secondary - 1
+
+          ! Enter new particle in particle track file
+          if (p % write_track) call add_particle_track()
+        else
+          exit EVENT_LOOP
+        end if
+      end if
+    end do EVENT_LOOP
 
     ! Finish particle track output.
     if (p % write_track) then

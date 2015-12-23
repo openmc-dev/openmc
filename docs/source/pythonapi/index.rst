@@ -57,13 +57,26 @@ on a given module or class.
     summary
     tallies
 
+**Multi-Group Cross Section Generation**
+
+.. toctree::
+    :maxdepth: 1
+
+    mgxs
+    energy_groups
+    mgxs_library
+
 **Example Jupyter Notebooks:**
 
 .. toctree::
     :maxdepth: 1
 
+    examples/post-processing
     examples/pandas-dataframes
     examples/tally-arithmetic
+    examples/mgxs-part-i
+    examples/mgxs-part-ii
+    examples/mgxs-part-iii
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

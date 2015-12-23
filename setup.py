@@ -10,8 +10,8 @@ except ImportError:
     have_setuptools = False
 
 kwargs = {'name': 'openmc',
-          'version': '0.7.0',
-          'packages': ['openmc'],
+          'version': '0.7.1',
+          'packages': ['openmc', 'openmc.mgxs'],
           'scripts': glob.glob('scripts/openmc-*'),
 
           # Metadata
@@ -32,7 +32,7 @@ kwargs = {'name': 'openmc',
 if have_setuptools:
     kwargs.update({
         # Required dependencies
-        'install_requires': ['numpy', 'scipy', 'h5py', 'matplotlib'],
+        'install_requires': ['numpy', 'h5py', 'matplotlib'],
 
         # Optional dependencies
         'extras_require': {

@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<tallies>
-
-  <tally id="1">
-    <filter type="cell" bins="21 22 23" />
-    <scores>scatter scatter-1 scatter-2 scatter-3 scatter-4</scores>
-  </tally>
-
-</tallies>

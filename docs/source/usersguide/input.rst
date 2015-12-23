@@ -79,14 +79,13 @@ Message                   Description
 [VALID]                   XML file matches RelaxNG.
 ========================  ===================================
 
-As an example, if OpenMC is installed in the directory
-``/opt/openmc/0.6.2`` and the current working directory is where
-OpenMC XML input files are located, they can be validated using
-the following command:
+As an example, if OpenMC is installed in the directory ``/opt/openmc/`` and the
+current working directory is where OpenMC XML input files are located, they can
+be validated using the following command:
 
 .. code-block:: bash
 
-   /opt/openmc/0.6.2/bin/xml_validate
+   /opt/openmc/bin/openmc-validate-xml
 
 --------------------------------------
 Settings Specification -- settings.xml
@@ -721,9 +720,8 @@ Geometry Specification -- geometry.xml
 The geometry in OpenMC is described using `constructive solid geometry`_ (CSG),
 also sometimes referred to as combinatorial geometry. CSG allows a user to
 create complex objects using Boolean operators on a set of simpler surfaces. In
-the geometry model, each unique closed volume in defined by its bounding
-surfaces. In OpenMC, most `quadratic surfaces`_ can be modeled and used as
-bounding surfaces.
+the geometry model, each unique volume is defined by its bounding surfaces. In
+OpenMC, most `quadratic surfaces`_ can be modeled and used as bounding surfaces.
 
 Every geometry.xml must have an XML declaration at the beginning of the file and
 a root element named geometry. Within the root element the user can define any
@@ -746,7 +744,7 @@ number of cells, surfaces, and lattices. Let us look at the following example:
         <id>1</id>
         <universe>0</universe>
         <material>1</material>
-        <surfaces>-1</surfaces>
+        <region>-1</region>
       </cell>
     </geometry>
 
@@ -764,7 +762,7 @@ could be written as:
       <!-- This is a comment -->
 
       <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 5.0" boundary="vacuum" />
-      <cell id="1" universe="0" material="1" surfaces="-1" />
+      <cell id="1" universe="0" material="1" region="-1" />
 
     </geometry>
 
@@ -788,7 +786,8 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
   :type:
     The type of the surfaces. This can be "x-plane", "y-plane", "z-plane",
-    "plane", "x-cylinder", "y-cylinder", "z-cylinder", or "sphere".
+    "plane", "x-cylinder", "y-cylinder", "z-cylinder", "sphere", "x-cone",
+    "y-cone", "z-cone", or "quadric".
 
     *Default*: None
 
@@ -856,6 +855,12 @@ The following quadratic surfaces can be modeled:
     R^2 (z - z_0)^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0
     \: R^2`".
 
+  :quadric:
+     A general quadric surface of the form :math:`Ax^2 + By^2 + Cz^2 + Dxy +
+     Eyz + Fxz + Gx + Hy + Jz + K = 0` The coefficients specified are ":math:`A
+     \: B \: C \: D \: E \: F \: G \: H \: J \: K`".
+
+
 ``<cell>`` Element
 ------------------
 
@@ -892,15 +897,29 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
-  :surfaces:
-    A list of the ``ids`` for surfaces that bound this cell, e.g. if the cell
-    is on the negative side of surface 3 and the positive side of surface 5, the
-    bounding surfaces would be given as "-3 5".
+  :region:
+    A Boolean expression of half-spaces that defines the spatial region which
+    the cell occupies. Each half-space is identified by the unique ID of the
+    surface prefixed by `-` or `+` to indicate that it is the negative or
+    positive half-space, respectively. The `+` sign for a positive half-space
+    can be omitted. Valid Boolean operators are parentheses, union `|`,
+    complement `~`, and intersection. Intersection is implicit and indicated by
+    the presence of whitespace. The order of operator precedence is parentheses,
+    complement, intersection, and then union.
 
-    .. note:: The surface attribute/element can be omitted to make a cell fill
-              its entire universe.
+    As an example, the following code gives a cell that is the union of the
+    negative half-space of surface 3 and the complement of the intersection of
+    the positive half-space of surface 5 and the negative half-space of surface
+    2:
 
-    *Default*: No surfaces
+    .. code-block:: xml
+
+        <cell id="1" material="1" region="-3 | ~(5 -2)" />
+
+    .. note:: The ``region`` attribute/element can be omitted to make a cell
+              fill its entire universe.
+
+    *Default*: A region filling all space.
 
   :rotation:
     If the cell is filled with a universe, this element specifies the angles in
@@ -1095,8 +1114,10 @@ Each ``material`` element can have the following attributes or sub-elements:
     An element with attributes/sub-elements called ``value`` and ``units``. The
     ``value`` attribute is the numeric value of the density while the ``units``
     can be "g/cm3", "kg/m3", "atom/b-cm", "atom/cm3", or "sum". The "sum" unit
-    indicates that the density should be calculated as the sum of the atom
-    fractions for each nuclide in the material. This should not be used in
+    indicates that values appearing in ``ao`` attributes for ``<nuclide>`` and
+    ``<element>`` sub-elements are to be interpreted as nuclide/element
+    densities in atom/b-cm, and the total density of the material is taken as
+    the sum of all nuclides/elements. The "sum" option cannot be used in
     conjunction with weight percents.
 
     *Default*: None
@@ -1116,6 +1137,15 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     .. note:: If one nuclide is specified in atom percent, all others must also
               be given in atom percent. The same applies for weight percentages.
+
+    An optional attribute/sub-element for each nuclide is ``scattering``. This
+    attribute may be set to "data" to use the scattering laws specified by the
+    cross section library (default). Alternatively, when set to "iso-in-lab",
+    the scattering laws are used to sample the outgoing energy but an
+    isotropic-in-lab  distribution is used to sample the outgoing angle at each
+    scattering interaction. The ``scattering`` attribute may be most useful
+    when using OpenMC to compute multi-group cross-sections for deterministic
+    transport codes and to quantify the effects of anisotropic scattering.
 
     *Default*: None
 
@@ -1143,6 +1173,16 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+    An optional attribute/sub-element for each element is ``scattering``. This
+    attribute may be set to "data" to use the scattering laws specified by the
+    cross section library (default). Alternatively, when set to "iso-in-lab",
+    the scattering laws are used to sample the outgoing energy but an
+    isotropic-in-lab  distribution is used to sample the outgoing angle at each
+    scattering interaction. The ``scattering`` attribute may be most useful
+    when using OpenMC to compute multi-group cross-sections for deterministic
+    transport codes and to quantify the effects of anisotropic scattering.
+
+    *Default*: None
 
   :sab:
     Associates an S(a,b) table with the material. This element has
@@ -1214,8 +1254,8 @@ The ``<tally>`` element accepts the following sub-elements:
 
       :type:
         The type of the filter. Accepted options are "cell", "cellborn",
-        "material", "universe", "energy", "energyout", "mesh", and
-        "distribcell".
+        "material", "universe", "energy", "energyout", "mesh", "distribcell",
+        and "delayedgroup".
 
       :bins:
         For each filter type, the corresponding ``bins`` entry is given as
@@ -1240,16 +1280,86 @@ The ``<tally>`` element accepts the following sub-elements:
         :energy:
           A monotonically increasing list of bounding **pre-collision** energies
           for a number of groups. For example, if this filter is specified as
-          ``<filter type="energy" bins="0.0 1.0 20.0" />``, then two energy bins
-          will be created, one with energies between 0 and 1 MeV and the other
-          with energies between 1 and 20 MeV.
+
+          .. code-block:: xml
+
+              <filter type="energy" bins="0.0 1.0 20.0" />
+
+          then two energy bins will be created, one with energies between 0 and
+          1 MeV and the other with energies between 1 and 20 MeV.
 
         :energyout:
           A monotonically increasing list of bounding **post-collision**
           energies for a number of groups. For example, if this filter is
-          specified as ``<filter type="energyout" bins="0.0 1.0 20.0" />``, then
-          two post-collision energy bins will be created, one with energies
+          specified as
+
+          .. code-block:: xml
+
+              <filter type="energyout" bins="0.0 1.0 20.0" />
+
+          then two post-collision energy bins will be created, one with energies
           between 0 and 1 MeV and the other with energies between 1 and 20 MeV.
+
+        :mu:
+          A monotonically increasing list of bounding **post-collision** cosines
+          of the change in a particle's angle (i.e., :math:`\mu = \hat{\Omega}
+          \cdot \hat{\Omega}'`), which represents a portion of the possible
+          values of :math:`[-1,1]`.  For example, spanning all of :math:`[-1,1]`
+          with five equi-width bins can be specified as:
+
+          .. code-block:: xml
+
+              <filter type="mu" bins="-1.0 -0.6 -0.2 0.2 0.6 1.0" />
+
+          Alternatively, if only one value is provided as a bin, OpenMC will
+          interpret this to mean the complete range of :math:`[-1,1]` should
+          be automatically subdivided in to the provided value for the bin.
+          That is, the above example of five equi-width bins spanning
+          :math:`[-1,1]` can be instead written as:
+
+          .. code-block:: xml
+
+              <filter type="mu" bins="5" />
+
+        :polar:
+          A monotonically increasing list of bounding particle polar angles
+          which represents a portion of the possible values of :math:`[0,\pi]`.
+          For example, spanning all of :math:`[0,\pi]` with five equi-width
+          bins can be specified as:
+
+          .. code-block:: xml
+
+              <filter type="polar" bins="0.0 0.6283 1.2566 1.8850 2.5132 3.1416"/>
+
+          Alternatively, if only one value is provided as a bin, OpenMC will
+          interpret this to mean the complete range of :math:`[0,\pi]` should
+          be automatically subdivided in to the provided value for the bin.
+          That is, the above example of five equi-width bins spanning
+          :math:`[0,\pi]` can be instead written as:
+
+          .. code-block:: xml
+
+              <filter type="polar" bins="5" />
+
+        :azimuthal:
+          A monotonically increasing list of bounding particle azimuthal angles
+          which represents a portion of the possible values of :math:`[-\pi,\pi)`.
+          For example, spanning all of :math:`[-\pi,\pi)` with two equi-width
+          bins can be specified as:
+
+          .. code-block:: xml
+
+              <filter type="azimuthal" bins="0.0 3.1416 6.2832" />
+
+          Alternatively, if only one value is provided as a bin, OpenMC will
+          interpret this to mean the complete range of :math:`[-\pi,\pi)` should
+          be automatically subdivided in to the provided value for the bin.
+          That is, the above example of five equi-width bins spanning
+          :math:`[-\pi,\pi)` can be instead written as:
+
+          .. code-block:: xml
+
+              <filter type="azimuthal" bins="2" />
 
         :mesh:
           The ``id`` of a structured mesh to be tallied over.
@@ -1262,6 +1372,15 @@ The ``<tally>`` element accepts the following sub-elements:
               each unique occurrence of that cell separately. This filter will
               not accept more than one cell ID. It is not recommended to combine
               this filter with a cell or mesh filter.
+
+        :delayedgroup:
+          A list of delayed neutron precursor groups for which the tally should
+          be accumulated. For instance, to tally to all 6 delayed groups in the
+          ENDF/B-VII.1 library the filter is specified as:
+
+          .. code-block:: xml
+
+              <filter type="delayedgroup" bins="1 2 3 4 5 6" />
 
   :nuclides:
     If specified, the scores listed will be for particular nuclides, not the
@@ -1278,25 +1397,31 @@ The ``<tally>`` element accepts the following sub-elements:
     *Default*: total
 
   :estimator:
-    The estimator element is used to force the use of either ``analog`` or
-    ``tracklength`` tally estimation.  ''analog'' is generally less efficient
-    though it can be used with every score type.  ''tracklength'' is generally
-    the most efficient, though its usage is restricted to tallies that do not
-    score particle information which requires a collision to have occured, such
-    as a scattering tally which utilizes outgoing energy filters.
+    The estimator element is used to force the use of either ``analog``,
+    ``collision``, or ``tracklength`` tally estimation.  ``analog`` is generally
+    the least efficient though it can be used with every score type.
+    ``tracklength`` is generally the most efficient, but neither ``tracklength``
+    nor ``collision`` can be used to score a tally that requires post-collision
+    information.  For example, a scattering tally with outgoing energy filters
+    cannot be used with ``tracklength`` or ``collision`` because the code will
+    not know the outgoing energy distribution.
 
-    *Default*: ``tracklength`` but will revert to analog if necessary.
+    *Default*: ``tracklength`` but will revert to ``analog`` if necessary.
 
   :scores:
     A space-separated list of the desired responses to be accumulated. Accepted
     options are "flux", "total", "scatter", "absorption", "fission",
-    "nu-fission", "kappa-fission", "nu-scatter", "scatter-N", "scatter-PN",
-    "scatter-YN", "nu-scatter-N", "nu-scatter-PN", "nu-scatter-YN", "flux-YN",
-    "total-YN", "current", and "events". These corresponding to the following
-    physical quantities:
+    "nu-fission", "delayed-nu-fission", "kappa-fission", "nu-scatter",
+    "scatter-N", "scatter-PN", "scatter-YN", "nu-scatter-N", "nu-scatter-PN",
+    "nu-scatter-YN", "flux-YN", "total-YN", "current", "inverse-velocity" and
+    "events". These correspond to the following physical quantities:
 
     :flux:
       Total flux in particle-cm per source particle.
+
+      .. note::
+         The ``analog`` estimator is actually identical to the ``collision``
+         estimator for the flux score.
 
     :total:
       Total reaction rate in reactions per source particle.
@@ -1314,6 +1439,10 @@ The ``<tally>`` element accepts the following sub-elements:
 
     :nu-fission:
       Total production of neutrons due to fission. Units are neutrons produced
+      per source neutron.
+
+    :delayed-nu-fission:
+      Total production of delayed neutrons due to fission. Units are neutrons produced
       per source neutron.
 
     :kappa-fission:
@@ -1378,6 +1507,14 @@ The ``<tally>`` element accepts the following sub-elements:
           specified. Furthermore, it may not be used in conjunction with any
           other score.
 
+    :inverse-velocity:
+      The flux-weighted inverse velocity where the velocity is in units of
+      centimeters per second.
+
+      .. note::
+         The ``analog`` estimator is actually identical to the ``collision``
+         estimator for the inverse-velocity score.
+
     :events:
       Number of scoring events. Units are events per source particle.
 
@@ -1423,8 +1560,7 @@ a separate element with the tag name ``<mesh>``. This element has the following
 attributes/sub-elements:
 
   :type:
-    The type of structured mesh. Valid options include "rectangular" and
-    "hexagonal".
+    The type of structured mesh. The only valid option is "regular".
 
   :dimension:
     The number of mesh cells in each direction.
@@ -1526,16 +1662,16 @@ sub-elements:
     *Default*: None - Required entry
 
   :type:
-    Keyword for type of plot to be produced. Currently only "slice" and
-    "voxel" plots are implemented. The "slice" plot type creates 2D pixel
-    maps saved in the PPM file format. PPM files can be displayed in most
-    viewers (e.g. the default Gnome viewer, IrfanView, etc.).  The "voxel"
-    plot type produces a binary datafile containing voxel grid positioning and
-    the cell or material (specified by the ``color`` tag) at the center of each
-    voxel. These datafiles can be processed into 3D SILO files using the
-    ``voxel.py`` utility provided with the OpenMC source, and subsequently
-    viewed with a 3D viewer such as VISIT or Paraview. See the
-    :ref:`devguide_voxel` for information about the datafile structure.
+    Keyword for type of plot to be produced. Currently only "slice" and "voxel"
+    plots are implemented. The "slice" plot type creates 2D pixel maps saved in
+    the PPM file format. PPM files can be displayed in most viewers (e.g. the
+    default Gnome viewer, IrfanView, etc.).  The "voxel" plot type produces a
+    binary datafile containing voxel grid positioning and the cell or material
+    (specified by the ``color`` tag) at the center of each voxel. These
+    datafiles can be processed into 3D SILO files using the
+    ``openmc-voxel-to-silovtk`` utility provided with the OpenMC source, and
+    subsequently viewed with a 3D viewer such as VISIT or Paraview. See the
+    :ref:`usersguide_voxel` for information about the datafile structure.
 
     .. note:: Since the PPM format is saved without any kind of compression,
               the resulting file sizes can be quite large.  Saving the image in

@@ -18,9 +18,8 @@ contains
 ! GET_MESH_BIN determines the tally bin for a particle in a structured mesh
 !===============================================================================
 
-  subroutine get_mesh_bin(m, xyz, bin)
-
-    type(StructuredMesh), pointer :: m      ! mesh pointer
+  pure subroutine get_mesh_bin(m, xyz, bin)
+    type(RegularMesh), intent(in) :: m      ! mesh pointer
     real(8), intent(in)           :: xyz(:) ! coordinates
     integer, intent(out)          :: bin    ! tally bin
 
@@ -71,9 +70,8 @@ contains
 ! GET_MESH_INDICES determines the indices of a particle in a structured mesh
 !===============================================================================
 
-  subroutine get_mesh_indices(m, xyz, ijk, in_mesh)
-
-    type(StructuredMesh), pointer :: m
+  pure subroutine get_mesh_indices(m, xyz, ijk, in_mesh)
+    type(RegularMesh), intent(in) :: m
     real(8), intent(in)           :: xyz(:)  ! coordinates to check
     integer, intent(out)          :: ijk(:)  ! indices in mesh
     logical, intent(out)          :: in_mesh ! were given coords in mesh?
@@ -96,11 +94,10 @@ contains
 ! use in a TallyObject results array
 !===============================================================================
 
-  function mesh_indices_to_bin(m, ijk, surface_current) result(bin)
-
-    type(StructuredMesh), pointer :: m
+  pure function mesh_indices_to_bin(m, ijk, surface_current) result(bin)
+    type(RegularMesh), intent(in) :: m
     integer, intent(in)           :: ijk(:)
-    logical, optional             :: surface_current
+    logical, intent(in), optional :: surface_current
     integer                       :: bin
 
     integer :: n_y ! number of mesh cells in y direction
@@ -130,9 +127,8 @@ contains
 ! (i,j) or (i,j,k) indices
 !===============================================================================
 
-  subroutine bin_to_mesh_indices(m, bin, ijk)
-
-    type(StructuredMesh), pointer :: m
+  pure subroutine bin_to_mesh_indices(m, bin, ijk)
+    type(RegularMesh), intent(in) :: m
     integer, intent(in)           :: bin
     integer, intent(out)          :: ijk(:)
 
@@ -163,13 +159,13 @@ contains
   subroutine count_bank_sites(m, bank_array, cnt, energies, size_bank, &
        sites_outside)
 
-    type(StructuredMesh), pointer :: m             ! mesh to count sites
+    type(RegularMesh), pointer :: m             ! mesh to count sites
     type(Bank), intent(in)        :: bank_array(:) ! fission or source bank
     real(8),    intent(out)       :: cnt(:,:,:,:)  ! weight of sites in each
     ! cell and energy group
-    real(8),    optional          :: energies(:)   ! energy grid to search
-    integer(8), optional          :: size_bank     ! # of bank sites (on each proc)
-    logical,    optional          :: sites_outside ! were there sites outside mesh?
+    real(8), intent(in), optional :: energies(:)   ! energy grid to search
+    integer(8), intent(in), optional :: size_bank     ! # of bank sites (on each proc)
+    logical, intent(inout), optional :: sites_outside ! were there sites outside mesh?
 
     integer :: i        ! loop index for local fission sites
     integer :: n_sites  ! size of bank array
@@ -262,9 +258,8 @@ contains
 ! track will score to a mesh tally.
 !===============================================================================
 
-  function mesh_intersects_2d(m, xyz0, xyz1) result(intersects)
-
-    type(StructuredMesh), pointer :: m
+  pure function mesh_intersects_2d(m, xyz0, xyz1) result(intersects)
+    type(RegularMesh), intent(in) :: m
     real(8), intent(in) :: xyz0(2)
     real(8), intent(in) :: xyz1(2)
     logical :: intersects
@@ -328,9 +323,8 @@ contains
 
   end function mesh_intersects_2d
 
-  function mesh_intersects_3d(m, xyz0, xyz1) result(intersects)
-
-    type(StructuredMesh), pointer :: m
+  pure function mesh_intersects_3d(m, xyz0, xyz1) result(intersects)
+    type(RegularMesh), intent(in) :: m
     real(8), intent(in) :: xyz0(3)
     real(8), intent(in) :: xyz1(3)
     logical :: intersects

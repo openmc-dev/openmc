@@ -6,8 +6,8 @@
   <surface id="3" type="x-plane" coeffs="5" />
   <surface id="4" type="x-plane" coeffs="10" boundary="vacuum"/>
 
-  <cell id="1" material="1" surfaces="1 -2" />
-  <cell id="2" material="2" surfaces="2 -3" />
-  <cell id="3" material="3" surfaces="3 -4" />
+  <cell id="1" material="1" region="1 -2" />
+  <cell id="2" material="2" region="2 -3" />
+  <cell id="3" material="3" region="3 -4" />
     
 </geometry>

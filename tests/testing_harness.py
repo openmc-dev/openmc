@@ -11,7 +11,8 @@ import sys
 
 import numpy as np
 
-sys.path.insert(0, '../..')
+sys.path.insert(0, os.path.join(os.pardir, os.pardir))
+from input_set import InputSet
 from openmc.statepoint import StatePoint
 from openmc.executor import Executor
 import openmc.particle_restart as pr
@@ -82,9 +83,8 @@ class TestHarness(object):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
         assert len(statepoint) == 1, 'Either multiple or no statepoint files ' \
              'exist.'
-        assert statepoint[0].endswith('binary') \
-             or statepoint[0].endswith('h5'), \
-             'Statepoint file is not a binary or hdf5 file.'
+        assert statepoint[0].endswith('h5'), \
+             'Statepoint file is not a HDF5 file.'
         if self._tallies:
             assert os.path.exists(os.path.join(os.getcwd(), 'tallies.out')), \
                  'Tally output file does not exist.'
@@ -94,7 +94,6 @@ class TestHarness(object):
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)
-        sp.read_results()
 
         # Write out k-combined.
         outstr = 'k-combined:\n'
@@ -104,11 +103,11 @@ class TestHarness(object):
         # Write out tally data.
         if self._tallies:
             tally_num = 1
-            for tally_ind in sp._tallies:
-                tally = sp._tallies[tally_ind]
-                results = np.zeros((tally._sum.size*2, ))
-                results[0::2] = tally._sum.ravel()
-                results[1::2] = tally._sum_sq.ravel()
+            for tally_ind in sp.tallies:
+                tally = sp.tallies[tally_ind]
+                results = np.zeros((tally.sum.size*2, ))
+                results[0::2] = tally.sum.ravel()
+                results[1::2] = tally.sum_sq.ravel()
                 results = ['{0:12.6E}'.format(x) for x in results]
 
                 outstr += 'tally ' + str(tally_num) + ':\n'
@@ -125,7 +124,7 @@ class TestHarness(object):
 
     def _write_results(self, results_string):
         """Write the results to an ASCII file."""
-        with open('results_test.dat','w') as fh:
+        with open('results_test.dat', 'w') as fh:
             fh.write(results_string)
 
     def _overwrite_results(self):
@@ -133,12 +132,14 @@ class TestHarness(object):
         shutil.copyfile('results_test.dat', 'results_true.dat')
 
     def _compare_results(self):
+        """Make sure the current results agree with the _true standard."""
         compare = filecmp.cmp('results_test.dat', 'results_true.dat')
         if not compare:
             os.rename('results_test.dat', 'results_error.dat')
         assert compare, 'Results do not agree.'
 
     def _cleanup(self):
+        """Delete statepoints, tally, and test files."""
         output = glob.glob(os.path.join(os.getcwd(), 'statepoint.*.*'))
         output.append(os.path.join(os.getcwd(), 'tallies.out'))
         output.append(os.path.join(os.getcwd(), 'results_test.dat'))
@@ -155,7 +156,7 @@ class HashedTestHarness(TestHarness):
 
 
 class PlotTestHarness(TestHarness):
-    """Specialized TestHarness for running OpenMC plotting tests.""" 
+    """Specialized TestHarness for running OpenMC plotting tests."""
     def __init__(self, plot_names):
         self._plot_names = plot_names
         self._opts = None
@@ -199,32 +200,31 @@ class PlotTestHarness(TestHarness):
 
 
 class CMFDTestHarness(TestHarness):
-    """Specialized TestHarness for running OpenMC CMFD tests.""" 
+    """Specialized TestHarness for running OpenMC CMFD tests."""
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)
-        sp.read_results()
 
         # Write out the eigenvalue and tallies.
         outstr = TestHarness._get_results(self)
 
         # Write out CMFD data.
         outstr += 'cmfd indices\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_indices])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_indices])
         outstr += '\nk cmfd\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._k_cmfd])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.k_cmfd])
         outstr += '\ncmfd entropy\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_entropy])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_entropy])
         outstr += '\ncmfd balance\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_balance])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_balance])
         outstr += '\ncmfd dominance ratio\n'
-        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in sp._cmfd_dominance])
+        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in sp.cmfd_dominance])
         outstr += '\ncmfd openmc source comparison\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp._cmfd_srccmp])
+        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_srccmp])
         outstr += '\ncmfd source\n'
-        cmfdsrc = np.reshape(sp._cmfd_src, np.product(sp._cmfd_indices),
+        cmfdsrc = np.reshape(sp.cmfd_src, np.product(sp.cmfd_indices),
                              order='F')
         outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
         outstr += '\n'
@@ -233,15 +233,14 @@ class CMFDTestHarness(TestHarness):
 
 
 class ParticleRestartTestHarness(TestHarness):
-    """Specialized TestHarness for running OpenMC particle restart tests.""" 
+    """Specialized TestHarness for running OpenMC particle restart tests."""
     def _test_output_created(self):
         """Make sure the restart file has been created."""
         particle = glob.glob(os.path.join(os.getcwd(), self._sp_name))
         assert len(particle) == 1, 'Either multiple or no particle restart ' \
              'files exist.'
-        assert particle[0].endswith('binary') \
-             or particle[0].endswith('h5'), \
-             'Particle restart file is not a binary or hdf5 file.'
+        assert particle[0].endswith('h5'), \
+             'Particle restart file is not a HDF5 file.'
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
@@ -258,7 +257,7 @@ class ParticleRestartTestHarness(TestHarness):
         outstr += 'particle id:\n'
         outstr += "{0:12.6E}\n".format(p.id)
         outstr += 'run mode:\n'
-        outstr += "{0:12.6E}\n".format(p.run_mode)
+        outstr += "{0}\n".format(p.run_mode)
         outstr += 'particle weight:\n'
         outstr += "{0:12.6E}\n".format(p.weight)
         outstr += 'particle energy:\n'
@@ -271,3 +270,89 @@ class ParticleRestartTestHarness(TestHarness):
                                                            p.uvw[2])
 
         return outstr
+
+
+class PyAPITestHarness(TestHarness):
+    def __init__(self, statepoint_name, tallies_present=False):
+        TestHarness.__init__(self, statepoint_name, tallies_present)
+        self._input_set = InputSet()
+
+    def execute_test(self):
+        """Build input XMLs, run OpenMC, and verify correct results."""
+        try:
+            self._build_inputs()
+            inputs = self._get_inputs()
+            self._write_inputs(inputs)
+            self._compare_inputs()
+            self._run_openmc()
+            self._test_output_created()
+            results = self._get_results()
+            self._write_results(results)
+            self._compare_results()
+        finally:
+            self._cleanup()
+
+    def update_results(self):
+        """Update results_true.dat and inputs_true.dat"""
+        try:
+            self._build_inputs()
+            inputs = self._get_inputs()
+            self._write_inputs(inputs)
+            self._overwrite_inputs()
+            self._run_openmc()
+            self._test_output_created()
+            results = self._get_results()
+            self._write_results(results)
+            self._overwrite_results()
+        finally:
+            self._cleanup()
+
+    def _build_inputs(self):
+        """Write input XML files."""
+        self._input_set.build_default_materials_and_geometry()
+        self._input_set.build_default_settings()
+        self._input_set.export()
+
+    def _get_inputs(self):
+        """Return a hash digest of the input XML files."""
+        xmls = ('geometry.xml', 'tallies.xml', 'materials.xml', 'settings.xml')
+        xmls = [os.path.join(os.getcwd(), fname) for fname in xmls]
+        outstr = '\n'.join([open(fname).read() for fname in xmls
+                            if os.path.exists(fname)])
+
+        sha512 = hashlib.sha512()
+        sha512.update(outstr.encode('utf-8'))
+        outstr = sha512.hexdigest()
+
+        return outstr
+
+    def _write_inputs(self, input_digest):
+        """Write the digest of the input XMLs to an ASCII file."""
+        with open('inputs_test.dat', 'w') as fh:
+            fh.write(input_digest)
+
+    def _overwrite_inputs(self):
+        """Overwrite inputs_true.dat with inputs_test.dat"""
+        shutil.copyfile('inputs_test.dat', 'inputs_true.dat')
+
+    def _compare_inputs(self):
+        """Make sure the current inputs agree with the _true standard."""
+        compare = filecmp.cmp('inputs_test.dat', 'inputs_true.dat')
+        if not compare:
+            f = open('inputs_test.dat')
+            for line in f.readlines(): print(line)
+            f.close()
+            os.rename('inputs_test.dat', 'inputs_error.dat')
+        assert compare, 'Input files are broken.'
+
+    def _cleanup(self):
+        """Delete XMLs, statepoints, tally, and test files."""
+        TestHarness._cleanup(self)
+        output = [os.path.join(os.getcwd(), 'materials.xml')]
+        output.append(os.path.join(os.getcwd(), 'geometry.xml'))
+        output.append(os.path.join(os.getcwd(), 'settings.xml'))
+        output.append(os.path.join(os.getcwd(), 'inputs_test.dat'))
+        output.append(os.path.join(os.getcwd(), 'summary.h5'))
+        for f in output:
+            if os.path.exists(f):
+                os.remove(f)

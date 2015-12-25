@@ -532,7 +532,6 @@ class Summary(object):
                 # If this is a moment, use generic moment order
                 pattern = r'-n$|-pn$|-yn$'
                 score = re.sub(pattern, '-' + moments[j].decode(), score)
-
                 tally.add_score(score)
 
             # Read filter metadata

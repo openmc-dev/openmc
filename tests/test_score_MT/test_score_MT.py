@@ -12,7 +12,6 @@ class ScoreMTTestHarness(PyAPITestHarness):
         filt = openmc.Filter(type='cell', bins=(10, 21, 22, 23))
         tallies = [openmc.Tally(tally_id=i) for i in range(1, 4)]
         [t.add_filter(filt) for t in tallies]
-        [t.add_score('n2n') for t in tallies]
         [t.add_score('16') for t in tallies]
         [t.add_score('51') for t in tallies]
         [t.add_score('102') for t in tallies]

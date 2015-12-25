@@ -567,7 +567,7 @@ class Summary(object):
         """
 
         for index, material in self.materials.items():
-            if material._id == material_id:
+            if material.id == material_id:
                 return material
 
         return None
@@ -588,7 +588,7 @@ class Summary(object):
         """
 
         for index, surface in self.surfaces.items():
-            if surface._id == surface_id:
+            if surface.id == surface_id:
                 return surface
 
         return None
@@ -609,7 +609,7 @@ class Summary(object):
         """
 
         for index, cell in self.cells.items():
-            if cell._id == cell_id:
+            if cell.id == cell_id:
                 return cell
 
         return None
@@ -630,7 +630,7 @@ class Summary(object):
         """
 
         for index, universe in self.universes.items():
-            if universe._id == universe_id:
+            if universe.id == universe_id:
                 return universe
 
         return None
@@ -651,7 +651,7 @@ class Summary(object):
         """
 
         for index, lattice in self.lattices.items():
-            if lattice._id == lattice_id:
+            if lattice.id == lattice_id:
                 return lattice
 
         return None

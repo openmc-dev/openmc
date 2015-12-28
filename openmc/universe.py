@@ -1119,7 +1119,7 @@ class RectLattice(Lattice):
             for z in range(self._dimension[2]):
                 for y in range(self._dimension[1]):
                     for x in range(self._dimension[0]):
-                        universe = self._universes[x][y][z]
+                        universe = self._universes[z][y][x]
 
                         # Append Universe ID to the Lattice XML subelement
                         universe_ids += '{0} '.format(universe._id)
@@ -1137,7 +1137,7 @@ class RectLattice(Lattice):
         else:
             for y in range(self._dimension[1]):
                 for x in range(self._dimension[0]):
-                    universe = self._universes[x][y]
+                    universe = self._universes[y][x]
 
                     # Append Universe ID to Lattice XML subelement
                     universe_ids += '{0} '.format(universe._id)

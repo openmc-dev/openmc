@@ -42,7 +42,7 @@ class Geometry(object):
 
         self._root_universe = root_universe
 
-    def get_offset(self, path, filter_offset):
+    def get_offset(self, path):
         """Returns the corresponding location in the results array for a given path and
         filter number. This is primarily intended to post-processing result when
         a distribcell filter is used.
@@ -55,8 +55,6 @@ class Geometry(object):
             lattice passed through. For the case of the lattice, a tuple should
             be provided to indicate which coordinates in the lattice should be
             entered. This should be in the form: (lat_id, i_x, i_y, i_z)
-        filter_offset : int
-            An integer that specifies which offset map the filter is using
 
         Returns
         -------
@@ -65,14 +63,22 @@ class Geometry(object):
 
         """
 
+        # Find the distribcell index of the cell.
+        cells = self.get_all_cells()
+        if path[-1] in cells:
+            distribcell_ind = cells[path[-1]].distribcell_ind
+        else:
+            raise RuntimeError('Could not find cell {} specified in a \
+                                distribcell filter'.format(path[-1]))
+
         # Return memoize'd offset if possible
-        if (path, filter_offset) in self._offsets:
-            offset = self._offsets[(path, filter_offset)]
+        if (path, distribcell_ind) in self._offsets:
+            offset = self._offsets[(path, distribcell_ind)]
 
         # Begin recursive call to compute offset starting with the base Universe
         else:
-            offset = self._root_universe.get_offset(path, filter_offset)
-            self._offsets[(path, filter_offset)] = offset
+            offset = self._root_universe.get_offset(path, distribcell_ind)
+            self._offsets[(path, distribcell_ind)] = offset
 
         # Return the final offset
         return offset

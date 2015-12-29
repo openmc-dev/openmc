@@ -271,6 +271,11 @@ class Summary(object):
                 cell.region = Region.from_expression(
                     region, {s.id: s for s in self.surfaces.values()})
 
+            # Get the distribcell index
+            ind = self._f['geometry/cells'][key]['distribcell_ind'].value
+            if ind != 0:
+               cell.distribcell_ind = ind 
+
             # Add the Cell to the global dictionary of all Cells
             self.cells[index] = cell
 

@@ -609,7 +609,7 @@ class Filter(object):
                     # If this region is in Cell corresponding to the
                     # distribcell filter bin, store it in dictionary
                     if cell_id == self.bins[0]:
-                        offset = openmc_geometry.get_offset(path, self.offset)
+                        offset = openmc_geometry.get_offset(path)
                         offsets_to_coords[offset] = coords
 
                 # Each distribcell offset is a DataFrame bin

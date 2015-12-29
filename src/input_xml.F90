@@ -982,8 +982,7 @@ contains
   subroutine read_geometry_xml()
 
     integer :: i, j, k, m, i_x, i_a, input_index
-    integer :: n
-    integer :: n_x, n_y, n_z, n_rings, n_rlats, n_hlats
+    integer :: n, n_mats, n_x, n_y, n_z, n_rings, n_rlats, n_hlats
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
@@ -994,6 +993,7 @@ contains
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
+    character(MAX_WORD_LEN), allocatable :: sarray(:)
     character(1000) :: region_spec
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
@@ -1085,27 +1085,40 @@ contains
       end if
 
       ! Read material
-      allocate(c % material(1))
-      word = ''
-      if (check_for_node(node_cell, "material")) &
-           call get_node_value(node_cell, "material", word)
-      select case(to_lower(word))
-      case ('void')
-        c % material(1) = MATERIAL_VOID
+      if (check_for_node(node_cell, "material")) then
+        n_mats = get_arraysize_string(node_cell, "material")
 
-      case ('')
-        ! This case is called if no material was specified
-        c % material(1) = NONE
+        if (n_mats > 0) then
+          allocate(sarray(n_mats))
+          call get_node_array(node_cell, "material", sarray)
 
-      case default
-        c % material(1) = int(str_to_int(word), 4)
+          allocate(c % material(n_mats))
+          do j = 1, n_mats
+            select case(trim(to_lower(sarray(j))))
+            case ('void')
+              c % material(j) = MATERIAL_VOID
+            case default
+              c % material(j) = int(str_to_int(sarray(j)), 4)
 
-        ! Check for error
-        if (c % material(1) == ERROR_INT) then
-          call fatal_error("Invalid material specified on cell " &
-               &// to_str(c % id))
+              ! Check for error
+              if (c % material(j) == ERROR_INT) then
+                call fatal_error("Invalid material specified on cell " &
+                     &// to_str(c % id))
+              end if
+            end select
+          end do
+
+          deallocate(sarray)
+
+        else
+          allocate(c % material(1))
+          c % material(1) = NONE
         end if
-      end select
+
+      else
+        allocate(c % material(1))
+        c % material(1) = NONE
+      end if
 
       ! Check to make sure that either material or fill was specified
       if (c % material(1) == NONE .and. c % fill == NONE) then

@@ -614,31 +614,33 @@ contains
       ! =======================================================================
       ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
 
-      id = c%material(1)
-      if (id == MATERIAL_VOID) then
-        c%type = CELL_NORMAL
-      elseif (id /= 0) then
-        if (material_dict%has_key(id)) then
-          c%type = CELL_NORMAL
-          c%material(1) = material_dict%get_key(id)
-        else
-          call fatal_error("Could not find material " // trim(to_str(id)) &
-               &// " specified on cell " // trim(to_str(c%id)))
-        end if
-      else
-        id = c%fill
-        if (universe_dict%has_key(id)) then
-          c%type = CELL_FILL
-          c%fill = universe_dict%get_key(id)
-        elseif (lattice_dict%has_key(id)) then
-          lid = lattice_dict%get_key(id)
-          c%type = CELL_LATTICE
-          c%fill = lid
+      if (c % material(1) == NONE) then
+        id = c % fill
+        if (universe_dict % has_key(id)) then
+          c % type = CELL_FILL
+          c % fill = universe_dict % get_key(id)
+        elseif (lattice_dict % has_key(id)) then
+          lid = lattice_dict % get_key(id)
+          c % type = CELL_LATTICE
+          c % fill = lid
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
-               &// trim(to_str(c%id)) // " is neither a universe nor a &
+               &// trim(to_str(c % id)) // " is neither a universe nor a &
                &lattice.")
         end if
+      else
+        do j = 1, size(c % material)
+          id = c % material(j)
+          if (id == MATERIAL_VOID) then
+            c % type = CELL_NORMAL
+          else if (material_dict % has_key(id)) then
+            c % type = CELL_NORMAL
+            c % material(j) = material_dict % get_key(id)
+          else
+            call fatal_error("Could not find material " // trim(to_str(id)) &
+                 &// " specified on cell " // trim(to_str(c % id)))
+          end if
+        end do
       end if
     end do
 
@@ -1042,11 +1044,12 @@ contains
     class(Lattice),    pointer :: lat           ! pointer to lattice
     type(TallyObject), pointer :: t             ! pointer to tally
     type(TallyFilter), pointer :: filter        ! pointer to filter
+    type(Cell),        pointer :: c             ! pointer to cell
 
     ! Begin gathering list of cells in distribcell tallies
     n_maps = 0
 
-    ! Populate list of distribcells to track
+    ! List all cells referenced in distribcell filters.
     do i = 1, n_tallies
       t => tallies(i)
 
@@ -1060,6 +1063,14 @@ contains
         end if
 
       end do
+    end do
+
+    ! List all cells with multiple (distributed) materials.
+    do i = 1, n_cells
+      c => cells(i)
+      if (size(c % material) > 1) then
+        if (.not. cell_list % contains(i)) call cell_list % add(i)
+      end if
     end do
 
     ! Compute the number of unique universes containing these distribcells
@@ -1076,7 +1087,7 @@ contains
     ! Allocate the list of offset tables for each unique universe
     allocate(univ_list(n_maps))
 
-    ! Allocate list to accumulate target distribccell counts in each universe
+    ! Allocate list to accumulate target distribcell counts in each universe
     allocate(counts(n_universes, n_maps))
 
     ! Allocate list to track if target distribcells are found in each universe

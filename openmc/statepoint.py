@@ -360,9 +360,6 @@ class StatePoint(object):
                     # Read the Filter type
                     filter_type = self._f['{0}{1}/type'.format(subbase, j)].value.decode()
 
-                    # Read the Filter offset
-                    offset = self._f['{0}{1}/offset'.format(subbase, j)].value
-
                     n_bins = self._f['{0}{1}/n_bins'.format(subbase, j)].value
 
                     # Read the bin values
@@ -370,7 +367,6 @@ class StatePoint(object):
 
                     # Create Filter object
                     filter = openmc.Filter(filter_type, bins)
-                    filter.offset = offset
                     filter.num_bins = n_bins
 
                     if filter_type == 'mesh':

@@ -1449,17 +1449,13 @@ contains
 
     ! Look through all cells in this universe
     do i = 1, n
-
-      cell_index = univ % cells(i)
-      c => cells(cell_index)
-
-      ! If the cell ID matches the goal and the offset matches final,
-      ! write to the geometry stack
-      if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
-        path = trim(path) // "->" // to_str(c%id)
+      ! If the cell matches the goal and the offset matches final, write to the
+      ! geometry stack
+      if (univ % cells(i) == goal .AND. offset == final) then
+        c => cells(univ % cells(i))
+        path = trim(path) // "->" // to_str(c % id)
         return
       end if
-
     end do
 
     ! Find the fill cell or lattice cell that we need to enter

@@ -1049,8 +1049,9 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
-      ! Initialize the number of cell instances - this is a base case for distribcells
+      ! Initialize distribcell instances and distribcell index
       c % instances = 0
+      c % distribcell_ind = NONE
 
       ! Get pointer to i-th cell node
       call get_list_item(node_cell_list, i, node_cell)

@@ -131,10 +131,13 @@ module geometry_header
     integer, allocatable :: offset (:)     ! Distribcell offset for tally
                                            !  counter
     integer, allocatable :: region(:)      ! Definition of spatial region as
-                                           ! Boolean expression of half-spaces
+                                           !  Boolean expression of half-spaces
     integer, allocatable :: rpn(:)         ! Reverse Polish notation for region
-                                           ! expression
-    logical :: simple                      ! Is the region simple (intersections only)
+                                           !  expression
+    logical :: simple                      ! Is the region simple (intersections
+                                           !  only)
+    integer :: distribcell_ind             ! Index corresponding to this cell in
+                                           !  distribcell arrays
 
     ! Rotation matrix and translation vector
     real(8), allocatable :: translation(:)

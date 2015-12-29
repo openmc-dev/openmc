@@ -1159,7 +1159,7 @@ contains
       end if
 
       ! Store a new random number seed to continue this site with
-      fission_bank(i) % prn_seed = int(9220000000000000000_8*prn(), 8)
+      if (dd_run) fission_bank(i)%prn_seed = int(9220000000000000000_8*prn(), 8)
       
     end do
 

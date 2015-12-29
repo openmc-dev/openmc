@@ -153,7 +153,6 @@ contains
 
     integer(8) :: particle_seed  ! unique index for particle
     integer :: i
-    type(Bank), pointer :: src
 
     if (.not. dd_run) then
 

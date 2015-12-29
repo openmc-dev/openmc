@@ -103,7 +103,7 @@ contains
               
       else
         ! calibrate coordinates to guarantee numerical precision
-        ! expecially for domain decom
+        ! especially for domain decom
         if (dd_run) call calibrate_coord(p)
         
       end if

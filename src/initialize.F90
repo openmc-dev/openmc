@@ -1086,16 +1086,16 @@ contains
     found(:,:) = .false.
     k = 1
 
+    ! Search through universes for distributed cells and assign each one a
+    ! unique distribcell array index.
     do i = 1, n_universes
       univ => universes(i)
-
       do j = 1, univ % n_cells
-        if (.not. cell_list % contains(univ % cells(j))) cycle
-
-        cells(univ % cells(j)) % distribcell_ind = k
-
-        univ_list(k) = univ % id
-        k = k + 1
+        if (cell_list % contains(univ % cells(j))) then
+          cells(univ % cells(j)) % distribcell_ind = k
+          univ_list(k) = univ % id
+          k = k + 1
+        end if
       end do
     end do
 

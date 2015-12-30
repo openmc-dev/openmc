@@ -285,7 +285,7 @@ class Cell(object):
             else:
                 self.region = Intersection(self.region, region)
 
-    def get_offset(self, path, distribcell_ind):
+    def get_cell_instance(self, path, distribcell_ind):
         # Get the current element and remove it from the list
         cell_id = path[0]
         path = path[1:]
@@ -296,12 +296,12 @@ class Cell(object):
 
         # If the Cell is filled by a Universe
         elif self._type == 'fill':
-            offset = self._offsets[distribcell_ind-1]
-            offset += self._fill.get_offset(path, distribcell_ind)
+            offset = self.offsets[distribcell_ind-1]
+            offset += self.fill.get_cell_instance(path, distribcell_ind)
 
         # If the Cell is filled by a Lattice
         else:
-            offset = self._fill.get_offset(path, distribcell_ind)
+            offset = self.fill.get_cell_instance(path, distribcell_ind)
 
         return offset
 
@@ -605,7 +605,7 @@ class Universe(object):
 
         self._cells.clear()
 
-    def get_offset(self, path, distribcell_ind):
+    def get_cell_instance(self, path, distribcell_ind):
         # Get the current element and remove it from the list
         path = path[1:]
 
@@ -613,7 +613,7 @@ class Universe(object):
         cell_id = path[0]
 
         # Make a recursive call to the Cell within this Universe
-        offset = self._cells[cell_id].get_offset(path, distribcell_ind)
+        offset = self.cells[cell_id].get_cell_instance(path, distribcell_ind)
 
         # Return the offset computed at all nested Universe levels
         return offset
@@ -1073,7 +1073,7 @@ class RectLattice(Lattice):
             cv.check_greater_than('lattice pitch', dim, 0.0)
         self._pitch = pitch
 
-    def get_offset(self, path, distribcell_ind):
+    def get_cell_instance(self, path, distribcell_ind):
         # Get the current element and remove it from the list
         i = path[0]
         path = path[1:]
@@ -1081,14 +1081,14 @@ class RectLattice(Lattice):
         # For 2D Lattices
         if len(self._dimension) == 2:
             offset = self._offsets[i[1]-1, i[2]-1, 0, distribcell_ind-1]
-            offset += self._universes[i[1]][i[2]].get_offset(path,
-                                                             distribcell_ind)
+            offset += self._universes[i[1]][i[2]].get_cell_instance(path,
+                                                                distribcell_ind)
 
         # For 3D Lattices
         else:
             offset = self._offsets[i[1]-1, i[2]-1, i[3]-1, distribcell_ind-1]
-            offset += self._universes[i[1]-1][i[2]-1][i[3]-1].get_offset(path,
-                                                                 distribcell_ind)
+            offset += self._universes[i[1]-1][i[2]-1][i[3]-1].get_cell_instance(
+                                                          path, distribcell_ind)
 
         return offset
 

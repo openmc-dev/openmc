@@ -42,7 +42,7 @@ class Geometry(object):
 
         self._root_universe = root_universe
 
-    def get_offset(self, path):
+    def get_cell_instance(self, path):
         """Returns the corresponding location in the results array for a given path and
         filter number. This is primarily intended to post-processing result when
         a distribcell filter is used.
@@ -77,7 +77,8 @@ class Geometry(object):
 
         # Begin recursive call to compute offset starting with the base Universe
         else:
-            offset = self._root_universe.get_offset(path, distribcell_ind)
+            offset = self._root_universe.get_cell_instance(path,
+                                                           distribcell_ind)
             self._offsets[(path, distribcell_ind)] = offset
 
         # Return the final offset

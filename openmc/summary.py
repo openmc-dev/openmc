@@ -356,8 +356,8 @@ class Summary(object):
                                  self.get_universe_by_id(universe_ids[x, y, z])
 
                 # Transpose, reverse y-dimension for appropriate ordering
-                shape = universes.shape
-                universes = np.transpose(universes, (1, 0, 2))
+                shape = universes.shape[::-1]
+                universes = np.transpose(universes, (2, 1, 0))
                 universes.shape = shape
                 universes = universes[:, ::-1, :]
                 lattice.universes = universes

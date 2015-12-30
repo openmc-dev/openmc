@@ -725,11 +725,11 @@ def get_openmc_cell(opencg_cell):
     else:
         openmc_cell.fill = get_openmc_material(fill)
 
-    if opencg_cell.rotation:
+    if opencg_cell.rotation is not None:
         rotation = np.asarray(opencg_cell.rotation, dtype=np.float64)
         openmc_cell.rotation = rotation
 
-    if opencg_cell.translation:
+    if opencg_cell.translation is not None:
         translation = np.asarray(opencg_cell.translation, dtype=np.float64)
         openmc_cell.translation = translation
 
@@ -907,6 +907,9 @@ def get_opencg_lattice(openmc_lattice):
             for x in range(dimension[0]):
                 universe_id = universes[z][dimension[1]-y-1][x].id
                 universe_array[z][y][x] = unique_universes[universe_id]
+
+    # Reverse y-dimension in array to match ordering in OpenCG
+    universe_array = universe_array[:, ::-1, :]
 
     opencg_lattice = opencg.Lattice(lattice_id, name)
     opencg_lattice.dimension = dimension

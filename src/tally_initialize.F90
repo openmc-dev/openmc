@@ -38,7 +38,7 @@ contains
     integer :: j                 ! loop index for filters
     integer :: n                 ! temporary stride
     integer :: max_n_filters = 0 ! maximum number of filters
-    type(TallyObject), pointer :: t => null()
+    type(TallyObject), pointer :: t
 
     TALLY_LOOP: do i = 1, n_tallies
       ! Get pointer to tally
@@ -88,7 +88,7 @@ contains
     integer :: k    ! loop index for bins
     integer :: bin  ! filter bin entries
     integer :: type ! type of tally filter
-    type(TallyObject), pointer :: t => null()
+    type(TallyObject), pointer :: t
 
     ! allocate tally map array -- note that we don't need a tally map for the
     ! energy_in and energy_out filters

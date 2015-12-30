@@ -67,6 +67,9 @@ class Library(object):
     sp_filename : str
         The filename of the statepoint with tally data used to the
         compute cross sections
+    keff : Real or None
+        The combined keff from the statepoint file with tally data used to 
+        compute cross sections (for eigenvalue calculations only)
     name : str, optional
         Name of the multi-group cross section library. Used as a label to
         identify tallies in OpenMC 'tallies.xml' file.
@@ -88,6 +91,7 @@ class Library(object):
         self._tally_trigger = None
         self._all_mgxs = OrderedDict()
         self._sp_filename = None
+        self._keff = None
 
         self.name = name
         self.openmc_geometry = openmc_geometry
@@ -114,6 +118,7 @@ class Library(object):
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = self.all_mgxs
             clone._sp_filename = self._sp_filename
+            clone._keff = self._keff
 
             clone._all_mgxs = OrderedDict()
             for domain in self.domains:
@@ -199,10 +204,15 @@ class Library(object):
     def sp_filename(self):
         return self._sp_filename
 
+    @property
+    def keff(self):
+        return self._keff
+
     @openmc_geometry.setter
     def openmc_geometry(self, openmc_geometry):
         cv.check_type('openmc_geometry', openmc_geometry, openmc.Geometry)
         self._openmc_geometry = openmc_geometry
+        self._opencg_geometry = None
 
     @name.setter
     def name(self, name):
@@ -361,6 +371,10 @@ class Library(object):
             raise ValueError(msg)
 
         self._sp_filename = statepoint._f.filename
+        self._openmc_geometry = statepoint.summary.openmc_geometry
+
+        if statepoint.run_mode == 'k-eigenvalue':
+            self._keff = statepoint.k_combined[0]
 
         # Load tallies for each MGXS for each domain and mgxs type
         for domain in self.domains:
@@ -380,9 +394,7 @@ class Library(object):
         ----------
         domain : Material or Cell or Universe or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission',
-                     'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix',
-                     'nu-scatter matrix', 'chi'}
+        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
             The type of multi-group cross section object to return
 
         Returns

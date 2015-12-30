@@ -994,7 +994,7 @@ contains
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    character(1000) :: region_spec
+    character(REGION_SPEC_LEN) :: region_spec
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
     class(Lattice), pointer :: lat

@@ -14,7 +14,7 @@ module constants
   integer, parameter :: REVISION_STATEPOINT       = 14
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
   integer, parameter :: REVISION_TRACK            = 1
-  integer, parameter :: REVISION_SUMMARY          = 1
+  integer, parameter :: REVISION_SUMMARY          = 2
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS

@@ -117,7 +117,7 @@ contains
     type(Node), pointer, intent(out) :: out_ptr
 
     logical :: found_
-    type(NodeList), pointer :: elem_list => null()
+    type(NodeList), pointer :: elem_list
 
     ! Set found to false
     found_ = .false.

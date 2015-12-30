@@ -8,7 +8,7 @@ module constants
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 7
-  integer, parameter :: VERSION_RELEASE = 0
+  integer, parameter :: VERSION_RELEASE = 1
 
   ! Revision numbers for binary files
   integer, parameter :: REVISION_STATEPOINT       = 14
@@ -45,10 +45,11 @@ module constants
 
   ! Maximum number of words in a single line, length of line, and length of
   ! single word
-  integer, parameter :: MAX_WORDS    = 500
-  integer, parameter :: MAX_LINE_LEN = 250
-  integer, parameter :: MAX_WORD_LEN = 150
-  integer, parameter :: MAX_FILE_LEN = 255
+  integer, parameter :: MAX_WORDS       = 500
+  integer, parameter :: MAX_LINE_LEN    = 250
+  integer, parameter :: MAX_WORD_LEN    = 150
+  integer, parameter :: MAX_FILE_LEN    = 255
+  integer, parameter :: REGION_SPEC_LEN = 1000
 
   ! Maximum number of external source spatial resamples to encounter before an
   ! error is thrown.

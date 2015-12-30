@@ -58,10 +58,6 @@ module tally_header
     integer :: offset = 0 ! Only used for distribcell filters
     integer, allocatable :: int_bins(:)
     real(8), allocatable :: real_bins(:) ! Only used for energy filters
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => tallyfilter_clear ! Deallocates TallyFilter
   end type TallyFilter
 
 
@@ -144,84 +140,6 @@ module tally_header
 
     ! Derivative for differentially tallies
     type(TallyDerivative), allocatable :: deriv
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => tallyobject_clear ! Deallocates TallyObject
   end type TallyObject
-
-  contains
-
-!===============================================================================
-! TALLYFILTER_CLEAR deallocates a TallyFilter element and sets it to its as
-! initialized state.
-!===============================================================================
-
-    subroutine tallyfilter_clear(this)
-      class(TallyFilter), intent(inout) :: this ! The TallyFilter to be cleared
-
-      this % type = NONE
-      this % n_bins = 0
-      if (allocated(this % int_bins)) &
-           deallocate(this % int_bins)
-      if (allocated(this % real_bins)) &
-           deallocate(this % real_bins)
-
-    end subroutine tallyfilter_clear
-
-!===============================================================================
-! TALLYOBJECT_CLEAR deallocates a TallyObject element and sets it to its as
-! initialized state.
-!===============================================================================
-
-    subroutine tallyobject_clear(this)
-      class(TallyObject), intent(inout) :: this ! The TallyObject to be cleared
-
-      integer :: i  ! Loop Index
-
-      ! This routine will go through each item in TallyObject and set the value
-      ! to its default, as-initialized values, including deallocations.
-      this % name = ""
-
-      if (allocated(this % filters)) then
-        do i = 1, size(this % filters)
-          call this % filters(i) % clear()
-        end do
-        deallocate(this % filters)
-      end if
-
-      if (allocated(this % stride)) &
-           deallocate(this % stride)
-
-      this % find_filter = 0
-
-      this % n_nuclide_bins = 0
-      if (allocated(this % nuclide_bins)) &
-           deallocate(this % nuclide_bins)
-      this % all_nuclides = .false.
-
-      this % n_score_bins = 0
-      if (allocated(this % score_bins)) &
-           deallocate(this % score_bins)
-      if (allocated(this % moment_order)) &
-           deallocate(this % moment_order)
-      this % n_user_score_bins = 0
-
-      if (allocated(this % results)) &
-           deallocate(this % results)
-
-      this % reset = .false.
-
-      this % n_realizations = 0
-
-      if (allocated(this % triggers)) &
-           deallocate (this % triggers)
-
-      this % n_triggers = 0
-
-      if (allocated(this % deriv)) &
-           deallocate (this % deriv)
-
-    end subroutine tallyobject_clear
 
 end module tally_header

@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.7.0',
+        VERSION:     '0.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -160,6 +160,26 @@ colored with a specific RGB (values)</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="openmc.plots.Plot.colorize">
+<code class="descname">colorize</code><span class="sig-paren">(</span><em>geometry</em>, <em>seed=1</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.plots.Plot.colorize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a color scheme for each domain in the plot.</p>
+<p>This routine may be used to generate random, reproducible color schemes.
+The colors generated are based upon cell/material IDs in the geometry.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>geometry</strong> (<em>openmc.Geometry</em>) &#8211; The geometry for which the plot is defined</li>
+<li><strong>seed</strong> (<em>Integral</em>) &#8211; The random number seed used to generate the color scheme</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="openmc.plots.Plot.get_plot_xml">
 <code class="descname">get_plot_xml</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#openmc.plots.Plot.get_plot_xml" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return XML representation of the plot</p>
@@ -171,6 +191,30 @@ colored with a specific RGB (values)</p>
 XML element containing plot data</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">xml.etree.ElementTree.Element</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.plots.Plot.highlight_domains">
+<code class="descname">highlight_domains</code><span class="sig-paren">(</span><em>geometry</em>, <em>domains</em>, <em>seed=1</em>, <em>alpha=0.5</em>, <em>background='gray'</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.plots.Plot.highlight_domains" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use alpha compositing to highlight one or more domains in the plot.</p>
+<p>This routine generates a color scheme and applies alpha compositing
+to make all domains except the highlighted ones appear partially
+transparent.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>geometry</strong> (<em>openmc.Geometry</em>) &#8211; The geometry for which the plot is defined</li>
+<li><strong>domains</strong> (<em>Iterable of Integral</em>) &#8211; A collection of the domain IDs to highlight in the plot</li>
+<li><strong>seed</strong> (<em>Integral</em>) &#8211; The random number seed used to generate the color scheme</li>
+<li><strong>alpha</strong> (<em>Real in [0,1]</em>) &#8211; The value to apply in alpha compisiting</li>
+<li><strong>background</strong> (<em>3-tuple of Integral or 'white' or 'black' or 'gray'</em>) &#8211; The background color to apply in alpha compisiting</li>
+</ul>
+</td>
 </tr>
 </tbody>
 </table>
@@ -198,9 +242,53 @@ plots.xml input file.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="openmc.plots.PlotsFile.colorize">
+<code class="descname">colorize</code><span class="sig-paren">(</span><em>geometry</em>, <em>seed=1</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.plots.PlotsFile.colorize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a consistent color scheme for each domain in each plot.</p>
+<p>This routine may be used to generate random, reproducible color schemes.
+The colors generated are based upon cell/material IDs in the geometry.
+The color schemes will be consistent for all plots in &#8220;plots.xml&#8221;.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>geometry</strong> (<em>openmc.Geometry</em>) &#8211; The geometry for which the plots are defined</li>
+<li><strong>seed</strong> (<em>Integral</em>) &#8211; The random number seed used to generate the color scheme</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="openmc.plots.PlotsFile.export_to_xml">
 <code class="descname">export_to_xml</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#openmc.plots.PlotsFile.export_to_xml" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a plots.xml file that can be used by OpenMC.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.plots.PlotsFile.highlight_domains">
+<code class="descname">highlight_domains</code><span class="sig-paren">(</span><em>geometry</em>, <em>domains</em>, <em>seed=1</em>, <em>alpha=0.5</em>, <em>background='gray'</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.plots.PlotsFile.highlight_domains" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use alpha compositing to highlight one or more domains in the plot.</p>
+<p>This routine generates a color scheme and applies alpha compositing
+to make all domains except the highlighted ones partially transparent.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>geometry</strong> (<em>openmc.Geometry</em>) &#8211; The geometry for which the plot is defined</li>
+<li><strong>domains</strong> (<em>Iterable of Integral</em>) &#8211; A collection of the domain IDs to highlight in the plot</li>
+<li><strong>seed</strong> (<em>Integral</em>) &#8211; The random number seed used to generate the color scheme</li>
+<li><strong>alpha</strong> (<em>Real in [0,1]</em>) &#8211; The value to apply in alpha compisiting</li>
+<li><strong>background</strong> (<em>3-tuple of Integral or 'white' or 'black' or 'gray'</em>) &#8211; The background color to apply in alpha compisiting</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -238,7 +326,7 @@ plots.xml input file.</p>
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.3.
     </div>
 <script type="text/javascript">
 

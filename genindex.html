@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.7.0',
+        VERSION:     '0.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -62,6 +62,7 @@
  | <a href="#N"><strong>N</strong></a>
  | <a href="#O"><strong>O</strong></a>
  | <a href="#P"><strong>P</strong></a>
+ | <a href="#Q"><strong>Q</strong></a>
  | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
@@ -81,10 +82,6 @@
   </dt>
 
       
-  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.__div__">__div__() (openmc.tallies.Tally method)</a>
-  </dt>
-
-      
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.__mul__">__mul__() (openmc.tallies.Tally method)</a>
   </dt>
 
@@ -100,12 +97,12 @@
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.__pow__">__pow__() (openmc.tallies.Tally method)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.__radd__">__radd__() (openmc.tallies.Tally method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.__rdiv__">__rdiv__() (openmc.tallies.Tally method)</a>
   </dt>
@@ -122,6 +119,10 @@
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.__sub__">__sub__() (openmc.tallies.Tally method)</a>
   </dt>
 
+      
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.__truediv__">__truediv__() (openmc.tallies.Tally method)</a>
+  </dt>
+
   </dl></td>
 </tr></table>
 
@@ -130,6 +131,10 @@
   <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/surface.html#openmc.surface.Plane.a">a (openmc.surface.Plane attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.AbsorptionXS">AbsorptionXS (class in openmc.mgxs.mgxs)</a>
   </dt>
 
       
@@ -199,11 +204,19 @@
   </dt>
 
       
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.add_to_tallies_file">add_to_tallies_file() (openmc.mgxs.library.Library method)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.add_trigger">add_trigger() (openmc.tallies.Tally method)</a>
   </dt>
 
       
   <dt><a href="pythonapi/cmfd.html#openmc.cmfd.CMFDMesh.albedo">albedo (openmc.cmfd.CMFDMesh attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.all_mgxs">all_mgxs (openmc.mgxs.library.Library attribute)</a>
   </dt>
 
       
@@ -232,8 +245,6 @@
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.batches">batches (openmc.settings.SettingsFile attribute)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/cmfd.html#openmc.cmfd.CMFDFile.begin">begin (openmc.cmfd.CMFDFile attribute)</a>
   </dt>
@@ -242,10 +253,74 @@
   <dt><a href="pythonapi/filter.html#openmc.filter.Filter.bins">bins (openmc.filter.Filter attribute)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/surface.html#openmc.surface.Surface.boundary_type">boundary_type (openmc.surface.Surface attribute)</a>
   </dt>
 
+      
+  <dt><a href="pythonapi/surface.html#openmc.surface.Halfspace.bounding_box">bounding_box (openmc.surface.Halfspace attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/surface.html#openmc.surface.Sphere.bounding_box">bounding_box() (openmc.surface.Sphere method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/surface.html#openmc.surface.Surface.bounding_box">(openmc.surface.Surface method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/surface.html#openmc.surface.XCylinder.bounding_box">(openmc.surface.XCylinder method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/surface.html#openmc.surface.XPlane.bounding_box">(openmc.surface.XPlane method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/surface.html#openmc.surface.YCylinder.bounding_box">(openmc.surface.YCylinder method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/surface.html#openmc.surface.YPlane.bounding_box">(openmc.surface.YPlane method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/surface.html#openmc.surface.ZCylinder.bounding_box">(openmc.surface.ZCylinder method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/surface.html#openmc.surface.ZPlane.bounding_box">(openmc.surface.ZPlane method)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.build_hdf5_store">build_hdf5_store() (openmc.mgxs.library.Library method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.build_hdf5_store">(openmc.mgxs.mgxs.MGXS method)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.build_library">build_library() (openmc.mgxs.library.Library method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.by_nuclide">by_nuclide (openmc.mgxs.library.Library attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.by_nuclide">(openmc.mgxs.mgxs.MGXS attribute)</a>
+  </dt>
+
+      </dl></dd>
   </dl></td>
 </tr></table>
 
@@ -267,6 +342,10 @@
 
       </dl></dd>
       
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.CaptureXS">CaptureXS (class in openmc.mgxs.mgxs)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/universe.html#openmc.universe.Cell">Cell (class in openmc.universe)</a>
   </dt>
 
@@ -279,13 +358,47 @@
   </dt>
 
       
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.Chi">Chi (class in openmc.mgxs.mgxs)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/universe.html#openmc.universe.Universe.clear_cells">clear_cells() (openmc.universe.Universe method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.cmfd_balance">cmfd_balance (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.cmfd_dominance">cmfd_dominance (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.cmfd_entropy">cmfd_entropy (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.cmfd_indices">cmfd_indices (openmc.statepoint.StatePoint attribute)</a>
   </dt>
 
       
   <dt><a href="pythonapi/cmfd.html#openmc.cmfd.CMFDFile.cmfd_mesh">cmfd_mesh (openmc.cmfd.CMFDFile attribute)</a>
   </dt>
 
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.cmfd_on">cmfd_on (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.cmfd_src">cmfd_src (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.cmfd_srccmp">cmfd_srccmp (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/cmfd.html#openmc.cmfd.CMFDFile">CMFDFile (class in openmc.cmfd)</a>
   </dt>
@@ -306,24 +419,62 @@
   <dt><a href="pythonapi/plots.html#openmc.plots.Plot.color">color (openmc.plots.Plot attribute)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.compute_ci">compute_ci() (openmc.statepoint.StatePoint method)</a>
+  <dt><a href="pythonapi/plots.html#openmc.plots.Plot.colorize">colorize() (openmc.plots.Plot method)</a>
   </dt>
 
-      
-  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.compute_mean">compute_mean() (openmc.tallies.Tally method)</a>
+      <dd><dl>
+        
+  <dt><a href="pythonapi/plots.html#openmc.plots.PlotsFile.colorize">(openmc.plots.PlotsFile method)</a>
   </dt>
 
+      </dl></dd>
       
-  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.compute_std_dev">compute_std_dev() (openmc.tallies.Tally method)</a>
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.AbsorptionXS.compute_xs">compute_xs() (openmc.mgxs.mgxs.AbsorptionXS method)</a>
   </dt>
 
-      
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.compute_stdev">compute_stdev() (openmc.statepoint.StatePoint method)</a>
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.CaptureXS.compute_xs">(openmc.mgxs.mgxs.CaptureXS method)</a>
   </dt>
 
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.Chi.compute_xs">(openmc.mgxs.mgxs.Chi method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.FissionXS.compute_xs">(openmc.mgxs.mgxs.FissionXS method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.compute_xs">(openmc.mgxs.mgxs.MGXS method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.NuFissionXS.compute_xs">(openmc.mgxs.mgxs.NuFissionXS method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.NuScatterXS.compute_xs">(openmc.mgxs.mgxs.NuScatterXS method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.ScatterMatrixXS.compute_xs">(openmc.mgxs.mgxs.ScatterMatrixXS method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.ScatterXS.compute_xs">(openmc.mgxs.mgxs.ScatterXS method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.TotalXS.compute_xs">(openmc.mgxs.mgxs.TotalXS method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.TransportXS.compute_xs">(openmc.mgxs.mgxs.TransportXS method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="pythonapi/surface.html#openmc.surface.Cone">Cone (class in openmc.surface)</a>
   </dt>
@@ -333,7 +484,17 @@
   </dt>
 
       
-  <dt><a href="pythonapi/settings.html#index-0">CROSS_SECTIONS</a>, <a href="usersguide/input.html#index-0">[1]</a>, <a href="usersguide/install.html#index-2">[2]</a>, <a href="usersguide/install.html#index-3">[3]</a>, <a href="usersguide/install.html#index-4">[4]</a>, <a href="usersguide/install.html#index-5">[5]</a>, <a href="usersguide/troubleshoot.html#index-2">[6]</a>, <a href="usersguide/troubleshoot.html#index-3">[7]</a>
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.correction">correction (openmc.mgxs.library.Library attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.ScatterMatrixXS.correction">(openmc.mgxs.mgxs.ScatterMatrixXS attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="pythonapi/settings.html#index-0">CROSS_SECTIONS</a>, <a href="usersguide/input.html#index-0">[1]</a>, <a href="usersguide/install.html#index-1">[2]</a>, <a href="usersguide/install.html#index-2">[3]</a>, <a href="usersguide/install.html#index-3">[4]</a>, <a href="usersguide/install.html#index-4">[5]</a>, <a href="usersguide/troubleshoot.html#index-0">[6]</a>, <a href="usersguide/troubleshoot.html#index-1">[7]</a>
   </dt>
 
       
@@ -369,6 +530,10 @@
   </dt>
 
       
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.date_and_time">date_and_time (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/material.html#openmc.material.MaterialsFile.default_xs">default_xs (openmc.material.MaterialsFile attribute)</a>
   </dt>
 
@@ -380,12 +545,16 @@
   <dt><a href="pythonapi/material.html#openmc.material.Material.density_units">density_units (openmc.material.Material attribute)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/cmfd.html#openmc.cmfd.CMFDFile.dhat_reset">dhat_reset (openmc.cmfd.CMFDFile attribute)</a>
   </dt>
 
+      
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.diagonalize_filter">diagonalize_filter() (openmc.tallies.Tally method)</a>
+  </dt>
+
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/cmfd.html#openmc.cmfd.CMFDMesh.dimension">dimension (openmc.cmfd.CMFDMesh attribute)</a>
   </dt>
@@ -405,7 +574,29 @@
   </dt>
 
       
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.domain">domain (openmc.mgxs.mgxs.MGXS attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.domain_type">domain_type (openmc.mgxs.library.Library attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.domain_type">(openmc.mgxs.mgxs.MGXS attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.domains">domains (openmc.mgxs.library.Library attribute)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/cmfd.html#openmc.cmfd.CMFDFile.downscatter">downscatter (openmc.cmfd.CMFDFile attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.dump_to_file">dump_to_file() (openmc.mgxs.library.Library method)</a>
   </dt>
 
   </dl></td>
@@ -414,10 +605,6 @@
 <h2 id="E">E</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
-      
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.SourceSite.E">E (openmc.statepoint.SourceSite attribute)</a>
-  </dt>
-
       
   <dt><a href="pythonapi/element.html#openmc.element.Element">Element (class in openmc.element)</a>
   </dt>
@@ -434,6 +621,24 @@
       </dl></dd>
       
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.energy_grid">energy_grid (openmc.settings.SettingsFile attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.energy_groups">energy_groups (openmc.mgxs.library.Library attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.energy_groups">(openmc.mgxs.mgxs.MGXS attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="pythonapi/energy_groups.html#openmc.mgxs.groups.EnergyGroups">EnergyGroups (class in openmc.mgxs.groups)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.entropy">entropy (openmc.statepoint.StatePoint attribute)</a>
   </dt>
 
       
@@ -457,19 +662,15 @@
 
       <dd><dl>
         
-  <dt><a href="pythonapi/settings.html#index-0">CROSS_SECTIONS</a>, <a href="usersguide/input.html#index-0">[1]</a>, <a href="usersguide/install.html#index-2">[2]</a>, <a href="usersguide/install.html#index-3">[3]</a>, <a href="usersguide/install.html#index-4">[4]</a>, <a href="usersguide/install.html#index-5">[5]</a>, <a href="usersguide/troubleshoot.html#index-2">[6]</a>, <a href="usersguide/troubleshoot.html#index-3">[7]</a>
+  <dt><a href="pythonapi/settings.html#index-0">CROSS_SECTIONS</a>, <a href="usersguide/input.html#index-0">[1]</a>, <a href="usersguide/install.html#index-1">[2]</a>, <a href="usersguide/install.html#index-2">[3]</a>, <a href="usersguide/install.html#index-3">[4]</a>, <a href="usersguide/install.html#index-4">[5]</a>, <a href="usersguide/troubleshoot.html#index-0">[6]</a>, <a href="usersguide/troubleshoot.html#index-1">[7]</a>
   </dt>
 
         
-  <dt><a href="usersguide/install.html#index-0">FC</a>, <a href="usersguide/install.html#index-1">[1]</a>
+  <dt><a href="usersguide/install.html#index-0">FC</a>
   </dt>
 
         
   <dt><a href="usersguide/input.html#index-1">OMP_NUM_THREADS</a>
-  </dt>
-
-        
-  <dt><a href="usersguide/troubleshoot.html#index-0">PATH</a>, <a href="usersguide/troubleshoot.html#index-1">[1]</a>
   </dt>
 
       </dl></dd>
@@ -511,6 +712,10 @@
   </dt>
 
       </dl></dd>
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.export_xs_data">export_xs_data() (openmc.mgxs.mgxs.MGXS method)</a>
+  </dt>
+
   </dl></td>
 </tr></table>
 
@@ -518,7 +723,7 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="usersguide/install.html#index-0">FC</a>, <a href="usersguide/install.html#index-1">[1]</a>
+  <dt><a href="usersguide/install.html#index-0">FC</a>
   </dt>
 
       
@@ -530,15 +735,11 @@
   </dt>
 
       
-  <dt><a href="pythonapi/particle_restart.html#openmc.particle_restart.Particle.filetype">filetype (openmc.particle_restart.Particle attribute)</a>
+  <dt><a href="pythonapi/universe.html#openmc.universe.Cell.fill">fill (openmc.universe.Cell attribute)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
-      
-  <dt><a href="pythonapi/universe.html#openmc.universe.Cell.fill">fill (openmc.universe.Cell attribute)</a>
-  </dt>
-
       
   <dt><a href="pythonapi/filter.html#openmc.filter.Filter">Filter (class in openmc.filter)</a>
   </dt>
@@ -549,6 +750,10 @@
 
       
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.find_filter">find_filter() (openmc.tallies.Tally method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.FissionXS">FissionXS (class in openmc.mgxs.mgxs)</a>
   </dt>
 
   </dl></td>
@@ -565,6 +770,12 @@
   <dt><a href="pythonapi/particle_restart.html#openmc.particle_restart.Particle.gen_per_batch">gen_per_batch (openmc.particle_restart.Particle attribute)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.gen_per_batch">(openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.generations_per_batch">generations_per_batch (openmc.settings.SettingsFile attribute)</a>
   </dt>
@@ -607,6 +818,20 @@
   <dt><a href="pythonapi/geometry.html#openmc.geometry.Geometry.get_all_materials">get_all_materials() (openmc.geometry.Geometry method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="pythonapi/universe.html#openmc.universe.Cell.get_all_materials">(openmc.universe.Cell method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/universe.html#openmc.universe.Lattice.get_all_materials">(openmc.universe.Lattice method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/universe.html#openmc.universe.Universe.get_all_materials">(openmc.universe.Universe method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="pythonapi/geometry.html#openmc.geometry.Geometry.get_all_nuclides">get_all_nuclides() (openmc.geometry.Geometry method)</a>
   </dt>
@@ -614,6 +839,10 @@
       <dd><dl>
         
   <dt><a href="pythonapi/material.html#openmc.material.Material.get_all_nuclides">(openmc.material.Material method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.get_all_nuclides">(openmc.mgxs.mgxs.MGXS method)</a>
   </dt>
 
         
@@ -648,6 +877,10 @@
 
       </dl></dd>
       
+  <dt><a href="pythonapi/filter.html#openmc.filter.Filter.get_bin">get_bin() (openmc.filter.Filter method)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/filter.html#openmc.filter.Filter.get_bin_index">get_bin_index() (openmc.filter.Filter method)</a>
   </dt>
 
@@ -664,7 +897,35 @@
   </dt>
 
       
+  <dt><a href="pythonapi/energy_groups.html#openmc.mgxs.groups.EnergyGroups.get_condensed_groups">get_condensed_groups() (openmc.mgxs.groups.EnergyGroups method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.get_condensed_library">get_condensed_library() (openmc.mgxs.library.Library method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.get_condensed_xs">get_condensed_xs() (openmc.mgxs.mgxs.MGXS method)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.get_filter_index">get_filter_index() (openmc.tallies.Tally method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.get_filter_indices">get_filter_indices() (openmc.tallies.Tally method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/energy_groups.html#openmc.mgxs.groups.EnergyGroups.get_group">get_group() (openmc.mgxs.groups.EnergyGroups method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/energy_groups.html#openmc.mgxs.groups.EnergyGroups.get_group_bounds">get_group_bounds() (openmc.mgxs.groups.EnergyGroups method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/energy_groups.html#openmc.mgxs.groups.EnergyGroups.get_group_indices">get_group_indices() (openmc.mgxs.groups.EnergyGroups method)</a>
   </dt>
 
       
@@ -684,11 +945,31 @@
   </dt>
 
       
-  <dt><a href="pythonapi/summary.html#openmc.summary.Summary.get_nuclide_by_zaid">get_nuclide_by_zaid() (openmc.summary.Summary method)</a>
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.get_mgxs">get_mgxs() (openmc.mgxs.library.Library method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.get_mgxs">(openmc.mgxs.mgxs.MGXS static method)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.get_nuclide_densities">get_nuclide_densities() (openmc.mgxs.mgxs.MGXS method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.get_nuclide_density">get_nuclide_density() (openmc.mgxs.mgxs.MGXS method)</a>
   </dt>
 
       
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.get_nuclide_index">get_nuclide_index() (openmc.tallies.Tally method)</a>
+  </dt>
+
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.get_nuclide_indices">get_nuclide_indices() (openmc.tallies.Tally method)</a>
   </dt>
 
       
@@ -699,8 +980,6 @@
   <dt><a href="pythonapi/opencg_compatible.html#openmc.opencg_compatible.get_opencg_cell">get_opencg_cell() (in module openmc.opencg_compatible)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/opencg_compatible.html#openmc.opencg_compatible.get_opencg_geometry">get_opencg_geometry() (in module openmc.opencg_compatible)</a>
   </dt>
@@ -746,11 +1025,29 @@
   </dt>
 
       
-  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.get_pandas_dataframe">get_pandas_dataframe() (openmc.tallies.Tally method)</a>
+  <dt><a href="pythonapi/filter.html#openmc.filter.Filter.get_pandas_dataframe">get_pandas_dataframe() (openmc.filter.Filter method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.Chi.get_pandas_dataframe">(openmc.mgxs.mgxs.Chi method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.get_pandas_dataframe">(openmc.mgxs.mgxs.MGXS method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.get_pandas_dataframe">(openmc.tallies.Tally method)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="pythonapi/plots.html#openmc.plots.Plot.get_plot_xml">get_plot_xml() (openmc.plots.Plot method)</a>
   </dt>
 
       
-  <dt><a href="pythonapi/plots.html#openmc.plots.Plot.get_plot_xml">get_plot_xml() (openmc.plots.Plot method)</a>
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.get_reshaped_data">get_reshaped_data() (openmc.tallies.Tally method)</a>
   </dt>
 
       
@@ -758,7 +1055,19 @@
   </dt>
 
       
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.get_score_indices">get_score_indices() (openmc.tallies.Tally method)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.get_slice">get_slice() (openmc.tallies.Tally method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.get_subdomain_avg_library">get_subdomain_avg_library() (openmc.mgxs.library.Library method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.get_subdomain_avg_xs">get_subdomain_avg_xs() (openmc.mgxs.mgxs.MGXS method)</a>
   </dt>
 
       
@@ -790,7 +1099,25 @@
   </dt>
 
       
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.Chi.get_xs">get_xs() (openmc.mgxs.mgxs.Chi method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.get_xs">(openmc.mgxs.mgxs.MGXS method)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.ScatterMatrixXS.get_xs">(openmc.mgxs.mgxs.ScatterMatrixXS method)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.global_tallies">global_tallies (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/energy_groups.html#openmc.mgxs.groups.EnergyGroups.group_edges">group_edges (openmc.mgxs.groups.EnergyGroups attribute)</a>
   </dt>
 
   </dl></td>
@@ -800,9 +1127,25 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="pythonapi/surface.html#openmc.surface.Halfspace">Halfspace (class in openmc.surface)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/universe.html#openmc.universe.HexLattice">HexLattice (class in openmc.universe)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="pythonapi/plots.html#openmc.plots.Plot.highlight_domains">highlight_domains() (openmc.plots.Plot method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/plots.html#openmc.plots.PlotsFile.highlight_domains">(openmc.plots.PlotsFile method)</a>
+  </dt>
+
+      </dl></dd>
   </dl></td>
 </tr></table>
 
@@ -865,6 +1208,10 @@
   <dt><a href="pythonapi/opencg_compatible.html#openmc.opencg_compatible.is_opencg_surface_compatible">is_opencg_surface_compatible() (in module openmc.opencg_compatible)</a>
   </dt>
 
+      
+  <dt><a href="pythonapi/filter.html#openmc.filter.Filter.is_subset">is_subset() (openmc.filter.Filter method)</a>
+  </dt>
+
   </dl></td>
 </tr></table>
 
@@ -872,15 +1219,35 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.k_abs_tra">k_abs_tra (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.k_col_abs">k_col_abs (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.k_col_tra">k_col_tra (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.k_combined">k_combined (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.k_generation">k_generation (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.keff">keff (openmc.mgxs.library.Library attribute)</a>
   </dt>
 
       
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.keff_trigger">keff_trigger (openmc.settings.SettingsFile attribute)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/cmfd.html#openmc.cmfd.CMFDFile.ktol">ktol (openmc.cmfd.CMFDFile attribute)</a>
   </dt>
@@ -896,11 +1263,29 @@
   </dt>
 
       
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library">Library (class in openmc.mgxs.library)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.link_with_summary">link_with_summary() (openmc.statepoint.StatePoint method)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.load_from_file">load_from_file() (openmc.mgxs.library.Library static method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.load_from_statepoint">load_from_statepoint() (openmc.mgxs.library.Library method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.load_from_statepoint">(openmc.mgxs.mgxs.MGXS method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="pythonapi/cmfd.html#openmc.cmfd.CMFDMesh.lower_left">lower_left (openmc.cmfd.CMFDMesh attribute)</a>
   </dt>
@@ -926,10 +1311,6 @@
   </dt>
 
       
-  <dt><a href="pythonapi/summary.html#openmc.summary.Summary.make_opencg_geometry">make_opencg_geometry() (openmc.summary.Summary method)</a>
-  </dt>
-
-      
   <dt><a href="pythonapi/cmfd.html#openmc.cmfd.CMFDMesh.map">map (openmc.cmfd.CMFDMesh attribute)</a>
   </dt>
 
@@ -945,8 +1326,6 @@
   <dt><a href="pythonapi/material.html#openmc.material.Material">Material (class in openmc.material)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/material.html#openmc.material.MaterialsFile">MaterialsFile (class in openmc.material)</a>
   </dt>
@@ -955,6 +1334,8 @@
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.mean">mean (openmc.tallies.Tally attribute)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/filter.html#openmc.filter.Filter.merge">merge() (openmc.filter.Filter method)</a>
   </dt>
@@ -973,6 +1354,22 @@
   <dt><a href="pythonapi/mesh.html#openmc.mesh.Mesh">Mesh (class in openmc.mesh)</a>
   </dt>
 
+      
+  <dt><a href="pythonapi/filter.html#openmc.filter.Filter.mesh">mesh (openmc.filter.Filter attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.meshes">meshes (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS">MGXS (class in openmc.mgxs.mgxs)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.mgxs_types">mgxs_types (openmc.mgxs.library.Library attribute)</a>
+  </dt>
+
   </dl></td>
 </tr></table>
 
@@ -981,6 +1378,10 @@
   <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.n_batches">n_batches (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.n_inactive">n_inactive (openmc.statepoint.StatePoint attribute)</a>
   </dt>
 
       
@@ -1004,6 +1405,14 @@
       <dd><dl>
         
   <dt><a href="pythonapi/mesh.html#openmc.mesh.Mesh.name">(openmc.mesh.Mesh attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.name">(openmc.mgxs.library.Library attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.name">(openmc.mgxs.mgxs.MGXS attribute)</a>
   </dt>
 
         
@@ -1056,21 +1465,45 @@
   </dt>
 
       
-  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.nuclides">nuclides (openmc.tallies.Tally attribute)</a>
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.nuclides">nuclides (openmc.mgxs.mgxs.MGXS attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.nuclides">(openmc.tallies.Tally attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.NuFissionXS">NuFissionXS (class in openmc.mgxs.mgxs)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/universe.html#openmc.universe.HexLattice.num_axial">num_axial (openmc.universe.HexLattice attribute)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="pythonapi/universe.html#openmc.universe.HexLattice.num_axial">num_axial (openmc.universe.HexLattice attribute)</a>
+  <dt><a href="pythonapi/filter.html#openmc.filter.Filter.num_bins">num_bins (openmc.filter.Filter attribute)</a>
   </dt>
 
-      
-  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.num_bins">num_bins (openmc.tallies.Tally attribute)</a>
+      <dd><dl>
+        
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.num_bins">(openmc.tallies.Tally attribute)</a>
   </dt>
 
+      </dl></dd>
       
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.num_filter_bins">num_filter_bins (openmc.tallies.Tally attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/energy_groups.html#openmc.mgxs.groups.EnergyGroups.num_group">num_group (openmc.mgxs.groups.EnergyGroups attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.num_nuclides">num_nuclides (openmc.mgxs.mgxs.MGXS attribute)</a>
   </dt>
 
       
@@ -1089,12 +1522,28 @@
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.num_scores">num_scores (openmc.tallies.Tally attribute)</a>
   </dt>
 
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.num_sumbdomains">num_sumbdomains (openmc.mgxs.mgxs.MGXS attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.NuScatterMatrixXS">NuScatterMatrixXS (class in openmc.mgxs.mgxs)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.NuScatterXS">NuScatterXS (class in openmc.mgxs.mgxs)</a>
+  </dt>
+
   </dl></td>
 </tr></table>
 
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="pythonapi/filter.html#openmc.filter.Filter.offset">offset (openmc.filter.Filter attribute)</a>
+  </dt>
+
       
   <dt><a href="pythonapi/universe.html#openmc.universe.Cell.offsets">offsets (openmc.universe.Cell attribute)</a>
   </dt>
@@ -1103,6 +1552,16 @@
   <dt><a href="usersguide/input.html#index-1">OMP_NUM_THREADS</a>
   </dt>
 
+      
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.opencg_geometry">opencg_geometry (openmc.mgxs.library.Library attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/summary.html#openmc.summary.Summary.opencg_geometry">(openmc.summary.Summary attribute)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="pythonapi/ace.html#module-openmc.ace">openmc.ace (module)</a>
   </dt>
@@ -1136,9 +1595,19 @@
   </dt>
 
       
+  <dt><a href="pythonapi/energy_groups.html#module-openmc.mgxs.groups">openmc.mgxs.groups (module)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs_library.html#module-openmc.mgxs.library">openmc.mgxs.library (module)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/nuclide.html#module-openmc.nuclide">openmc.nuclide (module)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/opencg_compatible.html#module-openmc.opencg_compatible">openmc.opencg_compatible (module)</a>
   </dt>
@@ -1147,8 +1616,6 @@
   <dt><a href="pythonapi/particle_restart.html#module-openmc.particle_restart">openmc.particle_restart (module)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/plots.html#module-openmc.plots">openmc.plots (module)</a>
   </dt>
@@ -1182,6 +1649,16 @@
   </dt>
 
       
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.openmc_geometry">openmc_geometry (openmc.mgxs.library.Library attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/summary.html#openmc.summary.Summary.openmc_geometry">(openmc.summary.Summary attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="pythonapi/plots.html#openmc.plots.Plot.origin">origin (openmc.plots.Plot attribute)</a>
   </dt>
 
@@ -1212,7 +1689,7 @@
   </dt>
 
       
-  <dt><a href="usersguide/troubleshoot.html#index-0">PATH</a>, <a href="usersguide/troubleshoot.html#index-1">[1]</a>
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.path">path (openmc.statepoint.StatePoint attribute)</a>
   </dt>
 
       
@@ -1246,7 +1723,27 @@
   </dt>
 
       
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.print_xs">print_xs() (openmc.mgxs.mgxs.MGXS method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.ScatterMatrixXS.print_xs">(openmc.mgxs.mgxs.ScatterMatrixXS method)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.ptables">ptables (openmc.settings.SettingsFile attribute)</a>
+  </dt>
+
+  </dl></td>
+</tr></table>
+
+<h2 id="Q">Q</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="pythonapi/surface.html#openmc.surface.Quadric">Quadric (class in openmc.surface)</a>
   </dt>
 
   </dl></td>
@@ -1282,15 +1779,11 @@
 
       </dl></dd>
       
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.read_results">read_results() (openmc.statepoint.StatePoint method)</a>
-  </dt>
-
-      
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.read_source">read_source() (openmc.statepoint.StatePoint method)</a>
-  </dt>
-
-      
   <dt><a href="pythonapi/universe.html#openmc.universe.RectLattice">RectLattice (class in openmc.universe)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/universe.html#openmc.universe.Cell.region">region (openmc.universe.Cell attribute)</a>
   </dt>
 
       
@@ -1334,19 +1827,7 @@
   </dt>
 
       
-  <dt><a href="pythonapi/universe.html#openmc.universe.Cell.remove_surface">remove_surface() (openmc.universe.Cell method)</a>
-  </dt>
-
-      
   <dt><a href="pythonapi/tallies.html#openmc.tallies.TalliesFile.remove_tally">remove_tally() (openmc.tallies.TalliesFile method)</a>
-  </dt>
-
-      
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.results">results (openmc.statepoint.StatePoint attribute)</a>
-  </dt>
-
-      
-  <dt><a href="pythonapi/particle_restart.html#openmc.particle_restart.Particle.revision">revision (openmc.particle_restart.Particle attribute)</a>
   </dt>
 
       
@@ -1369,8 +1850,22 @@
   <dt><a href="pythonapi/particle_restart.html#openmc.particle_restart.Particle.run_mode">run_mode (openmc.particle_restart.Particle attribute)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.run_mode">(openmc.settings.SettingsFile attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.run_mode">(openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="pythonapi/executor.html#openmc.executor.Executor.run_simulation">run_simulation() (openmc.executor.Executor method)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.rxn_type">rxn_type (openmc.mgxs.mgxs.MGXS attribute)</a>
   </dt>
 
   </dl></td>
@@ -1379,6 +1874,24 @@
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="pythonapi/element.html#openmc.element.Element.scattering">scattering (openmc.element.Element attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/nuclide.html#openmc.nuclide.Nuclide.scattering">(openmc.nuclide.Nuclide attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.ScatterMatrixXS">ScatterMatrixXS (class in openmc.mgxs.mgxs)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.ScatterXS">ScatterXS (class in openmc.mgxs.mgxs)</a>
+  </dt>
+
       
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.scores">scores (openmc.tallies.Tally attribute)</a>
   </dt>
@@ -1393,6 +1906,12 @@
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.seed">seed (openmc.settings.SettingsFile attribute)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.seed">(openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="pythonapi/material.html#openmc.material.Material.set_density">set_density() (openmc.material.Material method)</a>
   </dt>
@@ -1418,11 +1937,19 @@
   </dt>
 
       
+  <dt><a href="pythonapi/surface.html#openmc.surface.Halfspace.side">side (openmc.surface.Halfspace attribute)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.source">source (openmc.statepoint.StatePoint attribute)</a>
   </dt>
 
       
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.source_file">source_file (openmc.settings.SettingsFile attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.source_present">source_present (openmc.statepoint.StatePoint attribute)</a>
   </dt>
 
       
@@ -1441,14 +1968,14 @@
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.sourcepoint_separate">sourcepoint_separate (openmc.settings.SettingsFile attribute)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.sourcepoint_write">sourcepoint_write (openmc.settings.SettingsFile attribute)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.SourceSite">SourceSite (class in openmc.statepoint)</a>
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.sp_filename">sp_filename (openmc.mgxs.library.Library attribute)</a>
   </dt>
 
       
@@ -1480,6 +2007,10 @@
   </dt>
 
       
+  <dt><a href="pythonapi/filter.html#openmc.filter.Filter.stride">stride (openmc.filter.Filter attribute)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.sum">sum (openmc.tallies.Tally attribute)</a>
   </dt>
 
@@ -1492,15 +2023,27 @@
   </dt>
 
       
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.summary">summary (openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.summation">summation() (openmc.tallies.Tally method)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/surface.html#openmc.surface.Surface">Surface (class in openmc.surface)</a>
   </dt>
 
       
-  <dt><a href="pythonapi/universe.html#openmc.universe.Cell.surfaces">surfaces (openmc.universe.Cell attribute)</a>
+  <dt><a href="pythonapi/surface.html#openmc.surface.Halfspace.surface">surface (openmc.surface.Halfspace attribute)</a>
   </dt>
 
       
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.survival_biasing">survival_biasing (openmc.settings.SettingsFile attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.swap_filters">swap_filters() (openmc.tallies.Tally method)</a>
   </dt>
 
   </dl></td>
@@ -1510,9 +2053,59 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.tallies">tallies (openmc.statepoint.StatePoint attribute)</a>
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.AbsorptionXS.tallies">tallies (openmc.mgxs.mgxs.AbsorptionXS attribute)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.CaptureXS.tallies">(openmc.mgxs.mgxs.CaptureXS attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.Chi.tallies">(openmc.mgxs.mgxs.Chi attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.FissionXS.tallies">(openmc.mgxs.mgxs.FissionXS attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.tallies">(openmc.mgxs.mgxs.MGXS attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.NuFissionXS.tallies">(openmc.mgxs.mgxs.NuFissionXS attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.NuScatterMatrixXS.tallies">(openmc.mgxs.mgxs.NuScatterMatrixXS attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.NuScatterXS.tallies">(openmc.mgxs.mgxs.NuScatterXS attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.ScatterMatrixXS.tallies">(openmc.mgxs.mgxs.ScatterMatrixXS attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.ScatterXS.tallies">(openmc.mgxs.mgxs.ScatterXS attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.TotalXS.tallies">(openmc.mgxs.mgxs.TotalXS attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.TransportXS.tallies">(openmc.mgxs.mgxs.TransportXS attribute)</a>
+  </dt>
+
+        
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.tallies">(openmc.statepoint.StatePoint attribute)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.tallies_present">tallies_present (openmc.statepoint.StatePoint attribute)</a>
   </dt>
@@ -1530,6 +2123,16 @@
   </dt>
 
       
+  <dt><a href="pythonapi/mgxs_library.html#openmc.mgxs.library.Library.tally_trigger">tally_trigger (openmc.mgxs.library.Library attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.tally_trigger">(openmc.mgxs.mgxs.MGXS attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.threads">threads (openmc.settings.SettingsFile attribute)</a>
   </dt>
 
@@ -1538,17 +2141,25 @@
   </dt>
 
       
-  <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.trace">trace (openmc.settings.SettingsFile attribute)</a>
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.TotalXS">TotalXS (class in openmc.mgxs.mgxs)</a>
   </dt>
 
       
-  <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.track">track (openmc.settings.SettingsFile attribute)</a>
+  <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.trace">trace (openmc.settings.SettingsFile attribute)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.track">track (openmc.settings.SettingsFile attribute)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/universe.html#openmc.universe.Cell.translation">translation (openmc.universe.Cell attribute)</a>
+  </dt>
+
+      
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.TransportXS">TransportXS (class in openmc.mgxs.mgxs)</a>
   </dt>
 
       
@@ -1635,12 +2246,6 @@
   <dt><a href="pythonapi/particle_restart.html#openmc.particle_restart.Particle.uvw">uvw (openmc.particle_restart.Particle attribute)</a>
   </dt>
 
-      <dd><dl>
-        
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.SourceSite.uvw">(openmc.statepoint.SourceSite attribute)</a>
-  </dt>
-
-      </dl></dd>
   </dl></td>
 </tr></table>
 
@@ -1649,6 +2254,12 @@
   <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.verbosity">verbosity (openmc.settings.SettingsFile attribute)</a>
+  </dt>
+
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.version">version (openmc.statepoint.StatePoint attribute)</a>
   </dt>
 
   </dl></td>
@@ -1664,10 +2275,6 @@
       <dd><dl>
         
   <dt><a href="pythonapi/settings.html#openmc.settings.SettingsFile.weight">(openmc.settings.SettingsFile attribute)</a>
-  </dt>
-
-        
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.SourceSite.weight">(openmc.statepoint.SourceSite attribute)</a>
   </dt>
 
       </dl></dd>
@@ -1692,15 +2299,9 @@
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.StatePoint.with_summary">with_summary (openmc.statepoint.StatePoint attribute)</a>
+  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.with_summary">with_summary (openmc.tallies.Tally attribute)</a>
   </dt>
 
-      <dd><dl>
-        
-  <dt><a href="pythonapi/tallies.html#openmc.tallies.Tally.with_summary">(openmc.tallies.Tally attribute)</a>
-  </dt>
-
-      </dl></dd>
       
   <dt><a href="pythonapi/executor.html#openmc.executor.Executor.working_directory">working_directory (openmc.executor.Executor attribute)</a>
   </dt>
@@ -1757,12 +2358,12 @@
   <dt><a href="pythonapi/surface.html#openmc.surface.XCylinder">XCylinder (class in openmc.surface)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/surface.html#openmc.surface.XPlane">XPlane (class in openmc.surface)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="pythonapi/element.html#openmc.element.Element.xs">xs (openmc.element.Element attribute)</a>
   </dt>
@@ -1774,15 +2375,13 @@
 
       </dl></dd>
       
+  <dt><a href="pythonapi/mgxs.html#openmc.mgxs.mgxs.MGXS.xs_tally">xs_tally (openmc.mgxs.mgxs.MGXS attribute)</a>
+  </dt>
+
+      
   <dt><a href="pythonapi/particle_restart.html#openmc.particle_restart.Particle.xyz">xyz (openmc.particle_restart.Particle attribute)</a>
   </dt>
 
-      <dd><dl>
-        
-  <dt><a href="pythonapi/statepoint.html#openmc.statepoint.SourceSite.xyz">(openmc.statepoint.SourceSite attribute)</a>
-  </dt>
-
-      </dl></dd>
   </dl></td>
 </tr></table>
 
@@ -1912,7 +2511,7 @@
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.3.
     </div>
 <script type="text/javascript">
 

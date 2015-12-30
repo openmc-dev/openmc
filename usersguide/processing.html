@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>4. Data Processing and Visualization &mdash; OpenMC Documentation</title>
+    <title>5. Data Processing and Visualization &mdash; OpenMC Documentation</title>
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.7.0',
+        VERSION:     '0.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,8 +25,8 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="User’s Guide" href="index.html" />
-    <link rel="next" title="5. Troubleshooting" href="troubleshoot.html" />
-    <link rel="prev" title="3. Writing XML Input Files" href="input.html" /> 
+    <link rel="next" title="6. Troubleshooting" href="troubleshoot.html" />
+    <link rel="prev" title="4.6. Voxel Plot File Format" href="output/voxel.html" /> 
   </head>
   <body role="document">
       <div class="header" role="banner">
@@ -37,11 +37,11 @@
       <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
-        «&#160;&#160;<a href="input.html">3. Writing XML Input Files</a>
+        «&#160;&#160;<a href="output/voxel.html">4.6. Voxel Plot File Format</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="troubleshoot.html">5. Troubleshooting</a>&#160;&#160;»
+        <a href="troubleshoot.html">6. Troubleshooting</a>&#160;&#160;»
         </p>
 
       </div>
@@ -49,48 +49,56 @@
         
         
   <div class="section" id="data-processing-and-visualization">
-<span id="usersguide-processing"></span><h1>4. Data Processing and Visualization<a class="headerlink" href="#data-processing-and-visualization" title="Permalink to this headline">¶</a></h1>
+<span id="usersguide-processing"></span><h1>5. Data Processing and Visualization<a class="headerlink" href="#data-processing-and-visualization" title="Permalink to this headline">¶</a></h1>
 <p>This section is intended to explain in detail the recommended procedures for
 carrying out common post-processing tasks with OpenMC. While several utilities
-of varying complexity are provided to help automate the process, in many cases
-it will be extremely beneficial to do some coding in Python to quickly obtain
-results. In these cases, and for many of the provided utilities, it is necessary
-for your Python installation to contain:</p>
+of varying complexity are provided to help automate the process, the most
+powerful capabilities for post-processing derive from use of the <a class="reference internal" href="../pythonapi/index.html#pythonapi"><span>Python
+API</span></a>. Both the provided scripts and the Python API rely on a number
+third-party Python packages, including:</p>
 <ul class="simple">
-<li><a class="footnote-reference" href="#id7" id="id1">[1]</a> <a class="reference external" href="http://www.numpy.org/">Numpy</a></li>
-<li><a class="footnote-reference" href="#id7" id="id2">[1]</a> <a class="reference external" href="http://www.scipy.org/">Scipy</a></li>
-<li><a class="footnote-reference" href="#id8" id="id3">[2]</a> <a class="reference external" href="http://code.google.com/p/h5py/">h5py</a></li>
-<li><a class="footnote-reference" href="#id9" id="id4">[3]</a> <a class="reference external" href="http://matplotlib.org/">Matplotlib</a></li>
-<li><a class="footnote-reference" href="#id9" id="id5">[3]</a> <a class="reference external" href="https://github.com/nhorelik/silomesh">Silomesh</a></li>
-<li><a class="footnote-reference" href="#id9" id="id6">[3]</a> <a class="reference external" href="http://www.vtk.org/">VTK</a></li>
+<li><a class="footnote-reference" href="#id8" id="id1">[1]</a> <a class="reference external" href="http://www.numpy.org/">NumPy</a></li>
+<li><a class="footnote-reference" href="#id9" id="id2">[2]</a> <a class="reference external" href="http://www.h5py.org">h5py</a></li>
+<li><a class="footnote-reference" href="#id10" id="id3">[3]</a> <a class="reference external" href="http://pandas.pydata.org">pandas</a></li>
+<li><a class="footnote-reference" href="#id11" id="id4">[4]</a> <a class="reference external" href="http://matplotlib.org/">matplotlib</a></li>
+<li><a class="footnote-reference" href="#id11" id="id5">[4]</a> <a class="reference external" href="https://github.com/nhorelik/silomesh">Silomesh</a></li>
+<li><a class="footnote-reference" href="#id11" id="id6">[4]</a> <a class="reference external" href="http://www.vtk.org/">VTK</a></li>
+<li><a class="footnote-reference" href="#id11" id="id7">[4]</a> <a class="reference external" href="http://lxml.de">lxml</a></li>
 </ul>
-<p>Most of these are easily obtainable in Ubuntu through the package manager, or
-are easily installed with distutils.</p>
-<table class="docutils footnote" frame="void" id="id7" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label">[1]</td><td><em>(<a class="fn-backref" href="#id1">1</a>, <a class="fn-backref" href="#id2">2</a>)</em> Required for tally data extraction from statepoints with statepoint.py</td></tr>
-</tbody>
-</table>
+<p>Most of these are can easily be installed with <a class="reference external" href="https://pip.pypa.io">pip</a>
+or alternatively obtaining through a package manager.</p>
 <table class="docutils footnote" frame="void" id="id8" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id3">[2]</a></td><td>Required only if reading HDF5 statepoint files.</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Required for most post-processing tasks</td></tr>
 </tbody>
 </table>
 <table class="docutils footnote" frame="void" id="id9" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label">[3]</td><td><em>(<a class="fn-backref" href="#id4">1</a>, <a class="fn-backref" href="#id5">2</a>, <a class="fn-backref" href="#id6">3</a>)</em> Optional for plotting utilities</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Required for reading HDF5 output files</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id10" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[3]</a></td><td>Optional dependency for advanced features in Python API</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id11" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label">[4]</td><td><em>(<a class="fn-backref" href="#id4">1</a>, <a class="fn-backref" href="#id5">2</a>, <a class="fn-backref" href="#id6">3</a>, <a class="fn-backref" href="#id7">4</a>)</em> Not used directly by the Python API, but are optional dependencies for a
+number of scripts.</td></tr>
 </tbody>
 </table>
 <div class="section" id="geometry-visualization">
-<h2>4.1. Geometry Visualization<a class="headerlink" href="#geometry-visualization" title="Permalink to this headline">¶</a></h2>
+<h2>5.1. Geometry Visualization<a class="headerlink" href="#geometry-visualization" title="Permalink to this headline">¶</a></h2>
 <p>Geometry plotting is carried out by creating a plots.xml, specifying plots, and
-running OpenMC with the -plot or -p command-line option (See
+running OpenMC with the &#8211;plot or -p command-line option (See
 <a class="reference internal" href="input.html#usersguide-plotting"><span>Geometry Plotting Specification &#8211; plots.xml</span></a>).</p>
 <div class="section" id="plotting-in-2d">
-<h3>4.1.1. Plotting in 2D<a class="headerlink" href="#plotting-in-2d" title="Permalink to this headline">¶</a></h3>
+<h3>5.1.1. Plotting in 2D<a class="headerlink" href="#plotting-in-2d" title="Permalink to this headline">¶</a></h3>
 <a class="reference internal image-reference" href="../_images/atr.png"><img alt="../_images/atr.png" src="../_images/atr.png" style="height: 200px;" /></a>
 <p>See below for a simple example of a plots xml file that demonstrates the
 capabilities of 2D slice plots. Here we assume that there is a <code class="docutils literal"><span class="pre">geometry.xml</span></code>
@@ -149,7 +157,7 @@ Ubuntu: <code class="docutils literal"><span class="pre">sudo</span> <span class
 </div>
 </div>
 <div class="section" id="plotting-in-3d">
-<h3>4.1.2. Plotting in 3D<a class="headerlink" href="#plotting-in-3d" title="Permalink to this headline">¶</a></h3>
+<h3>5.1.2. Plotting in 3D<a class="headerlink" href="#plotting-in-3d" title="Permalink to this headline">¶</a></h3>
 <a class="reference internal image-reference" href="../_images/3dgeomplot.png"><img alt="../_images/3dgeomplot.png" src="../_images/3dgeomplot.png" style="height: 200px;" /></a>
 <p>See below for a simple example of a plots xml file that demonstrates the
 capabilities of 3D voxel plots.</p>
@@ -169,21 +177,20 @@ capabilities of 3D voxel plots.</p>
 <p>Voxel plots are built the same way 2D slice plots are, by determining the cell
 or material id of a particle at the center of each voxel. In this example, the
 space covered is the cube between the points (-5,-5,-5) and (5,5,5), with voxel
-centers 10/500 = 0.02 cm apart. The binary VOXEL files that are produced do not
+centers 10/500 = 0.02 cm apart. The HDF5 voxel files that are produced do not
 specify any color - instead containing only material or cell ids (material id
 in this example) - and thus the <code class="docutils literal"><span class="pre">background</span></code>, <code class="docutils literal"><span class="pre">col_spec</span></code>, and <code class="docutils literal"><span class="pre">mask</span></code>
 elements are not used. If no cell is found at a voxel center, an id of -1 is
 stored.</p>
-<p>The binary VOXEL files output by OpenMC can not be viewed directly by any
-existing viewers. In order to view them, they must be converted into a standard
-mesh format that can be viewed in ParaView, Visit, etc. This typically will
-compress the size of the file significantly. The provided utility voxel.py
-accomplishes this for SILO:</p>
-<div class="highlight-sh"><div class="highlight"><pre>&lt;openmc_root&gt;/src/utils/voxel.py myplot.voxel -o output.silo
+<p>The voxel plot data is written to an HDF5 file. The voxel file can subsequently
+be converted into a standard mesh format that can be viewed in ParaView, Visit,
+etc. This typically will compress the size of the file significantly. The
+provided utility openmc-voxel-to-silovtk accomplishes this for SILO:</p>
+<div class="highlight-sh"><div class="highlight"><pre>openmc-voxel-to-silovtk myplot.voxel -o output.silo
 </pre></div>
 </div>
 <p>and VTK file formats:</p>
-<div class="highlight-sh"><div class="highlight"><pre>&lt;openmc_root&gt;/src/utils/voxel.py myplot.voxel --vtk -o output.vti
+<div class="highlight-sh"><div class="highlight"><pre>openmc-voxel-to-silovtk myplot.voxel --vtk -o output.vti
 </pre></div>
 </div>
 <p>To use this utility you need either</p>
@@ -192,11 +199,10 @@ accomplishes this for SILO:</p>
 </ul>
 <p>or</p>
 <ul class="simple">
-<li><a class="reference external" href="http://www.vtk.org/">VTK</a> with python bindings - On Ubuntu, these are
-easily obtained with <code class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">python-vtk</span></code></li>
+<li><a class="reference external" href="http://www.vtk.org/">VTK</a> with python bindings. On debian derivatives,
+these are easily obtained with <code class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">python-vtk</span></code></li>
 </ul>
-<p>Users can process the binary into any other format if desired by following the
-example of voxel.py.  For the binary file structure, see <a class="reference internal" href="../devguide/voxel.html#devguide-voxel"><span>Voxel Plot Binary File Specifications</span></a>.</p>
+<p>For the HDF5 file structure, see <a class="reference internal" href="output/voxel.html#usersguide-voxel"><span>Voxel Plot File Format</span></a>.</p>
 <p>Once processed into a standard 3D file format, colors and masks can be defined
 using the stored id numbers to better explore the geometry. The process for
 doing this will depend on the 3D viewer, but should be straightforward.</p>
@@ -215,150 +221,49 @@ dimension.</p>
 </div>
 </div>
 <div class="section" id="tally-visualization">
-<h2>4.2. Tally Visualization<a class="headerlink" href="#tally-visualization" title="Permalink to this headline">¶</a></h2>
-<p>Tally results are saved in both a text file (tallies.out) as well as a binary
+<h2>5.2. Tally Visualization<a class="headerlink" href="#tally-visualization" title="Permalink to this headline">¶</a></h2>
+<p>Tally results are saved in both a text file (tallies.out) as well as an HDF5
 statepoint file. While the tallies.out file may be fine for simple tallies, in
-many cases the user requires more information about the tally or the run, or
-has to deal with a large number of result values (e.g. for mesh tallies).  In
-these cases, extracting data from the statepoint file via Python scripting is
-the preferred method of data analysis and visualization.</p>
+many cases the user requires more information about the tally or the run, or has
+to deal with a large number of result values (e.g. for mesh tallies).  In these
+cases, extracting data from the statepoint file via the <a class="reference internal" href="../pythonapi/index.html#pythonapi"><span>Python API</span></a> is the
+preferred method of data analysis and visualization.</p>
 <div class="section" id="data-extraction">
-<h3>4.2.1. Data Extraction<a class="headerlink" href="#data-extraction" title="Permalink to this headline">¶</a></h3>
+<h3>5.2.1. Data Extraction<a class="headerlink" href="#data-extraction" title="Permalink to this headline">¶</a></h3>
 <p>A great deal of information is available in statepoint files (See
-<a class="reference internal" href="../devguide/statepoint.html#devguide-statepoint"><span>State Point Binary File Specifications</span></a>), most of which is easily extracted by the provided
-utility statepoint.py. This utility provides a Python class to load statepoints
-and extract data - it is used in many of the provided plotting utilities, and
-can be used in user-created scripts to carry out manipulations of the data. To
-read tallies using this utility, make sure statepoint.py is in your PYTHONPATH,
-and then import the class, instantiate it, and call read_results:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">statepoint</span> <span class="kn">import</span> <span class="n">StatePoint</span>
-<span class="n">sp</span> <span class="o">=</span> <span class="n">StatePoint</span><span class="p">(</span><span class="s">&#39;statepoint.100.binary&#39;</span><span class="p">)</span>
-<span class="n">sp</span><span class="o">.</span><span class="n">read_results</span><span class="p">()</span>
-</pre></div>
+<a class="reference internal" href="output/statepoint.html#usersguide-statepoint"><span>State Point File Format</span></a>), all of which is accessible through the Python
+API. The <code class="docutils literal"><span class="pre">openmc.statepoint</span></code> module (see <a class="reference internal" href="../pythonapi/statepoint.html#pythonapi-statepoint"><span>Statepoint</span></a>) provides
+a class to load statepoints and access data as requested; it is used in many of
+the provided plotting utilities, OpenMC&#8217;s regression test suite, and can be used
+in user-created scripts to carry out manipulations of the data.</p>
+<p>An <a class="reference internal" href="../pythonapi/examples/post-processing.html#notebook-post-processing"><span>example IPython notebook</span></a> demonstrates how
+to extract data from a statepoint using the Python API.</p>
 </div>
-<p>At this point the user can extract entire scores from tallies into a data
-dictionary containing numpy arrays:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">tallyid</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">score</span> <span class="o">=</span> <span class="s">&#39;flux&#39;</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">extract_results</span><span class="p">(</span><span class="n">tallyid</span><span class="p">,</span> <span class="n">score</span><span class="p">)</span>
-<span class="n">means</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&#39;means&#39;</span><span class="p">]</span>
-<span class="k">print</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>The results from this function contain all filter bins (all mesh points, all
-energy groups, etc.), which can be reshaped with the bin ordering also contained
-in the output dictionary. This is the best choice of output for easily
-integrating ranges of data.</p>
-<p>Alternatively the user can extract specific values for a single score/filter
-combination:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">tallyid</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">score</span> <span class="o">=</span> <span class="s">&#39;flux&#39;</span>
-<span class="n">filters</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;mesh&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">)),</span> <span class="p">(</span><span class="s">&#39;energyin&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)]</span>
-<span class="n">value</span><span class="p">,</span> <span class="n">error</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">tallyid</span><span class="p">,</span> <span class="n">filters</span><span class="p">,</span> <span class="n">score</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>In the future more documentation may become available here for statepoint.py and
-the data extraction functions of StatePoint objects. However, for now it is up
-to the user to explore the classes in statepoint.py to discover what data is
-available in StatePoint objects (we highly recommend interactively exploring
-with <a class="reference external" href="http://ipython.org/">IPython</a>). Many examples can be found by looking
-through the other utilities that use statepoint.py, and a few common
-visualization tasks will be described here in the following sections.</p>
-</div>
-<div class="section" id="id12">
-<h3>4.2.2. Plotting in 2D<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id14">
+<h3>5.2.2. Plotting in 2D<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
+<p>The <a class="reference internal" href="../pythonapi/examples/post-processing.html#notebook-post-processing"><span>IPython notebook example</span></a> also demonstrates
+how to plot a mesh tally in two dimensions using the Python API. Note, however,
+that there is also a script distributed with OpenMC, <code class="docutils literal"><span class="pre">openmc-plot-mesh-tally</span></code>,
+that provides an interactive GUI to explore and plot mesh tallies for any scores
+and filter bins.</p>
 <a class="reference internal image-reference" href="../_images/plotmeshtally.png"><img alt="../_images/plotmeshtally.png" src="../_images/plotmeshtally.png" style="height: 200px;" /></a>
-<p>For simple viewing of 2D slices of a mesh plot, the utility plot_mesh_tally.py
-is provided.  This utility provides an interactive GUI to explore and plot
-mesh tallies for any scores and filter bins.  It requires statepoint.py.</p>
-<a class="reference internal image-reference" href="../_images/fluxplot.png"><img alt="../_images/fluxplot.png" src="../_images/fluxplot.png" style="height: 200px;" /></a>
-<p>Alternatively, the user can write their own Python script to manipulate the data
-appropriately. Consider a run where the first tally contains a 105x105x20 mesh
-over a small core, with a flux score and two energyin filter bins. To explicitly
-extract the data and create a plot with gnuplot, the following script can be
-used. The script operates in several steps for clarity, and is not necessarily
-the most efficient way to extract data from large mesh tallies. This creates the
-two heatmaps in the previous figure.</p>
-<div class="highlight-python"><div class="highlight"><pre>  <span class="c">#!/usr/bin/env python</span>
-
-  <span class="kn">import</span> <span class="nn">os</span>
-
-  <span class="kn">import</span> <span class="nn">statepoint</span>
-
-  <span class="c"># load and parse the statepoint file</span>
-  <span class="n">sp</span> <span class="o">=</span> <span class="n">statepoint</span><span class="o">.</span><span class="n">StatePoint</span><span class="p">(</span><span class="s">&#39;statepoint.300.binary&#39;</span><span class="p">)</span>
-  <span class="n">sp</span><span class="o">.</span><span class="n">read_results</span><span class="p">()</span>
-
-  <span class="n">tallyid</span> <span class="o">=</span> <span class="mi">0</span> <span class="c"># This is tally 1</span>
-  <span class="n">score</span> <span class="o">=</span> <span class="mi">0</span>   <span class="c"># This corresponds to flux (see tally.scores)</span>
-
-  <span class="c"># get mesh dimensions</span>
-  <span class="n">meshid</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">tallies</span><span class="p">[</span><span class="n">tallyid</span><span class="p">]</span><span class="o">.</span><span class="n">filters</span><span class="p">[</span><span class="s">&#39;mesh&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">bins</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-  <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">m</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">meshes</span><span class="p">):</span>
-      <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">meshid</span><span class="p">:</span>
-        <span class="n">mesh</span> <span class="o">=</span> <span class="n">m</span>
-        <span class="k">break</span>
-  <span class="n">nx</span><span class="p">,</span><span class="n">ny</span><span class="p">,</span><span class="n">nz</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">dimension</span>
-
-  <span class="c"># loop through mesh and extract values to python dictionaries</span>
-  <span class="n">thermal</span> <span class="o">=</span> <span class="p">{}</span>
-  <span class="n">fast</span> <span class="o">=</span> <span class="p">{}</span>
-  <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nx</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-      <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">ny</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-          <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nz</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-              <span class="n">val</span><span class="p">,</span><span class="n">err</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">tallyid</span><span class="p">,</span>
-                                     <span class="p">[(</span><span class="s">&#39;mesh&#39;</span><span class="p">,(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)),(</span><span class="s">&#39;energyin&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)],</span>
-                                     <span class="n">score</span><span class="p">)</span>
-              <span class="n">thermal</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)]</span> <span class="o">=</span> <span class="n">val</span>
-              <span class="n">val</span><span class="p">,</span><span class="n">err</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">tallyid</span><span class="p">,</span>
-                                     <span class="p">[(</span><span class="s">&#39;mesh&#39;</span><span class="p">,(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)),(</span><span class="s">&#39;energyin&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">)],</span>
-                                     <span class="n">score</span><span class="p">)</span>
-              <span class="n">fast</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)]</span> <span class="o">=</span> <span class="n">val</span>
-
-  <span class="c"># sum up the axial values and write datafile for gnuplot</span>
-  <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;meshdata.dat&#39;</span><span class="p">,</span><span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
-      <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nx</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-          <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">ny</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-              <span class="n">thermalval</span> <span class="o">=</span> <span class="mf">0.</span>
-              <span class="n">fastval</span> <span class="o">=</span> <span class="mf">0.</span>
-              <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nz</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-                <span class="n">thermalval</span> <span class="o">+=</span> <span class="n">thermal</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)]</span>
-                <span class="n">fastval</span> <span class="o">+=</span> <span class="n">fast</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)]</span>
-              <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;{} {} {} {}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">thermalval</span><span class="p">,</span><span class="n">fastval</span><span class="p">))</span>
-
-  <span class="c"># write gnuplot file</span>
-  <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;tmp.gnuplot&#39;</span><span class="p">,</span><span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
-    <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">r&quot;&quot;&quot;set terminal png size 1000 400</span>
-<span class="s">set output &#39;fluxplot.png&#39;</span>
-<span class="s">set nokey</span>
-<span class="s">set autoscale fix</span>
-<span class="s">set multiplot layout 1,2 title &quot;Pin Mesh Flux Tally&quot;</span>
-<span class="s">set title &quot;Thermal&quot;</span>
-<span class="s">plot &#39;meshdata.dat&#39; using 1:2:3 with image</span>
-<span class="s">set title &quot;Fast&quot;</span>
-<span class="s">plot &#39;meshdata.dat&#39; using 1:2:4 with image</span>
-<span class="s">&quot;&quot;&quot;</span><span class="p">)</span>
-
-  <span class="c"># make plot</span>
-  <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s">&quot;gnuplot &lt; tmp.gnuplot&quot;</span><span class="p">)</span>
-</pre></div>
 </div>
-</div>
-<div class="section" id="id13">
-<h3>4.2.3. Plotting in 3D<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id15">
+<h3>5.2.3. Plotting in 3D<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
 <a class="reference internal image-reference" href="../_images/3dcore.png"><img alt="../_images/3dcore.png" src="../_images/3dcore.png" style="height: 200px;" /></a>
 <p>As with 3D plots of the geometry, meshtally data needs to be put into a standard
-format for viewing. The utility statepoint_3d.py is provided to accomplish this
-for both VTK and SILO. By default statepoint_3d.py processes a statepoint into a
-3D file with all mesh tallies and filter/score combinations,</p>
-<div class="highlight-sh"><div class="highlight"><pre>&lt;openmc_root&gt;/src/utils/statepoint_3d.py &lt;statepoint_file&gt; -o output.silo
-&lt;openmc_root&gt;/src/utils/statepoint_3d.py &lt;statepoint_file&gt; --vtk -o output.vtm
+format for viewing. The utility <code class="docutils literal"><span class="pre">openmc-statepoint-3d</span></code> is provided to
+accomplish this for both VTK and SILO. By default <code class="docutils literal"><span class="pre">openmc-statepoint-3d</span></code>
+processes a statepoint into a 3D file with all mesh tallies and filter/score
+combinations,</p>
+<div class="highlight-sh"><div class="highlight"><pre>openmc-statepoint-3d &lt;statepoint_file&gt; -o output.silo
+openmc-statepoint-3d &lt;statepoint_file&gt; --vtk -o output.vtm
 </pre></div>
 </div>
 <p>but it also provides several command-line options to selectively process only
 certain data arrays in order to keep file sizes down.</p>
-<div class="highlight-sh"><div class="highlight"><pre>statepoint_3d.py &lt;statepoint_file&gt; --tallies 2,4 --scores 4.1,4.3 -o output.silo
-statepoint_3d.py &lt;statepoint_file&gt; --filters 2.energyin.1 --vtk -o output.vtm
+<div class="highlight-sh"><div class="highlight"><pre>openmc-statepoint-3d &lt;statepoint_file&gt; --tallies 2,4 --scores 4.1,4.3 -o output.silo
+openmc-statepoint-3d &lt;statepoint_file&gt; --filters 2.energyin.1 --vtk -o output.vtm
 </pre></div>
 </div>
 <p>All available options for specifying a subset of tallies, scores, and filters
@@ -431,18 +336,16 @@ SILO file can be created with:</p>
 </div>
 </div>
 <div class="section" id="getting-data-into-matlab">
-<h3>4.2.4. Getting Data into MATLAB<a class="headerlink" href="#getting-data-into-matlab" title="Permalink to this headline">¶</a></h3>
+<h3>5.2.4. Getting Data into MATLAB<a class="headerlink" href="#getting-data-into-matlab" title="Permalink to this headline">¶</a></h3>
 <p>There is currently no front-end utility to dump tally data to MATLAB files, but
-the process is straightforward. First extract the data using a custom Python
-script with statepoint.py, put the data into appropriately-shaped numpy arrays,
-and then use the <a class="reference external" href="http://docs.scipy.org/doc/scipy/reference/tutorial/io.html">Scipy MATLAB IO routines</a> to save to a MAT
-file. Note that the data contained in the output from
-<code class="docutils literal"><span class="pre">StatePoint.extract_result</span></code> is already in a Numpy array that can be reshaped
-and dumped to MATLAB in one step.</p>
+the process is straightforward. First extract the data using the Python API via
+<code class="docutils literal"><span class="pre">openmc.statepoint</span></code> and then use the <a class="reference external" href="http://docs.scipy.org/doc/scipy/reference/tutorial/io.html">Scipy MATLAB IO routines</a> to save to a MAT
+file. Note that all arrays that are accessible in a statepoint are already in
+NumPy arrays that can be reshaped and dumped to MATLAB in one step.</p>
 </div>
 </div>
 <div class="section" id="particle-track-visualization">
-<h2>4.3. Particle Track Visualization<a class="headerlink" href="#particle-track-visualization" title="Permalink to this headline">¶</a></h2>
+<h2>5.3. Particle Track Visualization<a class="headerlink" href="#particle-track-visualization" title="Permalink to this headline">¶</a></h2>
 <a class="reference internal image-reference" href="../_images/Tracks.png"><img alt="../_images/Tracks.png" src="../_images/Tracks.png" style="height: 200px;" /></a>
 <p>OpenMC can dump particle tracks—the position of particles as they are
 transported through the geometry.  There are two ways to make OpenMC output
@@ -462,60 +365,24 @@ particle numbers, respectively.  For example, to output the tracks for particles
 </pre></div>
 </div>
 <p>After running OpenMC, the directory should contain a file of the form
-&#8220;track_(batch #)_(generation #)_(particle #).(binary or h5)&#8221; for each particle
-tracked.  These track files can be converted into VTK poly data files with the
-&#8220;track.py&#8221; utility.  The usage of track.py is of the form &#8220;track.py [-o OUT] IN&#8221;
-where OUT is the optional output filename and IN is one or more filenames
-describing track files.  The default output name is &#8220;track.pvtp&#8221;.  A common
-usage of track.py is &#8220;track.py track*.binary&#8221; which will use the data from all
-binary track files in the directory to write a &#8220;track.pvtp&#8221; VTK output file.
-The .pvtp file can then be read and plotted by 3d visualization programs such as
-ParaView.</p>
+&#8220;track_(batch #)_(generation #)_(particle #).h5&#8221; for each particle tracked.
+These track files can be converted into VTK poly data files with the
+<code class="docutils literal"><span class="pre">openmc-track-to-vtk</span></code> utility.  The usage of <code class="docutils literal"><span class="pre">openmc-track-to-vtk</span></code> is of the
+form &#8220;openmc-track-to-vtk [-o OUT] IN&#8221; where OUT is the optional output filename
+and IN is one or more filenames describing track files.  The default output name
+is &#8220;track.pvtp&#8221;.  A common usage of track.py is &#8220;openmc-track-to-vtk track*.h5&#8221;
+which will use the data from all binary track files in the directory to write a
+&#8220;track.pvtp&#8221; VTK output file.  The .pvtp file can then be read and plotted by 3d
+visualization programs such as ParaView.</p>
 </div>
 <div class="section" id="source-site-processing">
-<h2>4.4. Source Site Processing<a class="headerlink" href="#source-site-processing" title="Permalink to this headline">¶</a></h2>
+<h2>5.4. Source Site Processing<a class="headerlink" href="#source-site-processing" title="Permalink to this headline">¶</a></h2>
 <p>For eigenvalue problems, OpenMC will store information on the fission source
 sites in the statepoint file by default. For each source site, the weight,
 position, sampled direction, and sampled energy are stored. To extract this data
-from a statepoint file, the statepoint.py Python module can be used. Below is an
-example of an interactive ipython session using the statepoint.py Python module:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">statepoint</span>
-
-<span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">sp</span> <span class="o">=</span> <span class="n">statepoint</span><span class="o">.</span><span class="n">StatePoint</span><span class="p">(</span><span class="s">&#39;statepoint.100.h5&#39;</span><span class="p">)</span>
-
-<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">sp</span><span class="o">.</span><span class="n">read_source</span><span class="p">()</span>
-
-<span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="nb">len</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">source</span><span class="p">)</span>
-<span class="n">Out</span><span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="mi">1000</span>
-
-<span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">sp</span><span class="o">.</span><span class="n">source</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">10</span><span class="p">]</span>
-<span class="n">Out</span><span class="p">[</span><span class="mi">5</span><span class="p">]:</span>
-<span class="p">[</span><span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>  <span class="mf">2.21980946</span>  <span class="o">-</span><span class="mf">8.92686048</span>  <span class="mf">87.93720485</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">0.932923263566</span><span class="o">&gt;</span><span class="p">,</span>
- <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>  <span class="mf">2.21980946</span>  <span class="o">-</span><span class="mf">8.92686048</span>  <span class="mf">87.93720485</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">0.349240220512</span><span class="o">&gt;</span><span class="p">,</span>
- <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">31.21542213</span> <span class="o">-</span><span class="mf">30.26762771</span>  <span class="mf">72.10845757</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">3.75843584486</span><span class="o">&gt;</span><span class="p">,</span>
- <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">31.21542213</span> <span class="o">-</span><span class="mf">30.26762771</span>  <span class="mf">72.10845757</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">0.80550137267</span><span class="o">&gt;</span><span class="p">,</span>
- <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>   <span class="mf">0.18805099</span>  <span class="o">-</span><span class="mf">69.13376508</span>  <span class="mf">103.67726838</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">1.67922461097</span><span class="o">&gt;</span><span class="p">,</span>
- <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>   <span class="mf">0.18805099</span>  <span class="o">-</span><span class="mf">69.13376508</span>  <span class="mf">103.67726838</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">1.16304110199</span><span class="o">&gt;</span><span class="p">,</span>
- <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span> <span class="o">-</span><span class="mf">50.42189115</span>   <span class="o">-</span><span class="mf">9.96571672</span>  <span class="mf">123.34077905</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">0.710937974074</span><span class="o">&gt;</span><span class="p">,</span>
- <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span> <span class="o">-</span><span class="mf">32.80427668</span>  <span class="o">-</span><span class="mf">15.49316628</span>  <span class="mf">125.26301151</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">1.61907104162</span><span class="o">&gt;</span><span class="p">,</span>
- <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>  <span class="mf">53.20376026</span>  <span class="o">-</span><span class="mf">15.38643708</span>  <span class="mf">120.58071044</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">3.33962024907</span><span class="o">&gt;</span><span class="p">,</span>
- <span class="o">&lt;</span><span class="n">SourceSite</span><span class="p">:</span> <span class="n">xyz</span><span class="o">=</span><span class="p">[</span>  <span class="mf">53.20376026</span>  <span class="o">-</span><span class="mf">15.38643708</span>  <span class="mf">120.58071044</span><span class="p">]</span> <span class="n">at</span> <span class="n">E</span><span class="o">=</span><span class="mf">1.90185680329</span><span class="o">&gt;</span><span class="p">]</span>
-
-<span class="n">In</span> <span class="p">[</span><span class="mi">6</span><span class="p">]:</span> <span class="n">site</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">source</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-<span class="n">In</span> <span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="n">site</span><span class="o">.</span><span class="n">weight</span>
-<span class="n">Out</span><span class="p">[</span><span class="mi">7</span><span class="p">]:</span> <span class="mf">1.0</span>
-
-<span class="n">In</span> <span class="p">[</span><span class="mi">8</span><span class="p">]:</span> <span class="n">site</span><span class="o">.</span><span class="n">xyz</span>
-<span class="n">Out</span><span class="p">[</span><span class="mi">8</span><span class="p">]:</span> <span class="n">array</span><span class="p">([</span>  <span class="mf">2.21980946</span><span class="p">,</span>  <span class="o">-</span><span class="mf">8.92686048</span><span class="p">,</span>  <span class="mf">87.93720485</span><span class="p">])</span>
-
-<span class="n">In</span> <span class="p">[</span><span class="mi">9</span><span class="p">]:</span> <span class="n">site</span><span class="o">.</span><span class="n">uvw</span>
-<span class="n">Out</span><span class="p">[</span><span class="mi">9</span><span class="p">]:</span> <span class="n">array</span><span class="p">([</span> <span class="mf">0.06740523</span><span class="p">,</span>  <span class="mf">0.50612814</span><span class="p">,</span>  <span class="mf">0.85982024</span><span class="p">])</span>
-
-<span class="n">In</span> <span class="p">[</span><span class="mi">10</span><span class="p">]:</span> <span class="n">site</span><span class="o">.</span><span class="n">E</span>
-<span class="n">Out</span><span class="p">[</span><span class="mi">10</span><span class="p">]:</span> <span class="mf">0.93292326356564159</span>
-</pre></div>
-</div>
+from a statepoint file, the <code class="docutils literal"><span class="pre">openmc.statepoint</span></code> module can be used. An
+<a class="reference internal" href="../pythonapi/examples/post-processing.html#notebook-post-processing"><span>example IPython notebook</span></a> demontrates how to
+analyze and plot source information.</p>
 </div>
 </div>
 
@@ -524,11 +391,11 @@ example of an interactive ipython session using the statepoint.py Python module:
       <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
-        «&#160;&#160;<a href="input.html">3. Writing XML Input Files</a>
+        «&#160;&#160;<a href="output/voxel.html">4.6. Voxel Plot File Format</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="troubleshoot.html">5. Troubleshooting</a>&#160;&#160;»
+        <a href="troubleshoot.html">6. Troubleshooting</a>&#160;&#160;»
         </p>
 
       </div>
@@ -536,7 +403,7 @@ example of an interactive ipython session using the statepoint.py Python module:
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.3.
     </div>
 <script type="text/javascript">
 

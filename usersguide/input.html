@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.7.0',
+        VERSION:     '0.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="User’s Guide" href="index.html" />
-    <link rel="next" title="4. Data Processing and Visualization" href="processing.html" />
+    <link rel="next" title="4. Output File Formats" href="output/index.html" />
     <link rel="prev" title="2. Installation and Configuration" href="install.html" /> 
   </head>
   <body role="document">
@@ -41,7 +41,7 @@
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="processing.html">4. Data Processing and Visualization</a>&#160;&#160;»
+        <a href="output/index.html">4. Output File Formats</a>&#160;&#160;»
         </p>
 
       </div>
@@ -130,11 +130,10 @@ is a table of the messages that will be printed after each file is checked.</p>
 </tr>
 </tbody>
 </table>
-<p>As an example, if OpenMC is installed in the directory
-<code class="docutils literal"><span class="pre">/opt/openmc/0.6.2</span></code> and the current working directory is where
-OpenMC XML input files are located, they can be validated using
-the following command:</p>
-<div class="highlight-bash"><div class="highlight"><pre>/opt/openmc/0.6.2/bin/xml_validate
+<p>As an example, if OpenMC is installed in the directory <code class="docutils literal"><span class="pre">/opt/openmc/</span></code> and the
+current working directory is where OpenMC XML input files are located, they can
+be validated using the following command:</p>
+<div class="highlight-bash"><div class="highlight"><pre>/opt/openmc/bin/openmc-validate-xml
 </pre></div>
 </div>
 </div>
@@ -822,9 +821,8 @@ displayed. This element takes the following attributes:</p>
 <p>The geometry in OpenMC is described using <a class="reference external" href="http://en.wikipedia.org/wiki/Constructive_solid_geometry">constructive solid geometry</a> (CSG),
 also sometimes referred to as combinatorial geometry. CSG allows a user to
 create complex objects using Boolean operators on a set of simpler surfaces. In
-the geometry model, each unique closed volume in defined by its bounding
-surfaces. In OpenMC, most <a class="reference external" href="http://en.wikipedia.org/wiki/Quadric">quadratic surfaces</a> can be modeled and used as
-bounding surfaces.</p>
+the geometry model, each unique volume is defined by its bounding surfaces. In
+OpenMC, most <a class="reference external" href="http://en.wikipedia.org/wiki/Quadric">quadratic surfaces</a> can be modeled and used as bounding surfaces.</p>
 <p>Every geometry.xml must have an XML declaration at the beginning of the file and
 a root element named geometry. Within the root element the user can define any
 number of cells, surfaces, and lattices. Let us look at the following example:</p>
@@ -843,7 +841,7 @@ number of cells, surfaces, and lattices. Let us look at the following example:</
     <span class="nt">&lt;id&gt;</span>1<span class="nt">&lt;/id&gt;</span>
     <span class="nt">&lt;universe&gt;</span>0<span class="nt">&lt;/universe&gt;</span>
     <span class="nt">&lt;material&gt;</span>1<span class="nt">&lt;/material&gt;</span>
-    <span class="nt">&lt;surfaces&gt;</span>-1<span class="nt">&lt;/surfaces&gt;</span>
+    <span class="nt">&lt;region&gt;</span>-1<span class="nt">&lt;/region&gt;</span>
   <span class="nt">&lt;/cell&gt;</span>
 <span class="nt">&lt;/geometry&gt;</span>
 </pre></div>
@@ -859,7 +857,7 @@ could be written as:</p>
   <span class="c">&lt;!-- This is a comment --&gt;</span>
 
   <span class="nt">&lt;surface</span> <span class="na">id=</span><span class="s">&quot;1&quot;</span> <span class="na">type=</span><span class="s">&quot;sphere&quot;</span> <span class="na">coeffs=</span><span class="s">&quot;0.0 0.0 0.0 5.0&quot;</span> <span class="na">boundary=</span><span class="s">&quot;vacuum&quot;</span> <span class="nt">/&gt;</span>
-  <span class="nt">&lt;cell</span> <span class="na">id=</span><span class="s">&quot;1&quot;</span> <span class="na">universe=</span><span class="s">&quot;0&quot;</span> <span class="na">material=</span><span class="s">&quot;1&quot;</span> <span class="na">surfaces=</span><span class="s">&quot;-1&quot;</span> <span class="nt">/&gt;</span>
+  <span class="nt">&lt;cell</span> <span class="na">id=</span><span class="s">&quot;1&quot;</span> <span class="na">universe=</span><span class="s">&quot;0&quot;</span> <span class="na">material=</span><span class="s">&quot;1&quot;</span> <span class="na">region=</span><span class="s">&quot;-1&quot;</span> <span class="nt">/&gt;</span>
 
 <span class="nt">&lt;/geometry&gt;</span>
 </pre></div>
@@ -882,7 +880,8 @@ files. This string is limited to 52 characters for formatting purposes.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of the surfaces. This can be &#8220;x-plane&#8221;, &#8220;y-plane&#8221;, &#8220;z-plane&#8221;,
-&#8220;plane&#8221;, &#8220;x-cylinder&#8221;, &#8220;y-cylinder&#8221;, &#8220;z-cylinder&#8221;, or &#8220;sphere&#8221;.</p>
+&#8220;plane&#8221;, &#8220;x-cylinder&#8221;, &#8220;y-cylinder&#8221;, &#8220;z-cylinder&#8221;, &#8220;sphere&#8221;, &#8220;x-cone&#8221;,
+&#8220;y-cone&#8221;, &#8220;z-cone&#8221;, or &#8220;quadric&#8221;.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
@@ -944,6 +943,10 @@ R^2 (y - y_0)^2"/>. The coefficients specified are &#8220;<img class="math" src=
 R^2 (z - z_0)^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/de75128ffb336ee9feee90a9cb946de93ac2cf0e.png" alt="x_0 \: y_0 \: z_0
 \: R^2"/>&#8221;.</td>
 </tr>
+<tr class="field-even field"><th class="field-name">quadric:</th><td class="field-body">A general quadric surface of the form <img class="math" src="../_images/math/38d22b7d58794e86808b2ebff1de726e16656617.png" alt="Ax^2 + By^2 + Cz^2 + Dxy +
+Eyz + Fxz + Gx + Hy + Jz + K = 0"/> The coefficients specified are &#8220;<img class="math" src="../_images/math/ac0b3c998a0208c7143deb1d64325bc106e2ac44.png" alt="A
+\: B \: C \: D \: E \: F \: G \: H \: J \: K"/>&#8221;.</td>
+</tr>
 </tbody>
 </table>
 </div></blockquote>
@@ -986,15 +989,27 @@ contain no material, this can also be set to &#8220;void&#8221;.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">surfaces:</th><td class="field-body"><p class="first">A list of the <code class="docutils literal"><span class="pre">ids</span></code> for surfaces that bound this cell, e.g. if the cell
-is on the negative side of surface 3 and the positive side of surface 5, the
-bounding surfaces would be given as &#8220;-3 5&#8221;.</p>
+<tr class="field-even field"><th class="field-name">region:</th><td class="field-body"><p class="first">A Boolean expression of half-spaces that defines the spatial region which
+the cell occupies. Each half-space is identified by the unique ID of the
+surface prefixed by <cite>-</cite> or <cite>+</cite> to indicate that it is the negative or
+positive half-space, respectively. The <cite>+</cite> sign for a positive half-space
+can be omitted. Valid Boolean operators are parentheses, union <cite>|</cite>,
+complement <cite>~</cite>, and intersection. Intersection is implicit and indicated by
+the presence of whitespace. The order of operator precedence is parentheses,
+complement, intersection, and then union.</p>
+<p>As an example, the following code gives a cell that is the union of the
+negative half-space of surface 3 and the complement of the intersection of
+the positive half-space of surface 5 and the negative half-space of surface
+2:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;cell</span> <span class="na">id=</span><span class="s">&quot;1&quot;</span> <span class="na">material=</span><span class="s">&quot;1&quot;</span> <span class="na">region=</span><span class="s">&quot;-3 | ~(5 -2)&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">The surface attribute/element can be omitted to make a cell fill
-its entire universe.</p>
+<p class="last">The <code class="docutils literal"><span class="pre">region</span></code> attribute/element can be omitted to make a cell
+fill its entire universe.</p>
 </div>
-<p><em>Default</em>: No surfaces</p>
+<p><em>Default</em>: A region filling all space.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">rotation:</th><td class="field-body"><p class="first">If the cell is filled with a universe, this element specifies the angles in
@@ -1183,8 +1198,10 @@ files. This string is limited to 52 characters for formatting purposes.</p>
 <tr class="field-odd field"><th class="field-name">density:</th><td class="field-body"><p class="first">An element with attributes/sub-elements called <code class="docutils literal"><span class="pre">value</span></code> and <code class="docutils literal"><span class="pre">units</span></code>. The
 <code class="docutils literal"><span class="pre">value</span></code> attribute is the numeric value of the density while the <code class="docutils literal"><span class="pre">units</span></code>
 can be &#8220;g/cm3&#8221;, &#8220;kg/m3&#8221;, &#8220;atom/b-cm&#8221;, &#8220;atom/cm3&#8221;, or &#8220;sum&#8221;. The &#8220;sum&#8221; unit
-indicates that the density should be calculated as the sum of the atom
-fractions for each nuclide in the material. This should not be used in
+indicates that values appearing in <code class="docutils literal"><span class="pre">ao</span></code> attributes for <code class="docutils literal"><span class="pre">&lt;nuclide&gt;</span></code> and
+<code class="docutils literal"><span class="pre">&lt;element&gt;</span></code> sub-elements are to be interpreted as nuclide/element
+densities in atom/b-cm, and the total density of the material is taken as
+the sum of all nuclides/elements. The &#8220;sum&#8221; option cannot be used in
 conjunction with weight percents.</p>
 <p><em>Default</em>: None</p>
 </td>
@@ -1204,6 +1221,14 @@ example would be as follows:</p>
 <p class="last">If one nuclide is specified in atom percent, all others must also
 be given in atom percent. The same applies for weight percentages.</p>
 </div>
+<p>An optional attribute/sub-element for each nuclide is <code class="docutils literal"><span class="pre">scattering</span></code>. This
+attribute may be set to &#8220;data&#8221; to use the scattering laws specified by the
+cross section library (default). Alternatively, when set to &#8220;iso-in-lab&#8221;,
+the scattering laws are used to sample the outgoing energy but an
+isotropic-in-lab  distribution is used to sample the outgoing angle at each
+scattering interaction. The <code class="docutils literal"><span class="pre">scattering</span></code> attribute may be most useful
+when using OpenMC to compute multi-group cross-sections for deterministic
+transport codes and to quantify the effects of anisotropic scattering.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
@@ -1224,6 +1249,15 @@ would be as follows:</p>
 <p>In some cross section libraries, certain naturally occurring isotopes do not
 have cross sections. The <a class="reference internal" href="#natural-elements"><span>&lt;natural_elements&gt; Element</span></a> option determines how a
 natural element is split into isotopes in these cases.</p>
+<p><em>Default</em>: None</p>
+<p>An optional attribute/sub-element for each element is <code class="docutils literal"><span class="pre">scattering</span></code>. This
+attribute may be set to &#8220;data&#8221; to use the scattering laws specified by the
+cross section library (default). Alternatively, when set to &#8220;iso-in-lab&#8221;,
+the scattering laws are used to sample the outgoing energy but an
+isotropic-in-lab  distribution is used to sample the outgoing angle at each
+scattering interaction. The <code class="docutils literal"><span class="pre">scattering</span></code> attribute may be most useful
+when using OpenMC to compute multi-group cross-sections for deterministic
+transport codes and to quantify the effects of anisotropic scattering.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
@@ -1294,8 +1328,8 @@ specify multiple filters, you must use multiple <code class="docutils literal"><
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of the filter. Accepted options are &#8220;cell&#8221;, &#8220;cellborn&#8221;,
-&#8220;material&#8221;, &#8220;universe&#8221;, &#8220;energy&#8221;, &#8220;energyout&#8221;, &#8220;mesh&#8221;, and
-&#8220;distribcell&#8221;.</p>
+&#8220;material&#8221;, &#8220;universe&#8221;, &#8220;energy&#8221;, &#8220;energyout&#8221;, &#8220;mesh&#8221;, &#8220;distribcell&#8221;,
+and &#8220;delayedgroup&#8221;.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">bins:</th><td class="field-body"><p class="first">For each filter type, the corresponding <code class="docutils literal"><span class="pre">bins</span></code> entry is given as
@@ -1321,29 +1355,94 @@ originally born in a specified cell.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">energy:</th><td class="field-body"><p class="first">A monotonically increasing list of bounding <strong>pre-collision</strong> energies
-for a number of groups. For example, if this filter is specified as
-<code class="docutils literal"><span class="pre">&lt;filter</span> <span class="pre">type=&quot;energy&quot;</span> <span class="pre">bins=&quot;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&quot;</span> <span class="pre">/&gt;</span></code>, then two energy bins
-will be created, one with energies between 0 and 1 MeV and the other
-with energies between 1 and 20 MeV.</p>
+for a number of groups. For example, if this filter is specified as</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;filter</span> <span class="na">type=</span><span class="s">&quot;energy&quot;</span> <span class="na">bins=</span><span class="s">&quot;0.0 1.0 20.0&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
+<p>then two energy bins will be created, one with energies between 0 and
+1 MeV and the other with energies between 1 and 20 MeV.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">energyout:</th><td class="field-body"><p class="first">A monotonically increasing list of bounding <strong>post-collision</strong>
 energies for a number of groups. For example, if this filter is
-specified as <code class="docutils literal"><span class="pre">&lt;filter</span> <span class="pre">type=&quot;energyout&quot;</span> <span class="pre">bins=&quot;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&quot;</span> <span class="pre">/&gt;</span></code>, then
-two post-collision energy bins will be created, one with energies
+specified as</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;filter</span> <span class="na">type=</span><span class="s">&quot;energyout&quot;</span> <span class="na">bins=</span><span class="s">&quot;0.0 1.0 20.0&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
+<p>then two post-collision energy bins will be created, one with energies
 between 0 and 1 MeV and the other with energies between 1 and 20 MeV.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">mesh:</th><td class="field-body"><p class="first">The <code class="docutils literal"><span class="pre">id</span></code> of a structured mesh to be tallied over.</p>
+<tr class="field-even field"><th class="field-name">mu:</th><td class="field-body"><p class="first">A monotonically increasing list of bounding <strong>post-collision</strong> cosines
+of the change in a particle&#8217;s angle (i.e., <img class="math" src="../_images/math/1c03aee7981b994864deb372377f9e45ab6cf1e0.png" alt="\mu = \hat{\Omega}
+\cdot \hat{\Omega}'"/>), which represents a portion of the possible
+values of <img class="math" src="../_images/math/11d586f6b5c3a0445fa328423430a9390fd2834b.png" alt="[-1,1]"/>.  For example, spanning all of <img class="math" src="../_images/math/11d586f6b5c3a0445fa328423430a9390fd2834b.png" alt="[-1,1]"/>
+with five equi-width bins can be specified as:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;filter</span> <span class="na">type=</span><span class="s">&quot;mu&quot;</span> <span class="na">bins=</span><span class="s">&quot;-1.0 -0.6 -0.2 0.2 0.6 1.0&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
+<p>Alternatively, if only one value is provided as a bin, OpenMC will
+interpret this to mean the complete range of <img class="math" src="../_images/math/11d586f6b5c3a0445fa328423430a9390fd2834b.png" alt="[-1,1]"/> should
+be automatically subdivided in to the provided value for the bin.
+That is, the above example of five equi-width bins spanning
+<img class="math" src="../_images/math/11d586f6b5c3a0445fa328423430a9390fd2834b.png" alt="[-1,1]"/> can be instead written as:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;filter</span> <span class="na">type=</span><span class="s">&quot;mu&quot;</span> <span class="na">bins=</span><span class="s">&quot;5&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">distribcell:</th><td class="field-body"><p class="first">The single cell which should be tallied uniquely for all instances.</p>
-<div class="last admonition note">
+<tr class="field-odd field"><th class="field-name">polar:</th><td class="field-body"><p class="first">A monotonically increasing list of bounding particle polar angles
+which represents a portion of the possible values of <img class="math" src="../_images/math/1b989a72aeaf778381894e0025fe309783e17235.png" alt="[0,\pi]"/>.
+For example, spanning all of <img class="math" src="../_images/math/1b989a72aeaf778381894e0025fe309783e17235.png" alt="[0,\pi]"/> with five equi-width
+bins can be specified as:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;filter</span> <span class="na">type=</span><span class="s">&quot;polar&quot;</span> <span class="na">bins=</span><span class="s">&quot;0.0 0.6283 1.2566 1.8850 2.5132 3.1416&quot;</span><span class="nt">/&gt;</span>
+</pre></div>
+</div>
+<p>Alternatively, if only one value is provided as a bin, OpenMC will
+interpret this to mean the complete range of <img class="math" src="../_images/math/1b989a72aeaf778381894e0025fe309783e17235.png" alt="[0,\pi]"/> should
+be automatically subdivided in to the provided value for the bin.
+That is, the above example of five equi-width bins spanning
+<img class="math" src="../_images/math/1b989a72aeaf778381894e0025fe309783e17235.png" alt="[0,\pi]"/> can be instead written as:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;filter</span> <span class="na">type=</span><span class="s">&quot;polar&quot;</span> <span class="na">bins=</span><span class="s">&quot;5&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">azimuthal:</th><td class="field-body"><p class="first">A monotonically increasing list of bounding particle azimuthal angles
+which represents a portion of the possible values of <img class="math" src="../_images/math/fba73f999a8f7a592fe5217a2006a9e6a07e78b6.png" alt="[-\pi,\pi)"/>.
+For example, spanning all of <img class="math" src="../_images/math/fba73f999a8f7a592fe5217a2006a9e6a07e78b6.png" alt="[-\pi,\pi)"/> with two equi-width
+bins can be specified as:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;filter</span> <span class="na">type=</span><span class="s">&quot;azimuthal&quot;</span> <span class="na">bins=</span><span class="s">&quot;0.0 3.1416 6.2832&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
+<p>Alternatively, if only one value is provided as a bin, OpenMC will
+interpret this to mean the complete range of <img class="math" src="../_images/math/fba73f999a8f7a592fe5217a2006a9e6a07e78b6.png" alt="[-\pi,\pi)"/> should
+be automatically subdivided in to the provided value for the bin.
+That is, the above example of five equi-width bins spanning
+<img class="math" src="../_images/math/fba73f999a8f7a592fe5217a2006a9e6a07e78b6.png" alt="[-\pi,\pi)"/> can be instead written as:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;filter</span> <span class="na">type=</span><span class="s">&quot;azimuthal&quot;</span> <span class="na">bins=</span><span class="s">&quot;2&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">mesh:</th><td class="field-body"><p class="first">The <code class="docutils literal"><span class="pre">id</span></code> of a structured mesh to be tallied over.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">distribcell:</th><td class="field-body"><p class="first">The single cell which should be tallied uniquely for all instances.</p>
+<div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">The distribcell filter will take a single cell ID and will tally
 each unique occurrence of that cell separately. This filter will
 not accept more than one cell ID. It is not recommended to combine
 this filter with a cell or mesh filter.</p>
+</div>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">delayedgroup:</th><td class="field-body"><p class="first">A list of delayed neutron precursor groups for which the tally should
+be accumulated. For instance, to tally to all 6 delayed groups in the
+ENDF/B-VII.1 library the filter is specified as:</p>
+<div class="last highlight-xml"><div class="highlight"><pre><span class="nt">&lt;filter</span> <span class="na">type=</span><span class="s">&quot;delayedgroup&quot;</span> <span class="na">bins=</span><span class="s">&quot;1 2 3 4 5 6&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
 </div>
 </td>
 </tr>
@@ -1368,26 +1467,33 @@ be:</p>
 <p><em>Default</em>: total</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">estimator:</th><td class="field-body"><p class="first">The estimator element is used to force the use of either <code class="docutils literal"><span class="pre">analog</span></code> or
-<code class="docutils literal"><span class="pre">tracklength</span></code> tally estimation.  &#8216;&#8217;analog&#8217;&#8217; is generally less efficient
-though it can be used with every score type.  &#8216;&#8217;tracklength&#8217;&#8217; is generally
-the most efficient, though its usage is restricted to tallies that do not
-score particle information which requires a collision to have occured, such
-as a scattering tally which utilizes outgoing energy filters.</p>
-<p><em>Default</em>: <code class="docutils literal"><span class="pre">tracklength</span></code> but will revert to analog if necessary.</p>
+<tr class="field-odd field"><th class="field-name">estimator:</th><td class="field-body"><p class="first">The estimator element is used to force the use of either <code class="docutils literal"><span class="pre">analog</span></code>,
+<code class="docutils literal"><span class="pre">collision</span></code>, or <code class="docutils literal"><span class="pre">tracklength</span></code> tally estimation.  <code class="docutils literal"><span class="pre">analog</span></code> is generally
+the least efficient though it can be used with every score type.
+<code class="docutils literal"><span class="pre">tracklength</span></code> is generally the most efficient, but neither <code class="docutils literal"><span class="pre">tracklength</span></code>
+nor <code class="docutils literal"><span class="pre">collision</span></code> can be used to score a tally that requires post-collision
+information.  For example, a scattering tally with outgoing energy filters
+cannot be used with <code class="docutils literal"><span class="pre">tracklength</span></code> or <code class="docutils literal"><span class="pre">collision</span></code> because the code will
+not know the outgoing energy distribution.</p>
+<p><em>Default</em>: <code class="docutils literal"><span class="pre">tracklength</span></code> but will revert to <code class="docutils literal"><span class="pre">analog</span></code> if necessary.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">scores:</th><td class="field-body"><p class="first">A space-separated list of the desired responses to be accumulated. Accepted
 options are &#8220;flux&#8221;, &#8220;total&#8221;, &#8220;scatter&#8221;, &#8220;absorption&#8221;, &#8220;fission&#8221;,
-&#8220;nu-fission&#8221;, &#8220;kappa-fission&#8221;, &#8220;nu-scatter&#8221;, &#8220;scatter-N&#8221;, &#8220;scatter-PN&#8221;,
-&#8220;scatter-YN&#8221;, &#8220;nu-scatter-N&#8221;, &#8220;nu-scatter-PN&#8221;, &#8220;nu-scatter-YN&#8221;, &#8220;flux-YN&#8221;,
-&#8220;total-YN&#8221;, &#8220;current&#8221;, and &#8220;events&#8221;. These corresponding to the following
-physical quantities:</p>
+&#8220;nu-fission&#8221;, &#8220;delayed-nu-fission&#8221;, &#8220;kappa-fission&#8221;, &#8220;nu-scatter&#8221;,
+&#8220;scatter-N&#8221;, &#8220;scatter-PN&#8221;, &#8220;scatter-YN&#8221;, &#8220;nu-scatter-N&#8221;, &#8220;nu-scatter-PN&#8221;,
+&#8220;nu-scatter-YN&#8221;, &#8220;flux-YN&#8221;, &#8220;total-YN&#8221;, &#8220;current&#8221;, &#8220;inverse-velocity&#8221; and
+&#8220;events&#8221;. These correspond to the following physical quantities:</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">flux:</th><td class="field-body"><p class="first">Total flux in particle-cm per source particle.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The <code class="docutils literal"><span class="pre">analog</span></code> estimator is actually identical to the <code class="docutils literal"><span class="pre">collision</span></code>
+estimator for the flux score.</p>
+</div>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">total:</th><td class="field-body"><p class="first">Total reaction rate in reactions per source particle.</p>
@@ -1408,7 +1514,12 @@ produce secondary neutrons. Units are reactions per source particle.</p>
 per source neutron.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">kappa-fission:</th><td class="field-body"><p class="first">The recoverable energy production rate due to fission. The recoverable
+<tr class="field-odd field"><th class="field-name" colspan="2">delayed-nu-fission:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first">Total production of delayed neutrons due to fission. Units are neutrons produced
+per source neutron.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">kappa-fission:</th><td class="field-body"><p class="first">The recoverable energy production rate due to fission. The recoverable
 energy is defined as the fission product kinetic energy, prompt and
 delayed neutron kinetic energies, prompt and delayed <img class="math" src="../_images/math/0ebb67342b546ca42a1c634b1ef03c893c4cdedb.png" alt="\gamma"/>-ray
 total energies, and the total energy released by the delayed <img class="math" src="../_images/math/8ce03f78ed945f2ef3dac87c8799b55b393527e7.png" alt="\beta"/>
@@ -1417,13 +1528,13 @@ prompt and delayed <img class="math" src="../_images/math/0ebb67342b546ca42a1c63
 locally. Units are MeV per source particle.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">scatter-N:</th><td class="field-body"><p class="first">Tally the N<sup>th</sup> scattering moment, where N is the Legendre
+<tr class="field-odd field"><th class="field-name">scatter-N:</th><td class="field-body"><p class="first">Tally the N<sup>th</sup> scattering moment, where N is the Legendre
 expansion order of the change in particle angle <img class="math" src="../_images/math/7da619f2d4a1b1851f09ac6bc11d3483998c98e4.png" alt="\left(\mu\right)"/>.
 N must be between 0 and 10. As an example, tallying the 2<sup>nd</sup> scattering moment would be specified as <code class="docutils literal"><span class="pre">&lt;scores&gt;</span> <span class="pre">scatter-2</span>
 <span class="pre">&lt;/scores&gt;</span></code>. Units are reactions per source particle.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">scatter-PN:</th><td class="field-body"><p class="first">Tally all of the scattering moments from order 0 to N, where N is the
+<tr class="field-even field"><th class="field-name">scatter-PN:</th><td class="field-body"><p class="first">Tally all of the scattering moments from order 0 to N, where N is the
 Legendre expansion order of the change in particle angle
 <img class="math" src="../_images/math/7da619f2d4a1b1851f09ac6bc11d3483998c98e4.png" alt="\left(\mu\right)"/>. That is, <code class="docutils literal"><span class="pre">scatter-P1</span></code> is equivalent to
 requesting tallies of <code class="docutils literal"><span class="pre">scatter-0</span></code> and <code class="docutils literal"><span class="pre">scatter-1</span></code>.  Like for
@@ -1432,7 +1543,7 @@ the 2<sup>nd</sup> scattering moment would be specified as <code class="docutils
 <span class="pre">scatter-P2</span> <span class="pre">&lt;/scores&gt;</span></code>. Units are reactions per source particle.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">scatter-YN:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">scatter-YN</span></code> is similar to <code class="docutils literal"><span class="pre">scatter-PN</span></code> except an additional expansion
+<tr class="field-odd field"><th class="field-name">scatter-YN:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">scatter-YN</span></code> is similar to <code class="docutils literal"><span class="pre">scatter-PN</span></code> except an additional expansion
 is performed for the incoming particle direction
 <img class="math" src="../_images/math/94dea2b917efe3b755b49b6c9de1f2270ddcb436.png" alt="\left(\Omega\right)"/> using the real spherical harmonics.  This is
 useful for performing angular flux moment weighting of the scattering
@@ -1441,33 +1552,43 @@ from order 0 to N; N again must be between 0 and 10. Units are reactions
 per source particle.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">nu-scatter, nu-scatter-N, nu-scatter-PN, nu-scatter-YN:</th></tr>
-<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first">These scores are similar in functionality to their <code class="docutils literal"><span class="pre">scatter*</span></code>
+<tr class="field-even field"><th class="field-name" colspan="2">nu-scatter, nu-scatter-N, nu-scatter-PN, nu-scatter-YN:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first">These scores are similar in functionality to their <code class="docutils literal"><span class="pre">scatter*</span></code>
 equivalents except the total production of neutrons due to scattering is
 scored vice simply the scattering rate. This accounts for multiplicity
 from (n,2n), (n,3n), and (n,4n) reactions. Units are neutrons produced per
 source particle.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">flux-YN:</th><td class="field-body"><p class="first">Spherical harmonic expansion of the direction of motion
+<tr class="field-odd field"><th class="field-name">flux-YN:</th><td class="field-body"><p class="first">Spherical harmonic expansion of the direction of motion
 <img class="math" src="../_images/math/94dea2b917efe3b755b49b6c9de1f2270ddcb436.png" alt="\left(\Omega\right)"/> of the total flux.  This score will tally all
 of the harmonic moments of order 0 to N.  N must be between 0
 and 10. Units are particle-cm per source particle.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">total-YN:</th><td class="field-body"><p class="first">The total reaction rate expanded via spherical harmonics about the
+<tr class="field-even field"><th class="field-name">total-YN:</th><td class="field-body"><p class="first">The total reaction rate expanded via spherical harmonics about the
 direction of motion of the neutron, <img class="math" src="../_images/math/b39932b8cbb311eeee9815738f6be3757737b2ff.png" alt="\Omega"/>.
 This score will tally all of the harmonic moments of order 0 to N.  N must
 be between 0 and 10. Units are reactions per source particle.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">current:</th><td class="field-body"><p class="first">Partial currents on the boundaries of each cell in a mesh. Units are
+<tr class="field-odd field"><th class="field-name">current:</th><td class="field-body"><p class="first">Partial currents on the boundaries of each cell in a mesh. Units are
 particles per source particle.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">This score can only be used if a mesh filter has been
 specified. Furthermore, it may not be used in conjunction with any
 other score.</p>
+</div>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">inverse-velocity:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first">The flux-weighted inverse velocity where the velocity is in units of
+centimeters per second.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The <code class="docutils literal"><span class="pre">analog</span></code> estimator is actually identical to the <code class="docutils literal"><span class="pre">collision</span></code>
+estimator for the inverse-velocity score.</p>
 </div>
 </td>
 </tr>
@@ -1536,8 +1657,7 @@ attributes/sub-elements:</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body">The type of structured mesh. Valid options include &#8220;rectangular&#8221; and
-&#8220;hexagonal&#8221;.</td>
+<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body">The type of structured mesh. The only valid option is &#8220;regular&#8221;.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">dimension:</th><td class="field-body">The number of mesh cells in each direction.</td>
 </tr>
@@ -1634,16 +1754,16 @@ respectively.</p>
 <p><em>Default</em>: None - Required entry</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">Keyword for type of plot to be produced. Currently only &#8220;slice&#8221; and
-&#8220;voxel&#8221; plots are implemented. The &#8220;slice&#8221; plot type creates 2D pixel
-maps saved in the PPM file format. PPM files can be displayed in most
-viewers (e.g. the default Gnome viewer, IrfanView, etc.).  The &#8220;voxel&#8221;
-plot type produces a binary datafile containing voxel grid positioning and
-the cell or material (specified by the <code class="docutils literal"><span class="pre">color</span></code> tag) at the center of each
-voxel. These datafiles can be processed into 3D SILO files using the
-<code class="docutils literal"><span class="pre">voxel.py</span></code> utility provided with the OpenMC source, and subsequently
-viewed with a 3D viewer such as VISIT or Paraview. See the
-<a class="reference internal" href="../devguide/voxel.html#devguide-voxel"><span>Voxel Plot Binary File Specifications</span></a> for information about the datafile structure.</p>
+<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">Keyword for type of plot to be produced. Currently only &#8220;slice&#8221; and &#8220;voxel&#8221;
+plots are implemented. The &#8220;slice&#8221; plot type creates 2D pixel maps saved in
+the PPM file format. PPM files can be displayed in most viewers (e.g. the
+default Gnome viewer, IrfanView, etc.).  The &#8220;voxel&#8221; plot type produces a
+binary datafile containing voxel grid positioning and the cell or material
+(specified by the <code class="docutils literal"><span class="pre">color</span></code> tag) at the center of each voxel. These
+datafiles can be processed into 3D SILO files using the
+<code class="docutils literal"><span class="pre">openmc-voxel-to-silovtk</span></code> utility provided with the OpenMC source, and
+subsequently viewed with a 3D viewer such as VISIT or Paraview. See the
+<a class="reference internal" href="output/voxel.html#usersguide-voxel"><span>Voxel Plot File Format</span></a> for information about the datafile structure.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">Since the PPM format is saved without any kind of compression,
@@ -2006,7 +2126,7 @@ running OpenMC.</p>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="processing.html">4. Data Processing and Visualization</a>&#160;&#160;»
+        <a href="output/index.html">4. Output File Formats</a>&#160;&#160;»
         </p>
 
       </div>
@@ -2014,7 +2134,7 @@ running OpenMC.</p>
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.3.
     </div>
 <script type="text/javascript">
 

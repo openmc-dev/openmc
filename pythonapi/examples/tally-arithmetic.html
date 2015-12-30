@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.7.0',
+        VERSION:     '0.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../../index.html" />
     <link rel="up" title="Python API" href="../index.html" />
-    <link rel="next" title="Publications" href="../../publications.html" />
+    <link rel="next" title="MGXS Part I: Introduction" href="mgxs-part-i.html" />
     <link rel="prev" title="Pandas Dataframes" href="pandas-dataframes.html" /> 
   </head>
   <body role="document">
@@ -41,7 +41,7 @@
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="../../publications.html">Publications</a>&#160;&#160;»
+        <a href="mgxs-part-i.html">MGXS Part I: Introduction</a>&#160;&#160;»
         </p>
 
       </div>
@@ -423,20 +423,19 @@ div#notebook {
 <span class="c"># Create fuel Cell</span>
 <span class="n">fuel_cell</span> <span class="o">=</span> <span class="n">openmc</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">&#39;1.6</span><span class="si">% F</span><span class="s">uel&#39;</span><span class="p">)</span>
 <span class="n">fuel_cell</span><span class="o">.</span><span class="n">fill</span> <span class="o">=</span> <span class="n">fuel</span>
-<span class="n">fuel_cell</span><span class="o">.</span><span class="n">add_surface</span><span class="p">(</span><span class="n">fuel_outer_radius</span><span class="p">,</span> <span class="n">halfspace</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">fuel_cell</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="o">-</span><span class="n">fuel_outer_radius</span>
 <span class="n">pin_cell_universe</span><span class="o">.</span><span class="n">add_cell</span><span class="p">(</span><span class="n">fuel_cell</span><span class="p">)</span>
 
 <span class="c"># Create a clad Cell</span>
 <span class="n">clad_cell</span> <span class="o">=</span> <span class="n">openmc</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">&#39;1.6% Clad&#39;</span><span class="p">)</span>
 <span class="n">clad_cell</span><span class="o">.</span><span class="n">fill</span> <span class="o">=</span> <span class="n">zircaloy</span>
-<span class="n">clad_cell</span><span class="o">.</span><span class="n">add_surface</span><span class="p">(</span><span class="n">fuel_outer_radius</span><span class="p">,</span> <span class="n">halfspace</span><span class="o">=+</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">clad_cell</span><span class="o">.</span><span class="n">add_surface</span><span class="p">(</span><span class="n">clad_outer_radius</span><span class="p">,</span> <span class="n">halfspace</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">clad_cell</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="o">+</span><span class="n">fuel_outer_radius</span> <span class="o">&amp;</span> <span class="o">-</span><span class="n">clad_outer_radius</span>
 <span class="n">pin_cell_universe</span><span class="o">.</span><span class="n">add_cell</span><span class="p">(</span><span class="n">clad_cell</span><span class="p">)</span>
 
 <span class="c"># Create a moderator Cell</span>
 <span class="n">moderator_cell</span> <span class="o">=</span> <span class="n">openmc</span><span class="o">.</span><span class="n">Cell</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">&#39;1.6% Moderator&#39;</span><span class="p">)</span>
 <span class="n">moderator_cell</span><span class="o">.</span><span class="n">fill</span> <span class="o">=</span> <span class="n">water</span>
-<span class="n">moderator_cell</span><span class="o">.</span><span class="n">add_surface</span><span class="p">(</span><span class="n">clad_outer_radius</span><span class="p">,</span> <span class="n">halfspace</span><span class="o">=+</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">moderator_cell</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="o">+</span><span class="n">clad_outer_radius</span>
 <span class="n">pin_cell_universe</span><span class="o">.</span><span class="n">add_cell</span><span class="p">(</span><span class="n">moderator_cell</span><span class="p">)</span>
 </pre></div>
 
@@ -465,12 +464,7 @@ div#notebook {
 <span class="n">root_cell</span><span class="o">.</span><span class="n">fill</span> <span class="o">=</span> <span class="n">pin_cell_universe</span>
 
 <span class="c"># Add boundary planes</span>
-<span class="n">root_cell</span><span class="o">.</span><span class="n">add_surface</span><span class="p">(</span><span class="n">min_x</span><span class="p">,</span> <span class="n">halfspace</span><span class="o">=+</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">root_cell</span><span class="o">.</span><span class="n">add_surface</span><span class="p">(</span><span class="n">max_x</span><span class="p">,</span> <span class="n">halfspace</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">root_cell</span><span class="o">.</span><span class="n">add_surface</span><span class="p">(</span><span class="n">min_y</span><span class="p">,</span> <span class="n">halfspace</span><span class="o">=+</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">root_cell</span><span class="o">.</span><span class="n">add_surface</span><span class="p">(</span><span class="n">max_y</span><span class="p">,</span> <span class="n">halfspace</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">root_cell</span><span class="o">.</span><span class="n">add_surface</span><span class="p">(</span><span class="n">min_z</span><span class="p">,</span> <span class="n">halfspace</span><span class="o">=+</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">root_cell</span><span class="o">.</span><span class="n">add_surface</span><span class="p">(</span><span class="n">max_z</span><span class="p">,</span> <span class="n">halfspace</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">root_cell</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="o">+</span><span class="n">min_x</span> <span class="o">&amp;</span> <span class="o">-</span><span class="n">max_x</span> <span class="o">&amp;</span> <span class="o">+</span><span class="n">min_y</span> <span class="o">&amp;</span> <span class="o">-</span><span class="n">max_y</span> <span class="o">&amp;</span> <span class="o">+</span><span class="n">min_z</span> <span class="o">&amp;</span> <span class="o">-</span><span class="n">max_z</span>
 
 <span class="c"># Create root Universe</span>
 <span class="n">root_universe</span> <span class="o">=</span> <span class="n">openmc</span><span class="o">.</span><span class="n">Universe</span><span class="p">(</span><span class="n">universe_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;root universe&#39;</span><span class="p">)</span>
@@ -621,6 +615,22 @@ div#notebook {
 </div>
 </div>
 
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[13]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>0</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
@@ -646,24 +656,24 @@ div#notebook {
 
 
 <div class="output_png output_subarea output_execute_result">
-<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPoAAAD6AgMAAAD1grKuAAAABGdBTUEAALGPC/xhBQAAAAFzUkdC
-AK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAxQTFRF
-////chIS6YCRTb/E6kGE+wAAAAFiS0dEAIgFHUgAAAAJcEhZcwAAAEgAAABIAEbJaz4AAALKSURB
-VGje7dpLcqQwDAbgHHE2YeEj+D4cwQucBUfo+3CEXoSp8OhuhF70T4qpKXmdr21LogK2Pj7A8QmN
-P+HDhw8fPnz48Kf6VH9G+66vy+je8k19jnf8C5dXIPv86ms56lPdjvaYbyodx3ze+XLE76cXFiD4
-zPji99z0/AJ4n1lfvJ6fnl0A6x+578efMSg1wPr172/jPO5yFXM+Ef78gdblM+WPHyguP//t1/g6
-pA0wfln+ho/fwgYYn19C/xwDvwHGc9OvC+hs37DTrwuwfWanXxdQTC9Mvyygs3wjTL8uwPJpn/tN
-DbSGz7T0SBEWw4vLXzbQ6b6RoveIoO6TvPxlA63qs7z8ZQPF9F+SH22vbX8OQKf5Rtv+EgDNJ3X5
-8wZaxWd1+fMGiuFvir8bvjp8J/tGy/6jAmRvhW8fwL3vVT+o3grfPoB7r/IpALI3tz8FoJN84/NV
-873hB8UnM3xzANtf8nb4dwmg3grfFEDJO8JPE0i9Ff4pAYL3pI8mkHor/HMCeO9JH00g9SafEsh7
-T/ppARBvp48UwJnelT5SACd7O31TAlnvKx9SQCd7B58KgPO+8iMFuPWe9E8F8BveWX7bAjzX9y4/
-/Jve+fhsH6Ctv7n8PTzjvY/v9gEOHz58+PBX+6v/f/wPvnd54f3j6venE/yl769Xv7+j3x/o98/V
-32/o9+fl389Xnx+g5x/o+Qt6/oOeP6HnX+j5G3z+h54/ouefV5/foufP6Pk3ev4On/+j9w/o/Qd6
-/4Le/6D3T/D9V67Y/ZsVQBq+s+8f0ftP+P41axXguP9NWgDuu/Cdfv+N3r/D9/9TAID+A7T/Ae2/
-gPs/0P4TtP8F7r9J3AIO9P+g/Udw/9Oygbf7r9D+L7j/DO1/Q/vv4P4/tP8Q7n9E+y/h/k+0/xTu
-f4X7b+H+X7T/+BPuf3aM8OHDhw8fPnz4w/4vzcvgeY10sY0AAAAldEVYdGRhdGU6Y3JlYXRlADIw
-MTUtMDgtMDZUMTY6NDM6MTMrMDc6MDBtUQj+AAAAJXRFWHRkYXRlOm1vZGlmeQAyMDE1LTA4LTA2
-VDE2OjQzOjEzKzA3OjAwHAywQgAAAABJRU5ErkJggg==
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPoAAAD6AgMAAAD1grKuAAAABGdBTUEAALGPC/xhBQAAACBjSFJN
+AAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAADFBMVEX///9yEhLpgJFNv8Tq
+QYT7AAAAAWJLR0QAiAUdSAAAAAd0SU1FB98LGQ4UM+6dthcAAALKSURBVGje7dpLcqQwDAbgHHE2
+YeEj+D4cwQucBUfo+3CEXoSp8OhuhF70T4qpKXmdr21LogK2Pj7A8QmNP+HDhw8fPnz48Kf6VH9G
++66vy+je8k19jnf8C5dXIPv86ms56lPdjvaYbyodx3ze+XLE76cXFiD4zPji99z0/AJ4n1lfvJ6f
+nl0A6x+578efMSg1wPr172/jPO5yFXM+Ef78gdblM+WPHyguP//t1/g6pA0wfln+ho/fwgYYn19C
+/xwDvwHGc9OvC+hs37DTrwuwfWanXxdQTC9Mvyygs3wjTL8uwPJpn/tNDbSGz7T0SBEWw4vLXzbQ
+6b6RoveIoO6TvPxlA63qs7z8ZQPF9F+SH22vbX8OQKf5Rtv+EgDNJ3X58wZaxWd1+fMGiuFvir8b
+vjp8J/tGy/6jAmRvhW8fwL3vVT+o3grfPoB7r/IpALI3tz8FoJN84/NV873hB8UnM3xzANtf8nb4
+dwmg3grfFEDJO8JPE0i9Ff4pAYL3pI8mkHor/HMCeO9JH00g9SafEsh7T/ppARBvp48UwJnelT5S
+ACd7O31TAlnvKx9SQCd7B58KgPO+8iMFuPWe9E8F8BveWX7bAjzX9y4//Jve+fhsH6Ctv7n8PTzj
+vY/v9gEOHz58+PBX+6v/f/wPvnd54f3j6venE/yl769Xv7+j3x/o98/V32/o9+fl389Xnx+g5x/o
++Qt6/oOeP6HnX+j5G3z+h54/ouefV5/foufP6Pk3ev4On/+j9w/o/Qd6/4Le/6D3T/D9V67Y/ZsV
+QBq+s+8f0ftP+P41axXguP9NWgDuu/Cdfv+N3r/D9/9TAID+A7T/Ae2/gPs/0P4TtP8F7r9J3AIO
+9P+g/Udw/9Oygbf7r9D+L7j/DO1/Q/vv4P4/tP8Q7n9E+y/h/k+0/xTuf4X7b+H+X7T/+BPuf3aM
+8OHDhw8fPnz4w/4vzcvgeY10sY0AAAAldEVYdGRhdGU6Y3JlYXRlADIwMTUtMTEtMjVUMTQ6MjA6
+NTEtMDg6MDDVsKLDAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDE1LTExLTI1VDE0OjIwOjUxLTA4OjAw
+pO0afwAAAABJRU5ErkJggg==
 "
 >
 </div>
@@ -691,7 +701,6 @@ VDE2OjQzOjEzKzA3OjAwHAywQgAAAABJRU5ErkJggg==
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="c"># Instantiate an empty TalliesFile</span>
 <span class="n">tallies_file</span> <span class="o">=</span> <span class="n">openmc</span><span class="o">.</span><span class="n">TalliesFile</span><span class="p">()</span>
-<span class="n">tallies_file</span><span class="o">.</span><span class="n">tallies</span> <span class="o">=</span> <span class="p">[]</span>
 </pre></div>
 
 </div>
@@ -899,7 +908,9 @@ __________________888______________________________________________________
       Copyright:      2011-2015 Massachusetts Institute of Technology
       License:        http://mit-crpg.github.io/openmc/license.html
       Version:        0.7.0
-      Date/Time:      2015-08-15 10:52:49
+      Git SHA1:       74ffcb447521c968fb64fdaa63e40598783f2fba
+      Date/Time:      2015-11-25 14:20:51
+      MPI Processes:  1
 
  ===========================================================================
  ========================&gt;     INITIALIZATION     &lt;=========================
@@ -911,12 +922,13 @@ __________________888______________________________________________________
  Reading materials XML file...
  Reading tallies XML file...
  Building neighboring cells lists for each surface...
+ Loading ACE cross section table: 92235.71c
  Loading ACE cross section table: 92238.71c
  Loading ACE cross section table: 8016.71c
- Loading ACE cross section table: 92235.71c
- Loading ACE cross section table: 5010.71c
  Loading ACE cross section table: 1001.71c
+ Loading ACE cross section table: 5010.71c
  Loading ACE cross section table: 40090.71c
+ Maximum neutron transport energy: 20.0000 MeV for 92235.71c
  Initializing source particles...
 
  ===========================================================================
@@ -925,26 +937,26 @@ __________________888______________________________________________________
 
   Bat./Gen.      k            Average k         
   =========   ========   ====================   
-        1/1    1.00465                       
-        2/1    1.05814                       
-        3/1    1.05114                       
-        4/1    1.09189                       
-        5/1    1.03731                       
-        6/1    1.03510                       
-        7/1    1.09378    1.06444 +/- 0.02934
-        8/1    1.04522    1.05803 +/- 0.01811
-        9/1    1.06557    1.05992 +/- 0.01294
-       10/1    1.05757    1.05945 +/- 0.01004
-       11/1    1.04858    1.05764 +/- 0.00839
-       12/1    1.01832    1.05202 +/- 0.00905
-       13/1    1.05822    1.05279 +/- 0.00787
-       14/1    1.07684    1.05547 +/- 0.00744
-       15/1    1.00349    1.05027 +/- 0.00844
-       16/1    1.06969    1.05203 +/- 0.00784
-       17/1    1.06377    1.05301 +/- 0.00722
-       18/1    1.02897    1.05116 +/- 0.00690
-       19/1    1.00685    1.04800 +/- 0.00713
-       20/1    1.02644    1.04656 +/- 0.00679
+        1/1    1.05992                       
+        2/1    1.05251                       
+        3/1    1.05204                       
+        4/1    1.02100                       
+        5/1    1.07784                       
+        6/1    1.04814                       
+        7/1    1.02335    1.03574 +/- 0.01239
+        8/1    1.02415    1.03188 +/- 0.00813
+        9/1    1.10331    1.04974 +/- 0.01876
+       10/1    1.05452    1.05069 +/- 0.01456
+       11/1    1.07867    1.05536 +/- 0.01277
+       12/1    1.04203    1.05345 +/- 0.01096
+       13/1    1.04482    1.05237 +/- 0.00955
+       14/1    1.04116    1.05113 +/- 0.00852
+       15/1    1.07569    1.05358 +/- 0.00800
+       16/1    1.04188    1.05252 +/- 0.00732
+       17/1    1.03775    1.05129 +/- 0.00679
+       18/1    0.98462    1.04616 +/- 0.00808
+       19/1    1.08613    1.04902 +/- 0.00801
+       20/1    1.00571    1.04613 +/- 0.00800
  Creating state point statepoint.20.h5...
 
  ===========================================================================
@@ -954,27 +966,27 @@ __________________888______________________________________________________
 
  =======================&gt;     TIMING STATISTICS     &lt;=======================
 
- Total time for initialization     =  4.4100E-01 seconds
-   Reading cross sections          =  1.1300E-01 seconds
- Total time in simulation          =  1.8418E+01 seconds
-   Time in transport only          =  1.8403E+01 seconds
-   Time in inactive batches        =  2.1070E+00 seconds
-   Time in active batches          =  1.6311E+01 seconds
+ Total time for initialization     =  7.9600E-01 seconds
+   Reading cross sections          =  2.1200E-01 seconds
+ Total time in simulation          =  1.8740E+01 seconds
+   Time in transport only          =  1.8727E+01 seconds
+   Time in inactive batches        =  2.5970E+00 seconds
+   Time in active batches          =  1.6143E+01 seconds
    Time synchronizing fission bank =  2.0000E-03 seconds
-     Sampling source sites         =  2.0000E-03 seconds
-     SEND/RECV source sites        =  0.0000E+00 seconds
+     Sampling source sites         =  1.0000E-03 seconds
+     SEND/RECV source sites        =  1.0000E-03 seconds
    Time accumulating tallies       =  0.0000E+00 seconds
- Total time for finalization       =  1.0000E-03 seconds
- Total time elapsed                =  1.8861E+01 seconds
- Calculation Rate (inactive)       =  5932.61 neutrons/second
- Calculation Rate (active)         =  2299.06 neutrons/second
+ Total time for finalization       =  2.0000E-03 seconds
+ Total time elapsed                =  1.9553E+01 seconds
+ Calculation Rate (inactive)       =  4813.25 neutrons/second
+ Calculation Rate (active)         =  2322.99 neutrons/second
 
  ============================&gt;     RESULTS     &lt;============================
 
- k-effective (Collision)     =  1.04599 +/-  0.00622
- k-effective (Track-length)  =  1.04656 +/-  0.00679
- k-effective (Absorption)    =  1.04614 +/-  0.00461
- Combined k-effective        =  1.04651 +/-  0.00368
+ k-effective (Collision)     =  1.04597 +/-  0.00663
+ k-effective (Track-length)  =  1.04613 +/-  0.00800
+ k-effective (Absorption)    =  1.04087 +/-  0.00627
+ Combined k-effective        =  1.04322 +/-  0.00570
  Leakage Fraction            =  0.00000 +/-  0.00000
 
 </pre>
@@ -1020,7 +1032,6 @@ __________________888______________________________________________________
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="c"># Load the statepoint file</span>
 <span class="n">sp</span> <span class="o">=</span> <span class="n">StatePoint</span><span class="p">(</span><span class="s">&#39;statepoint.20.h5&#39;</span><span class="p">)</span>
-<span class="n">sp</span><span class="o">.</span><span class="n">read_results</span><span class="p">()</span>
 </pre></div>
 
 </div>
@@ -1098,21 +1109,14 @@ In this notation, $\langle \cdot \rangle^a_b$ represents an OpenMC that is integ
       <th>mean</th>
       <th>std. dev.</th>
     </tr>
-    <tr>
-      <th>bin</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>total</td>
-      <td>(nu-fission / absorption)</td>
-      <td>1.042726</td>
-      <td>0.008661</td>
+      <td> total</td>
+      <td> (nu-fission / absorption)</td>
+      <td> 1.040687</td>
+      <td> 0.010913</td>
     </tr>
   </tbody>
 </table>
@@ -1163,26 +1167,21 @@ In this notation, $\langle \cdot \rangle^a_b$ represents an OpenMC that is integ
   <thead>
     <tr style="text-align: right;">
       <th></th>
+      <th>energy [MeV]</th>
       <th>nuclide</th>
       <th>score</th>
       <th>mean</th>
       <th>std. dev.</th>
     </tr>
-    <tr>
-      <th>bin</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>total</td>
-      <td>absorption</td>
-      <td>0.958874</td>
-      <td>0.007146</td>
+      <td> (0.0e+00 - 6.2e-01)</td>
+      <td> total</td>
+      <td> absorption</td>
+      <td> 0.959302</td>
+      <td> 0.010033</td>
     </tr>
   </tbody>
 </table>
@@ -1233,26 +1232,21 @@ $$\epsilon=\frac{\langle\nu\Sigma_f\phi\rangle}{\langle\nu\Sigma_f\phi\rangle_T}
   <thead>
     <tr style="text-align: right;">
       <th></th>
+      <th>energy [MeV]</th>
       <th>nuclide</th>
       <th>score</th>
       <th>mean</th>
       <th>std. dev.</th>
     </tr>
-    <tr>
-      <th>bin</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>total</td>
-      <td>nu-fission</td>
-      <td>1.09186</td>
-      <td>0.010424</td>
+      <td> (0.0e+00 - 6.2e-01)</td>
+      <td> total</td>
+      <td> nu-fission</td>
+      <td> 1.09103</td>
+      <td> 0.012491</td>
     </tr>
   </tbody>
 </table>
@@ -1311,25 +1305,16 @@ where the superscript $F$ denotes fuel.</p>
       <th>mean</th>
       <th>std. dev.</th>
     </tr>
-    <tr>
-      <th>bin</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>0.0e+00 - 6.2e-01</td>
-      <td>10000</td>
-      <td>total</td>
-      <td>absorption</td>
-      <td>0.802921</td>
-      <td>0.006109</td>
+      <td> (0.0e+00 - 6.2e-01)</td>
+      <td> 10000</td>
+      <td> total</td>
+      <td> absorption</td>
+      <td> 0.803182</td>
+      <td> 0.008664</td>
     </tr>
   </tbody>
 </table>
@@ -1385,25 +1370,16 @@ where the superscript $F$ denotes fuel.</p>
       <th>mean</th>
       <th>std. dev.</th>
     </tr>
-    <tr>
-      <th>bin</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>0.0e+00 - 6.2e-01</td>
-      <td>10000</td>
-      <td>total</td>
-      <td>(nu-fission / absorption)</td>
-      <td>1.240421</td>
-      <td>0.010978</td>
+      <td> (0.0e+00 - 6.2e-01)</td>
+      <td> 10000</td>
+      <td> total</td>
+      <td> (nu-fission / absorption)</td>
+      <td> 1.237982</td>
+      <td> 0.014179</td>
     </tr>
   </tbody>
 </table>
@@ -1451,26 +1427,23 @@ where the superscript $F$ denotes fuel.</p>
   <thead>
     <tr style="text-align: right;">
       <th></th>
+      <th>energy [MeV]</th>
+      <th>cell</th>
       <th>nuclide</th>
       <th>score</th>
       <th>mean</th>
       <th>std. dev.</th>
     </tr>
-    <tr>
-      <th>bin</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>total</td>
-      <td>(((absorption * nu-fission) * absorption) * (n...</td>
-      <td>1.042726</td>
-      <td>0.017538</td>
+      <td> (0.0e+00 - 6.2e-01)</td>
+      <td> 10000</td>
+      <td> total</td>
+      <td> (((absorption * nu-fission) * absorption) * (n...</td>
+      <td> 1.040687</td>
+      <td> 0.022989</td>
     </tr>
   </tbody>
 </table>
@@ -1543,88 +1516,79 @@ where the superscript $F$ denotes fuel.</p>
       <th>mean</th>
       <th>std. dev.</th>
     </tr>
-    <tr>
-      <th>bin</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>10000</td>
-      <td>0.0e+00 - 6.3e-07</td>
-      <td>(U-238 / total)</td>
-      <td>(nu-fission / flux)</td>
-      <td>0.000001</td>
-      <td>6.985151e-09</td>
+      <td> 10000</td>
+      <td> (0.0e+00 - 6.3e-07)</td>
+      <td> (U-238 / total)</td>
+      <td> (nu-fission / flux)</td>
+      <td> 0.000001</td>
+      <td> 8.078651e-09</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>10000</td>
-      <td>0.0e+00 - 6.3e-07</td>
-      <td>(U-238 / total)</td>
-      <td>(scatter / flux)</td>
-      <td>0.209988</td>
-      <td>2.206753e-03</td>
+      <td> 10000</td>
+      <td> (0.0e+00 - 6.3e-07)</td>
+      <td> (U-238 / total)</td>
+      <td>    (scatter / flux)</td>
+      <td> 0.209990</td>
+      <td> 2.449396e-03</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>10000</td>
-      <td>0.0e+00 - 6.3e-07</td>
-      <td>(U-235 / total)</td>
-      <td>(nu-fission / flux)</td>
-      <td>0.355276</td>
-      <td>3.741612e-03</td>
+      <td> 10000</td>
+      <td> (0.0e+00 - 6.3e-07)</td>
+      <td> (U-235 / total)</td>
+      <td> (nu-fission / flux)</td>
+      <td> 0.356117</td>
+      <td> 4.364366e-03</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>10000</td>
-      <td>0.0e+00 - 6.3e-07</td>
-      <td>(U-235 / total)</td>
-      <td>(scatter / flux)</td>
-      <td>0.005555</td>
-      <td>5.842517e-05</td>
+      <td> 10000</td>
+      <td> (0.0e+00 - 6.3e-07)</td>
+      <td> (U-235 / total)</td>
+      <td>    (scatter / flux)</td>
+      <td> 0.005555</td>
+      <td> 6.495710e-05</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>10000</td>
-      <td>6.3e-07 - 2.0e+01</td>
-      <td>(U-238 / total)</td>
-      <td>(nu-fission / flux)</td>
-      <td>0.007229</td>
-      <td>5.951357e-05</td>
+      <td> 10000</td>
+      <td> (6.3e-07 - 2.0e+01)</td>
+      <td> (U-238 / total)</td>
+      <td> (nu-fission / flux)</td>
+      <td> 0.007190</td>
+      <td> 7.596666e-05</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>10000</td>
-      <td>6.3e-07 - 2.0e+01</td>
-      <td>(U-238 / total)</td>
-      <td>(scatter / flux)</td>
-      <td>0.227642</td>
-      <td>9.496469e-04</td>
+      <td> 10000</td>
+      <td> (6.3e-07 - 2.0e+01)</td>
+      <td> (U-238 / total)</td>
+      <td>    (scatter / flux)</td>
+      <td> 0.227843</td>
+      <td> 1.024510e-03</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>10000</td>
-      <td>6.3e-07 - 2.0e+01</td>
-      <td>(U-235 / total)</td>
-      <td>(nu-fission / flux)</td>
-      <td>0.008076</td>
-      <td>5.699123e-05</td>
+      <td> 10000</td>
+      <td> (6.3e-07 - 2.0e+01)</td>
+      <td> (U-235 / total)</td>
+      <td> (nu-fission / flux)</td>
+      <td> 0.008086</td>
+      <td> 6.251590e-05</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>10000</td>
-      <td>6.3e-07 - 2.0e+01</td>
-      <td>(U-235 / total)</td>
-      <td>(scatter / flux)</td>
-      <td>0.003369</td>
-      <td>1.369755e-05</td>
+      <td> 10000</td>
+      <td> (6.3e-07 - 2.0e+01)</td>
+      <td> (U-235 / total)</td>
+      <td>    (scatter / flux)</td>
+      <td> 0.003365</td>
+      <td> 1.646663e-05</td>
     </tr>
   </tbody>
 </table>
@@ -1667,11 +1631,11 @@ where the superscript $F$ denotes fuel.</p>
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>[[[  6.63809296e-07]
-  [  3.55275544e-01]]
+<pre>[[[  6.65302296e-07]
+  [  3.56116716e-01]]
 
- [[  7.22895528e-03]
-  [  8.07565148e-03]]]
+ [[  7.19004460e-03]
+  [  8.08598751e-03]]]
 </pre>
 </div>
 </div>
@@ -1711,9 +1675,9 @@ where the superscript $F$ denotes fuel.</p>
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>[[[ 0.00555505]]
+<pre>[[[ 0.00555516]]
 
- [[ 0.0033688 ]]]
+ [[ 0.00336498]]]
 </pre>
 </div>
 </div>
@@ -1744,8 +1708,8 @@ where the superscript $F$ denotes fuel.</p>
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>[[[ 0.2276418]
-  [ 0.0033688]]]
+<pre>[[[ 0.22784316]
+  [ 0.00336498]]]
 </pre>
 </div>
 </div>
@@ -1797,52 +1761,43 @@ where the superscript $F$ denotes fuel.</p>
       <th>mean</th>
       <th>std. dev.</th>
     </tr>
-    <tr>
-      <th>bin</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>10000</td>
-      <td>0.0e+00 - 6.3e-07</td>
-      <td>U-238</td>
-      <td>nu-fission</td>
-      <td>0.000002</td>
-      <td>1.211808e-08</td>
+      <td> 10000</td>
+      <td> (0.0e+00 - 6.3e-07)</td>
+      <td> U-238</td>
+      <td> nu-fission</td>
+      <td> 0.000002</td>
+      <td> 1.450189e-08</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>10000</td>
-      <td>0.0e+00 - 6.3e-07</td>
-      <td>U-235</td>
-      <td>nu-fission</td>
-      <td>0.870360</td>
-      <td>6.496431e-03</td>
+      <td> 10000</td>
+      <td> (0.0e+00 - 6.3e-07)</td>
+      <td> U-235</td>
+      <td> nu-fission</td>
+      <td> 0.870882</td>
+      <td> 7.895515e-03</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>10000</td>
-      <td>6.3e-07 - 2.0e+01</td>
-      <td>U-238</td>
-      <td>nu-fission</td>
-      <td>0.083226</td>
-      <td>6.367951e-04</td>
+      <td> 10000</td>
+      <td> (6.3e-07 - 2.0e+01)</td>
+      <td> U-238</td>
+      <td> nu-fission</td>
+      <td> 0.082484</td>
+      <td> 8.253437e-04</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>10000</td>
-      <td>6.3e-07 - 2.0e+01</td>
-      <td>U-235</td>
-      <td>nu-fission</td>
-      <td>0.092974</td>
-      <td>5.921990e-04</td>
+      <td> 10000</td>
+      <td> (6.3e-07 - 2.0e+01)</td>
+      <td> U-235</td>
+      <td> nu-fission</td>
+      <td> 0.092762</td>
+      <td> 6.444580e-04</td>
     </tr>
   </tbody>
 </table>
@@ -1890,97 +1845,88 @@ where the superscript $F$ denotes fuel.</p>
       <th>mean</th>
       <th>std. dev.</th>
     </tr>
-    <tr>
-      <th>bin</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>10002</td>
-      <td>1.0e-08 - 1.1e-07</td>
-      <td>H-1</td>
-      <td>scatter</td>
-      <td>4.638428</td>
-      <td>0.034134</td>
+      <td> 10002</td>
+      <td> (1.0e-08 - 1.1e-07)</td>
+      <td> H-1</td>
+      <td> scatter</td>
+      <td> 4.630154</td>
+      <td> 0.044512</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>10002</td>
-      <td>1.1e-07 - 1.2e-06</td>
-      <td>H-1</td>
-      <td>scatter</td>
-      <td>2.050818</td>
-      <td>0.010745</td>
+      <td> 10002</td>
+      <td> (1.1e-07 - 1.2e-06)</td>
+      <td> H-1</td>
+      <td> scatter</td>
+      <td> 2.042984</td>
+      <td> 0.011429</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>10002</td>
-      <td>1.2e-06 - 1.3e-05</td>
-      <td>H-1</td>
-      <td>scatter</td>
-      <td>1.656905</td>
-      <td>0.009480</td>
+      <td> 10002</td>
+      <td> (1.2e-06 - 1.3e-05)</td>
+      <td> H-1</td>
+      <td> scatter</td>
+      <td> 1.657517</td>
+      <td> 0.008617</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>10002</td>
-      <td>1.3e-05 - 1.4e-04</td>
-      <td>H-1</td>
-      <td>scatter</td>
-      <td>1.870808</td>
-      <td>0.011883</td>
+      <td> 10002</td>
+      <td> (1.3e-05 - 1.4e-04)</td>
+      <td> H-1</td>
+      <td> scatter</td>
+      <td> 1.863326</td>
+      <td> 0.008848</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>10002</td>
-      <td>1.4e-04 - 1.5e-03</td>
-      <td>H-1</td>
-      <td>scatter</td>
-      <td>2.045621</td>
-      <td>0.011414</td>
+      <td> 10002</td>
+      <td> (1.4e-04 - 1.5e-03)</td>
+      <td> H-1</td>
+      <td> scatter</td>
+      <td> 2.043916</td>
+      <td> 0.014195</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>10002</td>
-      <td>1.5e-03 - 1.6e-02</td>
-      <td>H-1</td>
-      <td>scatter</td>
-      <td>2.163297</td>
-      <td>0.008725</td>
+      <td> 10002</td>
+      <td> (1.5e-03 - 1.6e-02)</td>
+      <td> H-1</td>
+      <td> scatter</td>
+      <td> 2.134458</td>
+      <td> 0.007561</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>10002</td>
-      <td>1.6e-02 - 1.7e-01</td>
-      <td>H-1</td>
-      <td>scatter</td>
-      <td>2.202045</td>
-      <td>0.013500</td>
+      <td> 10002</td>
+      <td> (1.6e-02 - 1.7e-01)</td>
+      <td> H-1</td>
+      <td> scatter</td>
+      <td> 2.209947</td>
+      <td> 0.013848</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>10002</td>
-      <td>1.7e-01 - 1.9e+00</td>
-      <td>H-1</td>
-      <td>scatter</td>
-      <td>1.996977</td>
-      <td>0.010791</td>
+      <td> 10002</td>
+      <td> (1.7e-01 - 1.9e+00)</td>
+      <td> H-1</td>
+      <td> scatter</td>
+      <td> 2.006967</td>
+      <td> 0.009368</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>10002</td>
-      <td>1.9e+00 - 2.0e+01</td>
-      <td>H-1</td>
-      <td>scatter</td>
-      <td>0.370890</td>
-      <td>0.003597</td>
+      <td> 10002</td>
+      <td> (1.9e+00 - 2.0e+01)</td>
+      <td> H-1</td>
+      <td> scatter</td>
+      <td> 0.373895</td>
+      <td> 0.002964</td>
     </tr>
   </tbody>
 </table>
@@ -2007,7 +1953,7 @@ where the superscript $F$ denotes fuel.</p>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="../../publications.html">Publications</a>&#160;&#160;»
+        <a href="mgxs-part-i.html">MGXS Part I: Introduction</a>&#160;&#160;»
         </p>
 
       </div>
@@ -2015,7 +1961,7 @@ where the superscript $F$ denotes fuel.</p>
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.3.
     </div>
 <script type="text/javascript">
 

@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.7.0',
+        VERSION:     '0.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -52,7 +52,7 @@
 <span id="usersguide-install"></span><h1>2. Installation and Configuration<a class="headerlink" href="#installation-and-configuration" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="installing-on-ubuntu-with-ppa">
 <h2>2.1. Installing on Ubuntu with PPA<a class="headerlink" href="#installing-on-ubuntu-with-ppa" title="Permalink to this headline">¶</a></h2>
-<p>For users with Ubuntu 11.10 or later, a binary package for OpenMC is available
+<p>For users with Ubuntu 15.04 or later, a binary package for OpenMC is available
 through a Personal Package Archive (PPA) and can be installed through the APT
 package manager. First, add the following PPA to the repository sources:</p>
 <div class="highlight-sh"><div class="highlight"><pre>sudo apt-add-repository ppa:paulromano/staging
@@ -66,6 +66,8 @@ package manager. First, add the following PPA to the repository sources:</p>
 <div class="highlight-sh"><div class="highlight"><pre>sudo apt-get install openmc
 </pre></div>
 </div>
+<p>Binary packages from this PPA may exist for earlier versions of Ubuntu, but they
+are no longer supported.</p>
 </div>
 <div class="section" id="building-from-source">
 <h2>2.2. Building from Source<a class="headerlink" href="#building-from-source" title="Permalink to this headline">¶</a></h2>
@@ -95,6 +97,33 @@ command:</p>
 </pre></div>
 </div>
 </li>
+<li><p class="first"><a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> Library for portable binary output format</p>
+<p>OpenMC uses HDF5 for binary output files. As such, you will need to have
+HDF5 installed on your computer. The installed version will need to have
+been compiled with the same compiler you intend to compile OpenMC with. If
+you are using HDF5 in conjunction with MPI, we recommend that your HDF5
+installation be built with parallel I/O features. An example of
+configuring <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> is listed below:</p>
+<div class="highlight-python"><div class="highlight"><pre>FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
+./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
+            --enable-fortran2003 --enable-parallel
+</pre></div>
+</div>
+<p>You may omit <code class="docutils literal"><span class="pre">--enable-parallel</span></code> if you want to compile <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> in serial.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">OpenMC uses various parts of the HDF5 Fortran 2003 API; as such you
+must include <code class="docutils literal"><span class="pre">--enable-fortran2003</span></code> or else OpenMC will not be able
+to compile.</p>
+</div>
+<p>On Debian derivatives, HDF5 and/or parallel HDF5 can be installed through
+the APT package manager:</p>
+<div class="highlight-sh"><div class="highlight"><pre>sudo apt-get install libhdf5-8 libhdf5-dev hdf5-helpers
+</pre></div>
+</div>
+<p>Note that the exact package names may vary depending on your particular
+distribution and version.</p>
+</li>
 </ul>
 </div>
 <div class="admonition-optional admonition">
@@ -110,19 +139,6 @@ can be installed on Debian derivatives with:</p>
 sudo apt-get install openmpi-bin libopenmpi1.6 libopenmpi-dev
 </pre></div>
 </div>
-</li>
-<li><p class="first"><a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> Library for portable binary output format</p>
-<p>To compile with support for <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> output (highly recommended), you will
-need to have HDF5 installed on your computer. The installed version will
-need to have been compiled with the same compiler you intend to compile
-OpenMC with. <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> must be built with parallel I/O features if you intend
-to use <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> with MPI. An example of configuring <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> is listed below:</p>
-<div class="highlight-python"><div class="highlight"><pre>FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
-./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
-            --enable-fortran2003 --enable-parallel
-</pre></div>
-</div>
-<p>You may omit <code class="docutils literal"><span class="pre">--enable-parallel</span></code> if you want to compile <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> in serial.</p>
 </li>
 <li><p class="first"><a class="reference external" href="http://git-scm.com">git</a> version control software for obtaining source code</p>
 </li>
@@ -207,22 +223,23 @@ command, i.e.</p>
 </pre></div>
 </div>
 </div>
-<div class="section" id="compiling-with-hdf5">
-<h4>2.2.3.3. Compiling with HDF5<a class="headerlink" href="#compiling-with-hdf5" title="Permalink to this headline">¶</a></h4>
-<p>To compile with MPI, set the <span class="target" id="index-1"></span><code class="xref std std-envvar docutils literal"><span class="pre">FC</span></code> environment variable to the path to
-the HDF5 Fortran wrapper. For example, in a bash shell:</p>
-<div class="highlight-sh"><div class="highlight"><pre><span class="nb">export </span><span class="nv">FC</span><span class="o">=</span>h5fc
-cmake /path/to/openmc
+<div class="section" id="selecting-hdf5-installation">
+<h4>2.2.3.3. Selecting HDF5 Installation<a class="headerlink" href="#selecting-hdf5-installation" title="Permalink to this headline">¶</a></h4>
+<p>CMakeLists.txt searches for the <code class="docutils literal"><span class="pre">h5fc</span></code> or <code class="docutils literal"><span class="pre">h5pfc</span></code> HDF5 Fortran wrapper on
+your PATH environment variable and subsequently uses it to determine library
+locations and compile flags. If you have multiple installations of HDF5 or one
+that does not appear on your PATH, you can set the HDF5_ROOT environment
+variable to the root directory of the HDF5 installation, e.g.
+.. code-block:: sh</p>
+<blockquote>
+<div>export HDF5_ROOT=/opt/hdf5/1.8.15
+cmake /path/to/openmc</div></blockquote>
+<p>This will cause CMake to search first in /opt/hdf5/1.8.15/bin for <code class="docutils literal"><span class="pre">h5fc</span></code> /
+<code class="docutils literal"><span class="pre">h5pfc</span></code> before it searches elsewhere. As noted above, an environment variable
+can typically be set for a single command, i.e.</p>
+<div class="highlight-sh"><div class="highlight"><pre><span class="nv">HDF5_ROOT</span><span class="o">=</span>/opt/hdf5/1.8.15 cmake /path/to/openmc
 </pre></div>
 </div>
-<p>As noted above, an environment variable can typically be set for a single
-command, i.e.</p>
-<div class="highlight-sh"><div class="highlight"><pre><span class="nv">FC</span><span class="o">=</span>h5fc cmake /path/to/openmc
-</pre></div>
-</div>
-<p>To compile with support for both MPI and HDF5, use the parallel HDF5 wrapper
-<code class="docutils literal"><span class="pre">h5pfc</span></code> instead. Note that this requires that your HDF5 installation be
-compiled with <code class="docutils literal"><span class="pre">--enable-parallel</span></code>.</p>
 </div>
 </div>
 <div class="section" id="compiling-on-linux-and-mac-os-x">
@@ -300,8 +317,22 @@ in the root directory of the OpenMC distribution:</p>
 <p>This will build an executable named <code class="docutils literal"><span class="pre">openmc</span></code>.</p>
 </div>
 </div>
+<div class="section" id="compiling-for-the-intel-xeon-phi">
+<h3>2.2.6. Compiling for the Intel Xeon Phi<a class="headerlink" href="#compiling-for-the-intel-xeon-phi" title="Permalink to this headline">¶</a></h3>
+<p>In order to build OpenMC for the Intel Xeon Phi using the Intel Fortran
+compiler, it is necessary to specify that all objects be compiled with the
+<code class="docutils literal"><span class="pre">-mmic</span></code> flag as follows:</p>
+<div class="highlight-sh"><div class="highlight"><pre>mkdir build <span class="o">&amp;&amp;</span> <span class="nb">cd </span>build
+<span class="nv">FC</span><span class="o">=</span>ifort <span class="nv">FFLAGS</span><span class="o">=</span>-mmic cmake -Dopenmp<span class="o">=</span>on ..
+make
+</pre></div>
+</div>
+<p>Note that unless an HDF5 build for the Intel Xeon Phi is already on your target
+machine, you will need to cross-compile HDF5 for the Xeon Phi. An <a class="reference external" href="https://github.com/paulromano/install-scripts/blob/master/install-hdf5-mic">example
+script</a> to build zlib and HDF5 provides several necessary workarounds.</p>
+</div>
 <div class="section" id="testing-build">
-<h3>2.2.6. Testing Build<a class="headerlink" href="#testing-build" title="Permalink to this headline">¶</a></h3>
+<h3>2.2.7. Testing Build<a class="headerlink" href="#testing-build" title="Permalink to this headline">¶</a></h3>
 <p>If you have ENDF/B-VII.1 cross sections from <a class="reference external" href="http://www.nndc.bnl.gov/endf/b7.1/acefiles.html">NNDC</a> you can test your build.
 Make sure the <strong>CROSS_SECTIONS</strong> environmental variable is set to the
 <em>cross_sections.xml</em> file in the <em>data/nndc</em> directory.
@@ -338,7 +369,7 @@ extract, and set up a confiuration file:</p>
 python get_nndc_data.py
 </pre></div>
 </div>
-<p>At this point, you should set the <span class="target" id="index-2"></span><code class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></code> environment variable
+<p>At this point, you should set the <span class="target" id="index-1"></span><code class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></code> environment variable
 to the absolute path of the file <code class="docutils literal"><span class="pre">openmc/data/nndc/cross_sections.xml</span></code>. This
 cross section set is used by the test suite.</p>
 </div>
@@ -367,7 +398,7 @@ actual ACE files.</p>
 within the <code class="docutils literal"><span class="pre">cross_sections.xml</span></code> file to lower-case.</p>
 </li>
 <li><p class="first">Either set the <a class="reference internal" href="input.html#cross-sections"><span>&lt;cross_sections&gt; Element</span></a> in a settings.xml file or the
-<span class="target" id="index-3"></span><code class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></code> environment variable to the absolute path of the
+<span class="target" id="index-2"></span><code class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></code> environment variable to the absolute path of the
 <code class="docutils literal"><span class="pre">cross_sections.xml</span></code> file.</p>
 </li>
 </ol>
@@ -377,7 +408,7 @@ within the <code class="docutils literal"><span class="pre">cross_sections.xml</
 <p>To use cross sections distributed with MCNP, change the &lt;directory&gt; element in
 the <code class="docutils literal"><span class="pre">cross_sections.xml</span></code> file in the root directory of the OpenMC distribution
 to the location of the MCNP cross sections. Then, either set the
-<a class="reference internal" href="input.html#cross-sections"><span>&lt;cross_sections&gt; Element</span></a> in a settings.xml file or the <span class="target" id="index-4"></span><code class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></code>
+<a class="reference internal" href="input.html#cross-sections"><span>&lt;cross_sections&gt; Element</span></a> in a settings.xml file or the <span class="target" id="index-3"></span><code class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></code>
 environment variable to the absolute path of the <code class="docutils literal"><span class="pre">cross_sections.xml</span></code> file.</p>
 </div>
 <div class="section" id="using-cross-sections-from-serpent">
@@ -385,7 +416,7 @@ environment variable to the absolute path of the <code class="docutils literal">
 <p>To use cross sections distributed with Serpent, change the &lt;directory&gt; element
 in the <code class="docutils literal"><span class="pre">cross_sections_serpent.xml</span></code> file in the root directory of the OpenMC
 distribution to the location of the Serpent cross sections. Then, either set the
-<a class="reference internal" href="input.html#cross-sections"><span>&lt;cross_sections&gt; Element</span></a> in a settings.xml file or the <span class="target" id="index-5"></span><code class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></code>
+<a class="reference internal" href="input.html#cross-sections"><span>&lt;cross_sections&gt; Element</span></a> in a settings.xml file or the <span class="target" id="index-4"></span><code class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></code>
 environment variable to the absolute path of the <code class="docutils literal"><span class="pre">cross_sections_serpent.xml</span></code>
 file.</p>
 </div>
@@ -480,7 +511,7 @@ schemas.xml file in your own OpenMC source directory.</p>
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.3.
     </div>
 <script type="text/javascript">
 

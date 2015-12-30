@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.7.0',
+        VERSION:     '0.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -54,7 +54,7 @@
 <h2>2.1. Constructive Solid Geometry<a class="headerlink" href="#constructive-solid-geometry" title="Permalink to this headline">¶</a></h2>
 <p>OpenMC uses a technique known as <a class="reference external" href="http://en.wikipedia.org/wiki/Constructive_solid_geometry">constructive solid geometry</a> (CSG) to build
 arbitrarily complex three-dimensional models in Euclidean space. In a CSG model,
-every unique object is described as the union, intersection, or difference of
+every unique object is described as the union and/or intersection of
 <em>half-spaces</em> created by bounding <a class="reference external" href="http://en.wikipedia.org/wiki/Surface">surfaces</a>. Every surface divides all of
 space into exactly two half-spaces. We can mathematically define a surface as a
 collection of points that satisfy an equation of the form <img class="math" src="../_images/math/a196569f2f3e96bf3fd428db69ffaa94df4d6e75.png" alt="f(x,y,z) = 0"/>
@@ -76,21 +76,20 @@ with radius <img class="math" src="../_images/math/9d86170e7de539c0ff999de09621e
 <p>In OpenMC, every surface defined by the user is assigned an integer to uniquely
 identify it. We can then refer to either of the two half-spaces created by a
 surface by a combination of the unique ID of the surface and a positive/negative
-sign.  Figure <a href="#fig-halfspace">3</a> shows an example of an ellipse with unique ID 1
+sign.  Figure <a href="#fig-halfspace">14</a> shows an example of an ellipse with unique ID 1
 dividing space into two half-spaces.</p>
 <div class="align-center figure" id="id7">
-<span id="fig-halfspace"></span><img src="../_images/halfspace.svg" /><p class="caption"><span class="caption-text">Figure 3: Example of an ellipse and its associated half-spaces.</span></p>
+<span id="fig-halfspace"></span><img src="../_images/halfspace.svg" /><p class="caption"><span class="caption-text">Figure 14: Example of an ellipse and its associated half-spaces.</span></p>
 </div>
 <p>References to half-spaces created by surfaces are used to define regions of
-space of uniform composition, known as <em>cells</em>. While some codes allow regions
-to be defined by intersections, unions, and differences or half-spaces, OpenMC
-is currently limited to cells defined only as intersections of
-half-spaces. Thus, the specification of the cell must include a list of
-half-space references whose intersection defines the region. The region is then
-assigned a material defined elsewhere. Figure <a href="#fig-union">4</a> shows an
-example of a cell defined as the intersection of an ellipse and two planes.</p>
+space of uniform composition, which are then assigned to <em>cells</em>. OpenMC allows
+regions to be defined using union, intersection, and complement operators. As in
+<a class="reference external" href="http://mcnp.lanl.gov">MCNP</a>, the intersection operator is implicit as doesn&#8217;t need to be written in a
+region specification. A defined region is then associated with a material
+composition in a cell. Figure <a href="#fig-union">15</a> shows an example of a cell region
+defined as the intersection of an ellipse and two planes.</p>
 <div class="align-center figure" id="id8">
-<span id="fig-union"></span><img src="../_images/union.svg" /><p class="caption"><span class="caption-text">Figure 4: The shaded region represents a cell bounded by three surfaces.</span></p>
+<span id="fig-union"></span><img src="../_images/union.svg" /><p class="caption"><span class="caption-text">Figure 15: The shaded region represents a cell bounded by three surfaces.</span></p>
 </div>
 <p>The ability to form regions based on bounding quadratic surfaces enables OpenMC
 to model arbitrarily complex three-dimensional objects. In practice, one is
@@ -191,6 +190,16 @@ z_0 \; R^2"/></td>
 = R^2(z-z_0)^2"/></td>
 <td><img class="math" src="../_images/math/399b4f4cbcdbbe1bed6094340454ce80a0e2429d.png" alt="x_0 \; y_0 \;
 z_0 \; R^2"/></td>
+</tr>
+<tr class="row-odd"><td>General quadric
+surface</td>
+<td>quadric</td>
+<td><img class="math" src="../_images/math/2542fd9fe743f3d9862754ecf1a9647846ca5b61.png" alt="Ax^2 + By^2 + Cz^2 +
+Dxy + Eyz + Fxz + Gx + Hy +
+Jz + K"/></td>
+<td><img class="math" src="../_images/math/d44aec50d29458b96c09e92c97104e670710c0f8.png" alt="A \; B \; C \; D
+\; E \; F \; G \; H \;
+J \; K"/></td>
 </tr>
 </tbody>
 </table>
@@ -403,12 +412,12 @@ the particle is referred to as &#8220;indexing&#8221;.</p>
 <h3>2.4.1. Rectilinear Lattice Indexing<a class="headerlink" href="#rectilinear-lattice-indexing" title="Permalink to this headline">¶</a></h3>
 <p>Indices are assigned to tiles in a rectilinear lattice based on the tile&#8217;s
 position along the <img class="math" src="../_images/math/188c175aac0a8a9c22499336711b5d7256407254.png" alt="x"/>, <img class="math" src="../_images/math/b124ff74afb0914bb434e8fb849eb56d734412f8.png" alt="y"/>, and <img class="math" src="../_images/math/84d7271dd9e78c1e05d6c3c6ecb60309ef7dfc73.png" alt="z"/> axes.  Figure
-<a href="#fig-rect-lat">5</a> maps the indices for a 2D lattice.  The indices, (1, 1),
+<a href="#fig-rect-lat">16</a> maps the indices for a 2D lattice.  The indices, (1, 1),
 map to the lower-left tile.  (5, 1) and (5, 5) map to the lower-right and
 upper-right tiles, respectively.</p>
 <div class="align-center figure" id="id10">
 <span id="fig-rect-lat"></span><a class="reference internal image-reference" href="../_images/rect_lat.svg"><img src="../_images/rect_lat.svg" width="400px" /></a>
-<p class="caption"><span class="caption-text">Figure 5: Rectilinear lattice tile indices.</span></p>
+<p class="caption"><span class="caption-text">Figure 16: Rectilinear lattice tile indices.</span></p>
 </div>
 <p>In general, a lattice tile is specified by the three indices,
 <img class="math" src="../_images/math/5594347865c09b52b42e6af2c5881703ed18887e.png" alt="(i_x, i_y, i_z)"/>.  If a particle&#8217;s current coordinates are
@@ -428,13 +437,13 @@ corner of the lattice, and <img class="math" src="../_images/math/0007256293ab5c
 <p>A skewed coordinate system is used for indexing hexagonal lattice tiles.
 Rather than a <img class="math" src="../_images/math/b124ff74afb0914bb434e8fb849eb56d734412f8.png" alt="y"/>-axis, another axis is used that is rotated 30 degrees
 counter-clockwise from the <img class="math" src="../_images/math/b124ff74afb0914bb434e8fb849eb56d734412f8.png" alt="y"/>-axis.  This axis is referred to as the
-<img class="math" src="../_images/math/ad59b6e24a4a00ac621801f8d7513d68be654ab5.png" alt="\alpha"/>-axis.  Figure <a href="#fig-hex-lat">6</a> shows how 2D hexagonal tiles
+<img class="math" src="../_images/math/ad59b6e24a4a00ac621801f8d7513d68be654ab5.png" alt="\alpha"/>-axis.  Figure <a href="#fig-hex-lat">17</a> shows how 2D hexagonal tiles
 are mapped with the <img class="math" src="../_images/math/ef86b8c9ffd4486aedde641af8c4579872ff85e8.png" alt="(x, \alpha)"/> basis.  In this system, (0, 0) maps to
 the center tile, (0, 2) to the top tile, and (2, -1) to the middle tile on the
 right side.</p>
 <div class="align-center figure" id="id11">
 <span id="fig-hex-lat"></span><a class="reference internal image-reference" href="../_images/hex_lat.svg"><img src="../_images/hex_lat.svg" width="400px" /></a>
-<p class="caption"><span class="caption-text">Figure 6: Hexagonal lattice tile indices.</span></p>
+<p class="caption"><span class="caption-text">Figure 17: Hexagonal lattice tile indices.</span></p>
 </div>
 <p>Unfortunately, the indices cannot be determined with one simple formula as
 before.  Indexing requires a two-step process, a coarse step which determines a
@@ -697,7 +706,7 @@ w' = w + \frac{2 (\bar{x}u + \bar{y}v - R^2\bar{z}w)}{R^2 (1 + R^2) \bar{z}}"/><
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.3.
     </div>
 <script type="text/javascript">
 

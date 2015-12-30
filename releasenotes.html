@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Release Notes for OpenMC 0.7.0 &mdash; OpenMC Documentation</title>
+    <title>Release Notes for OpenMC 0.7.1 &mdash; OpenMC Documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.7.0',
+        VERSION:     '0.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -47,8 +47,29 @@
       <div class="content">
         
         
-  <div class="section" id="release-notes-for-openmc-0-7-0">
-<span id="releasenotes"></span><h1>Release Notes for OpenMC 0.7.0<a class="headerlink" href="#release-notes-for-openmc-0-7-0" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="release-notes-for-openmc-0-7-1">
+<span id="releasenotes"></span><h1>Release Notes for OpenMC 0.7.1<a class="headerlink" href="#release-notes-for-openmc-0-7-1" title="Permalink to this headline">¶</a></h1>
+<p>This release of OpenMC provides some substantial improvements over version
+0.7.0. Non-simple cell regions can now be defined through the <code class="docutils literal"><span class="pre">|</span></code> (union) and
+<code class="docutils literal"><span class="pre">~</span></code> (complement) operators. Similar changes in the Python API also allow
+complex cell regions to be defined. A true secondary particle bank now exists;
+this is crucial for photon transport (to be added in the next minor release). A
+rich API for multi-group cross section generation has been added via the
+<code class="docutils literal"><span class="pre">openmc.mgxs</span></code> Python module.</p>
+<p>Various improvements to tallies have also been made. It is now possible to
+explicitly specify that a collision estimator be used in a tally. A new
+<code class="docutils literal"><span class="pre">delayedgroup</span></code> filter and <code class="docutils literal"><span class="pre">delayed-nu-fission</span></code> score allow a user to obtain
+delayed fission neutron production rates filtered by delayed group. Finally, the
+new <code class="docutils literal"><span class="pre">inverse-velocity</span></code> score may be useful for calculating kinetics
+parameters.</p>
+<div class="admonition caution">
+<p class="first admonition-title">Caution</p>
+<p class="last">In previous versions, depending on how OpenMC was compiled binary
+output was either given in HDF5 or a flat binary format. With this
+version, all binary output is now HDF5 which means you <strong>must</strong>
+have HDF5 in order to install OpenMC. Please consult the user&#8217;s
+guide for instructions on how to compile with HDF5.</p>
+</div>
 <div class="section" id="system-requirements">
 <h2>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h2>
 <p>There are no special requirements for running the OpenMC code. As of this
@@ -59,30 +80,31 @@ the problem at hand (mostly on the number of nuclides in the problem).</p>
 <div class="section" id="new-features">
 <h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Complete Python API</li>
-<li>Python 3 compatability for all scripts</li>
-<li>All scripts consistently named openmc-* and installed together</li>
-<li>New &#8216;distribcell&#8217; tally filter for repeated cells</li>
-<li>Ability to specify outer lattice universe</li>
-<li>XML input validation utility (openmc-validate-xml)</li>
-<li>Support for hexagonal lattices</li>
-<li>Material union energy grid method</li>
-<li>Tally triggers</li>
-<li>Remove dependence on PETSc</li>
-<li>Significant OpenMP performance improvements</li>
-<li>Support for Fortran 2008 MPI interface</li>
-<li>Use of Travis CI for continuous integration</li>
-<li>Simplifications and improvements to test suite</li>
+<li>Support for complex cell regions (union and complement operators)</li>
+<li>Generic quadric surface type</li>
+<li>Improved handling of secondary particles</li>
+<li>Binary output is now solely HDF5</li>
+<li><code class="docutils literal"><span class="pre">openmc.mgxs</span></code> Python module enabling multi-group cross section generation</li>
+<li>Collision estimator for tallies</li>
+<li>Delayed fission neutron production tallies with ability to filter by delayed
+group</li>
+<li>Inverse velocity tally score</li>
+<li>Performance improvements for binary search</li>
+<li>Performance improvements for reaction rate tallies</li>
 </ul>
 </div>
 <div class="section" id="bug-fixes">
 <h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/b5f712">b5f712</a>: Fix bug in spherical harmonics tallies</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/e6675b">e6675b</a>: Ensure all constants are double precision</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/04e2c1">04e2c1</a>: Fix potential bug in sample_nuclide routine</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/6121d9">6121d9</a>: Fix bugs related to particle track files</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/2f0e89">2f0e89</a>: Fixes for nuclide specification in tallies</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/299322">299322</a>: Bug with material filter when void material present</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/d74840">d74840</a>: Fix triggers on tallies with multiple filters</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/c29a81">c29a81</a>: Correctly handle maximum transport energy</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/3edc23">3edc23</a>: Fixes in the nu-scatter score</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/629e3b">629e3b</a>: Assume unspecified surface coefficients are zero in Python API</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/5dbe8b">5dbe8b</a>: Fix energy filters for openmc-plot-mesh-tally</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/ff66f4">ff66f4</a>: Fixes in the openmc-plot-mesh-tally script</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/441fd4">441fd4</a>: Fix bug in kappa-fission score</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/7e5974">7e5974</a>: Allow fixed source simulations from Python API</li>
 </ul>
 </div>
 <div class="section" id="contributors">
@@ -90,15 +112,13 @@ the problem at hand (mostly on the number of nuclides in the problem).</p>
 <p>This release contains new contributions from the following people:</p>
 <ul class="simple">
 <li><a class="reference external" href="mailto:wbinventor&#37;&#52;&#48;gmail&#46;com">Will Boyd</a></li>
-<li><a class="reference external" href="mailto:mellis13&#37;&#52;&#48;mit&#46;edu">Matt Ellis</a></li>
 <li><a class="reference external" href="mailto:sterlingmharper&#37;&#52;&#48;mit&#46;edu">Sterling Harper</a></li>
-<li><a class="reference external" href="mailto:bherman&#37;&#52;&#48;mit&#46;edu">Bryan Herman</a></li>
-<li><a class="reference external" href="mailto:nicholas&#46;horelik&#37;&#52;&#48;gmail&#46;com">Nicholas Horelik</a></li>
+<li><a class="reference external" href="mailto:hermab53&#37;&#52;&#48;gmail&#46;com">Bryan Herman</a></li>
 <li><a class="reference external" href="mailto:cjosey&#37;&#52;&#48;mit&#46;edu">Colin Josey</a></li>
-<li><a class="reference external" href="mailto:PaleNeutron&#37;&#52;&#48;users&#46;noreply&#46;github&#46;com">William Lyu</a></li>
 <li><a class="reference external" href="mailto:nelsonag&#37;&#52;&#48;umich&#46;edu">Adam Nelson</a></li>
 <li><a class="reference external" href="mailto:paul&#46;k&#46;romano&#37;&#52;&#48;gmail&#46;com">Paul Romano</a></li>
-<li><a class="reference external" href="mailto:scopatz&#37;&#52;&#48;gmail&#46;com">Anthony Scopatz</a></li>
+<li><a class="reference external" href="mailto:kellylynnerowland&#37;&#52;&#48;gmail&#46;com">Kelly Rowland</a></li>
+<li><a class="reference external" href="mailto:samuelshaner&#37;&#52;&#48;gmail&#46;com">Sam Shaner</a></li>
 <li><a class="reference external" href="mailto:walshjon&#37;&#52;&#48;mit&#46;edu">Jon Walsh</a></li>
 </ul>
 </div>
@@ -121,7 +141,7 @@ the problem at hand (mostly on the number of nuclides in the problem).</p>
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.3.
     </div>
 <script type="text/javascript">
 

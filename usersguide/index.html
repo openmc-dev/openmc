@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.7.0',
+        VERSION:     '0.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -50,7 +50,7 @@
   <div class="section" id="user-s-guide">
 <span id="usersguide"></span><h1>User&#8217;s Guide<a class="headerlink" href="#user-s-guide" title="Permalink to this headline">¶</a></h1>
 <p>Welcome to the OpenMC User&#8217;s Guide!  This tutorial will guide you through the
-essential aspects of using OpenMC to perform neutronic simulations.</p>
+essential aspects of using OpenMC to perform simulations.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="beginners.html">1. A Beginner&#8217;s Guide to OpenMC</a><ul>
@@ -67,7 +67,8 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 <li class="toctree-l3"><a class="reference internal" href="install.html#build-configuration">2.2.3. Build Configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="install.html#compiling-on-linux-and-mac-os-x">2.2.4. Compiling on Linux and Mac OS X</a></li>
 <li class="toctree-l3"><a class="reference internal" href="install.html#compiling-on-windows">2.2.5. Compiling on Windows</a></li>
-<li class="toctree-l3"><a class="reference internal" href="install.html#testing-build">2.2.6. Testing Build</a></li>
+<li class="toctree-l3"><a class="reference internal" href="install.html#compiling-for-the-intel-xeon-phi">2.2.6. Compiling for the Intel Xeon Phi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="install.html#testing-build">2.2.7. Testing Build</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="install.html#cross-section-configuration">2.3. Cross Section Configuration</a><ul>
@@ -160,36 +161,43 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 <li class="toctree-l2"><a class="reference internal" href="input.html#ersn-openmc-graphical-user-interface">3.9. ERSN-OpenMC Graphical User Interface</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="processing.html">4. Data Processing and Visualization</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="processing.html#geometry-visualization">4.1. Geometry Visualization</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="processing.html#plotting-in-2d">4.1.1. Plotting in 2D</a></li>
-<li class="toctree-l3"><a class="reference internal" href="processing.html#plotting-in-3d">4.1.2. Plotting in 3D</a></li>
+<li class="toctree-l1"><a class="reference internal" href="output/index.html">4. Output File Formats</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="output/statepoint.html">4.1. State Point File Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="output/source.html">4.2. Source File Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="output/summary.html">4.3. Summary File Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="output/particle_restart.html">4.4. Particle Restart File Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="output/track.html">4.5. Track File Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="output/voxel.html">4.6. Voxel Plot File Format</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="processing.html#tally-visualization">4.2. Tally Visualization</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="processing.html#data-extraction">4.2.1. Data Extraction</a></li>
-<li class="toctree-l3"><a class="reference internal" href="processing.html#id12">4.2.2. Plotting in 2D</a></li>
-<li class="toctree-l3"><a class="reference internal" href="processing.html#id13">4.2.3. Plotting in 3D</a></li>
-<li class="toctree-l3"><a class="reference internal" href="processing.html#getting-data-into-matlab">4.2.4. Getting Data into MATLAB</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing.html">5. Data Processing and Visualization</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="processing.html#geometry-visualization">5.1. Geometry Visualization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="processing.html#plotting-in-2d">5.1.1. Plotting in 2D</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processing.html#plotting-in-3d">5.1.2. Plotting in 3D</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="processing.html#particle-track-visualization">4.3. Particle Track Visualization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="processing.html#source-site-processing">4.4. Source Site Processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processing.html#tally-visualization">5.2. Tally Visualization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="processing.html#data-extraction">5.2.1. Data Extraction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processing.html#id14">5.2.2. Plotting in 2D</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processing.html#id15">5.2.3. Plotting in 3D</a></li>
+<li class="toctree-l3"><a class="reference internal" href="processing.html#getting-data-into-matlab">5.2.4. Getting Data into MATLAB</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="troubleshoot.html">5. Troubleshooting</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="troubleshoot.html#problems-with-compilation">5.1. Problems with Compilation</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#undefined-reference-to-vtab">5.1.1. undefined reference to `_vtab$...</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#gfortran-unrecognized-option-cpp">5.1.2. gfortran: unrecognized option &#8216;-cpp&#8217;</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#f951-error-unrecognized-command-line-option-fbacktrace">5.1.3. f951: error: unrecognized command line option &#8220;-fbacktrace&#8221;</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#make-1-ifort-command-not-found">5.1.4. make[1]: ifort: Command not found</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#make-1-pgf90-command-not-found">5.1.5. make[1]: pgf90: Command not found</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processing.html#particle-track-visualization">5.3. Particle Track Visualization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processing.html#source-site-processing">5.4. Source Site Processing</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="troubleshoot.html#problems-with-simulations">5.2. Problems with Simulations</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#segmentation-fault">5.2.1. Segmentation Fault</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#error-no-cross-sections-xml-file-was-specified-in-settings-xml-or-in-the-cross-sections-environment-variable">5.2.2. ERROR: No cross_sections.xml file was specified in settings.xml or in the CROSS_SECTIONS environment variable.</a></li>
-<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#geometry-debugging">5.2.3. Geometry Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshoot.html">6. Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="troubleshoot.html#problems-with-compilation">6.1. Problems with Compilation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#undefined-reference-to-vtab">6.1.1. undefined reference to `_vtab$...</a></li>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#gfortran-unrecognized-option-cpp">6.1.2. gfortran: unrecognized option &#8216;-cpp&#8217;</a></li>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#f951-error-unrecognized-command-line-option-fbacktrace">6.1.3. f951: error: unrecognized command line option &#8220;-fbacktrace&#8221;</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshoot.html#problems-with-simulations">6.2. Problems with Simulations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#segmentation-fault">6.2.1. Segmentation Fault</a></li>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#error-no-cross-sections-xml-file-was-specified-in-settings-xml-or-in-the-cross-sections-environment-variable">6.2.2. ERROR: No cross_sections.xml file was specified in settings.xml or in the CROSS_SECTIONS environment variable.</a></li>
+<li class="toctree-l3"><a class="reference internal" href="troubleshoot.html#geometry-debugging">6.2.3. Geometry Debugging</a></li>
 </ul>
 </li>
 </ul>
@@ -215,7 +223,7 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.3.
     </div>
 <script type="text/javascript">
 

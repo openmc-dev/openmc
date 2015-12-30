@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.7.0',
+        VERSION:     '0.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="Python API" href="index.html" />
-    <link rel="next" title="Pandas Dataframes" href="examples/pandas-dataframes.html" />
+    <link rel="next" title="Multi-Group Cross Sections" href="mgxs.html" />
     <link rel="prev" title="Summary" href="summary.html" /> 
   </head>
   <body role="document">
@@ -41,7 +41,7 @@
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="examples/pandas-dataframes.html">Pandas Dataframes</a>&#160;&#160;»
+        <a href="mgxs.html">Multi-Group Cross Sections</a>&#160;&#160;»
         </p>
 
       </div>
@@ -141,7 +141,7 @@ nuclides given a set of filters.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>tally_id</strong> (<em>int, optional</em>) &#8211; Unique identifier for the tally. If none is specified, an identifier
+<li><strong>tally_id</strong> (<em>Integral, optional</em>) &#8211; Unique identifier for the tally. If none is specified, an identifier
 will automatically be assigned</li>
 <li><strong>name</strong> (<em>str, optional</em>) &#8211; Name of the tally. If not specified, the name is the empty string.</li>
 </ul>
@@ -152,7 +152,7 @@ will automatically be assigned</li>
 <dl class="attribute">
 <dt id="openmc.tallies.Tally.id">
 <code class="descname">id</code><a class="headerlink" href="#openmc.tallies.Tally.id" title="Permalink to this definition">¶</a></dt>
-<dd><p><em>int</em></p>
+<dd><p><em>Integral</em></p>
 <p>Unique identifier for the tally</p>
 </dd></dl>
 
@@ -187,7 +187,7 @@ will automatically be assigned</li>
 <dl class="attribute">
 <dt id="openmc.tallies.Tally.estimator">
 <code class="descname">estimator</code><a class="headerlink" href="#openmc.tallies.Tally.estimator" title="Permalink to this definition">¶</a></dt>
-<dd><p><em>{&#8216;analog&#8217;, &#8216;tracklength&#8217;}</em></p>
+<dd><p><em>{&#8216;analog&#8217;, &#8216;tracklength&#8217;, &#8216;collision&#8217;}</em></p>
 <p>Type of estimator for the tally</p>
 </dd></dl>
 
@@ -201,7 +201,7 @@ will automatically be assigned</li>
 <dl class="attribute">
 <dt id="openmc.tallies.Tally.num_score_bins">
 <code class="descname">num_score_bins</code><a class="headerlink" href="#openmc.tallies.Tally.num_score_bins" title="Permalink to this definition">¶</a></dt>
-<dd><p><em>int</em></p>
+<dd><p><em>Integral</em></p>
 <p>Total number of scores, accounting for the fact that a single
 user-specified score, e.g. scatter-P3 or flux-Y2,2, might have multiple
 bins</p>
@@ -210,28 +210,28 @@ bins</p>
 <dl class="attribute">
 <dt id="openmc.tallies.Tally.num_scores">
 <code class="descname">num_scores</code><a class="headerlink" href="#openmc.tallies.Tally.num_scores" title="Permalink to this definition">¶</a></dt>
-<dd><p><em>int</em></p>
+<dd><p><em>Integral</em></p>
 <p>Total number of user-specified scores</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="openmc.tallies.Tally.num_filter_bins">
 <code class="descname">num_filter_bins</code><a class="headerlink" href="#openmc.tallies.Tally.num_filter_bins" title="Permalink to this definition">¶</a></dt>
-<dd><p><em>int</em></p>
+<dd><p><em>Integral</em></p>
 <p>Total number of filter bins accounting for all filters</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="openmc.tallies.Tally.num_bins">
 <code class="descname">num_bins</code><a class="headerlink" href="#openmc.tallies.Tally.num_bins" title="Permalink to this definition">¶</a></dt>
-<dd><p><em>int</em></p>
+<dd><p><em>Integral</em></p>
 <p>Total number of bins for the tally</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="openmc.tallies.Tally.num_realizations">
 <code class="descname">num_realizations</code><a class="headerlink" href="#openmc.tallies.Tally.num_realizations" title="Permalink to this definition">¶</a></dt>
-<dd><p><em>int</em></p>
+<dd><p><em>Integral</em></p>
 <p>Total number of realizations</p>
 </dd></dl>
 
@@ -294,40 +294,6 @@ following source:</p>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A new derived tally which is the sum of this tally and the other
 tally or scalar value in the addition.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#openmc.tallies.Tally" title="openmc.tallies.Tally">Tally</a></td>
-</tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">ValueError</span></code> &#8211;
-When this method is called before the Tally is populated with data
-by the StatePoint.read_results() method.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="openmc.tallies.Tally.__div__">
-<code class="descname">__div__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.__div__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Divides this tally by another tally or scalar value.</p>
-<p>This method builds a new tally with data that is the dividend of
-this tally&#8217;s data and that from the other tally or scalar value. If the
-filters, scores and nuclides in the two tallies are not the same, then
-they are combined in all possible ways in the new derived tally.</p>
-<p>Uncertainty propagation is used to compute the standard deviation
-for the new tally&#8217;s data. It is important to note that this makes
-the assumption that the tally data is independently distributed.
-In most use cases, this is <em>not</em> true and may lead to under-prediction
-of the uncertainty. The uncertainty propagation model is from the
-following source:</p>
-<p><a class="reference external" href="https://en.wikipedia.org/wiki/Propagation_of_uncertainty">https://en.wikipedia.org/wiki/Propagation_of_uncertainty</a></p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<em>Tally or Real</em>) &#8211; The tally or scalar value to divide this tally by</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A new derived tally which is the dividend of this tally and the
-other tally or scalar value in the division.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#openmc.tallies.Tally" title="openmc.tallies.Tally">Tally</a></td>
 </tr>
@@ -550,6 +516,40 @@ by the StatePoint.read_results() method.</td>
 </dd></dl>
 
 <dl class="method">
+<dt id="openmc.tallies.Tally.__truediv__">
+<code class="descname">__truediv__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.__truediv__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Divides this tally by another tally or scalar value.</p>
+<p>This method builds a new tally with data that is the dividend of
+this tally&#8217;s data and that from the other tally or scalar value. If the
+filters, scores and nuclides in the two tallies are not the same, then
+they are combined in all possible ways in the new derived tally.</p>
+<p>Uncertainty propagation is used to compute the standard deviation
+for the new tally&#8217;s data. It is important to note that this makes
+the assumption that the tally data is independently distributed.
+In most use cases, this is <em>not</em> true and may lead to under-prediction
+of the uncertainty. The uncertainty propagation model is from the
+following source:</p>
+<p><a class="reference external" href="https://en.wikipedia.org/wiki/Propagation_of_uncertainty">https://en.wikipedia.org/wiki/Propagation_of_uncertainty</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<em>Tally or Real</em>) &#8211; The tally or scalar value to divide this tally by</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A new derived tally which is the dividend of this tally and the
+other tally or scalar value in the division.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#openmc.tallies.Tally" title="openmc.tallies.Tally">Tally</a></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">ValueError</span></code> &#8211;
+When this method is called before the Tally is populated with data
+by the StatePoint.read_results() method.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="openmc.tallies.Tally.add_filter">
 <code class="descname">add_filter</code><span class="sig-paren">(</span><em>filter</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.add_filter" title="Permalink to this definition">¶</a></dt>
 <dd><p>Add a filter to the tally</p>
@@ -620,21 +620,25 @@ by the StatePoint.read_results() method.</td>
 </dd></dl>
 
 <dl class="method">
-<dt id="openmc.tallies.Tally.compute_mean">
-<code class="descname">compute_mean</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.compute_mean" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute the sample mean for each bin in the tally</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="openmc.tallies.Tally.compute_std_dev">
-<code class="descname">compute_std_dev</code><span class="sig-paren">(</span><em>t_value=1.0</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.compute_std_dev" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute the sample standard deviation for each bin in the tally</p>
+<dt id="openmc.tallies.Tally.diagonalize_filter">
+<code class="descname">diagonalize_filter</code><span class="sig-paren">(</span><em>new_filter</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.diagonalize_filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Diagonalize the tally data array along a new axis of filter bins.</p>
+<p>This is a helper method for the tally arithmetic methods. This method
+adds the new filter to a derived tally constructed copied from this one.
+The data in the derived tally arrays is &#8220;diagonalized&#8221; along the bins in
+the new filter. This functionality is used by the openmc.mgxs module; to
+transport-correct scattering matrices by subtracting a &#8216;scatter-P1&#8217;
+reaction rate tally with an energy filter from an &#8216;scatter&#8217; reaction
+rate tally with both energy and energyout filters.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>t_value</strong> (<em>float, optional</em>) &#8211; Student&#8217;s t-value applied to the uncertainty. Defaults to 1.0,
-meaning the reported value is the sample standard deviation.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>new_filter</strong> (<a class="reference internal" href="filter.html#openmc.filter.Filter" title="openmc.filter.Filter"><em>Filter</em></a>) &#8211; The filter along which to diagonalize the data in the new</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A new derived Tally with data diagaonalized along the new filter.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#openmc.tallies.Tally" title="openmc.tallies.Tally">Tally</a></td>
 </tr>
 </tbody>
 </table>
@@ -699,7 +703,7 @@ If no matching Filter is found</td>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>filter_type</strong> (<em>str</em>) &#8211; The type of Filter (e.g., &#8216;cell&#8217;, &#8216;energy&#8217;, etc.)</li>
-<li><strong>filter_bin</strong> (<em>int, list</em>) &#8211; The bin is an integer ID for &#8216;material&#8217;, &#8216;surface&#8217;, &#8216;cell&#8217;,
+<li><strong>filter_bin</strong> (<em>Integral or tuple</em>) &#8211; The bin is an integer ID for &#8216;material&#8217;, &#8216;surface&#8217;, &#8216;cell&#8217;,
 &#8216;cellborn&#8217;, and &#8216;universe&#8217; Filters. The bin is an integer for the
 cell instance ID for &#8216;distribcell&#8217; Filters. The bin is a 2-tuple of
 floats for &#8216;energy&#8217; and &#8216;energyout&#8217; filters corresponding to the
@@ -713,6 +717,44 @@ interest.</li>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">The index in the Tally data array for this filter bin</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.tallies.Tally.get_filter_indices">
+<code class="descname">get_filter_indices</code><span class="sig-paren">(</span><em>filters=[]</em>, <em>filter_bins=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.get_filter_indices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get indices into the filter axis of this tally&#8217;s data arrays.</p>
+<p>This is a helper method for the Tally.get_values(...) method to
+extract tally data. This method returns the indices into the filter
+axis of the tally&#8217;s data array (axis=0) for particular combinations
+of filters and their corresponding bins.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filters</strong> (<em>list of str</em>) &#8211; A list of filter type strings
+(e.g., [&#8216;mesh&#8217;, &#8216;energy&#8217;]; default is [])</li>
+<li><strong>filter_bins</strong> (<em>list of Iterables</em>) &#8211; A list of the filter bins corresponding to the filter_types
+parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
+in the list is the integer ID for &#8216;material&#8217;, &#8216;surface&#8217;, &#8216;cell&#8217;,
+&#8216;cellborn&#8217;, and &#8216;universe&#8217; Filters. Each bin is an integer for the
+cell instance ID for &#8216;distribcell&#8217; Filters. Each bin is a 2-tuple of
+floats for &#8216;energy&#8217; and &#8216;energyout&#8217; filters corresponding to the
+energy boundaries of the bin of interest.  The bin is a (x,y,z)
+3-tuple for &#8216;mesh&#8217; filters corresponding to the mesh cell of
+interest. The order of the bins in the list must correspond to the
+filter_types parameter.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A NumPy array of the filter indices</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">ndarray</p>
 </td>
 </tr>
 </tbody>
@@ -743,14 +785,36 @@ in the Tally.</td>
 </dd></dl>
 
 <dl class="method">
+<dt id="openmc.tallies.Tally.get_nuclide_indices">
+<code class="descname">get_nuclide_indices</code><span class="sig-paren">(</span><em>nuclides</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.get_nuclide_indices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get indices into the nuclide axis of this tally&#8217;s data arrays.</p>
+<p>This is a helper method for the Tally.get_values(...) method to
+extract tally data. This method returns the indices into the nuclide
+axis of the tally&#8217;s data array (axis=1) for one or more nuclides.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>nuclides</strong> (<em>list of str</em>) &#8211; A list of nuclide name strings
+(e.g., [&#8216;U-235&#8217;, &#8216;U-238&#8217;]; default is [])</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A NumPy array of the nuclide indices</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="openmc.tallies.Tally.get_pandas_dataframe">
 <code class="descname">get_pandas_dataframe</code><span class="sig-paren">(</span><em>filters=True</em>, <em>nuclides=True</em>, <em>scores=True</em>, <em>summary=None</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.get_pandas_dataframe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Build a Pandas DataFrame for the Tally data.</p>
 <p>This method constructs a Pandas DataFrame object for the Tally data
-with columns annotated by filter, nuclide and score bin information.
-This capability has been tested for Pandas &gt;=v0.13.1. However, if
-possible, it is recommended to use the v0.16 or newer versions of
-Pandas since this this method uses the Multi-index Pandas feature.</p>
+with columns annotated by filter, nuclide and score bin information.</p>
+<p>This capability has been tested for Pandas &gt;=0.13.1. However, it is
+recommended to use v0.16 or newer versions of Pandas since this method
+uses the Multi-index Pandas feature.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -775,10 +839,46 @@ and standard deviation of the Tally&#8217;s data.</p>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">pandas.DataFrame</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal"><span class="pre">KeyError</span></code> &#8211;
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><code class="xref py py-exc docutils literal"><span class="pre">KeyError</span></code> &#8211;
 When this method is called before the Tally is populated with data
-by the StatePoint.read_results() method.</p>
+by the StatePoint.read_results() method.</li>
+<li><code class="xref py py-exc docutils literal"><span class="pre">ImportError</span></code> &#8211;
+When Pandas can not be found on the caller&#8217;s system</li>
+</ul>
 </td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.tallies.Tally.get_reshaped_data">
+<code class="descname">get_reshaped_data</code><span class="sig-paren">(</span><em>value='mean'</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.get_reshaped_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an array of tally data with one dimension per filter.</p>
+<p>The tally data in OpenMC is stored as a 3D array with the dimensions
+corresponding to filters, nuclides and scores. As a result, tally data
+can be opaque for a user to directly index (i.e., without use of the
+Tally.get_values(...) method) since one must know how to properly use
+the number of bins and strides for each filter to index into the first
+(filter) dimension.</p>
+<p>This builds and returns a reshaped version of the tally data array with
+unique dimensions corresponding to each tally filter. For example,
+suppose this tally has arrays of data with shape (8,5,5) corresponding
+to two filters (2 and 4 bins, respectively), five nuclides and five
+scores. This method will return a version of the data array with the
+with a new shape of (2,4,5,5) such that the first two dimensions
+correspond directly to the two filters with two and four bins.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>value</strong> (<em>str</em>) &#8211; A string for the type of value to return  - &#8216;mean&#8217; (default),
+&#8216;std_dev&#8217;, &#8216;rel_err&#8217;, &#8216;sum&#8217;, or &#8216;sum_sq&#8217; are accepted</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The tally data array indexed by filters, nuclides and scores.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">ndarray</td>
 </tr>
 </tbody>
 </table>
@@ -808,11 +908,33 @@ the Tally.</td>
 </dd></dl>
 
 <dl class="method">
+<dt id="openmc.tallies.Tally.get_score_indices">
+<code class="descname">get_score_indices</code><span class="sig-paren">(</span><em>scores</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.get_score_indices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get indices into the score axis of this tally&#8217;s data arrays.</p>
+<p>This is a helper method for the Tally.get_values(...) method to
+extract tally data. This method returns the indices into the score
+axis of the tally&#8217;s data array (axis=2) for one or more scores.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>scores</strong> (<em>list of str</em>) &#8211; A list of one or more score strings
+(e.g., [&#8216;absorption&#8217;, &#8216;nu-fission&#8217;]; default is [])</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A NumPy array of the score indices</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">ndarray</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="openmc.tallies.Tally.get_slice">
 <code class="descname">get_slice</code><span class="sig-paren">(</span><em>scores=[]</em>, <em>filters=[]</em>, <em>filter_bins=[]</em>, <em>nuclides=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.get_slice" title="Permalink to this definition">¶</a></dt>
 <dd><p>Build a sliced tally for the specified filters, scores and nuclides.</p>
 <p>This method constructs a new tally to encapsulate a subset of the data
-represented by this tally. The subset of data to included in the tally
+represented by this tally. The subset of data to include in the tally
 slice is determined by the scores, filters and nuclides specified in
 the input parameters.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -820,21 +942,21 @@ the input parameters.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>scores</strong> (<em>list</em>) &#8211; A list of one or more score strings
+<li><strong>scores</strong> (<em>list of str</em>) &#8211; A list of one or more score strings
 (e.g., [&#8216;absorption&#8217;, &#8216;nu-fission&#8217;]; default is [])</li>
-<li><strong>filters</strong> (<em>list</em>) &#8211; A list of filter type strings
+<li><strong>filters</strong> (<em>list of str</em>) &#8211; A list of filter type strings
 (e.g., [&#8216;mesh&#8217;, &#8216;energy&#8217;]; default is [])</li>
-<li><strong>filter_bins</strong> (<em>list</em>) &#8211; A list of the filter bins corresponding to the filter_types
-parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-the list is the integer ID for &#8216;material&#8217;, &#8216;surface&#8217;, &#8216;cell&#8217;,
+<li><strong>filter_bins</strong> (<em>list of Iterables</em>) &#8211; A list of the filter bins corresponding to the filter_types
+parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
+in the list is the integer ID for &#8216;material&#8217;, &#8216;surface&#8217;, &#8216;cell&#8217;,
 &#8216;cellborn&#8217;, and &#8216;universe&#8217; Filters. Each bin is an integer for the
 cell instance ID for &#8216;distribcell Filters. Each bin is a 2-tuple of
 floats for &#8216;energy&#8217; and &#8216;energyout&#8217; filters corresponding to the
 energy boundaries of the bin of interest.  The bin is a (x,y,z)
 3-tuple for &#8216;mesh&#8217; filters corresponding to the mesh cell of
-interest. The order of the bins in the list must correspond of the
+interest. The order of the bins in the list must correspond to the
 filter_types parameter.</li>
-<li><strong>nuclides</strong> (<em>list</em>) &#8211; A list of nuclide name strings
+<li><strong>nuclides</strong> (<em>list of str</em>) &#8211; A list of nuclide name strings
 (e.g., [&#8216;U-235&#8217;, &#8216;U-238&#8217;]; default is [])</li>
 </ul>
 </td>
@@ -875,30 +997,31 @@ XML element containing tally data</td>
 <dl class="method">
 <dt id="openmc.tallies.Tally.get_values">
 <code class="descname">get_values</code><span class="sig-paren">(</span><em>scores=[]</em>, <em>filters=[]</em>, <em>filter_bins=[]</em>, <em>nuclides=[]</em>, <em>value='mean'</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.get_values" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a tally score value given a list of filters to satisfy.</p>
+<dd><p>Returns one or more tallied values given a list of scores, filters,
+filter bins and nuclides.</p>
 <p>This method constructs a 3D NumPy array for the requested Tally data
 indexed by filter bin, nuclide bin, and score index. The method will
-order the data in the array as specified in the parameter lists</p>
+order the data in the array as specified in the parameter lists.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>scores</strong> (<em>list</em>) &#8211; A list of one or more score strings
+<li><strong>scores</strong> (<em>list of str</em>) &#8211; A list of one or more score strings
 (e.g., [&#8216;absorption&#8217;, &#8216;nu-fission&#8217;]; default is [])</li>
-<li><strong>filters</strong> (<em>list</em>) &#8211; A list of filter type strings
+<li><strong>filters</strong> (<em>list of str</em>) &#8211; A list of filter type strings
 (e.g., [&#8216;mesh&#8217;, &#8216;energy&#8217;]; default is [])</li>
-<li><strong>filter_bins</strong> (<em>list</em>) &#8211; A list of the filter bins corresponding to the filter_types
-parameter (e.g., [1, (0., 0.625e-6)]; default is []). Each bin in
-the list is the integer ID for &#8216;material&#8217;, &#8216;surface&#8217;, &#8216;cell&#8217;,
+<li><strong>filter_bins</strong> (<em>list of Iterables</em>) &#8211; A list of the filter bins corresponding to the filter_types
+parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
+in the list is the integer ID for &#8216;material&#8217;, &#8216;surface&#8217;, &#8216;cell&#8217;,
 &#8216;cellborn&#8217;, and &#8216;universe&#8217; Filters. Each bin is an integer for the
-cell instance ID for &#8216;distribcell Filters. Each bin is a 2-tuple of
+cell instance ID for &#8216;distribcell&#8217; Filters. Each bin is a 2-tuple of
 floats for &#8216;energy&#8217; and &#8216;energyout&#8217; filters corresponding to the
 energy boundaries of the bin of interest.  The bin is a (x,y,z)
 3-tuple for &#8216;mesh&#8217; filters corresponding to the mesh cell of
-interest. The order of the bins in the list must correspond of the
+interest. The order of the bins in the list must correspond to the
 filter_types parameter.</li>
-<li><strong>nuclides</strong> (<em>list</em>) &#8211; A list of nuclide name strings
+<li><strong>nuclides</strong> (<em>list of str</em>) &#8211; A list of nuclide name strings
 (e.g., [&#8216;U-235&#8217;, &#8216;U-238&#8217;]; default is [])</li>
 <li><strong>value</strong> (<em>str</em>) &#8211; A string for the type of value to return  - &#8216;mean&#8217; (default),
 &#8216;std_dev&#8217;, &#8216;rel_err&#8217;, &#8216;sum&#8217;, or &#8216;sum_sq&#8217; are accepted</li>
@@ -984,6 +1107,84 @@ Merged tallies</td>
 </table>
 </dd></dl>
 
+<dl class="method">
+<dt id="openmc.tallies.Tally.summation">
+<code class="descname">summation</code><span class="sig-paren">(</span><em>scores=[]</em>, <em>filter_type=None</em>, <em>filter_bins=[]</em>, <em>nuclides=[]</em>, <em>remove_filter=False</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.summation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vectorized sum of tally data across scores, filter bins and/or
+nuclides using tally addition.</p>
+<p>This method constructs a new tally to encapsulate the sum of the data
+represented by the summation of the data in this tally. The tally data
+sum is determined by the scores, filter bins and nuclides specified
+in the input parameters.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>scores</strong> (<em>list of str</em>) &#8211; A list of one or more score strings to sum across
+(e.g., [&#8216;absorption&#8217;, &#8216;nu-fission&#8217;]; default is [])</li>
+<li><strong>filter_type</strong> (<em>str</em>) &#8211; A filter type string (e.g., &#8216;cell&#8217;, &#8216;energy&#8217;) corresponding to the
+filter bins to sum across</li>
+<li><strong>filter_bins</strong> (<em>Iterable of Integral or tuple</em>) &#8211; A list of the filter bins corresponding to the filter_type parameter
+Each bin in the list is the integer ID for &#8216;material&#8217;, &#8216;surface&#8217;,
+&#8216;cell&#8217;, &#8216;cellborn&#8217;, and &#8216;universe&#8217; Filters. Each bin is an integer
+for the cell instance ID for &#8216;distribcell Filters. Each bin is a
+2-tuple of floats for &#8216;energy&#8217; and &#8216;energyout&#8217; filters corresponding
+to the energy boundaries of the bin of interest. Each bin is an
+(x,y,z) 3-tuple for &#8216;mesh&#8217; filters corresponding to the mesh cell of
+interest.</li>
+<li><strong>nuclides</strong> (<em>list of str</em>) &#8211; A list of nuclide name strings to sum across
+(e.g., [&#8216;U-235&#8217;, &#8216;U-238&#8217;]; default is [])</li>
+<li><strong>remove_filter</strong> (<em>bool</em>) &#8211; If a filter is being summed over, this bool indicates whether to
+remove that filter in the returned tally. Default is False.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A new tally which encapsulates the sum of data requested.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#openmc.tallies.Tally" title="openmc.tallies.Tally">Tally</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="openmc.tallies.Tally.swap_filters">
+<code class="descname">swap_filters</code><span class="sig-paren">(</span><em>filter1</em>, <em>filter2</em>, <em>inplace=False</em><span class="sig-paren">)</span><a class="headerlink" href="#openmc.tallies.Tally.swap_filters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reverse the ordering of two filters in this tally</p>
+<p>This is a helper method for tally arithmetic which helps align the data
+in two tallies with shared filters. This method copies this tally and
+reverses the order of the two filters.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filter1</strong> (<a class="reference internal" href="filter.html#openmc.filter.Filter" title="openmc.filter.Filter"><em>Filter</em></a>) &#8211; The filter to swap with filter2</li>
+<li><strong>filter2</strong> (<a class="reference internal" href="filter.html#openmc.filter.Filter" title="openmc.filter.Filter"><em>Filter</em></a>) &#8211; The filter to swap with filter1</li>
+<li><strong>inplace</strong> (<em>bool, optional</em>) &#8211; Whether to perform operation inplace or return new tally with the
+filters swapped.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">If inplace is false, a copy of this tally with the filters swapped.
+Otherwise, nothing is returned.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">swap_tally</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal"><span class="pre">ValueError</span></code> &#8211;
+If this is a derived tally or this method is called before the tally
+is populated with data by the StatePoint.read_results() method.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -997,7 +1198,7 @@ Merged tallies</td>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="examples/pandas-dataframes.html">Pandas Dataframes</a>&#160;&#160;»
+        <a href="mgxs.html">Multi-Group Cross Sections</a>&#160;&#160;»
         </p>
 
       </div>
@@ -1005,7 +1206,7 @@ Merged tallies</td>
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.3.
     </div>
 <script type="text/javascript">
 

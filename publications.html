@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.7.0',
+        VERSION:     '0.7.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="OpenMC Documentation" href="index.html" />
     <link rel="next" title="License Agreement" href="license.html" />
-    <link rel="prev" title="Tally Arithmetic" href="pythonapi/examples/tally-arithmetic.html" /> 
+    <link rel="prev" title="MGXS Part III: Libraries" href="pythonapi/examples/mgxs-part-iii.html" /> 
   </head>
   <body role="document">
       <div class="header" role="banner">
@@ -36,7 +36,7 @@
       <div class="topnav" role="navigation" aria-label="top navigation">
       
         <p>
-        «&#160;&#160;<a href="pythonapi/examples/tally-arithmetic.html">Tally Arithmetic</a>
+        «&#160;&#160;<a href="pythonapi/examples/mgxs-part-iii.html">MGXS Part III: Libraries</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
@@ -68,6 +68,9 @@ Code,&#8221; <em>Ann. Nucl. Energy</em>, <strong>51</strong>, 274&#8211;281
 <div class="section" id="benchmarking">
 <h2>Benchmarking<a class="headerlink" href="#benchmarking" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li>Khurrum S. Chaudri and Sikander M. Mirza, &#8220;Burnup dependent Monte Carlo
+neutron physics calculations of IAEA MTR benchmark,&#8221; <em>Prog. Nucl. Energy</em>,
+<strong>81</strong>, 43-52 (2015). <a class="reference external" href="http://dx.doi.org/j.pnucene.2014.12.018">http://dx.doi.org/j.pnucene.2014.12.018</a></li>
 <li>Daniel J. Kelly, Brian N. Aviles, Paul K. Romano, Bryan R. Herman,
 Nicholas E. Horelik, and Benoit Forget, &#8220;Analysis of select BEAVRS PWR
 benchmark cycle 1 results using MC21 and OpenMC,&#8221; <em>Proc. PHYSOR</em>, Kyoto,
@@ -95,12 +98,8 @@ simulations,&#8221; <em>Proc. Joint Int. Conf. M&amp;C+SNA+MC</em>, Nashville, T
 Apr. 19&#8211;23 (2015).</li>
 <li>Bryan R. Herman, Benoit Forget, and Kord Smith, &#8220;Progress toward Monte
 Carlo-thermal hydraulic coupling using low-order nonlinear diffusion
-acceleration methods.&#8221; In press, <em>Ann. Nucl. Energy</em>,
-(2014). <a class="reference external" href="http://dx.doi.org/10.1016/j.anucene/2014.10.029">http://dx.doi.org/10.1016/j.anucene/2014.10.029</a></li>
-<li>Adam G. Nelson and William R. Martin, &#8220;Improved Convergence of Monte Carlo
-Generated Multi-Group Scattering Moments,&#8221; <em>Proc. Int. Conf. Mathematics and
-Computational Methods Applied to Nuclear Science and Engineering</em>, Sun Valley,
-Idaho, May 5&#8211;9 (2013).</li>
+acceleration methods.&#8221; <em>Ann. Nucl. Energy</em>, <strong>84</strong>, 63-72
+(2015). <a class="reference external" href="http://dx.doi.org/10.1016/j.anucene.2014.10.029">http://dx.doi.org/10.1016/j.anucene.2014.10.029</a></li>
 <li>Bryan R. Herman, Benoit Forget, and Kord Smith, &#8220;Utilizing CMFD in OpenMC to
 Estimate Dominance Ratio and Adjoint,&#8221; <em>Trans. Am. Nucl. Soc.</em>, <strong>109</strong>,
 1389-1392 (2013).</li>
@@ -117,18 +116,55 @@ solid geometries,&#8221; <em>Proc. PHYSOR</em>, Kyoto, Japan, Sep. 28&#8211;Oct.
 <div class="section" id="miscellaneous">
 <h2>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li>William Boyd, Sterling Harper, and Paul K. Romano, &#8220;Equipping OpenMC for the
+big data era,&#8221; Accepted, <em>PHYSOR 2016</em>, Sun Valley, Idaho, May 1-5, 2016.</li>
+<li>Qicang Shen, William Boyd, Benoit Forget, and Kord Smith, &#8220;Tally precision
+triggers for the OpenMC Monte Carlo code,&#8221; <em>Trans. Am. Nucl. Soc.</em>, <strong>112</strong>,
+637-640 (2015).</li>
 <li>Timothy P. Burke, Brian C. Kiedrowski, and William R. Martin, &#8220;Flux and
 Reaction Rate Kernel Density Estimators in OpenMC,&#8221; <em>Trans. Am. Nucl. Soc.</em>,
 <strong>109</strong>, 683-686 (2013).</li>
 </ul>
 </div>
+<div class="section" id="multi-group-cross-section-generation">
+<h2>Multi-group Cross Section Generation<a class="headerlink" href="#multi-group-cross-section-generation" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Adam G. Nelson and William R. Martin, &#8220;Improved Monte Carlo tallying of
+multi-group scattering moments using the NDPP code,&#8221; <em>Trans. Am. Nucl. Soc.</em>,
+<strong>113</strong>, 645-648 (2015)</li>
+<li>Adam G. Nelson and William R. Martin, &#8220;Improved Monte Carlo tallying of
+multi-group scattering moment matrices,&#8221; <em>Trans. Am. Nucl. Soc.</em>, <strong>110</strong>,
+217-220 (2014).</li>
+<li>Adam G. Nelson and William R. Martin, &#8220;Improved Convergence of Monte Carlo
+Generated Multi-Group Scattering Moments,&#8221; <em>Proc. Int. Conf. Mathematics and
+Computational Methods Applied to Nuclear Science and Engineering</em>, Sun Valley,
+Idaho, May 5&#8211;9 (2013).</li>
+</ul>
+</div>
 <div class="section" id="nuclear-data">
 <h2>Nuclear Data<a class="headerlink" href="#nuclear-data" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li>Colin Josey, Pablo Ducru, Benoit Forget, and Kord Smith, &#8220;Windowed multipole
+for cross section Doppler broadening,&#8221; <em>J. Comput. Phys.</em>, In Press
+(2016). <a class="reference external" href="http://dx.doi.org/10.1016/jcp.2015.08.013">http://dx.doi.org/10.1016/jcp.2015.08.013</a></li>
+<li>Colin Josey, Benoit Forget, and Kord Smith, &#8220;Windowed multipole sensitivity to
+target accuracy of the optimization procedure,&#8221; <em>J. Nucl. Sci. Technol.</em>,
+<strong>52</strong>, 987-992 (2015). <a class="reference external" href="http://dx.doi.org/10.1080/00223131.2015.1035353">http://dx.doi.org/10.1080/00223131.2015.1035353</a></li>
+<li>Jonathan A. Walsh, Paul K. Romano, Benoit Forget, and Kord S. Smith,
+&#8220;Optimizations of the energy grid search algorithm in continuous-energy Monte
+Carlo particle transport codes&#8221;, <em>Comput. Phys. Commun.</em>, <strong>196</strong>, 134-142
+(2015). <a class="reference external" href="http://dx.doi.org/10.1016/j.cpc.2015.05.025">http://dx.doi.org/10.1016/j.cpc.2015.05.025</a></li>
 <li>Jonathan A. Walsh, Benoit Forget, Kord S. Smith, Brian C. Kiedrowski, and
 Forrest B. Brown, &#8220;Direct, on-the-fly calculation of unresolved resonance
 region cross sections in Monte Carlo simulations,&#8221; <em>Proc. Joint
 Int. Conf. M&amp;C+SNA+MC</em>, Nashville, Tennessee, Apr. 19&#8211;23 (2015).</li>
+<li>Amanda L. Lund, Andrew R. Siegel, Benoit Forget, Colin Josey, and
+Paul K. Romano, &#8220;Using fractional cascading to accelerate cross section
+lookups in Monte Carlo particle transport calculations,&#8221; <em>Proc. Joint
+Int. Conf. M&amp;C+SNA+MC</em>, Nashville, Tennessee, Apr. 19&#8211;23 (2015).</li>
+<li>Ronald O. Rahaman, Andrew R. Siegel, and Paul K. Romano, &#8220;Monte Carlo
+performance analysis for varying cross section parameter regimes,&#8221;
+<em>Proc. Joint Int. Conf. M&amp;C+SNA+MC</em>, Nashville, Tennessee, Apr. 19&#8211;23 (2015).</li>
 <li>Paul K. Romano and Timothy H. Trumbull, &#8220;Comparison of algorithms for Doppler
 broadening pointwise tabulated cross sections,&#8221; <em>Ann. Nucl. Energy</em>, <strong>75</strong>,
 358&#8211;364 (2015). <a class="reference external" href="http://dx.doi.org/10.1016/j.anucene.2014.08.046">http://dx.doi.org/10.1016/j.anucene.2014.08.046</a></li>
@@ -146,6 +182,9 @@ Carlo simulations using the multipole representation,&#8221; <em>Ann. Nucl. Ener
 <div class="section" id="parallelism">
 <h2>Parallelism<a class="headerlink" href="#parallelism" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li>Paul K. Romano, John R. Tramm, and Andrew R. Siegel, &#8220;Efficacy of hardware
+threading for Monte Carlo particle transport calculations on multi- and
+many-core systems,&#8221; Accepted, <em>PHYSOR 2016</em>, Sun Valley, Idaho, May 1-5, 2016.</li>
 <li>David Ozog, Allen D. Malony, and Andrew R. Siegel, &#8220;A performance analysis of
 SIMD algorithms for Monte Carlo simulations of nuclear reactor cores,&#8221;
 <em>Proc. IEEE Int. Parallel and Distributed Processing Symposium</em>, Hyderabad,
@@ -207,7 +246,7 @@ Carlo Criticality Calculations,&#8221; <em>Nucl. Sci. Eng.</em>, <strong>170</st
       <div class="bottomnav" role="navigation" aria-label="bottom navigation">
       
         <p>
-        «&#160;&#160;<a href="pythonapi/examples/tally-arithmetic.html">Tally Arithmetic</a>
+        «&#160;&#160;<a href="pythonapi/examples/mgxs-part-iii.html">MGXS Part III: Libraries</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
@@ -219,7 +258,7 @@ Carlo Criticality Calculations,&#8221; <em>Nucl. Sci. Eng.</em>, <strong>170</st
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2011-2015, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.3.
     </div>
 <script type="text/javascript">
 

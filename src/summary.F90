@@ -362,9 +362,10 @@ contains
         allocate(lattice_universes(lat%n_cells(1), lat%n_cells(2), &
              &lat%n_cells(3)))
         do j = 1, lat%n_cells(1)
-          do k = 1, lat%n_cells(2)
+          do k = 0, lat%n_cells(2) - 1
             do m = 1, lat%n_cells(3)
-              lattice_universes(j,k,m) = universes(lat%universes(j,k,m))%id
+              lattice_universes(j, k+1, m) = &
+                   universes(lat%universes(j, lat%n_cells(2) - k, m))%id
             end do
           end do
         end do

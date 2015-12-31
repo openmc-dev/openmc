@@ -135,6 +135,87 @@ default. This element has the following attributes/sub-elements:
 
     *Default*: 1.0
 
+.. _domain_decomposition:
+
+``<domain_decomposition>`` Element
+----------------------------------
+
+Domain decomposition method has been implemented in OpenMC to calculate hugely
+memory-consuming problems, such as full-scale reactor analysis with large amount
+of material or tally data. Using domain decomposition strategy, distributed
+compute resources load materials into memory for different subsections of the
+problem domain, and score tally results for regions only within that domain.
+In current implementation, a structured Cartesian mesh is utilized to define
+domains. One or more parallel processes are assigned to each domain mesh.
+Material and tally data are allocated during simulation using an on-the-fly
+approach. And multiple state point files are written separately for each domain.
+
+The ``<domain_decomposition>`` element specifies the decomposition of domain
+and process assignments. It has the following attributes/sub-elements:
+
+  :mesh:
+    An element specifying the structured Cartesian mesh to cover the model.
+    This element has the following attributes/sub-elements:
+
+    :dimension:
+      The number of mesh cells in each direction.
+ 
+      *Default*: None
+
+    :lower_left:
+      The lower-left corner of the structured mesh. If only two coordinates are
+      given, it is assumed that the mesh is an x-y mesh.
+
+      *Default*: None
+      
+    :upper_right:
+      The upper-right corner of the structrued mesh. If only two coordinates are
+      given, it is assumed that the mesh is an x-y mesh.
+ 
+      *Default*: None
+
+  :nodemap:
+    A optional list of real numbers to specify the distribution of load for all
+    domains.
+    
+    *Default*: None
+
+  :allow_leakage:
+    Whether or not to allow particles to leak out of the mesh and stop tracking
+    them if they do.
+
+    *Default*: false
+
+  :count_interactions:
+    Whether or not to count all particle interactions in a domain to help with
+    setting nodemaps.
+
+    *Default*: false
+
+  .. Warning:: Domain decomposition must be run in a MPI parallel mode. The 
+               number of parallel processor must be equal or greater than the
+               number of domains. Domain decomposition is not implemented in
+               conjunction with OpenMP.
+
+Here is an example of a domain decomposition input:
+
+.. code-block:: xml
+
+    <domain_decomposition>
+    
+      <mesh>
+        <dimension> 2 2 1 </dimension>
+        <lower_left> -10 -10 -10 </lower_left>
+        <upper_right> 10 10 10 </upper_right>
+      </mesh>
+    
+      <nodemap>
+           1 1
+           1 1
+      </nodemap>
+    
+    </domain_decomposition>
+
 .. _eigenvalue:
 
 ``<eigenvalue>`` Element

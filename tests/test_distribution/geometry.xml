@@ -11,7 +11,7 @@
     <dimension>2 2</dimension>
     <lower_left>-2.0 -2.0</lower_left>
     <width>1.0 1.0</width>
-	<outer>3</outer>
+    <outer>3</outer>
     <universes>
       10 10
       10 10 

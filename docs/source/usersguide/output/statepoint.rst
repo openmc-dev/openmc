@@ -56,6 +56,22 @@ The current revision of the statepoint file format is 14.
 
     The number of batches already simulated.
 
+**/domain_decomp** (*int*)
+
+    Flag indicating whether domain decomposiiton is on (1) or off (0).
+
+**/n_domains** (*int*)
+
+    The number of domains.
+
+**/domain_id** (*int*)
+
+    The mesh bin ID of current domain (each domain has a state_point file).
+
+**/source_present** (*int*)
+
+    Flag indicating whether the source be written separately.
+
 if run_mode == 'k-eigenvalue':
 
     **/n_inactive** (*int*)
@@ -179,6 +195,14 @@ if run_mode == 'k-eigenvalue':
 **/tallies/tally <uid>/n_filters** (*int*)
 
     Number of filters used.
+
+**/tallies/tally <uid>/otf_size_results_filters** (*int*)
+
+    Number of on-the-fly(otf) tally filters used.
+
+**/tallies/tally <uid>/otf_filter_bin_map** (*int*)
+
+    Map of  on-the-fly(otf) tally filters used.
 
 **/tallies/tally <uid>/filter <j>/type** (*char[]*)
 

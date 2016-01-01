@@ -155,7 +155,7 @@ class Mesh(object):
                        name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     @type.setter
     def type(self, meshtype):
@@ -188,6 +188,9 @@ class Mesh(object):
         cv.check_type('mesh width', width, Iterable, Real)
         cv.check_length('mesh width', width, 2, 3)
         self._width = width
+
+    def __hash__(self):
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'Mesh\n'

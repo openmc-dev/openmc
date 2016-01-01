@@ -43,12 +43,18 @@ class Library(object):
     ----------
     openmc_geometry : openmc.Geometry
         An geometry which has been initialized with a root universe
+    opencg_geometry : opencg.Geometry
+        An OpenCG geometry object equivalent to the OpenMC geometry
+        encapsulated by the summary file. Use of this attribute requires
+        installation of the OpenCG Python module.
     by_nuclide : bool
         If true, computes cross sections for each nuclide in each domain
     mgxs_types : Iterable of str
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     domain_type : {'material', 'cell', 'distribcell', 'universe'}
         Domain type for spatial homogenization
+    domains : Iterable of Material, Cell or Universe
+        The spatial domain(s) for which MGXS in the Library are computed
     correction : 'P0' or None
         Apply the P0 correction to scattering matrices if set to 'P0'
     energy_groups : EnergyGroups
@@ -58,8 +64,12 @@ class Library(object):
         compute the cross section
     all_mgxs : OrderedDict
         MGXS objects keyed by domain ID and cross section type
-    statepoint : openmc.StatePoint
-        The statepoint with tally data used to the compute cross sections
+    sp_filename : str
+        The filename of the statepoint with tally data used to the
+        compute cross sections
+    keff : Real or None
+        The combined keff from the statepoint file with tally data used to 
+        compute cross sections (for eigenvalue calculations only)
     name : str, optional
         Name of the multi-group cross section library. Used as a label to
         identify tallies in OpenMC 'tallies.xml' file.
@@ -71,14 +81,17 @@ class Library(object):
 
         self._name = ''
         self._openmc_geometry = None
+        self._opencg_geometry = None
         self._by_nuclide = None
         self._mgxs_types = []
         self._domain_type = None
+        self._domains = 'all'
         self._correction = 'P0'
         self._energy_groups = None
         self._tally_trigger = None
         self._all_mgxs = OrderedDict()
         self._sp_filename = None
+        self._keff = None
 
         self.name = name
         self.openmc_geometry = openmc_geometry
@@ -95,14 +108,17 @@ class Library(object):
             clone = type(self).__new__(type(self))
             clone._name = self.name
             clone._openmc_geometry = self.openmc_geometry
+            clone._opencg_geometry = None
             clone._by_nuclide = self.by_nuclide
             clone._mgxs_types = self.mgxs_types
             clone._domain_type = self.domain_type
+            clone._domains = self.domains
             clone._correction = self.correction
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = self.all_mgxs
             clone._sp_filename = self._sp_filename
+            clone._keff = self._keff
 
             clone._all_mgxs = OrderedDict()
             for domain in self.domains:
@@ -124,6 +140,17 @@ class Library(object):
         return self._openmc_geometry
 
     @property
+    def openmc_geometry(self):
+        return self._openmc_geometry
+
+    @property
+    def opencg_geometry(self):
+        if self._opencg_geometry is None:
+            from openmc.opencg_compatible import get_opencg_geometry
+            self._opencg_geometry = get_opencg_geometry(self._openmc_geometry)
+        return self._opencg_geometry
+
+    @property
     def name(self):
         return self._name
 
@@ -136,20 +163,22 @@ class Library(object):
         return self._by_nuclide
 
     @property
-    def domains(self):
-        if self.domain_type is None:
-            raise ValueError('Unable to get all domains without a domain type')
-
-        if self.domain_type == 'material':
-            return self.openmc_geometry.get_all_materials()
-        elif self.domain_type == 'cell' or self.domain_type == 'distribcell':
-            return self.openmc_geometry.get_all_material_cells()
-        elif self.domain_type == 'universe':
-            return self.openmc_geometry.get_all_universes()
-
-    @property
     def domain_type(self):
         return self._domain_type
+
+    @property
+    def domains(self):
+        if self._domains == 'all':
+            if self.domain_type == 'material':
+                return self.openmc_geometry.get_all_materials()
+            elif self.domain_type in ['cell', 'distribcell']:
+                return self.openmc_geometry.get_all_material_cells()
+            elif self.domain_type == 'universe':
+                return self.openmc_geometry.get_all_universes()
+            else:
+                raise ValueError('Unable to get domains without a domain type')
+        else:
+            return self._domains
 
     @property
     def correction(self):
@@ -172,13 +201,18 @@ class Library(object):
         return self._all_mgxs
 
     @property
-    def statepoint(self):
+    def sp_filename(self):
         return self._sp_filename
+
+    @property
+    def keff(self):
+        return self._keff
 
     @openmc_geometry.setter
     def openmc_geometry(self, openmc_geometry):
         cv.check_type('openmc_geometry', openmc_geometry, openmc.Geometry)
         self._openmc_geometry = openmc_geometry
+        self._opencg_geometry = None
 
     @name.setter
     def name(self, name):
@@ -204,6 +238,38 @@ class Library(object):
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, tuple(openmc.mgxs.DOMAIN_TYPES))
         self._domain_type = domain_type
+
+    @domains.setter
+    def domains(self, domains):
+
+        # Use all materials, cells or universes in the geometry as domains
+        if domains == 'all':
+            self._domains = domains
+
+        # User specified a list of material, cell or universe domains
+        else:
+            if self.domain_type == 'material':
+                cv.check_iterable_type('domain', domains, openmc.Material)
+                all_domains = self.openmc_geometry.get_all_materials()
+            elif self.domain_type in ['cell', 'distribcell']:
+                cv.check_iterable_type('domain', domains, openmc.Cell)
+                all_domains = self.openmc_geometry.get_all_material_cells()
+            elif self.domain_type == 'universe':
+                cv.check_iterable_type('domain', domains, openmc.Universe)
+                all_domains = self.openmc_geometry.get_all_universes()
+            else:
+                msg = 'Unable to set domains with ' \
+                      'domain type "{}"'.format(self.domain_type)
+                raise ValueError(msg)
+
+            # Check that each domain can be found in the geometry
+            for domain in domains:
+                if domain not in all_domains:
+                    msg = 'Domain "{}" could not be found in the ' \
+                          'geometry.'.format(domain)
+                    raise ValueError(msg)
+
+            self._domains = domains
 
     @correction.setter
     def correction(self, correction):
@@ -305,6 +371,10 @@ class Library(object):
             raise ValueError(msg)
 
         self._sp_filename = statepoint._f.filename
+        self._openmc_geometry = statepoint.summary.openmc_geometry
+
+        if statepoint.run_mode == 'k-eigenvalue':
+            self._keff = statepoint.k_combined[0]
 
         # Load tallies for each MGXS for each domain and mgxs type
         for domain in self.domains:
@@ -397,7 +467,7 @@ class Library(object):
 
         """
 
-        if self.statepoint is None:
+        if self.sp_filename is None:
             msg = 'Unable to get a condensed coarse group cross section ' \
                   'library since the statepoint has not yet been loaded'
             raise ValueError(msg)
@@ -449,7 +519,7 @@ class Library(object):
 
         """
 
-        if self.statepoint is None:
+        if self.sp_filename is None:
             msg = 'Unable to get a subdomain-averaged cross section ' \
                   'library since the statepoint has not yet been loaded'
             raise ValueError(msg)
@@ -514,9 +584,9 @@ class Library(object):
 
         """
 
-        if self.statepoint is None:
-            msg = 'Unable to get a condensed coarse group cross section ' \
-                  'library since a statepoint has not yet been loaded'
+        if self.sp_filename is None:
+            msg = 'Unable to export multi-group cross section library ' \
+                  'since a statepoint has not yet been loaded'
             raise ValueError(msg)
 
         cv.check_type('filename', filename, basestring)

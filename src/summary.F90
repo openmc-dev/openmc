@@ -113,7 +113,7 @@ contains
     integer(HID_T) :: universes_group, univ_group
     integer(HID_T) :: lattices_group, lattice_group
     real(8), allocatable :: coeffs(:)
-    character(MAX_LINE_LEN) :: region_spec
+    character(REGION_SPEC_LEN) :: region_spec
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
     type(Universe), pointer :: u

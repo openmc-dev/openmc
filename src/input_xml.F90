@@ -7,7 +7,7 @@ module input_xml
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
   use global
-  use list_header,      only: ListChar, ListReal
+  use list_header,      only: ListChar, ListInt, ListReal
   use mesh_header,      only: RegularMesh
   use material_header,  only: Material
   use output,           only: write_message
@@ -1132,7 +1132,7 @@ contains
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    character(MAX_LINE_LEN) :: region_spec
+    character(REGION_SPEC_LEN) :: region_spec
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
     class(Lattice), pointer :: lat
@@ -1898,13 +1898,15 @@ contains
 
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
-    integer :: k             ! loop index for compositions
+    integer :: k             ! loop index for elements/compositions
+
     integer :: l             ! loop index for post expansion nuclides
     integer :: n             ! number of nuclides
     integer :: n_nuclide     ! number of nuclides entered
     integer :: n_element     ! number of elements entered
     integer :: n_comp        ! number of compositions
     integer :: n_sab         ! number of sab tables for a material
+    integer :: n_nuc_ele     ! number of nuclides in an element
     integer :: index_list    ! index in xs_listings array
     integer :: index_nuclide ! index in nuclides
     integer :: index_sab     ! index in sab_tables
@@ -1923,6 +1925,7 @@ contains
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
     type(ListChar) :: list_names   ! temporary list of nuclide names
     type(ListReal) :: list_density ! temporary list of nuclide densities
+    type(ListInt)  :: list_iso_lab ! temporary list of isotropic lab scatterers
     type(ListChar) :: ele_names    ! temporary list of nuclide names
     type(ListChar) :: comp_names   ! temporary list of nuclide names
     type(ListReal) :: comp_density ! temporary list of nuclide densities
@@ -2144,9 +2147,29 @@ contains
 
         end if
 
+        ! Check enforced isotropic lab scattering
+        if (check_for_node(node_nuc, "scattering")) then
+          call get_node_value(node_nuc, "scattering", temp_str)
+          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+            call list_iso_lab % append(1)
+          else if (adjustl(to_lower(temp_str)) == "data") then
+            call list_iso_lab % append(0)
+          else
+            call fatal_error("Scattering must be isotropic in lab or follow&
+                 & the ACE file data")
+          end if
+        else
+          call list_iso_lab % append(0)
+        end if
+
+        ! store full name
+        call get_node_value(node_nuc, "name", temp_str)
+        if (check_for_node(node_nuc, "xs")) &
+             call get_node_value(node_nuc, "xs", name)
+        name = trim(temp_str) // "." // trim(name)
+
         ! =======================================================================
         ! READ AND PARSE <nuclide> TAGS
-
         ! Check to ensure material has at least one nuclide
         if (.not. check_for_node(node_comp, "nuclide") .and. &
              .not. check_for_node(node_comp, "element")) then
@@ -2226,8 +2249,12 @@ contains
           ! maintain a list of expanded elements
           call ele_names % append(name)
 
+          ! Get current number of nuclides
+          n_nuc_ele = list_names % size()
+
           ! Expand element into naturally-occurring isotopes
           call expand_natural_element(name, temp_str, 1.0_8, &
+
                list_names, list_density)
 
         end do COMPOSITION_ELEMENTS
@@ -2355,6 +2382,30 @@ contains
           deallocate(temp_real_array)
 
         end if
+
+        ! Compute number of new nuclides from the natural element expansion
+        n_nuc_ele = list_names % size() - n_nuc_ele
+
+        ! Check enforced isotropic lab scattering
+        if (check_for_node(node_ele, "scattering")) then
+          call get_node_value(node_ele, "scattering", temp_str)
+        else
+          temp_str = "data"
+        end if
+
+        ! Set ace or iso-in-lab scattering for each nuclide in element
+        do k = 1, n_nuc_ele
+          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+            call list_iso_lab % append(1)
+          else if (adjustl(to_lower(temp_str)) == "data") then
+            call list_iso_lab % append(0)
+          else
+            call fatal_error("Scattering must be isotropic in lab or follow&
+                 & the ACE file data")
+          end if
+        end do
+
+      end do NATURAL_ELEMENTS
 
       else
         ! NOT USING DISTRIBUTED COMPOSITIONS
@@ -2489,7 +2540,9 @@ contains
       mat % n_nuclides = n
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
-                                   
+      allocate(mat % atom_density(n))
+      allocate(mat % p0(n))
+
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
         name = trim(list_names % get_item(j))
@@ -2529,6 +2582,14 @@ contains
         else
           mat % comp(1) % atom_density(j) = list_density % get_item(j)           
         end if
+
+        ! Cast integer isotropic lab scattering flag to boolean
+        if (list_iso_lab % get_item(j) == 1) then
+          mat % p0(j) = .true.
+        else
+          mat % p0(j) = .false.
+        end if
+
       end do ALL_NUCLIDES     
            
       ! Check to make sure either all atom percents or all weight percents
@@ -2553,6 +2614,7 @@ contains
       ! Clear lists
       call list_names % clear()
       call list_density % clear()
+      call list_iso_lab % clear()
 
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
@@ -4720,7 +4782,6 @@ contains
       call list_density % append(density * 0.999885_8)
       call list_names % append('1002.' // xs)
       call list_density % append(density * 0.000115_8)
-
     case ('he')
       call list_names % append('2003.' // xs)
       call list_density % append(density * 0.00000134_8)

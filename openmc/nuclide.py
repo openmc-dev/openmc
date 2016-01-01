@@ -26,6 +26,8 @@ class Nuclide(object):
     zaid : int
         1000*(atomic number) + mass number. As an example, the zaid of U-235
         would be 92235.
+    scattering : 'data' or 'iso-in-lab' or None
+        The type of angular scattering distribution to use
 
     """
 
@@ -34,6 +36,7 @@ class Nuclide(object):
         self._name = ''
         self._xs = None
         self._zaid = None
+        self._scattering = None
 
         # Set the Material class attributes
         self.name = name
@@ -58,7 +61,7 @@ class Nuclide(object):
         return not self == other
 
     def __hash__(self):
-        return hash((self._name, self._xs))
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'Nuclide    -    {0}\n'.format(self._name)
@@ -79,6 +82,10 @@ class Nuclide(object):
     def zaid(self):
         return self._zaid
 
+    @property
+    def scattering(self):
+        return self._scattering
+
     @name.setter
     def name(self, name):
         check_type('name', name, basestring)
@@ -93,3 +100,23 @@ class Nuclide(object):
     def zaid(self, zaid):
         check_type('zaid', zaid, Integral)
         self._zaid = zaid
+
+    @scattering.setter
+    def scattering(self, scattering):
+
+        if not scattering in ['data', 'iso-in-lab']:
+            msg = 'Unable to set scattering for Nuclide to {0} ' \
+                  'which is not "data" or "iso-in-lab"'.format(scattering)
+            raise ValueError(msg)
+
+        self._scattering = scattering
+
+    def __repr__(self):
+        string = 'Nuclide    -    {0}\n'.format(self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self.xs)
+        if self.zaid is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self.zaid)
+        if self.scattering is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t', 
+                                                self.scattering)
+        return string

@@ -1,3 +1,5 @@
+import numpy as np
+
 import openmc
 
 ###############################################################################
@@ -115,7 +117,7 @@ settings_file = openmc.SettingsFile()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
-settings_file.set_source_space('point', [0., 0., 0.])
+settings_file.set_source_space('box', np.concatenate(outer_cube.bounding_box))
 settings_file.export_to_xml()
 
 ###############################################################################

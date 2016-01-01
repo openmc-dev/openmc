@@ -8,6 +8,15 @@ class Summary(object):
     """Information summarizing the geometry, materials, and tallies used in a
     simulation.
 
+    Attributes
+    ----------
+    openmc_geometry : openmc.Geometry
+        An OpenMC geometry object reconstructed from the summary file
+    opencg_geometry : opencg.Geometry
+        An OpenCG geometry object equivalent to the OpenMC geometry
+        encapsulated by the summary file. Use of this attribute requires
+        installation of the OpenCG Python module.
+
     """
 
     def __init__(self, filename):
@@ -23,12 +32,23 @@ class Summary(object):
             raise ValueError(msg)
 
         self._f = h5py.File(filename, 'r')
-        self.openmc_geometry = None
-        self.opencg_geometry = None
+        self._openmc_geometry = None
+        self._opencg_geometry = None
 
         self._read_metadata()
         self._read_geometry()
         self._read_tallies()
+
+    @property
+    def openmc_geometry(self):
+        return self._openmc_geometry
+
+    @property
+    def opencg_geometry(self):
+        if self._opencg_geometry is None:
+            from openmc.opencg_compatible import get_opencg_geometry
+            self._opencg_geometry = get_opencg_geometry(self.openmc_geometry)
+        return self._opencg_geometry
 
     def _read_metadata(self):
         # Read OpenMC version
@@ -444,7 +464,7 @@ class Summary(object):
 
     def _finalize_geometry(self):
         # Initialize Geometry object
-        self.openmc_geometry = openmc.Geometry()
+        self._openmc_geometry = openmc.Geometry()
 
         # Iterate over all Cells and add fill Materials, Universes and Lattices
         for cell_key in self._cell_fills.keys():
@@ -531,22 +551,6 @@ class Summary(object):
             # Add Tally to the global dictionary of all Tallies
             self.tallies[tally_id] = tally
 
-    def make_opencg_geometry(self):
-        """Create OpenCG geometry based on the information contained in the summary
-        file. The geometry is stored as the 'opencg_geometry' attribute.
-
-        """
-
-        try:
-            from openmc.opencg_compatible import get_opencg_geometry
-        except ImportError:
-            msg = 'Unable to import opencg which is needed ' \
-                  'by Summary.make_opencg_geometry()'
-            raise ImportError(msg)
-
-        if self.opencg_geometry is None:
-            self.opencg_geometry = get_opencg_geometry(self.openmc_geometry)
-
     def get_material_by_id(self, material_id):
         """Return a Material object given the material id
 
@@ -563,7 +567,7 @@ class Summary(object):
         """
 
         for index, material in self.materials.items():
-            if material._id == material_id:
+            if material.id == material_id:
                 return material
 
         return None
@@ -584,7 +588,7 @@ class Summary(object):
         """
 
         for index, surface in self.surfaces.items():
-            if surface._id == surface_id:
+            if surface.id == surface_id:
                 return surface
 
         return None
@@ -605,7 +609,7 @@ class Summary(object):
         """
 
         for index, cell in self.cells.items():
-            if cell._id == cell_id:
+            if cell.id == cell_id:
                 return cell
 
         return None
@@ -626,7 +630,7 @@ class Summary(object):
         """
 
         for index, universe in self.universes.items():
-            if universe._id == universe_id:
+            if universe.id == universe_id:
                 return universe
 
         return None
@@ -647,7 +651,7 @@ class Summary(object):
         """
 
         for index, lattice in self.lattices.items():
-            if lattice._id == lattice_id:
+            if lattice.id == lattice_id:
                 return lattice
 
         return None

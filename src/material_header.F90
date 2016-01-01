@@ -102,6 +102,9 @@ module material_header
     ! Does this material contain fissionable nuclides?
     logical :: fissionable = .false.
 
+    ! enforce isotropic scattering in lab
+    logical, allocatable :: p0(:)
+
   contains
     procedure :: get_density
     procedure :: otf_comp_index

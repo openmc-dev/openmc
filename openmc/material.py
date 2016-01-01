@@ -12,17 +12,13 @@ from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.clean_xml import *
 
 
-# A list of all IDs for all Materials created
-MATERIAL_IDS = []
-
 # A static variable for auto-generated Material IDs
 AUTO_MATERIAL_ID = 10000
 
 
 def reset_auto_material_id():
-    global AUTO_MATERIAL_ID, MATERIAL_IDS
+    global AUTO_MATERIAL_ID
     AUTO_MATERIAL_ID = 10000
-    MATERIAL_IDS = []
 
 
 # Units for density supported by OpenMC
@@ -33,8 +29,8 @@ NO_DENSITY = 99999.
 
 
 class Material(object):
-    """A material composed of a collection of nuclides/elements that can be assigned
-    to a region of space.
+    """A material composed of a collection of nuclides/elements that can be 
+    assigned to a region of space.
 
     Parameters
     ----------
@@ -83,6 +79,33 @@ class Material(object):
         # If specified, this file will be used instead of composition values
         self._distrib_otf_file = None
 
+    def __eq__(self, other):
+        if not isinstance(other, Material):
+            return False
+        elif self.id != other.id:
+            return False
+        elif self.name != other.name:
+            return False
+        # FIXME: We cannot compare densities since OpenMC outputs densities
+        # in atom/b-cm in summary.h5 irregardless of input units, and we
+        # cannot compute the sum percent in Python since we lack AWR
+        #elif self.density != other.density:
+        #    return False
+        #elif self._nuclides != other._nuclides:
+        #    return False
+        #elif self._elements != other._elements:
+        #   return False
+        elif self._sab != other._sab:
+            return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(repr(self))
+
     def __repr__(self):
         string = 'Material\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
@@ -115,6 +138,30 @@ class Material(object):
 
         return string
 
+    def __deepcopy__(self, memo):
+        existing = memo.get(id(self))
+
+        if existing is None:
+            # If this is the first time we have tried to copy this object, create a copy
+            clone = type(self).__new__(type(self))
+            clone._id = self._id
+            clone._name = self._name
+            clone._density = self._density
+            clone._density_units = self._density_units
+            clone._nuclides = deepcopy(self._nuclides, memo)
+            clone._elements = deepcopy(self._elements, memo)
+            clone._sab = deepcopy(self._sab, memo)
+            clone._convert_to_distrib_comps = self._convert_to_distrib_comps
+            clone._distrib_otf_file = self._distrib_otf_file
+
+            memo[id(self)] = clone
+
+            return clone
+
+        else:
+            # If this object has been copied before, return the first copy made
+            return existing
+
     @property
     def id(self):
         return self._id
@@ -141,26 +188,15 @@ class Material(object):
 
     @id.setter
     def id(self, material_id):
-        global AUTO_MATERIAL_ID, MATERIAL_IDS
-
-        # If the Material already has an ID, remove it from global list
-        if hasattr(self, '_id') and self._id is not None:
-            MATERIAL_IDS.remove(self._id)
 
         if material_id is None:
+            global AUTO_MATERIAL_ID
             self._id = AUTO_MATERIAL_ID
-            MATERIAL_IDS.append(AUTO_MATERIAL_ID)
             AUTO_MATERIAL_ID += 1
         else:
             check_type('material ID', material_id, Integral)
-            if material_id in MATERIAL_IDS:
-                msg = 'Unable to set Material ID to "{0}" since a Material with ' \
-                      'this ID was already initialized'.format(material_id)
-                raise ValueError(msg)
             check_greater_than('material ID', material_id, 0, equality=True)
-
             self._id = material_id
-            MATERIAL_IDS.append(material_id)
 
     @name.setter
     def name(self, name):
@@ -169,7 +205,7 @@ class Material(object):
                        name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     def set_density(self, units, density=NO_DENSITY):
         """Set the density of the material
@@ -347,6 +383,12 @@ class Material(object):
 
         self._sab.append((name, xs))
 
+    def make_isotropic_in_lab(self):
+        for nuclide_name in self._nuclides:
+            self._nuclides[nuclide_name][0].scattering = 'iso-in-lab'
+        for element_name in self._elements:
+            self._element[element_name][0].scattering = 'iso-in-lab'
+
     def get_all_nuclides(self):
         """Returns all nuclides in the material
 
@@ -377,8 +419,11 @@ class Material(object):
             else:
                 xml_element.set("wo", str(nuclide[1]))
 
-        if nuclide[0]._xs is not None:
-            xml_element.set("xs", nuclide[0]._xs)
+        if nuclide[0].xs is not None:
+            xml_element.set("xs", nuclide[0].xs)
+
+        if not nuclide[0].scattering is None:
+            xml_element.set("scattering", nuclide[0].scattering)
 
         return xml_element
 
@@ -391,6 +436,9 @@ class Material(object):
                 xml_element.set("ao", str(element[1]))
             else:
                 xml_element.set("wo", str(element[1]))
+
+        if not element[0].scattering is None:
+            xml_element.set("scattering", element[0].scattering)
 
         return xml_element
 
@@ -565,6 +613,10 @@ class MaterialsFile(object):
             raise ValueError(msg)
 
         self._materials.remove(material)
+
+    def make_isotropic_in_lab(self):
+        for material in self._materials:
+            material.make_isotropic_in_lab()
 
     def _create_material_subelements(self):
         subelement = ET.SubElement(self._materials_file, "default_xs")

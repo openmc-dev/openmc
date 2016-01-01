@@ -15,6 +15,10 @@ from openmc.region import Region, Intersection, Complement
 if sys.version_info[0] >= 3:
     basestring = str
 
+
+# DeprecationWarning filter for the Cell.add_surface(...) method
+warnings.simplefilter('always', DeprecationWarning)
+
 # A static variable for auto-generated Cell IDs
 AUTO_CELL_ID = 10000
 
@@ -72,6 +76,30 @@ class Cell(object):
         self._rotation = None
         self._translation = None
         self._offsets = None
+
+    def __eq__(self, other):
+        if not isinstance(other, Cell):
+            return False
+        elif self.id != other.id:
+            return False
+        elif self.name != other.name:
+            return False
+        elif self.fill != other.fill:
+             return False
+        elif self.region != other.region:
+            return False
+        elif self.rotation != other.rotation:
+            return False
+        elif self.translation != other.translation:
+            return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'Cell\n'
@@ -153,7 +181,7 @@ class Cell(object):
             cv.check_type('cell name', name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     @fill.setter
     def fill(self, fill):
@@ -216,7 +244,6 @@ class Cell(object):
 
         """
 
-        warnings.simplefilter('always', DeprecationWarning)
         warnings.warn("Cell.add_surface(...) has been deprecated and may be "
                       "removed in a future version. The region for a Cell "
                       "should be defined using the region property directly.",
@@ -443,6 +470,34 @@ class Universe(object):
         self._cell_offsets = OrderedDict()
         self._num_regions = 0
 
+    def __eq__(self, other):
+        if not isinstance(other, Universe):
+            return False
+        elif self.id != other.id:
+            return False
+        elif self.name != other.name:
+            return False
+        elif self.cells != other.cells:
+            return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __repr__(self):
+        string = 'Universe\n'
+        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tCells', '=\t',
+                                            list(self._cells.keys()))
+        string += '{0: <16}{1}{2}\n'.format('\t# Regions', '=\t',
+                                            self._num_regions)
+        return string
+
     @property
     def id(self):
         return self._id
@@ -472,7 +527,7 @@ class Universe(object):
             cv.check_type('universe name', name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     def add_cell(self, cell):
         """Add a cell to the universe.
@@ -527,11 +582,9 @@ class Universe(object):
                   'not a Cell'.format(self._id, cell)
             raise ValueError(msg)
 
-        cell_id = cell.getId()
-
         # If the Cell is in the Universe's list of Cells, delete it
-        if cell_id in self._cells:
-            del self._cells[cell_id]
+        if cell.id in self._cells:
+            del self._cells[cell.id]
 
     def clear_cells(self):
         """Remove all cells from the universe."""
@@ -632,16 +685,6 @@ class Universe(object):
 
         return universes
 
-    def __repr__(self):
-        string = 'Universe\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tCells', '=\t',
-                                            list(self._cells.keys()))
-        string += '{0: <16}{1}{2}\n'.format('\t# Regions', '=\t',
-                                            self._num_regions)
-        return string
-
     def create_xml_subelement(self, xml_element):
 
         # Iterate over all Cells
@@ -697,6 +740,25 @@ class Lattice(object):
         self._outer = None
         self._universes = None
 
+    def __eq__(self, other):
+        if not isinstance(other, Lattice):
+            return False
+        elif self.id != other.id:
+            return False
+        elif self.name != other.name:
+            return False
+        elif self.pitch != other.pitch:
+            return False
+        elif self.outer != other.outer:
+            return False
+        elif self.universes != other.universes:
+            return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self == other
+
     @property
     def id(self):
         return self._id
@@ -734,7 +796,7 @@ class Lattice(object):
             cv.check_type('lattice name', name, basestring)
             self._name = name
         else:
-            self._name = None
+            self._name = ''
 
     @outer.setter
     def outer(self, outer):
@@ -896,6 +958,24 @@ class RectLattice(Lattice):
         self._lower_left = None
         self._offsets = None
 
+    def __eq__(self, other):
+        if not isinstance(other, RectLattice):
+            return False
+        elif not super(RectLattice, self).__eq__(other):
+            return False
+        elif self.dimension != other.dimension:
+            return False
+        elif self.lower_left != other.lower_left:
+            return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(repr(self))
+
     def __repr__(self):
         string = 'RectLattice\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
@@ -1039,7 +1119,7 @@ class RectLattice(Lattice):
             for z in range(self._dimension[2]):
                 for y in range(self._dimension[1]):
                     for x in range(self._dimension[0]):
-                        universe = self._universes[x][y][z]
+                        universe = self._universes[z][y][x]
 
                         # Append Universe ID to the Lattice XML subelement
                         universe_ids += '{0} '.format(universe._id)
@@ -1057,7 +1137,7 @@ class RectLattice(Lattice):
         else:
             for y in range(self._dimension[1]):
                 for x in range(self._dimension[0]):
-                    universe = self._universes[x][y]
+                    universe = self._universes[y][x]
 
                     # Append Universe ID to Lattice XML subelement
                     universe_ids += '{0} '.format(universe._id)
@@ -1112,6 +1192,26 @@ class HexLattice(Lattice):
         self._num_rings = None
         self._num_axial = None
         self._center = None
+
+    def __eq__(self, other):
+        if not isinstance(other, HexLattice):
+            return False
+        elif not super(HexLattice, self).__eq__(other):
+            return False
+        elif self.num_rings != other.num_rings:
+            return False
+        elif self.num_axial != other.num_axial:
+            return False
+        elif self.center != other.center:
+            return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'HexLattice\n'

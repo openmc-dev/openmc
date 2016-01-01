@@ -43,7 +43,7 @@ contains
     integer :: max_n_filters = 0 ! maximum number of filters
     integer :: even
     integer :: otf_initial_size
-    type(TallyObject), pointer :: t => null()
+    type(TallyObject), pointer :: t
 
     call write_message("Setting up tally arrays...", 7)
 
@@ -123,7 +123,7 @@ contains
     integer :: k    ! loop index for bins
     integer :: bin  ! filter bin entries
     integer :: type ! type of tally filter
-    type(TallyObject), pointer :: t => null()
+    type(TallyObject), pointer :: t
 
     call write_message("Setting up tally maps...", 7)
 

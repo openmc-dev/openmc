@@ -1287,7 +1287,6 @@ contains
     integer(HSIZE_T) :: dims(1)
     type(c_ptr) :: f_ptr
 #ifdef PHDF5
-    integer :: data_xfer_mode
     integer(HID_T) :: plist    ! property list
 #else
     integer :: i
@@ -1406,7 +1405,6 @@ contains
     integer(HSIZE_T) :: offset(1) ! offset of data
     type(c_ptr) :: f_ptr
 #ifdef PHDF5
-    integer :: data_xfer_mode
     integer(HID_T) :: plist    ! property list
 #endif
 

@@ -241,6 +241,14 @@ endif()
 add_subdirectory(src/xml/fox)
 
 #===============================================================================
+# RPATH information
+#===============================================================================
+
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+#===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
@@ -289,14 +297,21 @@ target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom)
 install(TARGETS ${program} RUNTIME DESTINATION bin)
 install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
-install(FILES LICENSE DESTINATION "share/doc/${program}/copyright")
+install(FILES LICENSE DESTINATION "share/doc/${program}" RENAME copyright)
 
 find_package(PythonInterp)
 if(PYTHONINTERP_FOUND)
-  install(CODE "execute_process(
-                  COMMAND ${PYTHON_EXECUTABLE} setup.py install
-                  --prefix=${CMAKE_INSTALL_PREFIX}
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})")
+  if(debian)
+    install(CODE "execute_process(
+                    COMMAND ${PYTHON_EXECUTABLE} setup.py install
+                    --root=debian/openmc --install-layout=deb
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})")
+  else()
+    install(CODE "execute_process(
+                    COMMAND ${PYTHON_EXECUTABLE} setup.py install
+                    --prefix=${CMAKE_INSTALL_PREFIX}
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})")
+  endif()
 endif()
 
 #===============================================================================

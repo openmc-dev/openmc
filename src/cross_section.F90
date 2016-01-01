@@ -13,10 +13,6 @@ module cross_section
   use search,          only: binary_search
 
   implicit none
-  save
-
-  integer :: union_grid_index
-!$omp threadprivate(union_grid_index)
 
 contains
 
@@ -33,7 +29,8 @@ contains
     integer :: i_nuclide     ! index into nuclides array
     integer :: i_sab         ! index into sab_tables array
     integer :: j             ! index in mat % i_sab_nuclides
-    integer :: u             ! index into logarithmic mapping array
+    integer :: i_grid        ! index into logarithmic mapping array or material
+                             ! union grid
     real(8) :: atom_density  ! atom density of a nuclide
     logical :: check_sab     ! should we check for S(a,b) table?
     type(Material), pointer :: mat ! current material
@@ -44,7 +41,6 @@ contains
     material_xs % absorption     = ZERO
     material_xs % fission        = ZERO
     material_xs % nu_fission     = ZERO
-    material_xs % kappa_fission  = ZERO
 
     ! Exit subroutine if material is void
     if (p % material == MATERIAL_VOID) return
@@ -52,11 +48,10 @@ contains
     mat => materials(p % material)
 
     ! Find energy index on energy grid
-    u = 0
     if (grid_method == GRID_MAT_UNION) then
-      call find_energy_index(p % E, p % material)
+      i_grid = find_energy_index(mat, p % E)
     else if (grid_method == GRID_LOGARITHM) then
-      u = int(log(p % E/energy_min_neutron)/log_spacing)
+      i_grid = int(log(p % E/energy_min_neutron)/log_spacing)
     end if
 
     ! Determine if this material has S(a,b) tables
@@ -100,11 +95,9 @@ contains
       ! Calculate microscopic cross section for this nuclide
       if (p % E /= micro_xs(i_nuclide) % last_E) then
         if (i == 1) p % xs_seed = prn_seed
-        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, u)
-      else if (i_sab /= micro_xs(i_nuclide) % last_index_sab) then
+        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, i_grid)      else if (i_sab /= micro_xs(i_nuclide) % last_index_sab) then
         if (i == 1) p % xs_seed = prn_seed
-        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, u)
-      end if
+        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, i_grid)      end if
 
       ! ========================================================================
       ! ADD TO MACROSCOPIC CROSS SECTION
@@ -131,10 +124,6 @@ contains
       ! Add contributions to material macroscopic nu-fission cross section
       material_xs % nu_fission = material_xs % nu_fission + &
            atom_density * micro_xs(i_nuclide) % nu_fission
-
-      ! Add contributions to material macroscopic energy release from fission
-      material_xs % kappa_fission = material_xs % kappa_fission + &
-           atom_density * micro_xs(i_nuclide) % kappa_fission
     end do
 
   end subroutine calculate_xs
@@ -144,18 +133,19 @@ contains
 ! given index in the nuclides array at the energy of the given particle
 !===============================================================================
 
-  subroutine calculate_nuclide_xs(i_nuclide, i_sab, E, i_mat, i_nuc_mat, u)
-
+  subroutine calculate_nuclide_xs(i_nuclide, i_sab, E, i_mat, i_nuc_mat, i_log_union)
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: i_sab     ! index into sab_tables array
+    real(8), intent(in) :: E         ! energy
     integer, intent(in) :: i_mat     ! index into materials array
     integer, intent(in) :: i_nuc_mat ! index into nuclides array for a material
-    integer, intent(in) :: u         ! index into logarithmic mapping array
+    integer, intent(in) :: i_log_union ! index into logarithmic mapping array or
+                                       ! material union energy grid
+
     integer :: i_grid ! index on nuclide energy grid
     integer :: i_low  ! lower logarithmic mapping index
     integer :: i_high ! upper logarithmic mapping index
-    real(8), intent(in) :: E ! energy
-    real(8) :: f             ! interp factor on nuclide energy grid
+    real(8) :: f      ! interp factor on nuclide energy grid
     type(Nuclide),  pointer :: nuc
     type(Material), pointer :: mat
 
@@ -167,7 +157,7 @@ contains
     select case (grid_method)
     case (GRID_MAT_UNION)
 
-      i_grid = mat % nuclide_grid_index(i_nuc_mat, union_grid_index)
+      i_grid = mat % nuclide_grid_index(i_nuc_mat, i_log_union)
 
     case (GRID_LOGARITHM)
       ! Determine the energy grid index using a logarithmic mapping to reduce
@@ -180,8 +170,8 @@ contains
       else
         ! Determine bounding indices based on which equal log-spaced interval
         ! the energy is in
-        i_low  = nuc % grid_index(u)
-        i_high = nuc % grid_index(u + 1) + 1
+        i_low  = nuc % grid_index(i_log_union)
+        i_high = nuc % grid_index(i_log_union + 1) + 1
 
         ! Perform binary search over reduced range
         i_grid = binary_search(nuc % energy(i_low:i_high), &
@@ -221,7 +211,6 @@ contains
     ! Initialize nuclide cross-sections to zero
     micro_xs(i_nuclide) % fission    = ZERO
     micro_xs(i_nuclide) % nu_fission = ZERO
-    micro_xs(i_nuclide) % kappa_fission  = ZERO
 
     ! Calculate microscopic nuclide total cross section
     micro_xs(i_nuclide) % total = (ONE - f) * nuc % total(i_grid) &
@@ -243,13 +232,6 @@ contains
       ! Calculate microscopic nuclide nu-fission cross section
       micro_xs(i_nuclide) % nu_fission = (ONE - f) * nuc % nu_fission( &
            i_grid) + f * nuc % nu_fission(i_grid+1)
-
-      ! Calculate microscopic nuclide kappa-fission cross section
-      ! The ENDF standard (ENDF-102) states that MT 18 stores
-      ! the fission energy as the Q_value (fission(1))
-      micro_xs(i_nuclide) % kappa_fission = &
-           nuc % reactions(nuc % index_fission(1)) % Q_value * &
-           micro_xs(i_nuclide) % fission
     end if
 
     ! If there is S(a,b) data for this nuclide, we need to do a few
@@ -384,7 +366,6 @@ contains
     logical :: same_nuc     ! do we know the xs for this nuclide at this energy?
     type(UrrData),  pointer :: urr
     type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
 
     micro_xs(i_nuclide) % use_ptable = .true.
 
@@ -410,7 +391,7 @@ contains
     ! preserve correlation of temperature in probability tables
     same_nuc = .false.
     do i = 1, nuc % nuc_list % size()
-      if (E /= ZERO .and. E == micro_xs(nuc % nuc_list % get_item(i)) % last_E) then
+      if (E /= ZERO .and. E == micro_xs(nuc % nuc_list % data(i)) % last_E) then
         same_nuc = .true.
         same_nuc_idx = i
         exit
@@ -418,7 +399,7 @@ contains
     end do
 
     if (same_nuc) then
-      r = micro_xs(nuc % nuc_list % get_item(same_nuc_idx)) % last_prn
+      r = micro_xs(nuc % nuc_list % data(same_nuc_idx)) % last_prn
     else
       r = prn()
       micro_xs(i_nuclide) % last_prn = r
@@ -480,18 +461,17 @@ contains
     ! Determine treatment of inelastic scattering
     inelastic = ZERO
     if (urr % inelastic_flag > 0) then
-      ! Get pointer to inelastic scattering reaction
-      rxn => nuc % reactions(nuc % urr_inelastic)
-
       ! Get index on energy grid and interpolation factor
       i_energy = micro_xs(i_nuclide) % index_grid
       f = micro_xs(i_nuclide) % interp_factor
 
       ! Determine inelastic scattering cross section
-      if (i_energy >= rxn % threshold) then
-        inelastic = (ONE - f) * rxn % sigma(i_energy - rxn%threshold + 1) + &
-             f * rxn % sigma(i_energy - rxn%threshold + 2)
-      end if
+      associate (rxn => nuc % reactions(nuc % urr_inelastic))
+        if (i_energy >= rxn % threshold) then
+          inelastic = (ONE - f) * rxn % sigma(i_energy - rxn%threshold + 1) + &
+               f * rxn % sigma(i_energy - rxn%threshold + 2)
+        end if
+      end associate
     end if
 
     ! Multiply by smooth cross-section if needed
@@ -528,38 +508,35 @@ contains
 ! energy
 !===============================================================================
 
-  subroutine find_energy_index(E, i_mat)
-
-    real(8), intent(in) :: E       ! energy of particle
-    integer, intent(in) :: i_mat   ! material index
-    type(Material), pointer :: mat ! pointer to current material
-
-    mat => materials(i_mat)
+  pure function find_energy_index(mat, E) result(i)
+    type(Material), intent(in) :: mat ! pointer to current material
+    real(8),        intent(in) :: E   ! energy of particle
+    integer                    :: i   ! energy grid index
 
     ! if the energy is outside of energy grid range, set to first or last
     ! index. Otherwise, do a binary search through the union energy grid.
     if (E <= mat % e_grid(1)) then
-      union_grid_index = 1
+      i = 1
     elseif (E > mat % e_grid(mat % n_grid)) then
-      union_grid_index = mat % n_grid - 1
+      i = mat % n_grid - 1
     else
-      union_grid_index = binary_search(mat % e_grid, mat % n_grid, E)
+      i = binary_search(mat % e_grid, mat % n_grid, E)
     end if
 
-  end subroutine find_energy_index
+  end function find_energy_index
 
 !===============================================================================
 ! 0K_ELASTIC_XS determines the microscopic 0K elastic cross section
 ! for a given nuclide at the trial relative energy used in resonance scattering
 !===============================================================================
 
-  function elastic_xs_0K(E, nuc) result(xs_out)
+  pure function elastic_xs_0K(E, nuc) result(xs_out)
+    real(8),       intent(in) :: E      ! trial energy
+    type(Nuclide), intent(in) :: nuc    ! target nuclide at temperature
+    real(8)                   :: xs_out ! 0K xs at trial energy
 
-    type(Nuclide), pointer :: nuc    ! target nuclide at temperature
-    integer                :: i_grid ! index on nuclide energy grid
-    real(8)                :: f      ! interp factor on nuclide energy grid
-    real(8), intent(inout) :: E      ! trial energy
-    real(8)                :: xs_out ! 0K xs at trial energy
+    integer :: i_grid ! index on nuclide energy grid
+    real(8) :: f      ! interp factor on nuclide energy grid
 
     ! Determine index on nuclide energy grid
     if (E < nuc % energy_0K(1)) then

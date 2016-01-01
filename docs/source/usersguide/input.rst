@@ -1201,8 +1201,10 @@ Each ``material`` element can have the following attributes or sub-elements:
     An element with attributes/sub-elements called ``value`` and ``units``. The
     ``value`` attribute is the numeric value of the density while the ``units``
     can be "g/cm3", "kg/m3", "atom/b-cm", "atom/cm3", or "sum". The "sum" unit
-    indicates that the density should be calculated as the sum of the atom
-    fractions for each nuclide in the material. This should not be used in
+    indicates that values appearing in ``ao`` attributes for ``<nuclide>`` and
+    ``<element>`` sub-elements are to be interpreted as nuclide/element
+    densities in atom/b-cm, and the total density of the material is taken as
+    the sum of all nuclides/elements. The "sum" option cannot be used in
     conjunction with weight percents.
 
     *Default*: None
@@ -1222,6 +1224,15 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     .. note:: If one nuclide is specified in atom percent, all others must also
               be given in atom percent. The same applies for weight percentages.
+
+    An optional attribute/sub-element for each nuclide is ``scattering``. This
+    attribute may be set to "data" to use the scattering laws specified by the
+    cross section library (default). Alternatively, when set to "iso-in-lab",
+    the scattering laws are used to sample the outgoing energy but an
+    isotropic-in-lab  distribution is used to sample the outgoing angle at each
+    scattering interaction. The ``scattering`` attribute may be most useful
+    when using OpenMC to compute multi-group cross-sections for deterministic
+    transport codes and to quantify the effects of anisotropic scattering.
 
     *Default*: None
 
@@ -1246,6 +1257,17 @@ Each ``material`` element can have the following attributes or sub-elements:
     In some cross section libraries, certain naturally occurring isotopes do not
     have cross sections. The :ref:`natural_elements` option determines how a
     natural element is split into isotopes in these cases.
+
+    *Default*: None
+
+    An optional attribute/sub-element for each element is ``scattering``. This
+    attribute may be set to "data" to use the scattering laws specified by the
+    cross section library (default). Alternatively, when set to "iso-in-lab",
+    the scattering laws are used to sample the outgoing energy but an
+    isotropic-in-lab  distribution is used to sample the outgoing angle at each
+    scattering interaction. The ``scattering`` attribute may be most useful
+    when using OpenMC to compute multi-group cross-sections for deterministic
+    transport codes and to quantify the effects of anisotropic scattering.
 
     *Default*: None
 
@@ -1689,7 +1711,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
     :inverse-velocity:
       The flux-weighted inverse velocity where the velocity is in units of
-      meters per second.
+      centimeters per second.
 
       .. note::
          The ``analog`` estimator is actually identical to the ``collision``

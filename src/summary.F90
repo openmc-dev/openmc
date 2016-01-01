@@ -355,8 +355,13 @@ contains
         call write_dataset(lattice_group, "type", "rectangular")
 
         ! Write lattice dimensions, lower left corner, and pitch
-        call write_dataset(lattice_group, "dimension", lat%n_cells)
-        call write_dataset(lattice_group, "lower_left", lat%lower_left)
+        if (lat % is_3d) then
+          call write_dataset(lattice_group, "dimension", lat % n_cells)
+          call write_dataset(lattice_group, "lower_left", lat % lower_left)
+        else
+          call write_dataset(lattice_group, "dimension", lat % n_cells(1:2))
+          call write_dataset(lattice_group, "lower_left", lat % lower_left)
+        end if
 
         ! Write lattice universes.
         allocate(lattice_universes(lat%n_cells(1), lat%n_cells(2), &

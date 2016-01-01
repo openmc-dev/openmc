@@ -905,11 +905,8 @@ def get_opencg_lattice(openmc_lattice):
     for z in range(dimension[2]):
         for y in range(dimension[1]):
             for x in range(dimension[0]):
-                universe_id = universes[z][dimension[1]-y-1][x].id
+                universe_id = universes[z][y][x].id
                 universe_array[z][y][x] = unique_universes[universe_id]
-
-    # Reverse y-dimension in array to match ordering in OpenCG
-    universe_array = universe_array[:, ::-1, :]
 
     opencg_lattice = opencg.Lattice(lattice_id, name)
     opencg_lattice.dimension = dimension

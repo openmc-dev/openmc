@@ -354,10 +354,8 @@ class Summary(object):
 
                 # Use 2D NumPy array to store lattice universes for 2D lattices
                 if len(dimension) == 2:
-                    print('squeezing!')
                     universes = np.squeeze(universes)
                     universes = np.atleast_2d(universes)
-                    print(universes.shape)
 
                 # Set the universes for the lattice
                 lattice.universes = universes

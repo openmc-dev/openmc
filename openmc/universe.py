@@ -807,7 +807,7 @@ class Lattice(object):
     def universes(self, universes):
         cv.check_iterable_type('lattice universes', universes, Universe,
                                min_depth=2, max_depth=3)
-        self._universes = universes
+        self._universes = np.asarray(universes)
 
     def get_unique_universes(self):
         """Determine all unique universes in the lattice

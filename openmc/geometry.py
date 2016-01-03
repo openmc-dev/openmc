@@ -43,9 +43,9 @@ class Geometry(object):
         self._root_universe = root_universe
 
     def get_cell_instance(self, path):
-        """Returns the corresponding location in the results array for a given path and
-        filter number. This is primarily intended to post-processing result when
-        a distribcell filter is used.
+        """Return the instance number for the final cell in a geometry path.
+
+        The instance is an index into tally distribcell filter arrays.
 
         Parameters
         ----------
@@ -58,8 +58,8 @@ class Geometry(object):
 
         Returns
         -------
-        offset : int
-            Location in the results array for the path and filter
+        instance : int
+            Index in tally results array for distribcell filters
 
         """
 

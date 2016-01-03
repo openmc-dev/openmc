@@ -553,7 +553,7 @@ contains
               do l = 1, materials(p % material) % n_nuclides
 
                 ! Get atom density
-                atom_density_ = materials(p % material) % get_density(p % inst, l)
+                atom_density_ = materials(p % material)%get_density(p%inst, l)
 
                 ! Get index in nuclides array
                 i_nuc = materials(p % material) % nuclide(l)
@@ -644,7 +644,7 @@ contains
           else
             do l = 1, materials(p%material)%n_nuclides
               ! Determine atom density and index of nuclide
-              atom_density_ = materials(p%material)%atom_density(l)
+              atom_density_ = materials(p%material)%get_density(p%inst, l)
               i_nuc = materials(p%material)%nuclide(l)
 
               ! If nuclide is fissionable, accumulate kappa fission

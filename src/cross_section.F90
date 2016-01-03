@@ -95,9 +95,11 @@ contains
       ! Calculate microscopic cross section for this nuclide
       if (p % E /= micro_xs(i_nuclide) % last_E) then
         if (i == 1) p % xs_seed = prn_seed
-        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, i_grid)      else if (i_sab /= micro_xs(i_nuclide) % last_index_sab) then
+        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, i_grid)
+      else if (i_sab /= micro_xs(i_nuclide) % last_index_sab) then
         if (i == 1) p % xs_seed = prn_seed
-        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, i_grid)      end if
+        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, i_grid)
+      end if
 
       ! ========================================================================
       ! ADD TO MACROSCOPIC CROSS SECTION

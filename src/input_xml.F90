@@ -1899,7 +1899,6 @@ contains
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
     integer :: k             ! loop index for elements/compositions
-
     integer :: l             ! loop index for post expansion nuclides
     integer :: n             ! number of nuclides
     integer :: n_nuclide     ! number of nuclides entered
@@ -2147,29 +2146,9 @@ contains
 
         end if
 
-        ! Check enforced isotropic lab scattering
-        if (check_for_node(node_nuc, "scattering")) then
-          call get_node_value(node_nuc, "scattering", temp_str)
-          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-            call list_iso_lab % append(1)
-          else if (adjustl(to_lower(temp_str)) == "data") then
-            call list_iso_lab % append(0)
-          else
-            call fatal_error("Scattering must be isotropic in lab or follow&
-                 & the ACE file data")
-          end if
-        else
-          call list_iso_lab % append(0)
-        end if
-
-        ! store full name
-        call get_node_value(node_nuc, "name", temp_str)
-        if (check_for_node(node_nuc, "xs")) &
-             call get_node_value(node_nuc, "xs", name)
-        name = trim(temp_str) // "." // trim(name)
-
         ! =======================================================================
         ! READ AND PARSE <nuclide> TAGS
+
         ! Check to ensure material has at least one nuclide
         if (.not. check_for_node(node_comp, "nuclide") .and. &
              .not. check_for_node(node_comp, "element")) then
@@ -2197,11 +2176,26 @@ contains
           ! Check for cross section
           if (.not. check_for_node(node_nuc, "xs")) then
             if (default_xs == '') then
-              call fatal_error("No cross section specified for nuclide in material " &
-                   // trim(to_str(mat % id)))
+              call fatal_error("No cross section specified for nuclide in &
+                 &material " // trim(to_str(mat % id)))
             else
               name = trim(default_xs)
             end if
+          end if
+
+          ! Check enforced isotropic lab scattering
+          if (check_for_node(node_nuc, "scattering")) then
+            call get_node_value(node_nuc, "scattering", temp_str)
+            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+              call list_iso_lab % append(1)
+            else if (adjustl(to_lower(temp_str)) == "data") then
+              call list_iso_lab % append(0)
+            else
+              call fatal_error("Scattering must be isotropic in lab or follow&
+                   & the ACE file data")
+            end if
+          else
+            call list_iso_lab % append(0)
           end if
 
           ! store full name
@@ -2254,8 +2248,29 @@ contains
 
           ! Expand element into naturally-occurring isotopes
           call expand_natural_element(name, temp_str, 1.0_8, &
-
                list_names, list_density)
+
+          ! Compute number of new nuclides from the natural element expansion
+          n_nuc_ele = list_names % size() - n_nuc_ele
+          
+          ! Check enforced isotropic lab scattering
+          if (check_for_node(node_ele, "scattering")) then
+            call get_node_value(node_ele, "scattering", temp_str)
+          else
+            temp_str = "data"
+          end if
+          
+          ! Set ace or iso-in-lab scattering for each nuclide in element
+          do k = 1, n_nuc_ele
+            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+              call list_iso_lab % append(1)
+            else if (adjustl(to_lower(temp_str)) == "data") then
+              call list_iso_lab % append(0)
+            else
+              call fatal_error("Scattering must be isotropic in lab or follow&
+                   & the ACE file data")
+            end if
+          end do
 
         end do COMPOSITION_ELEMENTS
 
@@ -2383,30 +2398,6 @@ contains
 
         end if
 
-        ! Compute number of new nuclides from the natural element expansion
-        n_nuc_ele = list_names % size() - n_nuc_ele
-
-        ! Check enforced isotropic lab scattering
-        if (check_for_node(node_ele, "scattering")) then
-          call get_node_value(node_ele, "scattering", temp_str)
-        else
-          temp_str = "data"
-        end if
-
-        ! Set ace or iso-in-lab scattering for each nuclide in element
-        do k = 1, n_nuc_ele
-          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-            call list_iso_lab % append(1)
-          else if (adjustl(to_lower(temp_str)) == "data") then
-            call list_iso_lab % append(0)
-          else
-            call fatal_error("Scattering must be isotropic in lab or follow&
-                 & the ACE file data")
-          end if
-        end do
-
-      end do NATURAL_ELEMENTS
-
       else
         ! NOT USING DISTRIBUTED COMPOSITIONS
         mat % distrib_comp = .false.
@@ -2447,6 +2438,21 @@ contains
             else
               name = trim(default_xs)
             end if
+          end if
+
+          ! Check enforced isotropic lab scattering
+          if (check_for_node(node_nuc, "scattering")) then
+            call get_node_value(node_nuc, "scattering", temp_str)
+            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+              call list_iso_lab % append(1)
+            else if (adjustl(to_lower(temp_str)) == "data") then
+              call list_iso_lab % append(0)
+            else
+              call fatal_error("Scattering must be isotropic in lab or follow&
+                   & the ACE file data")
+            end if
+          else
+            call list_iso_lab % append(0)
           end if
 
           ! store full name
@@ -2520,6 +2526,9 @@ contains
                  &element: " // trim(name))
           end if
 
+          ! Get current number of nuclides
+          n_nuc_ele = list_names % size()
+
           ! Expand element into naturally-occurring isotopes
           if (check_for_node(node_ele, "ao")) then
             call get_node_value(node_ele, "ao", temp_dble)
@@ -2529,8 +2538,33 @@ contains
             call fatal_error("The ability to expand a natural element based on weight &
                  &percentage is not yet supported.")
           end if
+
+          ! Compute number of new nuclides from the natural element expansion
+          n_nuc_ele = list_names % size() - n_nuc_ele
+          
+          ! Check enforced isotropic lab scattering
+          if (check_for_node(node_ele, "scattering")) then
+            call get_node_value(node_ele, "scattering", temp_str)
+          else
+            temp_str = "data"
+          end if
+          
+          ! Set ace or iso-in-lab scattering for each nuclide in element
+          do k = 1, n_nuc_ele
+            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+              call list_iso_lab % append(1)
+            else if (adjustl(to_lower(temp_str)) == "data") then
+              call list_iso_lab % append(0)
+            else
+              call fatal_error("Scattering must be isotropic in lab or follow&
+                   & the ACE file data")
+            end if
+          end do
+          
         end do NATURAL_ELEMENTS
+        
         allocate(mat % comp(1) % atom_density(list_names % size()))
+        
       end if
       ! ========================================================================
       ! COPY NUCLIDES TO ARRAYS IN MATERIAL
@@ -2540,7 +2574,6 @@ contains
       mat % n_nuclides = n
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
-      allocate(mat % atom_density(n))
       allocate(mat % p0(n))
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides

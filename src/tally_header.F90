@@ -59,6 +59,10 @@ module tally_header
     integer :: offset = 0 ! Only used for distribcell filters
     integer, allocatable :: int_bins(:)
     real(8), allocatable :: real_bins(:) ! Only used for energy filters
+
+    ! Type-Bound procedures
+    contains
+      procedure :: clear => tallyfilter_clear ! Deallocates TallyFilter
   end type TallyFilter
 
 !===============================================================================

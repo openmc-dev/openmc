@@ -1712,7 +1712,7 @@ contains
     integer :: j
     integer :: n ! number of bins for single filter
     integer :: offset ! offset for distribcell
-    integer :: distribcell_ind ! index in distribcell arrays
+    integer :: distribcell_index ! index in distribcell arrays
     real(8) :: E ! particle energy
     real(8) :: theta, phi ! Polar and Azimuthal Angles, respectively
     type(TallyObject), pointer :: t
@@ -1757,13 +1757,14 @@ contains
 
       case (FILTER_DISTRIBCELL)
         ! determine next distribcell bin
-        distribcell_ind = cells(t % filters(i) % int_bins(1)) % distribcell_ind
+        distribcell_index = cells(t % filters(i) % int_bins(1)) &
+                                  % distribcell_index
         matching_bins(i) = NO_BIN_FOUND
         offset = 0
         do j = 1, p % n_coord
           if (cells(p % coord(j) % cell) % type == CELL_FILL) then
             offset = offset + cells(p % coord(j) % cell) % &
-                 offset(distribcell_ind)
+                 offset(distribcell_index)
           elseif(cells(p % coord(j) % cell) % type == CELL_LATTICE) then
             if (lattices(p % coord(j + 1) % lattice) % obj &
                  % are_valid_indices([&
@@ -1771,7 +1772,7 @@ contains
                  p % coord(j + 1) % lattice_y, &
                  p % coord(j + 1) % lattice_z])) then
               offset = offset + lattices(p % coord(j + 1) % lattice) % obj % &
-                   offset(distribcell_ind, &
+                   offset(distribcell_index, &
                    p % coord(j + 1) % lattice_x, &
                    p % coord(j + 1) % lattice_y, &
                    p % coord(j + 1) % lattice_z)

@@ -66,20 +66,20 @@ class Geometry(object):
         # Find the distribcell index of the cell.
         cells = self.get_all_cells()
         if path[-1] in cells:
-            distribcell_ind = cells[path[-1]].distribcell_ind
+            distribcell_index = cells[path[-1]].distribcell_index
         else:
             raise RuntimeError('Could not find cell {} specified in a \
                                 distribcell filter'.format(path[-1]))
 
         # Return memoize'd offset if possible
-        if (path, distribcell_ind) in self._offsets:
-            offset = self._offsets[(path, distribcell_ind)]
+        if (path, distribcell_index) in self._offsets:
+            offset = self._offsets[(path, distribcell_index)]
 
         # Begin recursive call to compute offset starting with the base Universe
         else:
             offset = self._root_universe.get_cell_instance(path,
-                                                           distribcell_ind)
-            self._offsets[(path, distribcell_ind)] = offset
+                                                           distribcell_index)
+            self._offsets[(path, distribcell_index)] = offset
 
         # Return the final offset
         return offset

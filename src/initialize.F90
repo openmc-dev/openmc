@@ -1092,7 +1092,7 @@ contains
       univ => universes(i)
       do j = 1, univ % n_cells
         if (cell_list % contains(univ % cells(j))) then
-          cells(univ % cells(j)) % distribcell_ind = k
+          cells(univ % cells(j)) % distribcell_index = k
           univ_list(k) = univ % id
           k = k + 1
         end if

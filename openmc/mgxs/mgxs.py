@@ -47,7 +47,7 @@ _DOMAINS = [openmc.Cell,
 
 
 class MGXS(object):
-    """An abstract multi-group cross section for some energy group structure 
+    """An abstract multi-group cross section for some energy group structure
     within some spatial domain.
 
     This class can be used for both OpenMC input generation and tally data
@@ -92,10 +92,10 @@ class MGXS(object):
     xs_tally : Tally
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
-    num_sumbdomains : Integral
+    num_subdomains : Integral
         The number of subdomains is unity for 'material', 'cell' and 'universe'
         domain types. When the  This is equal to the number of cell instances
-        for 'distribcell' domain types (it is equal to unity prior to loading 
+        for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : Integral
         The number of nuclides for which the multi-group cross section is
@@ -755,7 +755,7 @@ class MGXS(object):
 
             # Reshape condensed data arrays with one dimension for all filters
             new_shape = \
-                (tally.num_filter_bins, tally.num_nuclides, tally.num_score_bins,)
+                (tally.num_filter_bins, tally.num_nuclides, tally.num_scores,)
             mean = np.reshape(mean, new_shape)
             std_dev = np.reshape(std_dev, new_shape)
 
@@ -837,7 +837,7 @@ class MGXS(object):
 
             # Reshape averaged data arrays with one dimension for all filters
             new_shape = \
-                (tally.num_filter_bins, tally.num_nuclides, tally.num_score_bins,)
+                (tally.num_filter_bins, tally.num_nuclides, tally.num_scores,)
             mean = np.reshape(mean, new_shape)
             std_dev = np.reshape(std_dev, new_shape)
 
@@ -1420,8 +1420,8 @@ class AbsorptionXS(MGXS):
 
 class CaptureXS(MGXS):
     """A capture multi-group cross section.
-    
-    The Neutron capture reaction rate is defined as the difference between 
+
+    The neutron capture reaction rate is defined as the difference between
     OpenMC's 'absorption' and 'fission' reaction rate score types. This includes
     not only radiative capture, but all forms of neutron disappearance aside
     from fission (e.g., MT > 100).
@@ -1723,8 +1723,8 @@ class ScatterMatrixXS(MGXS):
         if self.correction == 'P0':
             scatter_p1 = self.tallies['scatter-P1']
             scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
-            energy_filter = openmc.Filter(type='energy')
-            energy_filter.bins = self.energy_groups.group_edges
+            energy_filter = self.tallies['scatter'].find_filter('energy')
+            energy_filter = copy.deepcopy(energy_filter)
             scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
             rxn_tally = self.tallies['scatter'] - scatter_p1
         else:

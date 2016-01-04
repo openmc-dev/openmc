@@ -9,9 +9,9 @@ if sys.version > '3':
 
 
 class StatePoint(object):
-    """State information on a simulation at a certain point in time (at the end of a
-    given batch). Statepoints can be used to analyze tally results as well as
-    restart a simulation.
+    """State information on a simulation at a certain point in time (at the end
+    of a given batch). Statepoints can be used to analyze tally results as well
+    as restart a simulation.
 
     Attributes
     ----------
@@ -391,15 +391,10 @@ class StatePoint(object):
                     nuclide = openmc.Nuclide(name.decode().strip())
                     tally.add_nuclide(nuclide)
 
-                # Read score bins
-                n_score_bins = self._f['{0}{1}/n_score_bins'.format(base, tally_key)].value
-
-                tally.num_score_bins = n_score_bins
-
                 scores = self._f['{0}{1}/score_bins'.format(
                     base, tally_key)].value
-                n_user_scores = self._f['{0}{1}/n_user_score_bins'
-                                        .format(base, tally_key)].value
+                n_score_bins = self._f['{0}{1}/n_score_bins'
+                                       .format(base, tally_key)].value
 
                 # Compute and set the filter strides
                 for i in range(n_filters):
@@ -409,7 +404,7 @@ class StatePoint(object):
                     for j in range(i+1, n_filters):
                         filter.stride *= tally.filters[j].num_bins
 
-                # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
+                # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
                 moments = self._f['{0}{1}/moment_orders'.format(
                     base, tally_key)].value
 

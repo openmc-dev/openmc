@@ -15,7 +15,6 @@ module global
   use surface_header,   only: SurfaceContainer
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
-  use testing_header,   only: TestSuiteClass
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
 
@@ -334,9 +333,6 @@ module global
 
   ! Particle restart run
   logical :: particle_restart_run = .false.
-
-  ! Testing data structure
-  type(TestSuiteClass) :: unittests
 
   ! Number of distribcell maps
   integer :: n_maps

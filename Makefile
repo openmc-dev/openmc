@@ -1,6 +1,6 @@
 all:
 	mkdir -p build
-	cmake -H. -Bbuild -Ddebug:BOOL=ON -Dunittests:BOOL=ON
+	cmake -H. -Bbuild
 	make -s -C build
 clean:
 	make -s -C build clean

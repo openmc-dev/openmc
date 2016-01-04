@@ -46,11 +46,6 @@ if($ENV{FC} MATCHES "mpi[^/]*$")
   message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DMPI)
   set(MPI_ENABLED TRUE)
-elseif($ENV{FC} MATCHES "ftn$")
-  message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
-  add_definitions(-DMPI -DHDF5)
-  set(MPI_ENABLED TRUE)
-  set(HDF5_ENABLED TRUE)
 endif()
 
 # Check for Fortran 2008 MPI interface
@@ -251,12 +246,6 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 #===============================================================================
 # Build OpenMC executable
 #===============================================================================
-
-
-if(unittests)
-  add_definitions(-DTESTING)
-  file(GLOB test_source src/unittests/*.F90)
-endif()
 
 set(program "openmc")
 file(GLOB source src/*.F90 src/xml/openmc_fox.F90 ${test_source})

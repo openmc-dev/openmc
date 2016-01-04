@@ -30,7 +30,6 @@ module initialize
   use summary,          only: write_summary
   use tally_header,     only: TallyObject, TallyResult, TallyFilter
   use tally_initialize, only: configure_tallies
-  use testing,          only: run_tests
 
 #ifdef MPI
   use message_passing
@@ -76,12 +75,6 @@ contains
       ! Display title and initialization header
       call title()
       call header("INITIALIZATION", level=1)
-    end if
-
-    ! Skip all other initialization if running tests
-    if (run_mode == MODE_TESTING) then
-      call run_tests()
-      return
     end if
 
     ! Read XML input files
@@ -420,10 +413,6 @@ contains
       ! Check for flags
       if (starts_with(argv(i), "-")) then
         select case (argv(i))
-        case ('-u', '-unittest', '--unittest')
-        
-          run_mode = MODE_TESTING
-          
         case ('-p', '-plot', '--plot')
           run_mode = MODE_PLOTTING
           check_overlaps = .true.

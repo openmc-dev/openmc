@@ -330,11 +330,8 @@ class Summary(object):
                      self._f['geometry/lattices'][key]['lower_left'][...]
                 pitch = self._f['geometry/lattices'][key]['pitch'][...]
                 outer = self._f['geometry/lattices'][key]['outer'].value
-
                 universe_ids = \
-                     self._f['geometry/lattices'][key]['universes'][...]
-                universe_ids = np.swapaxes(universe_ids, 0, 1)
-                universe_ids = np.swapaxes(universe_ids, 1, 2)
+                    self._f['geometry/lattices'][key]['universes'][...]
 
                 # Create the Lattice
                 lattice = openmc.RectLattice(lattice_id=lattice_id, name=name)
@@ -350,22 +347,22 @@ class Summary(object):
                 universes = \
                     np.ndarray(tuple(universe_ids.shape), dtype=openmc.Universe)
 
-                for x in range(universe_ids.shape[0]):
+                for z in range(universe_ids.shape[0]):
                     for y in range(universe_ids.shape[1]):
-                        for z in range(universe_ids.shape[2]):
-                            universes[x, y, z] = \
-                                 self.get_universe_by_id(universe_ids[x, y, z])
+                        for x in range(universe_ids.shape[2]):
+                            universes[z, y, x] = \
+                                 self.get_universe_by_id(universe_ids[z, y, x])
 
-                # Transpose, reverse y-dimension for appropriate ordering
-                shape = universes.shape
-                universes = np.transpose(universes, (1, 0, 2))
-                universes.shape = shape
-                universes = universes[:, ::-1, :]
+                # Use 2D NumPy array to store lattice universes for 2D lattices
+                if len(dimension) == 2:
+                    universes = np.squeeze(universes)
+                    universes = np.atleast_2d(universes)
+
+                # Set the universes for the lattice
                 lattice.universes = universes
 
                 if offsets is not None:
-                    offsets = np.swapaxes(offsets, 0, 1)
-                    offsets = np.swapaxes(offsets, 1, 2)
+                    offsets = np.swapaxes(offsets, 0, 2)
                     lattice.offsets = offsets
 
                 # Add the Lattice to the global dictionary of all Lattices

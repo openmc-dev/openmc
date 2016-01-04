@@ -518,7 +518,7 @@ class Summary(object):
             # Create Tally object and assign basic properties
             tally = openmc.Tally(tally_id, tally_name)
 
-            # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
+            # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
             moments = self._f['{0}/moment_orders'.format(subbase)].value
 
             # Read score metadata

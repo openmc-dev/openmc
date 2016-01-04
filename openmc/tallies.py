@@ -66,7 +66,9 @@ class Tally(object):
     triggers : list of openmc.trigger.Trigger
         List of tally triggers
     num_scores : Integral
-        Total number of user-specified scores
+        Total number of scores, accounting for the fact that a single
+        user-specified score, e.g. scatter-P3 or flux-Y2,2, might have multiple
+        bins
     num_filter_bins : Integral
         Total number of filter bins accounting for all filters
     num_bins : Integral

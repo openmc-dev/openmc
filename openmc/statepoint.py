@@ -404,7 +404,7 @@ class StatePoint(object):
                     for j in range(i+1, n_filters):
                         filter.stride *= tally.filters[j].num_bins
 
-                # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
+                # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
                 moments = self._f['{0}{1}/moment_orders'.format(
                     base, tally_key)].value
 

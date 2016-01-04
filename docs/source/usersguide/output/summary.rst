@@ -306,6 +306,11 @@ The current revision of the summary file format is 1.
     than the number of user-specified scores since each score might have
     multiple scoring bins, e.g., scatter-PN.
 
+**/tallies/tally <uid>/moment_orders** (*char[][]*)
+
+    Tallying moment orders for Legendre and spherical harmonic tally expansions
+    (*e.g.*, 'P2', 'Y1,2', etc.).
+
 **/tallies/tally <uid>/score_bins** (*char[][]*)
 
     Scoring bins for the tally.

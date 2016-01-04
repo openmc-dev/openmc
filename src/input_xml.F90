@@ -1051,7 +1051,7 @@ contains
 
       ! Initialize distribcell instances and distribcell index
       c % instances = 0
-      c % distribcell_ind = NONE
+      c % distribcell_index = NONE
 
       ! Get pointer to i-th cell node
       call get_list_item(node_cell_list, i, node_cell)

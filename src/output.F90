@@ -1436,7 +1436,7 @@ contains
     class(Lattice), pointer :: lat        ! Pointer to current lattice
 
     ! Get the distribcell index for this cell
-    map = cells(goal) % distribcell_ind
+    map = cells(goal) % distribcell_index
 
     n = univ % n_cells
 

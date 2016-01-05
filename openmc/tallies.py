@@ -67,7 +67,9 @@ class Tally(object):
     triggers : list of openmc.trigger.Trigger
         List of tally triggers
     num_scores : Integral
-        Total number of user-specified scores
+        Total number of scores, accounting for the fact that a single
+        user-specified score, e.g. scatter-P3 or flux-Y2,2, might have multiple
+        bins
     num_filter_bins : Integral
         Total number of filter bins accounting for all filters
     num_bins : Integral
@@ -1938,7 +1940,7 @@ class Tally(object):
                 data = self.get_values(
                     filters=filters, filter_bins=filter_bins, value='mean')
                 indices = self.get_filter_indices(filters, filter_bins)
-                self._mean[indices, :, :] = data
+                self.mean[indices, :, :] = data
 
         # Adjust the std_dev data array to relect the new filter order
         if self.std_dev is not None:
@@ -1947,7 +1949,7 @@ class Tally(object):
                 data = self.get_values(
                     filters=filters, filter_bins=filter_bins, value='std_dev')
                 indices = self.get_filter_indices(filters, filter_bins)
-                self._std_dev[indices, :, :] = data
+                self.std_dev[indices, :, :] = data
 
     def _swap_nuclides(self, nuclide1, nuclide2):
         """Reverse the ordering of two nuclides in this tally
@@ -2004,17 +2006,17 @@ class Tally(object):
 
         # Adjust the mean data array to relect the new nuclide order
         if self.mean is not None:
-            nuclide1_mean = self._mean[:, nuclide1_index, :].copy()
-            nuclide2_mean = self._mean[:, nuclide2_index, :].copy()
-            self._mean[:, nuclide2_index, :] = nuclide1_mean
-            self._mean[:, nuclide1_index, :] = nuclide2_mean
+            nuclide1_mean = self.mean[:, nuclide1_index, :].copy()
+            nuclide2_mean = self.mean[:, nuclide2_index, :].copy()
+            self.mean[:, nuclide2_index, :] = nuclide1_mean
+            self.mean[:, nuclide1_index, :] = nuclide2_mean
 
         # Adjust the std_dev data array to relect the new nuclide order
         if self.std_dev is not None:
-            nuclide1_std_dev = self._std_dev[:, nuclide1_index, :].copy()
-            nuclide2_std_dev = self._std_dev[:, nuclide2_index, :].copy()
-            self._std_dev[:, nuclide2_index, :] = nuclide1_std_dev
-            self._std_dev[:, nuclide1_index, :] = nuclide2_std_dev
+            nuclide1_std_dev = self.std_dev[:, nuclide1_index, :].copy()
+            nuclide2_std_dev = self.std_dev[:, nuclide2_index, :].copy()
+            self.std_dev[:, nuclide2_index, :] = nuclide1_std_dev
+            self.std_dev[:, nuclide1_index, :] = nuclide2_std_dev
 
     def _swap_scores(self, score1, score2):
         """Reverse the ordering of two scores in this tally
@@ -2076,17 +2078,17 @@ class Tally(object):
 
         # Adjust the mean data array to relect the new nuclide order
         if self.mean is not None:
-            score1_mean = self._mean[:, :, score1_index].copy()
-            score2_mean = self._mean[:, :, score2_index].copy()
-            self._mean[:, :, score2_index] = score1_mean
-            self._mean[:, :, score1_index] = score2_mean
+            score1_mean = self.mean[:, :, score1_index].copy()
+            score2_mean = self.mean[:, :, score2_index].copy()
+            self.mean[:, :, score2_index] = score1_mean
+            self.mean[:, :, score1_index] = score2_mean
 
         # Adjust the std_dev data array to relect the new nuclide order
         if self.std_dev is not None:
-            score1_std_dev = self._std_dev[:, :, score1_index].copy()
-            score2_std_dev = self._std_dev[:, :, score2_index].copy()
-            self._std_dev[:, :, score2_index] = score1_std_dev
-            self._std_dev[:, :, score1_index] = score2_std_dev
+            score1_std_dev = self.std_dev[:, :, score1_index].copy()
+            score2_std_dev = self.std_dev[:, :, score2_index].copy()
+            self.std_dev[:, :, score2_index] = score1_std_dev
+            self.std_dev[:, :, score1_index] = score2_std_dev
 
     def __add__(self, other):
         """Adds this tally to another tally or scalar value.

@@ -1701,6 +1701,7 @@ class Tally(object):
     def _align_tally_data(self, other, filter_product, nuclide_product,
                           score_product):
         """Aligns data from two tallies for tally arithmetic.
+
         This is a helper method to construct a dict of dicts of the "aligned"
         data arrays from each tally for tally arithmetic. The method analyzes
         the filters, scores and nuclides in both tallies and determines how to
@@ -1709,6 +1710,7 @@ class Tally(object):
         'tile' and 'repeat' operations to the new data arrays such that all
         possible combinations of the data in each tally's bins will be made
         when the arithmetic operation is applied to the arrays.
+
         Parameters
         ----------
         other : Tally
@@ -1722,11 +1724,13 @@ class Tally(object):
         score_product : {'tensor', 'entrywise'}
             The type of product (tensor or entrywise) to be performed between
             score data.
+
         Returns
         -------
         dict
             A dictionary of dictionaries to "aligned" 'mean' and 'std. dev'
             NumPy arrays for each tally's data.
+
         """
 
         # Get the set of filters that each tally is missing

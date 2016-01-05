@@ -1,10 +1,20 @@
+\documentclass[tikz]{standalone}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.11}
+\usetikzlibrary{shapes,snakes,shadows,arrows,calc,decorations.markings,patterns,fit,matrix,spy}
+\usepackage{fixltx2e}
+\pagestyle{empty}
+\begin{document}
 
     % these dimensions are determined in arrow_dimms.ods
 
     \def\scale{1.0}
 
     \def\latWidth{0.2808363589*\scale}
-    
+
     \def\RPVOR{3*\scale}
     \def\rectW{0.75*\scale}
     \def\RPVIR{2.8694005485*\scale}
@@ -20,7 +30,7 @@
     \def\bafMIRy{1.5445999739*\scale}
     \def\bafMORx{1.8544620609*\scale}
     \def\bafMORy{1.573625702*\scale}
-    
+
     \tikzset{Assembly/.style={
         inner sep=0pt,
         text width=\latWidth in,
@@ -29,13 +39,13 @@
         align=center
         }
     }
-    
+
     \def\tkzRPV{(0,0) circle (\RPVIR) (0,0) circle (\RPVOR)}
     \def\tkzBarrel{(0,0) circle (\BarrelIR) (0,0) circle (\BarrelOR)}
     \def\tkzShields{(0,0) circle (\BarrelOR) (0,0) circle (\ShieldOR)}
-    
+
     \def\tkzBaffCOR{(-\bafCORx, -\bafCORy) rectangle (\bafCORx, \bafCORy)}
-    \def\tkzBaffCIR{(-\bafCIRx, -\bafCIRy) rectangle (\bafCIRx, \bafCIRy)} 
+    \def\tkzBaffCIR{(-\bafCIRx, -\bafCIRy) rectangle (\bafCIRx, \bafCIRy)}
     \def\tkzBaffMOR{(-\bafMORx, -\bafMORy) rectangle (\bafMORx, \bafMORy)}
     \def\tkzBaffMIR{(-\bafMIRx, -\bafMIRy) rectangle (\bafMIRx, \bafMIRy) }
     \def\tkzBaffleC{ \tkzBaffCIR \tkzBaffCOR }
@@ -53,7 +63,7 @@
       \begin{tikzpicture}[x=1in,y=1in, xshift=3in]
 \scalebox{0.6}{
         % draw RPV, barrel, and shield panels
-        
+
         \path[fill=black,even odd rule] \tkzRPV;
         \path[fill=black,even odd rule] \tkzBarrel;
         \begin{scope}
@@ -61,9 +71,9 @@
           \path[fill=black,even odd rule] \tkzShields;
         \end{scope}
 
-        
+
         % draw assembly row/column headers
-        
+
         \draw[red, thick] ($(-7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {R} -- ($(-7*\latWidth,4*\latWidth)$);
         \draw[red, thick] ($(-6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {P} -- ($(-6*\latWidth,6*\latWidth)$);
         \draw[red, thick] ($(-5*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {N} -- ($(-5*\latWidth,7*\latWidth)$);
@@ -79,7 +89,7 @@
         \draw[red, thick] ($(5*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {C} -- ($(5*\latWidth,7*\latWidth)$);
         \draw[red, thick] ($(6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {B} -- ($(6*\latWidth,6*\latWidth)$);
         \draw[red, thick] ($(7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[above, anchor=south] {A} -- ($(7*\latWidth,4*\latWidth)$);
-        
+
         \begin{scope}[rotate=90]
           \draw[red, thick] ($(-7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {15} -- ($(-7*\latWidth,4*\latWidth)$);
           \draw[red, thick] ($(-6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {14} -- ($(-6*\latWidth,6*\latWidth)$);
@@ -97,7 +107,7 @@
           \draw[red, thick] ($(6*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {2} -- ($(6*\latWidth,6*\latWidth)$);
           \draw[red, thick] ($(7*\latWidth,\RPVOR/\latWidth*\latWidth)$) node[left, anchor=east] {1} -- ($(7*\latWidth,4*\latWidth)$);
         \end{scope}
-        
+
         % draw fuel assembly nodes
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,8*\latWidth)$) {};
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,8*\latWidth)$) {};
@@ -116,7 +126,7 @@
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,8*\latWidth)$) {};
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,8*\latWidth)$) {};
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,8*\latWidth)$) {};
-        
+
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,7*\latWidth)$) {};
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,7*\latWidth)$) {};
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,7*\latWidth)$) {};
@@ -581,7 +591,7 @@
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 6*\latWidth,-7*\latWidth)$) {};
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 7*\latWidth,-7*\latWidth)$) {};
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-7*\latWidth)$) {};
-        
+
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-8*\latWidth,-8*\latWidth)$) {};
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-7*\latWidth,-8*\latWidth)$) {};
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($(-6*\latWidth,-8*\latWidth)$) {};
@@ -601,7 +611,7 @@
         \node [Assembly, fill=\lightgray, opacity=0.3] at ($( 8*\latWidth,-8*\latWidth)$) {};
 
         % draw baffle north/south
-        
+
         \begin{scope}[even odd rule]
           \clip[rotate=90] \tkzBaffMClip;
           \path[fill=black] \tkzBaffleC;
@@ -611,9 +621,9 @@
           \clip \tkzBaffMClip;
           \path[fill=black, rotate=90] \tkzBaffleM;
         \end{scope}
-        
+
         % draw baffle east/west
-        
+
         \begin{scope}[rotate=90]
           \begin{scope}[even odd rule]
             \clip[rotate=90] \tkzBaffMClip;
@@ -626,3 +636,4 @@
           \end{scope}
         \end{scope}}
       \end{tikzpicture}
+\end{document}

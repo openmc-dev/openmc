@@ -63,6 +63,8 @@ class Cell(object):
         that is used to translate (shift) the universe.
     offsets : ndarray
         Array of offsets used for distributed cell searches
+    distribcell_index : int
+        Index of this cell in distribcell arrays
 
     """
 
@@ -76,6 +78,7 @@ class Cell(object):
         self._rotation = None
         self._translation = None
         self._offsets = None
+        self._distribcell_index = None
 
     def __eq__(self, other):
         if not isinstance(other, Cell):
@@ -122,6 +125,8 @@ class Cell(object):
         string += '{0: <16}{1}{2}\n'.format('\tTranslation', '=\t',
                                             self._translation)
         string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self._offsets)
+        string += '{0: <16}{1}{2}\n'.format('\tDistribcell index', '=\t',
+                                            self._distribcell_index)
 
         return string
 
@@ -163,6 +168,10 @@ class Cell(object):
     @property
     def offsets(self):
         return self._offsets
+
+    @property
+    def distribcell_index(self):
+        return self._distribcell_index
 
     @id.setter
     def id(self, cell_id):
@@ -231,6 +240,11 @@ class Cell(object):
         cv.check_type('cell region', region, Region)
         self._region = region
 
+    @distribcell_index.setter
+    def distribcell_index(self, ind):
+        cv.check_type('distribcell index', ind, Integral)
+        self._distribcell_index = ind
+
     def add_surface(self, surface, halfspace):
         """Add a half-space to the list of half-spaces whose intersection defines the
         cell.
@@ -271,7 +285,7 @@ class Cell(object):
             else:
                 self.region = Intersection(self.region, region)
 
-    def get_offset(self, path, filter_offset):
+    def get_cell_instance(self, path, distribcell_index):
         # Get the current element and remove it from the list
         cell_id = path[0]
         path = path[1:]
@@ -282,12 +296,12 @@ class Cell(object):
 
         # If the Cell is filled by a Universe
         elif self._type == 'fill':
-            offset = self._offsets[filter_offset-1]
-            offset += self._fill.get_offset(path, filter_offset)
+            offset = self.offsets[distribcell_index-1]
+            offset += self.fill.get_cell_instance(path, distribcell_index)
 
         # If the Cell is filled by a Lattice
         else:
-            offset = self._fill.get_offset(path, filter_offset)
+            offset = self.fill.get_cell_instance(path, distribcell_index)
 
         return offset
 
@@ -591,7 +605,7 @@ class Universe(object):
 
         self._cells.clear()
 
-    def get_offset(self, path, filter_offset):
+    def get_cell_instance(self, path, distribcell_index):
         # Get the current element and remove it from the list
         path = path[1:]
 
@@ -599,7 +613,7 @@ class Universe(object):
         cell_id = path[0]
 
         # Make a recursive call to the Cell within this Universe
-        offset = self._cells[cell_id].get_offset(path, filter_offset)
+        offset = self.cells[cell_id].get_cell_instance(path, distribcell_index)
 
         # Return the offset computed at all nested Universe levels
         return offset
@@ -1059,21 +1073,22 @@ class RectLattice(Lattice):
             cv.check_greater_than('lattice pitch', dim, 0.0)
         self._pitch = pitch
 
-    def get_offset(self, path, filter_offset):
+    def get_cell_instance(self, path, distribcell_index):
         # Get the current element and remove it from the list
         i = path[0]
         path = path[1:]
 
         # For 2D Lattices
         if len(self._dimension) == 2:
-            offset = self._offsets[i[1]-1, i[2]-1, 0, filter_offset-1]
-            offset += self._universes[i[1]][i[2]].get_offset(path, filter_offset)
+            offset = self._offsets[i[1]-1, i[2]-1, 0, distribcell_index-1]
+            offset += self._universes[i[1]][i[2]].get_cell_instance(path,
+                                                              distribcell_index)
 
         # For 3D Lattices
         else:
-            offset = self._offsets[i[1]-1, i[2]-1, i[3]-1, filter_offset-1]
-            offset += self._universes[i[1]-1][i[2]-1][i[3]-1].get_offset(path,
-                                                                 filter_offset)
+            offset = self._offsets[i[1]-1, i[2]-1, i[3]-1, distribcell_index-1]
+            offset += self._universes[i[1]-1][i[2]-1][i[3]-1].get_cell_instance(
+                                                        path, distribcell_index)
 
         return offset
 

@@ -121,6 +121,10 @@ The current revision of the summary file format is 1.
 
     Region specification for the cell.
 
+**/geometry/cells/cell <uid>/distribcell_index** (*int*)
+
+    Index of this cell in distribcell filter arrays.
+
 **/geometry/surfaces/surface <uid>/index** (*int*)
 
     Index in surfaces array used internally in OpenMC.

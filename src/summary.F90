@@ -196,6 +196,8 @@ contains
       end do
       call write_dataset(cell_group, "region", adjustl(region_spec))
 
+      call write_dataset(cell_group, "distribcell_index", c % distribcell_index)
+
       call close_group(cell_group)
     end do CELL_LOOP
 
@@ -355,16 +357,22 @@ contains
         call write_dataset(lattice_group, "type", "rectangular")
 
         ! Write lattice dimensions, lower left corner, and pitch
-        call write_dataset(lattice_group, "dimension", lat%n_cells)
-        call write_dataset(lattice_group, "lower_left", lat%lower_left)
+        if (lat % is_3d) then
+          call write_dataset(lattice_group, "dimension", lat % n_cells)
+          call write_dataset(lattice_group, "lower_left", lat % lower_left)
+        else
+          call write_dataset(lattice_group, "dimension", lat % n_cells(1:2))
+          call write_dataset(lattice_group, "lower_left", lat % lower_left)
+        end if
 
         ! Write lattice universes.
         allocate(lattice_universes(lat%n_cells(1), lat%n_cells(2), &
              &lat%n_cells(3)))
         do j = 1, lat%n_cells(1)
-          do k = 1, lat%n_cells(2)
+          do k = 0, lat%n_cells(2) - 1
             do m = 1, lat%n_cells(3)
-              lattice_universes(j,k,m) = universes(lat%universes(j,k,m))%id
+              lattice_universes(j, k+1, m) = &
+                   universes(lat%universes(j, lat%n_cells(2) - k, m))%id
             end do
           end do
         end do
@@ -542,7 +550,6 @@ contains
         filter_group = create_group(tally_group, "filter " // trim(to_str(j)))
 
         ! Write number of bins for this filter
-        call write_dataset(filter_group, "offset", t%filters(j)%offset)
         call write_dataset(filter_group, "n_bins", t%filters(j)%n_bins)
 
         ! Write filter bins

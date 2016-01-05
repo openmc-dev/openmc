@@ -360,9 +360,6 @@ class StatePoint(object):
                     # Read the Filter type
                     filter_type = self._f['{0}{1}/type'.format(subbase, j)].value.decode()
 
-                    # Read the Filter offset
-                    offset = self._f['{0}{1}/offset'.format(subbase, j)].value
-
                     n_bins = self._f['{0}{1}/n_bins'.format(subbase, j)].value
 
                     # Read the bin values
@@ -370,7 +367,6 @@ class StatePoint(object):
 
                     # Create Filter object
                     filter = openmc.Filter(filter_type, bins)
-                    filter.offset = offset
                     filter.num_bins = n_bins
 
                     if filter_type == 'mesh':
@@ -404,7 +400,7 @@ class StatePoint(object):
                     for j in range(i+1, n_filters):
                         filter.stride *= tally.filters[j].num_bins
 
-                # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
+                # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
                 moments = self._f['{0}{1}/moment_orders'.format(
                     base, tally_key)].value
 

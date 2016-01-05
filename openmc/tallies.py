@@ -2841,12 +2841,6 @@ class Tally(object):
         new_tally = copy.deepcopy(self)
         new_tally.add_filter(new_filter)
 
-        # Determine the shape of data in the new diagonalized Tally
-        num_filter_bins = new_tally.num_filter_bins
-        num_nuclides = new_tally.num_nuclides
-        num_scores = new_tally.num_scores
-        new_shape = (num_filter_bins, num_nuclides, num_scores)
-
         # Determine "base" indices along the new "diagonal", and the factor
         # by which the "base" indices should be repeated to account for all
         # other filter bins in the diagonalized tally

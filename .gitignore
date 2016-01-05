@@ -24,6 +24,7 @@ examples/python/**/*.xml
 # Documentation builds
 docs/build
 docs/source/_images/*.pdf
+docs/source/_images/*.aux
 
 # Source build
 build

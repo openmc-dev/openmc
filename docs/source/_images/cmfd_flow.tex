@@ -1,3 +1,12 @@
+\documentclass{standalone}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.11}
+\usetikzlibrary{shapes,snakes,shadows,arrows,calc,decorations.markings,patterns,fit,matrix,spy}
+\pagestyle{empty}
+\begin{document}
 \begin{tikzpicture}
 	\matrix[every node/.style={draw, thick, minimum width=3cm, minimum height=1cm, align=center}, column sep=2cm, row sep=1cm] (m) {
 \node[draw, fill=red!40] (start) {Batch $i$ \\ tally NDA}; & \\
@@ -17,3 +26,4 @@
     \end{scope}
 
 \end{tikzpicture}
+\end{document}

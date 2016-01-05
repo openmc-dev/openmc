@@ -196,6 +196,8 @@ contains
       end do
       call write_dataset(cell_group, "region", adjustl(region_spec))
 
+      call write_dataset(cell_group, "distribcell_index", c % distribcell_index)
+
       call close_group(cell_group)
     end do CELL_LOOP
 
@@ -548,7 +550,6 @@ contains
         filter_group = create_group(tally_group, "filter " // trim(to_str(j)))
 
         ! Write number of bins for this filter
-        call write_dataset(filter_group, "offset", t%filters(j)%offset)
         call write_dataset(filter_group, "n_bins", t%filters(j)%n_bins)
 
         ! Write filter bins

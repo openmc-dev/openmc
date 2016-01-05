@@ -126,11 +126,13 @@ pygments_style = 'tango'
 # Sphinx are currently 'default' and 'sphinxdoc'.
 if on_rtd:
     html_theme = 'default'
+    html_logo = '_images/openmc200px.png'
 else:
     html_theme = 'haiku'
     html_theme_options = {'full_logo': True,
                           'linkcolor': '#0c3762',
                           'visitedlinkcolor': '#0c3762'}
+    html_logo = '_images/openmc.png'
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = ["_theme"]
@@ -141,10 +143,6 @@ html_title = "OpenMC Documentation"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None
-
-# The name of an image file (relative to this directory) to place at the top
-# of the sidebar.
-html_logo = '_images/openmc.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32

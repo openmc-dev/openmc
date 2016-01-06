@@ -901,7 +901,9 @@ def get_opencg_lattice(openmc_lattice):
 
     # Convert 2D universes array to 3D for OpenCG
     if len(universes.shape) == 2:
-        universes.shape = (1,) + universes.shape
+        new_universes = universes.copy()
+        new_universes.shape = (1,) + universes.shape
+        universes = new_universes
 
     # Initialize an empty array for the OpenCG nested Universes in this Lattice
     universe_array = np.ndarray(tuple(np.array(dimension)[::-1]),

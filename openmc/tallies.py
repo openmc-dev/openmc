@@ -10,7 +10,6 @@ from xml.etree import ElementTree as ET
 import sys
 
 import numpy as np
-import scipy.sparse as sps
 
 from openmc import Mesh, Filter, Trigger, Nuclide
 from openmc.cross import CrossScore, CrossNuclide, CrossFilter
@@ -323,6 +322,8 @@ class Tally(object):
 
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
+                import scipy.sparse as sps
+
                 self._sum = \
                     sps.lil_matrix(self._sum.flatten(), self._sum.shape)
                 self._sum_sq = \
@@ -363,6 +364,8 @@ class Tally(object):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
+                import scipy.sparse as sps
+
                 self._mean = \
                     sps.lil_matrix(self._mean.flatten(), self._mean.shape)
 
@@ -385,6 +388,8 @@ class Tally(object):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
+                import scipy.sparse as sps
+
                 self._std_dev = \
                     sps.lil_matrix(self._std_dev.flatten(), self._std_dev.shape)
 
@@ -550,6 +555,8 @@ class Tally(object):
 
         # Convert NumPy arrays to SciPy sparse LIL matrices
         if sparse and not self.sparse:
+            import scipy.sparse as sps
+
             if self._sum is not None:
                 self._sum = \
                     sps.lil_matrix(self._sum.flatten(), self._sum.shape)
@@ -562,6 +569,7 @@ class Tally(object):
             if self._std_dev is not None:
                 self._std_dev = \
                     sps.lil_matrix(self._std_dev.flatten(), self._std_dev.shape)
+
             self._sparse = True
 
         # Convert SciPy sparse LIL matrices to NumPy arrays

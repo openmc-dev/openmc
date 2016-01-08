@@ -221,7 +221,7 @@ class XSdata(object):
 
     @name.setter
     def name(self, name):
-        check_type('name for Xsdata', name, basestring)
+        check_type('name for XSdata', name, basestring)
         self._name = name
 
     @energy_groups.setter
@@ -247,7 +247,7 @@ class XSdata(object):
     @alias.setter
     def alias(self, alias):
         if alias is not None:
-            check_type('alias for Xsdata', alias, basestring)
+            check_type('alias for XSdata', alias, basestring)
             self._alias = alias
         else:
             self._alias = self._name
@@ -604,24 +604,24 @@ class MGXSLibraryFile(object):
         self._energy_groups = energy_groups
 
     def add_xsdata(self, xsdata):
-        """Add an xsdata entry to the file.
+        """Add an XSdata entry to the file.
 
         Parameters
         ----------
-        xsdata : Xsdata
+        xsdata : XSdata
             MGXS information to add
 
         """
 
         # Check the type
-        if not isinstance(xsdata, Xsdata):
-            msg = 'Unable to add a non-Xsdata "{0}" to the ' \
+        if not isinstance(xsdata, XSdata):
+            msg = 'Unable to add a non-XSdata "{0}" to the ' \
                   'MGXSLibraryFile'.format(xsdata)
             raise ValueError(msg)
 
         # Make sure energy groups match.
         if xsdata.energy_groups != self._energy_groups:
-            msg = 'Energy groups of Xsdata do not match that of MGXSLibraryFile!'
+            msg = 'Energy groups of XSdata do not match that of MGXSLibraryFile!'
             raise ValueError(msg)
 
         self._xsdatas.append(xsdata)
@@ -631,8 +631,8 @@ class MGXSLibraryFile(object):
 
         Parameters
         ----------
-        xsdatas : tuple or list of Xsdata
-            Xsdatas to add
+        xsdatas : tuple or list of XSdata
+            XSdatas to add
 
         """
 
@@ -649,14 +649,14 @@ class MGXSLibraryFile(object):
 
         Parameters
         ----------
-        xsdata : Xsdata
-            Xsdata to remove
+        xsdata : XSdata
+            XSdata to remove
 
         """
 
-        if not isinstance(xsdata, Xsdata):
-            msg = 'Unable to remove a non-Xsdata "{0}" from the ' \
-                  'XsdatasFile'.format(xsdata)
+        if not isinstance(xsdata, XSdata):
+            msg = 'Unable to remove a non-XSdata "{0}" from the ' \
+                  'XSdatasFile'.format(xsdata)
             raise ValueError(msg)
 
         self._xsdatas.remove(xsdata)

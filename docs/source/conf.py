@@ -13,6 +13,26 @@
 
 import sys, os
 
+# Determine if we're on Read the Docs server
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
+# On Read the Docs, we need to mock a few third-party modules so we don't get
+# ImportErrors when building documentation
+try:
+    from unittest.mock import MagicMock
+except ImportError:
+    from mock import Mock as MagicMock
+
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return Mock()
+
+MOCK_MODULES = ['numpy', 'h5py', 'pandas', 'opencg']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -26,9 +46,8 @@ sys.path.insert(0, os.path.abspath('../..'))
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
-              'sphinx.ext.pngmath',
+              'sphinx.ext.mathjax',
               'sphinx.ext.autosummary',
-              'sphinxcontrib.tikz',
               'sphinx_numfig',
               'notebook_sphinxext']
 
@@ -105,16 +124,15 @@ pygments_style = 'tango'
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-html_theme = 'haiku'
-#html_theme = 'altered_nature'
-#html_theme = 'sphinxdoc'
-
-# Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
-html_theme_options = {'full_logo': True,
-                      'linkcolor': '#0c3762',
-                      'visitedlinkcolor': '#0c3762'}
+if on_rtd:
+    html_theme = 'default'
+    html_logo = '_images/openmc200px.png'
+else:
+    html_theme = 'haiku'
+    html_theme_options = {'full_logo': True,
+                          'linkcolor': '#0c3762',
+                          'visitedlinkcolor': '#0c3762'}
+    html_logo = '_images/openmc.png'
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = ["_theme"]
@@ -125,10 +143,6 @@ html_title = "OpenMC Documentation"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None
-
-# The name of an image file (relative to this directory) to place at the top
-# of the sidebar.
-html_logo = '_images/openmc.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32

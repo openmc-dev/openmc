@@ -1626,7 +1626,7 @@ another.
 
 .. _ENDF-6 Format: http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
 
-.. _Monte Carlo Sampler: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721_3rdmcsampler.pdf
+.. _Monte Carlo Sampler: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721.pdf
 
 .. _LA-UR-14-27694: http://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-UR-14-27694
 
@@ -1636,4 +1636,4 @@ another.
 
 .. _lectures: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-05-4983.pdf
 
-.. _MCNP Manual: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/MCNP5_Manual_Volume_I_LA-UR-03-1987.pdf
+.. _MCNP Manual: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-03-1987.pdf

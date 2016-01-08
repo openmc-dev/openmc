@@ -17,6 +17,8 @@ ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) sou
 SVG2PDF = inkscape
 PDFS    = $(patsubst %.svg,%.pdf,$(wildcard $(IMAGEDIR)/*.svg))
 
+# Tikz to PNG conversion
+PNGS = $(patsubst %.tex,%.png,$(wildcard $(IMAGEDIR)/*.tex))
 
 .PHONY: help images clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest
 
@@ -43,8 +45,13 @@ help:
 %.pdf: %.svg
 	$(SVG2PDF) -f $< -A $@
 
+%.png: %.tex
+	pdflatex --interaction=nonstopmode --output-directory=$(IMAGEDIR) $<
+	pdftoppm -r 120 -singlefile $(patsubst %.tex,%.pdf, $<) $(basename $<)
+	convert -trim -fuzz 2% -transparent white $(patsubst %.tex,%.ppm,$<) $@
+
 # Rule to build PDFs
-images: $(PDFS)
+images: $(PDFS) $(PNGS)
 
 clean:
 	-rm -rf $(BUILDDIR)/*

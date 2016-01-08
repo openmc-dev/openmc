@@ -12,10 +12,7 @@ from docutils.parsers.rst import directives, roles, states
 from docutils.parsers.rst.roles import set_classes
 from docutils.transforms import misc
 
-try:
-    from IPython.nbconver.exporters import html
-except ImportError:
-    from IPython.nbconvert import html
+from nbconvert import html
 
 
 class Notebook(Directive):

@@ -20,6 +20,17 @@ REPRESENTATIONS = ['isotropic', 'angle']
 def ndarray_to_string(arr):
     """Converts a numpy ndarray in to a join with spaces between entries
     similar to ' '.join(map(str,arr)) but applied to all sub-dimensions.
+
+    Parameters
+    ----------
+    arr : ndarray
+        Array to combine in to a string
+
+    Returns
+    -------
+    text : str
+        String representation of array in arr
+
     """
 
     shape = arr.shape
@@ -67,15 +78,14 @@ def ndarray_to_string(arr):
     return text
 
 
-class Xsdata(object):
-    """A multi-group cross section data set (xsdata) providing all the
+class XSdata(object):
+    """A multi-group cross section data set providing all the
     multi-group data necessary for a multi-group OpenMC calculation.
 
     Parameters
     ----------
     name : str, optional
         Name of the mgxs data set.
-
 
     representation : str
         Method used in generating the MGXS (isotropic or angle-dependent flux
@@ -140,7 +150,6 @@ class Xsdata(object):
     @property
     def representation(self):
         return self._representation
-
 
     @property
     def alias(self):
@@ -221,8 +230,8 @@ class Xsdata(object):
         check_type("energy_groups", energy_groups, EnergyGroups)
 
         # Check that there is one or more groups
-        if ((energy_groups.num_energy_groups.num_group is None) or
-            (energy_groups.num_energy_groups.num_group < 1)):
+        if ((energy_groups.num_groups is None) or
+            (energy_groups.num_groups < 1)):
 
             msg = 'energy_groups object incorrectly initialized.'
             raise ValueError(msg)
@@ -429,7 +438,7 @@ class Xsdata(object):
 
     @nu_fission.setter
     def nu_fission(self, nu_fission):
-        # nu_fission ca nbe given as a vector or a matrix
+        # nu_fission can be given as a vector or a matrix
         # Vector is used when chi also exists.
         # Matrix is used when chi does not exist.
         # We have to check that the correct form is given, but only if
@@ -563,6 +572,8 @@ class MGXSLibraryFile(object):
         Inverse of velocities, units of sec/cm
     filename : str
         XML file to write to.
+    xsdatas : Iterable of XSdata
+        Iterable of multi-Group cross section data objects
     """
 
     def __init__(self, energy_groups):

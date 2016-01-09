@@ -79,7 +79,7 @@ class SettingsFile(object):
         Set whether the calculation should be continuous-energy or multi-group.
         Acceptable values are 'continuous-energy' or 'multi-group'
     max_order : int
-        Maximum scattering order to apply globally when in multi-grup mode.
+        Maximum scattering order to apply globally when in multi-group mode.
     ptables : bool
         Determine whether probability tables are used.
     run_cmfd : bool

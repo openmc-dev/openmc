@@ -332,7 +332,7 @@ class Material(object):
 
         Parameters
         ----------
-        macroscopic : str or openmc.macroscopic.Macroscopic
+        macroscopic : str or Macroscopic
             Macroscopic to add
 
         """
@@ -371,7 +371,7 @@ class Material(object):
 
         Parameters
         ----------
-        macroscopic : openmc.macroscopic.Macroscopic
+        macroscopic : Macroscopic
             Macroscopic to remove
 
         """
@@ -622,14 +622,14 @@ class Material(object):
 
                 # Create element XML subelements
                 subelements = self._get_elements_xml(self._elements, distrib=True)
-                for subelement_ele in subelements:
-                    subelement.append(subelement_ele)
+                for subsubelement in subelements:
+                    subelement.append(subsubelement)
             else:
                 # Create macroscopic XML subelements
-                subelement_ele = self._get_macroscopic_xml(self,
-                                                           self._macroscopic,
-                                                           distrib=True)
-                subelement.append(subelement_ele)
+                subsubelement = self._get_macroscopic_xml(self,
+                                                          self._macroscopic,
+                                                          distrib=True)
+                subelement.append(subsubelement)
 
         if len(self._sab) > 0:
             for sab in self._sab:

@@ -54,7 +54,7 @@ class EnergyGroups(object):
     def __eq__(self, other):
         if not isinstance(other, EnergyGroups):
             return False
-        elif (self.group_edges != other.group_edges).all():
+        elif self.group_edges != other.group_edges:
             return False
         else:
             return True

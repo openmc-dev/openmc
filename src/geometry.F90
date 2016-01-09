@@ -193,8 +193,9 @@ contains
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
     integer :: i                    ! index over cells
-    integer :: j                    ! coordinate level index
-    integer :: k                    ! distribcell instance
+    integer :: j, k                 ! coordinate level index
+    integer :: offset               ! instance # of a distributed cell
+    integer :: distribcell_index
     integer :: i_xyz(3)             ! indices in lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
@@ -249,30 +250,34 @@ contains
 
         ! Set the particle material
         p % last_material = p % material
-!        if (size(c % material) == 1) then
+        if (size(c % material) == 1) then
           ! Only one material for this cell; assign that one to the particle.
           p % material = c % material(1)
-!        else
-!          ! Distributed instances of this cell have different materials.
-!          ! Determine which instance this is and assign the matching material.
-!          offset = 0
-!          do k = 1, p % n_coord
-!            if (cells(p % coord(k) % cell) % type == CELL_FILL) then
-!              offset = offset + cells(p % coord(k) % cell) % &
-!                   offset(t % filters(i) % offset)
-!            elseif(cells(p % coord(k) % cell) % type == CELL_LATTICE) then
-!              if (lattices(p % coord(k + 1) % lattice) % obj &
-!                   % are_valid_indices([&
-!                   p % coord(k + 1) % lattice_x, &
-!                   p % coord(k + 1) % lattice_y, &
-!                   p % coord(k + 1) % lattice_z])) then
-!                offset = offset + lattices(p % coord(k + 1) % lattice) % obj % &
-!                     offset(t % filters(i) % offset, &
-!                     p % coord(k + 1) % lattice_x, &
-!                     p % coord(k + 1) % lattice_y, &
-!                     p % coord(k + 1) % lattice_z)
-!              end if
-!            end if
+        else
+          ! Distributed instances of this cell have different materials.
+          ! Determine which instance this is and assign the matching material.
+          distribcell_index = c % distribcell_index
+          offset = 0
+          do k = 1, p % n_coord
+            if (cells(p % coord(k) % cell) % type == CELL_FILL) then
+              offset = offset + cells(p % coord(k) % cell) % &
+                   offset(distribcell_index)
+            elseif (cells(p % coord(k) % cell) % type == CELL_LATTICE) then
+              if (lattices(p % coord(k + 1) % lattice) % obj &
+                   % are_valid_indices([&
+                   p % coord(k + 1) % lattice_x, &
+                   p % coord(k + 1) % lattice_y, &
+                   p % coord(k + 1) % lattice_z])) then
+                offset = offset + lattices(p % coord(k + 1) % lattice) % obj % &
+                     offset(distribcell_index, &
+                     p % coord(k + 1) % lattice_x, &
+                     p % coord(k + 1) % lattice_y, &
+                     p % coord(k + 1) % lattice_z)
+              end if
+            end if
+          end do
+          p % material = c % material(offset + 1)
+        end if
 
       elseif (c % type == CELL_FILL) then CELL_TYPE
         ! ======================================================================

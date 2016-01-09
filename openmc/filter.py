@@ -42,8 +42,6 @@ class Filter(object):
         The number of filter bins
     mesh : Mesh or None
         A Mesh object for 'mesh' type filters.
-    offset : Integral
-        A value used to index tally bins for 'distribcell' tallies.
     stride : Integral
         The number of filter, nuclide and score bins within each of this
         filter's bins.
@@ -57,7 +55,6 @@ class Filter(object):
         self._num_bins = 0
         self._bins = None
         self._mesh = None
-        self._offset = -1
         self._stride = None
 
         if type is not None:
@@ -93,7 +90,6 @@ class Filter(object):
             clone._bins = copy.deepcopy(self.bins, memo)
             clone._num_bins = self.num_bins
             clone._mesh = copy.deepcopy(self.mesh, memo)
-            clone._offset = self.offset
             clone._stride = self.stride
 
             memo[id(self)] = clone
@@ -108,7 +104,6 @@ class Filter(object):
         string = 'Filter\n'
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
         string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self.offset)
         return string
 
     @property
@@ -133,10 +128,6 @@ class Filter(object):
     @property
     def mesh(self):
         return self._mesh
-
-    @property
-    def offset(self):
-        return self._offset
 
     @property
     def stride(self):
@@ -225,11 +216,6 @@ class Filter(object):
         self._mesh = mesh
         self.type = 'mesh'
         self.bins = self.mesh.id
-
-    @offset.setter
-    def offset(self, offset):
-        cv.check_type('filter offset', offset, Integral)
-        self._offset = offset
 
     @stride.setter
     def stride(self, stride):
@@ -623,7 +609,7 @@ class Filter(object):
                     # If this region is in Cell corresponding to the
                     # distribcell filter bin, store it in dictionary
                     if cell_id == self.bins[0]:
-                        offset = openmc_geometry.get_offset(path, self.offset)
+                        offset = openmc_geometry.get_cell_instance(path)
                         offsets_to_coords[offset] = coords
 
                 # Each distribcell offset is a DataFrame bin

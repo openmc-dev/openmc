@@ -1,4 +1,5 @@
 import numpy as np
+import re
 
 import openmc
 from openmc.region import Region
@@ -271,6 +272,11 @@ class Summary(object):
                 cell.region = Region.from_expression(
                     region, {s.id: s for s in self.surfaces.values()})
 
+            # Get the distribcell index
+            ind = self._f['geometry/cells'][key]['distribcell_index'].value
+            if ind != 0:
+               cell.distribcell_index = ind 
+
             # Add the Cell to the global dictionary of all Cells
             self.cells[index] = cell
 
@@ -329,11 +335,8 @@ class Summary(object):
                      self._f['geometry/lattices'][key]['lower_left'][...]
                 pitch = self._f['geometry/lattices'][key]['pitch'][...]
                 outer = self._f['geometry/lattices'][key]['outer'].value
-
                 universe_ids = \
-                     self._f['geometry/lattices'][key]['universes'][...]
-                universe_ids = np.swapaxes(universe_ids, 0, 1)
-                universe_ids = np.swapaxes(universe_ids, 1, 2)
+                    self._f['geometry/lattices'][key]['universes'][...]
 
                 # Create the Lattice
                 lattice = openmc.RectLattice(lattice_id=lattice_id, name=name)
@@ -349,22 +352,22 @@ class Summary(object):
                 universes = \
                     np.ndarray(tuple(universe_ids.shape), dtype=openmc.Universe)
 
-                for x in range(universe_ids.shape[0]):
+                for z in range(universe_ids.shape[0]):
                     for y in range(universe_ids.shape[1]):
-                        for z in range(universe_ids.shape[2]):
-                            universes[x, y, z] = \
-                                 self.get_universe_by_id(universe_ids[x, y, z])
+                        for x in range(universe_ids.shape[2]):
+                            universes[z, y, x] = \
+                                 self.get_universe_by_id(universe_ids[z, y, x])
 
-                # Transpose, reverse y-dimension for appropriate ordering
-                shape = universes.shape
-                universes = np.transpose(universes, (1, 0, 2))
-                universes.shape = shape
-                universes = universes[:, ::-1, :]
+                # Use 2D NumPy array to store lattice universes for 2D lattices
+                if len(dimension) == 2:
+                    universes = np.squeeze(universes)
+                    universes = np.atleast_2d(universes)
+
+                # Set the universes for the lattice
                 lattice.universes = universes
 
                 if offsets is not None:
-                    offsets = np.swapaxes(offsets, 0, 1)
-                    offsets = np.swapaxes(offsets, 1, 2)
+                    offsets = np.swapaxes(offsets, 0, 2)
                     lattice.offsets = offsets
 
                 # Add the Lattice to the global dictionary of all Lattices
@@ -520,12 +523,18 @@ class Summary(object):
             # Create Tally object and assign basic properties
             tally = openmc.Tally(tally_id, tally_name)
 
+            # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
+            moments = self._f['{0}/moment_orders'.format(subbase)].value
+
             # Read score metadata
             scores = self._f['{0}/score_bins'.format(subbase)].value
-            for score in scores:
-                tally.add_score(score.decode())
-            num_score_bins = self._f['{0}/n_score_bins'.format(subbase)][...]
-            tally.num_score_bins = num_score_bins
+            for j, score in enumerate(scores):
+                score = score.decode()
+
+                # If this is a moment, use generic moment order
+                pattern = r'-n$|-pn$|-yn$'
+                score = re.sub(pattern, '-' + moments[j].decode(), score)
+                tally.add_score(score)
 
             # Read filter metadata
             num_filters = self._f['{0}/n_filters'.format(subbase)].value
@@ -567,7 +576,7 @@ class Summary(object):
         """
 
         for index, material in self.materials.items():
-            if material._id == material_id:
+            if material.id == material_id:
                 return material
 
         return None
@@ -588,7 +597,7 @@ class Summary(object):
         """
 
         for index, surface in self.surfaces.items():
-            if surface._id == surface_id:
+            if surface.id == surface_id:
                 return surface
 
         return None
@@ -609,7 +618,7 @@ class Summary(object):
         """
 
         for index, cell in self.cells.items():
-            if cell._id == cell_id:
+            if cell.id == cell_id:
                 return cell
 
         return None
@@ -630,7 +639,7 @@ class Summary(object):
         """
 
         for index, universe in self.universes.items():
-            if universe._id == universe_id:
+            if universe.id == universe_id:
                 return universe
 
         return None
@@ -651,7 +660,7 @@ class Summary(object):
         """
 
         for index, lattice in self.lattices.items():
-            if lattice._id == lattice_id:
+            if lattice.id == lattice_id:
                 return lattice
 
         return None

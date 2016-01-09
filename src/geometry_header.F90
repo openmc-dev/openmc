@@ -137,6 +137,8 @@ module geometry_header
                                            !  expression
     logical :: simple                      ! Is the region simple (intersections
                                            !  only)
+    integer :: distribcell_index           ! Index corresponding to this cell in
+                                           !  distribcell arrays
 
     ! Rotation matrix and translation vector
     real(8), allocatable :: translation(:)

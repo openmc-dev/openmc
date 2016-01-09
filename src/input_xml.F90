@@ -994,7 +994,7 @@ contains
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN), allocatable :: sarray(:)
-    character(1000) :: region_spec
+    character(REGION_SPEC_LEN) :: region_spec
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
     class(Lattice), pointer :: lat
@@ -1049,8 +1049,9 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
-      ! Initialize the number of cell instances - this is a base case for distribcells
+      ! Initialize distribcell instances and distribcell index
       c % instances = 0
+      c % distribcell_index = NONE
 
       ! Get pointer to i-th cell node
       call get_list_item(node_cell_list, i, node_cell)

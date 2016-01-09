@@ -725,11 +725,11 @@ def get_openmc_cell(opencg_cell):
     else:
         openmc_cell.fill = get_openmc_material(fill)
 
-    if opencg_cell.rotation:
+    if opencg_cell.rotation is not None:
         rotation = np.asarray(opencg_cell.rotation, dtype=np.float64)
         openmc_cell.rotation = rotation
 
-    if opencg_cell.translation:
+    if opencg_cell.translation is not None:
         translation = np.asarray(opencg_cell.translation, dtype=np.float64)
         openmc_cell.translation = translation
 
@@ -881,15 +881,29 @@ def get_opencg_lattice(openmc_lattice):
     universes = openmc_lattice.universes
     outer = openmc_lattice.outer
 
+    # Convert 2D dimension to 3D for OpenCG
+    if len(dimension) == 2:
+        new_dimension = np.ones(3, dtype=np.int)
+        new_dimension[:2] = dimension
+        dimension = new_dimension
+
+    # Convert 2D pitch to 3D for OpenCG
     if len(pitch) == 2:
-        new_pitch = np.ones(3, dtype=np.float64) * np.inf
+        new_pitch = np.ones(3, dtype=np.float64) * np.finfo(np.float64).max
         new_pitch[:2] = pitch
         pitch = new_pitch
 
+    # Convert 2D lower left to 3D for OpenCG
     if len(lower_left) == 2:
-        new_lower_left = np.ones(3, dtype=np.float64)
+        new_lower_left = np.ones(3, dtype=np.float64) * np.finfo(np.float64).min
         new_lower_left[:2] = lower_left
         lower_left = new_lower_left
+
+    # Convert 2D universes array to 3D for OpenCG
+    if len(universes.shape) == 2:
+        new_universes = universes.copy()
+        new_universes.shape = (1,) + universes.shape
+        universes = new_universes
 
     # Initialize an empty array for the OpenCG nested Universes in this Lattice
     universe_array = np.ndarray(tuple(np.array(dimension)[::-1]),
@@ -905,7 +919,7 @@ def get_opencg_lattice(openmc_lattice):
     for z in range(dimension[2]):
         for y in range(dimension[1]):
             for x in range(dimension[0]):
-                universe_id = universes[x][dimension[1]-y-1][z].id
+                universe_id = universes[z][y][x].id
                 universe_array[z][y][x] = unique_universes[universe_id]
 
     opencg_lattice = opencg.Lattice(lattice_id, name)
@@ -963,7 +977,7 @@ def get_openmc_lattice(opencg_lattice):
     outer = opencg_lattice.outside
 
     # Initialize an empty array for the OpenMC nested Universes in this Lattice
-    universe_array = np.ndarray(tuple(np.array(dimension)),
+    universe_array = np.ndarray(tuple(np.array(dimension)[::-1]),
                                 dtype=openmc.Universe)
 
     # Create OpenMC Universes for each unique nested Universe in this Lattice
@@ -977,7 +991,7 @@ def get_openmc_lattice(opencg_lattice):
         for y in range(dimension[1]):
             for x in range(dimension[0]):
                 universe_id = universes[z][y][x].id
-                universe_array[x][y][z] = unique_universes[universe_id]
+                universe_array[z][y][x] = unique_universes[universe_id]
 
     # Reverse y-dimension in array to match ordering in OpenCG
     universe_array = universe_array[:, ::-1, :]

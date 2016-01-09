@@ -14,7 +14,7 @@ from openmc.checkvalue import check_type, check_value, check_greater_than, \
                               check_iterable_type
 from openmc.clean_xml import *
 
-# MGXS Representations supported by OpenMC
+# Supported incoming particle MGXS angular treatment representations
 REPRESENTATIONS = ['isotropic', 'angle']
 
 def ndarray_to_string(arr):
@@ -87,7 +87,7 @@ class XSdata(object):
     name : str, optional
         Name of the mgxs data set.
 
-    representation : str
+    representation : {'isotropic' or 'angle'}
         Method used in generating the MGXS (isotropic or angle-dependent flux
         weighting). Defaults to 'isotropic'
 
@@ -99,11 +99,11 @@ class XSdata(object):
         Separate unique identifier for the xsdata object
     kT : float
         Temperature (in units of MeV) of this data set.
-    energy_groups : openmc.mgxs.EnergyGroups
+    energy_groups : EnergyGroups
         Energy group structure
     fissionable : boolean
         Whether or not this is a fissionable data set.
-    scatt_type : str
+    scatt_type : {'legendre', 'histogram', or 'tabular'}
         Angular distribution representation (legendre, histogram, or tabular)
     order : int
         Either the Legendre order, number of bins, or number of points used to
@@ -111,9 +111,9 @@ class XSdata(object):
         transfer probability.
     tabular_legendre : dict
         Set how to treat the Legendre scattering kernel (tabular or leave in
-        Legendre polynomial form). Dict contains two keys: ``enable`` and
-        ``num_points``.  ``enable`` is a boolean and ``num_points`` is the
-        number of points to use, if ``enable`` is True.
+        Legendre polynomial form). Dict contains two keys: 'enable' and
+        'num_points'.  'enable' is a boolean and 'num_points' is the
+        number of points to use, if 'enable' is True.
 
     """
     def __init__(self, name, energy_groups, representation="isotropic"):
@@ -247,7 +247,7 @@ class XSdata(object):
     @alias.setter
     def alias(self, alias):
         if alias is not None:
-            check_type('alias for XSdata', alias, basestring)
+            check_type('alias', alias, basestring)
             self._alias = alias
         else:
             self._alias = self._name

@@ -355,6 +355,8 @@ class Complement(Region):
             temp_region = Intersection(*[~n for n in self.node.nodes])
         elif isinstance(self.node, Intersection):
             temp_region = Union(*[~n for n in self.node.nodes])
+        elif isinstance(self.node, Complement):
+            temp_region = self.node.node
         else:
-            temp_region = ~n
+            temp_region = ~self.node
         return temp_region.bounding_box

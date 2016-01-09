@@ -121,6 +121,10 @@ The current revision of the summary file format is 1.
 
     Region specification for the cell.
 
+**/geometry/cells/cell <uid>/distribcell_index** (*int*)
+
+    Index of this cell in distribcell filter arrays.
+
 **/geometry/surfaces/surface <uid>/index** (*int*)
 
     Index in surfaces array used internally in OpenMC.
@@ -305,6 +309,11 @@ The current revision of the summary file format is 1.
     Number of scoring bins for a single nuclide. In general, this can be greater
     than the number of user-specified scores since each score might have
     multiple scoring bins, e.g., scatter-PN.
+
+**/tallies/tally <uid>/moment_orders** (*char[][]*)
+
+    Tallying moment orders for Legendre and spherical harmonic tally expansions
+    (*e.g.*, 'P2', 'Y1,2', etc.).
 
 **/tallies/tally <uid>/score_bins** (*char[][]*)
 

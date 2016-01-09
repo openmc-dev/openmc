@@ -268,7 +268,6 @@ contains
               call write_dataset(filter_group, "type", "delayedgroup")
             end select
 
-            call write_dataset(filter_group, "offset", tally%filters(j)%offset)
             call write_dataset(filter_group, "n_bins", tally%filters(j)%n_bins)
             if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
                  tally % filters(j) % type == FILTER_ENERGYOUT .or. &
@@ -870,7 +869,6 @@ contains
     integer(HSIZE_T) :: dims(1)
     type(c_ptr) :: f_ptr
 #ifdef PHDF5
-    integer :: data_xfer_mode
     integer(HID_T) :: plist    ! property list
 #else
     integer :: i
@@ -989,7 +987,6 @@ contains
     integer(HSIZE_T) :: offset(1) ! offset of data
     type(c_ptr) :: f_ptr
 #ifdef PHDF5
-    integer :: data_xfer_mode
     integer(HID_T) :: plist    ! property list
 #endif
 

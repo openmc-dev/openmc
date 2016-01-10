@@ -1038,7 +1038,7 @@ contains
     integer, intent(out), allocatable     :: counts(:,:)  ! Target count
     logical, intent(out), allocatable     :: found(:,:)   ! Target found
 
-    integer :: i, j, k, l, m                    ! Loop counters
+    integer :: i, j, k                          ! Loop counters
     type(SetInt)               :: cell_list     ! distribells to track
     type(Universe),    pointer :: univ          ! pointer to universe
     class(Lattice),    pointer :: lat           ! pointer to lattice

@@ -44,7 +44,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         r0 = openmc.ZCylinder(R=0.3)
         c11 = openmc.Cell(cell_id=11)
         c11.region = -r0
-        c11.fill = [dense_fuel, light_fuel] + [dense_fuel]*2
+        c11.fill = [dense_fuel, light_fuel, 'void', dense_fuel]
         c12 = openmc.Cell(cell_id=12)
         c12.region = +r0
         c12.fill = moderator
@@ -121,9 +121,6 @@ class DistribmatTestHarness(PyAPITestHarness):
         su = openmc.Summary('summary.h5')
         outstr += str(su.get_cell_by_id(11))
         return outstr
-
-#    def _cleanup(self):
-#        return None
 
 
 if __name__ == '__main__':

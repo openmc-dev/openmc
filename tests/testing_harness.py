@@ -23,12 +23,18 @@ class TestHarness(object):
     def __init__(self, statepoint_name, tallies_present=False):
         self._sp_name = statepoint_name
         self._tallies = tallies_present
+        self.parser = OptionParser()
+        self.parser.add_option('--exe', dest='exe', default='openmc')
+        self.parser.add_option('--mpi_exec', dest='mpi_exec', default=None)
+        self.parser.add_option('--mpi_np', dest='mpi_np', type=int, default=3)
+        self.parser.add_option('--update', dest='update', action='store_true',
+                               default=False)
         self._opts = None
         self._args = None
 
     def main(self):
         """Accept commandline arguments and either run or update tests."""
-        self._parse_args()
+        (self._opts, self._args) = self.parser.parse_args()
         if self._opts.update:
             self.update_results()
         else:
@@ -55,15 +61,6 @@ class TestHarness(object):
             self._overwrite_results()
         finally:
             self._cleanup()
-
-    def _parse_args(self):
-        parser = OptionParser()
-        parser.add_option('--exe', dest='exe', default='openmc')
-        parser.add_option('--mpi_exec', dest='mpi_exec', default=None)
-        parser.add_option('--mpi_np', dest='mpi_np', type=int, default=3)
-        parser.add_option('--update', dest='update', action='store_true',
-                          default=False)
-        (self._opts, self._args) = parser.parse_args()
 
     def _run_openmc(self):
         executor = Executor()
@@ -158,9 +155,8 @@ class HashedTestHarness(TestHarness):
 class PlotTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC plotting tests."""
     def __init__(self, plot_names):
+        super(PlotTestHarness, self).__init__(None, False)
         self._plot_names = plot_names
-        self._opts = None
-        self._args = None
 
     def _run_openmc(self):
         executor = Executor()
@@ -275,7 +271,19 @@ class ParticleRestartTestHarness(TestHarness):
 class PyAPITestHarness(TestHarness):
     def __init__(self, statepoint_name, tallies_present=False):
         super(PyAPITestHarness, self).__init__(statepoint_name, tallies_present)
+        self.parser.add_option('--build-inputs', dest='build_only',
+                               action='store_true', default=False)
         self._input_set = InputSet()
+
+    def main(self):
+        """Accept commandline arguments and either run or update tests."""
+        (self._opts, self._args) = self.parser.parse_args()
+        if self._opts.build_only:
+            self._build_inputs()
+        elif self._opts.update:
+            self.update_results()
+        else:
+            self.execute_test()
 
     def execute_test(self):
         """Build input XMLs, run OpenMC, and verify correct results."""

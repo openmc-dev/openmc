@@ -891,7 +891,9 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
   :material:
     The ``id`` of the material that this cell contains. If the cell should
-    contain no material, this can also be set to "void".
+    contain no material, this can also be set to "void". A list of materials
+    can be specified for the "distributed material" feature. This will give each
+    unique instance of the cell its own material.
 
     .. note:: If a material is specified, no fill should be given.
 

@@ -152,12 +152,20 @@ contains
       case (CELL_NORMAL)
         call write_dataset(cell_group, "fill_type", "normal")
         if (size(c % material) == 1) then
-          call write_dataset(cell_group, "material", &
-               materials(c % material(1)) % id)
+          if (c % material(1) == MATERIAL_VOID) then
+            call write_dataset(cell_group, "material", MATERIAL_VOID)
+          else
+            call write_dataset(cell_group, "material", &
+                 materials(c % material(1)) % id)
+          end if
         else
           allocate(cell_materials(size(c % material)))
           do j = 1, size(c % material)
-            cell_materials(j) = materials(c % material(j)) % id
+            if (c % material(j) == MATERIAL_VOID) then
+              cell_materials(j) = MATERIAL_VOID
+            else
+              cell_materials(j) = materials(c % material(j)) % id
+            end if
           end do
           call write_dataset(cell_group, "material", cell_materials)
           deallocate(cell_materials)

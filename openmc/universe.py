@@ -113,8 +113,11 @@ class Cell(object):
             string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
                                                 self._fill._id)
         elif isinstance(self._fill, Iterable):
-            string += ('{0: <16}{1}'.format('\tMaterial', '=\t')
-                 + '[' + ', '.join([str(m.id) for m in self.fill]) + ']\n')
+            string += '{0: <16}{1}'.format('\tMaterial', '=\t')
+            string += '['
+            string += ', '.join(['void' if m == 'void' else str(m.id)
+                                 for m in self.fill])
+            string += ']\n'
         elif isinstance(self._fill, (Universe, Lattice)):
             string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t',
                                                 self._fill._id)
@@ -209,7 +212,8 @@ class Cell(object):
             self._type = 'normal'
 
         elif isinstance(fill, Iterable):
-            cv.check_type('cell.fill', fill, Iterable, openmc.Material)
+            cv.check_type('cell.fill', fill, Iterable,
+                          (openmc.Material, basestring))
             self._type = 'normal'
 
         elif isinstance(fill, Universe):
@@ -402,7 +406,8 @@ class Cell(object):
             element.set("material", str(self._fill._id))
 
         elif isinstance(self._fill, Iterable):
-            element.set("material", ' '.join([str(m.id) for m in self.fill]))
+            element.set("material", ' '.join([m if m == 'void' else str(m.id)
+                                              for m in self.fill]))
 
         elif isinstance(self._fill, (Universe, Lattice)):
             element.set("fill", str(self._fill._id))

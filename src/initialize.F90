@@ -946,7 +946,6 @@ contains
   subroutine prepare_distribcell()
 
     integer :: i, j       ! Tally, filter loop counters
-    integer :: n_filt     ! Number of filters originally in tally
     logical :: count_all  ! Count all cells
     type(TallyObject),    pointer :: t                ! Current tally
     type(Universe),       pointer :: univ             ! Pointer to universe
@@ -955,58 +954,67 @@ contains
     integer, allocatable :: counts(:,:)               ! Target count
     logical, allocatable :: found(:,:)                ! Target found
 
+    ! Do we need to count cell instances?
     count_all = .false.
 
-    ! Loop over tallies
+    ! We need to count instances if any distribcell filters are present.
     do i = 1, n_tallies
-
-      ! Get pointer to tally
-      t => tallies(i)
-
-      n_filt = t%n_filters
-
-      ! Loop over the filters to determine how many additional filters
-      ! need to be added to this tally
-      do j = 1, t%n_filters
-
-        ! Determine type of filter
-        if (t%filters(j)%type == FILTER_DISTRIBCELL) then
+      do j = 1, tallies(i) % n_filters
+        if (tallies(i) % filters(j) % type == FILTER_DISTRIBCELL) then
           count_all = .true.
-          if (size(t%filters(j)%int_bins) > 1) then
+          if (size(tallies(i) % filters(j) %int_bins) > 1) then
             call fatal_error("A distribcell filter was specified with &
                              &multiple bins. This feature is not supported.")
           end if
         end if
-
       end do
-
     end do
 
+    ! We also need to count instnaces if any distributed materials are present.
+    if (.not. count_all) then
+      do i = 1, n_cells
+        if (size(cells(i) % material) > 1) then
+          count_all = .true.
+          exit
+        end if
+      end do
+    end if
+
+    ! Count the number of instances of each cell.
     if (count_all) then
+      call count_instance(universes(BASE_UNIVERSE))
+    end if
 
-      univ => universes(BASE_UNIVERSE)
-
-      ! sum the number of occurrences of all cells
-      call count_instance(univ)
-
-      ! Loop over tallies
+    ! Set the number of bins in all distribcell filters.
+    if (count_all) then
       do i = 1, n_tallies
-
-        ! Get pointer to tally
         t => tallies(i)
-
-        ! Initialize the filters
         do j = 1, t%n_filters
-
-          ! Set the number of bins to the number of instances of the cell
-          if (t%filters(j)%type == FILTER_DISTRIBCELL) then
-            c => cells(t%filters(j)%int_bins(1))
-            t%filters(j)%n_bins = c%instances
+          if (t % filters(j) % type == FILTER_DISTRIBCELL) then
+            ! Set the number of bins to the number of instances of the cell
+            c => cells(t % filters(j) % int_bins(1))
+            t % filters(j) % n_bins = c % instances
           end if
-
         end do
       end do
+    end if
 
+    ! Make sure the number of materials matches the number of cell instances for
+    ! distributed materials
+    if (count_all) then
+      do i = 1, n_cells
+        associate (c => cells(i))
+          if (size(c % material) > 1) then
+            if (size(c % material) /= c % instances) then
+              call fatal_error("Cell " // trim(to_str(c % id)) // " was &
+                   &specified with " // trim(to_str(size(c % material))) &
+                   // " materials but has " // trim(to_str(c % instances)) &
+                   // " distributed instances. The number of materials must &
+                   &equal one or the number of instances.")
+            end if
+          end if
+        end associate
+      end do
     end if
 
     ! Allocate offset maps at each level in the geometry

@@ -86,7 +86,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         sets_file.inactive = 0
         sets_file.particles = 1000
         sets_file.set_source_space('box', [-1, -1, -1, 1, 1, 1])
-        #sets_file.output = {'summary': True}
+        sets_file.output = {'summary': True}
         sets_file.export_to_xml()
 
 
@@ -115,6 +115,15 @@ class DistribmatTestHarness(PyAPITestHarness):
 #        plots_file.add_plot(plot)
 #
 #        plots_file.export_to_xml()
+
+    def _get_results(self):
+        outstr = super(DistribmatTestHarness, self)._get_results()
+        su = openmc.Summary('summary.h5')
+        outstr += str(su.get_cell_by_id(11))
+        return outstr
+
+#    def _cleanup(self):
+#        return None
 
 
 if __name__ == '__main__':

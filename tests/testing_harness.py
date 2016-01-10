@@ -152,7 +152,7 @@ class HashedTestHarness(TestHarness):
     """Specialized TestHarness that hashes the results."""
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
-        return TestHarness._get_results(self, True)
+        return super(HashedTestHarness, self)._get_results(True)
 
 
 class PlotTestHarness(TestHarness):
@@ -174,7 +174,7 @@ class PlotTestHarness(TestHarness):
                  'Plot output file does not exist.'
 
     def _cleanup(self):
-        TestHarness._cleanup(self)
+        super(PlotTestHarness, self)._cleanup()
         output = glob.glob(os.path.join(os.getcwd(), '*.ppm'))
         for f in output:
             if os.path.exists(f):
@@ -208,7 +208,7 @@ class CMFDTestHarness(TestHarness):
         sp = StatePoint(statepoint)
 
         # Write out the eigenvalue and tallies.
-        outstr = TestHarness._get_results(self)
+        outstr = super(CMFDTestHarness, self)._get_results()
 
         # Write out CMFD data.
         outstr += 'cmfd indices\n'
@@ -274,7 +274,7 @@ class ParticleRestartTestHarness(TestHarness):
 
 class PyAPITestHarness(TestHarness):
     def __init__(self, statepoint_name, tallies_present=False):
-        TestHarness.__init__(self, statepoint_name, tallies_present)
+        super(PyAPITestHarness, self).__init__(statepoint_name, tallies_present)
         self._input_set = InputSet()
 
     def execute_test(self):
@@ -315,7 +315,8 @@ class PyAPITestHarness(TestHarness):
 
     def _get_inputs(self):
         """Return a hash digest of the input XML files."""
-        xmls = ('geometry.xml', 'tallies.xml', 'materials.xml', 'settings.xml')
+        xmls = ('geometry.xml', 'tallies.xml', 'materials.xml', 'settings.xml',
+                'plots.xml')
         xmls = [os.path.join(os.getcwd(), fname) for fname in xmls]
         outstr = '\n'.join([open(fname).read() for fname in xmls
                             if os.path.exists(fname)])
@@ -347,7 +348,7 @@ class PyAPITestHarness(TestHarness):
 
     def _cleanup(self):
         """Delete XMLs, statepoints, tally, and test files."""
-        TestHarness._cleanup(self)
+        super(PyAPITestHarness, self)._cleanup()
         output = [os.path.join(os.getcwd(), 'materials.xml')]
         output.append(os.path.join(os.getcwd(), 'geometry.xml'))
         output.append(os.path.join(os.getcwd(), 'settings.xml'))

@@ -2605,7 +2605,7 @@ class Tally(object):
             parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
             in the list is the integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell Filters. Each bin is a 2-tuple of
+            cell instance ID for 'distribcell' Filters. Each bin is a 2-tuple of
             floats for 'energy' and 'energyout' filters corresponding to the
             energy boundaries of the bin of interest.  The bin is a (x,y,z)
             3-tuple for 'mesh' filters corresponding to the mesh cell of
@@ -2691,19 +2691,22 @@ class Tally(object):
 
                 # Remove and/or reorder filter bins to user specifications
                 bin_indices = []
+                num_bins = 0
 
                 for filter_bin in filter_bins[i]:
                     bin_index = filter.get_bin_index(filter_bin)
                     if filter_type in ['energy', 'energyout']:
                         bin_indices.extend([bin_index, bin_index+1])
+                        num_bins += 1
                     elif filter_type == 'distribcell':
-                        indices = [(bin,) for bin in range(filter.num_bins)]
-                        bin_indices.extend(indices)
+                        bin_indices = [0]
+                        num_bins = filter.num_bins
                     else:
                         bin_indices.append(bin_index)
+                        num_bins += 1
 
                 filter.bins = filter.bins[bin_indices]
-                filter.num_bins = len(filter_bins[i])
+                filter.num_bins = num_bins
 
         # Correct each Filter's stride
         stride = new_tally.num_nuclides * new_tally.num_scores
@@ -2737,7 +2740,7 @@ class Tally(object):
             A list of the filter bins corresponding to the filter_type parameter
             Each bin in the list is the integer ID for 'material', 'surface',
             'cell', 'cellborn', and 'universe' Filters. Each bin is an integer
-            for the cell instance ID for 'distribcell Filters. Each bin is a
+            for the cell instance ID for 'distribcell' Filters. Each bin is a
             2-tuple of floats for 'energy' and 'energyout' filters corresponding
             to the energy boundaries of the bin of interest. Each bin is an
             (x,y,z) 3-tuple for 'mesh' filters corresponding to the mesh cell of
@@ -2775,7 +2778,11 @@ class Tally(object):
             # If user did not specify filter bins, sum across all bins
             if len(filter_bins) == 0:
                 filter = self.find_filter(filter_type)
-                filter_bins = [[(filter.get_bin(i),)] for i in range(filter.num_bins)]
+                if filter.type == 'distribcell':
+                    filter_bins = [[(i,)] for i in range(filter.num_bins)]
+                else:
+                    filter_bins = \
+                        [[(filter.get_bin(i),)] for i in range(filter.num_bins)]
             else:
                 filter_bins = [[(filter_bin,)] for filter_bin in filter_bins]
 

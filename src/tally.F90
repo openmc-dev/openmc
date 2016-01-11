@@ -2414,14 +2414,9 @@ contains
             t % deriv % accumulator = t % deriv % accumulator &
                  - distance * micro_xs(t % deriv % diff_nuclide) % total
             if (collision) then
-              if (p % event == EVENT_SCATTER) then
-                  t % deriv % accumulator = t % deriv % accumulator &
-                       + micro_xs(t % deriv % diff_nuclide) % elastic &
-                       / material_xs % elastic
-              else if (p % event == EVENT_ABSORB) then
-                  t % deriv % accumulator = t % deriv % accumulator &
-                       + micro_xs(t % deriv % diff_nuclide) % absorption &
-                       / material_xs % absorption
+              if (p % event_nuclide == t % deriv % diff_nuclide) then
+                t % deriv % accumulator = t % deriv % accumulator &
+                     + ONE / mat % atom_density(j)
               end if
             end if
           end if

@@ -50,7 +50,7 @@ class Cell(object):
         Unique identifier for the cell
     name : str
         Name of the cell
-    fill : Materials or Universe or Lattice or 'void'
+    fill : Material or Universe or Lattice or 'void' or iterable of Material
         Indicates what the region of space is filled with
     region : openmc.region.Region
         Region of space that is assigned to the cell.

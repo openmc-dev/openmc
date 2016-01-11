@@ -945,8 +945,8 @@ contains
 
   subroutine prepare_distribcell()
 
-    integer :: i, j       ! Tally, filter loop counters
-    logical :: count_all  ! Count all cells
+    integer :: i, j                ! Tally, filter loop counters
+    logical :: distribcell_active  ! Does simulation use distribcell?
     type(TallyObject),    pointer :: t                ! Current tally
     type(Universe),       pointer :: univ             ! Pointer to universe
     type(Cell),           pointer :: c                ! Pointer to cell
@@ -954,14 +954,14 @@ contains
     integer, allocatable :: counts(:,:)               ! Target count
     logical, allocatable :: found(:,:)                ! Target found
 
-    ! Do we need to count cell instances?
-    count_all = .false.
+    ! Assume distribcell is not needed until proven otherwise.
+    distribcell_active = .false.
 
-    ! We need to count instances if any distribcell filters are present.
+    ! We need distribcell if any tallies have distribcell filters.
     do i = 1, n_tallies
       do j = 1, tallies(i) % n_filters
         if (tallies(i) % filters(j) % type == FILTER_DISTRIBCELL) then
-          count_all = .true.
+          distribcell_active = .true.
           if (size(tallies(i) % filters(j) %int_bins) > 1) then
             call fatal_error("A distribcell filter was specified with &
                              &multiple bins. This feature is not supported.")
@@ -970,52 +970,49 @@ contains
       end do
     end do
 
-    ! We also need to count instnaces if any distributed materials are present.
-    if (.not. count_all) then
+    ! We also need distribcell if any distributed materials are present.
+    if (.not. distribcell_active) then
       do i = 1, n_cells
         if (size(cells(i) % material) > 1) then
-          count_all = .true.
+          distribcell_active = .true.
           exit
         end if
       end do
     end if
 
+    ! If distribcell isn't used in this simulation then no more work left to do.
+    if (.not. distribcell_active) return
+
     ! Count the number of instances of each cell.
-    if (count_all) then
-      call count_instance(universes(BASE_UNIVERSE))
-    end if
+    call count_instance(universes(BASE_UNIVERSE))
 
     ! Set the number of bins in all distribcell filters.
-    if (count_all) then
-      do i = 1, n_tallies
-        t => tallies(i)
-        do j = 1, t%n_filters
-          if (t % filters(j) % type == FILTER_DISTRIBCELL) then
-            ! Set the number of bins to the number of instances of the cell
-            c => cells(t % filters(j) % int_bins(1))
-            t % filters(j) % n_bins = c % instances
-          end if
-        end do
+    do i = 1, n_tallies
+      t => tallies(i)
+      do j = 1, t%n_filters
+        if (t % filters(j) % type == FILTER_DISTRIBCELL) then
+          ! Set the number of bins to the number of instances of the cell
+          c => cells(t % filters(j) % int_bins(1))
+          t % filters(j) % n_bins = c % instances
+        end if
       end do
-    end if
+    end do
 
     ! Make sure the number of materials matches the number of cell instances for
-    ! distributed materials
-    if (count_all) then
-      do i = 1, n_cells
-        associate (c => cells(i))
-          if (size(c % material) > 1) then
-            if (size(c % material) /= c % instances) then
-              call fatal_error("Cell " // trim(to_str(c % id)) // " was &
-                   &specified with " // trim(to_str(size(c % material))) &
-                   // " materials but has " // trim(to_str(c % instances)) &
-                   // " distributed instances. The number of materials must &
-                   &equal one or the number of instances.")
-            end if
+    ! distributed materials.
+    do i = 1, n_cells
+      associate (c => cells(i))
+        if (size(c % material) > 1) then
+          if (size(c % material) /= c % instances) then
+            call fatal_error("Cell " // trim(to_str(c % id)) // " was &
+                 &specified with " // trim(to_str(size(c % material))) &
+                 // " materials but has " // trim(to_str(c % instances)) &
+                 // " distributed instances. The number of materials must &
+                 &equal one or the number of instances.")
           end if
-        end associate
-      end do
-    end if
+        end if
+      end associate
+    end do
 
     ! Allocate offset maps at each level in the geometry
     call allocate_offsets(univ_list, counts, found)

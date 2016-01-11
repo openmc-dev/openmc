@@ -94,9 +94,9 @@ The current revision of the summary file format is 1.
 **/geometry/cells/cell <uid>/material** (*int* or *int[]*)
 
     Unique ID of the material(s) assigned to the cell. This dataset is present
-    only if fill_type is set to 'normal'.  The data is an array if the cell uses
-    distributed materials, otherwise it is a scalar.  The value '-1' signifies
-    void material.
+    only if fill_type is set to 'normal'.  The value '-1' signifies void
+    material.  The data is an array if the cell uses distributed materials,
+    otherwise it is a scalar.
 
 **/geometry/cells/cell <uid>/offset** (*int[]*)
 

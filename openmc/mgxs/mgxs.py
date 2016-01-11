@@ -92,6 +92,10 @@ class MGXS(object):
     xs_tally : Tally
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
+    rxn_rate_tally : Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
     num_subdomains : Integral
         The number of subdomains is unity for 'material', 'cell' and 'universe'
         domain types. When the  This is equal to the number of cell instances
@@ -124,6 +128,7 @@ class MGXS(object):
         self._tally_trigger = None
         self._tallies = None
         self._xs_tally = None
+        self._rxn_rate_tally = None
         self._sparse = False
 
         self.name = name
@@ -150,6 +155,7 @@ class MGXS(object):
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._xs_tally = copy.deepcopy(self.xs_tally, memo)
+            clone._rxn_rate_tally = copy.deepcopy(self.rxn_rate_tally, memo)
             clone._sparse = self.sparse
 
             clone._tallies = OrderedDict()
@@ -203,6 +209,10 @@ class MGXS(object):
     @property
     def xs_tally(self):
         return self._xs_tally
+
+    @property
+    def rxn_rate_tally(self):
+        return self._rxn_rate_tally
 
     @property
     def sparse(self):
@@ -272,9 +282,11 @@ class MGXS(object):
 
         cv.check_type('sparse', sparse, bool)
 
-        # Sparsify or densify the derived MGXS tally and its base tallies
+        # Sparsify or densify the derived MGXS tallies and the base tallies
         if self.xs_tally:
             self.xs_tally.sparse = sparse
+        if self.rxn_rate_tally:
+            self.rxn_rate_tally.sparse = sparse
 
         for tally_name in self.tallies:
                 self.tallies[tally_name].sparse = sparse
@@ -533,8 +545,8 @@ class MGXS(object):
                 self.xs_tally.add_nuclide(openmc.Nuclide(nuclide))
 
         # Remove NaNs which may have resulted from divide-by-zero operations
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        self.xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
+        self.xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
         self.xs_tally.sparse = self.sparse
 
     def load_from_statepoint(self, statepoint):
@@ -1350,7 +1362,8 @@ class TotalXS(MGXS):
         tally arithmetic.
         """
 
-        self._xs_tally = self.tallies['total'] / self.tallies['flux']
+        self._rxn_rate_tally = self.tallies['total']
+        self._xs_tally = self.rxn_rate_tally / self.tallies['flux']
         super(TotalXS, self).compute_xs()
 
 
@@ -1401,8 +1414,8 @@ class TransportXS(MGXS):
         self.tallies['scatter-P1'] = scatter_p1.get_slice(scores=['scatter-P1'])
         self.tallies['scatter-P1'].filters[-1].type = 'energy'
 
-        self._xs_tally = self.tallies['total'] - self.tallies['scatter-P1']
-        self._xs_tally /= self.tallies['flux']
+        self._rxn_rate_tally = self.tallies['total'] - self.tallies['scatter-P1']
+        self._xs_tally = self.rxn_rate_tally / self.tallies['flux']
         super(TransportXS, self).compute_xs()
 
 
@@ -1447,7 +1460,8 @@ class AbsorptionXS(MGXS):
         """Computes the multi-group absorption cross sections using OpenMC
         tally arithmetic."""
 
-        self._xs_tally = self.tallies['absorption'] / self.tallies['flux']
+        self._rxn_rate_tally = self.tallies['absorption']
+        self._xs_tally = self.rxn_rate_tally / self.tallies['flux']
         super(AbsorptionXS, self).compute_xs()
 
 
@@ -1499,8 +1513,8 @@ class CaptureXS(MGXS):
         """Computes the multi-group capture cross sections using OpenMC
         tally arithmetic."""
 
-        self._xs_tally = self.tallies['absorption'] - self.tallies['fission']
-        self._xs_tally /= self.tallies['flux']
+        self._rxn_rate_tally = self.tallies['absorption'] - self.tallies['fission']
+        self._xs_tally = self.rxn_rate_tally / self.tallies['flux']
         super(CaptureXS, self).compute_xs()
 
 
@@ -1545,7 +1559,8 @@ class FissionXS(MGXS):
         """Computes the multi-group fission cross sections using OpenMC
         tally arithmetic."""
 
-        self._xs_tally = self.tallies['fission'] / self.tallies['flux']
+        self._rxn_rate_tally = self.tallies['fission']
+        self._xs_tally = self.rxn_rate_tally / self.tallies['flux']
         super(FissionXS, self).compute_xs()
 
 
@@ -1590,7 +1605,8 @@ class NuFissionXS(MGXS):
         """Computes the multi-group nu-fission cross sections using OpenMC
         tally arithmetic."""
 
-        self._xs_tally = self.tallies['nu-fission'] / self.tallies['flux']
+        self._rxn_rate_tally = self.tallies['nu-fission']
+        self._xs_tally = self.rxn_rate_tally / self.tallies['flux']
         super(NuFissionXS, self).compute_xs()
 
 
@@ -1635,7 +1651,8 @@ class ScatterXS(MGXS):
         """Computes the scattering multi-group cross sections using
         OpenMC tally arithmetic."""
 
-        self._xs_tally = self.tallies['scatter'] / self.tallies['flux']
+        self._rxn_rate_tally = self.tallies['scatter']
+        self._xs_tally = self.rxn_rate_tally / self.tallies['flux']
         super(ScatterXS, self).compute_xs()
 
 
@@ -1680,7 +1697,8 @@ class NuScatterXS(MGXS):
         """Computes the nu-scattering multi-group cross section using OpenMC
         tally arithmetic."""
 
-        self._xs_tally = self.tallies['nu-scatter'] / self.tallies['flux']
+        self._rxn_rate_tally = self.tallies['nu-scatter']
+        self._xs_tally = self.rxn_rate_tally / self.tallies['flux']
         super(NuScatterXS, self).compute_xs()
 
 
@@ -1759,11 +1777,11 @@ class ScatterMatrixXS(MGXS):
             energy_filter = self.tallies['scatter'].find_filter('energy')
             energy_filter = copy.deepcopy(energy_filter)
             scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
-            rxn_tally = self.tallies['scatter'] - scatter_p1
+            self._rxn_rate_tally = self.tallies['scatter'] - scatter_p1
         else:
-            rxn_tally = self.tallies['scatter']
+            self._rxn_rate_tally = self.tallies['scatter']
 
-        self._xs_tally = rxn_tally / self.tallies['flux']
+        self._xs_tally = self.rxn_rate_tally / self.tallies['flux']
         super(ScatterMatrixXS, self).compute_xs()
 
     def get_xs(self, in_groups='all', out_groups='all',
@@ -2104,7 +2122,8 @@ class Chi(MGXS):
         nu_fission_in.remove_filter(energy_filter)
 
         # Compute chi
-        self._xs_tally = nu_fission_out / nu_fission_in
+        self._rxn_rate_tally = nu_fission_out
+        self._xs_tally = self.rxn_rate_tally / nu_fission_in
 
         # Add the coarse energy filter back to the nu-fission tally
         nu_fission_in.add_filter(energy_filter)

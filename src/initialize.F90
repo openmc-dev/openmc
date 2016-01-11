@@ -947,9 +947,6 @@ contains
 
     integer :: i, j                ! Tally, filter loop counters
     logical :: distribcell_active  ! Does simulation use distribcell?
-    type(TallyObject),    pointer :: t                ! Current tally
-    type(Universe),       pointer :: univ             ! Pointer to universe
-    type(Cell),           pointer :: c                ! Pointer to cell
     integer, allocatable :: univ_list(:)              ! Target offsets
     integer, allocatable :: counts(:,:)               ! Target count
     logical, allocatable :: found(:,:)                ! Target found
@@ -988,13 +985,13 @@ contains
 
     ! Set the number of bins in all distribcell filters.
     do i = 1, n_tallies
-      t => tallies(i)
-      do j = 1, t%n_filters
-        if (t % filters(j) % type == FILTER_DISTRIBCELL) then
-          ! Set the number of bins to the number of instances of the cell
-          c => cells(t % filters(j) % int_bins(1))
-          t % filters(j) % n_bins = c % instances
-        end if
+      do j = 1, tallies(i) % n_filters
+        associate (filt => tallies(i) % filters(j))
+          if (filt % type == FILTER_DISTRIBCELL) then
+            ! Set the number of bins to the number of instances of the cell.
+            filt % n_bins = cells(filt % int_bins(1)) % instances
+          end if
+        end associate
       end do
     end do
 
@@ -1020,15 +1017,9 @@ contains
     ! Calculate offsets for each target distribcell
     do i = 1, n_maps
       do j = 1, n_universes
-        univ => universes(j)
-        call calc_offsets(univ_list(i), i, univ, counts, found)
+        call calc_offsets(univ_list(i), i, universes(j), counts, found)
       end do
     end do
-
-    ! Deallocate temporary target variable arrays
-    deallocate(counts)
-    deallocate(found)
-    deallocate(univ_list)
 
   end subroutine prepare_distribcell
 

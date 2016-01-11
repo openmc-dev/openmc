@@ -1034,47 +1034,33 @@ contains
     integer, intent(out), allocatable     :: counts(:,:)  ! Target count
     logical, intent(out), allocatable     :: found(:,:)   ! Target found
 
-    integer :: i, j, k                          ! Loop counters
-    type(SetInt)               :: cell_list     ! distribells to track
-    type(Universe),    pointer :: univ          ! pointer to universe
-    class(Lattice),    pointer :: lat           ! pointer to lattice
-    type(TallyObject), pointer :: t             ! pointer to tally
-    type(TallyFilter), pointer :: filter        ! pointer to filter
-    type(Cell),        pointer :: c             ! pointer to cell
+    integer      :: i, j, k   ! Loop counters
+    type(SetInt) :: cell_list ! distribells to track
 
     ! Begin gathering list of cells in distribcell tallies
     n_maps = 0
 
     ! List all cells referenced in distribcell filters.
     do i = 1, n_tallies
-      t => tallies(i)
-
-      do j = 1, t % n_filters
-        filter => t % filters(j)
-
-        if (filter % type == FILTER_DISTRIBCELL) then
-          if (.not. cell_list % contains(filter % int_bins(1))) then
-            call cell_list % add(filter % int_bins(1))
-          end if
+      do j = 1, tallies(i) % n_filters
+        if (tallies(i) % filters(j) % type == FILTER_DISTRIBCELL) then
+          call cell_list % add(tallies(i) % filters(j) % int_bins(1))
         end if
-
       end do
     end do
 
     ! List all cells with multiple (distributed) materials.
     do i = 1, n_cells
-      c => cells(i)
-      if (size(c % material) > 1) then
-        if (.not. cell_list % contains(i)) call cell_list % add(i)
+      if (size(cells(i) % material) > 1) then
+        call cell_list % add(i)
       end if
     end do
 
     ! Compute the number of unique universes containing these distribcells
     ! to determine the number of offset tables to allocate
     do i = 1, n_universes
-      univ => universes(i)
-      do j = 1, univ % n_cells
-        if (cell_list % contains(univ % cells(j))) then
+      do j = 1, universes(i) % n_cells
+        if (cell_list % contains(universes(i) % cells(j))) then
           n_maps = n_maps + 1
         end if
       end do
@@ -1085,22 +1071,21 @@ contains
 
     ! Allocate list to accumulate target distribcell counts in each universe
     allocate(counts(n_universes, n_maps))
+    counts(:,:) = 0
 
     ! Allocate list to track if target distribcells are found in each universe
     allocate(found(n_universes, n_maps))
-
-    counts(:,:) = 0
     found(:,:) = .false.
-    k = 1
+
 
     ! Search through universes for distributed cells and assign each one a
     ! unique distribcell array index.
+    k = 1
     do i = 1, n_universes
-      univ => universes(i)
-      do j = 1, univ % n_cells
-        if (cell_list % contains(univ % cells(j))) then
-          cells(univ % cells(j)) % distribcell_index = k
-          univ_list(k) = univ % id
+      do j = 1, universes(i) % n_cells
+        if (cell_list % contains(universes(i) % cells(j))) then
+          cells(universes(i) % cells(j)) % distribcell_index = k
+          univ_list(k) = universes(i) % id
           k = k + 1
         end if
       end do
@@ -1108,20 +1093,19 @@ contains
 
     ! Allocate the offset tables for lattices
     do i = 1, n_lattices
-      lat => lattices(i) % obj
+      associate(lat => lattices(i) % obj)
+        select type(lat)
 
-      select type(lat)
+        type is (RectLattice)
+          allocate(lat % offset(n_maps, lat % n_cells(1), lat % n_cells(2), &
+                   lat % n_cells(3)))
+        type is (HexLattice)
+          allocate(lat % offset(n_maps, 2 * lat % n_rings - 1, &
+               2 * lat % n_rings - 1, lat % n_axial))
+        end select
 
-      type is (RectLattice)
-        allocate(lat % offset(n_maps, lat % n_cells(1), lat % n_cells(2), &
-                 lat % n_cells(3)))
-      type is (HexLattice)
-        allocate(lat % offset(n_maps, 2 * lat % n_rings - 1, &
-             2 * lat % n_rings - 1, lat % n_axial))
-      end select
-
-      lat % offset(:, :, :, :) = 0
-
+        lat % offset(:, :, :, :) = 0
+      end associate
     end do
 
     ! Allocate offset table for fill cells

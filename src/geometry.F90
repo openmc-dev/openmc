@@ -308,9 +308,10 @@ contains
         else
           ! Particle is outside the lattice.
           if (lat % outer == NO_OUTER_UNIVERSE) then
-            call fatal_error("A particle is outside latttice " &
-                 // trim(to_str(lat % id)) // " but the lattice has no &
-                 &defined outer universe.")
+            call handle_lost_particle(p, "Particle " // trim(to_str(p %id)) &
+                 // " is outside lattice " // trim(to_str(lat % id)) &
+                 // " but the lattice has no defined outer universe.")
+            return
           else
             p % coord(j + 1) % universe = lat % outer
           end if
@@ -536,9 +537,11 @@ contains
       p % n_coord = 1
       call find_cell(p, found)
       if (.not. found) then
-        call handle_lost_particle(p, "Could not locate particle " &
-             // trim(to_str(p % id)) // " after crossing a lattice boundary.")
-        return
+        if (p % alive) then ! Particle may have been killed in find_cell
+          call handle_lost_particle(p, "Could not locate particle " &
+               // trim(to_str(p % id)) // " after crossing a lattice boundary.")
+          return
+        end if
       end if
 
     else OUTSIDE_LAT

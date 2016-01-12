@@ -1742,13 +1742,9 @@ class ScatterMatrixXS(MGXS):
 
         return self._tallies
 
-    @correction.setter
-    def correction(self, correction):
-        cv.check_value('correction', correction, ('P0', None))
-        self._correction = correction
-
     @property
     def rxn_rate_tally(self):
+
         if self._rxn_rate_tally is None:
             # If using P0 correction subtract scatter-P1 from the diagonal
             if self.correction == 'P0':
@@ -1760,9 +1756,15 @@ class ScatterMatrixXS(MGXS):
                 self._rxn_rate_tally = self.tallies['scatter'] - scatter_p1
             else:
                 self._rxn_rate_tally = self.tallies['scatter']
+
             self._rxn_rate_tally.sparse = self.sparse
 
         return self._rxn_rate_tally
+
+    @correction.setter
+    def correction(self, correction):
+        cv.check_value('correction', correction, ('P0', None))
+        self._correction = correction
 
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all', xs_type='macro',

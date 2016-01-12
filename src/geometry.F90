@@ -537,9 +537,11 @@ contains
       p % n_coord = 1
       call find_cell(p, found)
       if (.not. found) then
-        call handle_lost_particle(p, "Could not locate particle " &
-             // trim(to_str(p % id)) // " after crossing a lattice boundary.")
-        return
+        if (p % alive) then ! Particle may have been killed in find_cell
+          call handle_lost_particle(p, "Could not locate particle " &
+               // trim(to_str(p % id)) // " after crossing a lattice boundary.")
+          return
+        end if
       end if
 
     else OUTSIDE_LAT

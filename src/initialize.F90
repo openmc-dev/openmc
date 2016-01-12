@@ -959,7 +959,7 @@ contains
       do j = 1, tallies(i) % n_filters
         if (tallies(i) % filters(j) % type == FILTER_DISTRIBCELL) then
           distribcell_active = .true.
-          if (size(tallies(i) % filters(j) %int_bins) > 1) then
+          if (size(tallies(i) % filters(j) % int_bins) > 1) then
             call fatal_error("A distribcell filter was specified with &
                              &multiple bins. This feature is not supported.")
           end if

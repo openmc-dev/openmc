@@ -3401,9 +3401,7 @@ contains
       ! If a derivative is present, we can only use analog or collision
       ! estimators.
       if (allocated(t % deriv) .and. t % estimator == ESTIMATOR_TRACKLENGTH) &
-           then
-        t % estimator = ESTIMATOR_COLLISION
-      end if
+           t % estimator = ESTIMATOR_COLLISION
 
       ! If settings.xml trigger is turned on, create tally triggers
       if (trigger_on) then

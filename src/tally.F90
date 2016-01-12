@@ -758,7 +758,17 @@ contains
         select case (t % estimator)
 
         case (ESTIMATOR_ANALOG)
-          score = score * t % deriv % accumulator
+          if (p % event_nuclide == t % deriv % diff_nuclide) then
+            associate(mat => materials(p % material))
+              do l = 1, mat % n_nuclides
+                if (mat % nuclide(l) == t % deriv % diff_nuclide) exit
+              end do
+              score = score * (t % deriv % accumulator &
+                   + ONE / mat % atom_density(l))
+            end associate
+          else
+            score = score * t % deriv % accumulator
+          end if
 
         case (ESTIMATOR_COLLISION)
           if (t % deriv % dep_var == DIFF_NUCLIDE_DENSITY) then

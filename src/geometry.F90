@@ -947,6 +947,8 @@ contains
     type(Particle), intent(inout) :: p
     character(*)                  :: message
 
+    integer(8) :: tot_n_particles
+
     ! Print warning and write lost particle file
     call warning(message)
     call write_particle_restart(p)
@@ -956,9 +958,13 @@ contains
 !$omp atomic
     n_lost_particles = n_lost_particles + 1
 
+    ! Count the total number of simulated particles
+    tot_n_particles = n_batches * gen_per_batch * n_particles
+
     ! Abort the simulation if the maximum number of lost particles has been
     ! reached
-    if (n_lost_particles == MAX_LOST_PARTICLES) then
+    if (n_lost_particles >= MAX_LOST_PARTICLES .and. &
+         n_lost_particles >= REL_MAX_LOST_PARTICLES * tot_n_particles) then
       call fatal_error("Maximum number of lost particles has been reached.")
     end if
 

@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import Iterable, OrderedDict
 from xml.etree import ElementTree as ET
 
 import openmc
@@ -140,7 +140,10 @@ class Geometry(object):
         materials = set()
 
         for cell in material_cells:
-            materials.add(cell._fill)
+            if isinstance(cell.fill, Iterable):
+                for m in cell.fill: materials.add(m)
+            else:
+                materials.add(cell.fill)
 
         materials = list(materials)
         materials.sort(key=lambda x: x.id)

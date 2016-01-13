@@ -614,31 +614,33 @@ contains
       ! =======================================================================
       ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
 
-      id = c%material
-      if (id == MATERIAL_VOID) then
-        c%type = CELL_NORMAL
-      elseif (id /= 0) then
-        if (material_dict%has_key(id)) then
-          c%type = CELL_NORMAL
-          c%material = material_dict%get_key(id)
-        else
-          call fatal_error("Could not find material " // trim(to_str(id)) &
-               &// " specified on cell " // trim(to_str(c%id)))
-        end if
-      else
-        id = c%fill
-        if (universe_dict%has_key(id)) then
-          c%type = CELL_FILL
-          c%fill = universe_dict%get_key(id)
-        elseif (lattice_dict%has_key(id)) then
-          lid = lattice_dict%get_key(id)
-          c%type = CELL_LATTICE
-          c%fill = lid
+      if (c % material(1) == NONE) then
+        id = c % fill
+        if (universe_dict % has_key(id)) then
+          c % type = CELL_FILL
+          c % fill = universe_dict % get_key(id)
+        elseif (lattice_dict % has_key(id)) then
+          lid = lattice_dict % get_key(id)
+          c % type = CELL_LATTICE
+          c % fill = lid
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
-               &// trim(to_str(c%id)) // " is neither a universe nor a &
+               // trim(to_str(c % id)) // " is neither a universe nor a &
                &lattice.")
         end if
+      else
+        do j = 1, size(c % material)
+          id = c % material(j)
+          if (id == MATERIAL_VOID) then
+            c % type = CELL_NORMAL
+          else if (material_dict % has_key(id)) then
+            c % type = CELL_NORMAL
+            c % material(j) = material_dict % get_key(id)
+          else
+            call fatal_error("Could not find material " // trim(to_str(id)) &
+                 // " specified on cell " // trim(to_str(c % id)))
+          end if
+        end do
       end if
     end do
 
@@ -943,69 +945,71 @@ contains
 
   subroutine prepare_distribcell()
 
-    integer :: i, j       ! Tally, filter loop counters
-    integer :: n_filt     ! Number of filters originally in tally
-    logical :: count_all  ! Count all cells
-    type(TallyObject),    pointer :: t                ! Current tally
-    type(Universe),       pointer :: univ             ! Pointer to universe
-    type(Cell),           pointer :: c                ! Pointer to cell
+    integer :: i, j                ! Tally, filter loop counters
+    logical :: distribcell_active  ! Does simulation use distribcell?
     integer, allocatable :: univ_list(:)              ! Target offsets
     integer, allocatable :: counts(:,:)               ! Target count
     logical, allocatable :: found(:,:)                ! Target found
 
-    count_all = .false.
+    ! Assume distribcell is not needed until proven otherwise.
+    distribcell_active = .false.
 
-    ! Loop over tallies
+    ! We need distribcell if any tallies have distribcell filters.
     do i = 1, n_tallies
-
-      ! Get pointer to tally
-      t => tallies(i)
-
-      n_filt = t%n_filters
-
-      ! Loop over the filters to determine how many additional filters
-      ! need to be added to this tally
-      do j = 1, t%n_filters
-
-        ! Determine type of filter
-        if (t%filters(j)%type == FILTER_DISTRIBCELL) then
-          count_all = .true.
-          if (size(t%filters(j)%int_bins) > 1) then
+      do j = 1, tallies(i) % n_filters
+        if (tallies(i) % filters(j) % type == FILTER_DISTRIBCELL) then
+          distribcell_active = .true.
+          if (size(tallies(i) % filters(j) % int_bins) > 1) then
             call fatal_error("A distribcell filter was specified with &
                              &multiple bins. This feature is not supported.")
           end if
         end if
-
       end do
-
     end do
 
-    if (count_all) then
-
-      univ => universes(BASE_UNIVERSE)
-
-      ! sum the number of occurrences of all cells
-      call count_instance(univ)
-
-      ! Loop over tallies
-      do i = 1, n_tallies
-
-        ! Get pointer to tally
-        t => tallies(i)
-
-        ! Initialize the filters
-        do j = 1, t%n_filters
-
-          ! Set the number of bins to the number of instances of the cell
-          if (t%filters(j)%type == FILTER_DISTRIBCELL) then
-            c => cells(t%filters(j)%int_bins(1))
-            t%filters(j)%n_bins = c%instances
-          end if
-
-        end do
+    ! We also need distribcell if any distributed materials are present.
+    if (.not. distribcell_active) then
+      do i = 1, n_cells
+        if (size(cells(i) % material) > 1) then
+          distribcell_active = .true.
+          exit
+        end if
       end do
-
     end if
+
+    ! If distribcell isn't used in this simulation then no more work left to do.
+    if (.not. distribcell_active) return
+
+    ! Count the number of instances of each cell.
+    call count_instance(universes(BASE_UNIVERSE))
+
+    ! Set the number of bins in all distribcell filters.
+    do i = 1, n_tallies
+      do j = 1, tallies(i) % n_filters
+        associate (filt => tallies(i) % filters(j))
+          if (filt % type == FILTER_DISTRIBCELL) then
+            ! Set the number of bins to the number of instances of the cell.
+            filt % n_bins = cells(filt % int_bins(1)) % instances
+          end if
+        end associate
+      end do
+    end do
+
+    ! Make sure the number of materials matches the number of cell instances for
+    ! distributed materials.
+    do i = 1, n_cells
+      associate (c => cells(i))
+        if (size(c % material) > 1) then
+          if (size(c % material) /= c % instances) then
+            call fatal_error("Cell " // trim(to_str(c % id)) // " was &
+                 &specified with " // trim(to_str(size(c % material))) &
+                 // " materials but has " // trim(to_str(c % instances)) &
+                 // " distributed instances. The number of materials must &
+                 &equal one or the number of instances.")
+          end if
+        end if
+      end associate
+    end do
 
     ! Allocate offset maps at each level in the geometry
     call allocate_offsets(univ_list, counts, found)
@@ -1013,15 +1017,9 @@ contains
     ! Calculate offsets for each target distribcell
     do i = 1, n_maps
       do j = 1, n_universes
-        univ => universes(j)
-        call calc_offsets(univ_list(i), i, univ, counts, found)
+        call calc_offsets(univ_list(i), i, universes(j), counts, found)
       end do
     end do
-
-    ! Deallocate temporary target variable arrays
-    deallocate(counts)
-    deallocate(found)
-    deallocate(univ_list)
 
   end subroutine prepare_distribcell
 
@@ -1036,38 +1034,33 @@ contains
     integer, intent(out), allocatable     :: counts(:,:)  ! Target count
     logical, intent(out), allocatable     :: found(:,:)   ! Target found
 
-    integer :: i, j, k, l, m                    ! Loop counters
-    type(SetInt)               :: cell_list     ! distribells to track
-    type(Universe),    pointer :: univ          ! pointer to universe
-    class(Lattice),    pointer :: lat           ! pointer to lattice
-    type(TallyObject), pointer :: t             ! pointer to tally
-    type(TallyFilter), pointer :: filter        ! pointer to filter
+    integer      :: i, j, k   ! Loop counters
+    type(SetInt) :: cell_list ! distribells to track
 
     ! Begin gathering list of cells in distribcell tallies
     n_maps = 0
 
-    ! Populate list of distribcells to track
+    ! List all cells referenced in distribcell filters.
     do i = 1, n_tallies
-      t => tallies(i)
-
-      do j = 1, t % n_filters
-        filter => t % filters(j)
-
-        if (filter % type == FILTER_DISTRIBCELL) then
-          if (.not. cell_list % contains(filter % int_bins(1))) then
-            call cell_list % add(filter % int_bins(1))
-          end if
+      do j = 1, tallies(i) % n_filters
+        if (tallies(i) % filters(j) % type == FILTER_DISTRIBCELL) then
+          call cell_list % add(tallies(i) % filters(j) % int_bins(1))
         end if
-
       end do
+    end do
+
+    ! List all cells with multiple (distributed) materials.
+    do i = 1, n_cells
+      if (size(cells(i) % material) > 1) then
+        call cell_list % add(i)
+      end if
     end do
 
     ! Compute the number of unique universes containing these distribcells
     ! to determine the number of offset tables to allocate
     do i = 1, n_universes
-      univ => universes(i)
-      do j = 1, univ % n_cells
-        if (cell_list % contains(univ % cells(j))) then
+      do j = 1, universes(i) % n_cells
+        if (cell_list % contains(universes(i) % cells(j))) then
           n_maps = n_maps + 1
         end if
       end do
@@ -1076,24 +1069,23 @@ contains
     ! Allocate the list of offset tables for each unique universe
     allocate(univ_list(n_maps))
 
-    ! Allocate list to accumulate target distribccell counts in each universe
+    ! Allocate list to accumulate target distribcell counts in each universe
     allocate(counts(n_universes, n_maps))
+    counts(:,:) = 0
 
     ! Allocate list to track if target distribcells are found in each universe
     allocate(found(n_universes, n_maps))
-
-    counts(:,:) = 0
     found(:,:) = .false.
-    k = 1
+
 
     ! Search through universes for distributed cells and assign each one a
     ! unique distribcell array index.
+    k = 1
     do i = 1, n_universes
-      univ => universes(i)
-      do j = 1, univ % n_cells
-        if (cell_list % contains(univ % cells(j))) then
-          cells(univ % cells(j)) % distribcell_index = k
-          univ_list(k) = univ % id
+      do j = 1, universes(i) % n_cells
+        if (cell_list % contains(universes(i) % cells(j))) then
+          cells(universes(i) % cells(j)) % distribcell_index = k
+          univ_list(k) = universes(i) % id
           k = k + 1
         end if
       end do
@@ -1101,28 +1093,30 @@ contains
 
     ! Allocate the offset tables for lattices
     do i = 1, n_lattices
-      lat => lattices(i) % obj
+      associate(lat => lattices(i) % obj)
+        select type(lat)
 
-      select type(lat)
+        type is (RectLattice)
+          allocate(lat % offset(n_maps, lat % n_cells(1), lat % n_cells(2), &
+                   lat % n_cells(3)))
+        type is (HexLattice)
+          allocate(lat % offset(n_maps, 2 * lat % n_rings - 1, &
+               2 * lat % n_rings - 1, lat % n_axial))
+        end select
 
-      type is (RectLattice)
-        allocate(lat % offset(n_maps, lat % n_cells(1), lat % n_cells(2), &
-                 lat % n_cells(3)))
-      type is (HexLattice)
-        allocate(lat % offset(n_maps, 2 * lat % n_rings - 1, &
-             2 * lat % n_rings - 1, lat % n_axial))
-      end select
-
-      lat % offset(:, :, :, :) = 0
-
+        lat % offset(:, :, :, :) = 0
+      end associate
     end do
 
     ! Allocate offset table for fill cells
     do i = 1, n_cells
-      if (cells(i) % material == NONE) then
+      if (cells(i) % type /= CELL_NORMAL) then
         allocate(cells(i) % offset(n_maps))
       end if
     end do
+
+    ! Free up memory
+    call cell_list % clear()
 
   end subroutine allocate_offsets
 

@@ -50,7 +50,7 @@ class Cell(object):
         Unique identifier for the cell
     name : str
         Name of the cell
-    fill : Material or Universe or Lattice or 'void'
+    fill : Material or Universe or Lattice or 'void' or iterable of Material
         Indicates what the region of space is filled with
     region : openmc.region.Region
         Region of space that is assigned to the cell.
@@ -112,6 +112,12 @@ class Cell(object):
         if isinstance(self._fill, openmc.Material):
             string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
                                                 self._fill._id)
+        elif isinstance(self._fill, Iterable):
+            string += '{0: <16}{1}'.format('\tMaterial', '=\t')
+            string += '['
+            string += ', '.join(['void' if m == 'void' else str(m.id)
+                                 for m in self.fill])
+            string += ']\n'
         elif isinstance(self._fill, (Universe, Lattice)):
             string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t',
                                                 self._fill._id)
@@ -203,6 +209,11 @@ class Cell(object):
                 raise ValueError(msg)
 
         elif isinstance(fill, openmc.Material):
+            self._type = 'normal'
+
+        elif isinstance(fill, Iterable):
+            cv.check_type('cell.fill', fill, Iterable,
+                          (openmc.Material, basestring))
             self._type = 'normal'
 
         elif isinstance(fill, Universe):
@@ -393,6 +404,10 @@ class Cell(object):
 
         if isinstance(self._fill, openmc.Material):
             element.set("material", str(self._fill._id))
+
+        elif isinstance(self._fill, Iterable):
+            element.set("material", ' '.join([m if m == 'void' else str(m.id)
+                                              for m in self.fill]))
 
         elif isinstance(self._fill, (Universe, Lattice)):
             element.set("fill", str(self._fill._id))

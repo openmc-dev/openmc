@@ -1,9 +1,13 @@
 from abc import ABCMeta, abstractmethod
 from collections import Iterable
 from numbers import Real
+import sys
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 
 class Univariate(object):

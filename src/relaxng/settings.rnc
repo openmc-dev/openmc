@@ -89,8 +89,8 @@ element settings {
       distribution =
         (element type { xsd:string { maxLength = "16" } } |
           attribute type { xsd:string { maxLength = "16" } }) &
-        (element interpolation { xsd:string { maxLength = "10" } } |
-          attribute interpolation { xsd:string { maxLength = "10" } })? &
+        (element interpolation { xsd:string } |
+          attribute interpolation { xsd:string })? &
         (element parameters { list { xsd:double+ } } |
           attribute parameters { list { xsd:double+ } })?
     }

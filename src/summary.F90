@@ -107,6 +107,7 @@ contains
 
     integer          :: i, j, k, m
     integer, allocatable :: lattice_universes(:,:,:)
+    integer, allocatable :: cell_materials(:)
     integer(HID_T) :: geom_group
     integer(HID_T) :: cells_group, cell_group
     integer(HID_T) :: surfaces_group, surface_group
@@ -150,10 +151,24 @@ contains
       select case (c%type)
       case (CELL_NORMAL)
         call write_dataset(cell_group, "fill_type", "normal")
-        if (c%material == MATERIAL_VOID) then
-          call write_dataset(cell_group, "material", -1)
+        if (size(c % material) == 1) then
+          if (c % material(1) == MATERIAL_VOID) then
+            call write_dataset(cell_group, "material", MATERIAL_VOID)
+          else
+            call write_dataset(cell_group, "material", &
+                 materials(c % material(1)) % id)
+          end if
         else
-          call write_dataset(cell_group, "material", materials(c%material)%id)
+          allocate(cell_materials(size(c % material)))
+          do j = 1, size(c % material)
+            if (c % material(j) == MATERIAL_VOID) then
+              cell_materials(j) = MATERIAL_VOID
+            else
+              cell_materials(j) = materials(c % material(j)) % id
+            end if
+          end do
+          call write_dataset(cell_group, "material", cell_materials)
+          deallocate(cell_materials)
         end if
 
       case (CELL_FILL)

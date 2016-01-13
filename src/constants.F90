@@ -140,7 +140,7 @@ module constants
   integer, parameter :: MAX_LOST_PARTICLES = 10
 
   ! Maximum number of lost particles, relative to the total number of particles
-  real(8), parameter :: REL_MAX_LOST_PARTICLES = 1e-5_8
+  real(8), parameter :: REL_MAX_LOST_PARTICLES = 1e-6_8
 
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS

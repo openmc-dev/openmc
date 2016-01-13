@@ -278,7 +278,7 @@ class SpatialIndependent(Spatial):
         cv.check_type('y coordinate', y, Univariate)
         self._y = y
 
-    @x.setter
+    @z.setter
     def z(self, z):
         cv.check_type('z coordinate', z, Univariate)
         self._z = z

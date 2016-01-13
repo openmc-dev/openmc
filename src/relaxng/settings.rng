@@ -350,16 +350,18 @@
                     <optional>
                       <choice>
                         <element name="reference_uvw">
-                          <data type="double"/>
-                          <data type="double"/>
-                          <data type="double"/>
+                          <list>
+                            <data type="double"/>
+                            <data type="double"/>
+                            <data type="double"/>
+                          </list>
                         </element>
                         <attribute name="reference_uvw">
-                          <group>
+                          <list>
                             <data type="double"/>
                             <data type="double"/>
                             <data type="double"/>
-                          </group>
+                          </list>
                         </attribute>
                       </choice>
                     </optional>
@@ -410,14 +412,10 @@
               <optional>
                 <choice>
                   <element name="interpolation">
-                    <data type="string">
-                      <param name="maxLength">10</param>
-                    </data>
+                    <data type="string"/>
                   </element>
                   <attribute name="interpolation">
-                    <data type="string">
-                      <param name="maxLength">10</param>
-                    </data>
+                    <data type="string"/>
                   </attribute>
                 </choice>
               </optional>

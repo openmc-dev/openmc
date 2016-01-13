@@ -185,7 +185,7 @@ class Maxwell(Univariate):
 
     def to_xml(self):
         element = ET.Element(self.name)
-        element.set("type", "uniform")
+        element.set("type", "maxwell")
         element.set("parameters", str(self.theta))
         return element
 

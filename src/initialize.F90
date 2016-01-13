@@ -625,7 +625,7 @@ contains
           c % fill = lid
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
-               &// trim(to_str(c % id)) // " is neither a universe nor a &
+               // trim(to_str(c % id)) // " is neither a universe nor a &
                &lattice.")
         end if
       else
@@ -638,7 +638,7 @@ contains
             c % material(j) = material_dict % get_key(id)
           else
             call fatal_error("Could not find material " // trim(to_str(id)) &
-                 &// " specified on cell " // trim(to_str(c % id)))
+                 // " specified on cell " // trim(to_str(c % id)))
           end if
         end do
       end if
@@ -1114,6 +1114,9 @@ contains
         allocate(cells(i) % offset(n_maps))
       end if
     end do
+
+    ! Free up memory
+    call cell_list % clear()
 
   end subroutine allocate_offsets
 

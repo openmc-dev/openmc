@@ -1104,7 +1104,7 @@ contains
               ! Check for error
               if (c % material(j) == ERROR_INT) then
                 call fatal_error("Invalid material specified on cell " &
-                     &// to_str(c % id))
+                     // to_str(c % id))
               end if
             end select
           end do
@@ -1124,7 +1124,7 @@ contains
       ! Check to make sure that either material or fill was specified
       if (c % material(1) == NONE .and. c % fill == NONE) then
         call fatal_error("Neither material nor fill was specified for cell " &
-             &// trim(to_str(c % id)))
+             // trim(to_str(c % id)))
       end if
 
       ! Check to make sure that both material and fill haven't been

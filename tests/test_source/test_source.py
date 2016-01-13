@@ -44,7 +44,7 @@ class SourceTestHarness(PyAPITestHarness):
         spatial3 = openmc.stats.SpatialPoint([1.2, -2.3, 0.781])
 
         mu_dist = openmc.stats.Discrete('mu', [-1., 0., 1.], [0.5, 0.25, 0.25])
-        phi_dist = openmc.stats.Uniform('phi', 0., 2.*pi)
+        phi_dist = openmc.stats.Uniform('phi', 0., 6.28318530718)
         angle1 = openmc.stats.PolarAzimuthal(mu_dist, phi_dist)
         angle2 = openmc.stats.Monodirectional(reference_uvw=[0., 1., 0.])
         angle3 = openmc.stats.Isotropic()

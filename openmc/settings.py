@@ -37,7 +37,7 @@ class SettingsFile(object):
         type are 'variance', 'std_dev', and 'rel_err'. The threshold value
         should be a float indicating the variance, standard deviation, or
         relative error used.
-    source : openmc.source.Source
+    source : Iterable of openmc.source.Source
         Distribution of source sites in space, angle, and energy
     output : dict
         Dictionary indicating what files to output. Valid keys are 'summary',
@@ -440,8 +440,11 @@ class SettingsFile(object):
 
     @source.setter
     def source(self, source):
-        check_type('source distribution', source, Source)
-        self._source = source
+        if isinstance(source, Source):
+            self._source = [source,]
+        else:
+            check_type('source distribution', source, Iterable, Source)
+            self._source = source
 
     @output.setter
     def output(self, output):
@@ -781,7 +784,8 @@ class SettingsFile(object):
 
     def _create_source_subelement(self):
         if self.source is not None:
-            self._settings_file.append(self.source.to_xml())
+            for source in self.source:
+                self._settings_file.append(source.to_xml())
 
     def _create_output_subelement(self):
         if self._output is not None:

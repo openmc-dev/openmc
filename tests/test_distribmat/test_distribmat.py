@@ -90,37 +90,43 @@ class DistribmatTestHarness(PyAPITestHarness):
         sets_file.export_to_xml()
 
 
-#        ####################
-#        # Plots
-#        ####################
-#
-#        plots_file = openmc.PlotsFile()
-#
-#        plot = openmc.Plot(plot_id=1)
-#        plot.basis = 'xy'
-#        plot.color = 'cell'
-#        plot.filename = 'cellplot'
-#        plot.origin = (0, 0, 0)
-#        plot.width = (7, 7)
-#        plot.pixels = (400, 400)
-#        plots_file.add_plot(plot)
-#
-#        plot = openmc.Plot(plot_id=2)
-#        plot.basis = 'xy'
-#        plot.color = 'mat'
-#        plot.filename = 'matplot'
-#        plot.origin = (0, 0, 0)
-#        plot.width = (7, 7)
-#        plot.pixels = (400, 400)
-#        plots_file.add_plot(plot)
-#
-#        plots_file.export_to_xml()
+        ####################
+        # Plots
+        ####################
+
+        plots_file = openmc.PlotsFile()
+
+        plot = openmc.Plot(plot_id=1)
+        plot.basis = 'xy'
+        plot.color = 'cell'
+        plot.filename = 'cellplot'
+        plot.origin = (0, 0, 0)
+        plot.width = (7, 7)
+        plot.pixels = (400, 400)
+        plots_file.add_plot(plot)
+
+        plot = openmc.Plot(plot_id=2)
+        plot.basis = 'xy'
+        plot.color = 'mat'
+        plot.filename = 'matplot'
+        plot.origin = (0, 0, 0)
+        plot.width = (7, 7)
+        plot.pixels = (400, 400)
+        plots_file.add_plot(plot)
+
+        plots_file.export_to_xml()
 
     def _get_results(self):
         outstr = super(DistribmatTestHarness, self)._get_results()
         su = openmc.Summary('summary.h5')
         outstr += str(su.get_cell_by_id(11))
         return outstr
+
+    def _cleanup(self):
+        f = os.path.join(os.getcwd(), 'plots.xml')
+        if os.path.exists(f):
+            os.remove(f)
+        super(DistribmatTestHarness, self)._cleanup()
 
 
 if __name__ == '__main__':

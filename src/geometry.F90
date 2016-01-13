@@ -337,9 +337,10 @@ contains
         else
           ! Particle is outside the lattice.
           if (lat % outer == NO_OUTER_UNIVERSE) then
-            call fatal_error("A particle is outside latttice " &
-                 // trim(to_str(lat % id)) // " but the lattice has no &
-                 &defined outer universe.")
+            call handle_lost_particle(p, "Particle " // trim(to_str(p %id)) &
+                 // " is outside lattice " // trim(to_str(lat % id)) &
+                 // " but the lattice has no defined outer universe.")
+            return
           else
             p % coord(j + 1) % universe = lat % outer
           end if
@@ -565,9 +566,11 @@ contains
       p % n_coord = 1
       call find_cell(p, found)
       if (.not. found) then
-        call handle_lost_particle(p, "Could not locate particle " &
-             // trim(to_str(p % id)) // " after crossing a lattice boundary.")
-        return
+        if (p % alive) then ! Particle may have been killed in find_cell
+          call handle_lost_particle(p, "Could not locate particle " &
+               // trim(to_str(p % id)) // " after crossing a lattice boundary.")
+          return
+        end if
       end if
 
     else OUTSIDE_LAT
@@ -976,6 +979,8 @@ contains
     type(Particle), intent(inout) :: p
     character(*)                  :: message
 
+    integer(8) :: tot_n_particles
+
     ! Print warning and write lost particle file
     call warning(message)
     call write_particle_restart(p)
@@ -985,9 +990,13 @@ contains
 !$omp atomic
     n_lost_particles = n_lost_particles + 1
 
+    ! Count the total number of simulated particles (on this processor)
+    tot_n_particles = n_batches * gen_per_batch * work
+
     ! Abort the simulation if the maximum number of lost particles has been
     ! reached
-    if (n_lost_particles == MAX_LOST_PARTICLES) then
+    if (n_lost_particles >= MAX_LOST_PARTICLES .and. &
+         n_lost_particles >= REL_MAX_LOST_PARTICLES * tot_n_particles) then
       call fatal_error("Maximum number of lost particles has been reached.")
     end if
 

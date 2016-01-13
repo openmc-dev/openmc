@@ -89,6 +89,10 @@ class MGXS(object):
         compute the cross section
     tallies : OrderedDict
         OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
     xs_tally : Tally
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
@@ -123,6 +127,7 @@ class MGXS(object):
         self._energy_groups = None
         self._tally_trigger = None
         self._tallies = None
+        self._rxn_rate_tally = None
         self._xs_tally = None
         self._sparse = False
 
@@ -149,7 +154,8 @@ class MGXS(object):
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
-            clone._xs_tally = copy.deepcopy(self.xs_tally, memo)
+            clone._rxn_rate_tally = copy.deepcopy(self._rxn_rate_tally, memo)
+            clone._xs_tally = copy.deepcopy(self._xs_tally, memo)
             clone._sparse = self.sparse
 
             clone._tallies = OrderedDict()
@@ -201,7 +207,22 @@ class MGXS(object):
         return self._tallies
 
     @property
+    def rxn_rate_tally(self):
+        return self._rxn_rate_tally
+
+    @property
     def xs_tally(self):
+        """Computes multi-group cross section using OpenMC tally arithmetic."""
+
+        if self._xs_tally is None:
+            if self.tallies is None:
+                msg = 'Unable to get xs_tally since tallies have ' \
+                      'not been loaded from a statepoint'
+                raise ValueError(msg)
+
+            self._xs_tally = self.rxn_rate_tally / self.tallies['flux']
+            self._compute_xs()
+
         return self._xs_tally
 
     @property
@@ -272,9 +293,11 @@ class MGXS(object):
 
         cv.check_type('sparse', sparse, bool)
 
-        # Sparsify or densify the derived MGXS tally and its base tallies
-        if self.xs_tally:
+        # Sparsify or densify the derived MGXS tallies and the base tallies
+        if self._xs_tally:
             self.xs_tally.sparse = sparse
+        if self._rxn_rate_tally:
+            self.rxn_rate_tally.sparse = sparse
 
         for tally_name in self.tallies:
                 self.tallies[tally_name].sparse = sparse
@@ -509,8 +532,7 @@ class MGXS(object):
             else:
                 self.tallies[key].add_nuclide('total')
 
-    @abc.abstractmethod
-    def compute_xs(self):
+    def _compute_xs(self):
         """Performs generic cleanup after a subclass' uses tally arithmetic to
         compute a multi-group cross section as a derived tally.
 
@@ -533,8 +555,8 @@ class MGXS(object):
                 self.xs_tally.add_nuclide(openmc.Nuclide(nuclide))
 
         # Remove NaNs which may have resulted from divide-by-zero operations
-        self._xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
-        self._xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
+        self.xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
+        self.xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
         self.xs_tally.sparse = self.sparse
 
     def load_from_statepoint(self, statepoint):
@@ -601,9 +623,6 @@ class MGXS(object):
             sp_tally.sparse = self.sparse
             self.tallies[tally_type] = sp_tally
 
-        # Compute the cross section from the tallies
-        self.compute_xs()
-
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing', value='mean'):
         """Returns an array of multi-group cross sections.
@@ -646,10 +665,6 @@ class MGXS(object):
             computed from tally data.
 
         """
-
-        if self.xs_tally is None:
-            msg = 'Unable to get cross section since it has not been computed'
-            raise ValueError(msg)
 
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
@@ -735,11 +750,6 @@ class MGXS(object):
 
         """
 
-        if self.xs_tally is None:
-            msg = 'Unable to get a condensed coarse group cross section ' \
-                  'since the fine group cross section has not been computed'
-            raise ValueError(msg)
-
         cv.check_type('coarse_groups', coarse_groups, EnergyGroups)
         cv.check_less_than('coarse groups', coarse_groups.num_groups,
                            self.num_groups, equality=True)
@@ -750,8 +760,10 @@ class MGXS(object):
 
         # Clone this MGXS to initialize the condensed version
         condensed_xs = copy.deepcopy(self)
-        condensed_xs.sparse = False
-        condensed_xs.energy_groups = coarse_groups
+        condensed_xs._rxn_rate_tally = None
+        condensed_xs._xs_tally = None
+        condensed_xs._sparse = False
+        condensed_xs._energy_groups = coarse_groups
 
         # Build energy indices to sum across
         energy_indices = []
@@ -797,7 +809,6 @@ class MGXS(object):
             tally._std_dev = std_dev
 
         # Compute the energy condensed multi-group cross section
-        condensed_xs.compute_xs()
         condensed_xs.sparse = self.sparse
         return condensed_xs
 
@@ -826,11 +837,6 @@ class MGXS(object):
 
         """
 
-        if self.xs_tally is None:
-            msg = 'Unable to get subdomain-averaged cross section since the ' \
-                  'subdomain-distributed cross section has not been computed'
-            raise ValueError(msg)
-
         # Construct a collection of the subdomain filter bins to average across
         if subdomains != 'all':
             cv.check_iterable_type('subdomains', subdomains, Integral)
@@ -841,7 +847,9 @@ class MGXS(object):
 
         # Clone this MGXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
-        avg_xs.sparse = False
+        avg_xs._rxn_rate_tally = None
+        avg_xs._xs_tally = None
+        avg_xs._sparse = False
 
         # If domain is distribcell, make the new domain 'cell'
         if self.domain_type == 'distribcell':
@@ -879,7 +887,6 @@ class MGXS(object):
             tally._std_dev = std_dev
 
         # Compute the subdomain-averaged multi-group cross section
-        avg_xs.compute_xs()
         avg_xs.sparse = self.sparse
         return avg_xs
 
@@ -931,7 +938,7 @@ class MGXS(object):
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
         # If cross section data has not been computed, only print string header
-        if self.xs_tally is None:
+        if self.tallies is None:
             print(string)
             return
 
@@ -1017,11 +1024,6 @@ class MGXS(object):
             When h5py is not installed.
 
         """
-
-        if self.xs_tally is None:
-            msg = 'Unable to get build HDF5 store since the ' \
-                  'cross section has not been computed'
-            raise ValueError(msg)
 
         import h5py
 
@@ -1220,11 +1222,6 @@ class MGXS(object):
 
         """
 
-        if self.xs_tally is None:
-            msg = 'Unable to get Pandas DataFrame since the ' \
-                  'cross section has not been computed'
-            raise ValueError(msg)
-
         if groups != 'all':
             cv.check_iterable_type('groups', groups, Integral)
         if nuclides != 'all' and nuclides != 'sum':
@@ -1345,13 +1342,12 @@ class TotalXS(MGXS):
 
         return self._tallies
 
-    def compute_xs(self):
-        """Computes the multi-group total cross sections using OpenMC
-        tally arithmetic.
-        """
-
-        self._xs_tally = self.tallies['total'] / self.tallies['flux']
-        super(TotalXS, self).compute_xs()
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = self.tallies['total']
+            self._rxn_rate_tally.sparse = self.sparse
+        return self._rxn_rate_tally
 
 
 class TransportXS(MGXS):
@@ -1392,18 +1388,21 @@ class TransportXS(MGXS):
 
         return self._tallies
 
-    def compute_xs(self):
-        """Computes the multi-group transport cross sections using OpenMC
-        tally arithmetic."""
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            scatter_p1 = copy.deepcopy(self.tallies['scatter-P1'])
 
-        # Use tally slicing to remove scatter-P0 data from scatter-P1 tally
-        scatter_p1 = self.tallies['scatter-P1']
-        self.tallies['scatter-P1'] = scatter_p1.get_slice(scores=['scatter-P1'])
-        self.tallies['scatter-P1'].filters[-1].type = 'energy'
+            # Use tally slicing to remove scatter-P0 data from scatter-P1 tally
+            self.tallies['scatter-P1'] = \
+                scatter_p1.get_slice(scores=['scatter-P1'])
 
-        self._xs_tally = self.tallies['total'] - self.tallies['scatter-P1']
-        self._xs_tally /= self.tallies['flux']
-        super(TransportXS, self).compute_xs()
+            self.tallies['scatter-P1'].filters[-1].type = 'energy'
+            self._rxn_rate_tally = \
+                self.tallies['total'] - self.tallies['scatter-P1']
+            self._rxn_rate_tally.sparse = self.sparse
+
+        return self._rxn_rate_tally
 
 
 class AbsorptionXS(MGXS):
@@ -1443,12 +1442,12 @@ class AbsorptionXS(MGXS):
 
         return self._tallies
 
-    def compute_xs(self):
-        """Computes the multi-group absorption cross sections using OpenMC
-        tally arithmetic."""
-
-        self._xs_tally = self.tallies['absorption'] / self.tallies['flux']
-        super(AbsorptionXS, self).compute_xs()
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = self.tallies['absorption']
+            self._rxn_rate_tally.sparse = self.sparse
+        return self._rxn_rate_tally
 
 
 class CaptureXS(MGXS):
@@ -1495,13 +1494,13 @@ class CaptureXS(MGXS):
 
         return self._tallies
 
-    def compute_xs(self):
-        """Computes the multi-group capture cross sections using OpenMC
-        tally arithmetic."""
-
-        self._xs_tally = self.tallies['absorption'] - self.tallies['fission']
-        self._xs_tally /= self.tallies['flux']
-        super(CaptureXS, self).compute_xs()
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = \
+                self.tallies['absorption'] - self.tallies['fission']
+            self._rxn_rate_tally.sparse = self.sparse
+        return self._rxn_rate_tally
 
 
 class FissionXS(MGXS):
@@ -1541,12 +1540,12 @@ class FissionXS(MGXS):
 
         return self._tallies
 
-    def compute_xs(self):
-        """Computes the multi-group fission cross sections using OpenMC
-        tally arithmetic."""
-
-        self._xs_tally = self.tallies['fission'] / self.tallies['flux']
-        super(FissionXS, self).compute_xs()
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = self.tallies['fission']
+            self._rxn_rate_tally.sparse = self.sparse
+        return self._rxn_rate_tally
 
 
 class NuFissionXS(MGXS):
@@ -1586,12 +1585,12 @@ class NuFissionXS(MGXS):
 
         return self._tallies
 
-    def compute_xs(self):
-        """Computes the multi-group nu-fission cross sections using OpenMC
-        tally arithmetic."""
-
-        self._xs_tally = self.tallies['nu-fission'] / self.tallies['flux']
-        super(NuFissionXS, self).compute_xs()
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = self.tallies['nu-fission']
+            self._rxn_rate_tally.sparse = self.sparse
+        return self._rxn_rate_tally
 
 
 class ScatterXS(MGXS):
@@ -1631,12 +1630,12 @@ class ScatterXS(MGXS):
 
         return self._tallies
 
-    def compute_xs(self):
-        """Computes the scattering multi-group cross sections using
-        OpenMC tally arithmetic."""
-
-        self._xs_tally = self.tallies['scatter'] / self.tallies['flux']
-        super(ScatterXS, self).compute_xs()
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = self.tallies['scatter']
+            self._rxn_rate_tally.sparse = self.sparse
+        return self._rxn_rate_tally
 
 
 class NuScatterXS(MGXS):
@@ -1676,12 +1675,12 @@ class NuScatterXS(MGXS):
 
         return self._tallies
 
-    def compute_xs(self):
-        """Computes the nu-scattering multi-group cross section using OpenMC
-        tally arithmetic."""
-
-        self._xs_tally = self.tallies['nu-scatter'] / self.tallies['flux']
-        super(NuScatterXS, self).compute_xs()
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = self.tallies['nu-scatter']
+            self._rxn_rate_tally.sparse = self.sparse
+        return self._rxn_rate_tally
 
 
 class ScatterMatrixXS(MGXS):
@@ -1743,28 +1742,29 @@ class ScatterMatrixXS(MGXS):
 
         return self._tallies
 
+    @property
+    def rxn_rate_tally(self):
+
+        if self._rxn_rate_tally is None:
+            # If using P0 correction subtract scatter-P1 from the diagonal
+            if self.correction == 'P0':
+                scatter_p1 = self.tallies['scatter-P1']
+                scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
+                energy_filter = self.tallies['scatter'].find_filter('energy')
+                energy_filter = copy.deepcopy(energy_filter)
+                scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
+                self._rxn_rate_tally = self.tallies['scatter'] - scatter_p1
+            else:
+                self._rxn_rate_tally = self.tallies['scatter']
+
+            self._rxn_rate_tally.sparse = self.sparse
+
+        return self._rxn_rate_tally
+
     @correction.setter
     def correction(self, correction):
         cv.check_value('correction', correction, ('P0', None))
         self._correction = correction
-
-    def compute_xs(self):
-        """Computes the multi-group scattering matrix using OpenMC
-        tally arithmetic."""
-
-        # If using P0 correction subtract scatter-P1 from the diagonal
-        if self.correction == 'P0':
-            scatter_p1 = self.tallies['scatter-P1']
-            scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
-            energy_filter = self.tallies['scatter'].find_filter('energy')
-            energy_filter = copy.deepcopy(energy_filter)
-            scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
-            rxn_tally = self.tallies['scatter'] - scatter_p1
-        else:
-            rxn_tally = self.tallies['scatter']
-
-        self._xs_tally = rxn_tally / self.tallies['flux']
-        super(ScatterMatrixXS, self).compute_xs()
 
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all', xs_type='macro',
@@ -1811,10 +1811,6 @@ class ScatterMatrixXS(MGXS):
             computed from tally data.
 
         """
-
-        if self.xs_tally is None:
-            msg = 'Unable to get cross section since it has not been computed'
-            raise ValueError(msg)
 
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
@@ -1948,7 +1944,7 @@ class ScatterMatrixXS(MGXS):
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
         # If cross section data has not been computed, only print string header
-        if self.xs_tally is None:
+        if self.tallies is None:
             print(string)
             return
 
@@ -2092,24 +2088,32 @@ class Chi(MGXS):
 
         return self._tallies
 
-    def compute_xs(self):
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = self.tallies['nu-fission-out']
+            self._rxn_rate_tally.sparse = self.sparse
+        return self._rxn_rate_tally
+
+    @property
+    def xs_tally(self):
         """Computes chi fission spectrum using OpenMC tally arithmetic."""
 
-        # Retrieve the fission production tallies
-        nu_fission_in = self.tallies['nu-fission-in']
-        nu_fission_out = self.tallies['nu-fission-out']
+        if self._xs_tally is None:
+            nu_fission_in = self.tallies['nu-fission-in']
 
-        # Remove coarse energy filter to keep it out of tally arithmetic
-        energy_filter = nu_fission_in.find_filter('energy')
-        nu_fission_in.remove_filter(energy_filter)
+            # Remove coarse energy filter to keep it out of tally arithmetic
+            energy_filter = nu_fission_in.find_filter('energy')
+            nu_fission_in.remove_filter(energy_filter)
 
-        # Compute chi
-        self._xs_tally = nu_fission_out / nu_fission_in
+            # Compute chi
+            self._xs_tally = self.rxn_rate_tally / nu_fission_in
+            super(Chi, self)._compute_xs()
 
-        # Add the coarse energy filter back to the nu-fission tally
-        nu_fission_in.add_filter(energy_filter)
+            # Add the coarse energy filter back to the nu-fission tally
+            nu_fission_in.add_filter(energy_filter)
 
-        super(Chi, self).compute_xs()
+        return self._xs_tally
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing', value='mean'):
@@ -2153,10 +2157,6 @@ class Chi(MGXS):
             computed from tally data.
 
         """
-
-        if self.xs_tally is None:
-            msg = 'Unable to get cross section since it has not been computed'
-            raise ValueError(msg)
 
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])

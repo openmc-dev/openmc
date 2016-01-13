@@ -958,8 +958,8 @@ contains
 !$omp atomic
     n_lost_particles = n_lost_particles + 1
 
-    ! Count the total number of simulated particles
-    tot_n_particles = n_batches * gen_per_batch * n_particles
+    ! Count the total number of simulated particles (on this processor)
+    tot_n_particles = n_batches * gen_per_batch * work
 
     ! Abort the simulation if the maximum number of lost particles has been
     ! reached

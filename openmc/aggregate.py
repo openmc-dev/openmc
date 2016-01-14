@@ -256,7 +256,7 @@ class AggregateFilter(object):
         if existing is None:
             clone = type(self).__new__(type(self))
             clone._type = self.type
-            clone._filter = self.aggregate_filter
+            clone._aggregate_filter = self.aggregate_filter
             clone._aggregate_op = self.aggregate_op
             clone._bins = self._bins
             clone._stride = self.stride

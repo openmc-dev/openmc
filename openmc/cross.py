@@ -34,7 +34,7 @@ class CrossScore(object):
         The right score in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
-        combine two tally's scores with this CrossNuclide
+        combine two tally's scores with this CrossScore
 
     """
 
@@ -310,7 +310,6 @@ class CrossFilter(object):
             clone._binary_op = self.binary_op
             clone._type = self.type
             clone._bins = self._bins
-            clone._num_bins = self.num_bins
             clone._stride = self.stride
 
             memo[id(self)] = clone
@@ -355,8 +354,8 @@ class CrossFilter(object):
     @type.setter
     def type(self, filter_type):
         if filter_type not in _FILTER_TYPES.values():
-            msg = 'Unable to set Filter type to "{0}" since it is not one ' \
-                  'of the supported types'.format(filter_type)
+            msg = 'Unable to set CrossFilter type to "{0}" since it ' \
+                  'is not one of the supported types'.format(filter_type)
             raise ValueError(msg)
 
         self._type = filter_type

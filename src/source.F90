@@ -114,9 +114,6 @@ contains
     ! Set the random number generator to the source stream.
     call prn_set_stream(STREAM_SOURCE)
 
-    ! Set particle defaults
-    call p%initialize()
-
     ! Sample from among multiple source distributions
     n_source = size(external_source)
     if (n_source > 1) then
@@ -133,6 +130,9 @@ contains
     ! Repeat sampling source location until a good site has been found
     found = .false.
     do while (.not.found)
+      ! Set particle defaults
+      call p%initialize()
+
       ! Sample spatial distribution
       site%xyz(:) = external_source(i)%space%sample()
 

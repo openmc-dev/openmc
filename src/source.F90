@@ -104,8 +104,6 @@ contains
     integer :: n_source   ! number of source distributions
     real(8) :: c          ! cumulative frequency
     real(8) :: r(3)       ! sampled coordinates
-    real(8) :: p_min(3)   ! minimum coordinates of source
-    real(8) :: p_max(3)   ! maximum coordinates of source
     logical :: found      ! Does the source particle exist within geometry?
     type(Particle) :: p   ! Temporary particle for using find_cell
     integer, save :: num_resamples = 0 ! Number of resamples encountered

@@ -56,7 +56,6 @@ contains
     character(MAX_LINE_LEN) :: temp_str
     integer :: i
     integer :: n
-    integer :: coeffs_reqd
     integer :: temp_int
     integer :: temp_int_array3(3)
     integer, allocatable :: temp_int_array(:)
@@ -501,13 +500,6 @@ contains
 
           ! Get pointer to angular distribution
           call get_node_ptr(node_source, "angle", node_angle)
-
-          ! Determine number of parameters specified
-          if (check_for_node(node_angle, "parameters")) then
-            n = get_arraysize_double(node_angle, "parameters")
-          else
-            n = 0
-          end if
 
           ! Check for type of angular distribution
           type = ''

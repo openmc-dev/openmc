@@ -8,6 +8,8 @@ module distribution_univariate
   use string, only: to_lower
   use xml_interface
 
+  implicit none
+
 !===============================================================================
 ! DISTRIBUTION type defines a probability density function
 !===============================================================================
@@ -82,6 +84,7 @@ contains
     class(Discrete), intent(in) :: this
     real(8) :: x
 
+    integer :: i  ! loop counter
     integer :: n  ! size of distribution
     real(8) :: c  ! cumulative frequency
     real(8) :: xi ! sampled CDF value
@@ -197,10 +200,10 @@ contains
     real(8), intent(in) :: p(:)
     integer, intent(in) :: interp
 
+    integer :: i
     integer :: n
 
     ! Check interpolation parameter
-
     if (interp /= HISTOGRAM .and. interp /= LINEAR_LINEAR) then
       call fatal_error('Only histogram and linear-linear interpolation for tabular &
            &distribution is supported.')
@@ -241,6 +244,7 @@ contains
 
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: temp_str
+    integer :: n
     integer :: temp_int
     real(8), allocatable :: temp_real(:)
 
@@ -258,14 +262,14 @@ contains
       ! Allocate extension of Distribution
       select case (to_lower(type))
       case ('uniform')
-        allocate (Uniform :: dist)
+        allocate(Uniform :: dist)
         if (n /= 2) then
           call fatal_error('Uniform distribution must have two &
                &parameters specified.')
         end if
 
       case ('maxwell')
-        allocate (Maxwell :: dist)
+        allocate(Maxwell :: dist)
         if (n /= 1) then
           call fatal_error('Maxwell energy distribution must have one &
                &parameter specified.')

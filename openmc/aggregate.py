@@ -218,17 +218,17 @@ class AggregateFilter(object):
 
     """
 
-    def __init__(self, filter=None, bins=None, aggregate_op=None):
+    def __init__(self, aggregate_filter=None, bins=None, aggregate_op=None):
 
-        self._type = '{0}({1})'.format(aggregate_op, filter.type)
+        self._type = '{0}({1})'.format(aggregate_op, aggregate_filter.type)
         self._bins = None
         self._stride = None
 
-        self._filter = None
+        self._aggregate_filter = None
         self._aggregate_op = None
 
-        if filter is not None:
-            self.filter = filter
+        if aggregate_filter is not None:
+            self.aggregate_filter = aggregate_filter
         if bins is not None:
             self.bins = bins
         if aggregate_op is not None:
@@ -256,7 +256,7 @@ class AggregateFilter(object):
         if existing is None:
             clone = type(self).__new__(type(self))
             clone._type = self.type
-            clone._filter = self.filter
+            clone._filter = self.aggregate_filter
             clone._aggregate_op = self.aggregate_op
             clone._bins = self._bins
             clone._stride = self.stride
@@ -270,8 +270,8 @@ class AggregateFilter(object):
             return existing
 
     @property
-    def filter(self):
-        return self._filter
+    def aggregate_filter(self):
+        return self._aggregate_filter
 
     @property
     def aggregate_op(self):
@@ -287,7 +287,7 @@ class AggregateFilter(object):
 
     @property
     def num_bins(self):
-        if self.filter:
+        if self.aggregate_filter:
             return 1
         else:
             return 0
@@ -305,10 +305,10 @@ class AggregateFilter(object):
 
         self._type = filter_type
 
-    @filter.setter
-    def filter(self, filter):
-        cv.check_type('filter', filter, (Filter, CrossFilter))
-        self._filter = filter
+    @aggregate_filter.setter
+    def aggregate_filter(self, aggregate_filter):
+        cv.check_type('aggregate_filter', aggregate_filter, (Filter, CrossFilter))
+        self._aggregate_filter = aggregate_filter
 
     @bins.setter
     def bins(self, bins):

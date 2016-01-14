@@ -556,11 +556,11 @@ class Summary(object):
                 bins = self._f['{0}/bins'.format(subsubbase)][...]
 
                 # Create Filter object
-                filter = openmc.Filter(filter_type, bins)
-                filter.num_bins = num_bins
+                new_filter = openmc.Filter(filter_type, bins)
+                new_filter.num_bins = num_bins
 
                 # Add Filter to the Tally
-                tally.add_filter(filter)
+                tally.add_filter(new_filter)
 
             # Add Tally to the global dictionary of all Tallies
             self.tallies[tally_id] = tally

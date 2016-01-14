@@ -144,8 +144,8 @@ class Tally(object):
             clone._results_read = self._results_read
 
             clone._filters = []
-            for filter in self.filters:
-                clone.add_filter(copy.deepcopy(filter, memo))
+            for self_filter in self.filters:
+                clone.add_filter(copy.deepcopy(self_filter, memo))
 
             clone._nuclides = []
             for nuclide in self.nuclides:
@@ -175,8 +175,8 @@ class Tally(object):
         if len(self.filters) != len(other.filters):
             return False
 
-        for filter in self.filters:
-            if filter not in other.filters:
+        for self_filter in self.filters:
+            if self_filter not in other.filters:
                 return False
 
         # Check all nuclides
@@ -213,9 +213,9 @@ class Tally(object):
 
         string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
 
-        for filter in self.filters:
-            string += '{0: <16}\t\t{1}\t{2}\n'.format('', filter.type,
-                                                          filter.bins)
+        for self_filter in self.filters:
+            string += '{0: <16}\t\t{1}\t{2}\n'.format('', self_filter.type,
+                                                          self_filter.bins)
 
         string += '{0: <16}{1}'.format('\tNuclides', '=\t')
 
@@ -268,8 +268,8 @@ class Tally(object):
     def num_filter_bins(self):
         num_bins = 1
 
-        for filter in self.filters:
-            num_bins *= filter.num_bins
+        for self_filter in self.filters:
+            num_bins *= self_filter.num_bins
 
         return num_bins
 
@@ -460,12 +460,12 @@ class Tally(object):
         else:
             self._name = ''
 
-    def add_filter(self, filter):
+    def add_filter(self, new_filter):
         """Add a filter to the tally
 
         Parameters
         ----------
-        filter : Filter, CrossFilter or AggregateFilter
+        new_filter : Filter, CrossFilter or AggregateFilter
             A filter to specify a discretization of the tally across some
             dimension (e.g., 'energy', 'cell'). The filter should be a Filter
             object when a user is adding filters to a Tally for input file
@@ -475,19 +475,19 @@ class Tally(object):
 
         """
 
-        if not isinstance(filter, (Filter, CrossFilter, AggregateFilter)):
+        if not isinstance(new_filter, (Filter, CrossFilter, AggregateFilter)):
             msg = 'Unable to add Filter "{0}" to Tally ID="{1}" since it is ' \
-                  'not a Filter object'.format(filter, self.id)
+                  'not a Filter object'.format(new_filter, self.id)
             raise ValueError(msg)
 
         # If the filter is already in the Tally, raise an error
-        if filter in self.filters:
+        if new_filter in self.filters:
             msg = 'Unable to add a duplicate filter "{0}" to Tally ID="{1}" ' \
                   'since duplicate filters are not supported in the OpenMC ' \
-                  'Python API'.format(filter, self.id)
+                  'Python API'.format(new_filter, self.id)
             raise ValueError(msg)
 
-        self._filters.append(filter)
+        self._filters.append(new_filter)
 
     def add_nuclide(self, nuclide):
         """Specify that scores for a particular nuclide should be accumulated
@@ -640,22 +640,22 @@ class Tally(object):
 
         self._scores.remove(score)
 
-    def remove_filter(self, filter):
+    def remove_filter(self, old_filter):
         """Remove a filter from the tally
 
         Parameters
         ----------
-        filter : openmc.filter.Filter
+        old_filter : openmc.filter.Filter
             Filter to remove
 
         """
 
-        if filter not in self.filters:
+        if old_filter not in self.filters:
             msg = 'Unable to remove filter "{0}" from Tally ID="{1}" since the ' \
-                  'Tally does not contain this filter'.format(filter, self.id)
+                  'Tally does not contain this filter'.format(old_filter, self.id)
             ValueError(msg)
 
-        self._filters.remove(filter)
+        self._filters.remove(old_filter)
 
     def remove_nuclide(self, nuclide):
         """Remove a nuclide from the tally
@@ -799,13 +799,13 @@ class Tally(object):
             element.set("name", self.name)
 
         # Optional Tally filters
-        for filter in self.filters:
+        for self_filter in self.filters:
             subelement = ET.SubElement(element, "filter")
-            subelement.set("type", str(filter.type))
+            subelement.set("type", str(self_filter.type))
 
-            if filter.bins is not None:
+            if self_filter.bins is not None:
                 bins = ''
-                for bin in filter.bins:
+                for bin in self_filter.bins:
                     bins += '{0} '.format(bin)
 
                 subelement.set("bins", bins.rstrip(' '))
@@ -857,7 +857,7 @@ class Tally(object):
 
         Returns
         -------
-        filter : openmc.filter.Filter
+        filter_found : openmc.filter.Filter
             Filter from this tally with matching type, or None if no matching
             Filter is found
 
@@ -868,21 +868,21 @@ class Tally(object):
 
         """
 
-        filter = None
+        filter_found = None
 
         # Look through all of this Tally's Filters for the type requested
         for test_filter in self.filters:
             if test_filter.type == filter_type:
-                filter = test_filter
+                filter_found = test_filter
                 break
 
         # If we did not find the Filter, throw an Exception
-        if filter is None:
+        if filter_found is None:
             msg = 'Unable to find filter type "{0}" in ' \
                   'Tally ID="{1}"'.format(filter_type, self.id)
             raise ValueError(msg)
 
-        return filter
+        return filter_found
 
     def get_filter_index(self, filter_type, filter_bin):
         """Returns the index in the Tally's results array for a Filter bin
@@ -907,10 +907,10 @@ class Tally(object):
         """
 
         # Find the equivalent Filter in this Tally's list of Filters
-        filter = self.find_filter(filter_type)
+        filter_found = self.find_filter(filter_type)
 
         # Get the index for the requested bin from the Filter and return it
-        filter_index = filter.get_bin_index(filter_bin)
+        filter_index = filter_found.get_bin_index(filter_bin)
         return filter_index
 
     def get_nuclide_index(self, nuclide):
@@ -1030,12 +1030,12 @@ class Tally(object):
             filter_indices = []
 
             # Loop over all of the Tally's Filters
-            for i, filter in enumerate(self.filters):
+            for i, self_filter in enumerate(self.filters):
                 user_filter = False
 
                 # If a user-requested Filter, get the user-requested bins
                 for j, test_filter in enumerate(filters):
-                    if filter.type == test_filter:
+                    if self_filter.type == test_filter:
                         bins = filter_bins[j]
                         user_filter = True
                         break
@@ -1043,36 +1043,36 @@ class Tally(object):
                 # If not a user-requested Filter, get all bins
                 if not user_filter:
                     # Create list of 2- or 3-tuples tuples for mesh cell bins
-                    if filter.type == 'mesh':
-                        dimension = filter.mesh.dimension
+                    if self_filter.type == 'mesh':
+                        dimension = self_filter.mesh.dimension
                         xyz = map(lambda x: np.arange(1, x+1), dimension)
                         bins = list(itertools.product(*xyz))
 
                     # Create list of 2-tuples for energy boundary bins
-                    elif filter.type in ['energy', 'energyout']:
+                    elif self_filter.type in ['energy', 'energyout']:
                         bins = []
-                        for k in range(filter.num_bins):
-                            bins.append((filter.bins[k], filter.bins[k+1]))
+                        for k in range(self_filter.num_bins):
+                            bins.append((self_filter.bins[k], self_filter.bins[k+1]))
 
                     # Create list of cell instance IDs for distribcell Filters
-                    elif filter.type == 'distribcell':
-                        bins = np.arange(filter.num_bins)
+                    elif self_filter.type == 'distribcell':
+                        bins = np.arange(self_filter.num_bins)
 
                     # Create list of IDs for bins for all other filter types
                     else:
-                        bins = filter.bins
+                        bins = self_filter.bins
 
                 # Initialize a NumPy array for the Filter bin indices
                 filter_indices.append(np.zeros(len(bins), dtype=np.int))
 
                 # Add indices for each bin in this Filter to the list
                 for j, bin in enumerate(bins):
-                    filter_index = self.get_filter_index(filter.type, bin)
+                    filter_index = self.get_filter_index(self_filter.type, bin)
                     filter_indices[i][j] = filter_index
 
                 # Account for stride in each of the previous filters
                 for indices in filter_indices[:i]:
-                    indices *= filter.num_bins
+                    indices *= self_filter.num_bins
 
             # Apply outer product sum between all filter bin indices
             filter_indices = list(map(sum, itertools.product(*filter_indices)))
@@ -1314,8 +1314,8 @@ class Tally(object):
         if filters:
 
             # Append each Filter's DataFrame to the overall DataFrame
-            for filter in self.filters:
-                filter_df = filter.get_pandas_dataframe(data_size, summary)
+            for self_filter in self.filters:
+                filter_df = self_filter.get_pandas_dataframe(data_size, summary)
                 df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it
@@ -1404,8 +1404,8 @@ class Tally(object):
 
         # Build a new array shape with one dimension per filter
         new_shape = ()
-        for filter in self.filters:
-            new_shape += (filter.num_bins, )
+        for self_filter in self.filters:
+            new_shape += (self_filter.num_bins, )
         new_shape += (self.num_nuclides,)
         new_shape += (self.num_scores,)
 
@@ -1498,8 +1498,9 @@ class Tally(object):
             # Create an HDF5 sub-group for the Filters
             filter_group = tally_group.create_group('filters')
 
-            for filter in self.filters:
-                filter_group.create_dataset(filter.type, data=filter.bins)
+            for self_filter in self.filters:
+                filter_group.create_dataset(self_filter.type,
+                                            filter=self_filter.bins)
 
             # Add all results to the main HDF5 group for the Tally
             tally_group.create_dataset('sum', data=self.sum)
@@ -1542,8 +1543,8 @@ class Tally(object):
             tally_group['filters'] = {}
             filter_group = tally_group['filters']
 
-            for filter in self.filters:
-                filter_group[filter.type] = filter.bins
+            for self_filter in self.filters:
+                filter_group[self_filter.type] = self_filter.bins
 
             # Add all results to the main sub-dictionary for the Tally
             tally_group['sum'] = self.sum
@@ -1752,9 +1753,9 @@ class Tally(object):
         """
 
         stride = self.num_nuclides * self.num_scores
-        for filter in reversed(self.filters):
-            filter.stride = stride
-            stride *= filter.num_bins
+        for self_filter in reversed(self.filters):
+            self_filter.stride = stride
+            stride *= self_filter.num_bins
 
     def _align_tally_data(self, other, filter_product, nuclide_product,
                           score_product):
@@ -1798,26 +1799,26 @@ class Tally(object):
             set(other.filters).difference(set(self.filters))
 
         # Add filters present in self but not in other to other
-        for filter in other_missing_filters:
-            filter = copy.deepcopy(filter)
-            other._mean = np.repeat(other.mean, filter.num_bins, axis=0)
-            other._std_dev = np.repeat(other.std_dev, filter.num_bins, axis=0)
-            other.add_filter(filter)
+        for other_filter in other_missing_filters:
+            filter_copy = copy.deepcopy(other_filter)
+            other._mean = np.repeat(other.mean, filter_copy.num_bins, axis=0)
+            other._std_dev = np.repeat(other.std_dev, filter_copy.num_bins, axis=0)
+            other.add_filter(filter_copy)
 
         # Add filters present in other but not in self to self
-        for filter in self_missing_filters:
-            filter = copy.deepcopy(filter)
-            self._mean = np.repeat(self.mean, filter.num_bins, axis=0)
-            self._std_dev = np.repeat(self.std_dev, filter.num_bins, axis=0)
-            self.add_filter(filter)
+        for self_filter in self_missing_filters:
+            filter_copy = copy.deepcopy(self_filter)
+            self._mean = np.repeat(self.mean, filter_copy.num_bins, axis=0)
+            self._std_dev = np.repeat(self.std_dev, filter_copy.num_bins, axis=0)
+            self.add_filter(filter_copy)
 
         # Align other filters with self filters
-        for i, filter in enumerate(self.filters):
-            other_index = other.filters.index(filter)
+        for i, self_filter in enumerate(self.filters):
+            other_index = other.filters.index(self_filter)
 
             # If necessary, swap other filter
             if other_index != i:
-                other._swap_filters(filter, other.filters[i])
+                other._swap_filters(self_filter, other.filters[i])
 
         # Repeat and tile the data by nuclide in preparation for performing
         # the tensor product across nuclides.
@@ -1975,7 +1976,7 @@ class Tally(object):
         # Construct lists of tuples for the bins in each of the two filters
         filters = [filter1.type, filter2.type]
         if filter1.type == 'distribcell':
-            filter1_bins = np.arange(filter.num_bins)
+            filter1_bins = np.arange(filter1.num_bins)
         else:
             filter1_bins = [(filter1.get_bin(i)) for i in range(filter1.num_bins)]
 
@@ -2200,8 +2201,8 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            for filter in self.filters:
-                new_tally.add_filter(filter)
+            for self_filter in self.filters:
+                new_tally.add_filter(self_filter)
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
             for score in self.scores:
@@ -2274,8 +2275,8 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            for filter in self.filters:
-                new_tally.add_filter(filter)
+            for self_filter in self.filters:
+                new_tally.add_filter(self_filter)
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
             for score in self.scores:
@@ -2349,8 +2350,8 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            for filter in self.filters:
-                new_tally.add_filter(filter)
+            for self_filter in self.filters:
+                new_tally.add_filter(self_filter)
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
             for score in self.scores:
@@ -2424,8 +2425,8 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            for filter in self.filters:
-                new_tally.add_filter(filter)
+            for self_filter in self.filters:
+                new_tally.add_filter(self_filter)
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
             for score in self.scores:
@@ -2503,8 +2504,8 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            for filter in self.filters:
-                new_tally.add_filter(filter)
+            for self_filter in self.filters:
+                new_tally.add_filter(self_filter)
             for nuclide in self.nuclides:
                 new_tally.add_nuclide(nuclide)
             for score in self.scores:
@@ -2726,26 +2727,26 @@ class Tally(object):
 
             # Determine the filter indices from any of the requested filters
             for i, filter_type in enumerate(filters):
-                filter = new_tally.find_filter(filter_type)
+                find_filter = new_tally.find_filter(filter_type)
 
                 # Remove and/or reorder filter bins to user specifications
                 bin_indices = []
                 num_bins = 0
 
                 for filter_bin in filter_bins[i]:
-                    bin_index = filter.get_bin_index(filter_bin)
+                    bin_index = find_filter.get_bin_index(filter_bin)
                     if filter_type in ['energy', 'energyout']:
                         bin_indices.extend([bin_index, bin_index+1])
                         num_bins += 1
                     elif filter_type == 'distribcell':
                         bin_indices = [0]
-                        num_bins = filter.num_bins
+                        num_bins = find_filter.num_bins
                     else:
                         bin_indices.append(bin_index)
                         num_bins += 1
 
-                filter.bins = filter.bins[bin_indices]
-                filter.num_bins = num_bins
+                find_filter.bins = find_filter.bins[bin_indices]
+                find_filter.num_bins = num_bins
 
         # Update the new tally's filter strides
         new_tally._update_filter_strides()
@@ -2810,26 +2811,27 @@ class Tally(object):
 
         # Sum across any filter bins specified by the user
         if filter_type in _FILTER_TYPES:
-            filter = self.find_filter(filter_type)
+            find_filter = self.find_filter(filter_type)
 
             # If user did not specify filter bins, sum across all bins
             if len(filter_bins) == 0:
-                bin_indices = np.arange(filter.num_bins)
+                bin_indices = np.arange(find_filter.num_bins)
 
                 if filter_type == 'distribcell':
-                    filter_bins = np.arange(filter.num_bins)
+                    filter_bins = np.arange(find_filter.num_bins)
                 else:
+                    num_bins = find_filter.num_bins
                     filter_bins = \
-                        [(filter.get_bin(i)) for i in range(filter.num_bins)]
+                        [(find_filter.get_bin(i)) for i in range(num_bins)]
 
             # Only sum across bins specified by the user
             else:
                 bin_indices = \
-                    [filter.get_bin_index(bin) for bin in filter_bins]
+                    [find_filter.get_bin_index(bin) for bin in filter_bins]
 
             # Sum across the bins in the user-specified filter
-            for i, filter in enumerate(self.filters):
-                if filter.type == filter_type:
+            for i, self_filter in enumerate(self.filters):
+                if self_filter.type == filter_type:
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
                     mean = np.sum(mean, axis=i, keepdims=True)
@@ -2838,12 +2840,13 @@ class Tally(object):
 
                     # Add AggregateFilter to the tally sum
                     if not remove_filter:
-                        filter_sum = AggregateFilter(filter, filter_bins, 'sum')
+                        filter_sum = \
+                            AggregateFilter(self_filter, filter_bins, 'sum')
                         tally_sum.add_filter(filter_sum)
 
                 # Add a copy of each filter not summed across to the tally sum
                 else:
-                    tally_sum.add_filter(copy.deepcopy(filter))
+                    tally_sum.add_filter(copy.deepcopy(self_filter))
 
         # Add a copy of this tally's filters to the tally sum
         else:

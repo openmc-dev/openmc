@@ -3,6 +3,7 @@ import re
 import numpy as np
 
 import openmc
+import openmc.checkvalue as cv
 
 if sys.version > '3':
     long = int

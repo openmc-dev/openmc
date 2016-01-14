@@ -75,7 +75,7 @@ class AggregateScore(object):
             return existing
 
     def __repr__(self):
-        string = ''.join(map(str, self.scores))
+        string = ', '.join(map(str, self.scores))
         string = '{0}({1})'.format(self.aggregate_op, string)
         return string
 
@@ -105,7 +105,7 @@ class AggregateNuclide(object):
 
     Parameters
     ----------
-    nuclides : Iterable of Nuclide or CrossNuclide
+    nuclides : Iterable of str or Nuclide or CrossNuclide
         The nuclides included in the aggregation
     aggregate_op : str
         The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
@@ -113,7 +113,7 @@ class AggregateNuclide(object):
 
     Attributes
     ----------
-    nuclides : Iterable of Nuclide or CrossNuclide
+    nuclides : Iterable of str or Nuclide or CrossNuclide
         The nuclides included in the aggregation
     aggregate_op : str
         The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
@@ -181,7 +181,8 @@ class AggregateNuclide(object):
 
     @nuclides.setter
     def nuclides(self, nuclides):
-        cv.check_iterable_type('nuclides', nuclides, (Nuclide, CrossNuclide))
+        cv.check_iterable_type('nuclides', nuclides,
+                               (basestring, Nuclide, CrossNuclide))
         self._nuclides = nuclides
 
     @aggregate_op.setter
@@ -359,7 +360,7 @@ class AggregateFilter(object):
         else:
             return 0
 
-    def get_pandas_dataframe(self, datasize):
+    def get_pandas_dataframe(self, datasize, summary=None):
         """Builds a Pandas DataFrame for the AggregateFilter's bins.
 
         This method constructs a Pandas DataFrame object for the AggregateFilter
@@ -370,6 +371,11 @@ class AggregateFilter(object):
         ----------
         datasize : Integral
             The total number of bins in the tally corresponding to this filter
+        summary : None or Summary
+            An optional Summary object to be used to construct columns for
+            distribcell tally filters (default is None). NOTE: This parameter
+            is not used by the AggregateFilter and simply mirrors the method
+            signature for the CrossFilter.
 
         Returns
         -------
@@ -393,7 +399,7 @@ class AggregateFilter(object):
 
         # Construct a sring representing the filter aggregation
         aggregate_bin = '{0}('.format(self.aggregate_op)
-        aggregate_bin += ', '.join(self.bins) + ')'
+        aggregate_bin += ', '.join(map(str, self.bins)) + ')'
 
         # Construct NumPy array of bin repeated for each element in dataframe
         aggregate_bin_array = np.array([aggregate_bin])

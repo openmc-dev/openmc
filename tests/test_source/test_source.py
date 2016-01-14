@@ -36,15 +36,15 @@ class SourceTestHarness(PyAPITestHarness):
         geometry_xml.export_to_xml()
 
         # Create an array of different sources
-        x_dist = openmc.stats.Uniform('x', -3., 3.)
-        y_dist = openmc.stats.Discrete('y', [-4., -1., 3.], [0.2, 0.3, 0.5])
-        z_dist = openmc.stats.Tabular('z', [-2., 0., 2.], [0.2, 0.3, 0.2])
+        x_dist = openmc.stats.Uniform(-3., 3.)
+        y_dist = openmc.stats.Discrete([-4., -1., 3.], [0.2, 0.3, 0.5])
+        z_dist = openmc.stats.Tabular([-2., 0., 2.], [0.2, 0.3, 0.2])
         spatial1 = openmc.stats.SpatialIndependent(x_dist, y_dist, z_dist)
         spatial2 = openmc.stats.SpatialBox([-4., -4., -4.], [4., 4., 4.])
         spatial3 = openmc.stats.SpatialPoint([1.2, -2.3, 0.781])
 
-        mu_dist = openmc.stats.Discrete('mu', [-1., 0., 1.], [0.5, 0.25, 0.25])
-        phi_dist = openmc.stats.Uniform('phi', 0., 6.28318530718)
+        mu_dist = openmc.stats.Discrete([-1., 0., 1.], [0.5, 0.25, 0.25])
+        phi_dist = openmc.stats.Uniform(0., 6.28318530718)
         angle1 = openmc.stats.PolarAzimuthal(mu_dist, phi_dist)
         angle2 = openmc.stats.Monodirectional(reference_uvw=[0., 1., 0.])
         angle3 = openmc.stats.Isotropic()
@@ -54,7 +54,7 @@ class SourceTestHarness(PyAPITestHarness):
         p /= sum(np.diff(E)*p[:-1])
         energy1 = openmc.stats.Maxwell(1.2895)
         energy2 = openmc.stats.Watt(0.988, 2.249)
-        energy3 = openmc.stats.Tabular('energy', E, p, interpolation='histogram')
+        energy3 = openmc.stats.Tabular(E, p, interpolation='histogram')
 
         source1 = Source(spatial1, angle1, energy1, strength=0.5)
         source2 = Source(spatial2, angle2, energy2, strength=0.3)

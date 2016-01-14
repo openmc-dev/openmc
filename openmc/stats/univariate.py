@@ -30,8 +30,10 @@ class Univariate(object):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, name=None):
+        self._name = None
+        if name is not None:
+            self.name = name
 
     @property
     def name(self):
@@ -70,7 +72,7 @@ class Discrete(Univariate):
 
     """
 
-    def __init__(self, name, x, p):
+    def __init__(self, x, p, name=None):
         super(Discrete, self).__init__(name)
         self.x = x
         self.p = p
@@ -85,18 +87,25 @@ class Discrete(Univariate):
 
     @x.setter
     def x(self, x):
+        if cv._isinstance(x, Real):
+            x = [x]
         cv.check_type('discrete values', x, Iterable, Real)
         self._x = x
 
     @p.setter
     def p(self, p):
+        if cv._isinstance(p, Real):
+            p = [p]
         cv.check_type('discrete probabilities', p, Iterable, Real)
         for pk in p:
             cv.check_greater_than('discrete probability', pk, 0.0, True)
         self._p = p
 
     def to_xml(self):
-        element = ET.Element(self.name)
+        if self.name is not None:
+            element = ET.Element(self.name)
+        else:
+            element = ET.Element('distribution')
         element.set("type", "discrete")
 
         params = ET.SubElement(element, "parameters")
@@ -124,7 +133,7 @@ class Uniform(Univariate):
 
     """
 
-    def __init__(self, name, a=0.0, b=1.0):
+    def __init__(self, a=0.0, b=1.0, name=None):
         super(Uniform, self).__init__(name)
         self.a = a
         self.b = b
@@ -148,7 +157,10 @@ class Uniform(Univariate):
         self._b = b
 
     def to_xml(self):
-        element = ET.Element(self.name)
+        if self.name is not None:
+            element = ET.Element(self.name)
+        else:
+            element = ET.Element('distribution')
         element.set("type", "uniform")
         element.set("parameters", '{} {}'.format(self.a, self.b))
         return element
@@ -219,7 +231,7 @@ class Watt(Univariate):
 
     """
 
-    def __init__(self, a, b, name='energy'):
+    def __init__(self, a=0.988, b=2.249, name='energy'):
         super(Watt, self).__init__(name)
         self.a = a
         self.b = b
@@ -282,7 +294,7 @@ class Tabular(Univariate):
 
     """
 
-    def __init__(self, name, x, p, interpolation='linear-linear'):
+    def __init__(self, x, p, interpolation='linear-linear', name=None):
         super(Tabular, self).__init__(name)
         self.x = x
         self.p = p
@@ -319,7 +331,10 @@ class Tabular(Univariate):
         self._interpolation = interpolation
 
     def to_xml(self):
-        element = ET.Element(self.name)
+        if self.name is not None:
+            element = ET.Element(self.name)
+        else:
+            element = ET.Element('distribution')
         element.set("type", "tabular")
         element.set("interpolation", self.interpolation)
 

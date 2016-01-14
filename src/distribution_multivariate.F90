@@ -5,10 +5,12 @@ module distribution_multivariate
   use math, only: rotate_angle
   use random_lcg, only: prn
 
+  implicit none
+
 !===============================================================================
 ! UNITSPHEREDISTRIBUTION type defines a probability density function for points
 ! on the unit sphere. Extensions of this type are used to sample angular
-! distributions for starting soures
+! distributions for starting sources
 !===============================================================================
 
   type, abstract :: UnitSphereDistribution
@@ -99,13 +101,13 @@ contains
     real(8) :: phi    ! azimuthal angle
 
     ! Sample cosine of polar angle
-    mu = this%mu%sample()
+    mu = this % mu % sample()
     if (mu == ONE) then
-      uvw(:) = this%reference_uvw
+      uvw(:) = this % reference_uvw
     else
       ! Sample azimuthal angle
-      phi = this%phi%sample()
-      uvw(:) = rotate_angle(this%reference_uvw, mu, phi)
+      phi = this % phi % sample()
+      uvw(:) = rotate_angle(this % reference_uvw, mu, phi)
     end if
   end function polar_azimuthal_sample
 
@@ -127,16 +129,16 @@ contains
     class(Monodirectional), intent(in) :: this
     real(8) :: uvw(3)
 
-    uvw(:) = this%reference_uvw
+    uvw(:) = this % reference_uvw
   end function monodirectional_sample
 
   function spatial_independent_sample(this) result(xyz)
     class(SpatialIndependent), intent(in) :: this
     real(8) :: xyz(3)
 
-    xyz(1) = this%x%sample()
-    xyz(2) = this%y%sample()
-    xyz(3) = this%z%sample()
+    xyz(1) = this % x % sample()
+    xyz(2) = this % y % sample()
+    xyz(3) = this % z % sample()
   end function spatial_independent_sample
 
   function spatial_box_sample(this) result(xyz)
@@ -147,14 +149,14 @@ contains
     real(8) :: r(3)
 
     r = [ (prn(), i = 1,3) ]
-    xyz(:) = this%lower_left + r*(this%upper_right - this%lower_left)
+    xyz(:) = this % lower_left + r*(this % upper_right - this % lower_left)
   end function spatial_box_sample
 
   function spatial_point_sample(this) result(xyz)
     class(SpatialPoint), intent(in) :: this
     real(8) :: xyz(3)
 
-    xyz(:) = this%xyz
+    xyz(:) = this % xyz
   end function spatial_point_sample
 
 end module distribution_multivariate

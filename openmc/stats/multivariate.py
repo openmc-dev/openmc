@@ -80,7 +80,7 @@ class PolarAzimuthal(UnitSphere):
     mu : openmc.stats.Univariate
         Distribution of the cosine of the polar angle
     phi : openmc.stats.Univariate
-        Distribution of the azimuthal angle
+        Distribution of the azimuthal angle in radians
     name : str, optional
         Name of the distribution. Defaults to 'angle'.
     reference_uvw : Iterable of Real
@@ -92,21 +92,22 @@ class PolarAzimuthal(UnitSphere):
     mu : openmc.stats.Univariate
         Distribution of the cosine of the polar angle
     phi : openmc.stats.Univariate
-        Distribution of the azimuthal angle
+        Distribution of the azimuthal angle in radians
 
     """
 
-    def __init__(self, mu=None, phi=None, name='angle',reference_uvw=[0., 0., 1.]):
+    def __init__(self, mu=None, phi=None, name='angle',
+                 reference_uvw=[0., 0., 1.]):
         super(PolarAzimuthal, self).__init__(name, reference_uvw)
         if mu is not None:
             self.mu = mu
         else:
-            self.mu = Uniform('mu', -1., 1.)
+            self.mu = Uniform(-1., 1.)
 
         if phi is not None:
             self.phi = phi
         else:
-            self.phi = Uniform('phi', 0., 2*pi)
+            self.phi = Uniform(0., 2*pi)
 
     @property
     def mu(self):
@@ -119,11 +120,15 @@ class PolarAzimuthal(UnitSphere):
     @mu.setter
     def mu(self, mu):
         cv.check_type('cosine of polar angle', mu, Univariate)
+        if mu.name is None:
+            mu.name = 'mu'
         self._mu = mu
 
     @phi.setter
     def phi(self, phi):
         cv.check_type('azimuthal angle', phi, Univariate)
+        if phi.name is None:
+            phi.name = 'phi'
         self._phi = phi
 
     def to_xml(self):
@@ -271,16 +276,22 @@ class SpatialIndependent(Spatial):
     @x.setter
     def x(self, x):
         cv.check_type('x coordinate', x, Univariate)
+        if x.name is None:
+            x.name = 'x'
         self._x = x
 
     @y.setter
     def y(self, y):
         cv.check_type('y coordinate', y, Univariate)
+        if y.name is None:
+            y.name = 'y'
         self._y = y
 
     @z.setter
     def z(self, z):
         cv.check_type('z coordinate', z, Univariate)
+        if z.name is None:
+            z.name = 'z'
         self._z = z
 
     def to_xml(self):

@@ -95,6 +95,8 @@ class Source(object):
     @energy.setter
     def energy(self, energy):
         cv.check_type('energy distribution', energy, Univariate)
+        if energy.name is None:
+            energy.name = 'energy'
         self._energy = energy
 
     @strength.setter

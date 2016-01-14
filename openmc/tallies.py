@@ -2825,7 +2825,7 @@ class Tally(object):
             # Only sum across bins specified by the user
             else:
                 bin_indices = \
-                    [filter.get_bin_index(i) for i in range(filter_bins)]
+                    [filter.get_bin_index(bin) for bin in filter_bins]
 
             # Sum across the bins in the user-specified filter
             for i, filter in enumerate(self.filters):
@@ -2852,7 +2852,7 @@ class Tally(object):
         # Sum across any nuclides specified by the user
         if len(nuclides) != 0:
             nuclide_bins = [self.get_nuclide_index(nuclide) for nuclide in nuclides]
-            axis_index = len(self.filters)
+            axis_index = self.num_filters
             mean = np.take(mean, indices=nuclide_bins, axis=axis_index)
             std_dev = np.take(std_dev, indices=nuclide_bins, axis=axis_index)
             mean = np.sum(mean, axis=axis_index, keepdims=True)
@@ -2870,7 +2870,7 @@ class Tally(object):
         # Sum across any scores specified by the user
         if len(scores) != 0:
             score_bins = [self.get_score_index(score) for score in scores]
-            axis_index = self.num_nuclides + len(self.filters)
+            axis_index = self.num_filters + self.num_nuclides
             mean = np.take(mean, indices=score_bins, axis=axis_index)
             std_dev = np.take(std_dev, indices=score_bins, axis=axis_index)
             mean = np.sum(mean, axis=axis_index, keepdims=True)

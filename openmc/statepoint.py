@@ -377,18 +377,18 @@ class StatePoint(object):
                     bins = self._f['{0}{1}/bins'.format(subbase, j)].value
 
                     # Create Filter object
-                    filter = openmc.Filter(filter_type, bins)
-                    filter.num_bins = n_bins
+                    new_filter = openmc.Filter(filter_type, bins)
+                    new_filter.num_bins = n_bins
 
                     if filter_type == 'mesh':
                         mesh_ids = self._f['tallies/meshes/ids'].value
                         mesh_keys = self._f['tallies/meshes/keys'].value
 
                         key = mesh_keys[mesh_ids == bins][0]
-                        filter.mesh = self.meshes[key]
+                        new_filter.mesh = self.meshes[key]
 
                     # Add Filter to the Tally
-                    tally.add_filter(filter)
+                    tally.add_filter(new_filter)
 
                 # Read Nuclide bins
                 nuclide_names = \
@@ -406,11 +406,11 @@ class StatePoint(object):
 
                 # Compute and set the filter strides
                 for i in range(n_filters):
-                    filter = tally.filters[i]
-                    filter.stride = n_score_bins * len(nuclide_names)
+                    tally_filter = tally.filters[i]
+                    tally_filter.stride = n_score_bins * len(nuclide_names)
 
                     for j in range(i+1, n_filters):
-                        filter.stride *= tally.filters[j].num_bins
+                        tally_filter.stride *= tally.filters[j].num_bins
 
                 # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
                 moments = self._f['{0}{1}/moment_orders'.format(
@@ -544,13 +544,13 @@ class StatePoint(object):
                 contains_filters = True
 
                 # Iterate over the Filters requested by the user
-                for filter in filters:
+                for outer_filter in filters:
                     contains_filters = False
 
                     # Test if requested filter is a subset of any of the test
                     # tally's filters and if so continue to next filter
-                    for test_filter in test_tally.filters:
-                        if test_filter.is_subset(filter):
+                    for inner_filter in test_tally.filters:
+                        if inner_filter.is_subset(outer_filter):
                             contains_filters = True
                             break
 
@@ -616,29 +616,29 @@ class StatePoint(object):
             tally.name = summary.tallies[tally_id].name
             tally.with_summary = True
 
-            for filter in tally.filters:
-                if filter.type == 'surface':
+            for tally_filter in tally.filters:
+                if tally_filter.type == 'surface':
                     surface_ids = []
-                    for bin in filter.bins:
+                    for bin in tally_filter.bins:
                         surface_ids.append(summary.surfaces[bin].id)
-                    filter.bins = surface_ids
+                    tally_filter.bins = surface_ids
 
-                if filter.type in ['cell', 'distribcell']:
+                if tally_filter.type in ['cell', 'distribcell']:
                     distribcell_ids = []
-                    for bin in filter.bins:
+                    for bin in tally_filter.bins:
                         distribcell_ids.append(summary.cells[bin].id)
-                    filter.bins = distribcell_ids
+                    tally_filter.bins = distribcell_ids
 
-                if filter.type == 'universe':
+                if tally_filter.type == 'universe':
                     universe_ids = []
-                    for bin in filter.bins:
+                    for bin in tally_filter.bins:
                         universe_ids.append(summary.universes[bin].id)
-                    filter.bins = universe_ids
+                    tally_filter.bins = universe_ids
 
-                if filter.type == 'material':
+                if tally_filter.type == 'material':
                     material_ids = []
-                    for bin in filter.bins:
+                    for bin in tally_filter.bins:
                         material_ids.append(summary.materials[bin].id)
-                    filter.bins = material_ids
+                    tally_filter.bins = material_ids
 
         self._summary = summary

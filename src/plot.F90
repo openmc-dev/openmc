@@ -82,17 +82,17 @@ contains
       if (pl % color_by == PLOT_COLOR_MATS) then
         ! Assign color based on material
         c => cells(p % coord(j) % cell)
-        if (c % material == MATERIAL_VOID) then
-          ! By default, color void cells white
-          rgb = 255
-          id = -1
-        else if (c % type == CELL_FILL) then
+        if (c % type == CELL_FILL) then
           ! If we stopped on a middle universe level, treat as if not found
           rgb = pl % not_found % rgb
           id = -1
+        else if (p % material == MATERIAL_VOID) then
+          ! By default, color void cells white
+          rgb = 255
+          id = -1
         else
-          rgb = pl % colors(c % material) % rgb
-          id = materials(c % material) % id
+          rgb = pl % colors(p % material) % rgb
+          id = materials(p % material) % id
         end if
       else if (pl % color_by == PLOT_COLOR_CELLS) then
         ! Assign color based on cell

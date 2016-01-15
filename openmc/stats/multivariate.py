@@ -6,7 +6,6 @@ import sys
 from xml.etree import ElementTree as ET
 
 import numpy as np
-from numpy.linalg import norm
 
 import openmc.checkvalue as cv
 from openmc.stats.univariate import Univariate, Uniform
@@ -48,7 +47,7 @@ class UnitSphere(object):
     def reference_uvw(self, uvw):
         cv.check_type('reference direction', uvw, Iterable, Real)
         uvw = np.asarray(uvw)
-        self._reference_uvw = uvw/norm(uvw)
+        self._reference_uvw = uvw/np.linalg.norm(uvw)
 
     @abstractmethod
     def to_xml(self):
@@ -63,9 +62,9 @@ class PolarAzimuthal(UnitSphere):
 
     Parameters
     ----------
-    mu : openmc.stats.Univariate
+    mu : Univariate
         Distribution of the cosine of the polar angle
-    phi : openmc.stats.Univariate
+    phi : Univariate
         Distribution of the azimuthal angle in radians
     reference_uvw : Iterable of Real
         Direction from which polar angle is measured. Defaults to the positive
@@ -73,9 +72,9 @@ class PolarAzimuthal(UnitSphere):
 
     Attributes
     ----------
-    mu : openmc.stats.Univariate
+    mu : Univariate
         Distribution of the cosine of the polar angle
-    phi : openmc.stats.Univariate
+    phi : Univariate
         Distribution of the azimuthal angle in radians
 
     """
@@ -187,20 +186,20 @@ class CartesianIndependent(Spatial):
 
     Parameters
     ----------
-    x : openmc.stats.Univariate
+    x : Univariate
         Distribution of x-coordinates
-    y : openmc.stats.Univariate
+    y : Univariate
         Distribution of y-coordinates
-    z : openmc.stats.Univariate
+    z : Univariate
         Distribution of z-coordinates
 
     Attributes
     ----------
-    x : openmc.stats.Univariate
+    x : Univariate
         Distribution of x-coordinates
-    y : openmc.stats.Univariate
+    y : Univariate
         Distribution of y-coordinates
-    z : openmc.stats.Univariate
+    z : Univariate
         Distribution of z-coordinates
 
     """

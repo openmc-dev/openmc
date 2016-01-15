@@ -35,6 +35,8 @@ on a given module or class.
     opencg_compatible
     plots
     settings
+    source
+    stats
     surface
     tallies
     trigger

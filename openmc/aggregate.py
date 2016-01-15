@@ -163,7 +163,7 @@ class AggregateNuclide(object):
         string = '{0}('.format(self.aggregate_op)
         names = [nuclide.name if isinstance(nuclide, Nuclide) else str(nuclide)
                  for nuclide in self.nuclides]
-        string = ', '.join(map(str, names)) + ')'
+        string += ', '.join(map(str, names)) + ')'
         return string
 
     @property

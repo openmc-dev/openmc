@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import TestHarness, PyAPITestHarness
 import openmc
-from openmc.stats import SpatialBox
+from openmc.stats import Box
 from openmc.source import Source
 
 
@@ -87,7 +87,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         sets_file.batches = 5
         sets_file.inactive = 0
         sets_file.particles = 1000
-        sets_file.source = Source(space=SpatialBox([-1, -1, -1], [1, 1, 1]))
+        sets_file.source = Source(space=Box([-1, -1, -1], [1, 1, 1]))
         sets_file.output = {'summary': True}
         sets_file.export_to_xml()
 

@@ -23,15 +23,11 @@ class UnitSphere(object):
 
     Parameters
     ----------
-    name : str
-        Name of the distribution
     reference_uvw : Iterable of Real
         Direction from which polar angle is measured
 
     Attributes
     ----------
-    name : str
-        Name of the distribution
     reference_uvw : Iterable of Real
         Direction from which polar angle is measured
 
@@ -39,24 +35,14 @@ class UnitSphere(object):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, name, reference_uvw=None):
-        self.name = name
+    def __init__(self, reference_uvw=None):
         self._reference_uvw = None
         if reference_uvw is not None:
             self.reference_uvw = reference_uvw
 
     @property
-    def name(self):
-        return self._name
-
-    @property
     def reference_uvw(self):
         return self._reference_uvw
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('name', name, basestring)
-        self._name = name
 
     @reference_uvw.setter
     def reference_uvw(self, uvw):
@@ -81,8 +67,6 @@ class PolarAzimuthal(UnitSphere):
         Distribution of the cosine of the polar angle
     phi : openmc.stats.Univariate
         Distribution of the azimuthal angle in radians
-    name : str, optional
-        Name of the distribution. Defaults to 'angle'.
     reference_uvw : Iterable of Real
         Direction from which polar angle is measured. Defaults to the positive
         z-direction.
@@ -96,9 +80,8 @@ class PolarAzimuthal(UnitSphere):
 
     """
 
-    def __init__(self, mu=None, phi=None, name='angle',
-                 reference_uvw=[0., 0., 1.]):
-        super(PolarAzimuthal, self).__init__(name, reference_uvw)
+    def __init__(self, mu=None, phi=None, reference_uvw=[0., 0., 1.]):
+        super(PolarAzimuthal, self).__init__(reference_uvw)
         if mu is not None:
             self.mu = mu
         else:
@@ -120,42 +103,33 @@ class PolarAzimuthal(UnitSphere):
     @mu.setter
     def mu(self, mu):
         cv.check_type('cosine of polar angle', mu, Univariate)
-        if mu.name is None:
-            mu.name = 'mu'
         self._mu = mu
 
     @phi.setter
     def phi(self, phi):
         cv.check_type('azimuthal angle', phi, Univariate)
-        if phi.name is None:
-            phi.name = 'phi'
         self._phi = phi
 
     def to_xml(self):
-        element = ET.Element(self.name)
+        element = ET.Element('angle')
         element.set("type", "mu-phi")
         if self.reference_uvw is not None:
             element.set("reference_uvw", ' '.join(map(str, self.reference_uvw)))
-        element.append(self.mu.to_xml())
-        element.append(self.phi.to_xml())
+        element.append(self.mu.to_xml('mu'))
+        element.append(self.phi.to_xml('phi'))
         return element
 
 
 class Isotropic(UnitSphere):
     """Isotropic angular distribution.
 
-    Parameters
-    ----------
-    name : str, optional
-        Name of the distribution. Defaults to 'angle'.
-
     """
 
-    def __init__(self, name='angle'):
-        super(Isotropic, self).__init__(name)
+    def __init__(self):
+        super(Isotropic, self).__init__()
 
     def to_xml(self):
-        element = ET.Element(self.name)
+        element = ET.Element('angle')
         element.set("type", "isotropic")
         return element
 
@@ -169,8 +143,6 @@ class Monodirectional(UnitSphere):
 
     Parameters
     ----------
-    name : str, optional
-        Name of the distribution. Defaults to 'angle'.
     reference_uvw : Iterable of Real
         Direction from which polar angle is measured. Defaults to the positive
         x-direction.
@@ -178,11 +150,11 @@ class Monodirectional(UnitSphere):
     """
 
 
-    def __init__(self, name='angle', reference_uvw=[1., 0., 0.]):
-        super(Monodirectional, self).__init__(name, reference_uvw)
+    def __init__(self, reference_uvw=[1., 0., 0.]):
+        super(Monodirectional, self).__init__(reference_uvw)
 
     def to_xml(self):
-        element = ET.Element(self.name)
+        element = ET.Element('angle')
         element.set("type", "monodirectional")
         if self.reference_uvw is not None:
             element.set("reference_uvw", ' '.join(map(str, self.reference_uvw)))
@@ -195,38 +167,19 @@ class Spatial(object):
     Classes derived from this abstract class can be used for spatial
     distributions of source sites.
 
-    Parameters
-    ----------
-    name : str
-        Name of the distribution
-
-    Attributes
-    ----------
-    name : str
-        Name of the distribution
-
     """
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, name):
-        self.name = name
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('name', name, basestring)
-        self._name = name
+    def __init__(self):
+        pass
 
     @abstractmethod
     def to_xml(self):
         return ''
 
 
-class SpatialIndependent(Spatial):
+class CartesianIndependent(Spatial):
     """Spatial distribution with independent x, y, and z distributions.
 
     This distribution allows one to specify a coordinates whose x-, y-, and z-
@@ -240,8 +193,6 @@ class SpatialIndependent(Spatial):
         Distribution of y-coordinates
     z : openmc.stats.Univariate
         Distribution of z-coordinates
-    name : str
-        Name of the distribution
 
     Attributes
     ----------
@@ -255,8 +206,8 @@ class SpatialIndependent(Spatial):
     """
 
 
-    def __init__(self, x, y, z, name='space'):
-        super(SpatialIndependent, self).__init__(name)
+    def __init__(self, x, y, z):
+        super(CartesianIndependent, self).__init__()
         self.x = x
         self.y = y
         self.z = z
@@ -276,34 +227,28 @@ class SpatialIndependent(Spatial):
     @x.setter
     def x(self, x):
         cv.check_type('x coordinate', x, Univariate)
-        if x.name is None:
-            x.name = 'x'
         self._x = x
 
     @y.setter
     def y(self, y):
         cv.check_type('y coordinate', y, Univariate)
-        if y.name is None:
-            y.name = 'y'
         self._y = y
 
     @z.setter
     def z(self, z):
         cv.check_type('z coordinate', z, Univariate)
-        if z.name is None:
-            z.name = 'z'
         self._z = z
 
     def to_xml(self):
-        element = ET.Element(self.name)
+        element = ET.Element('space')
         element.set("type", "independent")
-        element.append(self.x.to_xml())
-        element.append(self.y.to_xml())
-        element.append(self.z.to_xml())
+        element.append(self.x.to_xml('x'))
+        element.append(self.y.to_xml('y'))
+        element.append(self.z.to_xml('z'))
         return element
 
 
-class SpatialBox(Spatial):
+class Box(Spatial):
     """Uniform distribution of coordinates in a rectangular cuboid.
 
     Parameters
@@ -312,8 +257,6 @@ class SpatialBox(Spatial):
         Lower-left coordinates of cuboid
     upper_right : Iterable of Real
         Upper-right coordinates of cuboid
-    name : str, optional
-        Name of the distribution
     only_fissionable : bool, optional
         Whether spatial sites should only be accepted if they occur in
         fissionable materials
@@ -331,8 +274,8 @@ class SpatialBox(Spatial):
     """
 
 
-    def __init__(self, lower_left, upper_right, name='space', only_fissionable=False):
-        super(SpatialBox, self).__init__(name)
+    def __init__(self, lower_left, upper_right, only_fissionable=False):
+        super(Box, self).__init__()
         self.lower_left = lower_left
         self.upper_right = upper_right
         self.only_fissionable = only_fissionable
@@ -367,7 +310,7 @@ class SpatialBox(Spatial):
         self._only_fissionable = only_fissionable
 
     def to_xml(self):
-        element = ET.Element(self.name)
+        element = ET.Element('space')
         if self.only_fissionable:
             element.set("type", "fission")
         else:
@@ -378,7 +321,7 @@ class SpatialBox(Spatial):
         return element
 
 
-class SpatialPoint(Spatial):
+class Point(Spatial):
     """Delta function in three dimensions.
 
     This spatial distribution can be used for a point source where sites are
@@ -388,8 +331,6 @@ class SpatialPoint(Spatial):
     ----------
     xyz : Iterable of Real
         Cartesian coordinates of location
-    name : str, optional
-        Name of the distribution
 
     Attributes
     ----------
@@ -398,8 +339,8 @@ class SpatialPoint(Spatial):
 
     """
 
-    def __init__(self, xyz, name='space'):
-        super(SpatialPoint, self).__init__(name)
+    def __init__(self, xyz):
+        super(Point, self).__init__()
         self.xyz = xyz
 
     @property
@@ -413,7 +354,7 @@ class SpatialPoint(Spatial):
         self._xyz = xyz
 
     def to_xml(self):
-        element = ET.Element(self.name)
+        element = ET.Element('space')
         element.set("type", "point")
         params = ET.SubElement(element, "parameters")
         params.text = ' '.join(map(str, self.xyz))

@@ -2,7 +2,7 @@ import numpy as np
 
 import openmc
 from openmc.source import Source
-from openmc.stats import SpatialBox
+from openmc.stats import Box
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -119,7 +119,7 @@ settings_file = openmc.SettingsFile()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
-settings_file.source = Source(space=SpatialBox(*outer_cube.bounding_box))
+settings_file.source = Source(space=Box(*outer_cube.bounding_box))
 settings_file.export_to_xml()
 
 ###############################################################################

@@ -69,13 +69,13 @@ module distribution_multivariate
     end function iSampleSpatial
   end interface
 
-  type, extends(SpatialDistribution) :: SpatialIndependent
+  type, extends(SpatialDistribution) :: CartesianIndependent
     class(Distribution), allocatable :: x
     class(Distribution), allocatable :: y
     class(Distribution), allocatable :: z
   contains
-    procedure :: sample => spatial_independent_sample
-  end type SpatialIndependent
+    procedure :: sample => cartesian_independent_sample
+  end type CartesianIndependent
 
   type, extends(SpatialDistribution) :: SpatialBox
     real(8) :: lower_left(3)
@@ -132,14 +132,14 @@ contains
     uvw(:) = this % reference_uvw
   end function monodirectional_sample
 
-  function spatial_independent_sample(this) result(xyz)
-    class(SpatialIndependent), intent(in) :: this
+  function cartesian_independent_sample(this) result(xyz)
+    class(CartesianIndependent), intent(in) :: this
     real(8) :: xyz(3)
 
     xyz(1) = this % x % sample()
     xyz(2) = this % y % sample()
     xyz(3) = this % z % sample()
-  end function spatial_independent_sample
+  end function cartesian_independent_sample
 
   function spatial_box_sample(this) result(xyz)
     class(SpatialBox), intent(in) :: this

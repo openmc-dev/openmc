@@ -449,11 +449,11 @@ attributes/sub-elements:
 
     :type:
       The type of spatial distribution. Valid options are "box", "fission",
-      "point", and "independent". A "box" spatial distribution has coordinates
+      "point", and "cartesian". A "box" spatial distribution has coordinates
       sampled uniformly in a parallelepiped. A "fission" spatial distribution
       samples locations from a "box" distribution but only locations in
       fissionable materials are accepted. A "point" spatial distribution has
-      coordinates specified by a triplet. An "independent" spatial distribution
+      coordinates specified by a triplet. An "cartesian" spatial distribution
       specifies independent distributions of x-, y-, and z-coordinates.
 
       *Default*: None
@@ -469,25 +469,25 @@ attributes/sub-elements:
       three real numbers which specify the (x,y,z) location of an isotropic
       point source.
 
-      For an "independent" distribution, no parameters are specified. Instead,
+      For an "cartesian" distribution, no parameters are specified. Instead,
       the ``x``, ``y``, and ``z`` elements must be specified.
 
       *Default*: None
 
     :x:
-      For an "independent" distribution, this element specifies the distribution
+      For an "cartesian" distribution, this element specifies the distribution
       of x-coordinates. The necessary sub-elements/attributes are those of a
       univariate probability distribution (see the description in
       :ref:`univariate`).
 
     :y:
-      For an "independent" distribution, this element specifies the distribution
+      For an "cartesian" distribution, this element specifies the distribution
       of y-coordinates. The necessary sub-elements/attributes are those of a
       univariate probability distribution (see the description in
       :ref:`univariate`).
 
     :z:
-      For an "independent" distribution, this element specifies the distribution
+      For an "cartesian" distribution, this element specifies the distribution
       of z-coordinates. The necessary sub-elements/attributes are those of a
       univariate probability distribution (see the description in
       :ref:`univariate`).

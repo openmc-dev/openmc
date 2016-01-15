@@ -241,7 +241,7 @@ class CartesianIndependent(Spatial):
 
     def to_xml(self):
         element = ET.Element('space')
-        element.set("type", "independent")
+        element.set('type', 'cartesian')
         element.append(self.x.to_xml('x'))
         element.append(self.y.to_xml('y'))
         element.append(self.z.to_xml('z'))

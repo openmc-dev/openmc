@@ -397,8 +397,8 @@ contains
           if (check_for_node(node_space, "type")) &
                call get_node_value(node_space, "type", type)
           select case (to_lower(type))
-          case ('independent')
-            allocate(SpatialIndependent :: external_source(i)%space)
+          case ('cartesian')
+            allocate(CartesianIndependent :: external_source(i)%space)
 
           case ('box')
             allocate(SpatialBox :: external_source(i)%space)
@@ -419,7 +419,7 @@ contains
           end select
 
           select type (space => external_source(i)%space)
-          type is (SpatialIndependent)
+          type is (CartesianIndependent)
             ! Read distribution for x coordinate
             if (check_for_node(node_space, "x")) then
               call get_node_ptr(node_space, "x", node_dist)

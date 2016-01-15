@@ -3,6 +3,8 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
+  use distribution_multivariate
+  use distribution_univariate
   use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
@@ -11,7 +13,7 @@ module input_xml
   use mesh_header,      only: RegularMesh
   use output,           only: write_message
   use plot_header
-  use random_lcg,       only: prn
+  use random_lcg,       only: prn, seed
   use surface_header
   use stl_vector,       only: VectorInt
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
@@ -54,11 +56,11 @@ contains
     character(MAX_LINE_LEN) :: temp_str
     integer :: i
     integer :: n
-    integer :: coeffs_reqd
     integer :: temp_int
     integer :: temp_int_array3(3)
     integer, allocatable :: temp_int_array(:)
     integer(8) :: temp_long
+    real(8), allocatable :: temp_real(:)
     integer :: n_tracks
     logical :: file_exists
     character(MAX_FILE_LEN) :: env_variable
@@ -67,6 +69,8 @@ contains
     type(Node), pointer :: doc            => null()
     type(Node), pointer :: node_mode      => null()
     type(Node), pointer :: node_source    => null()
+    type(Node), pointer :: node_space     => null()
+    type(Node), pointer :: node_angle     => null()
     type(Node), pointer :: node_dist      => null()
     type(Node), pointer :: node_cutoff    => null()
     type(Node), pointer :: node_entropy   => null()
@@ -79,6 +83,7 @@ contains
     type(Node), pointer :: node_trigger   => null()
     type(Node), pointer :: node_keff_trigger => null()
     type(NodeList), pointer :: node_scat_list => null()
+    type(NodeList), pointer :: node_source_list => null()
 
     ! Display output message
     call write_message("Reading settings XML file...", 5)
@@ -339,185 +344,249 @@ contains
     ! ==========================================================================
     ! EXTERNAL SOURCE
 
-    ! Get pointer to source
-    if (check_for_node(doc, "source")) then
-      call get_node_ptr(doc, "source", node_source)
-    else
-      call fatal_error("No source specified in settings XML file.")
-    end if
+    ! Get point to list of <source> elements and make sure there is at least one
+    call get_node_list(doc, "source", node_source_list)
+    n = get_list_size(node_source_list)
+    if (n == 0) call fatal_error("No source specified in settings XML file.")
 
-    ! Check if we want to write out source
-    if (check_for_node(node_source, "write_initial")) then
-      call get_node_value(node_source, "write_initial", temp_str)
-      temp_str = to_lower(temp_str)
-      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-           write_initial_source = .true.
-    end if
+    ! Allocate array for sources
+    allocate(external_source(n))
 
-    ! Check for external source file
-    if (check_for_node(node_source, "file")) then
-      ! Copy path of source file
-      call get_node_value(node_source, "file", path_source)
+    ! Read each source
+    do i = 1, n
+      ! Get pointer to source
+      call get_list_item(node_source_list, i, node_source)
 
-      ! Check if source file exists
-      inquire(FILE=path_source, EXIST=file_exists)
-      if (.not. file_exists) then
-        call fatal_error("Binary source file '" // trim(path_source) &
-             &// "' does not exist!")
+      ! Check if we want to write out source
+      if (check_for_node(node_source, "write_initial")) then
+        call get_node_value(node_source, "write_initial", temp_str)
+        temp_str = to_lower(temp_str)
+        if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+             write_initial_source = .true.
       end if
 
-    else
-
-      ! Spatial distribution for external source
-      if (check_for_node(node_source, "space")) then
-
-        ! Get pointer to spatial distribution
-        call get_node_ptr(node_source, "space", node_dist)
-
-        ! Check for type of spatial distribution
-        type = ''
-        if (check_for_node(node_dist, "type")) &
-             call get_node_value(node_dist, "type", type)
-        select case (to_lower(type))
-        case ('box')
-          external_source % type_space = SRC_SPACE_BOX
-          coeffs_reqd = 6
-        case ('fission')
-          external_source % type_space = SRC_SPACE_FISSION
-          coeffs_reqd = 6
-        case ('point')
-          external_source % type_space = SRC_SPACE_POINT
-          coeffs_reqd = 3
-        case default
-          call fatal_error("Invalid spatial distribution for external source: "&
-               &// trim(type))
-        end select
-
-        ! Determine number of parameters specified
-        if (check_for_node(node_dist, "parameters")) then
-          n = get_arraysize_double(node_dist, "parameters")
-        else
-          n = 0
-        end if
-
-        ! Read parameters for spatial distribution
-        if (n < coeffs_reqd) then
-          call fatal_error("Not enough parameters specified for spatial &
-               &distribution of external source.")
-        elseif (n > coeffs_reqd) then
-          call fatal_error("Too many parameters specified for spatial &
-               &distribution of external source.")
-        elseif (n > 0) then
-          allocate(external_source % params_space(n))
-          call get_node_array(node_dist, "parameters", &
-               external_source % params_space)
-        end if
+      ! Check for source strength
+      if (check_for_node(node_source, "strength")) then
+        call get_node_value(node_source, "strength", external_source(i)%strength)
       else
-        call fatal_error("No spatial distribution specified for external &
-             &source.")
+        external_source(i)%strength = ONE
       end if
 
-      ! Determine external source angular distribution
-      if (check_for_node(node_source, "angle")) then
+      ! Check for external source file
+      if (check_for_node(node_source, "file")) then
+        ! Copy path of source file
+        call get_node_value(node_source, "file", path_source)
 
-        ! Get pointer to angular distribution
-        call get_node_ptr(node_source, "angle", node_dist)
-
-        ! Check for type of angular distribution
-        type = ''
-        if (check_for_node(node_dist, "type")) &
-             call get_node_value(node_dist, "type", type)
-        select case (to_lower(type))
-        case ('isotropic')
-          external_source % type_angle = SRC_ANGLE_ISOTROPIC
-          coeffs_reqd = 0
-        case ('monodirectional')
-          external_source % type_angle = SRC_ANGLE_MONO
-          coeffs_reqd = 3
-        case ('tabular')
-          external_source % type_angle = SRC_ANGLE_TABULAR
-        case default
-          call fatal_error("Invalid angular distribution for external source: "&
-               &// trim(type))
-        end select
-
-        ! Determine number of parameters specified
-        if (check_for_node(node_dist, "parameters")) then
-          n = get_arraysize_double(node_dist, "parameters")
-        else
-          n = 0
+        ! Check if source file exists
+        inquire(FILE=path_source, EXIST=file_exists)
+        if (.not. file_exists) then
+          call fatal_error("Binary source file '" // trim(path_source) &
+               &// "' does not exist!")
         end if
 
-        ! Read parameters for angle distribution
-        if (n < coeffs_reqd) then
-          call fatal_error("Not enough parameters specified for angle &
-               &distribution of external source.")
-        elseif (n > coeffs_reqd) then
-          call fatal_error("Too many parameters specified for angle &
-               &distribution of external source.")
-        elseif (n > 0) then
-          allocate(external_source % params_angle(n))
-          call get_node_array(node_dist, "parameters", &
-               external_source % params_angle)
-        end if
       else
-        ! Set default angular distribution isotropic
-        external_source % type_angle  = SRC_ANGLE_ISOTROPIC
-      end if
 
-      ! Determine external source energy distribution
-      if (check_for_node(node_source, "energy")) then
+        ! Spatial distribution for external source
+        if (check_for_node(node_source, "space")) then
 
-        ! Get pointer to energy distribution
-        call get_node_ptr(node_source, "energy", node_dist)
+          ! Get pointer to spatial distribution
+          call get_node_ptr(node_source, "space", node_space)
 
-        ! Check for type of energy distribution
-        type = ''
-        if (check_for_node(node_dist, "type")) &
-             call get_node_value(node_dist, "type", type)
-        select case (to_lower(type))
-        case ('monoenergetic')
-          external_source % type_energy = SRC_ENERGY_MONO
-          coeffs_reqd = 1
-        case ('maxwell')
-          external_source % type_energy = SRC_ENERGY_MAXWELL
-          coeffs_reqd = 1
-        case ('watt')
-          external_source % type_energy = SRC_ENERGY_WATT
-          coeffs_reqd = 2
-        case ('tabular')
-          external_source % type_energy = SRC_ENERGY_TABULAR
-        case default
-          call fatal_error("Invalid energy distribution for external source: " &
-               &// trim(type))
-        end select
+          ! Check for type of spatial distribution
+          type = ''
+          if (check_for_node(node_space, "type")) &
+               call get_node_value(node_space, "type", type)
+          select case (to_lower(type))
+          case ('cartesian')
+            allocate(CartesianIndependent :: external_source(i)%space)
 
-        ! Determine number of parameters specified
-        if (check_for_node(node_dist, "parameters")) then
-          n = get_arraysize_double(node_dist, "parameters")
+          case ('box')
+            allocate(SpatialBox :: external_source(i)%space)
+
+          case ('fission')
+            allocate(SpatialBox :: external_source(i)%space)
+            select type(space => external_source(i)%space)
+            type is (SpatialBox)
+              space%only_fissionable = .true.
+            end select
+
+          case ('point')
+            allocate(SpatialPoint :: external_source(i)%space)
+
+          case default
+            call fatal_error("Invalid spatial distribution for external source: "&
+                 // trim(type))
+          end select
+
+          select type (space => external_source(i)%space)
+          type is (CartesianIndependent)
+            ! Read distribution for x coordinate
+            if (check_for_node(node_space, "x")) then
+              call get_node_ptr(node_space, "x", node_dist)
+              call distribution_from_xml(space%x, node_dist)
+            else
+              allocate(Discrete :: space%x)
+              select type (dist => space%x)
+              type is (Discrete)
+                allocate(dist%x(1), dist%p(1))
+                dist%x(1) = ZERO
+                dist%p(1) = ONE
+              end select
+            end if
+
+            ! Read distribution for y coordinate
+            if (check_for_node(node_space, "y")) then
+              call get_node_ptr(node_space, "y", node_dist)
+              call distribution_from_xml(space%y, node_dist)
+            else
+              allocate(Discrete :: space%y)
+              select type (dist => space%y)
+              type is (Discrete)
+                allocate(dist%x(1), dist%p(1))
+                dist%x(1) = ZERO
+                dist%p(1) = ONE
+              end select
+            end if
+
+            if (check_for_node(node_space, "z")) then
+              call get_node_ptr(node_space, "z", node_dist)
+              call distribution_from_xml(space%z, node_dist)
+            else
+              allocate(Discrete :: space%z)
+              select type (dist => space%z)
+              type is (Discrete)
+                allocate(dist%x(1), dist%p(1))
+                dist%x(1) = ZERO
+                dist%p(1) = ONE
+              end select
+            end if
+
+          type is (SpatialBox)
+            ! Make sure correct number of parameters are given
+            if (get_arraysize_double(node_space, "parameters") /= 6) then
+              call fatal_error('Box/fission spatial source must have &
+                   &six parameters specified.')
+            end if
+
+            ! Read lower-right/upper-left coordinates
+            allocate(temp_real(6))
+            call get_node_array(node_space, "parameters", temp_real)
+            space%lower_left(:) = temp_real(1:3)
+            space%upper_right(:) = temp_real(4:6)
+            deallocate(temp_real)
+
+          type is (SpatialPoint)
+            ! Make sure correct number of parameters are given
+            if (get_arraysize_double(node_space, "parameters") /= 3) then
+              call fatal_error('Point spatial source must have &
+                   &three parameters specified.')
+            end if
+
+            ! Read location of point source
+            allocate(temp_real(3))
+            call get_node_array(node_space, "parameters", temp_real)
+            space%xyz(:) = temp_real
+            deallocate(temp_real)
+
+          end select
+
         else
-          n = 0
+          call fatal_error("No spatial distribution specified for external &
+               &source.")
         end if
 
-        ! Read parameters for energy distribution
-        if (n < coeffs_reqd) then
-          call fatal_error("Not enough parameters specified for energy &
-               &distribution of external source.")
-        elseif (n > coeffs_reqd) then
-          call fatal_error("Too many parameters specified for energy &
-               &distribution of external source.")
-        elseif (n > 0) then
-          allocate(external_source % params_energy(n))
-          call get_node_array(node_dist, "parameters", &
-               external_source % params_energy)
+        ! Determine external source angular distribution
+        if (check_for_node(node_source, "angle")) then
+
+          ! Get pointer to angular distribution
+          call get_node_ptr(node_source, "angle", node_angle)
+
+          ! Check for type of angular distribution
+          type = ''
+          if (check_for_node(node_angle, "type")) &
+               call get_node_value(node_angle, "type", type)
+          select case (to_lower(type))
+          case ('isotropic')
+            allocate(Isotropic :: external_source(i)%angle)
+
+          case ('monodirectional')
+            allocate(Monodirectional :: external_source(i)%angle)
+
+          case ('mu-phi')
+            allocate(PolarAzimuthal :: external_source(i)%angle)
+
+          case default
+            call fatal_error("Invalid angular distribution for external source: "&
+                 // trim(type))
+          end select
+
+          ! Read reference directional unit vector
+          if (check_for_node(node_angle, "reference_uvw")) then
+            n = get_arraysize_double(node_angle, "reference_uvw")
+            if (n /= 3) then
+              call fatal_error('Angular distribution reference direction must have &
+                   &three parameters specified.')
+            end if
+            call get_node_array(node_angle, "reference_uvw", &
+                 external_source(i)%angle%reference_uvw)
+          else
+            ! By default, set reference unit vector to be positive z-direction
+            external_source(i)%angle%reference_uvw(:) = [ZERO, ZERO, ONE]
+          end if
+
+          ! Read parameters for angle distribution
+          select type (angle => external_source(i)%angle)
+          type is (Monodirectional)
+            call get_node_array(node_angle, "reference_uvw", &
+                 external_source(i)%angle%reference_uvw)
+
+          type is (PolarAzimuthal)
+            if (check_for_node(node_angle, "mu")) then
+              call get_node_ptr(node_angle, "mu", node_dist)
+              call distribution_from_xml(angle%mu, node_dist)
+            else
+              allocate(Uniform :: angle%mu)
+              select type (mu => angle%mu)
+              type is (Uniform)
+                mu%a = -ONE
+                mu%b = ONE
+              end select
+            end if
+
+            if (check_for_node(node_angle, "phi")) then
+              call get_node_ptr(node_angle, "phi", node_dist)
+              call distribution_from_xml(angle%phi, node_dist)
+            else
+              allocate(Uniform :: angle%phi)
+              select type (phi => angle%phi)
+              type is (Uniform)
+                phi%a = ZERO
+                phi%b = TWO*PI
+              end select
+            end if
+          end select
+
+        else
+          ! Set default angular distribution isotropic
+          allocate(Isotropic :: external_source(i)%angle)
+          external_source(i)%angle%reference_uvw(:) = [ZERO, ZERO, ONE]
         end if
-      else
-        ! Set default energy distribution to Watt fission spectrum
-        external_source % type_energy = SRC_ENERGY_WATT
-        allocate(external_source % params_energy(2))
-        external_source % params_energy = (/ 0.988_8, 2.249_8 /)
+
+        ! Determine external source energy distribution
+        if (check_for_node(node_source, "energy")) then
+          call get_node_ptr(node_source, "energy", node_dist)
+          call distribution_from_xml(external_source(i)%energy, node_dist)
+        else
+          ! Default to a Watt spectrum with parameters 0.988 MeV and 2.249 MeV^-1
+          allocate(Watt :: external_source(i)%energy)
+          select type(energy => external_source(i)%energy)
+          type is (Watt)
+            energy%a = 0.988_8
+            energy%b = 2.249_8
+          end select
+        end if
       end if
-    end if
+    end do
 
     ! Survival biasing
     if (check_for_node(doc, "survival_biasing")) then

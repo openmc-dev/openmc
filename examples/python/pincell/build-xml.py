@@ -1,4 +1,6 @@
 import openmc
+from openmc.source import Source
+from openmc.stats import Box
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -168,8 +170,8 @@ settings_file = openmc.SettingsFile()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
-settings_file.set_source_space('box', [-0.62992, -0.62992, -1, \
-                                      0.62992, 0.62992, 1])
+settings_file.source = Source(space=Box(
+    [-0.62992, -0.62992, -1], [0.62992, 0.62992, 1]))
 settings_file.entropy_lower_left = [-0.39218, -0.39218, -1.e50]
 settings_file.entropy_upper_right = [0.39218, 0.39218, 1.e50]
 settings_file.entropy_dimension = [10, 10, 1]

@@ -1012,16 +1012,19 @@ class SettingsFile(object):
 
         # Separate subelement
         if self._sourcepoint_separate is not None:
+            element = ET.SubElement(self._settings_file, "source_point")
             subelement = ET.SubElement(element, "separate")
             subelement.text = str(self._sourcepoint_separate).lower()
 
         # Write subelement
         if self._sourcepoint_write is not None:
+            element = ET.SubElement(self._settings_file, "source_point")
             subelement = ET.SubElement(element, "write")
             subelement.text = str(self._sourcepoint_write).lower()
 
         # Overwrite latest subelement
         if self._sourcepoint_overwrite is not None:
+            element = ET.SubElement(self._settings_file, "source_point")
             subelement = ET.SubElement(element, "overwrite_latest")
             subelement.text = str(self._sourcepoint_overwrite).lower()
 

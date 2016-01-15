@@ -209,10 +209,6 @@ if run_mode == 'k-eigenvalue':
     Type of the j-th filter. Can be 'universe', 'material', 'cell', 'cellborn',
     'surface', 'mesh', 'energy', 'energyout', or 'distribcell'.
 
-**/tallies/tally <uid>/filter <j>/offset** (*int*)
-
-    Filter offset (used for distribcell filter).
-
 **/tallies/tally <uid>/filter <j>/n_bins** (*int*)
 
     Number of bins for the j-th filter.

@@ -14,7 +14,7 @@ module constants
   integer, parameter :: REVISION_STATEPOINT       = 14
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
   integer, parameter :: REVISION_TRACK            = 1
-  integer, parameter :: REVISION_SUMMARY          = 1
+  integer, parameter :: REVISION_SUMMARY          = 2
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS
@@ -138,6 +138,9 @@ module constants
 
   ! Maximum number of lost particles
   integer, parameter :: MAX_LOST_PARTICLES = 10
+
+  ! Maximum number of lost particles, relative to the total number of particles
+  real(8), parameter :: REL_MAX_LOST_PARTICLES = 1e-6_8
 
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS

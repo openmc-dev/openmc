@@ -9,9 +9,9 @@ if sys.version > '3':
 
 
 class StatePoint(object):
-    """State information on a simulation at a certain point in time (at the end of a
-    given batch). Statepoints can be used to analyze tally results as well as
-    restart a simulation.
+    """State information on a simulation at a certain point in time (at the end
+    of a given batch). Statepoints can be used to analyze tally results as well
+    as restart a simulation.
 
     Attributes
     ----------
@@ -75,6 +75,9 @@ class StatePoint(object):
         energy of the source site.
     source_present : bool
         Indicate whether source sites are present
+    sparse : bool
+        Whether or not the tallies uses SciPy's LIL sparse matrix format for
+        compressed data storage
     tallies : dict
         Dictionary whose keys are tally IDs and whose values are Tally objects
     tallies_present : bool
@@ -110,6 +113,7 @@ class StatePoint(object):
         self._tallies_read = False
         self._summary = False
         self._global_tallies = None
+        self._sparse = False
 
     def close(self):
         self._f.close()
@@ -319,6 +323,10 @@ class StatePoint(object):
         return self._f['source_present'].value > 0
 
     @property
+    def sparse(self):
+        return self._sparse
+
+    @property
     def tallies(self):
         if not self._tallies_read:
             # Initialize dictionary for tallies
@@ -340,7 +348,8 @@ class StatePoint(object):
             for tally_key in tally_keys:
 
                 # Read the Tally size specifications
-                n_realizations = self._f['{0}{1}/n_realizations'.format(base, tally_key)].value
+                n_realizations = \
+                    self._f['{0}{1}/n_realizations'.format(base, tally_key)].value
 
                 # Create Tally object and assign basic properties
                 tally = openmc.Tally(tally_id=tally_key)
@@ -350,7 +359,8 @@ class StatePoint(object):
                 tally.num_realizations = n_realizations
 
                 # Read the number of Filters
-                n_filters = self._f['{0}{1}/n_filters'.format(base, tally_key)].value
+                n_filters = \
+                    self._f['{0}{1}/n_filters'.format(base, tally_key)].value
 
                 subbase = '{0}{1}/filter '.format(base, tally_key)
 
@@ -358,10 +368,8 @@ class StatePoint(object):
                 for j in range(1, n_filters+1):
 
                     # Read the Filter type
-                    filter_type = self._f['{0}{1}/type'.format(subbase, j)].value.decode()
-
-                    # Read the Filter offset
-                    offset = self._f['{0}{1}/offset'.format(subbase, j)].value
+                    filter_type = \
+                        self._f['{0}{1}/type'.format(subbase, j)].value.decode()
 
                     n_bins = self._f['{0}{1}/n_bins'.format(subbase, j)].value
 
@@ -370,7 +378,6 @@ class StatePoint(object):
 
                     # Create Filter object
                     filter = openmc.Filter(filter_type, bins)
-                    filter.offset = offset
                     filter.num_bins = n_bins
 
                     if filter_type == 'mesh':
@@ -384,22 +391,18 @@ class StatePoint(object):
                     tally.add_filter(filter)
 
                 # Read Nuclide bins
-                nuclide_names = self._f['{0}{1}/nuclides'.format(base, tally_key)].value
+                nuclide_names = \
+                    self._f['{0}{1}/nuclides'.format(base, tally_key)].value
 
                 # Add all Nuclides to the Tally
                 for name in nuclide_names:
                     nuclide = openmc.Nuclide(name.decode().strip())
                     tally.add_nuclide(nuclide)
 
-                # Read score bins
-                n_score_bins = self._f['{0}{1}/n_score_bins'.format(base, tally_key)].value
-
-                tally.num_score_bins = n_score_bins
-
                 scores = self._f['{0}{1}/score_bins'.format(
                     base, tally_key)].value
-                n_user_scores = self._f['{0}{1}/n_user_score_bins'
-                                        .format(base, tally_key)].value
+                n_score_bins = self._f['{0}{1}/n_score_bins'
+                                       .format(base, tally_key)].value
 
                 # Compute and set the filter strides
                 for i in range(n_filters):
@@ -409,7 +412,7 @@ class StatePoint(object):
                     for j in range(i+1, n_filters):
                         filter.stride *= tally.filters[j].num_bins
 
-                # Read scattering moment order strings (e.g., P3, Y-1,2, etc.)
+                # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
                 moments = self._f['{0}{1}/moment_orders'.format(
                     base, tally_key)].value
 
@@ -424,6 +427,7 @@ class StatePoint(object):
                     tally.add_score(score)
 
                 # Add Tally to the global dictionary of all Tallies
+                tally.sparse = self.sparse
                 self._tallies[tally_key] = tally
 
             self._tallies_read = True
@@ -447,6 +451,26 @@ class StatePoint(object):
     @property
     def with_summary(self):
         return False if self.summary is None else True
+
+    @sparse.setter
+    def sparse(self, sparse):
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices, and vice versa.
+
+        This property may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within each Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        """
+
+        cv.check_type('sparse', sparse, bool)
+        self._sparse = sparse
+
+        # Update tally sparsities
+        if self._tallies_read:
+            for tally_id in self.tallies:
+                self.tallies[tally_id].sparse = self.sparse
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None):

@@ -198,7 +198,9 @@ contains
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
     integer :: i                    ! index over cells
-    integer :: j                    ! coordinate level index
+    integer :: j, k                 ! coordinate level index
+    integer :: offset               ! instance # of a distributed cell
+    integer :: distribcell_index
     integer :: i_xyz(3)             ! indices in lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
@@ -252,9 +254,36 @@ contains
         ! ======================================================================
         ! AT LOWEST UNIVERSE, TERMINATE SEARCH
 
-        ! set material
+        ! Set the particle material
         p % last_material = p % material
-        p % material = c % material
+        if (size(c % material) == 1) then
+          ! Only one material for this cell; assign that one to the particle.
+          p % material = c % material(1)
+        else
+          ! Distributed instances of this cell have different materials.
+          ! Determine which instance this is and assign the matching material.
+          distribcell_index = c % distribcell_index
+          offset = 0
+          do k = 1, p % n_coord
+            if (cells(p % coord(k) % cell) % type == CELL_FILL) then
+              offset = offset + cells(p % coord(k) % cell) % &
+                   offset(distribcell_index)
+            elseif (cells(p % coord(k) % cell) % type == CELL_LATTICE) then
+              if (lattices(p % coord(k + 1) % lattice) % obj &
+                   % are_valid_indices([&
+                   p % coord(k + 1) % lattice_x, &
+                   p % coord(k + 1) % lattice_y, &
+                   p % coord(k + 1) % lattice_z])) then
+                offset = offset + lattices(p % coord(k + 1) % lattice) % obj % &
+                     offset(distribcell_index, &
+                     p % coord(k + 1) % lattice_x, &
+                     p % coord(k + 1) % lattice_y, &
+                     p % coord(k + 1) % lattice_z)
+              end if
+            end if
+          end do
+          p % material = c % material(offset + 1)
+        end if
 
         ! Store the distribcell instance index
         if (p % material == NONE) then
@@ -323,9 +352,10 @@ contains
         else
           ! Particle is outside the lattice.
           if (lat % outer == NO_OUTER_UNIVERSE) then
-            call fatal_error("A particle is outside latttice " &
-                 // trim(to_str(lat % id)) // " but the lattice has no &
-                 &defined outer universe.")
+            call handle_lost_particle(p, "Particle " // trim(to_str(p %id)) &
+                 // " is outside lattice " // trim(to_str(lat % id)) &
+                 // " but the lattice has no defined outer universe.")
+            return
           else
             p % coord(j + 1) % universe = lat % outer
           end if
@@ -599,9 +629,11 @@ end subroutine calibrate_coord
       p % n_coord = 1
       call find_cell(p, found)
       if (.not. found) then
-        call handle_lost_particle(p, "Could not locate particle " &
-             // trim(to_str(p % id)) // " after crossing a lattice boundary.")
-        return
+        if (p % alive) then ! Particle may have been killed in find_cell
+          call handle_lost_particle(p, "Could not locate particle " &
+               // trim(to_str(p % id)) // " after crossing a lattice boundary.")
+          return
+        end if
       end if
 
     else OUTSIDE_LAT
@@ -1115,6 +1147,8 @@ end subroutine calibrate_coord
     type(Particle), intent(inout) :: p
     character(*)                  :: message
 
+    integer(8) :: tot_n_particles
+
     ! Print warning and write lost particle file
     call warning(message)
     call write_particle_restart(p)
@@ -1124,9 +1158,13 @@ end subroutine calibrate_coord
 !$omp atomic
     n_lost_particles = n_lost_particles + 1
 
+    ! Count the total number of simulated particles (on this processor)
+    tot_n_particles = n_batches * gen_per_batch * work
+
     ! Abort the simulation if the maximum number of lost particles has been
     ! reached
-    if (n_lost_particles == MAX_LOST_PARTICLES) then
+    if (n_lost_particles >= MAX_LOST_PARTICLES .and. &
+         n_lost_particles >= REL_MAX_LOST_PARTICLES * tot_n_particles) then
       call fatal_error("Maximum number of lost particles has been reached.")
     end if
 

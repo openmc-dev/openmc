@@ -310,7 +310,6 @@ contains
               call write_dataset(filter_group, "type", "delayedgroup")
             end select
 
-            call write_dataset(filter_group, "offset", tally%filters(j)%offset)
             call write_dataset(filter_group, "n_bins", tally%filters(j)%n_bins)
             if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
                  tally % filters(j) % type == FILTER_ENERGYOUT .or. &

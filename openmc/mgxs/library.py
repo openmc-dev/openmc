@@ -73,6 +73,9 @@ class Library(object):
     name : str, optional
         Name of the multi-group cross section library. Used as a label to
         identify tallies in OpenMC 'tallies.xml' file.
+    sparse : bool
+        Whether or not the Library's tallies use SciPy's LIL sparse matrix
+        format for compressed data storage
 
     """
 
@@ -92,6 +95,7 @@ class Library(object):
         self._all_mgxs = OrderedDict()
         self._sp_filename = None
         self._keff = None
+        self._sparse = False
 
         self.name = name
         self.openmc_geometry = openmc_geometry
@@ -119,6 +123,7 @@ class Library(object):
             clone._all_mgxs = self.all_mgxs
             clone._sp_filename = self._sp_filename
             clone._keff = self._keff
+            clone._sparse = self.sparse
 
             clone._all_mgxs = OrderedDict()
             for domain in self.domains:
@@ -208,6 +213,10 @@ class Library(object):
     def keff(self):
         return self._keff
 
+    @property
+    def sparse(self):
+        return self._sparse
+
     @openmc_geometry.setter
     def openmc_geometry(self, openmc_geometry):
         cv.check_type('openmc_geometry', openmc_geometry, openmc.Geometry)
@@ -285,6 +294,28 @@ class Library(object):
     def tally_trigger(self, tally_trigger):
         cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
         self._tally_trigger = tally_trigger
+
+    @sparse.setter
+    def sparse(self, sparse):
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices, and vice versa.
+
+        This property may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within the Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        """
+
+        cv.check_type('sparse', sparse, bool)
+        
+        # Sparsify or densify each MGXS in the Library
+        for domain in self.domains:
+            for mgxs_type in self.mgxs_types:
+                mgxs = self.get_mgxs(domain, mgxs_type)
+                mgxs.sparse = self.sparse
+
+        self._sparse = sparse
 
     def build_library(self):
         """Initialize MGXS objects in each domain and for each reaction type
@@ -381,6 +412,7 @@ class Library(object):
             for mgxs_type in self.mgxs_types:
                 mgxs = self.get_mgxs(domain, mgxs_type)
                 mgxs.load_from_statepoint(statepoint)
+                mgxs.sparse = self.sparse
 
     def get_mgxs(self, domain, mgxs_type):
         """Return the MGXS object for some domain and reaction rate type.

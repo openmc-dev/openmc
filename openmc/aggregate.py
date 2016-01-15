@@ -13,7 +13,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 # Acceptable tally aggregation operations
-_TALLY_AGGREGATE_OPS = ['sum', 'mean']
+_TALLY_AGGREGATE_OPS = ['sum', 'avg']
 
 
 class AggregateScore(object):
@@ -25,7 +25,7 @@ class AggregateScore(object):
     scores : Iterable of str or CrossScore
         The scores included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally's scores with this AggregateScore
 
     Attributes
@@ -33,7 +33,7 @@ class AggregateScore(object):
     scores : Iterable of str or CrossScore
         The scores included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally's scores with this AggregateScore
 
     """
@@ -108,7 +108,7 @@ class AggregateNuclide(object):
     nuclides : Iterable of str or Nuclide or CrossNuclide
         The nuclides included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally's nuclides with this AggregateNuclide
 
     Attributes
@@ -116,7 +116,7 @@ class AggregateNuclide(object):
     nuclides : Iterable of str or Nuclide or CrossNuclide
         The nuclides included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally's nuclides with this AggregateNuclide
 
     """
@@ -198,7 +198,7 @@ class AggregateFilter(object):
     bins : Iterable of tuple
         The filter bins included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally filter's bins with this AggregateFilter
 
     Attributes
@@ -208,7 +208,7 @@ class AggregateFilter(object):
     aggregate_filter : filter
         The filter included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally filter's bins with this AggregateFilter
     bins : Iterable of tuple
         The filter bins included in the aggregation

@@ -1,6 +1,8 @@
 import numpy as np
 
 import openmc
+from openmc.stats import Box
+from openmc.source import Source
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -84,5 +86,5 @@ settings_file = openmc.SettingsFile()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
-settings_file.set_source_space('box', np.concatenate(cell.region.bounding_box))
+settings_file.source = Source(space=Box(*cell.region.bounding_box))
 settings_file.export_to_xml()

@@ -2,6 +2,8 @@ module source
 
   use bank_header,      only: Bank
   use constants
+  use distribution_univariate, only: Discrete
+  use distribution_multivariate, only: SpatialBox
   use error,            only: fatal_error
   use geometry,         only: find_cell
   use geometry_header,  only: BASE_UNIVERSE
@@ -99,13 +101,9 @@ contains
     type(Bank), intent(inout) :: site ! source site
 
     integer :: i          ! dummy loop index
+    integer :: n_source   ! number of source distributions
+    real(8) :: c          ! cumulative frequency
     real(8) :: r(3)       ! sampled coordinates
-    real(8) :: phi        ! azimuthal angle
-    real(8) :: mu         ! cosine of polar angle
-    real(8) :: p_min(3)   ! minimum coordinates of source
-    real(8) :: p_max(3)   ! maximum coordinates of source
-    real(8) :: a          ! Arbitrary parameter 'a'
-    real(8) :: b          ! Arbitrary parameter 'b'
     logical :: found      ! Does the source particle exist within geometry?
     type(Particle) :: p   ! Temporary particle for using find_cell
     integer, save :: num_resamples = 0 ! Number of resamples encountered
@@ -116,129 +114,79 @@ contains
     ! Set the random number generator to the source stream.
     call prn_set_stream(STREAM_SOURCE)
 
-    ! Sample position
-    select case (external_source%type_space)
-    case (SRC_SPACE_BOX)
+    ! Sample from among multiple source distributions
+    n_source = size(external_source)
+    if (n_source > 1) then
+      r(1) = prn()*sum(external_source(:)%strength)
+      c = ZERO
+      do i = 1, n_source
+        c = c + external_source(i)%strength
+        if (r(1) < c) exit
+      end do
+    else
+      i = 1
+    end if
+
+    ! Repeat sampling source location until a good site has been found
+    found = .false.
+    do while (.not.found)
       ! Set particle defaults
       call p%initialize()
-      ! Repeat sampling source location until a good site has been found
-      found = .false.
-      do while (.not.found)
-        ! Coordinates sampled uniformly over a box
-        p_min = external_source%params_space(1:3)
-        p_max = external_source%params_space(4:6)
-        r = (/ (prn(), i = 1,3) /)
-        site%xyz = p_min + r*(p_max - p_min)
 
-        ! Fill p with needed data
-        p%coord(1)%xyz = site%xyz
-        p%coord(1)%uvw = [ ONE, ZERO, ZERO ]
+      ! Sample spatial distribution
+      site%xyz(:) = external_source(i)%space%sample()
 
-        ! Now search to see if location exists in geometry
-        call find_cell(p, found)
-        if (.not. found) then
-          num_resamples = num_resamples + 1
-          if (num_resamples == MAX_EXTSRC_RESAMPLES) then
-            call fatal_error("Maximum number of external source spatial &
-                 &resamples reached!")
+      ! Fill p with needed data
+      p%coord(1)%xyz(:) = site%xyz
+      p%coord(1)%uvw(:) = [ ONE, ZERO, ZERO ]
+
+      ! Now search to see if location exists in geometry
+      call find_cell(p, found)
+      if (.not. found) then
+        num_resamples = num_resamples + 1
+        if (num_resamples == MAX_EXTSRC_RESAMPLES) then
+          call fatal_error("Maximum number of external source spatial &
+               &resamples reached!")
+        end if
+      end if
+
+      ! Check if spatial site is in fissionable material
+      select type (space => external_source(i)%space)
+      type is (SpatialBox)
+        if (space%only_fissionable) then
+          if (p%material == MATERIAL_VOID) then
+            found = .false.
+          elseif (.not. materials(p%material)%fissionable) then
+            found = .false.
           end if
         end if
-      end do
-      call p%clear()
+      end select
+    end do
 
-    case (SRC_SPACE_FISSION)
-      ! Repeat sampling source location until a good site has been found
-      found = .false.
-      do while (.not.found)
-        ! Set particle defaults
-        call p%initialize()
-
-        ! Coordinates sampled uniformly over a box
-        p_min = external_source%params_space(1:3)
-        p_max = external_source%params_space(4:6)
-        r = (/ (prn(), i = 1,3) /)
-        site%xyz = p_min + r*(p_max - p_min)
-
-        ! Fill p with needed data
-        p%coord(1)%xyz = site%xyz
-        p%coord(1)%uvw = [ ONE, ZERO, ZERO ]
-
-        ! Now search to see if location exists in geometry
-        call find_cell(p, found)
-        if (.not. found) then
-          num_resamples = num_resamples + 1
-          if (num_resamples == MAX_EXTSRC_RESAMPLES) then
-            call fatal_error("Maximum number of external source spatial &
-                 &resamples reached!")
-          end if
-          cycle
-        end if
-        if (p%material == MATERIAL_VOID) then
-          found = .false.
-          cycle
-        end if
-        if (.not. materials(p%material)%fissionable) found = .false.
-      end do
-      call p%clear()
-
-    case (SRC_SPACE_POINT)
-      ! Point source
-      site%xyz = external_source%params_space
-
-    end select
+    call p%clear()
 
     ! Sample angle
-    select case (external_source%type_angle)
-    case (SRC_ANGLE_ISOTROPIC)
-      ! Sample isotropic distribution
-      phi = TWO*PI*prn()
-      mu = TWO*prn() - ONE
-      site%uvw(1) = mu
-      site%uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-      site%uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+    site%uvw(:) = external_source(i)%angle%sample()
 
-    case (SRC_ANGLE_MONO)
-      ! Monodirectional source
-      site%uvw = external_source%params_angle
-
-    case default
-      call fatal_error("No angle distribution specified for external source!")
-    end select
-
-    ! Sample energy distribution
-    select case (external_source%type_energy)
-    case (SRC_ENERGY_MONO)
-      ! Monoenergtic source
-      site%E = external_source%params_energy(1)
-      if (site%E >= energy_max_neutron) then
+    ! Check for monoenergetic source above maximum neutron energy
+    select type (energy => external_source(i)%energy)
+    type is (Discrete)
+      if (any(energy%x >= energy_max_neutron)) then
         call fatal_error("Source energy above range of energies of at least &
              &one cross section table")
       end if
-
-    case (SRC_ENERGY_MAXWELL)
-      a = external_source%params_energy(1)
-      do
-        ! Sample Maxwellian fission spectrum
-        site%E = maxwell_spectrum(a)
-
-        ! resample if energy is greater than maximum neutron energy
-        if (site%E < energy_max_neutron) exit
-      end do
-
-    case (SRC_ENERGY_WATT)
-      a = external_source%params_energy(1)
-      b = external_source%params_energy(2)
-      do
-        ! Sample Watt fission spectrum
-        site%E = watt_spectrum(a, b)
-
-        ! resample if energy is greater than maximum neutron energy
-        if (site%E < energy_max_neutron) exit
-      end do
-
-    case default
-      call fatal_error("No energy distribution specified for external source!")
     end select
+
+    do
+      ! Sample energy spectrum
+      site%E = external_source(i)%energy%sample()
+
+      ! resample if energy is greater than maximum neutron energy
+      if (site%E < energy_max_neutron) exit
+    end do
+
+    ! Set delayed group
+    site%delayed_group = 0
 
     ! Set the random number generator back to the tracking stream.
     call prn_set_stream(STREAM_TRACKING)

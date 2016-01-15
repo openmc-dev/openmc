@@ -843,50 +843,20 @@ class MGXS(object):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains)
         else:
-            subdomains = [0]
+            subdomains = None
 
         # Clone this MGXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
         avg_xs._rxn_rate_tally = None
         avg_xs._xs_tally = None
-        avg_xs._sparse = False
-
-        # If domain is distribcell, make the new domain 'cell'
-        if self.domain_type == 'distribcell':
-            avg_xs.domain_type = 'cell'
 
         # Average each of the tallies across subdomains
         for tally_type, tally in avg_xs.tallies.items():
+            tally_avg = tally.summation(filter_type=self.domain_type,
+                                        filter_bins=subdomains)
+            avg_xs.tallies[tally_type] = tally_avg
 
-            # Make condensed tally derived and null out sum, sum_sq
-            tally._derived = True
-            tally._sum = None
-            tally._sum_sq = None
-
-            # Get tally data arrays reshaped with one dimension per filter
-            mean = tally.get_reshaped_data(value='mean')
-            std_dev = tally.get_reshaped_data(value='std_dev')
-
-            # Get the mean, std. dev. across requested subdomains
-            mean = np.sum(mean[subdomains, ...], axis=0)
-            std_dev = np.sum(std_dev[subdomains, ...]**2, axis=0)
-            std_dev = np.sqrt(std_dev)
-
-            # If domain is distribcell, make subdomain-averaged a 'cell' domain
-            domain_filter = tally.find_filter(self._domain_type)
-            if domain_filter.type == 'distribcell':
-                domain_filter.type = 'cell'
-                domain_filter.num_bins = 1
-
-            # Reshape averaged data arrays with one dimension for all filters
-            mean = np.reshape(mean, tally.shape)
-            std_dev = np.reshape(std_dev, tally.shape)
-
-            # Override tally's data with the new condensed data
-            tally._mean = mean
-            tally._std_dev = std_dev
-
-        # Compute the subdomain-averaged multi-group cross section
+        avg_xs._domain_type = 'sum({0})'.format(self.domain_type)
         avg_xs.sparse = self.sparse
         return avg_xs
 

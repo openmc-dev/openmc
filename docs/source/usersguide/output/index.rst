@@ -14,4 +14,3 @@ Output File Formats
    particle_restart
    track
    voxel
-   materials-out

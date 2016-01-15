@@ -469,9 +469,7 @@ contains
       call write_dataset(material_group, "name", m%name)
 
       ! Write atom density with units
-      ! TODO: distrib mat cases, output all densities?
-      !       (openmc python and tests should be updated then)
-      call write_dataset(material_group, "atom_density", m%density%density(1))
+      call write_dataset(material_group, "atom_density", m%density)
       call write_attribute_string(material_group, "atom_density", "units", &
            "atom/b-cm")
 
@@ -489,8 +487,7 @@ contains
       deallocate(nucnames)
 
       ! Write atom densities
-      ! TODO: distrib mat cases, output all compositions?
-      call write_dataset(material_group, "nuclide_densities", m%comp(1)%atom_density)
+      call write_dataset(material_group, "nuclide_densities", m%atom_density)
 
       if (m%n_sab > 0) then
         call write_dataset(material_group, "sab_names", m%sab_names)

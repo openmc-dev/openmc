@@ -182,7 +182,6 @@ contains
       write(OUTPUT_UNIT,*) '                         or a particle restart file'
       write(OUTPUT_UNIT,*) '  -s, --threads          Number of OpenMP threads'
       write(OUTPUT_UNIT,*) '  -t, --track            Write tracks for all particles'
-      write(OUTPUT_UNIT,*) '  -d, --distribution     Show distribution help'
       write(OUTPUT_UNIT,*) '  -v, --version          Show version information'
       write(OUTPUT_UNIT,*) '  -h, --help             Show this message'
     end if
@@ -1571,7 +1570,6 @@ contains
     integer, intent(in) :: final        ! Target offset
     integer, intent(inout) :: offset    ! Current offset
     character(*), intent(inout) :: path ! Path to offset
-    logical, intent(in), optional :: is_mat      ! goal id is a material?
 
     integer :: map                  ! Index in maps vector
     integer :: i, j                 ! Index over cells

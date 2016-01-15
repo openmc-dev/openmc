@@ -6,10 +6,10 @@ module initialize
   use dd_init,          only: initialize_domain_decomp
   use dict_header,      only: DictIntInt, ElemKeyValueII
   use set_header,       only: SetInt
-  use distribcell,      only: prepare_distribcell, distribution_help
   use energy_grid,      only: logarithmic_grid, grid_method, unionized_grid
   use error,            only: fatal_error, warning
-  use geometry,         only: neighbor_lists, maximum_levels
+  use geometry,         only: neighbor_lists, count_instance, calc_offsets,    &
+                              maximum_levels
   use geometry_header,  only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                               &BASE_UNIVERSE
   use global
@@ -19,12 +19,10 @@ module initialize
                               cells_in_univ_dict, read_plots_xml
   use material_header,  only: Material
   use output,           only: title, header, print_version, write_message,     &
-                              print_usage, write_xs_summary, print_plot,       &
-                              write_message, find_offset
+                              print_usage, write_xs_summary, print_plot
   use particle_header,  only: ParticleBuffer
   use random_lcg,       only: initialize_prng
   use random_lcg_header,only: N_STREAMS
-  use set_header,       only: SetInt
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use summary,          only: write_summary
@@ -100,14 +98,6 @@ contains
 
     ! Initialize distribcell_filters
     call prepare_distribcell()
-
-    ! If distribution help mode is on, call the method to write the file
-    ! and then exit the run
-    if (run_mode == MODE_DISTRIBUTION) then
-      call distribution_help()
-      call time_initialize % stop()
-      return
-    end if
 
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
@@ -216,9 +206,9 @@ contains
     integer(MPI_ADDRESS_KIND) :: extent           ! Extent for TallyResult
     type(Bank)       :: b
     type(TallyResult) :: tr
-    integer                   :: part_blocks(27) ! ParticleBuffer counts
-    integer                   :: part_types(27)  ! ParticleBuffer datatypes
-    integer(MPI_ADDRESS_KIND) :: part_disp(27)   ! ParticleBuffer displacements
+    integer                   :: part_blocks(25) ! ParticleBuffer counts
+    integer                   :: part_types(25)  ! ParticleBuffer datatypes
+    integer(MPI_ADDRESS_KIND) :: part_disp(25)   ! ParticleBuffer displacements
     type(ParticleBuffer) :: ptmp
 
     ! Indicate that MPI is turned on
@@ -315,22 +305,19 @@ contains
     call MPI_GET_ADDRESS(ptmp % n_collision,     part_disp(23), mpi_err)
     call MPI_GET_ADDRESS(ptmp % material,        part_disp(24), mpi_err)
     call MPI_GET_ADDRESS(ptmp % last_material,   part_disp(25), mpi_err)
-    call MPI_GET_ADDRESS(ptmp % last_inst,       part_disp(26), mpi_err)
-    call MPI_GET_ADDRESS(ptmp % inst,            part_disp(27), mpi_err)
 
     ! Adjust displacements 
     part_disp = part_disp - part_disp(1)
 
     ! Define particle type
     part_blocks = (/ 1, N_STREAMS, N_STREAMS, 1, 1, 1, 1, 1, 1, 1, 1, 1, &
-        3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 /)
+        3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 /)
     part_types = (/ MPI_INTEGER8, MPI_INTEGER8, MPI_INTEGER8, MPI_REAL8, &
         MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, &
         MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_INTEGER, &
         MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, &
-        MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, &
-        MPI_INTEGER /)
-    call MPI_TYPE_CREATE_STRUCT(27, part_blocks, part_disp, part_types, &
+        MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER /)
+    call MPI_TYPE_CREATE_STRUCT(25, part_blocks, part_disp, part_types, &
         MPI_PARTICLEBUFFER, mpi_err)
 
     ! Commit derived type for particles
@@ -514,9 +501,6 @@ contains
           stop
         case ('-t', '-track', '--track')
           write_all_tracks = .true.
-          i = i + 1
-        case ('-d', '-dist', '--distribution')
-          run_mode = MODE_DISTRIBUTION
         case default
           call fatal_error("Unknown command line option: " // argv(i))
         end select
@@ -859,7 +843,7 @@ contains
   end subroutine adjust_indices
 
 !===============================================================================
-! NORMALIZE_AO normalizes the atom or weight percentages for a material
+! NORMALIZE_AO normalizes the atom or weight percentages for each material
 !===============================================================================
 
   subroutine normalize_ao()
@@ -867,28 +851,20 @@ contains
     integer        :: index_list      ! index in xs_listings array
     integer        :: i               ! index in materials array
     integer        :: j               ! index over nuclides in material
-    integer        :: k               ! index over compositions
-    integer        :: l               ! index in density
     real(8)        :: sum_percent     ! summation
     real(8)        :: awr             ! atomic weight ratio
     real(8)        :: x               ! atom percent
-    real(8)        :: orig_dens       ! original density for distrib comps
     logical        :: percent_in_atom ! nuclides specified in atom percent?
     logical        :: density_in_atom ! density specified in atom/b-cm?
     type(Material), pointer :: mat => null()
-
-    call write_message("Normalizing materials...", 7)
 
     ! first find the index in the xs_listings array for each nuclide in each
     ! material
     do i = 1, n_materials
       mat => materials(i)
 
-      ! Compositions loaded from a file must already be normalize
-      if (mat % otf_compositions) cycle
-
-      percent_in_atom = (mat % comp(1) % atom_density(1) > ZERO)
-      density_in_atom = (mat % density % density(1) > ZERO)
+      percent_in_atom = (mat%atom_density(1) > ZERO)
+      density_in_atom = (mat%density > ZERO)
 
       sum_percent = ZERO
       do j = 1, mat%n_nuclides
@@ -900,61 +876,33 @@ contains
         ! by awr. thus, when a sum is done over the values, it's actually
         ! sum(w/awr)
         if (.not. percent_in_atom) then
-          do k = 1, mat % n_comp
-            mat % comp(k) % atom_density(j) = &
-                -mat % comp(k) % atom_density(j) / awr
-          end do
+          mat%atom_density(j) = -mat%atom_density(j) / awr
         end if
       end do
 
-      do k = 1, mat % n_comp
-      
-        ! handle distributed densities
-        if (mat % distrib_dens) then
-          l = k
-        else
-          l = 1
-        end if
-        
-        ! determine normalized atom percents. if given atom percents, this is
-        ! straightforward. if given weight percents, the value is w/awr and is
-        ! divided by sum(w/awr)
-        sum_percent = sum(mat % comp(k) % atom_density)
-        mat % comp(k) % atom_density = &
-            mat % comp(k) % atom_density / sum_percent
+      ! determine normalized atom percents. if given atom percents, this is
+      ! straightforward. if given weight percents, the value is w/awr and is
+      ! divided by sum(w/awr)
+      sum_percent = sum(mat%atom_density)
+      mat%atom_density = mat%atom_density / sum_percent
 
-        ! Change density in g/cm^3 to atom/b-cm. Since all values are now in
-        ! atom percent, the sum needs to be re-evaluated as 1/sum(x*awr)
-        if (.not. density_in_atom) then
-          sum_percent = ZERO
-          do j = 1, mat % n_nuclides
-            index_list = xs_listing_dict % get_key(mat % names(j))
-            awr = xs_listings(index_list) % awr
-            x = mat % comp(k) % atom_density(j)
-            sum_percent = sum_percent + x*awr
-          end do
-          sum_percent = ONE / sum_percent
+      ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
+      ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
+      if (.not. density_in_atom) then
+        sum_percent = ZERO
+        do j = 1, mat%n_nuclides
+          index_list = xs_listing_dict%get_key(mat%names(j))
+          awr = xs_listings(index_list)%awr
+          x = mat%atom_density(j)
+          sum_percent = sum_percent + x*awr
+        end do
+        sum_percent = ONE / sum_percent
+        mat%density = -mat%density * N_AVOGADRO &
+             / MASS_NEUTRON * sum_percent
+      end if
 
-          ! we should only alter the density more than once for distributed
-          ! density materials
-          if (mat % distrib_comp .and. .not. mat % distrib_dens) then
-              if (k == 1) then
-                orig_dens = mat % density % density(l)
-              else 
-                mat % density % density(l) = orig_dens
-              end if
-              mat % density % density(l) = -mat % density % density(l) * N_AVOGADRO & 
-                 / MASS_NEUTRON * sum_percent
-          else
-              mat % density % density(l) = -mat % density % density(l) * N_AVOGADRO & 
-                 / MASS_NEUTRON * sum_percent
-          end if
-        end if
-        ! Calculate nuclide atom densities
-        mat % comp(k) % atom_density = &
-            mat % density % density(l) * mat % comp(k) % atom_density
-      end do
-
+      ! Calculate nuclide atom densities
+      mat%atom_density = mat%density * mat%atom_density
     end do
 
   end subroutine normalize_ao

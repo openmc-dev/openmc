@@ -5,7 +5,6 @@ module finalize
   use output,         only: header, print_runtime, print_results, &
                             print_overlap_check, write_tallies, &
                             print_domain_interactions
-  use state_point,    only: write_distribmat_comps
   use tally,          only: tally_statistics
 
 #ifdef MPI
@@ -31,15 +30,13 @@ contains
     ! Start finalization timer
     call time_finalize%start()
 
-    if (run_mode /= MODE_PLOTTING .and. run_mode /= MODE_PARTICLE &
-        .and. run_mode /= MODE_DISTRIBUTION) then
+    if (run_mode /= MODE_PLOTTING .and. run_mode /= MODE_PARTICLE) then
       ! Calculate statistics for tallies and write to tallies.out
       if (master .or. (dd_run .and. domain_decomp % local_master)) then
         if (n_realizations > 1) call tally_statistics()
         if (output_tallies) call write_tallies()
       end if
       if (check_overlaps) call reduce_overlap_count()
-      if (output_distribmats) call write_distribmat_comps(OUTPUT_MATFILE)
     end if
 
     ! Stop timers and show timing statistics
@@ -59,24 +56,6 @@ contains
 #endif
       if (domain_decomp % local_master) call print_domain_interactions()
     end if
-
-    ! Clearn up OTF file reading
-    do i = 1, n_materials
-      if (materials(i) % otf_compositions) then
-        call materials(i) % comp_file % close()
-      end if
-    end do
-    ! Close the OTF file
-    if (otf_matfile_open) then
-      do i = 1, n_materials
-        if (materials(i) % otf_compositions) then
-          call h5fclose_f(materials(i) % comp_file % file_id, hdf5_err)
-          otf_matfile_open = .false.
-          exit
-        end if
-      end do
-    end if
-
     ! Deallocate arrays
     call free_memory()
 

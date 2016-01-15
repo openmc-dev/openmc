@@ -86,11 +86,6 @@ module particle_header
 
     ! Track output
     logical    :: write_track = .false.
-    
-    ! Distributed Mapping Info
-    integer, allocatable :: mapping(:)  ! records the current sum of all maps
-    integer              :: inst        ! records the current material instance
-    integer              :: last_inst   ! records the previous material instance
 
     ! Secondary particles created
     integer    :: n_secondary = 0
@@ -152,8 +147,6 @@ module particle_header
     integer    :: n_collision
     integer    :: material
     integer    :: last_material
-    integer    :: last_inst
-    integer    :: inst
 
   end type ParticleBuffer
 
@@ -180,8 +173,6 @@ contains
     this % cell_born         = NONE
     this % material          = NONE
     this % last_material     = NONE
-    this % inst              = NONE
-    this % last_inst         = NONE
     this % wgt               = ONE
     this % last_wgt          = ONE
     this % absorb_wgt        = ZERO
@@ -233,8 +224,6 @@ contains
     buf % stored_uvw      = part % stored_uvw
     buf % material        = part % material
     buf % last_material   = part % last_material
-    buf % last_inst       = part % last_inst
-    buf % inst            = part % inst
     buf % prn_seed        = part % prn_seed
     buf % xs_seed         = part % xs_seed
     buf % stored_distance = part % stored_distance
@@ -275,8 +264,6 @@ contains
     part % stored_uvw      = buf % stored_uvw
     part % material        = buf % material
     part % last_material   = buf % last_material
-    part % last_inst       = buf % last_inst
-    part % inst            = buf % inst
     part % prn_seed        = buf % prn_seed
     part % xs_seed         = buf % xs_seed
     part % stored_distance = buf % stored_distance

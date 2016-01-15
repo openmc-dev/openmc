@@ -340,9 +340,6 @@ module global
   ! Write out initial source
   logical :: write_initial_source = .false.
 
-  ! OTF materials HDF5 file handle
-  logical :: otf_matfile_open = .false.
-
   ! ============================================================================
   ! CMFD VARIABLES
 
@@ -418,10 +415,9 @@ module global
   type(SetInt) :: sourcepoint_batch
 
   ! Various output options
-  logical :: output_summary     = .false.
-  logical :: output_xs          = .false.
-  logical :: output_tallies     = .true.
-  logical :: output_distribmats = .true.
+  logical :: output_summary = .false.
+  logical :: output_xs      = .false.
+  logical :: output_tallies = .true.
 
   ! ============================================================================
   ! RESONANCE SCATTERING VARIABLES

@@ -56,6 +56,7 @@ module tally_header
   type TallyFilter
     integer :: type = NONE
     integer :: n_bins = 0
+    integer :: offset = 0 ! Only used for distribcell filters
     integer, allocatable :: int_bins(:)
     real(8), allocatable :: real_bins(:) ! Only used for energy filters
 

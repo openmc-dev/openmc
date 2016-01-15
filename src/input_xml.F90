@@ -9,7 +9,6 @@ module input_xml
   use global
   use list_header,      only: ListChar, ListInt, ListReal
   use mesh_header,      only: RegularMesh
-  use material_header,  only: Material
   use output,           only: write_message
   use plot_header
   use random_lcg,       only: prn
@@ -24,10 +23,6 @@ module input_xml
 #ifdef MPI
   use mpi
 #endif
-
-  use hdf5
-  use hdf5_interface
-
   implicit none
   save
 
@@ -984,14 +979,6 @@ contains
         if (trim(temp_str) == 'false' .or. &
              trim(temp_str) == '0') output_tallies = .false.
       end if
-
-      ! Check for distributed materials option
-      if (check_for_node(node_output, "distribmats")) then
-        call get_node_value(node_output, "distribmats", temp_str)
-        temp_str = to_lower(temp_str)
-        if (trim(temp_str) == 'false' .or. &
-             trim(temp_str) == '0') output_distribmats = .false.
-      end if
     end if
 
     ! Check for cmfd run
@@ -1913,23 +1900,15 @@ contains
 
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
-    integer :: k             ! loop index for elements/compositions
-    integer :: l             ! loop index for post expansion nuclides
+    integer :: k             ! loop index for elements
     integer :: n             ! number of nuclides
-    integer :: n_nuclide     ! number of nuclides entered
-    integer :: n_element     ! number of elements entered
-    integer :: n_comp        ! number of compositions
     integer :: n_sab         ! number of sab tables for a material
     integer :: n_nuc_ele     ! number of nuclides in an element
     integer :: index_list    ! index in xs_listings array
     integer :: index_nuclide ! index in nuclides
     integer :: index_sab     ! index in sab_tables
-    integer :: even
-    integer :: otf_initial_size
-    logical :: otf_hdf5_mats = .false.
     real(8) :: val           ! value entered for density
     real(8) :: temp_dble     ! temporary double prec. real
-    real(8), allocatable :: temp_real_array(:) ! temporary array for composition
     logical :: file_exists   ! does materials.xml exist?
     logical :: sum_density   ! density is taken to be sum of nuclide densities
     character(12) :: name    ! name of isotope, e.g. 92235.03c
@@ -1940,14 +1919,10 @@ contains
     type(ListChar) :: list_names   ! temporary list of nuclide names
     type(ListReal) :: list_density ! temporary list of nuclide densities
     type(ListInt)  :: list_iso_lab ! temporary list of isotropic lab scatterers
-    type(ListChar) :: ele_names    ! temporary list of nuclide names
-    type(ListChar) :: comp_names   ! temporary list of nuclide names
-    type(ListReal) :: comp_density ! temporary list of nuclide densities
     type(Material),    pointer :: mat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
     type(Node), pointer :: node_dens => null()
-    type(Node), pointer :: node_comp => null()
     type(Node), pointer :: node_nuc => null()
     type(Node), pointer :: node_ele => null()
     type(Node), pointer :: node_sab => null()
@@ -1955,8 +1930,6 @@ contains
     type(NodeList), pointer :: node_nuc_list => null()
     type(NodeList), pointer :: node_ele_list => null()
     type(NodeList), pointer :: node_sab_list => null()
-    integer(HID_T) :: file_id
-    integer(HID_T) :: mat_group
 
     ! Display output message
     call write_message("Reading materials XML file...", 5)
@@ -1993,12 +1966,6 @@ contains
     do i = 1, n_materials
       mat => materials(i)
 
-      ! set default values
-      mat % distribcell = NONE
-      mat % distribmap = NONE
-      n_nuclide = 0
-      n_element = 0
-
       ! Get pointer to i-th material node
       call get_list_item(node_mat_list, i, node_mat)
 
@@ -2026,561 +1993,214 @@ contains
         cycle
       end if
 
-      ! Check for distributed densities
-      if (check_for_node(node_mat, "distributed_density")) then
+      ! =======================================================================
+      ! READ AND PARSE <density> TAG
 
-        ! Can't do summed density for this
+      ! Get pointer to density element
+      if (check_for_node(node_mat, "density")) then
+        call get_node_ptr(node_mat, "density", node_dens)
+      else
+        call fatal_error("Must specify density element in material " &
+             &// trim(to_str(mat % id)))
+      end if
+
+      ! Initialize value to zero
+      val = ZERO
+
+      ! Copy units
+      call get_node_value(node_dens, "units", units)
+
+      if (units == 'sum') then
+        ! If the user gave the units as 'sum', then the total density of the
+        ! material is taken to be the sum of the atom fractions listed on the
+        ! nuclides
+
+        sum_density = .true.
+
+      else
+        ! Copy value
+        call get_node_value(node_dens, "value", val)
+
+        ! Check for erroneous density
         sum_density = .false.
-        call get_node_ptr(node_mat, "distributed_density", node_dens)
-
-        mat % distrib_dens = .true.
-
-        ! Get number of densities
-        n = get_arraysize_double(node_dens, "values")
-        allocate(mat % density % density(n))
-        mat % density % num = n
-
-        ! Copy values
-        call get_node_array(node_dens, "values", &
-             mat % density % density)
-
-        ! Copy units
-        call get_node_value(node_dens, "units", units)
+        if (val <= ZERO) then
+          call fatal_error("Need to specify a positive density on material " &
+               &// trim(to_str(mat % id)) // ".")
+        end if
 
         ! Adjust material density based on specified units
         select case(to_lower(units))
         case ('g/cc', 'g/cm3')
-          mat % density % density = -mat % density % density
+          mat % density = -val
         case ('kg/m3')
-          mat % density % density = -0.001_8 * mat % density % density
+          mat % density = -0.001_8 * val
         case ('atom/b-cm')
-          mat % density % density = mat % density % density
+          mat % density = val
         case ('atom/cm3', 'atom/cc')
-          mat % density % density = 1.0e-24_8 * mat % density % density
-        case ('sum')          
-          sum_density = .true.
+          mat % density = 1.0e-24_8 * val
         case default
-          call fatal_error("Unknown units '" // trim(units) &
-               // "' specified on distributed material " &
-               // trim(to_str(mat % id)))
+          call fatal_error("Unkwown units '" // trim(units) &
+               &// "' specified on material " // trim(to_str(mat % id)))
         end select
-
-      else
-        ! Not using distributed densities
-        allocate(mat % density % density(1))
-        mat % distrib_dens = .false.
-        mat % density % num = 1
-
-        ! =======================================================================
-        ! READ AND PARSE <density> TAG
-
-        ! Get pointer to density element
-        if (check_for_node(node_mat, "density")) then
-          call get_node_ptr(node_mat, "density", node_dens)
-        else
-          call fatal_error("Must specify density element in material " // &
-                    trim(to_str(mat % id)))
-        end if
-
-        ! Initialize value to zero
-        val = ZERO
-
-        ! Copy units
-        call get_node_value(node_dens, "units", units)
-
-        if (units == 'sum') then
-          ! If the user gave the units as 'sum', then the total density of the
-          ! material is taken to be the sum of the atom fractions listed on the
-          ! nuclides
-
-          sum_density = .true.
-
-        else
-          ! Copy value
-          call get_node_value(node_dens, "value", val)
-
-          ! Check for erroneous density
-          sum_density = .false.
-          if (val <= ZERO) then
-            call fatal_error("Need to specify a positive density on material " // &
-                 trim(to_str(mat % id)) // ".")
-          end if
-
-          ! Adjust material density based on specified units
-          select case(trim(to_lower(units)))
-          case ('g/cc', 'g/cm3')
-            mat % density % density(1) = -val
-          case ('kg/m3')
-            mat % density % density(1) = -0.001 * val
-          case ('atom/b-cm')
-            mat % density % density(1) = val
-          case ('atom/cm3', 'atom/cc')
-            mat % density % density(1) = 1.0e-24 * val
-          case default
-            call fatal_error("Unknown units '" // trim(units) &
-                 // "' specified on material " // trim(to_str(mat % id)))
-          end select
-        end if
-
       end if
 
-      ! Check for distributed compositions
-      if (check_for_node(node_mat, "compositions")) then
-        mat % distrib_comp = .true.
+      ! =======================================================================
+      ! READ AND PARSE <nuclide> TAGS
 
-        ! Enforce only composition is distributed
-        if (mat % distrib_dens) then
-          call fatal_error("Material " // trim(to_str(mat % id)) // &
-                    " cannot have distributed density and composition.")
-        end if        
+      ! Check to ensure material has at least one nuclide
+      if (.not. check_for_node(node_mat, "nuclide") .and. &
+           .not. check_for_node(node_mat, "element")) then
+        call fatal_error("No nuclides or natural elements specified on &
+             &material " // trim(to_str(mat % id)))
+      end if
 
-        ! Get pointer to composition node
-        call get_node_ptr(node_mat, "compositions", node_comp)
+      ! Get pointer list of XML <nuclide>
+      call get_node_list(node_mat, "nuclide", node_nuc_list)
 
-        ! Check for OTF composition file
-        if (check_for_node(node_comp, "otf_file_path")) then
-          mat % otf_compositions = .true.
+      ! Create list of nuclides based on those specified plus natural elements
+      INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
+        ! Combine nuclide identifier and cross section and copy into names
+        call get_list_item(node_nuc_list, j, node_nuc)
+
+        ! Check for empty name on nuclide
+        if (.not.check_for_node(node_nuc, "name")) then
+          call fatal_error("No name specified on nuclide in material " &
+               &// trim(to_str(mat % id)))
         end if
 
-        ! Get units
-        if (.not. mat % otf_compositions) then
-          call get_node_value(node_comp, "units", units)
-
-          units = trim(to_lower(units))
-          if (units == "wo") then
-            if (check_for_node(node_comp, "element")) then
-              call fatal_error("The ability to expand a natural element based on weight &
-                   &percentage is not yet supported.")
-            end if
-          else if (units == "ao") then
-            ! Do nothing here
-          else
-            call fatal_error("Unknown units '" // trim(units) &
-                 // "' specified on material " // trim(to_str(mat % id)))
-          end if
-
-        end if
-
-        ! =======================================================================
-        ! READ AND PARSE <nuclide> TAGS
-
-        ! Check to ensure material has at least one nuclide
-        if (.not. check_for_node(node_comp, "nuclide") .and. &
-             .not. check_for_node(node_comp, "element")) then
-          call fatal_error("No nuclides or natural elements specified on material " // &
-               trim(to_str(mat % id)))
-        end if
-
-        ! Get pointer list of XML <nuclide>
-        call get_node_list(node_comp, "nuclide", node_nuc_list)
-
-        n = get_list_size(node_nuc_list)
-        n_nuclide = n
-
-        ! Create list of nuclides based on those specified plus natural elements
-        COMPOSITION_NUCLIDES: do j = 1, n
-          ! Combine nuclide identifier and cross section and copy into names
-          call get_list_item(node_nuc_list, j, node_nuc)
-
-          ! Check for empty name on nuclide
-          if (.not. check_for_node(node_nuc, "name")) then
-            call fatal_error("No name specified on nuclide in material " // &
-                 trim(to_str(mat % id)))
-          end if
-
-          ! Check for cross section
-          if (.not. check_for_node(node_nuc, "xs")) then
-            if (default_xs == '') then
-              call fatal_error("No cross section specified for nuclide in &
+        ! Check for cross section
+        if (.not.check_for_node(node_nuc, "xs")) then
+          if (default_xs == '') then
+            call fatal_error("No cross section specified for nuclide in &
                  &material " // trim(to_str(mat % id)))
-            else
-              name = trim(default_xs)
-            end if
-          end if
-
-          ! Check enforced isotropic lab scattering
-          if (check_for_node(node_nuc, "scattering")) then
-            call get_node_value(node_nuc, "scattering", temp_str)
-            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-              call list_iso_lab % append(1)
-            else if (adjustl(to_lower(temp_str)) == "data") then
-              call list_iso_lab % append(0)
-            else
-              call fatal_error("Scattering must be isotropic in lab or follow&
-                   & the ACE file data")
-            end if
           else
+            name = trim(default_xs)
+          end if
+        end if
+
+        ! Check enforced isotropic lab scattering
+        if (check_for_node(node_nuc, "scattering")) then
+          call get_node_value(node_nuc, "scattering", temp_str)
+          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+            call list_iso_lab % append(1)
+          else if (adjustl(to_lower(temp_str)) == "data") then
             call list_iso_lab % append(0)
-          end if
-
-          ! store full name
-          call get_node_value(node_nuc, "name", temp_str)
-          if (check_for_node(node_nuc, "xs")) &
-            call get_node_value(node_nuc, "xs", name)
-          name = trim(temp_str) // "." // trim(name)
-
-          ! save name and density to list
-          call list_names % append(name)        
-
-        end do COMPOSITION_NUCLIDES
-
-        ! =======================================================================
-        ! READ AND PARSE <element> TAGS
-
-        ! Get pointer list of XML <element>
-        call get_node_list(node_comp, "element", node_ele_list)
-
-        n = get_list_size(node_ele_list)
-        n_element = n
-
-        COMPOSITION_ELEMENTS: do j = 1, n
-          call get_list_item(node_ele_list, j, node_ele)
-
-          ! Check for empty name on natural element
-          if (.not.check_for_node(node_ele, "name")) then
-            call fatal_error("No name specified on nuclide in material " // &
-                 trim(to_str(mat % id)))
-          end if
-          call get_node_value(node_ele, "name", name)
-
-          ! Check for cross section
-          if (check_for_node(node_ele, "xs")) then
-            call get_node_value(node_ele, "xs", temp_str)
           else
-            if (default_xs == '') then
-              call fatal_error("No cross section specified for nuclide in material " &
-                   // trim(to_str(mat % id)))
-            else
-              temp_str = trim(default_xs)
-            end if
+            call fatal_error("Scattering must be isotropic in lab or follow&
+                 & the ACE file data")
           end if
-
-          ! maintain a list of expanded elements
-          call ele_names % append(name)
-
-          ! Get current number of nuclides
-          n_nuc_ele = list_names % size()
-
-          ! Expand element into naturally-occurring isotopes
-          call expand_natural_element(name, temp_str, 1.0_8, &
-               list_names, list_density)
-
-          ! Compute number of new nuclides from the natural element expansion
-          n_nuc_ele = list_names % size() - n_nuc_ele
-          
-          ! Check enforced isotropic lab scattering
-          if (check_for_node(node_ele, "scattering")) then
-            call get_node_value(node_ele, "scattering", temp_str)
-          else
-            temp_str = "data"
-          end if
-          
-          ! Set ace or iso-in-lab scattering for each nuclide in element
-          do k = 1, n_nuc_ele
-            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-              call list_iso_lab % append(1)
-            else if (adjustl(to_lower(temp_str)) == "data") then
-              call list_iso_lab % append(0)
-            else
-              call fatal_error("Scattering must be isotropic in lab or follow&
-                   & the ACE file data")
-            end if
-          end do
-
-        end do COMPOSITION_ELEMENTS
-
-        ! Read composition values
-        if (mat % otf_compositions) then
-
-          ! Read from the OTF mats file
-          mat % comp_file % path = trim(path_input) // 'materials.h5'
-          call get_node_value(node_comp, "otf_file_path", mat % comp_file % group)
-
-          inquire(FILE=mat % comp_file % path, EXIST=file_exists)
-          if (.not. file_exists) then
-             ! Could not find cross_sections.xml file
-             call fatal_error("OTF materials file '" &
-                  &// trim(mat % comp_file % path) // "' does not exist!")
-          end if
-
-          file_id = file_open(trim(mat %comp_file %path), 'r', parallel=.false.)
-          mat % comp_file % file_id = file_id
-          !TODO: (important) check that the proper group exists
-
-          mat_group = open_group(file_id, trim(mat % comp_file % group))
-
-          ! Read material metadata
-          call read_dataset(mat_group, 'n_nuclides', &
-                              mat % comp_file % n_nuclides)
-          call read_dataset(mat_group, 'n_instances', &
-                              mat % comp_file % n_instances)
-          call file_close(file_id)
-
-          if (mat % comp_file % n_nuclides /= list_names % size()) then
-            call fatal_error("Wrong number of nuclides per composition in " // &
-                "OTF file " // trim(mat % comp_file % path) //". File: " // &
-                trim(to_str(mat % comp_file % n_nuclides)) // ", Geometry:" // &
-                " " // trim(to_str(list_names % size())))
-          end if
-
-          n_comp = mat % comp_file % n_instances
-          mat % n_comp = n_comp
-
-          ! Collectively open this file for reading during execution
-          ! Only open the file once for HDF5, so defer until after all mats read
-          otf_hdf5_mats = .true.
-
-          ! Set initial guess for size of composition array and allocate
-          if (dd_run) then
-
-            if (domain_decomp % n_domains > n_comp) then
-
-              otf_initial_size = n_comp
-
-            else
-            
-              ! Assume the instances are evenly distributed across domains
-              even = n_comp / domain_decomp % n_domains
-              
-              ! Allocate a little extra
-              otf_initial_size = int(dble(even) * OTF_HEADROOM)
-
-            end if
-
-          else
-            if (master) call warning("Using OTF material allocation for non-DD run")
-            otf_initial_size = n_comp
-          end if
-
-          ! Allocate compositions and their atom_density arrays
-          allocate(mat % otf_comp(mat % comp_file % n_nuclides, otf_initial_size))
-          mat % size_comp_array = otf_initial_size
-
         else
-
-          ! Read from the xml file
-
-          ! Verify that the input matches the number of nuclides
-          ! Get number of composition values
-          n_comp = get_arraysize_double(node_comp, "values")
-          mat % n_comp = n_comp / (n_nuclide + n_element)
-          if (mod(n_comp, n_nuclide + n_element) /= 0) then
-            call fatal_error("Number of composition values not divisible by " // &
-                      "number of nuclides + elements. Mat: " // &
-                      trim(to_str(mat % id)) // ", n_comp: " // &
-                      trim(to_str(n_comp)) // ", n_nuc+n_elem: " // &
-                      trim(to_str(n_nuclide + n_element)))
-          end if
-
-          allocate(temp_real_array(n_comp))
-          call get_node_array(node_comp, "values", temp_real_array)
-
-          ! Allocate distribution vectors
-          allocate(mat % comp(mat % n_comp))
-          do j = 1, mat % n_comp
-            allocate(mat % comp(j) % atom_density(list_names % size()))
-          end do
-
-          ! Write composition values
-          do j = 1, mat % n_comp
-            do k = 1, n_nuclide + n_element
-
-              ! Set index in array of composition values
-              temp_dble = temp_real_array(k + (j - 1) * (n_nuclide + n_element))
-
-              if (k <= n_nuclide) then
-                ! nuclide, normal handling
-                mat % comp(j) % atom_density(k) = temp_dble
-              else
-                ! element, need to expand it
-                ! clear temp lists
-                call comp_names % clear()
-                call comp_density % clear()
-                ! need to get expansion with current composition density
-                call expand_natural_element(ele_names % get_item(k - n_nuclide), & 
-                      "", temp_dble, comp_names, comp_density)
-                ! loop over this element's isotopes
-                do l = 0, comp_names % size() - 1
-                  ! store the current isotope to the correct index
-                  mat % comp(j) % atom_density(k + l) = &
-                        comp_density % get_item(l+1)
-                end do
-              end if
-            end do
-          end do
-
-          deallocate(temp_real_array)
-
+          call list_iso_lab % append(0)
         end if
 
-      else
-        ! NOT USING DISTRIBUTED COMPOSITIONS
-        mat % distrib_comp = .false.
+        ! store full name
+        call get_node_value(node_nuc, "name", temp_str)
+        if (check_for_node(node_nuc, "xs")) &
+             call get_node_value(node_nuc, "xs", name)
+        name = trim(temp_str) // "." // trim(name)
 
-        ! Enforce no distribution
-        mat % n_comp = 1
-        allocate(mat % comp(1))
+        ! save name and density to list
+        call list_names % append(name)
 
-        ! =======================================================================
-        ! READ AND PARSE <nuclide> TAGS
-
-        ! Check to ensure material has at least one nuclide
-        if (.not. check_for_node(node_mat, "nuclide") .and. &
-             .not. check_for_node(node_mat, "element")) then
-          call fatal_error("No nuclides or natural elements specified on material " // &
-               trim(to_str(mat % id)))
+        ! Check if no atom/weight percents were specified or if both atom and
+        ! weight percents were specified
+        if (.not.check_for_node(node_nuc, "ao") .and. &
+             .not.check_for_node(node_nuc, "wo")) then
+          call fatal_error("No atom or weight percent specified for nuclide " &
+               &// trim(name))
+        elseif (check_for_node(node_nuc, "ao") .and. &
+                check_for_node(node_nuc, "wo")) then
+          call fatal_error("Cannot specify both atom and weight percents for a &
+               &nuclide: " // trim(name))
         end if
 
-        ! Get pointer list of XML <nuclide>
-        call get_node_list(node_mat, "nuclide", node_nuc_list)
+        ! Copy atom/weight percents
+        if (check_for_node(node_nuc, "ao")) then
+          call get_node_value(node_nuc, "ao", temp_dble)
+          call list_density % append(temp_dble)
+        else
+          call get_node_value(node_nuc, "wo", temp_dble)
+          call list_density % append(-temp_dble)
+        end if
+      end do INDIVIDUAL_NUCLIDES
 
-        ! Create list of nuclides based on those specified plus natural elements
-        INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
-          ! Combine nuclide identifier and cross section and copy into names
-          call get_list_item(node_nuc_list, j, node_nuc)
+      ! =======================================================================
+      ! READ AND PARSE <element> TAGS
 
-          ! Check for empty name on nuclide
-          if (.not.check_for_node(node_nuc, "name")) then
-            call fatal_error("No name specified on nuclide in material " // &
-                 trim(to_str(mat % id)))
-          end if
+      ! Get pointer list of XML <element>
+      call get_node_list(node_mat, "element", node_ele_list)
 
-          ! Check for cross section
-          if (.not.check_for_node(node_nuc, "xs")) then
-            if (default_xs == '') then
-              call fatal_error("No cross section specified for nuclide in material " &
-                   // trim(to_str(mat % id)))
-            else
-              name = trim(default_xs)
-            end if
-          end if
+      NATURAL_ELEMENTS: do j = 1, get_list_size(node_ele_list)
+        call get_list_item(node_ele_list, j, node_ele)
 
-          ! Check enforced isotropic lab scattering
-          if (check_for_node(node_nuc, "scattering")) then
-            call get_node_value(node_nuc, "scattering", temp_str)
-            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-              call list_iso_lab % append(1)
-            else if (adjustl(to_lower(temp_str)) == "data") then
-              call list_iso_lab % append(0)
-            else
-              call fatal_error("Scattering must be isotropic in lab or follow&
-                   & the ACE file data")
-            end if
+        ! Check for empty name on natural element
+        if (.not.check_for_node(node_ele, "name")) then
+          call fatal_error("No name specified on nuclide in material " &
+               &// trim(to_str(mat % id)))
+        end if
+        call get_node_value(node_ele, "name", name)
+
+        ! Check for cross section
+        if (check_for_node(node_ele, "xs")) then
+          call get_node_value(node_ele, "xs", temp_str)
+        else
+          if (default_xs == '') then
+            call fatal_error("No cross section specified for nuclide in &
+                 &material " // trim(to_str(mat % id)))
           else
+            temp_str = trim(default_xs)
+          end if
+        end if
+
+        ! Check if no atom/weight percents were specified or if both atom and
+        ! weight percents were specified
+        if (.not.check_for_node(node_ele, "ao") .and. &
+             .not.check_for_node(node_ele, "wo")) then
+          call fatal_error("No atom or weight percent specified for element " &
+               &// trim(name))
+        elseif (check_for_node(node_ele, "ao") .and. &
+                check_for_node(node_ele, "wo")) then
+          call fatal_error("Cannot specify both atom and weight percents for &
+               &element: " // trim(name))
+        end if
+
+        ! Get current number of nuclides
+        n_nuc_ele = list_names % size()
+
+        ! Expand element into naturally-occurring isotopes
+        if (check_for_node(node_ele, "ao")) then
+          call get_node_value(node_ele, "ao", temp_dble)
+          call expand_natural_element(name, temp_str, temp_dble, &
+               list_names, list_density)
+        else
+          call fatal_error("The ability to expand a natural element based on &
+               &weight percentage is not yet supported.")
+        end if
+
+        ! Compute number of new nuclides from the natural element expansion
+        n_nuc_ele = list_names % size() - n_nuc_ele
+
+        ! Check enforced isotropic lab scattering
+        if (check_for_node(node_ele, "scattering")) then
+          call get_node_value(node_ele, "scattering", temp_str)
+        else
+          temp_str = "data"
+        end if
+
+        ! Set ace or iso-in-lab scattering for each nuclide in element
+        do k = 1, n_nuc_ele
+          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+            call list_iso_lab % append(1)
+          else if (adjustl(to_lower(temp_str)) == "data") then
             call list_iso_lab % append(0)
-          end if
-
-          ! store full name
-          call get_node_value(node_nuc, "name", temp_str)
-          if (check_for_node(node_nuc, "xs")) &
-            call get_node_value(node_nuc, "xs", name)
-          name = trim(temp_str) // "." // trim(name)
-
-          ! save name and density to list
-          call list_names % append(name)
-
-          ! Check if no atom/weight percents were specified or if both atom and
-          ! weight percents were specified
-          if (.not.check_for_node(node_nuc, "ao") .and. &
-              .not.check_for_node(node_nuc, "wo")) then
-            call fatal_error("No atom or weight percent specified for nuclide " // &
-                 trim(name))
-          elseif (check_for_node(node_nuc, "ao") .and. &
-                  check_for_node(node_nuc, "wo")) then
-            call fatal_error("Cannot specify both atom and weight percents for a &
-                 &nuclide: " // trim(name))
-          end if
-
-          ! Copy atom/weight percents
-          if (check_for_node(node_nuc, "ao")) then
-            call get_node_value(node_nuc, "ao", temp_dble)
-            call list_density % append(temp_dble)
           else
-            call get_node_value(node_nuc, "wo", temp_dble)
-            call list_density % append(-temp_dble)
+            call fatal_error("Scattering must be isotropic in lab or follow&
+                 & the ACE file data")
           end if
-        end do INDIVIDUAL_NUCLIDES
+        end do
 
-        ! =======================================================================
-        ! READ AND PARSE <element> TAGS
+      end do NATURAL_ELEMENTS
 
-        ! Get pointer list of XML <element>
-        call get_node_list(node_mat, "element", node_ele_list)
-
-        NATURAL_ELEMENTS: do j = 1, get_list_size(node_ele_list)
-          call get_list_item(node_ele_list, j, node_ele)
-
-          ! Check for empty name on natural element
-          if (.not.check_for_node(node_ele, "name")) then
-            call fatal_error("No name specified on nuclide in material " // &
-                 trim(to_str(mat % id)))
-          end if
-          call get_node_value(node_ele, "name", name)
-
-          ! Check for cross section
-          if (check_for_node(node_ele, "xs")) then
-            call get_node_value(node_ele, "xs", temp_str)
-          else
-            if (default_xs == '') then
-              call fatal_error("No cross section specified for nuclide in material " &
-                   // trim(to_str(mat % id)))
-            else
-              temp_str = trim(default_xs)
-            end if
-          end if
-
-          ! Check if no atom/weight percents were specified or if both atom and
-          ! weight percents were specified
-          if (.not.check_for_node(node_ele, "ao") .and. &
-              .not.check_for_node(node_ele, "wo")) then
-            call fatal_error("No atom or weight percent specified for element " // &
-                 trim(name))
-          elseif (check_for_node(node_ele, "ao") .and. &
-                  check_for_node(node_ele, "wo")) then
-            call fatal_error("Cannot specify both atom and weight percents for a &
-                 &element: " // trim(name))
-          end if
-
-          ! Get current number of nuclides
-          n_nuc_ele = list_names % size()
-
-          ! Expand element into naturally-occurring isotopes
-          if (check_for_node(node_ele, "ao")) then
-            call get_node_value(node_ele, "ao", temp_dble)
-            call expand_natural_element(name, temp_str, temp_dble, &
-                 list_names, list_density)
-          else
-            call fatal_error("The ability to expand a natural element based on weight &
-                 &percentage is not yet supported.")
-          end if
-
-          ! Compute number of new nuclides from the natural element expansion
-          n_nuc_ele = list_names % size() - n_nuc_ele
-          
-          ! Check enforced isotropic lab scattering
-          if (check_for_node(node_ele, "scattering")) then
-            call get_node_value(node_ele, "scattering", temp_str)
-          else
-            temp_str = "data"
-          end if
-          
-          ! Set ace or iso-in-lab scattering for each nuclide in element
-          do k = 1, n_nuc_ele
-            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-              call list_iso_lab % append(1)
-            else if (adjustl(to_lower(temp_str)) == "data") then
-              call list_iso_lab % append(0)
-            else
-              call fatal_error("Scattering must be isotropic in lab or follow&
-                   & the ACE file data")
-            end if
-          end do
-          
-        end do NATURAL_ELEMENTS
-        
-        allocate(mat % comp(1) % atom_density(list_names % size()))
-        
-      end if
       ! ========================================================================
       ! COPY NUCLIDES TO ARRAYS IN MATERIAL
 
@@ -2589,6 +2209,7 @@ contains
       mat % n_nuclides = n
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
+      allocate(mat % atom_density(n))
       allocate(mat % p0(n))
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
@@ -2625,11 +2246,7 @@ contains
 
         ! Copy name and atom/weight percent
         mat % names(j) = name
-        if (mat % distrib_comp) then
-          ! Nothing to do, this was already done
-        else
-          mat % comp(1) % atom_density(j) = list_density % get_item(j)           
-        end if
+        mat % atom_density(j) = list_density % get_item(j)
 
         ! Cast integer isotropic lab scattering flag to boolean
         if (list_iso_lab % get_item(j) == 1) then
@@ -2638,26 +2255,18 @@ contains
           mat % p0(j) = .false.
         end if
 
-      end do ALL_NUCLIDES     
-           
-      ! Check to make sure either all atom percents or all weight percents
-      ! are given
-      if (.not. mat % otf_compositions) then
-        if (.not. (all(mat % comp(1) % atom_density >= ZERO) .or. & 
-           all(mat % comp(1) % atom_density <= ZERO))) then
-          call fatal_error("Cannot mix atom and weight percents in material " // &
-               to_str(mat % id))
-        end if
+      end do ALL_NUCLIDES
+
+      ! Check to make sure either all atom percents or all weight percents are
+      ! given
+      if (.not. (all(mat % atom_density >= ZERO) .or. &
+           all(mat % atom_density <= ZERO))) then
+        call fatal_error("Cannot mix atom and weight percents in material " &
+             &// to_str(mat % id))
       end if
 
-      ! Determine density if it is a sum value  
-      if (sum_density .and. mat % distrib_comp) then
-        call fatal_error("Distributed Compositions does not support " // &
-             " summed density " // to_str(mat % id))
-      end if
-      if (sum_density) then
-        mat % density % density(1) = sum(mat % comp(1) % atom_density)
-      end if
+      ! Determine density if it is a sum value
+      if (sum_density) mat % density = sum(mat % atom_density)
 
       ! Clear lists
       call list_names % clear()
@@ -2725,9 +2334,6 @@ contains
       call material_dict % add_key(mat % id, i)
     end do
 
-    ! Prepare OTF material file for reading
-    if (otf_hdf5_mats) call init_otf_materials()
-
     ! Set total number of nuclides and S(a,b) tables
     n_nuclides_total = index_nuclide
     n_sab_tables     = index_sab
@@ -2736,52 +2342,6 @@ contains
     call close_xmldoc(doc)
 
   end subroutine read_materials_xml
-
-!===============================================================================
-! INIT_OTF_MATERIALS sets up materials for OTF reading
-!===============================================================================
-
-  subroutine init_otf_materials()
-
-    integer :: i
-    type(Material),    pointer :: mat => null()
-    integer(HID_T) :: file_id
-    integer(HID_T) :: plist
-    integer        :: hdf5_err
-
-#ifndef MPI
-    call fatal_error("OTF materials not implemented for non-MPI runs.")
-#else
-    ! Create property list
-    call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
-
-    ! Setup file access property list with parallel I/O access
-    call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
-
-    ! Open the file
-    call h5fopen_f('materials.h5', H5F_ACC_RDWR_F, file_id, hdf5_err, &
-        access_prp = plist)
-
-    ! Close property list
-    call h5pclose_f(plist, hdf5_err)
-
-    ! Create the property list to describe independent parallel I/O
-    call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-    call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
-
-    ! Initialize each material
-    do i = 1, n_materials
-      mat => materials(i)
-      if (mat % otf_compositions) then
-        call mat % comp_file % init(mat % n_nuclides, file_id, plist)
-      end if
-    end do
-
-    otf_matfile_open = .true.
-
-#endif
-
-  end subroutine init_otf_materials
 
 !===============================================================================
 ! READ_TALLIES_XML reads data from a tallies.xml file and parses it, checking

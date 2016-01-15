@@ -116,8 +116,7 @@ contains
       ! Calculate microscopic and macroscopic cross sections -- note: if the
       ! material is the same as the last material and the energy of the
       ! particle hasn't changed, we don't need to lookup cross sections again.
-      if (p % material /= p % last_material &
-            & .or. p % inst /= p % last_inst) then
+      if (p % material /= p % last_material ) then
 
         if (dd_run) then
           ! NOTE: calculate_xs does not re-calculate XS on a per-nuclide

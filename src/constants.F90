@@ -389,6 +389,10 @@ module constants
   ! load balance by this ratio, and then resized again later if needed
   real(8), parameter :: DD_BUFFER_HEADROOM = 1.1_8
 
+  ! When tallies arrays are allocated on-the-fly, this parameter
+  ! controls how much larger than the needed size they will be allocated to
+  real(8), parameter :: OTF_HEADROOM = 1.1_8
+  
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
 
@@ -408,27 +412,10 @@ module constants
 
   ! Running modes
   integer, parameter ::        &
-       MODE_FIXEDSOURCE  = 1,  & ! Fixed source mode
-       MODE_EIGENVALUE   = 2,  & ! K eigenvalue mode
-       MODE_PLOTTING     = 3,  & ! Plotting mode
-       MODE_PARTICLE     = 4,  & ! Particle restart mode
-       MODE_DISTRIBUTION = 5     ! Help with distribution indices
-
-  ! Unit numbers
-  integer, parameter :: UNIT_SUMMARY  = 11 ! unit # for writing summary file
-  integer, parameter :: UNIT_TALLY    = 12 ! unit # for writing tally file
-  integer, parameter :: UNIT_PLOT     = 13 ! unit # for writing plot file
-  integer, parameter :: UNIT_XS       = 14 ! unit # for writing xs summary file
-  integer, parameter :: UNIT_PARTICLE = 15 ! unit # for writing particle restart
-  integer, parameter :: UNIT_OUTPUT   = 16 ! unit # for writing output
-  integer, parameter :: UNIT_HELP     = 17 ! unit # for writing distrib help
-
-  ! When materials and tallies arrays are allocated on-the-fly, this parameter
-  ! controls how much larger than the needed size they will be allocated to
-  real(8), parameter :: OTF_HEADROOM = 1.1_8
-
-
-  character(MAX_FILE_LEN), parameter :: OUTPUT_MATFILE = 'materials-out.h5'
+       MODE_FIXEDSOURCE = 1, & ! Fixed source mode
+       MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
+       MODE_PLOTTING    = 3, & ! Plotting mode
+       MODE_PARTICLE    = 4    ! Particle restart mode
 
   !=============================================================================
   ! CMFD CONSTANTS

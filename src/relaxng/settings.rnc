@@ -53,8 +53,7 @@ element settings {
     (element summary { xsd:boolean } | attribute summary { xsd:boolean })? &
     (element cross_sections { xsd:boolean } |
       attribute cross_sections { xsd:boolean })? &
-    (element tallies { xsd:boolean } | attribute tallies { xsd:boolean })? &
-    (element distribmats { xsd:boolean } | attribute distribmats { xsd:boolean })?
+    (element tallies { xsd:boolean } | attribute tallies { xsd:boolean })?
   }? &
 
   element output_path { xsd:string { maxLength = "255" } }? &

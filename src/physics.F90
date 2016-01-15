@@ -161,7 +161,7 @@ contains
 
       ! Find atom density
       i_nuclide    = mat % nuclide(i_nuc_mat)
-      atom_density = mat % get_density(p % inst, i_nuc_mat)
+      atom_density = mat % atom_density(i_nuc_mat)
 
       ! Determine microscopic cross section
       select case (base)

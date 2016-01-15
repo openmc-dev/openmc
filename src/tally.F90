@@ -3,7 +3,6 @@ module tally
   use ace_header,       only: Reaction
   use constants
   use error,            only: fatal_error
-  use distribcell,      only: get_distribcell_instance
   use geometry_header
   use global
   use math,             only: t_percentile, calc_pn, calc_rn
@@ -553,7 +552,7 @@ contains
               do l = 1, materials(p % material) % n_nuclides
 
                 ! Get atom density
-                atom_density_ = materials(p % material)%get_density(p%inst, l)
+                atom_density_ = materials(p % material) % atom_density(l)
 
                 ! Get index in nuclides array
                 i_nuc = materials(p % material) % nuclide(l)
@@ -582,7 +581,7 @@ contains
               do l = 1, materials(p % material) % n_nuclides
 
                 ! Get atom density
-                atom_density_ = materials(p % material) % get_density(p % inst, l)
+                atom_density_ = materials(p % material) % atom_density(l)
 
                 ! Get index in nuclides array
                 i_nuc = materials(p % material) % nuclide(l)
@@ -644,7 +643,7 @@ contains
           else
             do l = 1, materials(p%material)%n_nuclides
               ! Determine atom density and index of nuclide
-              atom_density_ = materials(p%material)%get_density(p%inst, l)
+              atom_density_ = materials(p%material)%atom_density(l)
               i_nuc = materials(p%material)%nuclide(l)
 
               ! If nuclide is fissionable, accumulate kappa fission
@@ -712,7 +711,8 @@ contains
             else
               do l = 1, materials(p % material) % n_nuclides
                 ! Get atom density
-                atom_density_ = materials(p % material)  % get_density(p % inst, l)
+                atom_density_ = materials(p % material) % atom_density(l)
+
                 ! Get index in nuclides array
                 i_nuc = materials(p % material) % nuclide(l)
 
@@ -873,7 +873,7 @@ contains
       ! Determine index in nuclides array and atom density for i-th nuclide in
       ! current material
       i_nuclide = mat % nuclide(i)
-      atom_density = mat % get_density(p % inst, i)
+      atom_density = mat % atom_density(i)
 
       ! Determine score for each bin
       call score_general(p, t, (i_nuclide-1)*t % n_score_bins, filter_index, &
@@ -1273,7 +1273,8 @@ contains
                   cycle NUCLIDE_BIN_LOOP
                 end if
               end do NUCLIDE_MAT_LOOP
-              atom_density = mat % get_density(p % inst, j)
+
+              atom_density = mat % atom_density(j)
             else
               atom_density = ZERO
             end if
@@ -1561,7 +1562,8 @@ contains
                     cycle NUCLIDE_BIN_LOOP
                   end if
                 end do NUCLIDE_MAT_LOOP
-                atom_density = mat % get_density(p % inst, j)
+
+                atom_density = mat % atom_density(j)
               else
                 atom_density = ZERO
               end if
@@ -1667,7 +1669,7 @@ contains
                 end if
               end do NUCLIDE_MAT_LOOP
 
-              atom_density = mat % get_density(p % inst, j)
+              atom_density = mat % atom_density(j)
             else
               atom_density = ZERO
             end if

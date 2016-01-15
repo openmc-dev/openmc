@@ -2873,7 +2873,7 @@ class Tally(object):
         # Sum across any scores specified by the user
         if len(scores) != 0:
             score_bins = [self.get_score_index(score) for score in scores]
-            axis_index = self.num_filters + self.num_nuclides
+            axis_index = self.num_filters + 1
             mean = np.take(mean, indices=score_bins, axis=axis_index)
             std_dev = np.take(std_dev, indices=score_bins, axis=axis_index)
             mean = np.sum(mean, axis=axis_index, keepdims=True)

@@ -159,16 +159,11 @@ class AggregateNuclide(object):
 
     def __repr__(self):
 
-        string = '{0}('.format(self.aggregate_op)
-
         # Append each nuclide in the aggregate to the string
-        for nuclide in self.nuclides:
-            if isinstance(nuclide, Nuclide):
-                string += '{0}, '.format(nuclide.name)
-            else:
-                string += '{0}, '.format(str(nuclide))
-
-        string += ')'
+        string = '{0}('.format(self.aggregate_op)
+        names = [nuclide.name if isinstance(nuclide, Nuclide) else str(nuclide)
+                 for nuclide in self.nuclides]
+        string = ', '.join(map(str, names)) + ')'
         return string
 
     @property
@@ -198,9 +193,9 @@ class AggregateFilter(object):
 
     Parameters
     ----------
-    filter : Filter or CrossFilter
+    aggregate_filter : Filter or CrossFilter
         The filter included in the aggregation
-    filter_bins : Iterable of tuple
+    bins : Iterable of tuple
         The filter bins included in the aggregation
     aggregate_op : str
         The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
@@ -208,13 +203,20 @@ class AggregateFilter(object):
 
     Attributes
     ----------
-    filter : filter
+    type : str
+        The type of the aggregatefilter (e.g., 'sum(energy)', 'sum(cell)')
+    aggregate_filter : filter
         The filter included in the aggregation
-    filter_bins : Iterable of tuple
-        The filter bins included in the aggregation
     aggregate_op : str
         The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
         to aggregate across a tally filter's bins with this AggregateFilter
+    bins : Iterable of tuple
+        The filter bins included in the aggregation
+    num_bins : Integral
+        The number of filter bins (always 1 if aggregate_filter is defined)
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        aggregatefilter's bins.
 
     """
 
@@ -287,10 +289,7 @@ class AggregateFilter(object):
 
     @property
     def num_bins(self):
-        if self.aggregate_filter:
-            return 1
-        else:
-            return 0
+        return 1 if self.aggregate_filter else 0
 
     @property
     def stride(self):
@@ -330,7 +329,7 @@ class AggregateFilter(object):
 
         Parameters
         ----------
-        filter_bin : Integral or tuple of Integral or tuple of Real
+        filter_bin : Integral or tuple of Real
             A tuple of value(s) corresponding to the bin of interest in
             the aggregated filter. The bin is the integer ID for 'material',
             'surface', 'cell', 'cellborn', and 'universe' Filters. The bin
@@ -406,5 +405,5 @@ class AggregateFilter(object):
         aggregate_bin_array = np.repeat(aggregate_bin_array, datasize)
 
         # Construct Pandas DataFrame for the AggregateFilter
-        df = pd.DataFrame({self.type : aggregate_bin_array})
+        df = pd.DataFrame({self.aggregate_filter.type : aggregate_bin_array})
         return df

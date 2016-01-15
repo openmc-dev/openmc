@@ -35,8 +35,8 @@ class Filter(object):
     Attributes
     ----------
     type : str
-        The type of the tally filter.
-    bins : Integral or Iterable of Integral or Iterable of Real
+        The type of the tally filter
+    bins : Integral or Iterable of Real
         The bins for the filter
     num_bins : Integral
         The number of filter bins

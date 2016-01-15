@@ -245,6 +245,8 @@ class CrossFilter(object):
 
     Attributes
     ----------
+    type : str
+        The type of the crossfilter (e.g., 'energy / energy')
     left_filter : Filter or CrossFilter
         The left filter in the outer product
     right_filter : Filter or CrossFilter
@@ -252,6 +254,14 @@ class CrossFilter(object):
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
         combine two tally's filter bins with this CrossFilter
+    bins : dict of Iterable
+        A dictionary of the bins from each filter keyed by the types of the
+        left / right filters
+    num_bins : Integral
+        The number of filter bins (always 1 if aggregate_filter is defined)
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        crossfilter's bins.
 
     """
 

@@ -16,33 +16,12 @@ class Univariate(object):
     The Univariate class is an abstract class that can be derived to implement a
     specific probability distribution.
 
-    Parameters
-    ----------
-    name : str
-        Name of the distribution
-
-    Attributes
-    ----------
-    name : str
-        Name of the distributions
-
     """
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, name=None):
-        self._name = None
-        if name is not None:
-            self.name = name
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('name', name, basestring)
-        self._name = name
+    def __init__(self):
+        pass
 
     @abstractmethod
     def to_xml(self):
@@ -72,8 +51,8 @@ class Discrete(Univariate):
 
     """
 
-    def __init__(self, x, p, name=None):
-        super(Discrete, self).__init__(name)
+    def __init__(self, x, p):
+        super(Discrete, self).__init__()
         self.x = x
         self.p = p
 
@@ -101,11 +80,8 @@ class Discrete(Univariate):
             cv.check_greater_than('discrete probability', pk, 0.0, True)
         self._p = p
 
-    def to_xml(self):
-        if self.name is not None:
-            element = ET.Element(self.name)
-        else:
-            element = ET.Element('distribution')
+    def to_xml(self, element_name):
+        element = ET.Element(element_name)
         element.set("type", "discrete")
 
         params = ET.SubElement(element, "parameters")
@@ -133,8 +109,8 @@ class Uniform(Univariate):
 
     """
 
-    def __init__(self, a=0.0, b=1.0, name=None):
-        super(Uniform, self).__init__(name)
+    def __init__(self, a=0.0, b=1.0):
+        super(Uniform, self).__init__()
         self.a = a
         self.b = b
 
@@ -156,11 +132,8 @@ class Uniform(Univariate):
         cv.check_type('Uniform b', b, Real)
         self._b = b
 
-    def to_xml(self):
-        if self.name is not None:
-            element = ET.Element(self.name)
-        else:
-            element = ET.Element('distribution')
+    def to_xml(self, element_name):
+        element = ET.Element(element_name)
         element.set("type", "uniform")
         element.set("parameters", '{} {}'.format(self.a, self.b))
         return element
@@ -185,8 +158,8 @@ class Maxwell(Univariate):
 
     """
 
-    def __init__(self, theta, name='energy'):
-        super(Maxwell, self).__init__(name)
+    def __init__(self, theta):
+        super(Maxwell, self).__init__()
         self.theta = theta
 
     @property
@@ -199,8 +172,8 @@ class Maxwell(Univariate):
         cv.check_greater_than('Maxwell temperature', theta, 0.0)
         self._theta = theta
 
-    def to_xml(self):
-        element = ET.Element(self.name)
+    def to_xml(self, element_name):
+        element = ET.Element(element_name)
         element.set("type", "maxwell")
         element.set("parameters", str(self.theta))
         return element
@@ -219,8 +192,6 @@ class Watt(Univariate):
         First parameter of distribution
     b : float
         Second parameter of distribution
-    name : str, optional
-        Name of the distribution. Defaults to 'energy'.
 
     Attributes
     ----------
@@ -231,8 +202,8 @@ class Watt(Univariate):
 
     """
 
-    def __init__(self, a=0.988, b=2.249, name='energy'):
-        super(Watt, self).__init__(name)
+    def __init__(self, a=0.988, b=2.249):
+        super(Watt, self).__init__()
         self.a = a
         self.b = b
 
@@ -256,8 +227,8 @@ class Watt(Univariate):
         cv.check_greater_than('Watt b', b, 0.0)
         self._b = b
 
-    def to_xml(self):
-        element = ET.Element(self.name)
+    def to_xml(self, element_name):
+        element = ET.Element(element_name)
         element.set("type", "watt")
         element.set("parameters", '{} {}'.format(self.a, self.b))
         return element
@@ -272,8 +243,6 @@ class Tabular(Univariate):
 
     Parameters
     ----------
-    name : str
-        Name of the distribution
     x : Iterable of Real
         Tabulated values of the random variable
     p : Iterable of Real
@@ -294,8 +263,8 @@ class Tabular(Univariate):
 
     """
 
-    def __init__(self, x, p, interpolation='linear-linear', name=None):
-        super(Tabular, self).__init__(name)
+    def __init__(self, x, p, interpolation='linear-linear'):
+        super(Tabular, self).__init__()
         self.x = x
         self.p = p
         self.interpolation = interpolation
@@ -330,11 +299,8 @@ class Tabular(Univariate):
                        ['linear-linear', 'histogram'])
         self._interpolation = interpolation
 
-    def to_xml(self):
-        if self.name is not None:
-            element = ET.Element(self.name)
-        else:
-            element = ET.Element('distribution')
+    def to_xml(self, element_name):
+        element = ET.Element(element_name)
         element.set("type", "tabular")
         element.set("interpolation", self.interpolation)
 

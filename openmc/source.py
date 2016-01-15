@@ -95,8 +95,6 @@ class Source(object):
     @energy.setter
     def energy(self, energy):
         cv.check_type('energy distribution', energy, Univariate)
-        if energy.name is None:
-            energy.name = 'energy'
         self._energy = energy
 
     @strength.setter
@@ -115,5 +113,5 @@ class Source(object):
         if self.angle is not None:
             element.append(self.angle.to_xml())
         if self.energy is not None:
-            element.append(self.energy.to_xml())
+            element.append(self.energy.to_xml('energy'))
         return element

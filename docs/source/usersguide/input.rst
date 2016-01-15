@@ -469,7 +469,7 @@ attributes/sub-elements:
       three real numbers which specify the (x,y,z) location of an isotropic
       point source.
 
-      For an "independent" distributoin, no parameters are specified. Instead,
+      For an "independent" distribution, no parameters are specified. Instead,
       the ``x``, ``y``, and ``z`` elements must be specified.
 
       *Default*: None

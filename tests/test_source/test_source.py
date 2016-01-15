@@ -39,9 +39,9 @@ class SourceTestHarness(PyAPITestHarness):
         x_dist = openmc.stats.Uniform(-3., 3.)
         y_dist = openmc.stats.Discrete([-4., -1., 3.], [0.2, 0.3, 0.5])
         z_dist = openmc.stats.Tabular([-2., 0., 2.], [0.2, 0.3, 0.2])
-        spatial1 = openmc.stats.SpatialIndependent(x_dist, y_dist, z_dist)
-        spatial2 = openmc.stats.SpatialBox([-4., -4., -4.], [4., 4., 4.])
-        spatial3 = openmc.stats.SpatialPoint([1.2, -2.3, 0.781])
+        spatial1 = openmc.stats.CartesianIndependent(x_dist, y_dist, z_dist)
+        spatial2 = openmc.stats.Box([-4., -4., -4.], [4., 4., 4.])
+        spatial3 = openmc.stats.Point([1.2, -2.3, 0.781])
 
         mu_dist = openmc.stats.Discrete([-1., 0., 1.], [0.5, 0.25, 0.25])
         phi_dist = openmc.stats.Uniform(0., 6.28318530718)

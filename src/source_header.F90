@@ -1,19 +1,20 @@
 module source_header
 
+  use distribution_univariate, only: Distribution
+  use distribution_multivariate, only: UnitSphereDistribution, SpatialDistribution
+
   implicit none
 
 !===============================================================================
-! EXTSOURCE describes an external source of neutrons for a fixed-source problem
-! or for the starting source in a k eigenvalue problem
+! SOURCEDISTRIBUTION describes an external source of particles for a
+! fixed-source problem or for the starting source in a k eigenvalue problem
 !===============================================================================
 
-  type ExtSource
-    integer :: type_space              ! spacial distribution, e.g. 'box' or 'point'
-    integer :: type_angle              ! angle distribution, e.g. 'isotropic'
-    integer :: type_energy             ! energy distribution, e.g. 'Watt'
-    real(8), allocatable :: params_space(:)  ! parameters for spatial distribution
-    real(8), allocatable :: params_angle(:)  ! parameters for angle distribution
-    real(8), allocatable :: params_energy(:) ! parameters for energy distribution
-  end type ExtSource
+  type SourceDistribution
+    real(8) :: strength ! source strength
+    class(SpatialDistribution),    allocatable :: space  ! spatial distribution
+    class(UnitSphereDistribution), allocatable :: angle  ! angle distribution
+    class(Distribution),           allocatable :: energy ! energy distribution
+  end type SourceDistribution
 
 end module source_header

@@ -2758,7 +2758,7 @@ class Tally(object):
     def summation(self, scores=[], filter_type=None,
                   filter_bins=[], nuclides=[], remove_filter=False):
         """Vectorized sum of tally data across scores, filter bins and/or
-        nuclides using tally addition.
+        nuclides using tally aggregation.
 
         This method constructs a new tally to encapsulate the sum of the data
         represented by the summation of the data in this tally. The tally data
@@ -2800,7 +2800,7 @@ class Tally(object):
         tally_sum._derived = True
         tally_sum._estimator = self.estimator
         tally_sum._num_realizations = self.num_realizations
-        tally_sum.with_batch_statistics = self.with_batch_statistics
+        tally_sum._with_batch_statistics = self.with_batch_statistics
         tally_sum._with_summary = self.with_summary
         tally_sum._sp_filename = self._sp_filename
         tally_sum._results_read = self._results_read
@@ -2902,6 +2902,157 @@ class Tally(object):
         # If original tally was sparse, sparsify the tally summation
         tally_sum.sparse = self.sparse
         return tally_sum
+
+    def average(self, scores=[], filter_type=None,
+                  filter_bins=[], nuclides=[], remove_filter=False):
+        """Vectorized average of tally data across scores, filter bins and/or
+        nuclides using tally aggregation.
+
+        This method constructs a new tally to encapsulate the average of the
+        data represented by the average of the data in this tally. The tally
+        data average is determined by the scores, filter bins and nuclides
+        specified in the input parameters.
+
+        Parameters
+        ----------
+        scores : list of str
+            A list of one or more score strings to average across
+            (e.g., ['absorption', 'nu-fission']; default is [])
+        filter_type : str
+            A filter type string (e.g., 'cell', 'energy') corresponding to the
+            filter bins to average across
+        filter_bins : Iterable of Integral or tuple
+            A list of the filter bins corresponding to the filter_type parameter
+            Each bin in the list is the integer ID for 'material', 'surface',
+            'cell', 'cellborn', and 'universe' Filters. Each bin is an integer
+            for the cell instance ID for 'distribcell' Filters. Each bin is a
+            2-tuple of floats for 'energy' and 'energyout' filters corresponding
+            to the energy boundaries of the bin of interest. Each bin is an
+            (x,y,z) 3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest.
+        nuclides : list of str
+            A list of nuclide name strings to average across
+            (e.g., ['U-235', 'U-238']; default is [])
+        remove_filter : bool
+            If a filter is being averaged over, this bool indicates whether to
+            remove that filter in the returned tally. Default is False.
+
+        Returns
+        -------
+        Tally
+            A new tally which encapsulates the average of data requested.
+        """
+
+        # Create new derived Tally for average
+        tally_avg = Tally()
+        tally_avg._derived = True
+        tally_avg._estimator = self.estimator
+        tally_avg._num_realizations = self.num_realizations
+        tally_avg._with_batch_statistics = self.with_batch_statistics
+        tally_avg._with_summary = self.with_summary
+        tally_avg._sp_filename = self._sp_filename
+        tally_avg._results_read = self._results_read
+
+        # Get tally data arrays reshaped with one dimension per filter
+        mean = self.get_reshaped_data(value='mean')
+        std_dev = self.get_reshaped_data(value='std_dev')
+
+        # Average across any filter bins specified by the user
+        if filter_type in _FILTER_TYPES:
+            find_filter = self.find_filter(filter_type)
+
+            # If user did not specify filter bins, average across all bins
+            if len(filter_bins) == 0:
+                bin_indices = np.arange(find_filter.num_bins)
+
+                if filter_type == 'distribcell':
+                    filter_bins = np.arange(find_filter.num_bins)
+                else:
+                    num_bins = find_filter.num_bins
+                    filter_bins = \
+                        [(find_filter.get_bin(i)) for i in range(num_bins)]
+
+            # Only average across bins specified by the user
+            else:
+                bin_indices = \
+                    [find_filter.get_bin_index(bin) for bin in filter_bins]
+
+            # Average across the bins in the user-specified filter
+            for i, self_filter in enumerate(self.filters):
+                if self_filter.type == filter_type:
+                    mean = np.take(mean, indices=bin_indices, axis=i)
+                    std_dev = np.take(std_dev, indices=bin_indices, axis=i)
+                    mean = np.mean(mean, axis=i, keepdims=True)
+                    std_dev = np.mean(std_dev**2, axis=i, keepdims=True)
+                    std_dev /= len(bin_indices)
+                    std_dev = np.sqrt(std_dev)
+
+                    # Add AggregateFilter to the tally avg
+                    if not remove_filter:
+                        filter_sum = \
+                            AggregateFilter(self_filter, filter_bins, 'avg')
+                        tally_avg.add_filter(filter_sum)
+
+                # Add a copy of each filter not averaged across to the tally avg
+                else:
+                    tally_avg.add_filter(copy.deepcopy(self_filter))
+
+        # Add a copy of this tally's filters to the tally avg
+        else:
+            tally_avg._filters = copy.deepcopy(self.filters)
+
+        # Sum across any nuclides specified by the user
+        if len(nuclides) != 0:
+            nuclide_bins = [self.get_nuclide_index(nuclide) for nuclide in nuclides]
+            axis_index = self.num_filters
+            mean = np.take(mean, indices=nuclide_bins, axis=axis_index)
+            std_dev = np.take(std_dev, indices=nuclide_bins, axis=axis_index)
+            mean = np.mean(mean, axis=axis_index, keepdims=True)
+            std_dev = np.mean(std_dev**2, axis=axis_index, keepdims=True)
+            std_dev /= len(nuclide_bins)
+            std_dev = np.sqrt(std_dev)
+
+            # Add AggregateNuclide to the tally avg
+            nuclide_avg = AggregateNuclide(nuclides, 'avg')
+            tally_avg.add_nuclide(nuclide_avg)
+
+        # Add a copy of this tally's nuclides to the tally avg
+        else:
+            tally_avg._nuclides = copy.deepcopy(self.nuclides)
+
+        # Sum across any scores specified by the user
+        if len(scores) != 0:
+            score_bins = [self.get_score_index(score) for score in scores]
+            axis_index = self.num_filters + 1
+            mean = np.take(mean, indices=score_bins, axis=axis_index)
+            std_dev = np.take(std_dev, indices=score_bins, axis=axis_index)
+            mean = np.sum(mean, axis=axis_index, keepdims=True)
+            std_dev = np.sum(std_dev**2, axis=axis_index, keepdims=True)
+            std_dev /= len(score_bins)
+            std_dev = np.sqrt(std_dev)
+
+            # Add AggregateScore to the tally avg
+            score_sum = AggregateScore(scores, 'avg')
+            tally_avg.add_score(score_sum)
+
+        # Add a copy of this tally's scores to the tally avg
+        else:
+            tally_avg._scores = copy.deepcopy(self.scores)
+
+        # Update the tally avg's filter strides
+        tally_avg._update_filter_strides()
+
+        # Reshape condensed data arrays with one dimension for all filters
+        mean = np.reshape(mean, tally_avg.shape)
+        std_dev = np.reshape(std_dev, tally_avg.shape)
+
+        # Assign tally avg's data with the new arrays
+        tally_avg._mean = mean
+        tally_avg._std_dev = std_dev
+
+        # If original tally was sparse, sparsify the tally average
+        tally_avg.sparse = self.sparse
+        return tally_avg
 
     def diagonalize_filter(self, new_filter):
         """Diagonalize the tally data array along a new axis of filter bins.

@@ -2,11 +2,11 @@
 
   <cell fill="6" id="1" region="1 -2 3 -4 8 -9" />
   <cell fill="4" id="2" region="1 -2 3 -4" universe="5" />
-  <cell id="101" material="1" region="-5" universe="1" />
+  <cell id="101" material="11 12 13 14" region="-5" universe="1" />
   <cell id="102" material="10" region="5" universe="1" />
-  <cell id="201" material="2" region="-6" universe="2" />
+  <cell id="201" material="21 22 23 24 25 26 27 28" region="-6" universe="2" />
   <cell id="202" material="10" region="6" universe="2" />
-  <cell id="301" material="3" region="-7" universe="3" />
+  <cell id="301" material="31 32 33 34" region="-7" universe="3" />
   <cell id="302" material="10" region="7" universe="3" />
 
   

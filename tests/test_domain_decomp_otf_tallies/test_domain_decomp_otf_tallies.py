@@ -18,11 +18,8 @@ def order_by(arr, ordering):
 
 class DomainDecomOTFTalliesTestHarness(TestHarness):
     def __init__(self, statepoint_name):
-        self._sp_name = statepoint_name
-        self._tallies = True
-        self._opts = None
-        self._args = None
-    
+        super(DomainDecomOTFTalliesTestHarness, self).__init__(statepoint_name, True)
+        
     def execute_test(self):
         """Run OpenMC with the appropriate arguments and check the outputs."""
         if self._opts.mpi_exec is None:

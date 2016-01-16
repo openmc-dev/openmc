@@ -1854,6 +1854,7 @@ contains
     real(8) :: temp_dble     ! temporary double prec. real
     logical :: file_exists   ! does materials.xml exist?
     logical :: sum_density   ! density is taken to be sum of nuclide densities
+    logical :: temp_known    ! Has the temperature yet been defined?
     character(12) :: name    ! name of isotope, e.g. 92235.03c
     character(12) :: alias   ! alias of nuclide, e.g. U-235.03c
     character(MAX_WORD_LEN) :: units    ! units on density
@@ -1866,6 +1867,7 @@ contains
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
     type(Node), pointer :: node_dens => null()
+    type(Node), pointer :: node_temp => null()
     type(Node), pointer :: node_nuc => null()
     type(Node), pointer :: node_ele => null()
     type(Node), pointer :: node_sab => null()
@@ -1934,6 +1936,17 @@ contains
         ! add to the dictionary and skip xs processing
         call material_dict % add_key(mat % id, i)
         cycle
+      end if
+
+      ! =======================================================================
+      ! READ AND PARSE <temperature> TAG
+      if (check_for_node(node_mat, "temperature")) then
+        call get_node_ptr(node_mat, "temperature", node_temp)
+        call get_node_value(node_temp, "value", temp_dble)
+        mat % sqrtkT = sqrt(temp_dble * K_BOLTZMANN * 1.0D6)
+        temp_known = .TRUE.
+      else
+        temp_known = .FALSE.
       end if
 
       ! =======================================================================
@@ -2042,6 +2055,16 @@ contains
              call get_node_value(node_nuc, "xs", name)
         name = trim(temp_str) // "." // trim(name)
 
+        ! If needed, look up temperature
+        if (temp_known .eqv. .FALSE.) then
+          ! Find xs_listing and set the name/alias according to the listing
+          index_list = xs_listing_dict % get_key(to_lower(name))
+          if(xs_listings(index_list) % kT /= 0.0_8) then
+            mat % sqrtkT = sqrt(xs_listings(index_list) % kT * 1.0D6)
+            temp_known = .TRUE.
+          end if
+        end if
+
         ! save name and density to list
         call list_names % append(name)
 
@@ -2130,6 +2153,16 @@ contains
           temp_str = "data"
         end if
 
+        ! If still needed, look up temperature
+        if (temp_known .eqv. .FALSE.) then
+          ! Find xs_listing and set kT
+          index_list = xs_listing_dict % get_key(to_lower(list_names % tail % data))
+          if(xs_listings(index_list) % kT /= 0.0_8) then
+            mat % sqrtkT = sqrt(xs_listings(index_list) % kT * 1.0D6)
+            temp_known = .TRUE.
+          end if
+        end if
+
         ! Set ace or iso-in-lab scattering for each nuclide in element
         do k = 1, n_nuc_ele
           if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
@@ -2143,6 +2176,12 @@ contains
         end do
 
       end do NATURAL_ELEMENTS
+
+      ! If still undefined, set the temperature to zero
+      if (temp_known .eqv. .FALSE.) then
+        mat % sqrtkT = 0.0_8
+        temp_known = .TRUE.
+      end if
 
       ! ========================================================================
       ! COPY NUCLIDES TO ARRAYS IN MATERIAL

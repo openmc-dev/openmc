@@ -63,6 +63,7 @@ module constants
 
   real(8), parameter ::                      &
        PI               = 3.1415926535898_8, & ! pi
+       SQRT_PI          = 1.7724538509055_8, & ! square root of pi
        MASS_NEUTRON     = 1.008664916_8,     & ! mass of a neutron in amu
        MASS_NEUTRON_MEV = 939.565379_8,      & ! mass of a neutron in MeV/c^2
        MASS_PROTON      = 1.007276466812_8,  & ! mass of a proton in amu
@@ -77,6 +78,7 @@ module constants
        TWO              = 2.0_8,             &
        THREE            = 3.0_8,             &
        FOUR             = 4.0_8
+  complex(8), parameter :: ONEI = (ZERO, ONE)
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS

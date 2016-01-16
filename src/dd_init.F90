@@ -9,7 +9,7 @@ module dd_init
   use search,     only: binary_search
   use string,     only: to_str
 
-#ifdef MP
+#ifdef MPI
   use mpi
 #endif
 

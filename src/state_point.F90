@@ -592,8 +592,10 @@ contains
 
       ! Setup file access property list with parallel I/O access
       call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
+# ifdef PHDF5
       call h5pset_fapl_mpio_f(plist, domain_decomp % comm_domain_masters, &
            MPI_INFO_NULL, hdf5_err)
+# endif
 
       ! Open the file
       call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err, &
@@ -604,7 +606,9 @@ contains
 
       ! Create the property list to describe independent parallel I/O
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
+# ifdef PHDF5
       call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_INDEPENDENT_F, hdf5_err)
+# endif
 
       count1 = 1
 

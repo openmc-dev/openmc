@@ -22,6 +22,7 @@ module state_point
   use tally_header,       only: TallyObject
   use mesh_header,        only: RegularMesh
   use dict_header,        only: ElemKeyValueII, ElemKeyValueCI
+  use random_lcg,         only: seed
 
 #ifdef MPI
   use message_passing

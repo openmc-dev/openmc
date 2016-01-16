@@ -505,8 +505,16 @@ pseudo-random number generator.
 
 The ``source`` element gives information on an external source distribution to
 be used either as the source for a fixed source calculation or the initial
-source guess for criticality calculations. It takes the following
+source guess for criticality calculations. Multiple ``<source>`` elements may be
+specified to define different source distributions. Each one takes the following
 attributes/sub-elements:
+
+  :strength:
+    The strength of the source. If multiple sources are present, the source
+    strength indicates the relative probability of choosing one source over the
+    other.
+
+    *Default*: 1.0
 
   :file:
     If this attribute is given, it indicates that the source is to be read from
@@ -521,13 +529,13 @@ attributes/sub-elements:
     has the following attributes:
 
     :type:
-
-      The type of spatial distribution. Valid options are "box", "fission", and
-      "point". A "box" spatial distribution has coordinates sampled uniformly in
-      a parallelepiped. A "fission" spatial distribution samples locations from
-      a "box" distribution but only locations in fissionable materials are
-      accepted. A "point" spatial distribution has coordinates specified by a
-      triplet.
+      The type of spatial distribution. Valid options are "box", "fission",
+      "point", and "cartesian". A "box" spatial distribution has coordinates
+      sampled uniformly in a parallelepiped. A "fission" spatial distribution
+      samples locations from a "box" distribution but only locations in
+      fissionable materials are accepted. A "point" spatial distribution has
+      coordinates specified by a triplet. An "cartesian" spatial distribution
+      specifies independent distributions of x-, y-, and z-coordinates.
 
       *Default*: None
 
@@ -540,67 +548,123 @@ attributes/sub-elements:
 
       For a "point" spatial distribution, ``parameters`` should be given as
       three real numbers which specify the (x,y,z) location of an isotropic
-      point source
+      point source.
+
+      For an "cartesian" distribution, no parameters are specified. Instead,
+      the ``x``, ``y``, and ``z`` elements must be specified.
 
       *Default*: None
+
+    :x:
+      For an "cartesian" distribution, this element specifies the distribution
+      of x-coordinates. The necessary sub-elements/attributes are those of a
+      univariate probability distribution (see the description in
+      :ref:`univariate`).
+
+    :y:
+      For an "cartesian" distribution, this element specifies the distribution
+      of y-coordinates. The necessary sub-elements/attributes are those of a
+      univariate probability distribution (see the description in
+      :ref:`univariate`).
+
+    :z:
+      For an "cartesian" distribution, this element specifies the distribution
+      of z-coordinates. The necessary sub-elements/attributes are those of a
+      univariate probability distribution (see the description in
+      :ref:`univariate`).
 
   :angle:
     An element specifying the angular distribution of source sites. This element
     has the following attributes:
 
     :type:
-      The type of angular distribution. Valid options are "isotropic" and
-      "monodirectional". The angle of the particle emitted from a source site is
-      isotropic if the "isotropic" option is given. The angle of the particle
-      emitted from a source site is the direction specified in the <parameters>
-      attribute if "monodirectional" option is given.
+      The type of angular distribution. Valid options are "isotropic",
+      "monodirectional", and "mu-phi". The angle of the particle emitted from a
+      source site is isotropic if the "isotropic" option is given. The angle of
+      the particle emitted from a source site is the direction specified in the
+      ``reference_uvw`` element/attribute if "monodirectional" option is
+      given. The "mu-phi" option produces directions with the cosine of the
+      polar angle and the azimuthal angle explicitly specified.
 
       *Default*: isotropic
 
-    :parameters:
-      For an "isotropic" angular distribution, ``parameters`` should not be
-      specified.
+    :reference_uvw:
+      The direction from which the polar angle is measured. Represented by the
+      x-, y-, and z-components of a unit vector. For a monodirectional
+      distribution, this defines the direction of all sampled particles.
 
-      For a "monodirectional" angular distribution, ``parameters`` should be
-      given as three real numbers which specify the angular cosines with respect
-      to each axis.
+    :mu:
+      An element specifying the distribution of the cosine of the polar
+      angle. Only relevant when the type is "mu-phi". The necessary
+      sub-elements/attributes are those of a univariate probability distribution
+      (see the description in :ref:`univariate`).
 
-      *Default*: None
+    :phi:
+      An element specifying the distribution of the azimuthal angle. Only
+      relevant when the type is "mu-phi". The necessary sub-elements/attributes
+      are those of a univariate probability distribution (see the description in
+      :ref:`univariate`).
 
   :energy:
-    An element specifying the energy distribution of source sites. This element
-    has the following attributes:
-
-    :type:
-
-      The type of energy distribution. Valid options are "monoenergetic",
-      "watt", and "maxwell". The "monoenergetic" option produces source sites at
-      a single energy. The "watt" option produces source sites whose energy is
-      sampled from a Watt fission spectrum. The "maxwell" option produce source
-      sites whose energy is sampled from a Maxwell fission spectrum.
-
-      *Default*: watt
-
-    :parameters:
-      For a "monoenergetic" energy distribution, ``parameters`` should be
-      given as the energy in MeV of the source sites.
-
-      For a "watt" energy distribution, ``parameters`` should be given as two
-      real numbers :math:`a` and :math:`b` that parameterize the distribution
-      :math:`p(E) dE = c e^{-E/a} \sinh \sqrt{b \, E} dE`.
-
-      For a "maxwell" energy distribution, ``parameters`` should be given as one
-      real number :math:`a` that parameterizes the distribution :math:`p(E) dE =
-      c E e^{-E/a} dE`.
-
-      *Default*: 0.988 2.249
+    An element specifying the energy distribution of source sites. The necessary
+    sub-elements/attributes are those of a univariate probability distribution
+    (see the description in :ref:`univariate`).
 
   :write_initial:
     An element specifying whether to write out the initial source bank used at
     the beginning of the first batch. The output file is named
-    "initial_source.binary(h5)"
+    "initial_source.h5"
 
-      *Default*: false
+    *Default*: false
+
+.. _univariate:
+
+Univariate Probability Distributions
+++++++++++++++++++++++++++++++++++++
+
+Various components of a source distribution involve probability distributions of
+a single random variable, e.g. the distribution of the energy, the distribution
+of the polar angle, and the distribution of x-coordinates. Each of these
+components supports the same syntax with an element whose tag signifies the
+variable and whose sub-elements/attributes are as follows:
+
+:type:
+  The type of the distribution. Valid options are "uniform", "discrete",
+  "tabular", "maxwell", and "watt". The "uniform" option produces variates
+  sampled from a uniform distribution over a finite interval. The "discrete"
+  option produces random variates that can assume a finite number of values
+  (i.e., a distribution characterized by a probability mass function). The
+  "tabular" option produces random variates sampled from a tabulated
+  distribution where the density function is either a histogram or
+  linearly-interpolated between tabulated points. The "watt" option produces
+  random variates is sampled from a Watt fission spectrum (only used for
+  energies). The "maxwell" option produce variates sampled from a Maxwell
+  fission spectrum (only used for energies).
+
+  *Default*: None
+
+:parameters:
+  For a "uniform" distribution, ``parameters`` should be given as two real
+  numbers :math:`a` and :math:`b` that define the interval :math:`[a,b]` over
+  which random variates are sampled.
+
+  For a "discrete" or "tabular" distribution, ``parameters`` provides the
+  :math:`(x,p)` pairs defining the discrete/tabular distribution. All :math:`x`
+  points are given first followed by corresponding :math:`p` points.
+
+  For a "watt" distribution, ``parameters`` should be given as two real numbers
+  :math:`a` and :math:`b` that parameterize the distribution :math:`p(x) dx = c
+  e^{-x/a} \sinh \sqrt{b \, x} dx`.
+
+  For a "maxwell" distribution, ``parameters`` should be given as one real
+  number :math:`a` that parameterizes the distribution :math:`p(x) dx = c x
+  e^{-x/a} dx`.
+
+:interpolation:
+  For a "tabular" distribution, ``interpolation`` can be set to "histogram" or
+  "linear-linear" thereby specifying how tabular points are to be interpolated.
+
+  *Default*: histogram
 
 ``<state_point>`` Element
 -------------------------

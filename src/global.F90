@@ -13,7 +13,7 @@ module global
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use surface_header,   only: SurfaceContainer
-  use source_header,    only: ExtSource
+  use source_header,    only: SourceDistribution
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
@@ -185,7 +185,7 @@ module global
   logical :: satisfy_triggers = .false.       ! whether triggers are satisfied
 
   ! External source
-  type(ExtSource), target :: external_source
+  type(SourceDistribution), allocatable :: external_source(:)
 
   ! Source and fission bank
   type(Bank), allocatable, target :: source_bank(:)
@@ -309,9 +309,6 @@ module global
   character(MAX_FILE_LEN) :: path_source_point     ! Path to binary source point
   character(MAX_FILE_LEN) :: path_particle_restart ! Path to particle restart
   character(MAX_FILE_LEN) :: path_output = ''      ! Path to output directory
-
-  ! Random number seed
-  integer(8) :: seed = 1_8
 
   ! The verbosity controls how much information will be printed to the
   ! screen and in logs
@@ -474,12 +471,7 @@ contains
     if (allocated(micro_xs)) deallocate(micro_xs)
 
     ! Deallocate external source
-    if (allocated(external_source % params_space)) &
-         deallocate(external_source % params_space)
-    if (allocated(external_source % params_angle)) &
-         deallocate(external_source % params_angle)
-    if (allocated(external_source % params_energy)) &
-         deallocate(external_source % params_energy)
+    if (allocated(external_source)) deallocate(external_source)
 
     ! Deallocate k and entropy
     if (allocated(k_generation)) deallocate(k_generation)

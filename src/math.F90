@@ -2,8 +2,24 @@ module math
 
   use constants
   use random_lcg, only: prn
+  use ISO_C_BINDING
 
   implicit none
+
+!===============================================================================
+! FADDEEVA_W evaluates the scaled complementary error function.  This
+! interfaces with the MIT C library
+!===============================================================================
+
+  interface
+    COMPLEX (C_DOUBLE_COMPLEX) FUNCTION faddeeva_w &
+            (Z, RELERR) BIND(C, NAME='Faddeeva_w')
+            use ISO_C_BINDING
+            implicit none
+            COMPLEX(C_DOUBLE_COMPLEX), value :: Z
+            REAL(C_DOUBLE)           , value :: RELERR
+    end function faddeeva_w
+  end interface
 
 contains
 
@@ -658,5 +674,91 @@ contains
     E_out = w + a*a*b/4. + (TWO*prn() - ONE)*sqrt(a*a*b*w)
 
   end function watt_spectrum
+
+!===============================================================================
+! W acts as a front end to the MIT Faddeeva function, Faddeeva_w.
+!===============================================================================
+
+  subroutine w(Z,wv)
+    use ISO_C_BINDING
+    complex(C_DOUBLE_COMPLEX), intent(inout) :: Z ! The point to evaluate Z at
+    complex(8), intent(out) :: wv                 ! The resulting w(Z) value
+    real(C_DOUBLE) :: relerr ! Target relative error in inner loop of MIT Faddeeva
+    logical        :: mangle ! Do we need to perform the special mangling step?
+
+    ! There is some special mangling the true W function in WHOPPER does.  I
+    ! replicate it here.
+    if(aimag(Z) < 0) then
+      Z = conjg(Z)
+      mangle = .TRUE.
+    else
+      mangle = .FALSE.
+    end if
+
+    ! Calculate Faddeeva
+    relerr = 0.0_8
+    wv = faddeeva_w(Z,relerr)
+
+    ! Finish mangling the results
+    if(mangle .eqv. .TRUE.) then
+      wv = -conjg(wv)
+    end if
+  end subroutine
+
+!===============================================================================
+! BROADEN_N_POLYNOMIALS doppler broadens polynomials of the form
+! a/En + b/sqrt(En) + c + d sqrt(En) ...
+! exactly and quickly.
+!===============================================================================
+
+  subroutine broaden_n_polynomials(En, DOPP, n, factors)
+    real(8), intent(in) :: En         ! Energy to evaluate at
+    real(8), intent(in) :: DOPP       ! sqrt(atomic weight ratio / kT), kT given in eV.
+    integer, intent(in) :: n          ! number of components to polynomial
+    real(8), intent(out):: factors(n) ! output leading coefficient
+
+    integer :: i
+
+    real(8) :: sqrtE
+    real(8) :: beta
+    real(8) :: halfinvDOPP2
+    real(8) :: quarterinvDOPP4
+    real(8) :: erfbeta
+    real(8) :: exp_m_beta2
+
+    sqrtE = sqrt(En)
+    beta = sqrtE*DOPP
+    halfinvDOPP2 = 0.5_8/DOPP**2
+    quarterinvDOPP4 = 0.25_8/DOPP**4
+
+    if (beta > 6.0_8) then
+      ! Save time, ERF(6) is 1 to machine precision.
+      ! beta/sqrtpi*exp(-beta**2) is also approximately 1 machine epsilon.
+      erfBeta = 1.0_8
+      exp_m_beta2 = 0.0_8
+    else
+      erfBeta = erf(beta)
+      exp_m_beta2 = exp(-beta**2)
+    end if
+
+    ! Assume that, for sure, we'll use a second order (1/E, 1/V, const)
+    ! fit, and no less.
+
+    factors(1) = erfbeta/En
+    factors(2) = 1.0_8/sqrtE
+    factors(3) = factors(1)*(halfinvDOPP2 + En) + exp_m_beta2/(beta*SQRT_PI)
+
+    ! Perform recursive broadening of high order components
+    do i = 1,n-3
+      if (i /= 1) then
+        factors(i+3) = -factors(i-1)*(i - 1.0_8)*i*quarterinvDOPP4 + &
+             factors(i+1)*(En + (1.0_8 + 2.0_8*i)*halfinvDOPP2)
+      else
+        ! Although it's mathematically identical, factors(0) will contain
+        ! nothing, and we don't want to have to worry about memory.
+        factors(i+3) = factors(i+1)*(En + (1.0_8 + 2.0_8*i)*halfinvDOPP2)
+      end if
+    end do
+  end subroutine broaden_n_polynomials
 
 end module math

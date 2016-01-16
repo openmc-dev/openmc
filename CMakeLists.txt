@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
-project(openmc Fortran)
+project(openmc Fortran C)
 
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -109,47 +109,61 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
 
   # GNU Fortran compiler options
   list(APPEND f90flags -cpp -std=f2008 -fbacktrace)
+  list(APPEND cflags -cpp -std=c99)
   if(debug)
     if(NOT (GCC_VERSION VERSION_LESS 4.7))
       list(APPEND f90flags -Wall)
+      list(APPEND cflags -Wall)
     endif()
     list(APPEND f90flags -g -pedantic -fbounds-check
+      -ffpe-trap=invalid,overflow,underflow)
+    list(APPEND cflags -g -pedantic -fbounds-check
       -ffpe-trap=invalid,overflow,underflow)
     list(APPEND ldflags -g)
   endif()
   if(profile)
     list(APPEND f90flags -pg)
+    list(APPEND cflags -pg)
     list(APPEND ldflags -pg)
   endif()
   if(optimize)
     list(APPEND f90flags -O3)
+    list(APPEND cflags -O3)
   endif()
   if(openmp)
     list(APPEND f90flags -fopenmp)
+    list(APPEND cflags -fopenmp)
     list(APPEND ldflags -fopenmp)
   endif()
   if(coverage)
     list(APPEND f90flags -coverage)
+    list(APPEND cflags -coverage)
     list(APPEND ldflags -coverage)
   endif()
 
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
   # Intel Fortran compiler options
   list(APPEND f90flags -fpp -std08 -assume byterecl -traceback)
+  list(APPEND cflags -std=c99)
   if(debug)
     list(APPEND f90flags -g -warn -ftrapuv -fp-stack-check
+      "-check all" -fpe0)
+    list(APPEND cflags -g -warn -ftrapuv -fp-stack-check
       "-check all" -fpe0)
     list(APPEND ldflags -g)
   endif()
   if(profile)
     list(APPEND f90flags -pg)
+    list(APPEND cflags -pg)
     list(APPEND ldflags -pg)
   endif()
   if(optimize)
     list(APPEND f90flags -O3)
+    list(APPEND cflags -O3)
   endif()
   if(openmp)
     list(APPEND f90flags -openmp)
+    list(APPEND cflags -openmp)
     list(APPEND ldflags -openmp)
   endif()
 
@@ -248,7 +262,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 #===============================================================================
 
 set(program "openmc")
-file(GLOB source src/*.F90 src/xml/openmc_fox.F90)
+file(GLOB source src/Faddeeva.c src/*.F90 src/xml/openmc_fox.F90)
 add_executable(${program} ${source})
 
 # target_include_directories was added in CMake 2.8.11 and is the recommended
@@ -260,15 +274,19 @@ else()
 endif()
 
 # target_compile_options was added in CMake 2.8.12 and is the recommended way to
-# set compile flags. Note that this sets the COMPILE_OPTIONS property (also
-# available only in 2.8.12+) rather than the COMPILE_FLAGS property, which is
-# deprecated. The former can handle lists whereas the latter cannot.
-if(CMAKE_VERSION VERSION_LESS 4.8.12)
-  string(REPLACE ";" " " f90flags "${f90flags}")
-  set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
-else()
-  target_compile_options(${program} PUBLIC ${f90flags})
-endif()
+# set compile flag, but it doesn't seem to work with both Fortran and C.  In
+# theory the commented code below might work but I couldn't get it running.
+# Maybe it requires a newer version of CMake?
+#target_compile_options(${program} PUBLIC 
+#  $<$<COMPILE_LANGUAGE:Fortran>:${f90flags}>
+#  $<$<COMPILE_LANGUAGE:C>:${cflags}>)
+# This is not the recommended method, but it is a functional method.  Convert
+# the semicolon-delineated lists into space-delineated ones then set them as the
+# compiler flags.
+string(REPLACE ";" " " f90flags "${f90flags}")
+string(REPLACE ";" " " cflags "${cflags}")
+set(CMAKE_C_FLAGS "${cflags}")
+set(CMAKE_Fortran_FLAGS "${f90flags}")
 
 # Add HDF5 library directories to link line with -L
 foreach(LIBDIR ${HDF5_LIBRARY_DIRS})

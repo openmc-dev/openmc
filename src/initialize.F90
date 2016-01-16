@@ -306,19 +306,19 @@ contains
     call MPI_GET_ADDRESS(ptmp % material,        part_disp(24), mpi_err)
     call MPI_GET_ADDRESS(ptmp % last_material,   part_disp(25), mpi_err)
 
-    ! Adjust displacements 
+    ! Adjust displacements
     part_disp = part_disp - part_disp(1)
 
     ! Define particle type
     part_blocks = (/ 1, N_STREAMS, N_STREAMS, 1, 1, 1, 1, 1, 1, 1, 1, 1, &
-        3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 /)
+         3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 /)
     part_types = (/ MPI_INTEGER8, MPI_INTEGER8, MPI_INTEGER8, MPI_REAL8, &
-        MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, &
-        MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_INTEGER, &
-        MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, &
-        MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER /)
+         MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, &
+         MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_INTEGER, &
+         MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, &
+         MPI_INTEGER, MPI_INTEGER, MPI_INTEGER, MPI_INTEGER /)
     call MPI_TYPE_CREATE_STRUCT(25, part_blocks, part_disp, part_types, &
-        MPI_PARTICLEBUFFER, mpi_err)
+         MPI_PARTICLEBUFFER, mpi_err)
 
     ! Commit derived type for particles
     call MPI_TYPE_COMMIT(MPI_PARTICLEBUFFER, mpi_err)
@@ -977,15 +977,15 @@ contains
       thread_id = omp_get_thread_num()
 
       if (thread_id == 0) then
-         allocate(fission_bank(3*work))
-         size_fission_bank = 3*work
+          allocate(fission_bank(3*work))
+          size_fission_bank = 3*work
       else
-         allocate(fission_bank(3*work/n_threads))
-         size_fission_bank = 3*work/n_threads
+          allocate(fission_bank(3*work/n_threads))
+          size_fission_bank = 3*work/n_threads
       end if
 !$omp end parallel
       allocate(master_fission_bank(3*work), STAT=alloc_err)
-    
+
 #else
       allocate(fission_bank(3*work), STAT=alloc_err)
       size_fission_bank = 3*work

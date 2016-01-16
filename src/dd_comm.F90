@@ -1,5 +1,5 @@
 module dd_comm
-  
+
   use bank_header,      only: Bank
   use constants
   use dd_header,        only: dd_type
@@ -18,11 +18,11 @@ module dd_comm
   use resize_arr,       only: resize_array, extend_array
   use search,           only: binary_search
   use string,           only: to_str
-  
+
 #ifdef MPI
   use mpi
 #endif
-  
+
   implicit none
   public
 
@@ -36,9 +36,9 @@ contains
 !===============================================================================
 
   subroutine distribute_source(dd)
-  
+
     type(dd_type), intent(inout)  :: dd
-  
+
     integer(8) :: i           ! loop index over initially-sampled source sites
     integer :: n_source_sites ! number of sites that will start in this domain
     integer :: to_domain
@@ -64,26 +64,26 @@ contains
 
     ! We need a copy of the send data
     allocate(buffer(work), STAT=alloc_err)
-    
-    ! Check for allocation errors 
+
+    ! Check for allocation errors
     if (alloc_err /= 0) then
       call fatal_error("Failed to allocate source bank send buffer during &
-          &domain decomposition initialization.")
+           &domain decomposition initialization.")
     end if
-    
+
     ! TODO: This may be too conservative an allocation for most use-cases
     allocate(request(work + n_particles), STAT=alloc_err)
     n_request = 0
 
-    ! Check for allocation errors 
+    ! Check for allocation errors
     if (alloc_err /= 0) then
       call fatal_error("Failed to allocate communication request array during &
-          &domain decomposition initialization.")
+           &domain decomposition initialization.")
     end if
 
     ! Copy initially-sampled source sites
     buffer = source_bank
-    
+
     ! We'll save sites that belong in this domain to the source bank as we
     ! loop through and find them, as well as when we receive them from other
     ! processes
@@ -91,25 +91,25 @@ contains
 
     ! Loop over all sampled source sites and send/save sites as needed
     do i = 1, work
-    
+
       ! Determine which domain meshbin this should start on
       call get_mesh_bin(dd % mesh, buffer(i) % xyz, to_domain)
-    
+
       if (to_domain == dd % meshbin) then
         ! This site should start on this domain
-        
+
         n_source_sites = n_source_sites + 1
         source_bank(n_source_sites) = buffer(i)
-        
+
       else
         ! This site needs to be sent
-        
+
         ! We'll pick a process at random on that domain to send it to, using
         ! the seed stored in the site for random number reproducibility
         prn_seed = buffer(i) % prn_seed
         to_rank = dd % domain_masters(to_domain) + &
-            int(prn() * real(dd % domain_n_procs(to_domain), 8))
-        
+             int(prn() * real(dd % domain_n_procs(to_domain), 8))
+
         ! Increment send counters
         n_send_rank(to_rank + 1) = n_send_rank(to_rank + 1) + 1
         n_send_domain(to_domain) = n_send_domain(to_domain) + 1
@@ -118,35 +118,35 @@ contains
 #ifdef MPI
         n_request = n_request + 1
         call MPI_ISEND(buffer(i), 1, MPI_BANK, to_rank, rank, MPI_COMM_WORLD, &
-            request(n_request), mpi_err)
+             request(n_request), mpi_err)
 #endif
       end if
-    
+
     end do
 
     ! Determine how many sites were sent here by reducing n_send_rank
 #ifdef MPI
     call MPI_ALLREDUCE(MPI_IN_PLACE, n_send_rank, n_procs, MPI_INTEGER, &
-        MPI_SUM, MPI_COMM_WORLD, mpi_err)
+         MPI_SUM, MPI_COMM_WORLD, mpi_err)
 #endif
 
     ! Check if we're not going to have enough space in the source_bank (which
     ! we're using as the receive buffer), and resize the array if needed
     new_source = n_send_rank(rank + 1) + n_source_sites
     if (new_source > size_source_bank) &
-        call extend_array(source_bank, size_source_bank, int(new_source, 8), &
-            alloc_err)
+         call extend_array(source_bank, size_source_bank, int(new_source, 8), &
+             alloc_err)
         call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
-            int(new_source, 8), alloc_err)
+             int(new_source, 8), alloc_err)
 
     ! Receive sites from other processes
     do i = 1, n_send_rank(rank + 1)
-    
+
       n_source_sites = n_source_sites + 1
       n_request = n_request + 1
 #ifdef MPI
       call MPI_IRECV(source_bank(n_source_sites), 1, MPI_BANK, MPI_ANY_SOURCE, &
-          MPI_ANY_TAG, MPI_COMM_WORLD, request(n_request), mpi_err)
+           MPI_ANY_TAG, MPI_COMM_WORLD, request(n_request), mpi_err)
 #endif
     end do
 
@@ -162,7 +162,7 @@ contains
     deallocate(n_send_domain)
     deallocate(n_send_rank)
     deallocate(buffer)
-  
+
   end subroutine distribute_source
 
 !===============================================================================
@@ -173,10 +173,10 @@ contains
 !===============================================================================
 
   function synchronize_particles(dd) result(work)
-  
+
     type(dd_type), intent(inout) :: dd
     integer(8) :: work
-  
+
 #ifdef MPI
 
     ! These subroutines operate in a manner similar to synchronize_bank for the
@@ -192,7 +192,7 @@ contains
     !   Synchronize the process-to-process send info
     !   Send/recv particles using the process-to-process send info
     !   Rebuild the particle buffer for transport in the next stage
-    
+
     ! This barrier isn't necessary since every rank will wait at the first
     ! allreduce, but this allows for a more honest assessment of the
     ! communication costs in the algorithm.  (i.e. if we don't have the barrier,
@@ -219,8 +219,8 @@ contains
     ! Copy particles back out of the receiving buffer
     call rebuild_particle_buffer(dd)
 
-#endif 
-   
+#endif
+
     work = dd % n_inscatt
 
   end function synchronize_particles
@@ -229,7 +229,7 @@ contains
 
 !===============================================================================
 ! SYNCHRONIZE_TRANSFER_INFO communicates all required particle transfer
-! information to the local domain neighborhood.  Uses dd % n_scatters_local to 
+! information to the local domain neighborhood.  Uses dd % n_scatters_local to
 ! produce dd % n_scatters_neighborhood, which contains how many particles each
 ! of the second neighbors is sending to each of the direct neighbors
 !===============================================================================
@@ -251,23 +251,23 @@ contains
 
     !===========================================================================
     ! SYNCHRONIZE SCATTER INFORMATION
-    
+
     ! First find the global number of scatters, using dd_n_scatters_domain as
     ! a temp holder - the order doesn't matter for this global sum
     dd % n_global_scatters = 0
     call MPI_ALLREDUCE(dd % n_scatters_local, dd % n_scatters_domain, &
-        N_CARTESIAN_NEIGHBORS, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, mpi_err)
+         N_CARTESIAN_NEIGHBORS, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, mpi_err)
     dd % n_global_scatters = sum(dd % n_scatters_domain)
 
     ! Now reduce to find how many particles are leaving this domain to each of
     ! the neighbors
     call MPI_ALLREDUCE(dd % n_scatters_local, dd % n_scatters_domain, &
-        N_CARTESIAN_NEIGHBORS, MPI_INTEGER, MPI_SUM, dd % comm, mpi_err)
+         N_CARTESIAN_NEIGHBORS, MPI_INTEGER, MPI_SUM, dd % comm, mpi_err)
 
     ! Communicate domain scatter information to all 2nd neighbors in 2nd order
     ! neighborhood. The first processor in each domain sends this information
     ! to all other processors in the neighborhood.
-    
+
     ! send info
     n_request = 0
     if (dd % local_master) then
@@ -279,18 +279,18 @@ contains
           second_neighbor_meshbin = dd % neighbor_meshbins(second_neighbor_bin)
           if (second_neighbor_meshbin == NO_BIN_FOUND) cycle
           if (second_neighbor_meshbin == dd % meshbin) cycle
-          
+
           do pr = 1, dd % domain_n_procs(second_neighbor_meshbin)
               to_rank = dd % domain_masters(second_neighbor_meshbin) + pr - 1
 
 !              print *, 'send', rank, '-->', to_rank, &
 !                  dd % meshbin, '-->', direct_neighbor_meshbin
-            
+
               n_request = n_request + 1
               call MPI_ISEND(dd % n_scatters_domain(direct_neighbor_bin), 1, &
-                  MPI_INTEGER, to_rank, direct_neighbor_meshbin, &
-                  MPI_COMM_WORLD, request(n_request), mpi_err)
-                  
+                   MPI_INTEGER, to_rank, direct_neighbor_meshbin, &
+                   MPI_COMM_WORLD, request(n_request), mpi_err)
+
           end do
         end do
       end do
@@ -313,16 +313,16 @@ contains
 
           n_request = n_request + 1
           call MPI_IRECV(dd % n_scatters_neighborhood(second_neighbor_bin, &
-              direct_neighbor_bin), 1, MPI_INTEGER, from_rank, &
-              direct_neighbor_meshbin, MPI_COMM_WORLD, request(n_request), &
-              mpi_err)
-          
+               direct_neighbor_bin), 1, MPI_INTEGER, from_rank, &
+               direct_neighbor_meshbin, MPI_COMM_WORLD, request(n_request), &
+               mpi_err)
+
         end do
       end do
-    
+
     ! Wait for the scatter information to be synchronized
     call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
-  
+
   end subroutine synchronize_transfer_info
 
 !===============================================================================
@@ -359,7 +359,7 @@ contains
 
     !===========================================================================
     ! DETERMINE PARTICLE SEND INFORMATION
-    
+
     ! First get processor offsets - we do this here to ensure that every process
     ! calls the exscan in the same order
     dd % scatter_offest = 0
@@ -367,11 +367,11 @@ contains
       to_meshbin = dd % neighbor_meshbins(to_bin)
       if (to_meshbin == NO_BIN_FOUND) cycle
       call MPI_EXSCAN(dd % n_scatters_local(to_bin), &
-          dd % scatter_offest(to_bin), 1, MPI_INTEGER, MPI_SUM, dd % comm, &
-          mpi_err)
+           dd % scatter_offest(to_bin), 1, MPI_INTEGER, MPI_SUM, dd % comm, &
+           mpi_err)
       if (dd % local_master) dd % scatter_offest(to_bin) = 0
     end do
-    
+
       ! Now figure out where to send the particles
     dd % send_rank_info = 0
     do to_bin = 1, N_CARTESIAN_NEIGHBORS
@@ -386,7 +386,7 @@ contains
       ! send to each, we first need to figure out which parts of the 'global'
       ! inscatter array of the target domain are made up of particles on this
       ! processor
-      
+
       domain_start = 0
       do nd = 1, N_CARTESIAN_NEIGHBORS
         neighbor_bin = to_bin*N_CARTESIAN_NEIGHBORS + nd
@@ -394,9 +394,9 @@ contains
         if (neighbor_meshbin == NO_BIN_FOUND) cycle
         if (neighbor_meshbin == dd % meshbin) exit
         domain_start = domain_start + &
-            dd % n_scatters_neighborhood(neighbor_bin, to_bin)
+             dd % n_scatters_neighborhood(neighbor_bin, to_bin)
       end do
-      
+
       ! At this point domain_start is the start of the scatter array for this
       ! domain.  We need it for this processer within the domain, so we do a
       ! scan like what's done in synchronize_bank, but for the domain group
@@ -412,7 +412,7 @@ contains
       ! number sent by all other second neighbors plus the number send by this
       ! domain
       n_recv = sum(dd % n_scatters_neighborhood(:, to_bin)) + &
-          dd % n_scatters_domain(to_bin)
+           dd % n_scatters_domain(to_bin)
       mod_ = modulo(n_recv, dd % domain_n_procs(to_meshbin))
       do j = 1, dd % domain_n_procs(to_meshbin)
         dd % proc_finish(j) = j * n_recv/dd % domain_n_procs(to_meshbin)
@@ -430,35 +430,35 @@ contains
         to_ddrank = 0
       else
         to_ddrank = binary_search(dd % proc_finish, &
-            dd % domain_n_procs(to_meshbin), index_scatt)
+             dd % domain_n_procs(to_meshbin), index_scatt)
       end if
 
       ! Now we can loop through particles to send and build up send information
       pr_bin = (to_bin - 1) * dd % max_domain_procs + to_ddrank + 1
       do i = 1, dd % size_particle_buffer
-        
+
         if (dd % particle_buffer(i) % outscatter_destination == to_bin) then
 
           ! Accumulate send info
           dd % send_rank_info(pr_bin) = dd % send_rank_info(pr_bin) + 1
           index_scatt = index_scatt + 1
-          
+
           ! Increment the processor rank and bin if we're now on the next proc
           if (to_ddrank + 1 < dd % domain_n_procs(to_meshbin) .and. &
-              index_scatt + 1 > dd % proc_finish(to_ddrank + 1)) then
+               index_scatt + 1 > dd % proc_finish(to_ddrank + 1)) then
             to_ddrank = to_ddrank + 1
             pr_bin = (to_bin - 1) * dd % max_domain_procs + to_ddrank + 1
           end if
-            
+
         end if
-        
+
       end do
-      
+
     end do
-    
+
     !===========================================================================
     ! COMMUNICATE SEND INFORMATION
-    
+
     ! Send particle communication info
     do to_bin = 1, N_CARTESIAN_NEIGHBORS
       ! Loop over each of the neighbors we might need to send to
@@ -467,16 +467,16 @@ contains
 
       do pr = 1, dd % domain_n_procs(to_meshbin)
         ! Loop over each processor in the receiving bin
-        
+
         pr_bin = (to_bin - 1) * dd % max_domain_procs + pr
         n_request = n_request + 1
         to_rank = dd % domain_masters(to_meshbin) + pr - 1
         call MPI_ISEND(dd % send_rank_info(pr_bin), 1, MPI_INTEGER, to_rank, &
-          rank, MPI_COMM_WORLD, request(n_request), mpi_err)
+             rank, MPI_COMM_WORLD, request(n_request), mpi_err)
 
       end do
     end do
-    
+
     ! Receive particle communication info
     dd % recv_rank_info = 0
     do from_bin = 1, N_CARTESIAN_NEIGHBORS
@@ -486,16 +486,16 @@ contains
 
       do pr = 1, dd % domain_n_procs(from_meshbin)
         ! Loop over each processor in the sending bin
-        
+
         pr_bin = (from_bin - 1) * dd % max_domain_procs + pr
         n_request = n_request + 1
         from_rank = dd % domain_masters(from_meshbin) + pr - 1
         call MPI_IRECV(dd % recv_rank_info(pr_bin), 1, MPI_INTEGER, from_rank, &
-          from_rank, MPI_COMM_WORLD, request(n_request), mpi_err)
-        
+             from_rank, MPI_COMM_WORLD, request(n_request), mpi_err)
+
       end do
     end do
-    
+
     ! Wait for the scatter information to be synchronized
     call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
 
@@ -519,23 +519,23 @@ contains
     ! First check that we have enough space in the inscatter bank
     n_recv = sum(dd % recv_rank_info)
     if (n_recv > dd % size_recv_buffer) then
-    
+
       ! Resize the receive buffer
       n_recv = ceiling(dble(n_recv) * DD_BUFFER_HEADROOM, 8)
       call resize_array(dd % recv_buffer, dd % size_recv_buffer, n_recv, &
-          alloc_err)
-      
+           alloc_err)
+
     end if
 
     ! Also ensure we have enough space in the send buffer
     n_send = sum(dd % n_scatters_local)
     if (n_send > dd % size_send_buffer) then
-    
+
       ! Resize the send buffer
       n_send = ceiling(dble(n_send) * DD_BUFFER_HEADROOM, 8)
       call resize_array(dd % send_buffer, dd % size_send_buffer, n_send, &
-          alloc_err)
-      
+           alloc_err)
+
     end if
 
   end subroutine verify_buffers
@@ -569,11 +569,11 @@ contains
 
     !===========================================================================
     ! RECEIVE PARTICLES
- 
+
     ! We post the receives first so that we can match sends as soon as possible.
     ! Supposedly there is an upper limit on the number of sends that can be
     ! outstanding at once.
-   
+
     call time_dd_sendrecv % start()
 
     n_request = 0
@@ -583,10 +583,10 @@ contains
       ! Loop through each neighbor we might need to receive from
       from_meshbin = dd % neighbor_meshbins(from_bin)
       if (from_meshbin == NO_BIN_FOUND) cycle
-      
+
       do pr = 1, dd % domain_n_procs(from_meshbin)
         ! Loop over each processor in the sending bin
-        
+
         pr_bin = (from_bin - 1) * dd % max_domain_procs + pr
         n_recv = dd % recv_rank_info(pr_bin)
         if (n_recv == 0) cycle
@@ -594,8 +594,8 @@ contains
         n_request = n_request + 1
         from_rank = dd % domain_masters(from_meshbin) + pr - 1
         call MPI_IRECV(dd % recv_buffer(local_start), n_recv, &
-            MPI_PARTICLEBUFFER, from_rank, from_rank, MPI_COMM_WORLD, &
-            request(n_request), mpi_err)
+             MPI_PARTICLEBUFFER, from_rank, from_rank, MPI_COMM_WORLD, &
+             request(n_request), mpi_err)
         local_start = local_start + n_recv
 
 !        print *, current_stage,'recv',from_rank,'-->',rank, n_recv
@@ -618,17 +618,17 @@ contains
       start = 1_8
       do pr = 1, dd % domain_n_procs(to_meshbin)
         ! Loop over each processor in the receiving bin
-        
+
         pr_bin = (to_bin - 1) * dd % max_domain_procs + pr
-        if (dd % send_rank_info(pr_bin) == 0) cycle 
+        if (dd % send_rank_info(pr_bin) == 0) cycle
 
         pbuffer_start = index_pbuffer
         n_send = 0
         do i8 = start, work
-        
+
           ! Add outscatter particles to send buffer
           if (dd % particle_buffer(i8) % outscatter_destination == to_bin) then
-          
+
             if (dd % particle_buffer(i8) % outscatter_destination == NO_OUTSCATTER) then
               call fatal_error("Trying to send particle that didn't leave domain!")
             end if
@@ -638,24 +638,24 @@ contains
             index_pbuffer = index_pbuffer + 1
             n_send = n_send + 1
           end if
-          
+
           if (n_send == dd % send_rank_info(pr_bin)) then
             start = i8 + 1_8
             exit
           end if
-          
+
         end do
 
         n_request = n_request + 1
         to_rank = dd % domain_masters(to_meshbin) + pr - 1
         call MPI_ISEND(dd % send_buffer(pbuffer_start), n_send, &
-            MPI_PARTICLEBUFFER, to_rank, rank, MPI_COMM_WORLD, &
-            request(n_request), mpi_err)
+             MPI_PARTICLEBUFFER, to_rank, rank, MPI_COMM_WORLD, &
+             request(n_request), mpi_err)
 
 !        print *, current_stage,'send',rank,'-->',to_rank, n_send
 
       end do
-      
+
     end do
 
     ! Wait for the particles to be sent
@@ -668,7 +668,7 @@ contains
 !===============================================================================
 ! REBUILD_PARTICLE_BUFFER copies the particles sent over the network (which were
 ! sent in a slightly compressed form) back to the particle buffer to be
-! transported in the next stage.  
+! transported in the next stage
 !===============================================================================
 
   subroutine rebuild_particle_buffer(dd)
@@ -681,21 +681,21 @@ contains
 
     ! Grow the particle buffer if we don't have enough space
     if (dd % n_inscatt > dd % size_particle_buffer) then
-    
+
       size_buff = ceiling(dble(dd % n_inscatt) * DD_BUFFER_HEADROOM, 8)
       call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
-          size_buff, alloc_err)
-      
+           size_buff, alloc_err)
+
       ! We also need to resize the source bank and fission bank now that we
       ! have more particles
       call resize_array(source_bank, size_source_bank, size_buff, alloc_err)
       call extend_array(fission_bank, size_fission_bank, 3_8*size_buff, &
-          alloc_err)
+           alloc_err)
       !TODO: fission bank might not be big enough! This only covers the particle
       ! buffer from this stage!
-      
+
     end if
-    
+
     ! Populate the particle particle buffer from the receive buffer
     do i = 1, dd % n_inscatt
       call buffer_to_particle(dd % recv_buffer(i), dd % particle_buffer(i))
@@ -759,7 +759,7 @@ contains
 
 #ifdef MPI
     start = 0_8
-    call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
+    call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, &
          MPI_COMM_WORLD, mpi_err)
 
     ! While we would expect the value of start on rank 0 to be 0, the MPI
@@ -769,7 +769,7 @@ contains
 
     finish = start + n_bank
     total = finish
-    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
+    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, &
          MPI_COMM_WORLD, mpi_err)
 
 #else
@@ -801,22 +801,22 @@ contains
     p_sample = real(sites_needed,8)/real(total,8)
 
     call time_bank_sample % start()
-    
+
     ! ==========================================================================
     ! SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
 
     ! Allocate temporary source bank
-    
+
     ! First check if the size of the fission bank has changed
     if(allocated(temp_sites) .and. size_temp_sites /= size_fission_bank) &
-      deallocate(temp_sites)
+         deallocate(temp_sites)
 
     if (.not. allocated(temp_sites)) then
 
       allocate(temp_sites(size_fission_bank), STAT=alloc_err)
       size_temp_sites = size_fission_bank
-    
-      ! Check for allocation errors 
+
+      ! Check for allocation errors
       if (alloc_err /= 0) then
         call fatal_error("Failed to allocate temp_sites.")
       end if
@@ -825,11 +825,11 @@ contains
 
     index_temp = 0_8
     do i = 1, int(n_bank,4)
-      
+
       prn_seed = fission_bank(i) % prn_seed
 
-      ! If there are less than n_particles particles banked, automatically add 
-      ! int(n_particles/total) sites to temp_sites. For example, if you need 
+      ! If there are less than n_particles particles banked, automatically add
+      ! int(n_particles/total) sites to temp_sites. For example, if you need
       ! 1000 and 300 were banked, this would add 3 source sites per banked site
       ! and the remaining 100 would be randomly sampled.
       if (total < n_particles) then
@@ -865,7 +865,7 @@ contains
     finish = start + index_temp
 
     total = finish
-    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
+    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, &
          MPI_COMM_WORLD, mpi_err)
 #endif
 
@@ -887,7 +887,7 @@ contains
     ! Redo the exclusive scan to get the starting indices after the fix.  This
     ! is done on the local comm so banks in a domain can be isolated
     start = 0_8
-    call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, & 
+    call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, &
          dd % comm, mpi_err)
     if (dd % rank == 0) start = 0_8
     finish = start + index_temp
@@ -895,31 +895,31 @@ contains
     ! DD runs might not have a full bank, so we need to communicate the total
     ! for this domain.
     total = finish
-    call MPI_BCAST(total, 1, MPI_INTEGER8, dd % n_domain_procs - 1, & 
+    call MPI_BCAST(total, 1, MPI_INTEGER8, dd % n_domain_procs - 1, &
          dd % comm, mpi_err)
-         
+
     ! Allocate space for bank_start/finish if this hasn't been done yet
     if (.not. allocated(bank_start)) then
       allocate(bank_start(dd % n_domain_procs))
       allocate(bank_finish(dd % n_domain_procs))
     end if
-    
+
     ! For even load balancing we set the starts and finishes based on the
     ! number of particles we have in the domain
     bank_start = 0_8
     bank_finish = total/int(dd % n_domain_procs,8)
     do i = 1, dd % n_domain_procs
       if (i-1 < mod(total,int(dd % n_domain_procs,8))) &
-          bank_finish(i) = bank_finish(i) + 1
+           bank_finish(i) = bank_finish(i) + 1
     end do
     do i = 2, dd % n_domain_procs
       bank_finish(i) = bank_finish(i) + bank_finish(i-1)
       bank_start(i) = bank_finish(i-1)
     end do
-    
+
     ! Allocate space for bank_position if this hasn't been done yet
     if (.not. allocated(bank_position)) &
-        allocate(bank_position(dd % n_domain_procs))
+         allocate(bank_position(dd % n_domain_procs))
     call MPI_ALLGATHER(start, 1, MPI_INTEGER8, bank_position, 1, &
          MPI_INTEGER8, dd % comm, mpi_err)
 
@@ -972,10 +972,10 @@ contains
     end do DD_COUNT_RECV_SITES
 
     ! Grow the banks if we won't have enough space
-    
+
     size_bank = ceiling(dble(index_local) * DD_BUFFER_HEADROOM, 8)
     if (index_local > dd % size_particle_buffer) &
-      call resize_array(dd % particle_buffer,  &
+         call resize_array(dd % particle_buffer,  &
                         dd % size_particle_buffer, &
                         size_bank, alloc_err)
 
@@ -986,7 +986,7 @@ contains
                         3_8*size_bank, alloc_err)
       call extend_array(temp_sites, size_fission_bank, 3_8*size_bank, alloc_err)
     end if
-       
+
     ! ========================================================================
     ! SEND BANK SITES TO NEIGHBORS
 

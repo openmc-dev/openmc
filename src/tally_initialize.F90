@@ -80,10 +80,10 @@ contains
             otf_initial_size = t % total_filter_bins
 
           else
-          
+
             ! Assume the tallies are evenly distributed across domains
             even = t % total_filter_bins / domain_decomp % n_domains
-            
+
             ! Allocate a little extra
             otf_initial_size = int(dble(even) * OTF_HEADROOM)
 

@@ -11,7 +11,7 @@ module dd_tracking
   use random_lcg,        only: prn_seed
   use random_lcg_header, only: N_STREAMS
   use string,            only: to_str
-  
+
   implicit none
   public
 
@@ -25,8 +25,8 @@ contains
 !===============================================================================
 
   subroutine check_domain_boundary_crossing(d_dd_mesh, &
-      d_collision, d_boundary, lattice_translation, surface_crossed, &
-      boundary_crossed)
+       d_collision, d_boundary, lattice_translation, surface_crossed, &
+       boundary_crossed)
 
     real(8), intent(in)  :: d_dd_mesh              ! distance to DD boundary
     real(8), intent(in)  :: d_collision            ! distance to collision
@@ -52,18 +52,18 @@ contains
         boundary_crossed = .true.
       end if
     end if
-               
+
   end subroutine check_domain_boundary_crossing
 
 !===============================================================================
 ! CROSS_DOMAIN_BOUNDARY determines which domain a particle will scatter to,
 ! stores the position and direction of the particle, and sets the outscatter
 ! flag for sending this particle later.  Note that the particle is not moved and
-! tallies are not recorded. After transfering the particle to the right domain 
-! (which maybe NOT a neighbor!), the particle will be recovered and tracked. 
-! We need to use the same distance to the next point for reproducibility. The 
-! accumulated distance to domain boundary is stored to determine whether the 
-! particle enters into right domain. 
+! tallies are not recorded. After transfering the particle to the right domain
+! (which maybe NOT a neighbor!), the particle will be recovered and tracked.
+! We need to use the same distance to the next point for reproducibility. The
+! accumulated distance to domain boundary is stored to determine whether the
+! particle enters into right domain.
 !===============================================================================
 
   subroutine cross_domain_boundary(p, dd, tracking_dist, flying_dist)
@@ -72,15 +72,15 @@ contains
     type(dd_type), intent(inout)  :: dd
     real(8), intent(in)           :: tracking_dist ! distance p needs to travel
     real(8), intent(in)           :: flying_dist   ! distance p traveled already
-  
+
     real(8) :: xyz(3)
     integer :: to_meshbin  ! domain meshbin the particle is traveling to
     integer :: to_bin      ! local relative bin the particle is traveling to
-  
+
     ! Calculate current point and calculate the bin in the DD mesh
     xyz = p % coord(1) % xyz + (TINY_BIT + flying_dist)* p % coord(1) % uvw
     call get_mesh_bin(dd % mesh, xyz, to_meshbin)
-    
+
     ! Check for particle leaking out of domain mesh - this is a user input error
     if (to_meshbin == NO_BIN_FOUND) then
       if (.not. dd % allow_truncation)  then
@@ -94,11 +94,11 @@ contains
       end if
       return
     end if
-    
+
     ! Check for a bad determination of a change - this would be a bug
     if (to_meshbin == dd % meshbin) then
       call fatal_error("Can't determine which domain to send particle " // &
-          "on rank " // trim(to_str(rank)) // ". Particle "// &
+           "on rank " // trim(to_str(rank)) // ". Particle "// &
                   trim(to_str(p % id)) // " at (" // &
                   trim(to_str(p % coord(1) % xyz(1))) // ", " // &
                   trim(to_str(p % coord(1) % xyz(2))) // ", " // &
@@ -128,27 +128,27 @@ contains
 
     ! Note where this particle will be transmitted (after all particles run)
     p % outscatter_destination = to_bin
-    
+
     ! Increment count of how many are going to the local neighbor
     dd % n_scatters_local(to_bin) = dd % n_scatters_local(to_bin) + 1
-    
+
     ! Save the transport info needed to restart the particle in the new domain
     p % stored_xyz      = p % coord(1) % xyz
     p % stored_uvw      = p % coord(1) % uvw
     p % stored_distance = tracking_dist
     p % fly_dd_distance = flying_dist
     p % prn_seed        = prn_seed
-    
+
   end subroutine cross_domain_boundary
 
 
 !===============================================================================
 ! RECALC_INITIAL_XS recalculates the inital cross sections for a particle using
 ! a stored random number seed. For DD runs, if we normally wouldn't have to
-! recalculate the cross section after a scatter then we need to make sure that 
+! recalculate the cross section after a scatter then we need to make sure that
 ! we recalculate it before starting transport with the same random number seed
 ! so we get the same thing as we would have gotten if we tracked the particle to
-! completion without transporting it across domains.  This is needed entirely 
+! completion without transporting it across domains.  This is needed entirely
 ! because URR ptables use a random number from the stream.
 !===============================================================================
 

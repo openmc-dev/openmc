@@ -76,7 +76,7 @@ contains
     ! Make sure we start with the proper XS and coordinates for DD runs
     if (dd_run .and. current_stage > 1) then
       call recalc_initial_xs(p)
-      
+
       ! Move particle slightly forward to recover particle coordinates
       ! (The lower coordinates will be recalculted by calibrate_coord function)
       xyz_temp = p % coord(1) % xyz
@@ -100,12 +100,12 @@ contains
 
         ! set birth cell attribute
         if (p % cell_born == NONE) p % cell_born = p % coord(p % n_coord) % cell
-              
+
       else
         ! calibrate coordinates to guarantee numerical precision
         ! especially for domain decom
         if (dd_run) call calibrate_coord(p)
-        
+
       end if
 
       ! Write particle track.
@@ -134,19 +134,19 @@ contains
         call calculate_xs(p)
       end if
 
-      ! determine whether the particle is now transferred to right domain 
+      ! determine whether the particle is now transferred to right domain
       if (dd_run .and. &
-        & p % stored_distance > ZERO) then
+           & p % stored_distance > ZERO) then
         xyz_temp = p % coord(1) % xyz
         p % coord(1) % xyz = xyz_temp + p % fly_dd_distance * p % coord(1) % uvw
         call distance_to_mesh_surface(p, domain_decomp % mesh, &
-          distance, d_dd_mesh, meshbin=domain_decomp % meshbin)
+             distance, d_dd_mesh, meshbin=domain_decomp % meshbin)
         p % coord(1) % xyz = xyz_temp
         p % fly_dd_distance = p % fly_dd_distance + d_dd_mesh
         if ( p % stored_distance - p % fly_dd_distance > FP_COINCIDENT) then
           ! Prepare particle for communication and stop tracking it
           call cross_domain_boundary(p, domain_decomp, p % stored_distance, &
-            p % fly_dd_distance)
+               p % fly_dd_distance)
           exit
         end if
       end if
@@ -179,17 +179,16 @@ contains
       ! Check domain mesh boundary
       if (dd_run) then
         call distance_to_mesh_surface(p, domain_decomp % mesh, &
-            distance, d_dd_mesh, meshbin=domain_decomp % meshbin)
-        !distance = min(distance, d_dd_mesh)
+             distance, d_dd_mesh, meshbin=domain_decomp % meshbin)
       end if
-      
+
       ! Check for domain boundary crossing
       if (dd_run .and. &
-          d_dd_mesh <= distance) then
+           d_dd_mesh <= distance) then
 
         ! Determine if we should communicate the particle
         call check_domain_boundary_crossing(d_dd_mesh, d_collision, d_boundary,&
-            lattice_translation, surface_crossed, dd_boundary_crossed)
+             lattice_translation, surface_crossed, dd_boundary_crossed)
 
         if (dd_boundary_crossed) then
           ! =================================================================

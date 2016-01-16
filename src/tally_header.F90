@@ -166,9 +166,9 @@ module tally_header
 
     function filter_index(this, matching_bins) result(idx)
 
-      class(TallyObject),   intent(inout) :: this 
+      class(TallyObject),   intent(inout) :: this
       integer, allocatable, intent(in)    :: matching_bins(:)
-      
+
       integer :: idx
 
       ! Get index in total array
@@ -187,10 +187,10 @@ module tally_header
 !===============================================================================
 
     function otf_filter_index(this, real_bin) result(idx)
-      
-      class(TallyObject), intent(inout) :: this 
+
+      class(TallyObject), intent(inout) :: this
       integer,            intent(in)    :: real_bin
-      
+
       integer :: idx
 
       ! If we're doing on-the-fly memory allocation, we must use the map
@@ -204,16 +204,16 @@ module tally_header
 
         ! Grow the results array if we've used it all
         if (this % next_filter_idx > this % size_results_filters) &
-            call this % grow_results_array()
+             call this % grow_results_array()
 
         ! Update the map
         call this % filter_index_map % add_key(real_bin, this % next_filter_idx)
         call this % reverse_filter_index_map % add_key( &
-            this % next_filter_idx, real_bin)
+             this % next_filter_idx, real_bin)
 
         ! Set the return index
         idx = this % next_filter_idx
-        
+
         ! Increment the next index
         this % next_filter_idx = this % next_filter_idx + 1
 
@@ -227,7 +227,7 @@ module tally_header
 
     subroutine grow_results_array(this)
 
-      class(TallyObject), intent(inout) :: this 
+      class(TallyObject), intent(inout) :: this
 
       integer :: newsize
       type(TallyResult), allocatable :: temp(:,:)

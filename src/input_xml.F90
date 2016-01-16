@@ -706,10 +706,10 @@ contains
 
     ! deomain decomposition
     if (check_for_node(doc, "domain_decomposition")) then
-    
+
       ! Set domain decomposition flag
       dd_run = .true.
-      
+
       ! Get pointer to dd node
       call get_node_ptr(doc, "domain_decomposition", node_dd)
 
@@ -720,18 +720,18 @@ contains
         call get_node_ptr(node_dd, "mesh", node_dd_mesh)
 
         allocate(domain_decomp % mesh)
-        
+
         ! Get mesh dimensions
         if (check_for_node(node_dd_mesh, "dimension")) then
-        
+
           n = get_arraysize_integer(node_dd_mesh, "dimension")
-          
+
           allocate(domain_decomp % mesh % dimension(n))
           allocate(domain_decomp % mesh % lower_left(n))
           allocate(domain_decomp % mesh % upper_right(n))
           allocate(domain_decomp % mesh % width(n))
           domain_decomp % mesh % n_dimension = n
-          
+
           ! Check that dimensions are all greater than zero
           call get_node_array(node_dd_mesh, "dimension", temp_int_array3(1:n))
           if (any(temp_int_array3(1:n) <= 0)) then
@@ -741,45 +741,45 @@ contains
 
           ! Read dimensions in each direction
           domain_decomp % mesh % dimension = temp_int_array3(1:n)
-          
+
           domain_decomp % n_domains = product(domain_decomp % mesh % dimension)
-          
+
         else
           call fatal_error("No <dimension> specified for domain " // &
                            "decomposition mesh")
         end if
-        
+
         ! Get mesh lower left
         if (check_for_node(node_dd_mesh, "lower_left")) then
           if (n /= get_arraysize_double(node_dd_mesh, "lower_left")) then
             call fatal_error("Number of entries on <lower_left> must be the &
-                &same as the number of entries on <dimension> for domain &
-                &decomposition mesh.")
+                 &same as the number of entries on <dimension> for domain &
+                 &decomposition mesh.")
           end if
           call get_node_array(node_dd_mesh, "lower_left", &
-              domain_decomp % mesh % lower_left)
+               domain_decomp % mesh % lower_left)
         else
           call fatal_error("No <lower_left> specified for domain &
-              &decomposition mesh")
+               &decomposition mesh")
         end if
-        
+
         ! Get mesh upper right
         if (check_for_node(node_dd_mesh, "upper_right")) then
           if (n /= get_arraysize_double(node_dd_mesh, "upper_right")) then
             call fatal_error("Number of entries on <upper_right> must be the &
-                &same as the number of entries on <dimension> for domain &
-                &decomposition mesh.")
+                 &same as the number of entries on <dimension> for domain &
+                 &decomposition mesh.")
           end if
           call get_node_array(node_dd_mesh, "upper_right", &
-              domain_decomp % mesh % upper_right)
+               domain_decomp % mesh % upper_right)
         else
           call fatal_error("No <upper_right> specified for domain &
-              &decomposition mesh")
+               &decomposition mesh")
         end if
 
         ! Set the width
         domain_decomp % mesh % width = (domain_decomp % mesh % upper_right - &
-            domain_decomp % mesh % lower_left) / domain_decomp % mesh % dimension
+             domain_decomp % mesh % lower_left) / domain_decomp % mesh % dimension
 
       else
         call fatal_error("No <mesh> specified for domain decomposition")
@@ -808,16 +808,16 @@ contains
 
         if (domain_decomp % n_domains /= get_arraysize_double(node_dd, "nodemap")) then
           call fatal_error("Incorrect number of domains specified on domain &
-              &decomposition <nodemap>.")
+               &decomposition <nodemap>.")
         end if
-        
+
         allocate(domain_decomp % domain_load_dist(domain_decomp % n_domains))
-        
+
         call get_node_array(node_dd, "nodemap", domain_decomp % domain_load_dist)
 
         if (any(domain_decomp % domain_load_dist < 0.0_8 )) then
           call fatal_error("Negative value specified in domain decomposition &
-              &<nodemap>.")
+               &<nodemap>.")
         end if
 
       end if
@@ -5266,7 +5266,7 @@ contains
     end select
 
   end subroutine expand_natural_element
-  
+
 !===============================================================================
 ! LOAD_DEPLETION_ISOTOPES loads all isotopes from the specified depletion
 ! libary for addition to materials with depletion on

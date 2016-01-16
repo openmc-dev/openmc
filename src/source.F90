@@ -78,9 +78,9 @@ contains
 
     else
       ! Generate source sites from specified distribution in user input
-      
+
       do i = 1, work
-      
+
         ! Get pointer to source bank site
         src => source_bank(i)
 
@@ -90,19 +90,19 @@ contains
 
         ! Sample external source distribution
         call sample_external_source(src)
-        
+
         ! Store the LCG seed for the particle
         src % prn_seed = prn_seed
-        
+
       end do
 
       if (dd_run) then
 
         ! Send source sites to the processes they'll be transported on
         call distribute_source(domain_decomp)
-        
+
       end if
-      
+
     end if
 
     ! Write out initial source

@@ -26,7 +26,7 @@ module simulation
   use tracking,     only: transport
   use geometry_header, only: BASE_UNIVERSE
   use dd_comm,      only: synchronize_bank_dd, synchronize_particles
-  
+
   implicit none
   private
   public :: run_simulation
@@ -92,22 +92,22 @@ contains
           PARTICLE_LOOP: do i_work = 1, work
             current_work = i_work
               if (dd_run) then
-            
+
                 ! Initialize particle in buffer
                 call initialize_history( &
                       domain_decomp % particle_buffer(i_work), current_work)
 
                 ! Transport particle
                 call transport(domain_decomp % particle_buffer(i_work))
-              
+
               else
 
                 ! grab source particle from bank
                 call initialize_history(p, current_work)
-              
+
                 ! Transport particle
                 call transport(p)
-              
+
               end if
 
             end do PARTICLE_LOOP
@@ -115,7 +115,7 @@ contains
 
           ! Accumulate time for transport
           call time_transport % stop()
-          
+
           call finalize_stage()
 
         end do STAGE_LOOP
@@ -165,7 +165,7 @@ contains
       ! set random number seed
       particle_seed = (overall_gen - 1)*n_particles + p % id
       call set_particle_seed(particle_seed)
-    
+
     else
 
       if (current_stage == 1) then
@@ -283,7 +283,7 @@ contains
       ! Store current value of tracklength k
       keff_generation = global_tallies(K_TRACKLENGTH) % value
     end if
-    
+
     ! Set control flags of dd
     current_stage = 0
     generation_incomplete = .true.
@@ -295,11 +295,11 @@ contains
 !===============================================================================
 
   subroutine initialize_stage()
-  
+
     current_stage = current_stage + 1
 
     if (dd_run) then
-    
+
       domain_decomp % n_scatters_local = 0
       domain_decomp % n_scatters_domain = 0
 
@@ -317,7 +317,7 @@ contains
   subroutine finalize_stage()
 
       if (dd_run) then
-      
+
         ! Send and receive scatter particles
         call time_dd_sync % start()
         work = synchronize_particles(domain_decomp)
@@ -325,13 +325,13 @@ contains
 
         ! We only stop transporting particles if all domains are finished
         if (domain_decomp % n_global_scatters == 0) &
-            generation_incomplete = .false.
-        
+             generation_incomplete = .false.
+
       else
-      
+
         ! Non domain-decomposed runs are always done after the first stage
         generation_incomplete = .false.
-      
+
       end if
 
   end subroutine finalize_stage

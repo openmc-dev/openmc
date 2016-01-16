@@ -1,4 +1,4 @@
-module dd_header 
+module dd_header
 
   use dict_header,      only: DictIntInt
   use mesh_header,      only: RegularMesh
@@ -15,14 +15,14 @@ module dd_header
     integer :: n_domains
     integer :: meshbin               ! mesh domain of current processor
     integer :: ijk(3)                ! ijk corresponding to the meshbin
-    logical :: allow_truncation      ! Whether or not we allow particles to 
+    logical :: allow_truncation      ! Whether or not we allow particles to
                                      ! leak out of the mesh (and stop tracking
                                      ! tracking them if they do)
 
     ! Info about the local 2nd-order neighborhood
     integer :: neighbor_meshbins(42) ! domain meshbins
     type(DictIntInt) :: bins_dict    ! reverse of neighbor_meshbins
-    
+
     ! DD communication information
     integer :: comm   ! communicator for fission bank and tallies in this domain
     integer :: comm_domain_masters ! communicator for local domain masters
@@ -30,23 +30,23 @@ module dd_header
     logical :: local_master         ! master process in this domain?
     integer :: n_domain_procs       ! number of processors in domain sub-comm
     integer :: max_domain_procs     ! max number of procs in any other sub-comm
-    
+
     ! User-specified ditribution of load
     real(8), allocatable :: domain_load_dist(:) ! index is domain meshbin
-    
+
     ! Calculated number of procs per domain
     integer, allocatable :: domain_n_procs(:) ! index is domain meshbin
-    
+
     ! Global ranks of the local masters in each domain, used for computing send
     ! ranks
     integer, allocatable :: domain_masters(:) ! index is domain meshbin
-    
+
     ! For non-DD runs we re-ruse the same particle data structure for each
     ! history, but for DD runs we need to store particles if they would be
     ! transmitted to a neighboring domain.
     type(Particle), allocatable :: particle_buffer(:)
     integer(8) :: size_particle_buffer ! size of particle_buffer
-    
+
     ! During simulation we keep track of where particles will scatter out to
     ! with p % outscatter_destination, and then send them later during
     ! syncronize_banks
@@ -61,7 +61,7 @@ module dd_header
     integer, allocatable :: recv_rank_info(:) ! # of particles to recv from bin
     integer              :: n_inscatt         ! # of particles received
     integer, allocatable :: proc_finish(:)    ! finish idx in scatt array
-    
+
     ! Before synchronizing scatters, all processors need to know how many
     ! particles are going everywhere
     integer, allocatable :: n_scatters_neighborhood(:,:) ! (from_bin, to_bin)
@@ -80,7 +80,7 @@ module dd_header
 contains
 
 !===============================================================================
-! DEALLOCATE_DD frees all memory of dd type 
+! DEALLOCATE_DD frees all memory of dd type
 !===============================================================================
 
   subroutine deallocate_dd(this)
@@ -98,9 +98,9 @@ contains
     if (allocated(this % recv_rank_info)) deallocate(this % recv_rank_info)
     if (allocated(this % proc_finish)) deallocate(this % proc_finish)
     if (allocated(this % n_scatters_neighborhood)) &
-      deallocate(this % n_scatters_neighborhood)
+         deallocate(this % n_scatters_neighborhood)
     if (allocated(this % n_scatters_domain)) &
-      deallocate(this % n_scatters_domain)
+         deallocate(this % n_scatters_domain)
     if (allocated(this % n_scatters_local)) deallocate(this % n_scatters_local)
     if (allocated(this % scatter_offest)) deallocate(this % scatter_offest)
 

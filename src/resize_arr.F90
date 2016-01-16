@@ -43,7 +43,7 @@ contains
     integer, intent(inout)                     :: current_size
     integer, intent(in)                        :: requested_size
     integer, intent(out)                       :: alloc_err
-    
+
     type(Bank), allocatable                    :: tmp(:)
 
     if (requested_size > current_size) then
@@ -68,7 +68,7 @@ contains
     integer(8), intent(inout)                  :: current_size
     integer(8), intent(in)                     :: requested_size
     integer, intent(out)                       :: alloc_err
-    
+
     type(Bank), allocatable                    :: tmp(:)
 
     if (requested_size > current_size) then

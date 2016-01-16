@@ -7,6 +7,6 @@ module random_lcg_header
   integer, parameter :: STREAM_TRACKING = 1
   integer, parameter :: STREAM_TALLIES = 2
   integer, parameter :: STREAM_SOURCE = 3
-  
+
 end module random_lcg_header
 

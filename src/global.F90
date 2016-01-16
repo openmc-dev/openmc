@@ -547,7 +547,7 @@ contains
         if (allocated(ufs_mesh % width)) deallocate(ufs_mesh % width)
         deallocate(ufs_mesh)
     end if
-    
+
     ! Deallocate domain decomposition
     call deallocate_dd(domain_decomp)
 

@@ -371,7 +371,7 @@ contains
   end subroutine find_cell
 
 !===============================================================================
-! CALIBRATE_COORD recalculates lower level coordinates based on level data, to 
+! CALIBRATE_COORD recalculates lower level coordinates based on level data, to
 ! make sure coord() consistent with each other
 !===============================================================================
 subroutine calibrate_coord(p)
@@ -393,7 +393,7 @@ subroutine calibrate_coord(p)
       ! get pointer to cell, note this is from higher level
       c => cells(p % coord(j - 1) % cell)
 
-      if (c % type == CELL_FILL) then        
+      if (c % type == CELL_FILL) then
         ! Apply translation
         if (allocated(c % translation)) then
           p % coord(j) % xyz = p % coord(j-1) % xyz - c % translation
@@ -403,7 +403,7 @@ subroutine calibrate_coord(p)
           p % coord(j) % xyz = matmul(c % rotation_matrix, p % coord(j-1) % xyz)
           p % coord(j) % uvw = matmul(c % rotation_matrix, p % coord(j-1) % uvw)
         end if
-        
+
       elseif (c % type == CELL_LATTICE) then
         ! Set current lattice
         lat => lattices(p % coord(j) % lattice) % obj
@@ -412,12 +412,12 @@ subroutine calibrate_coord(p)
         i_xyz(3) = p % coord(j) % lattice_z
         ! Store lower level coordinates
         p % coord(j) % xyz = lat % get_local_xyz(p % coord(j-1) % xyz, i_xyz)
-        
+
       end if
     end do
-    
+
 end subroutine calibrate_coord
-    
+
 !===============================================================================
 ! CROSS_SURFACE handles all surface crossings, whether the particle leaks out of
 ! the geometry, is reflected, or crosses into a new lattice or cell
@@ -981,7 +981,7 @@ end subroutine calibrate_coord
     real(8), intent(in)           :: testdist  ! dist for testing intersection
     real(8), intent(out)          :: dist
     integer, intent(in), optional :: meshbin ! specified meshbin
-    
+
     integer :: bin        ! bin in mesh of particle
     integer :: ijk(3)     ! indices in mesh
     real(8) :: xyz1(3)    ! point for testing mesh intersection
@@ -989,7 +989,7 @@ end subroutine calibrate_coord
     real(8) :: u, v, w    ! copy of particle direction
     real(8) :: x0, y0, z0 ! oncoming edges of the mesh cell
     real(8) :: d          ! temporary distance
-    
+
     dist = INFINITY
 
     if (present(meshbin)) then
@@ -1000,16 +1000,16 @@ end subroutine calibrate_coord
 
       call get_mesh_bin(m, p % coord(1) % xyz, bin)
       if (bin /= NO_BIN_FOUND .and. &
-          (bin < 1 .or. bin > product(m % dimension))) then
+           (bin < 1 .or. bin > product(m % dimension))) then
         call fatal_error("Invalid meshbin: " // trim(to_str(bin)))
       end if
 
     end if
 
     if (bin == NO_BIN_FOUND) then
-    
+
       ! If we're not in the mesh, we test for intersection
-      
+
       xyz1 = p % coord(1) % xyz + testdist * p % coord(1) % uvw
       if (m % n_dimension == 3) then
         dist = distance_to_mesh_intersection_3d(m, p % coord(1) % xyz, xyz1)
@@ -1018,11 +1018,11 @@ end subroutine calibrate_coord
       end if
 
     else
-    
+
       ! We're in the mesh
-    
+
       call bin_to_mesh_indices(m, bin, ijk)
-    
+
       ! Copy particle position and direction
       x = p % coord(1) % xyz(1)
       y = p % coord(1) % xyz(2)
@@ -1030,11 +1030,11 @@ end subroutine calibrate_coord
       u = p % coord(1) % uvw(1)
       v = p % coord(1) % uvw(2)
       w = p % coord(1) % uvw(3)
-      
+
       ! determine cell center
       x0 = m % lower_left(1) + m % width(1) * (0.5_8 + dble(ijk(1) - 1))
       y0 = m % lower_left(2) + m % width(2) * (0.5_8 + dble(ijk(2) - 1))
-      
+
       ! determine oncoming edge
       x0 = x0 + sign(0.5_8, u) * m % width(1)
       y0 = y0 + sign(0.5_8, v) * m % width(2)
@@ -1046,7 +1046,7 @@ end subroutine calibrate_coord
         d = (x0 - x)/u
       end if
       if (d < dist) dist = d
-      
+
       ! front and back sides
       if (v == ZERO) then
         d = INFINITY
@@ -1054,12 +1054,12 @@ end subroutine calibrate_coord
         d = (y0 - y)/v
       end if
       if (d < dist) dist = d
-      
+
       if (m % n_dimension == 3) then
-        
+
         z0 = m % lower_left(3) + m % width(3) * (0.5_8 + dble(ijk(3) - 1))
         z0 = z0 + sign(0.5_8, w) * m % width(3)
-      
+
         ! top and bottom sides
         if (w == ZERO) then
           d = INFINITY
@@ -1067,9 +1067,9 @@ end subroutine calibrate_coord
           d = (z0 - z)/w
         end if
         if (d < dist) dist = d
-      
+
       end if
-      
+
     end if
 
   end subroutine distance_to_mesh_surface

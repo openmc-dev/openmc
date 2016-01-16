@@ -1015,7 +1015,7 @@ contains
 
     if (dd_run) then
       filename = trim(filename) // '.domain_' // &
-          & zero_padded(domain_decomp % meshbin, &
+           & zero_padded(domain_decomp % meshbin, &
                         count_digits(domain_decomp % n_domains))
     end if
 
@@ -1291,7 +1291,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Outgoing Current to Left", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1307,7 +1307,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Incoming Current from Left", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1326,7 +1326,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Incoming Current from Right", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1342,7 +1342,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Outgoing Current to Right", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1361,7 +1361,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Outgoing Current to Back", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1377,7 +1377,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Incoming Current from Back", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1396,7 +1396,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Incoming Current from Front", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1412,7 +1412,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Outgoing Current to Front", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1431,7 +1431,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Outgoing Current to Bottom", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1447,7 +1447,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Incoming Current from Bottom", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1466,7 +1466,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Incoming Current from Top", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1482,7 +1482,7 @@ contains
               end if
             end if
             if (can_print) &
-              write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                    "Outgoing Current to Top", &
                    to_str(t % results(1,filter_index) % sum), &
                    trim(to_str(t % results(1,filter_index) % sum_sq))

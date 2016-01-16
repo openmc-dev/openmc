@@ -70,7 +70,7 @@ contains
          & zero_padded(current_batch, count_digits(n_max_batches))
     if (dd_run) then
       filename = trim(filename) // '.domain_' // &
-          & zero_padded(domain_decomp % meshbin, &
+           & zero_padded(domain_decomp % meshbin, &
                         count_digits(domain_decomp % n_domains))
     end if
 
@@ -570,7 +570,7 @@ contains
           call h5gopen_f(file_id, trim(groupname), group_id, hdf5_err)
           call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
           call h5dcreate_f(group_id, 'results', hdf5_tallyresult_t, dspace, &
-              dset, hdf5_err)
+               dset, hdf5_err)
           call h5dclose_f(dset, hdf5_err)
           call h5sclose_f(dspace, hdf5_err)
           call h5gclose_f(group_id, hdf5_err)
@@ -593,11 +593,11 @@ contains
       ! Setup file access property list with parallel I/O access
       call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
       call h5pset_fapl_mpio_f(plist, domain_decomp % comm_domain_masters, &
-          MPI_INFO_NULL, hdf5_err)
+           MPI_INFO_NULL, hdf5_err)
 
       ! Open the file
       call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdf5_err, &
-          access_prp = plist)
+           access_prp = plist)
 
       ! Close property list
       call h5pclose_f(plist, hdf5_err)
@@ -635,7 +635,7 @@ contains
           ! Open the dataspace and memory space
           call h5dget_space_f(dset, dspace, hdf5_err)
           call h5screate_simple_f(1, block1 * (t % next_filter_idx - 1), &
-              memspace, hdf5_err)
+               memspace, hdf5_err)
 
           ! For on-the-fly distributed tallies, we need to unscramble. We
           ! do this by selecting an irregular hyperslab in the dataset, and
@@ -652,15 +652,15 @@ contains
 
             ! Select the hyperslab
             call h5sselect_hyperslab_f(dspace, H5S_SELECT_OR_F, start1, &
-                count1, hdf5_err, block = block1)
+                 count1, hdf5_err, block = block1)
 
           end do
 
           ! Write the data
           f_ptr = c_loc(t % results(1,1))
           call h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err, &
-              file_space_id = dspace, mem_space_id = memspace, &
-              xfer_prp = plist)
+               file_space_id = dspace, mem_space_id = memspace, &
+               xfer_prp = plist)
 
           ! Close the dataspace and memory space
           call h5sclose_f(dspace, hdf5_err)
@@ -714,10 +714,10 @@ contains
       if (source_separate) then
         filename = trim(path_output) // 'source.' // &
              & zero_padded(current_batch, count_digits(n_max_batches))
-        
+
         if (dd_run) then
           filename = trim(filename) // '.domain_' // &
-              & zero_padded(domain_decomp % meshbin, &
+               & zero_padded(domain_decomp % meshbin, &
                             count_digits(domain_decomp % n_domains))
         end if
 
@@ -732,11 +732,11 @@ contains
         end if
       else
         filename = trim(path_output) // 'statepoint.' // &
-            & zero_padded(current_batch, count_digits(n_batches))
+             & zero_padded(current_batch, count_digits(n_batches))
 
         if (dd_run) then
           filename = trim(filename) // '.domain_' // &
-              & zero_padded(domain_decomp % meshbin, &
+               & zero_padded(domain_decomp % meshbin, &
                             count_digits(domain_decomp % n_domains))
         end if
 
@@ -756,7 +756,7 @@ contains
       filename = trim(path_output) // 'source' // '.h5'
       if (dd_run) then
         filename = trim(filename) // '.domain_' // &
-            & zero_padded(domain_decomp % meshbin, &
+             & zero_padded(domain_decomp % meshbin, &
                           count_digits(domain_decomp % n_domains))
       end if
 
@@ -966,7 +966,7 @@ contains
     integer                    :: n_order      ! loop index for moment orders
     integer                    :: nm_order     ! loop index for Ynm moment orders
     character(8)               :: moment_name  ! name of moment (e.g, P3, Y-1,1)
-    
+
     ! Write message
     call write_message("Loading state point " // trim(path_state_point) &
          // "...", 1)
@@ -1117,7 +1117,7 @@ contains
       if (tally % on_the_fly_allocation) then
         call read_dataset(tally_group, "otf_size_results_filters", &
                           otf_size_results_filters)
-        
+
         ! Read otf filter bin mapping
         allocate(filter_map_array(otf_size_results_filters))
         call read_dataset(tally_group, "otf_filter_bin_map", &
@@ -1140,7 +1140,7 @@ contains
         call read_dataset(tally_group, "offset", tally % filters(j) % offset)
         call read_dataset(tally_group, "n_bins", tally % filters(j) % n_bins)
         if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
-            tally % filters(j) % type == FILTER_ENERGYOUT) then
+             tally % filters(j) % type == FILTER_ENERGYOUT) then
           call read_dataset(tally_group, "bins", &
                tally%filters(j)%real_bins(1:size(tally%filters(j)%real_bins)))
         else
@@ -1450,7 +1450,7 @@ contains
 !===============================================================================
 
   subroutine heapsort_results(t)
-   
+
     type(TallyObject), pointer, intent(inout) :: t
 
     integer :: start, n, bottom
@@ -1460,20 +1460,20 @@ contains
     do start = (n - 2) / 2, 0, -1
       call siftdown_results(t, start, n);
     end do
-   
+
     ! Do the sort - O(n)
     do bottom = n - 1, 1, -1
       call swap_results(t, 1, bottom + 1)
       call siftdown_results(t, 0, bottom)
     end do
-   
+
   end subroutine heapsort_results
 
 !===============================================================================
 ! SWAP_RESULTS swaps two sections of the results array in a tally, and
 ! updates the otf mapping dictionaries
 !===============================================================================
-  
+
   subroutine swap_results(t, a, b)
     type(TallyObject), pointer, intent(inout) :: t
     integer, intent(in) :: a, b ! actual composition indices in otf_comp
@@ -1505,7 +1505,7 @@ contains
 !===============================================================================
 
   subroutine siftdown_results(t, start, bottom)
-   
+
     type(TallyObject), pointer, intent(inout) :: t
     integer, intent(in) :: start, bottom
 
@@ -1515,13 +1515,13 @@ contains
     root = start
     do while(root*2 + 1 < bottom)
       child = root * 2 + 1
-   
+
       if (child + 1 < bottom) then
         real_inst_a = t % reverse_filter_index_map % get_key(child + 1)
         real_inst_b = t % reverse_filter_index_map % get_key(child + 2)
         if (real_inst_a < real_inst_b) child = child + 1
       end if
-   
+
       real_inst_a = t % reverse_filter_index_map % get_key(root + 1)
       real_inst_b = t % reverse_filter_index_map % get_key(child + 1)
       if (real_inst_a < real_inst_b) then
@@ -1531,8 +1531,8 @@ contains
         return
       end if
 
-    end do      
-   
+    end do
+
   end subroutine siftdown_results
 
 end module state_point

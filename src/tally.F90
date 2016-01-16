@@ -2309,8 +2309,8 @@ contains
     ! accumulated on the domain master of each domain - those results should be
     ! identical
     if ((.not. dd_run .and. master) .or. &
-        (dd_run .and. domain_decomp % local_master) .or. &
-        (.not. reduce_tallies)) then
+         (dd_run .and. domain_decomp % local_master) .or. &
+         (.not. reduce_tallies)) then
       ! Accumulate results for each tally
       do i = 1, active_tallies % size()
         call accumulate_tally(tallies(active_tallies % get_item(i)))
@@ -2357,7 +2357,7 @@ contains
       call write_message("Reducing tally" // trim(to_str(t % id)) // "...", 9)
 
       if (.not. dd_run) then
-        
+
         if (t % on_the_fly_allocation) then
           call fatal_error("On-the-fly tally reduction only implemented " // &
                     "for domain-decomposed runs")
@@ -2484,10 +2484,10 @@ contains
     call MPI_COMM_SIZE(reduce_comm, reduce_n_procs, mpi_err)
     call MPI_COMM_RANK(reduce_comm, reduce_rank, mpi_err)
     if (reduce_rank == 0) reduce_master = .true.
-    
+
     ! Master needs to know the max number of filter bins
     call MPI_REDUCE(t % next_filter_idx, max_filters, 1, MPI_INTEGER, &
-         MPI_MAX, 0, reduce_comm, mpi_err) 
+         MPI_MAX, 0, reduce_comm, mpi_err)
 
     n_request = 0
     if (reduce_master) then
@@ -2501,12 +2501,12 @@ contains
         ! Receive number of filters
         n_request = n_request + 1
         call MPI_IRECV(proc_n_filters(p), 1, MPI_INTEGER, p, p, &
-            reduce_comm, request(n_request), mpi_err)
+             reduce_comm, request(n_request), mpi_err)
 
         ! Receive filter maps
         n_request = n_request + 1
         call MPI_IRECV(proc_filter_map(:,p), max_filters, MPI_INTEGER, p, &
-            p, reduce_comm, request(n_request), mpi_err)
+             p, reduce_comm, request(n_request), mpi_err)
 
       end do
 
@@ -2523,20 +2523,20 @@ contains
       ! Send number of filters
       n_request = n_request + 1
       call MPI_ISEND(n_filters, 1, MPI_INTEGER, &
-          0, reduce_rank, &
-          reduce_comm, request(n_request), mpi_err)
+           0, reduce_rank, &
+           reduce_comm, request(n_request), mpi_err)
 
       ! Send filter maps
       n_request = n_request + 1
       call MPI_ISEND(proc_filter_map(:,1), n_filters, MPI_INTEGER, &
-          0, reduce_rank, &
-          reduce_comm, request(n_request), mpi_err)
+           0, reduce_rank, &
+           reduce_comm, request(n_request), mpi_err)
 
     end if
 
     ! Wait for filter information to synchronize
     call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
-    
+
     !=======================================================================
     ! SYNCHRONIZE MAPS
 
@@ -2564,7 +2564,7 @@ contains
 
       ! broadcast the updated master filter map
       call MPI_BCAST(proc_filter_map(:, 1), n_filters, MPI_INTEGER, 0, &
-          reduce_comm, mpi_err)
+           reduce_comm, mpi_err)
 
     else
 
@@ -2576,7 +2576,7 @@ contains
 
       ! recieve master filter map
       call MPI_BCAST(proc_filter_map(:, 1), n_filters, MPI_INTEGER, 0, &
-          reduce_comm, mpi_err)
+           reduce_comm, mpi_err)
 
       ! reorder results according to master map
       allocate(tally_temp(t % total_score_bins, n_filters))
@@ -2602,11 +2602,11 @@ contains
     n_bins = t % total_score_bins * n_filters
 
     if (reduce_master) then
-      
+
       ! TODO: add otf phasing, which would move this outside of here
       allocate(tally_temp(t % total_score_bins, n_filters))
       tally_temp = t % results(:,:) % value
-      
+
       ! Receive results arrays from other procs
       call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
            MPI_SUM, 0, reduce_comm, mpi_err)

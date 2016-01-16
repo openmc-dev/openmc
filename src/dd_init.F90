@@ -9,10 +9,10 @@ module dd_init
   use search,     only: binary_search
   use string,     only: to_str
 
-#ifdef MPI  
+#ifdef MP
   use mpi
-#endif 
-  
+#endif
+
   implicit none
   public
 
@@ -25,7 +25,7 @@ contains
   subroutine initialize_domain_decomp(dd)
 
     type(dd_type), intent(inout) :: dd
-    
+
     integer :: d                ! neighbor bin
     integer :: neighbor_meshbin
     integer :: alloc_err        ! allocation error code
@@ -36,7 +36,7 @@ contains
 
 #ifdef _OPENMP
     call fatal_error("Domain decomposition not implemented in " // &
-        "conjunction with OpenMP.")
+         "conjunction with OpenMP.")
 #endif
 
     if (n_procs < dd % n_domains) then
@@ -54,8 +54,8 @@ contains
     dd % domain_masters(1) = 0
     do d = 2, dd % n_domains
       dd % domain_masters(d) = dd % domain_masters(d - 1) + &
-          dd % domain_n_procs(d - 1)
-    end do 
+           dd % domain_n_procs(d - 1)
+    end do
 
     ! Set domain for this processor
     if (rank >= dd % domain_masters(dd % n_domains)) then
@@ -63,14 +63,14 @@ contains
     else
       dd % meshbin = binary_search(dd % domain_masters, dd % n_domains, rank)
     end if
-    
+
     ! Find domain meshbin ijk
     call bin_to_mesh_indices(dd % mesh, dd % meshbin, dd % ijk)
-    
+
     ! Determine meshbins of domains in the local neighborhood
     call set_neighbor_meshbins(dd)
- 
-    ! Find the maximum number of processors working on any domain   
+
+    ! Find the maximum number of processors working on any domain
     dd % max_domain_procs = maxval(dd % domain_n_procs)
 
     ! Set mapping dict of mesh bin indices --> relative neighbor indices
@@ -80,7 +80,7 @@ contains
       if (neighbor_meshbin == NO_BIN_FOUND) cycle
       call dd % bins_dict % add_key(neighbor_meshbin, d)
     end do
-    
+
 #ifdef MPI
     ! Initialize different MPI communicators for each domain, for fission bank
     ! and tally synchronization
@@ -92,11 +92,11 @@ contains
     ! Initialize a communicator containing only domain master ranks
     call MPI_COMM_GROUP(MPI_COMM_WORLD, world_group, mpi_err)
     call MPI_GROUP_INCL(world_group, dd % n_domains, dd % domain_masters, &
-        domain_master_group, mpi_err)
+         domain_master_group, mpi_err)
     call MPI_COMM_CREATE(MPI_COMM_WORLD, domain_master_group, &
-        dd % comm_domain_masters, mpi_err)
+         dd % comm_domain_masters, mpi_err)
 
-#endif    
+#endif
 
     ! Set local_master
     if (dd % rank == 0) then
@@ -107,7 +107,7 @@ contains
 
     ! Allocate particle inter-domain transfer information arrays
     allocate(dd % n_scatters_neighborhood(N_DD_NEIGHBORS,N_CARTESIAN_NEIGHBORS))
-    allocate(dd % n_scatters_domain(N_CARTESIAN_NEIGHBORS)) 
+    allocate(dd % n_scatters_domain(N_CARTESIAN_NEIGHBORS))
     allocate(dd % n_scatters_local(N_CARTESIAN_NEIGHBORS))
     allocate(dd % scatter_offest(N_CARTESIAN_NEIGHBORS))
     allocate(dd % send_rank_info(dd % max_domain_procs * N_CARTESIAN_NEIGHBORS))
@@ -115,9 +115,9 @@ contains
     allocate(dd % proc_finish(dd % max_domain_procs))
 
     ! Allocate buffers
-    
+
     ! While the theoretical maximum this processor could have to deal
-    ! with if all particles transfer in n_particles/n_procs_on_this_domain, in 
+    ! with if all particles transfer in n_particles/n_procs_on_this_domain, in
     ! practice the number is much smaller. In a perfectly load balanced run
     ! (e.g. infinite medium), each domain should run on average
     ! n_particles/n_domains particles/n_procs_on_this_domain. So in an effort to
@@ -129,7 +129,7 @@ contains
                                     DD_BUFFER_HEADROOM)
     allocate(dd % particle_buffer(dd % size_particle_buffer), STAT=alloc_err)
 
-    ! Check for allocation errors 
+    ! Check for allocation errors
     if (alloc_err /= 0) then
       call fatal_error("Failed to allocate initial DD particle buffer.")
     end if
@@ -138,20 +138,20 @@ contains
     dd % size_send_buffer = dd % size_particle_buffer
     allocate(dd % send_buffer(dd % size_send_buffer), STAT=alloc_err)
 
-    ! Check for allocation errors 
+    ! Check for allocation errors
     if (alloc_err /= 0) then
       call fatal_error("Failed to allocate initial DD send buffer.")
     end if
-    
+
     ! Allocate receive buffer
     dd % size_recv_buffer = dd % size_particle_buffer
     allocate(dd % recv_buffer(dd % size_recv_buffer), STAT=alloc_err)
 
-    ! Check for allocation errors 
+    ! Check for allocation errors
     if (alloc_err /= 0) then
       call fatal_error("Failed to allocate initial DD receive bank.")
     end if
-  
+
   end subroutine initialize_domain_decomp
 
 !===============================================================================
@@ -180,9 +180,9 @@ contains
       dd % domain_n_procs = n_procs / dd % n_domains
       do d = 1, dd % n_domains
         if (d - 1 < mod(n_procs, dd % n_domains)) &
-          dd % domain_n_procs(d) = dd % domain_n_procs(d) + 1
+             dd % domain_n_procs(d) = dd % domain_n_procs(d) + 1
       end do
-      
+
     else
 
       ! TODO: different matching strategies can to be explored, and support for
@@ -190,7 +190,7 @@ contains
       call distribute_load_peak_shaving(dd)
 
     end if
-    
+
   end subroutine calculate_domain_n_procs
 
 !===============================================================================
@@ -199,9 +199,9 @@ contains
 !===============================================================================
 
   subroutine distribute_load_peak_shaving(dd)
-  
+
     type(dd_type), intent(inout) :: dd
-  
+
     integer                :: d
     integer                :: max_
     logical                :: forward
@@ -214,7 +214,7 @@ contains
 
     ! Determine exact fractional number of nodes required
     frac_nodes = dd % domain_load_dist * real(n_procs, 8)
-    
+
     ! Assign at least one processes per domain
     ! TODO: add support for allowing no processes to waste time on a domain with
     ! a user-input load of exactly zero. For those domains, a fatal error would
@@ -223,12 +223,12 @@ contains
     ! boundary conditions (e.g., corner nodes with BEAVRS when using a
     ! StructuredMesh domain mesh
     dd % domain_n_procs = max(1, ceiling(frac_nodes))
-    
+
     ! Perform a simple symmetric peak-shaving to make it match
     forward = .true.
     do while (sum(dd % domain_n_procs) > n_procs)
       max_ = maxval(dd % domain_n_procs)
-      
+
       if (forward) then
 
         do d = 1, dd % n_domains
@@ -237,7 +237,7 @@ contains
             exit
           end if
         end do
-        
+
         forward = .false.
 
       else
@@ -252,9 +252,9 @@ contains
         forward = .true.
 
       end if
-      
+
     end do
-    
+
     deallocate(frac_nodes)
 
   end subroutine distribute_load_peak_shaving
@@ -265,61 +265,61 @@ contains
 !===============================================================================
 
   subroutine set_neighbor_meshbins(dd)
-  
+
     type(dd_type), intent(inout) :: dd
-  
+
     dd % neighbor_meshbins = (/ &
-      ! First-order neighbors
+            ! First-order neighbors
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0,  0/)), &  !-x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0,  0/)), &  !+x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1,  0/)), &  !-y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1,  0/)), &  !+y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0, -1/)), &  !-z
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0,  1/)), &  !+z
-      ! Second-order neighbors (neighbors of the first-order neighbors)
-      ! -x
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0,  0/)), &  !+x
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1,  0/)), &  !-y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1,  0/)), &  !+y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0, -1/)), &  !-z
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0,  1/)), &  !+z
+            ! Second-order neighbors (neighbors of the first-order neighbors)
+            ! -x
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-2,  0,  0/)), & !-x
-      dd % meshbin                                             , & !+x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1, -1,  0/)), & !-y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  1,  0/)), & !+y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0, -1/)), & !-z
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0,  1/)), & !+z
-      ! +x
+            dd % meshbin                                             , & !+x
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1, -1,  0/)), & !-y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  1,  0/)), & !+y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0, -1/)), & !-z
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0,  1/)), & !+z
+            ! +x
       dd % meshbin                                             , & !-x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 2,  0,  0/)), & !+x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1, -1,  0/)), & !-y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  1,  0/)), & !+y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0, -1/)), & !-z
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0,  1/)), & !+z
-      ! -y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 2,  0,  0/)), & !+x
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1, -1,  0/)), & !-y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  1,  0/)), & !+y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0, -1/)), & !-z
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0,  1/)), & !+z
+            ! -y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1, -1,  0/)), & !-x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1, -1,  0/)), & !+x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -2,  0/)), & !-y
-      dd % meshbin                                             , & !+y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1, -1/)), & !-z
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1,  1/)), & !+z
-      ! +y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1, -1,  0/)), & !+x
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -2,  0/)), & !-y
+            dd % meshbin                                             , & !+y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1, -1/)), & !-z
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1,  1/)), & !+z
+            ! +y
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  1,  0/)), & !-x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  1,  0/)), & !+x
-      dd % meshbin                                             , & !-y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  2,  0/)), & !+y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1, -1/)), & !-z
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1,  1/)), & !+z
-      ! -z
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  1,  0/)), & !+x
+            dd % meshbin                                             , & !-y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  2,  0/)), & !+y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1, -1/)), & !-z
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1,  1/)), & !+z
+            ! -z
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0, -1/)), & !-x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0, -1/)), & !+x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1, -1/)), & !-y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1, -1/)), & !+y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0, -2/)), & !-z
-      dd % meshbin                                             , & !+z
-      ! +z
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0, -1/)), & !+x
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1, -1/)), & !-y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1, -1/)), & !+y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0, -2/)), & !-z
+            dd % meshbin                                             , & !+z
+            ! +z
       mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0,  1/)), & !-x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0,  1/)), & !+x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1,  1/)), & !-y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1,  1/)), & !+y
-      dd % meshbin                                             , & !-z
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0,  2/))  & !+z
-    /)
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0,  1/)), & !+x
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1,  1/)), & !-y
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1,  1/)), & !+y
+            dd % meshbin                                             , & !-z
+            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0,  2/))  & !+z
+                 /)
 
   end subroutine set_neighbor_meshbins
 

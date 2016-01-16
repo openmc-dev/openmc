@@ -376,15 +376,15 @@ module constants
 
   !=============================================================================
   ! DOMAIN DECOMPOSITION CONSTANTS
-  
+
   ! Indicate that a particle didn't scatter out after a stage
   integer, parameter :: NO_OUTSCATTER = -1
-  
-  ! Constants for looping around local neighbor bins 
+
+  ! Constants for looping around local neighbor bins
   integer, parameter :: N_CARTESIAN_NEIGHBORS = 6
   integer, parameter :: N_DD_COMM_NEIGHBORS = 36
   integer, parameter :: N_DD_NEIGHBORS = 42
-  
+
   ! Banks and buffers are allocated slightly larger than expected for perfect
   ! load balance by this ratio, and then resized again later if needed
   real(8), parameter :: DD_BUFFER_HEADROOM = 1.1_8
@@ -392,7 +392,7 @@ module constants
   ! When tallies arrays are allocated on-the-fly, this parameter
   ! controls how much larger than the needed size they will be allocated to
   real(8), parameter :: OTF_HEADROOM = 1.1_8
-  
+
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
 

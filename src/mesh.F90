@@ -106,7 +106,7 @@ contains
     ! For surface_current, it is allowed to be out of mesh; for dd, it is not
     if(.not. present(surface_current)) then
       if (any(ijk(1:m % n_dimension) < 1) .or. &
-          any(ijk(1:m % n_dimension) > m % dimension)) then
+           any(ijk(1:m % n_dimension) > m % dimension)) then
         bin = NO_BIN_FOUND
         return
       end if
@@ -497,7 +497,7 @@ contains
     end if
 
   end function distance_to_mesh_intersection_2d
-  
+
   function distance_to_mesh_intersection_3d(m, xyz0, xyz1) result(dist)
 
     type(RegularMesh), pointer :: m

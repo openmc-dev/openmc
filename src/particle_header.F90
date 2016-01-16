@@ -92,13 +92,13 @@ module particle_header
     type(Bank) :: secondary_bank(MAX_SECONDARY)
     ! Was this particle just created?
     logical    :: new_particle = .true.
-    
+
     ! Data needed to restart a particle stored in a bank after changing domains
     real(8)    :: stored_xyz(3)
     real(8)    :: stored_uvw(3)
     real(8)    :: stored_distance ! sampled distance to go after changing domain
     real(8)    :: fly_dd_distance ! accumulated distance to domain boundary
-    integer(8) :: prn_seed(N_STREAMS) ! the  next random number seed 
+    integer(8) :: prn_seed(N_STREAMS) ! the  next random number seed
     integer(8) :: xs_seed(N_STREAMS)  ! the previously seed used for xs gen
 
     ! Domain information
@@ -119,7 +119,7 @@ module particle_header
 !===============================================================================
 
   type ParticleBuffer
-  
+
     sequence
 
     integer(8) :: id
@@ -199,10 +199,10 @@ contains
 !===============================================================================
 
   subroutine particle_to_buffer(part, buf)
-  
+
     type(Particle),       intent(in)  :: part
     type(ParticleBuffer), intent(out) :: buf
-    
+
     buf % id              = part % id
     buf % type            = part % type
     buf % wgt             = part % wgt
@@ -228,7 +228,7 @@ contains
     buf % xs_seed         = part % xs_seed
     buf % stored_distance = part % stored_distance
     buf % fly_dd_distance = part % fly_dd_distance
-  
+
   end subroutine particle_to_buffer
 
 !===============================================================================
@@ -237,10 +237,10 @@ contains
 !===============================================================================
 
   subroutine buffer_to_particle(buf, part)
-  
+
     type(ParticleBuffer), intent(in)  :: buf
     type(Particle),       intent(out) :: part
-  
+
     part % id              = buf % id
     part % type            = buf % type
     part % wgt             = buf % wgt

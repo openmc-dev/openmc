@@ -15,7 +15,7 @@ from openmc.checkvalue import check_type, check_value, check_greater_than, \
 from openmc.clean_xml import *
 
 # Supported incoming particle MGXS angular treatment representations
-REPRESENTATIONS = ['isotropic', 'angle']
+_REPRESENTATIONS = ['isotropic', 'angle']
 
 def ndarray_to_string(arr):
     """Converts a numpy ndarray in to a join with spaces between entries
@@ -87,7 +87,7 @@ class XSdata(object):
     name : str, optional
         Name of the mgxs data set.
 
-    representation : {'isotropic' or 'angle'}
+    representation : {'isotropic', 'angle'}
         Method used in generating the MGXS (isotropic or angle-dependent flux
         weighting). Defaults to 'isotropic'
 
@@ -241,7 +241,7 @@ class XSdata(object):
     @representation.setter
     def representation(self, representation):
         # Check it is of valid type.
-        check_value('representation', representation, REPRESENTATIONS)
+        check_value('representation', representation, _REPRESENTATIONS)
         self._representation = representation
 
     @alias.setter

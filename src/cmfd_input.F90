@@ -108,7 +108,7 @@ contains
         do i = 1, ng
           found = .false.
           do g = 1, energy_groups + 1
-            if (cmfd%egrid(i) == energy_bins(g)) then
+            if (cmfd % egrid(i) == energy_bins(g)) then
               found = .true.
               exit
             end if

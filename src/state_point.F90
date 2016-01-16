@@ -727,14 +727,12 @@ contains
     ! It is not impossible for a state point to be generated from a CE run but
     ! to be loaded in to an MG run (or vice versa), check to prevent that.
     call read_dataset(file_id, "run_CE", sp_run_CE)
-    if (sp_run_CE == 0) then
-      if (run_CE) &
-           call fatal_error("State point file is from multi-group run but &
-                            & current run is continous-energy!")
-    else if (sp_run_CE == 1) then
-      if (.not. run_CE) &
-           call fatal_error("State point file is from continuous-energy run but &
-                            & current run is multi-group!")
+    if (sp_run_CE == 0 .and. run_CE) then
+      call fatal_error("State point file is from multi-group run but &
+                       & current run is continous-energy!")
+    else if (sp_run_CE == 1 .and. .not. run_CE) then
+      call fatal_error("State point file is from continuous-energy run but &
+                       & current run is multi-group!")
     end if
 
     ! Read and overwrite run information except number of batches

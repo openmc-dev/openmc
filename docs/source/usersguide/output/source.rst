@@ -15,5 +15,6 @@ is that documented here.
 **/source_bank** (Compound type)
 
     Source bank information for each particle. The compound type has fields
-    ``wgt``, ``xyz``, ``uvw``, and ``E`` which represent the weight, position,
-    direction, and energy of the source particle, respectively.
+    ``wgt``, ``xyz``, ``uvw``, ``E``, ``g``, and ``delayed_group``, which
+    represent the weight, position, direction, energy, energy group, and
+    delayed_group of the source particle, respectively.

@@ -20,7 +20,7 @@ groups = openmc.mgxs.EnergyGroups(group_edges=[1E-11, 0.0635E-6, 10.0E-6,
                                                1.0E-4, 1.0E-3, 0.5, 1.0, 20.0])
 
 # Instantiate the 7-group (C5G7) cross section data
-uo2_xsdata = openmc.XSdata('UO2.300k', groups)
+uo2_xsdata = openmc.XSdata('UO2.300K', groups)
 uo2_xsdata.order = 0
 uo2_xsdata.total = np.array([0.1779492, 0.3298048, 0.4803882, 0.5543674,
                             0.3118013, 0.3951678, 0.5644058])
@@ -43,7 +43,7 @@ uo2_xsdata.nu_fission = np.array([2.005998E-02, 2.027303E-03, 1.570599E-02,
 uo2_xsdata.chi = np.array([5.8791E-01, 4.1176E-01, 3.3906E-04, 1.1761E-07,
                            0.0000E+00, 0.0000E+00, 0.0000E+00])
 
-h2o_xsdata = openmc.XSdata('LWTR.300k', groups)
+h2o_xsdata = openmc.XSdata('LWTR.300K', groups)
 h2o_xsdata.order = 0
 h2o_xsdata.total = np.array([0.15920605, 0.412969593, 0.59030986, 0.58435,
                              0.718, 1.2544497, 2.650379])
@@ -57,7 +57,7 @@ scatter = [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0
             [0.0000000, 0.0000000, 0.0000000, 0.0000714, 0.1391380, 0.5118200, 0.0612290],
             [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0022157, 0.6999130, 0.5373200],
             [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]]
-h2o_xsdata.scatter = np.array(scatter[:][:])
+h2o_xsdata.scatter = np.array(scatter)
 
 mg_cross_sections_file = openmc.MGXSLibraryFile(groups)
 mg_cross_sections_file.add_xsdatas([uo2_xsdata,h2o_xsdata])
@@ -69,8 +69,8 @@ mg_cross_sections_file.export_to_xml()
 ###############################################################################
 
 # Instantiate some Macroscopic Data
-uo2_data = openmc.Macroscopic('UO2', '300k')
-h2o_data = openmc.Macroscopic('LWTR', '300k')
+uo2_data = openmc.Macroscopic('UO2', '300K')
+h2o_data = openmc.Macroscopic('LWTR', '300K')
 
 # Instantiate some Materials and register the appropriate Nuclides
 uo2 = openmc.Material(material_id=1, name='UO2 fuel')
@@ -83,7 +83,7 @@ water.add_macroscopic(h2o_data)
 
 # Instantiate a MaterialsFile, register all Materials, and export to XML
 materials_file = openmc.MaterialsFile()
-materials_file.default_xs = '300k'
+materials_file.default_xs = '300K'
 materials_file.add_materials([uo2, water])
 materials_file.export_to_xml()
 
@@ -145,11 +145,6 @@ settings_file.inactive = inactive
 settings_file.particles = particles
 settings_file.set_source_space('box', [-0.63, -0.63, -1, \
                                       0.63, 0.63, 1])
-settings_file.entropy_lower_left = [-0.54, -0.54, -1.e50]
-settings_file.entropy_upper_right = [0.54, 0.54, 1.e50]
-settings_file.entropy_dimension = [10, 10, 1]
-settings_file.export_to_xml()
-
 
 ###############################################################################
 #                   Exporting to OpenMC tallies.xml File

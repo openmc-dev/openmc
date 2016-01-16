@@ -370,12 +370,12 @@ contains
         end if
         if (get_kfiss) then
           allocate(this % k_fission(groups))
-          if (check_for_node(node_xsdata, "k_fission")) then
-            call get_node_array(node_xsdata, "k_fission", this % k_fission)
+          if (check_for_node(node_xsdata, "kappa_fission")) then
+            call get_node_array(node_xsdata, "kappa_fission", this % k_fission)
           else
             error_code = 1
-            error_text = "k_fission data missing, required due to kappa-fission&
-                         & tallies in tallies.xml file!"
+            error_text = "kappa_fission data missing, required due to &
+                          &kappa-fission tallies in tallies.xml file!"
             return
           end if
         end if
@@ -554,22 +554,22 @@ contains
             deallocate(temp_arr)
           else
             error_code = 1
-            error_text = "Fission data missing, required due to kappa-fission&
+            error_text = "Fission data missing, required due to fission&
                          & tallies in tallies.xml file!"
             return
           end if
         end if
         if (get_kfiss) then
-          if (check_for_node(node_xsdata, "k_fission")) then
+          if (check_for_node(node_xsdata, "kappa_fission")) then
             allocate(temp_arr(groups * this % Nazi * this % Npol))
-            call get_node_array(node_xsdata, "k_fission", temp_arr)
+            call get_node_array(node_xsdata, "kappa_fission", temp_arr)
             allocate(this % k_fission(groups, this % Nazi, this % Npol))
             this % k_fission = reshape(temp_arr, (/groups, this % Nazi, this % Npol/))
             deallocate(temp_arr)
           else
             error_code = 1
-            error_text = "k_fission data missing, required due to kappa-fission&
-                         & tallies in tallies.xml file!"
+            error_text = "kappa_fission data missing, required due to &
+                          &kappa-fission tallies in tallies.xml file!"
             return
           end if
         end if

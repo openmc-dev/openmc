@@ -546,7 +546,8 @@ attributes/sub-elements:
 
       *Default*: 0.988 2.249
 
-      .. note:: The above format should be used even when using the multi-group :ref:`energy_mode`.
+      .. note:: The above format should be used even when using the multi-group
+                :ref:`energy_mode`.
 
   :write_initial:
     An element specifying whether to write out the initial source bank used at
@@ -1516,6 +1517,8 @@ The ``<tally>`` element accepts the following sub-elements:
       per source neutron.
 
       .. note:: This score type is not used in the multi-group :ref:`energy_mode`.
+
+    .. _kappa_fission:
 
     :kappa-fission:
       The recoverable energy production rate due to fission. The recoverable

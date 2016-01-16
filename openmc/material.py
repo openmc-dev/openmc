@@ -50,8 +50,8 @@ class Material(object):
         Density of the material (units defined separately)
     density_units : str
         Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/cm3',
-        'atom/b-cm', 'atom/cm3', 'sum', or 'macro' (the latter only applies
-        if in multi-group mode).
+        'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
+        applies in the case of a multi-group calculation.
 
     """
 
@@ -346,7 +346,7 @@ class Material(object):
                   'has already been added'.format(self._id, macroscopic)
             raise ValueError(msg)
 
-        if not isinstance(macroscopic, (openmc.Macroscopic, str)):
+        if not isinstance(macroscopic, (openmc.Macroscopic, basestring)):
             msg = 'Unable to add a Macroscopic to Material ID="{0}" with a ' \
                   'non-Macroscopic value "{1}"'.format(self._id, macroscopic)
             raise ValueError(msg)
@@ -511,7 +511,7 @@ class Material(object):
 
         return xml_element
 
-    def _get_macroscopic_xml(self, macroscopic, distrib=False):
+    def _get_macroscopic_xml(self, macroscopic):
         xml_element = ET.Element("macroscopic")
         xml_element.set("name", macroscopic._name)
 
@@ -626,8 +626,7 @@ class Material(object):
                     subelement.append(subsubelement)
             else:
                 # Create macroscopic XML subelements
-                subsubelement = self._get_macroscopic_xml(self,
-                                                          self._macroscopic,
+                subsubelement = self._get_macroscopic_xml(self._macroscopic,
                                                           distrib=True)
                 subelement.append(subsubelement)
 

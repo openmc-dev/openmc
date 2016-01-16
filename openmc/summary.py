@@ -60,7 +60,7 @@ class Summary(object):
         self.date_and_time = self._f['date_and_time'][...]
 
         # Read if continuous-energy or multi-group
-        self.run_CE = bool(self._f['run_CE'].value)
+        self.run_CE = (self._f['run_CE'].value == 1)
 
         self.n_batches = self._f['n_batches'].value
         self.n_particles = self._f['n_particles'].value
@@ -278,7 +278,7 @@ class Summary(object):
             # Get the distribcell index
             ind = self._f['geometry/cells'][key]['distribcell_index'].value
             if ind != 0:
-               cell.distribcell_index = ind 
+               cell.distribcell_index = ind
 
             # Add the Cell to the global dictionary of all Cells
             self.cells[index] = cell

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <materials>
-  <!-- Set default xs set to 71c, which is ENDF-B/VII.0 at 600K -->
-  <default_xs>71c</default_xs>
+  <!-- Set default xs set to 300 Kelvin -->
+  <default_xs>300K</default_xs>
 
   <!-- UO2 -->
   <material id="1">

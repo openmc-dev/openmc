@@ -778,7 +778,6 @@ contains
           end if
         end if
 
-
       end select
 
       !#########################################################################
@@ -807,6 +806,14 @@ contains
     real(8) :: macro_total          ! material macro total xs
     real(8) :: macro_scatt          ! material macro scatt xs
     real(8) :: micro_abs            ! nuclidic microscopic abs
+    real(8) :: p_uvw(3)             ! Particle's current uvw
+
+    ! Set the direction, if needed for nuclidic data, so that nuc % get_xs
+    ! knows wihch direction it should be using for direction-dependent
+    ! mgxs
+    if (i_nuclide > 0) then
+      p_uvw = p % coord(p % n_coord) % uvw
+    end if
 
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins
@@ -860,7 +867,7 @@ contains
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'total', UVW=p % coord(i) % uvw) * &
+              score = nuc % get_xs(p % g, 'total', UVW=p_uvw) * &
                    atom_density * flux
             end associate
           else
@@ -902,7 +909,7 @@ contains
           ! Note SCORE_SCATTER_N not available for tracklength/collision.
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'scatter', UVW=p % coord(i) % uvw) * &
+              score = nuc % get_xs(p % g, 'scatter', UVW=p_uvw) * &
                    atom_density * flux
             end associate
           else
@@ -1069,7 +1076,7 @@ contains
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw) &
+              score = nuc % get_xs(p % g, 'absorption', UVW=p_uvw) &
                    * atom_density * flux
             end associate
           else
@@ -1085,10 +1092,10 @@ contains
             ! calculate fraction of absorptions that would have resulted in
             ! fission
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw)
+              micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p_uvw)
               if (micro_abs > ZERO) then
                 score = p % absorb_wgt * &
-                     nuc % get_xs(p % g, 'fission', UVW=p % coord(i) % uvw) &
+                     nuc % get_xs(p % g, 'fission', UVW=p_uvw) &
                      / micro_abs
               else
                 score = ZERO
@@ -1102,20 +1109,20 @@ contains
             ! fission reaction rate
             associate (nuc => nuclides_MG(i_nuclide) % obj)
               score = p % last_wgt &
-                   * nuc % get_xs(p % g, 'fission', UVW=p % coord(i) % uvw) &
-                   / nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw)
+                   * nuc % get_xs(p % g, 'fission', UVW=p_uvw) &
+                   / nuc % get_xs(p % g, 'absorption', UVW=p_uvw)
             end associate
           end if
 
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'fission', UVW=p % coord(i) % uvw) * &
+              score = nuc % get_xs(p % g, 'fission', UVW=p_uvw) * &
                    atom_density * flux
             end associate
           else
             score = flux * macro_xs(p % material) % obj % get_xs(p % g, &
-                 'fission', UVW=p % coord(i) % uvw)
+                 'fission', UVW=p_uvw)
 
           end if
         end if
@@ -1139,10 +1146,10 @@ contains
             ! calculate fraction of absorptions that would have resulted in
             ! nu-fission
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw)
+              micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p_uvw)
               if (micro_abs > ZERO) then
                 score = p % absorb_wgt * &
-                     nuc % get_xs(p % g, 'fission', UVW=p % coord(i) % uvw) / &
+                     nuc % get_xs(p % g, 'fission', UVW=p_uvw) / &
                      micro_abs
               else
                 score = ZERO
@@ -1162,7 +1169,7 @@ contains
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'nu_fission', UVW=p % coord(i) % uvw) &
+              score = nuc % get_xs(p % g, 'nu_fission', UVW=p_uvw) &
                    * atom_density * flux
           end associate
           else
@@ -1180,10 +1187,10 @@ contains
             ! calculate fraction of absorptions that would have resulted in
             ! fission scale by kappa-fission
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw)
+              micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p_uvw)
               if (micro_abs > ZERO) then
                 score = p % absorb_wgt * &
-                     nuc % get_xs(p % g, 'k_fission', UVW=p % coord(i) % uvw) / &
+                     nuc % get_xs(p % g, 'k_fission', UVW=p_uvw) / &
                      micro_abs
               end if
             end associate
@@ -1195,20 +1202,20 @@ contains
             ! the fission energy production rate
             associate (nuc => nuclides_MG(i_nuclide) % obj)
               score = p % last_wgt * &
-                   nuc % get_xs(p % g, 'k_fission', UVW=p % coord(i) % uvw) / &
-                   nuc % get_xs(p % g, 'absorption', UVW=p % coord(i) % uvw)
+                   nuc % get_xs(p % g, 'k_fission', UVW=p_uvw) / &
+                   nuc % get_xs(p % g, 'absorption', UVW=p_uvw)
             end associate
           end if
 
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'k_fission', UVW=p % coord(i) % uvw) &
+              score = nuc % get_xs(p % g, 'k_fission', UVW=p_uvw) &
                    * atom_density * flux
             end associate
           else
             score = flux * macro_xs(p % material) % obj % get_xs(p % g, &
-                 'k_fission', UVW=p % coord(i) % uvw)
+                 'k_fission', UVW=p_uvw)
           end if
         end if
 

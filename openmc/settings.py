@@ -72,12 +72,10 @@ class SettingsFile(object):
         environment variable will be used for continuous-energy calculations
         and :envvar:`MG_CROSS_SECTIONS` will be used for multi-group
         calculations to find the path to the XML cross section file.
-    energy_grid : str
-        Set the method used to search energy grids. Acceptable values are
-        'nuclide', 'logarithm', and 'material-union'.
-    energy_mode : str
+    energy_grid : {'nuclide', 'logarithm', 'material-union'}
+        Set the method used to search energy grids.
+    energy_mode : {'continuous-energy', 'multi-group'}
         Set whether the calculation should be continuous-energy or multi-group.
-        Acceptable values are 'continuous-energy' or 'multi-group'
     max_order : int
         Maximum scattering order to apply globally when in multi-group mode.
     ptables : bool
@@ -495,7 +493,7 @@ class SettingsFile(object):
     @max_order.setter
     def max_order(self, max_order):
         check_type('maximum scattering order', max_order, Integral)
-        check_greater_than('maximum scattering order', max_order, 0)
+        check_greater_than('maximum scattering order', max_order, 0, True)
         self._max_order = max_order
 
     @source_file.setter

@@ -87,18 +87,19 @@ attributes/sub-elements required to describe the meta-data:
     *Default*: None, this must be provided.
 
   :alias:
-    The number of total fission source iterations per batch.
+    An alternative name to use for the microscopic or macroscopic data set.
 
     *Default*: If no alias is provided, it will adopt the value of ``name``.
 
   :kT:
-    The temperature the data was generated at.
+    The temperature times Boltzmann's constant (in units of MeV) at which the
+    data was generated.
 
     *Default*: Room temperature, 2.53E-8 MeV
 
   :fissionable:
     This element states whether or not the data in question is fissionable.
-    Accepted values are ``true`` or ``false``.
+    Accepted values are "true" or "false".
 
     *Default*: None, this element must be provided.
 
@@ -108,42 +109,42 @@ attributes/sub-elements required to describe the meta-data:
     scalar flux weighting (or reduced to an equivalent representation)
     and thus are angle-independent, or if the data was generated with angular
     dependent fluxes and thus the data is angle-dependent.  The options are
-    either ``isotropic`` or ``angle``.
+    either "isotropic" or "angle".
 
-    *Default*: ``isotropic``
+    *Default*: "isotropic"
 
   :num_azimuthal:
     This element provides the number of equi-width bins that the azimuthal
     angular domain is subdivided in the case of angle-dependent cross sections
-    (i.e., ``angle`` is passed to the ``representation`` element).
+    (i.e., "angle" is passed to the ``representation`` element).
 
-    *Default*: If ``representation`` is ``angle``, this must be provided.  If
+    *Default*: If ``representation`` is "angle", this must be provided.  If
     not, this parameter is not used.
 
   :num_polar:
     This element provides the number of equi-width bins that the polar angular
     domain is subdivided in the case of angle-dependent cross sections
-    (i.e., ``angle`` is passed to the ``representation`` element).
+    (i.e., "angle" is passed to the ``representation`` element).
 
-    *Default*: If ``representation`` is ``angle``, this must be provided.  If
+    *Default*: If ``representation`` is "angle", this must be provided.  If
     not, this parameter is not used.
 
   :scatt_type:
     This element provides the representation of the angular distribution
     associated with each group-to-group transfer probability. The options are
-    either ``legendre``, ``histogram``, or ``tabular``.
-    The ``legendre`` option means the angular distribution has been
-    expanded via Legendre polynomials of the order provided in the ``order``
+    either "legendre", "histogram", or "tabular".
+    The "legendre" option means the angular distribution has been
+    expanded via Legendre polynomials of the order provided in the "order"
     element.
-    The ``histogram`` option means the angular distribution is provided in
+    The "histogram" option means the angular distribution is provided in
     an equi-width histogram format with a number of bins as provided in the
-    ``order`` element.  This is useful when the angular distribution was
+    "order" element.  This is useful when the angular distribution was
     obtained from a Monte Carlo tally and thus is natively in the histogram
     format.
-    The ``tabular`` option means the angular distribution is provided in an
+    The "tabular" option means the angular distribution is provided in an
     equi-spaced point-wise representation.
 
-    *Default*: ``legendre``
+    *Default*: "legendre"
 
   :order:
     This element provides either the Legendre order, number of bins, or number
@@ -165,17 +166,17 @@ attributes/sub-elements required to describe the meta-data:
 
     :enable:
       This attribute/sub-element denotes whether or not the conversion to the
-      tabular format should be performed or not.  A value of ``true`` means
-      the conversion should be performed, ``false`` means it should not.
+      tabular format should be performed or not.  A value of "true" means
+      the conversion should be performed, "false" means it should not.
 
-      *Default*: ``true``
+      *Default*: "true"
 
     :num_points:
       If the conversion is to take place the number of tabular points is
       required.  This attribute/sub-element allows the user to set the desired
       number of points.
 
-      *Default*: ``33``
+      *Default*: 33
 
   The following attributes/sub-elements are the cross section values to
   be used during the transport process.
@@ -183,9 +184,9 @@ attributes/sub-elements required to describe the meta-data:
   :total:
     This element requires the group-wise total cross section ordered by
     increasing group index (i.e., fast to thermal).  If ``representation`` is
-    ``isotropic``, then the length of this list should equal the number of
+    "isotropic", then the length of this list should equal the number of
     groups described in the ``groups`` element.  If ``representation`` is
-    ``angle``, then the length of this list should equal the number of groups
+    "angle", then the length of this list should equal the number of groups
     times the number of azimuthal angles times the number of polar angles,
     with the inner-dimension being groups, intermediate-dimension being
     azimuthal angles and outer-dimension being the polar angles.
@@ -196,9 +197,9 @@ attributes/sub-elements required to describe the meta-data:
   :absorption:
     This element requires the group-wise absorption cross section ordered by
     increasing group index (i.e., fast to thermal).  If ``representation`` is
-    ``isotropic``, then the length of this list should equal the number of
+    "isotropic", then the length of this list should equal the number of
     groups described in the ``groups`` element.  If ``representation`` is
-    ``angle``, then the length of this list should equal the number of groups
+    "angle", then the length of this list should equal the number of groups
     times the number of azimuthal angles times the number of polar angles,
     with the inner-dimension being groups, intermediate-dimension being
     azimuthal angles and outer-dimension being the polar angles.
@@ -210,9 +211,9 @@ attributes/sub-elements required to describe the meta-data:
     columns representing incoming group and rows representing the outgoing
     group.  That is, down-scatter will be above the diagonal of the resultant
     matrix.  This matrix is repeated for every Legendre order (in order of
-    increasing orders) if ``scatt_type`` is ``legendre``; otherwise, this
+    increasing orders) if ``scatt_type`` is "legendre"; otherwise, this
     matrix is repeated for every bin of the histogram or tabular
-    representation.  Finally, if ``representation`` is ``angle``, the above
+    representation.  Finally, if ``representation`` is "angle", the above
     is repeated for every azimuthal angle and every polar angle, in that
     order.
 
@@ -232,32 +233,32 @@ attributes/sub-elements required to describe the meta-data:
     neglected).
 
   The following fission-specific data are only needed should ``fissionable``
-  be ``true``.
+  be "true".
 
   :fission:
     This element requires the group-wise fission cross section ordered by
     increasing group index (i.e., fast to thermal).  If ``representation`` is
-    ``isotropic``, then the length of this list should equal the number of
+    "isotropic", then the length of this list should equal the number of
     groups described in the ``groups`` element.  If ``representation`` is
-    ``angle``, then the length of this list should equal the number of groups
+    "angle", then the length of this list should equal the number of groups
     times the number of azimuthal angles times the number of polar angles,
     with the inner-dimension being groups, intermediate-dimension being
     azimuthal angles and outer-dimension being the polar angles.
 
-    *Default*: None, this is required only if ``fission`` tallies are
+    *Default*: None, this is required only if fission tallies are
     requested and the material is fissionable.
 
-  :k_fission:
+  :kappa_fission:
     This element requires the group-wise kappa-fission cross section ordered by
     increasing group index (i.e., fast to thermal).  If ``representation`` is
-    ``isotropic``, then the length of this list should equal the number of
+    "isotropic", then the length of this list should equal the number of
     groups described in the ``groups`` element.  If ``representation`` is
-    ``angle``, then the length of this list should equal the number of groups
+    "angle", then the length of this list should equal the number of groups
     times the number of azimuthal angles times the number of polar angles,
     with the inner-dimension being groups, intermediate-dimension being
     azimuthal angles and outer-dimension being the polar angles.
 
-    *Default*: None, this is required only if ``kappa-fission`` tallies are
+    *Default*: None, this is required only if :ref:`kappa_fission` tallies are
     requested and the material is fissionable.
 
   :chi:
@@ -267,9 +268,9 @@ attributes/sub-elements required to describe the meta-data:
     not depend on incoming energy.  If the user does not wish to make this
     approximation, then this should not be provided and this information
     included in the ``nu_fission`` element instead.  If ``representation`` is
-    ``isotropic``, then the length of this list should equal the number of
+    "isotropic", then the length of this list should equal the number of
     groups described in the ``groups`` element.  If ``representation`` is
-    ``angle``, then the length of this list should equal the number of groups
+    "angle", then the length of this list should equal the number of groups
     times the number of azimuthal angles times the number of polar angles,
     with the inner-dimension being groups, intermediate-dimension being
     azimuthal angles and outer-dimension being the polar angles.

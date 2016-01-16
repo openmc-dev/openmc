@@ -16,7 +16,7 @@ module initialize
                               hdf5_tallyresult_t, hdf5_integer8_t
   use input_xml,        only: read_input_xml, cells_in_univ_dict, read_plots_xml
   use material_header,  only: Material
-  use mgxs_data
+  use mgxs_data,        only: read_mgxs, same_nuclide_mg_list, create_macro_xs
   use output,           only: title, header, print_version, write_message,     &
                               print_usage, write_xs_summary, print_plot
   use random_lcg,       only: initialize_prng

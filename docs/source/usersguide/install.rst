@@ -385,7 +385,7 @@ ACE data as described below. The TALYS-based evaluated nuclear data library,
 TENDL_, is also openly available in ACE format.
 
 In multi-group mode, OpenMC utilizes an XML-based library format which can be
-used to describe nuclidic- or material-specific quantities.
+used to describe nuclide- or material-specific quantities.
 
 Using ENDF/B-VII.1 Cross Sections from NNDC
 -------------------------------------------

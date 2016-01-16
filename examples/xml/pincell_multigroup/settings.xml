@@ -27,12 +27,6 @@
     </space>
   </source>
 
-  <!-- Establish statepoints to aid in examining convergence -->
-  <state_point>
-    <interval>2000</interval>
-    <source_write>true</source_write>
-  </state_point>
-
   <output>
     <cross_sections>true</cross_sections>
     <summary>true</summary>

@@ -248,7 +248,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 #===============================================================================
 
 set(program "openmc")
-file(GLOB source src/*.F90 src/xml/openmc_fox.F90 ${test_source})
+file(GLOB source src/*.F90 src/xml/openmc_fox.F90)
 add_executable(${program} ${source})
 
 # target_include_directories was added in CMake 2.8.11 and is the recommended

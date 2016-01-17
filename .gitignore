@@ -19,9 +19,6 @@ examples/python/**/*.xml
 *~
 *.swp
 
-# vim backups
-*.swp
-
 # OpenMC statepoints
 *.binary
 

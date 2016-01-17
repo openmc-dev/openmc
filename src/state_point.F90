@@ -75,7 +75,6 @@ contains
     end if
 
     ! Append appropriate extension
-
     filename = trim(filename) // '.h5'
 
     ! Write message
@@ -699,7 +698,7 @@ contains
     character(MAX_FILE_LEN) :: filename
 
     if (dd_run) then
-      if (master) call warning('Source bank writing not implemented for DD runs.')
+      if (master) call fatal_error('Source bank writing not implemented for DD runs.')
       return
     end if
 
@@ -718,13 +717,6 @@ contains
       if (source_separate) then
         filename = trim(path_output) // 'source.' // &
              & zero_padded(current_batch, count_digits(n_max_batches))
-
-        if (dd_run) then
-          filename = trim(filename) // '.domain_' // &
-               & zero_padded(domain_decomp % meshbin, &
-                            count_digits(domain_decomp % n_domains))
-        end if
-
         filename = trim(filename) // '.h5'
         call write_message("Creating source file " // trim(filename) &
              // "...", 1)
@@ -736,14 +728,7 @@ contains
         end if
       else
         filename = trim(path_output) // 'statepoint.' // &
-             & zero_padded(current_batch, count_digits(n_batches))
-
-        if (dd_run) then
-          filename = trim(filename) // '.domain_' // &
-               & zero_padded(domain_decomp % meshbin, &
-                            count_digits(domain_decomp % n_domains))
-        end if
-
+             zero_padded(current_batch, count_digits(n_max_batches))
         filename = trim(filename) // '.h5'
 
         if (master .or. parallel) then
@@ -758,12 +743,6 @@ contains
     ! Also check to write source separately in overwritten file
     if (source_latest) then
       filename = trim(path_output) // 'source' // '.h5'
-      if (dd_run) then
-        filename = trim(filename) // '.domain_' // &
-             & zero_padded(domain_decomp % meshbin, &
-                          count_digits(domain_decomp % n_domains))
-      end if
-
       call write_message("Creating source file " // trim(filename) // "...", 1)
       if (master .or. parallel) then
         file_id = file_create(filename, parallel=.true.)
@@ -1059,154 +1038,6 @@ contains
       end if
     end if
 
-    ! Read number of meshes
-    call read_dataset(file_id, "n_meshes", n_meshes)
-
-    if (n_meshes > 0) then
-      mesh_group = open_group(file_id, "meshes")
-      ! Read list of mesh keys-> IDs
-      allocate(id_array(n_meshes))
-      allocate(key_array(n_meshes))
-
-      call read_dataset(mesh_group, "ids", id_array(1:n_meshes))
-      call read_dataset(mesh_group, "keys", key_array(1:n_meshes))
-
-      ! Read and overwrite mesh information
-      MESH_LOOP: do i = 1, n_meshes
-
-        mesh => meshes(id_array(i))
-        curr_key = key_array(id_array(i))
-
-        call read_dataset(mesh_group, "id", mesh % id)
-        call read_dataset(mesh_group, "type", mesh % type)
-        call read_dataset(mesh_group, "n_dimension", mesh % n_dimension)
-        call read_dataset(mesh_group, "dimension", &
-                          mesh % dimension(1:mesh % n_dimension))
-        call read_dataset(mesh_group, "lower_left", &
-                          mesh % lower_left(1:mesh % n_dimension))
-        call read_dataset(mesh_group, "upper_right", &
-                          mesh % upper_right(1:mesh % n_dimension))
-        call read_dataset(mesh_group, "width", &
-                          mesh % width(1:meshes(i) % n_dimension))
-
-      end do MESH_LOOP
-
-      deallocate(id_array)
-      deallocate(key_array)
-
-    end if
-
-    ! Read and overwrite number of tallies
-    call read_dataset(tallies_group, "n_tallies", n_tallies)
-
-    ! Read list of tally keys-> IDs
-    allocate(id_array(n_tallies))
-    allocate(key_array(n_tallies))
-
-    call read_dataset(tallies_group, "ids", id_array(1:n_tallies))
-    call read_dataset(tallies_group, "keys", key_array(1:n_tallies))
-
-    ! Read in tally metadata
-    TALLY_METADATA: do i = 1, n_tallies
-
-      ! Get pointer to tally
-      tally => tallies(i)
-      curr_key = key_array(id_array(i))
-
-      call read_dataset(tally_group, "estimator", tally % estimator)
-      call read_dataset(tally_group, "n_realizations", tally % n_realizations)
-      call read_dataset(tally_group, "n_filters", tally % n_filters)
-
-      ! Read on-the-fly allocation tally info
-      if (tally % on_the_fly_allocation) then
-        call read_dataset(tally_group, "otf_size_results_filters", &
-                          otf_size_results_filters)
-
-        ! Read otf filter bin mapping
-        allocate(filter_map_array(otf_size_results_filters))
-        call read_dataset(tally_group, "otf_filter_bin_map", &
-                          filter_map_array(1:otf_size_results_filters))
-
-        ! Reset the filter map on the tally object
-        do j = 1, otf_size_results_filters
-          dummy_filter_index = tally % otf_filter_index(filter_map_array(j))
-        end do
-
-        deallocate(filter_map_array)
-
-      else
-        call read_dataset(tally_group, "otf_size_results_filters", &
-             otf_size_results_filters)
-      end if
-
-      FILTER_LOOP: do j = 1, tally % n_filters
-        call read_dataset(tally_group, "type", tally % filters(j) % type)
-        call read_dataset(tally_group, "offset", tally % filters(j) % offset)
-        call read_dataset(tally_group, "n_bins", tally % filters(j) % n_bins)
-        if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
-             tally % filters(j) % type == FILTER_ENERGYOUT) then
-          call read_dataset(tally_group, "bins", &
-               tally%filters(j)%real_bins(1:size(tally%filters(j)%real_bins)))
-        else
-          call read_dataset(tally_group, "bins", &
-               tally%filters(j)%int_bins(1:size(tally%filters(j)%int_bins)))
-        end if
-
-      end do FILTER_LOOP
-
-      call read_dataset(tally_group, "n_nuclides", tally % n_nuclide_bins)
-
-      ! Set up nuclide bin array and then read
-      allocate(temp_array(tally % n_nuclide_bins))
-      call read_dataset(tally_group, "nuclides", &
-           temp_array(1:tally % n_nuclide_bins))
-
-      NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
-        if (temp_array(j) > 0) then
-          tally % nuclide_bins(j) = temp_array(j)
-        else
-          tally % nuclide_bins(j) = temp_array(j)
-        end if
-      end do NUCLIDE_LOOP
-
-      deallocate(temp_array)
-
-      ! Write number of score bins, score bins, user score bins
-      call read_dataset(tally_group, "n_score_bins", tally % n_score_bins)
-      call read_dataset(tally_group, "score_bins", &
-           tally % score_bins(1:tally % n_score_bins))
-      call read_dataset(tally_group, "n_user_score_bins", &
-           tally % n_user_score_bins)
-
-      ! Read explicit moment order strings for each score bin
-      k = 1
-      MOMENT_LOOP: do j = 1, tally % n_user_score_bins
-        select case(tally % score_bins(k))
-        case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-          call read_dataset(tally_group, "order" // trim(to_str(k)), moment_name)
-          k = k + 1
-        case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-          do n_order = 0, tally % moment_order(k)
-            call read_dataset(tally_group, "order" // trim(to_str(k)), moment_name)
-            k = k + 1
-          end do
-        case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
-              SCORE_TOTAL_YN)
-          do n_order = 0, tally % moment_order(k)
-            do nm_order = -n_order, n_order
-              call read_dataset(tally_group, "order" // trim(to_str(k)), moment_name)
-              k = k + 1
-            end do
-          end do
-        case default
-          call read_dataset(tally_group, "order" // trim(to_str(k)), moment_name)
-          k = k + 1
-        end select
-
-      end do MOMENT_LOOP
-
-    end do TALLY_METADATA
-
     ! Check to make sure source bank is present
     if (path_source_point == path_state_point .and. .not. source_present) then
       call fatal_error("Source bank must be contained in statepoint restart &
@@ -1454,7 +1285,6 @@ contains
 !===============================================================================
 
   subroutine heapsort_results(t)
-
     type(TallyObject), pointer, intent(inout) :: t
 
     integer :: start, n, bottom
@@ -1509,7 +1339,6 @@ contains
 !===============================================================================
 
   subroutine siftdown_results(t, start, bottom)
-
     type(TallyObject), pointer, intent(inout) :: t
     integer, intent(in) :: start, bottom
 

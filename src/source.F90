@@ -16,11 +16,7 @@ module source
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream, prn_seed
   use state_point,      only: read_source_bank, write_source_bank
   use string,           only: to_str
-  use random_lcg_header,  only: STREAM_TRACKING, STREAM_SOURCE
 
-#ifdef HDF5
-  use hdf5_interface
-#endif
 #ifdef MPI
   use message_passing
 #endif
@@ -52,7 +48,7 @@ contains
 
       if (dd_run) then
         call fatal_error("Reading source from binary file not " // &
-                         "implementedfor domain decomposition.")
+                         "implemented for domain decomposition.")
       end if
 
       call write_message('Reading source file from ' // trim(path_source) &

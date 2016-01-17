@@ -102,6 +102,7 @@ contains
           score = flux
         end if
 
+
       case (SCORE_TOTAL, SCORE_TOTAL_YN)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events will score to the total reaction rate. We can just

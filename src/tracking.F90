@@ -217,7 +217,6 @@ contains
              distance * material_xs % nu_fission
       end if
 
-
       ! Check for collisions and surface crossings
       if (d_collision > d_boundary) then
         ! ====================================================================
@@ -292,7 +291,6 @@ contains
             p % coord(j + 1) % uvw = p % coord(j) % uvw
           end if
         end do
-
       end if
 
       ! If particle has too many events, display warning and kill it

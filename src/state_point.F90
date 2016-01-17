@@ -698,7 +698,8 @@ contains
     character(MAX_FILE_LEN) :: filename
 
     if (dd_run) then
-      if (master) call fatal_error('Source bank writing not implemented for DD runs.')
+      if (master) call fatal_error('Source bank writing not implemented for &
+           &domain decomposed runs.')
       return
     end if
 

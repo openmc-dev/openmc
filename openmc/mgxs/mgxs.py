@@ -521,8 +521,8 @@ class MGXS(object):
                 self.tallies[key].add_trigger(trigger_clone)
 
             # Add all non-domain specific Filters (e.g., 'energy') to the Tally
-            for filter in filters:
-                self.tallies[key].add_filter(filter)
+            for add_filter in filters:
+                self.tallies[key].add_filter(add_filter)
 
             # If this is a by-nuclide cross-section, add all nuclides to Tally
             if self.by_nuclide and score != 'flux':
@@ -787,15 +787,15 @@ class MGXS(object):
             std_dev = tally.get_reshaped_data(value='std_dev')
 
             # Sum across all applicable fine energy group filters
-            for i, filter in enumerate(tally.filters):
-                if 'energy' not in filter.type:
+            for i, tally_filter in enumerate(tally.filters):
+                if 'energy' not in tally_filter.type:
                     continue
-                elif len(filter.bins) != len(fine_edges):
+                elif len(tally_filter.bins) != len(fine_edges):
                     continue
-                elif not np.allclose(filter.bins, fine_edges):
+                elif not np.allclose(tally_filter.bins, fine_edges):
                     continue
                 else:
-                    filter.bins = coarse_groups.group_edges
+                    tally_filter.bins = coarse_groups.group_edges
                     mean = np.add.reduceat(mean, energy_indices, axis=i)
                     std_dev = np.add.reduceat(std_dev**2, energy_indices, axis=i)
                     std_dev = np.sqrt(std_dev)

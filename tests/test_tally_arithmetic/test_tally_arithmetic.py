@@ -100,8 +100,6 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
                                          'entrywise')
         outstr += str(tally_3.mean)
 
-        print(outstr)
-
         # Hash the results if necessary
         if hash_output:
             sha512 = hashlib.sha512()

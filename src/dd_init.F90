@@ -3,7 +3,7 @@ module dd_init
   use constants
   use dd_header,  only: dd_type
   use error,      only: fatal_error, warning
-  use global,     only: n_procs, n_particles, rank, mpi_err
+  use global,     only: n_procs, n_particles, rank, mpi_err, master
   use mesh,       only: bin_to_mesh_indices, mesh_indices_to_bin
   use output,     only: write_message
   use search,     only: binary_search
@@ -11,6 +11,10 @@ module dd_init
 
 #ifdef MPI
   use mpi
+#endif
+
+#ifdef _OPENMP
+    use omp_lib
 #endif
 
   implicit none
@@ -33,11 +37,6 @@ contains
     integer :: domain_master_group
 
     call write_message("Initializing domain decomposition parameters...", 6)
-
-#ifdef _OPENMP
-    call fatal_error("Domain decomposition not implemented in " // &
-         "conjunction with OpenMP.")
-#endif
 
     if (n_procs < dd % n_domains) then
       call fatal_error("Not enough processors for domain decomposition. " // &

@@ -171,7 +171,9 @@ module tally_header
 
       ! If the results array is fully allocated, this index is valid
       if (this % on_the_fly_allocation) then
+!$omp critical (otf_tally_allocation)
         idx = this % otf_filter_index(idx)
+!$omp end critical (otf_tally_allocation)
       end if
 
     end function filter_index
@@ -198,8 +200,9 @@ module tally_header
         ! This is the first time this filter index has been needed
 
         ! Grow the results array if we've used it all
-        if (this % next_filter_idx > this % size_results_filters) &
+        if (this % next_filter_idx > this % size_results_filters) then
              call this % grow_results_array()
+        end if
 
         ! Update the map
         call this % filter_index_map % add_key(real_bin, this % next_filter_idx)

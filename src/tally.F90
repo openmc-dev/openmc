@@ -2473,7 +2473,7 @@ contains
     ! array of the local master
 
     ! During the OTF allocation phase, we'll be reallocating memory and
-    ! moving things around alot, which can be slow.  After that phase
+    ! moving things around a lot, which can be slow.  After that phase
     ! though, all the tally bins on each other process are in the same order
     ! and thus simple MPI_REDUCE can be done
     ! TODO: add in the phase logical and implement MPI_REDUCE as if ordered

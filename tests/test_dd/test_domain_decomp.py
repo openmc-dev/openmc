@@ -87,7 +87,7 @@ class DomainDecomTestHarness(TestHarness):
             p_num = 5
         
         executor = Executor()
-        returncode = executor.run_simulation(mpi_procs=p_num,
+        returncode = executor.run_simulation(mpi_procs=p_num, threads=1,
                                              openmc_exec=self._opts.exe,
                                              mpi_exec=self._opts.mpi_exec)
         assert returncode == 0, 'OpenMC did not exit successfully.'

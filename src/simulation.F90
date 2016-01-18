@@ -91,24 +91,24 @@ contains
 !$omp parallel do schedule(static) firstprivate(p)
           PARTICLE_LOOP: do i_work = 1, work
             current_work = i_work
-              if (dd_run) then
+            if (dd_run) then
 
-                ! Initialize particle in buffer
-                call initialize_history( &
-                      domain_decomp % particle_buffer(i_work), current_work)
+              ! Initialize particle in buffer
+              call initialize_history( &
+                    domain_decomp % particle_buffer(i_work), current_work)
 
-                ! Transport particle
-                call transport(domain_decomp % particle_buffer(i_work))
+              ! Transport particle
+              call transport(domain_decomp % particle_buffer(i_work))
 
-              else
+            else
 
-                ! grab source particle from bank
-                call initialize_history(p, current_work)
+              ! grab source particle from bank
+              call initialize_history(p, current_work)
 
-                ! Transport particle
-                call transport(p)
+              ! Transport particle
+              call transport(p)
 
-              end if
+            end if
 
             end do PARTICLE_LOOP
 !$omp end parallel do

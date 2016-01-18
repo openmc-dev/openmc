@@ -977,19 +977,17 @@ contains
       thread_id = omp_get_thread_num()
 
       if (thread_id == 0) then
-          allocate(fission_bank(3*work))
-          size_fission_bank = 3*work
+        allocate(fission_bank(3*work))
       else
-          allocate(fission_bank(3*work/n_threads))
-          size_fission_bank = 3*work/n_threads
+        allocate(fission_bank(5*work/n_threads))
       end if
 !$omp end parallel
       allocate(master_fission_bank(3*work), STAT=alloc_err)
-
 #else
       allocate(fission_bank(3*work), STAT=alloc_err)
-      size_fission_bank = 3*work
 #endif
+
+      size_fission_bank = 3*work
 
       ! Check for allocation errors
       if (alloc_err /= 0) then

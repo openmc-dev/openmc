@@ -48,7 +48,7 @@ module ace_header
     integer :: MT                      ! ENDF MT value
     real(8) :: Q_value                 ! Reaction Q value
     integer :: multiplicity            ! Number of secondary particles released
-    type(Tab1), allocatable :: multiplicity_E ! Energy-dependent neutron yield
+    type(Tab1), pointer :: multiplicity_E => null() ! Energy-dependent neutron yield
     integer :: threshold               ! Energy grid index of threshold
     logical :: scatter_in_cm           ! scattering system in center-of-mass?
     logical :: multiplicity_with_E = .false. ! Flag to indicate E-dependent multiplicity
@@ -307,6 +307,8 @@ module ace_header
     subroutine reaction_clear(this)
 
       class(Reaction), intent(inout) :: this ! The Reaction object to clear
+
+      if (associated(this % multiplicity_E)) deallocate(this % multiplicity_E)
 
       if (associated(this % edist)) then
         call this % edist % clear()

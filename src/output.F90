@@ -1396,8 +1396,7 @@ contains
       label = ''
       univ => universes(BASE_UNIVERSE)
       offset = 0
-      call find_offset(t % filters(i_filter) % offset, &
-           t % filters(i_filter) % int_bins(1), &
+      call find_offset(t % filters(i_filter) % int_bins(1), &
            univ, bin-1, offset, label)
     case (FILTER_SURFACE)
       i = t % filters(i_filter) % int_bins(bin)
@@ -1431,15 +1430,15 @@ contains
 ! with the given offset
 !===============================================================================
 
-  recursive subroutine find_offset(map, goal, univ, final, offset, path)
+  recursive subroutine find_offset(goal, univ, final, offset, path)
 
-    integer, intent(in) :: map          ! Index in maps vector
-    integer, intent(in) :: goal         ! The target cell ID
+    integer, intent(in) :: goal         ! The target cell index
     type(Universe), intent(in) :: univ  ! Universe to begin search
     integer, intent(in) :: final        ! Target offset
     integer, intent(inout) :: offset    ! Current offset
     character(*), intent(inout) :: path ! Path to offset
 
+    integer :: map                  ! Index in maps vector
     integer :: i, j                 ! Index over cells
     integer :: k, l, m              ! Indices in lattice
     integer :: old_k, old_l, old_m  ! Previous indices in lattice
@@ -1454,6 +1453,9 @@ contains
     type(Universe), pointer :: next_univ  ! Next universe to loop through
     class(Lattice), pointer :: lat        ! Pointer to current lattice
 
+    ! Get the distribcell index for this cell
+    map = cells(goal) % distribcell_index
+
     n = univ % n_cells
 
     ! Write to the geometry stack
@@ -1465,17 +1467,13 @@ contains
 
     ! Look through all cells in this universe
     do i = 1, n
-
-      cell_index = univ % cells(i)
-      c => cells(cell_index)
-
-      ! If the cell ID matches the goal and the offset matches final,
-      ! write to the geometry stack
-      if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
-        path = trim(path) // "->" // to_str(c%id)
+      ! If the cell matches the goal and the offset matches final, write to the
+      ! geometry stack
+      if (univ % cells(i) == goal .AND. offset == final) then
+        c => cells(univ % cells(i))
+        path = trim(path) // "->" // to_str(c % id)
         return
       end if
-
     end do
 
     ! Find the fill cell or lattice cell that we need to enter
@@ -1555,7 +1553,7 @@ contains
           offset = c % offset(map) + offset
 
           next_univ => universes(c % fill)
-          call find_offset(map, goal, next_univ, final, offset, path)
+          call find_offset(goal, next_univ, final, offset, path)
           return
 
         ! ====================================================================
@@ -1595,7 +1593,7 @@ contains
                       path = trim(path) // "(" // trim(to_str(k)) // &
                            "," // trim(to_str(l)) // "," // &
                            trim(to_str(m)) // ")"
-                      call find_offset(map, goal, next_univ, final, offset, path)
+                      call find_offset(goal, next_univ, final, offset, path)
                       return
                     else
                       old_m = m
@@ -1611,7 +1609,7 @@ contains
                     path = trim(path) // "(" // trim(to_str(old_k)) // &
                          "," // trim(to_str(old_l)) // "," // &
                          trim(to_str(old_m)) // ")"
-                    call find_offset(map, goal, next_univ, final, offset, path)
+                    call find_offset(goal, next_univ, final, offset, path)
                     return
                   end if
 
@@ -1656,8 +1654,7 @@ contains
                            trim(to_str(k - lat % n_rings)) // "," // &
                            trim(to_str(l - lat % n_rings)) // "," // &
                            trim(to_str(m)) // ")"
-                      call find_offset(map, goal, next_univ, final, offset, &
-                                       path)
+                      call find_offset(goal, next_univ, final, offset, path)
                       return
                     else
                       old_m = m
@@ -1674,7 +1671,7 @@ contains
                          trim(to_str(old_k - lat % n_rings)) // "," // &
                          trim(to_str(old_l - lat % n_rings)) // "," // &
                          trim(to_str(old_m)) // ")"
-                    call find_offset(map, goal, next_univ, final, offset, path)
+                    call find_offset(goal, next_univ, final, offset, path)
                     return
                   end if
 

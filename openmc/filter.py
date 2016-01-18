@@ -35,15 +35,13 @@ class Filter(object):
     Attributes
     ----------
     type : str
-        The type of the tally filter.
-    bins : Integral or Iterable of Integral or Iterable of Real
+        The type of the tally filter
+    bins : Integral or Iterable of Real
         The bins for the filter
     num_bins : Integral
         The number of filter bins
     mesh : Mesh or None
         A Mesh object for 'mesh' type filters.
-    offset : Integral
-        A value used to index tally bins for 'distribcell' tallies.
     stride : Integral
         The number of filter, nuclide and score bins within each of this
         filter's bins.
@@ -57,7 +55,6 @@ class Filter(object):
         self._num_bins = 0
         self._bins = None
         self._mesh = None
-        self._offset = -1
         self._stride = None
 
         if type is not None:
@@ -93,7 +90,6 @@ class Filter(object):
             clone._bins = copy.deepcopy(self.bins, memo)
             clone._num_bins = self.num_bins
             clone._mesh = copy.deepcopy(self.mesh, memo)
-            clone._offset = self.offset
             clone._stride = self.stride
 
             memo[id(self)] = clone
@@ -108,7 +104,6 @@ class Filter(object):
         string = 'Filter\n'
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
         string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self.offset)
         return string
 
     @property
@@ -133,10 +128,6 @@ class Filter(object):
     @property
     def mesh(self):
         return self._mesh
-
-    @property
-    def offset(self):
-        return self._offset
 
     @property
     def stride(self):
@@ -226,11 +217,6 @@ class Filter(object):
         self.type = 'mesh'
         self.bins = self.mesh.id
 
-    @offset.setter
-    def offset(self, offset):
-        cv.check_type('filter offset', offset, Integral)
-        self._offset = offset
-
     @stride.setter
     def stride(self, stride):
         cv.check_type('filter stride', stride, Integral)
@@ -241,12 +227,12 @@ class Filter(object):
 
         self._stride = stride
 
-    def can_merge(self, filter):
+    def can_merge(self, other):
         """Determine if filter can be merged with another.
 
         Parameters
         ----------
-        filter : Filter
+        other : Filter
             Filter to compare with
 
         Returns
@@ -256,11 +242,11 @@ class Filter(object):
 
         """
 
-        if not isinstance(filter, Filter):
+        if not isinstance(other, Filter):
             return False
 
         # Filters must be of the same type
-        elif self.type != filter.type:
+        elif self.type != other.type:
             return False
 
         # Distribcell filters cannot have more than one bin
@@ -278,12 +264,12 @@ class Filter(object):
         else:
             return True
 
-    def merge(self, filter):
+    def merge(self, other):
         """Merge this filter with another.
 
         Parameters
         ----------
-        filter : Filter
+        other : Filter
             Filter to merge with
 
         Returns
@@ -293,16 +279,16 @@ class Filter(object):
 
         """
 
-        if not self.can_merge(filter):
+        if not self.can_merge(other):
             msg = 'Unable to merge "{0}" with "{1}" ' \
-                  'filters'.format(self.type, filter.type)
+                  'filters'.format(self.type, other.type)
             raise ValueError(msg)
 
         # Create deep copy of filter to return as merged filter
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = list(set(np.concatenate((self.bins, filter.bins))))
+        merged_bins = list(set(np.concatenate((self.bins, other.bins))))
         merged_filter.bins = merged_bins
         merged_filter.num_bins = len(merged_bins)
 
@@ -623,7 +609,7 @@ class Filter(object):
                     # If this region is in Cell corresponding to the
                     # distribcell filter bin, store it in dictionary
                     if cell_id == self.bins[0]:
-                        offset = openmc_geometry.get_offset(path, self.offset)
+                        offset = openmc_geometry.get_cell_instance(path)
                         offsets_to_coords[offset] = coords
 
                 # Each distribcell offset is a DataFrame bin

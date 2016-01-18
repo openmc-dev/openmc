@@ -22,6 +22,7 @@ module state_point
   use tally_header,       only: TallyObject
   use mesh_header,        only: RegularMesh
   use dict_header,        only: ElemKeyValueII, ElemKeyValueCI
+  use random_lcg,         only: seed
 
 #ifdef MPI
   use message_passing
@@ -268,7 +269,6 @@ contains
               call write_dataset(filter_group, "type", "delayedgroup")
             end select
 
-            call write_dataset(filter_group, "offset", tally%filters(j)%offset)
             call write_dataset(filter_group, "n_bins", tally%filters(j)%n_bins)
             if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
                  tally % filters(j) % type == FILTER_ENERGYOUT .or. &

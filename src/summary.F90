@@ -107,6 +107,7 @@ contains
 
     integer          :: i, j, k, m
     integer, allocatable :: lattice_universes(:,:,:)
+    integer, allocatable :: cell_materials(:)
     integer(HID_T) :: geom_group
     integer(HID_T) :: cells_group, cell_group
     integer(HID_T) :: surfaces_group, surface_group
@@ -150,10 +151,24 @@ contains
       select case (c%type)
       case (CELL_NORMAL)
         call write_dataset(cell_group, "fill_type", "normal")
-        if (c%material == MATERIAL_VOID) then
-          call write_dataset(cell_group, "material", -1)
+        if (size(c % material) == 1) then
+          if (c % material(1) == MATERIAL_VOID) then
+            call write_dataset(cell_group, "material", MATERIAL_VOID)
+          else
+            call write_dataset(cell_group, "material", &
+                 materials(c % material(1)) % id)
+          end if
         else
-          call write_dataset(cell_group, "material", materials(c%material)%id)
+          allocate(cell_materials(size(c % material)))
+          do j = 1, size(c % material)
+            if (c % material(j) == MATERIAL_VOID) then
+              cell_materials(j) = MATERIAL_VOID
+            else
+              cell_materials(j) = materials(c % material(j)) % id
+            end if
+          end do
+          call write_dataset(cell_group, "material", cell_materials)
+          deallocate(cell_materials)
         end if
 
       case (CELL_FILL)
@@ -195,6 +210,8 @@ contains
         end select
       end do
       call write_dataset(cell_group, "region", adjustl(region_spec))
+
+      call write_dataset(cell_group, "distribcell_index", c % distribcell_index)
 
       call close_group(cell_group)
     end do CELL_LOOP
@@ -355,16 +372,22 @@ contains
         call write_dataset(lattice_group, "type", "rectangular")
 
         ! Write lattice dimensions, lower left corner, and pitch
-        call write_dataset(lattice_group, "dimension", lat%n_cells)
-        call write_dataset(lattice_group, "lower_left", lat%lower_left)
+        if (lat % is_3d) then
+          call write_dataset(lattice_group, "dimension", lat % n_cells)
+          call write_dataset(lattice_group, "lower_left", lat % lower_left)
+        else
+          call write_dataset(lattice_group, "dimension", lat % n_cells(1:2))
+          call write_dataset(lattice_group, "lower_left", lat % lower_left)
+        end if
 
         ! Write lattice universes.
         allocate(lattice_universes(lat%n_cells(1), lat%n_cells(2), &
              &lat%n_cells(3)))
         do j = 1, lat%n_cells(1)
-          do k = 1, lat%n_cells(2)
+          do k = 0, lat%n_cells(2) - 1
             do m = 1, lat%n_cells(3)
-              lattice_universes(j,k,m) = universes(lat%universes(j,k,m))%id
+              lattice_universes(j, k+1, m) = &
+                   universes(lat%universes(j, lat%n_cells(2) - k, m))%id
             end do
           end do
         end do
@@ -484,8 +507,10 @@ contains
   subroutine write_tallies(file_id)
     integer(HID_T), intent(in) :: file_id
 
-    integer :: i, j
+    integer :: i, j, k
     integer :: i_list, i_xs
+    integer :: n_order      ! loop index for moment orders
+    integer :: nm_order     ! loop index for Ynm moment orders
     integer(HID_T) :: tallies_group
     integer(HID_T) :: mesh_group
     integer(HID_T) :: tally_group
@@ -540,7 +565,6 @@ contains
         filter_group = create_group(tally_group, "filter " // trim(to_str(j)))
 
         ! Write number of bins for this filter
-        call write_dataset(filter_group, "offset", t%filters(j)%offset)
         call write_dataset(filter_group, "n_bins", t%filters(j)%n_bins)
 
         ! Write filter bins
@@ -662,6 +686,37 @@ contains
       end do
       call write_dataset(tally_group, "score_bins", str_array)
 
+      deallocate(str_array)
+
+      ! Write explicit moment order strings for each score bin
+      k = 1
+      allocate(str_array(t%n_score_bins))
+      MOMENT_LOOP: do j = 1, t%n_user_score_bins
+        select case(t%score_bins(k))
+        case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+          str_array(k) = 'P' // trim(to_str(t%moment_order(k)))
+          k = k + 1
+        case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+          do n_order = 0, t%moment_order(k)
+            str_array(k) = 'P' // trim(to_str(n_order))
+            k = k + 1
+          end do
+        case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+             SCORE_TOTAL_YN)
+          do n_order = 0, t%moment_order(k)
+            do nm_order = -n_order, n_order
+              str_array(k) = 'Y' // trim(to_str(n_order)) // ',' // &
+                   trim(to_str(nm_order))
+              k = k + 1
+            end do
+          end do
+        case default
+          str_array(k) = ''
+          k = k + 1
+        end select
+      end do MOMENT_LOOP
+
+      call write_dataset(tally_group, "moment_orders", str_array)
       deallocate(str_array)
 
       call close_group(tally_group)

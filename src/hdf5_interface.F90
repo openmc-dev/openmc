@@ -1898,7 +1898,7 @@ contains
     logical :: mpio
 
     integer :: hdf5_err
-    integer :: driver
+    integer(HID_T) :: driver
     integer(HID_T) :: file_id
     integer(HID_T) :: fapl_id
 

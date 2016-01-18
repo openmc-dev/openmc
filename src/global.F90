@@ -23,7 +23,6 @@ module global
 #endif
 
   implicit none
-  save
 
   ! ============================================================================
   ! GEOMETRY-RELATED VARIABLES

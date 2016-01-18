@@ -405,5 +405,5 @@ class AggregateFilter(object):
         aggregate_bin_array = np.repeat(aggregate_bin_array, datasize)
 
         # Construct Pandas DataFrame for the AggregateFilter
-        df = pd.DataFrame({self.aggregate_filter.type: aggregate_bin_array})
+        df = pd.DataFrame({self.type: aggregate_bin_array})
         return df

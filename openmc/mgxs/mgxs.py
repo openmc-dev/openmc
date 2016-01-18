@@ -1219,7 +1219,7 @@ class MGXS(object):
             df = self.xs_tally.get_pandas_dataframe(summary=summary)
 
         # Remove the score column since it is homogeneous and redundant
-        if summary and self.domain_type == 'distribcell':
+        if summary and 'distribcell' in self.domain_type:
             df = df.drop('score', level=0, axis=1)
         else:
             df = df.drop('score', axis=1)

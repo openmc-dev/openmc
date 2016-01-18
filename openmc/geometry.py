@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import Iterable, OrderedDict
 from xml.etree import ElementTree as ET
 
 import openmc
@@ -42,10 +42,10 @@ class Geometry(object):
 
         self._root_universe = root_universe
 
-    def get_offset(self, path, filter_offset):
-        """Returns the corresponding location in the results array for a given path and
-        filter number. This is primarily intended to post-processing result when
-        a distribcell filter is used.
+    def get_cell_instance(self, path):
+        """Return the instance number for the final cell in a geometry path.
+
+        The instance is an index into tally distribcell filter arrays.
 
         Parameters
         ----------
@@ -55,24 +55,31 @@ class Geometry(object):
             lattice passed through. For the case of the lattice, a tuple should
             be provided to indicate which coordinates in the lattice should be
             entered. This should be in the form: (lat_id, i_x, i_y, i_z)
-        filter_offset : int
-            An integer that specifies which offset map the filter is using
 
         Returns
         -------
-        offset : int
-            Location in the results array for the path and filter
+        instance : int
+            Index in tally results array for distribcell filters
 
         """
 
+        # Find the distribcell index of the cell.
+        cells = self.get_all_cells()
+        if path[-1] in cells:
+            distribcell_index = cells[path[-1]].distribcell_index
+        else:
+            raise RuntimeError('Could not find cell {} specified in a \
+                                distribcell filter'.format(path[-1]))
+
         # Return memoize'd offset if possible
-        if (path, filter_offset) in self._offsets:
-            offset = self._offsets[(path, filter_offset)]
+        if (path, distribcell_index) in self._offsets:
+            offset = self._offsets[(path, distribcell_index)]
 
         # Begin recursive call to compute offset starting with the base Universe
         else:
-            offset = self._root_universe.get_offset(path, filter_offset)
-            self._offsets[(path, filter_offset)] = offset
+            offset = self._root_universe.get_cell_instance(path,
+                                                           distribcell_index)
+            self._offsets[(path, distribcell_index)] = offset
 
         # Return the final offset
         return offset
@@ -133,7 +140,10 @@ class Geometry(object):
         materials = set()
 
         for cell in material_cells:
-            materials.add(cell._fill)
+            if isinstance(cell.fill, Iterable):
+                for m in cell.fill: materials.add(m)
+            else:
+                materials.add(cell.fill)
 
         materials = list(materials)
         materials.sort(key=lambda x: x.id)

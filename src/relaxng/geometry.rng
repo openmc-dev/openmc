@@ -47,16 +47,20 @@
             </choice>
             <choice>
               <element name="material">
-                <choice>
-                  <data type="int"/>
-                  <value>void</value>
-                </choice>
+                <oneOrMore>
+                  <choice>
+                    <data type="int"/>
+                    <value>void</value>
+                  </choice>
+                </oneOrMore>
               </element>
               <attribute name="material">
-                <choice>
-                  <data type="int"/>
-                  <value>void</value>
-                </choice>
+                <oneOrMore>
+                  <choice>
+                    <data type="int"/>
+                    <value>void</value>
+                  </choice>
+                </oneOrMore>
               </attribute>
             </choice>
           </choice>

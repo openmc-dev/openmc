@@ -110,10 +110,12 @@ illustrated as a flow chart below. After a batch of neutrons
 is simulated, NDA can take place. Each of the steps described above is described
 in detail in the following sections.
 
-.. tikz:: Flow chart of NDA process. Note "XS" is used for cross section and
-          "DC" is used for diffusion coefficient.
-   :libs: shapes, snakes, shadows, arrows, calc, decorations.markings, patterns, fit, matrix, spy
-   :include: cmfd_tikz/cmfd_flow.tikz
+.. figure:: ../_images/cmfd_flow.png
+    :align: center
+    :figclass: align-center
+
+    Flow chart of NDA process. Note "XS" is used for cross section and "DC" is
+    used for diffusion coefficient.
 
 Calculation of Macroscopic Cross Sections
 -----------------------------------------
@@ -422,9 +424,11 @@ during the MC simulation with incoming and outgoing partial currents. This
 allows the user to not have to worry about neutrons producing adequate tallies
 in mesh cells far away from the core.
 
-.. tikz:: Diagram of CMFD acceleration mesh
-   :libs: shapes, snakes, shadows, arrows, calc, decorations.markings, patterns, fit, matrix, spy
-   :include: cmfd_tikz/meshfig.tikz
+.. figure:: ../_images/meshfig.png
+    :align: center
+    :figclass: align-center
+
+    Diagram of CMFD acceleration mesh
 
 During an MC simulation, CMFD tallies are accumulated. The basic tallies needed
 are listed in Table :ref:`tab_tally`. Each tally is performed on a spatial and

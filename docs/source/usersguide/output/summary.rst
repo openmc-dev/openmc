@@ -91,10 +91,12 @@ The current revision of the summary file format is 1.
 
     Type of fill for the cell. Can be 'normal', 'universe', or 'lattice'.
 
-**/geometry/cells/cell <uid>/material** (*int*)
+**/geometry/cells/cell <uid>/material** (*int* or *int[]*)
 
-    Unique ID of the material assigned to the cell. This dataset is present only
-    if fill_type is set to 'normal'.
+    Unique ID of the material(s) assigned to the cell. This dataset is present
+    only if fill_type is set to 'normal'.  The value '-1' signifies void
+    material.  The data is an array if the cell uses distributed materials,
+    otherwise it is a scalar.
 
 **/geometry/cells/cell <uid>/offset** (*int[]*)
 
@@ -120,6 +122,10 @@ The current revision of the summary file format is 1.
 **/geometry/cells/cell <uid>/region** (*char[]*)
 
     Region specification for the cell.
+
+**/geometry/cells/cell <uid>/distribcell_index** (*int*)
+
+    Index of this cell in distribcell filter arrays.
 
 **/geometry/surfaces/surface <uid>/index** (*int*)
 
@@ -305,6 +311,11 @@ The current revision of the summary file format is 1.
     Number of scoring bins for a single nuclide. In general, this can be greater
     than the number of user-specified scores since each score might have
     multiple scoring bins, e.g., scatter-PN.
+
+**/tallies/tally <uid>/moment_orders** (*char[][]*)
+
+    Tallying moment orders for Legendre and spherical harmonic tally expansions
+    (*e.g.*, 'P2', 'Y1,2', etc.).
 
 **/tallies/tally <uid>/score_bins** (*char[][]*)
 

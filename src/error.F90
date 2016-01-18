@@ -3,8 +3,6 @@ module error
   use, intrinsic :: ISO_FORTRAN_ENV
   use constants
 
-  use global
-
 #ifdef MPI
   use message_passing
 #endif
@@ -87,6 +85,9 @@ contains
     integer :: line_wrap ! length of line
     integer :: length    ! length of message
     integer :: indent    ! length of indentation
+#ifdef MPI
+    integer :: mpi_err
+#endif
 
 
     ! set default error code
@@ -135,16 +136,6 @@ contains
         if (i_start > length) exit
       end if
     end do
-
-    ! Write information on current batch, generation, and particle
-    if (current_batch > 0) then
-      write(ERROR_UNIT,'(1X,A,I12) ') 'Batch:     ', current_batch
-      write(ERROR_UNIT,'(1X,A,I12) ') 'Generation:', current_gen
-      write(ERROR_UNIT,*)
-    end if
-
-    ! Release memory from all allocatable arrays
-    call free_memory()
 
 #ifdef MPI
     ! Abort MPI

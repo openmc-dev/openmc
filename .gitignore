@@ -15,8 +15,9 @@ openmc.egg-info/
 # Inputs generated from Python API
 examples/python/**/*.xml
 
-# emacs backups
+# emacs and vim backups
 *~
+*.swp
 
 # OpenMC statepoints
 *.binary
@@ -24,6 +25,7 @@ examples/python/**/*.xml
 # Documentation builds
 docs/build
 docs/source/_images/*.pdf
+docs/source/_images/*.aux
 
 # Source build
 build

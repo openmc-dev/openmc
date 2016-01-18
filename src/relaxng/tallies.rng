@@ -145,10 +145,10 @@
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
-                      <value>delayedgroup</value>
                       <value>mu</value>
                       <value>polar</value>
                       <value>azimuthal</value>
+                      <value>delayedgroup</value>
                     </choice>
                   </element>
                   <attribute name="type">
@@ -162,10 +162,10 @@
                       <value>mesh</value>
                       <value>energy</value>
                       <value>energyout</value>
-                      <value>delayedgroup</value>
                       <value>mu</value>
                       <value>polar</value>
                       <value>azimuthal</value>
+                      <value>delayedgroup</value>
                     </choice>
                   </attribute>
                 </choice>
@@ -208,7 +208,7 @@
               </oneOrMore>
             </list>
           </element>
-          <optional>
+          <zeroOrMore>
             <element name="trigger">
               <interleave>
                 <choice>
@@ -251,7 +251,7 @@
                 </optional>
               </interleave>
             </element>
-          </optional>
+          </zeroOrMore>
         </interleave>
       </element>
     </zeroOrMore>

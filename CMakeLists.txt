@@ -263,7 +263,7 @@ endif()
 # set compile flags. Note that this sets the COMPILE_OPTIONS property (also
 # available only in 2.8.12+) rather than the COMPILE_FLAGS property, which is
 # deprecated. The former can handle lists whereas the latter cannot.
-if(CMAKE_VERSION VERSION_LESS 4.8.12)
+if(CMAKE_VERSION VERSION_LESS 2.8.12)
   string(REPLACE ";" " " f90flags "${f90flags}")
   set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
 else()

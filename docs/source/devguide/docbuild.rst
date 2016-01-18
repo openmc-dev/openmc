@@ -12,15 +12,8 @@ is via pip:
 
     sudo pip install sphinx
 
-Additionally, you will also need two Sphinx extensions for TikZ support and
-numbering figures. The sphinxcontrib-tikz_ package should be installed directly
-from the git repository as such:
-
-.. code-block:: sh
-
-   sudo pip install https://bitbucket.org/philexander/tikz/get/HEAD.tar.gz
-
-The Numfig_ package can be installed directly with pip:
+Additionally, you will also need a Sphinx extension for numbering figures. The
+Numfig_ package can be installed directly with pip:
 
 .. code-block:: sh
 

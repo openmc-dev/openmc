@@ -201,7 +201,7 @@ module tally_header
 
         ! Grow the results array if we've used it all
         if (this % next_filter_idx > this % size_results_filters) then
-             call this % grow_results_array()
+          call this % grow_results_array()
         end if
 
         ! Update the map

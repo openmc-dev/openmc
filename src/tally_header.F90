@@ -66,7 +66,7 @@ module tally_header
 !===============================================================================
 
   type TallyDerivative
-    real(8) :: accumulator
+    real(8) :: flux_deriv
     integer :: dep_var
     integer :: diff_material
     integer :: diff_nuclide

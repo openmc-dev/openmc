@@ -14,7 +14,8 @@ module tracking
   use string,          only: to_str
   use tally,           only: score_analog_tally, score_tracklength_tally, &
                              score_collision_tally, score_surface_current, &
-                             score_diff_accumulators, clear_diff_accumulators
+                             score_track_derivative, &
+                             score_collision_derivative, clear_diff_flux_derivs
   use track_output,    only: initialize_particle_track, write_particle_track, &
                              add_particle_track, finalize_particle_track
 
@@ -62,7 +63,7 @@ contains
     endif
 
     ! Every particle starts with no accumulated flux derivative.
-    call clear_diff_accumulators()
+    call clear_diff_flux_derivs()
 
     EVENT_LOOP: do
       ! If the cell hasn't been determined based on the particle's location,
@@ -119,7 +120,7 @@ contains
       end if
 
       ! Score flux derivative accumulators for differential tallies.
-      call score_diff_accumulators(p, distance, d_boundary > d_collision)
+      call score_track_derivative(p, distance)
 
       if (d_collision > d_boundary) then
         ! ====================================================================
@@ -194,6 +195,9 @@ contains
             p % coord(j + 1) % uvw = p % coord(j) % uvw
           end if
         end do
+
+        ! Score flux derivative accumulators for differential tallies.
+        call score_collision_derivative(p)
       end if
 
       ! If particle has too many events, display warning and kill it

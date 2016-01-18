@@ -402,22 +402,23 @@ class Cell(object):
         if len(self._name) > 0:
             element.set("name", str(self._name))
 
-        if isinstance(self._fill, openmc.Material):
-            element.set("material", str(self._fill._id))
+        if isinstance(self.fill, basestring):
+            assert self.fill.strip().lower() == 'void'
+            element.set("material", "void")
 
-        elif isinstance(self._fill, Iterable):
+        elif isinstance(self.fill, openmc.Material):
+            element.set("material", str(self.fill.id))
+
+        elif isinstance(self.fill, Iterable):
             element.set("material", ' '.join([m if m == 'void' else str(m.id)
                                               for m in self.fill]))
 
-        elif isinstance(self._fill, (Universe, Lattice)):
-            element.set("fill", str(self._fill._id))
+        elif isinstance(self.fill, (Universe, Lattice)):
+            element.set("fill", str(self.fill.id))
             self._fill.create_xml_subelement(xml_element)
 
-        elif self._fill.strip().lower() == "void":
-            element.set("material", "void")
-
         else:
-            element.set("fill", str(self._fill))
+            element.set("fill", str(self.fill))
             self._fill.create_xml_subelement(xml_element)
 
         if self.region is not None:

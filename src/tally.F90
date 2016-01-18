@@ -758,7 +758,8 @@ contains
         select case (t % estimator)
 
         case (ESTIMATOR_ANALOG)
-          if (p % event_nuclide == t % deriv % diff_nuclide) then
+          if (materials(p % material) % id == t % deriv % diff_material &
+               .and. p % event_nuclide == t % deriv % diff_nuclide) then
             associate(mat => materials(p % material))
               do l = 1, mat % n_nuclides
                 if (mat % nuclide(l) == t % deriv % diff_nuclide) exit

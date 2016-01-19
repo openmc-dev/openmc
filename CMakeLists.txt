@@ -283,7 +283,7 @@ endif()
 # This is not the recommended method, but it is a functional method.  Convert
 # the semicolon-delineated lists into space-delineated ones then set them as the
 # compiler flags.
-string(REPLACE ";" " " f90flags "${f90flags}")
+  string(REPLACE ";" " " f90flags "${f90flags}")
 string(REPLACE ";" " " cflags "${cflags}")
 set(CMAKE_C_FLAGS "${cflags}")
 set(CMAKE_Fortran_FLAGS "${f90flags}")

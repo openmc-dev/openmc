@@ -52,10 +52,10 @@ class PlotTestHarness(TestHarness):
         for fname in sorted(voxel_files):
             with h5py.File(fname, 'r') as fh:
                 outstr += fh['filetype'].value
-                outstr += fh['num_voxels'].value.tobytes()
-                outstr += fh['lower_left'].value.tobytes()
-                outstr += fh['voxel_width'].value.tobytes()
-                outstr += fh['data'].value.tobytes()
+                outstr += fh['num_voxels'].value.tostring()
+                outstr += fh['lower_left'].value.tostring()
+                outstr += fh['voxel_width'].value.tostring()
+                outstr += fh['data'].value.tostring()
 
         # Hash the information and return.
         sha512 = hashlib.sha512()

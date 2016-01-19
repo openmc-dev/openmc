@@ -42,9 +42,9 @@ parser.add_option("-s", "--script", action="store_true", dest="script",
 
 # Default compiler paths
 FC='gfortran'
-MPI_DIR='/opt/mpich/3.1.3-gnu'
-HDF5_DIR='/opt/hdf5/1.8.15-gnu'
-PHDF5_DIR='/opt/phdf5/1.8.15-gnu'
+MPI_DIR='/opt/mpich/3.2-gnu'
+HDF5_DIR='/opt/hdf5/1.8.16-gnu'
+PHDF5_DIR='/opt/phdf5/1.8.16-gnu'
 
 # Script mode for extra capability
 script_mode = False
@@ -412,12 +412,12 @@ for key in iter(tests):
         continue
 
     # Set test specific CTest script vars. Not used in non-script mode
-    ctest_vars.update({'build_name' : test.get_build_name()})
-    ctest_vars.update({'build_opts' : test.get_build_opts()})
-    ctest_vars.update({'mem_check'  : test.valgrind})
-    ctest_vars.update({'coverage'  : test.coverage})
-    ctest_vars.update({'valgrind_cmd'  : test.valgrind_cmd})
-    ctest_vars.update({'gcov_cmd'  : test.gcov_cmd})
+    ctest_vars.update({'build_name': test.get_build_name()})
+    ctest_vars.update({'build_opts': test.get_build_opts()})
+    ctest_vars.update({'mem_check': test.valgrind})
+    ctest_vars.update({'coverage': test.coverage})
+    ctest_vars.update({'valgrind_cmd': test.valgrind_cmd})
+    ctest_vars.update({'gcov_cmd': test.gcov_cmd})
 
     # Check for user custom tests
     # INCLUDE is a CTest command that allows for a subset
@@ -470,6 +470,12 @@ for key in iter(tests):
         logfilename = os.path.splitext(logfilename)[0]
         logfilename = logfilename + '_{0}.log'.format(test.name)
         shutil.copy(logfile[0], logfilename)
+
+    # For coverage builds, use lcov to generate HTML output
+    if test.coverage:
+        call(['lcov', '--directory', '.', '--capture',
+              '--output-file', 'coverage.info'])
+        call(['genhtml', '--output-directory', 'coverage', 'coverage.info'])
 
     # Clear build directory and remove binary and hdf5 files
     shutil.rmtree('build', ignore_errors=True)

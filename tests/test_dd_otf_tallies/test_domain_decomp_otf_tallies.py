@@ -160,8 +160,7 @@ class DomainDecomOTFTalliesTestHarness(TestHarness):
                              otf_filter_bin_map2,
                              otf_filter_bin_map3,
                              otf_filter_bin_map4])
-            maxbin = np.amax(maps)
-            # maxbin = max(max(maps))
+            maxbin = max([max(i) for i in maps])
             tmp_results = np.zeros((maxbin, 1))
             for i in range(maxbin):
                 for j, map_ in enumerate(maps):

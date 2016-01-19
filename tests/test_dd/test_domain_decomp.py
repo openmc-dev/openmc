@@ -152,21 +152,21 @@ class DomainDecomTestHarness(TestHarness):
             mean4=sp4._f['tallies/tally 1/results'].value['sum']/sp4.tallies[1].num_realizations
             results = [mean1, mean2, mean3, mean4]
             # combine results for bins that were on more than one domain, in real_bin order
-            otf_filter_bin_map1 = sp1._f['tallies/tally 1/otf_filter_bin_map']
-            otf_filter_bin_map2 = sp2._f['tallies/tally 1/otf_filter_bin_map']
-            otf_filter_bin_map3 = sp3._f['tallies/tally 1/otf_filter_bin_map']
-            otf_filter_bin_map4 = sp4._f['tallies/tally 1/otf_filter_bin_map']
+            otf_filter_bin_map1 = sp1._f['tallies/tally 1/otf_filter_bin_map'][()]
+            otf_filter_bin_map2 = sp2._f['tallies/tally 1/otf_filter_bin_map'][()]
+            otf_filter_bin_map3 = sp3._f['tallies/tally 1/otf_filter_bin_map'][()]
+            otf_filter_bin_map4 = sp4._f['tallies/tally 1/otf_filter_bin_map'][()]
             maps = np.array([otf_filter_bin_map1,
                              otf_filter_bin_map2,
                              otf_filter_bin_map3,
                              otf_filter_bin_map4])
-            maxbin = max(max(maps.flatten()))
+            maxbin = max([max(i) for i in maps])
             tmp_results = np.zeros((maxbin, 1))
             for i in range(maxbin):
                 for j, map_ in enumerate(maps):
                     for k, index in enumerate(map_):
                         if i+1 == index:
-                            tmp_results[i] += results[j][k]
+                            tmp_results[i] += results[j][k][0]
             results = np.reshape(tmp_results, (np.product(tmp_results.shape)))
             # set up output string
             outstr = ''

@@ -430,49 +430,49 @@ contains
 
     ! For the time being, and I know this is a bit hacky, we just assume
     ! that the file will be zaid.h5.
-    nuc => nuclides(i_table)
+    associate (nuc => nuclides(i_table))
 
-    write(zaid_string,'(I6.6)') nuc % zaid
-    filename = zaid_string // ".h5"
+      write(zaid_string,'(I6.6)') nuc % zaid
+      filename = zaid_string // ".h5"
 
-    ! Check if Multipole library exists and is readable
-    inquire(FILE=filename, EXIST=file_exists, READ=readable)
-    if (.not. file_exists) then
-      nuc % mp_present = .false.
-      return
-    elseif (readable(1:3) == 'NO') then
-      call fatal_error("Multipole library '" // trim(filename) // "' is not readable! &
-           &Change file permissions with chmod command.")
-    end if
+      ! Check if Multipole library exists and is readable
+      inquire(FILE=filename, EXIST=file_exists, READ=readable)
+      if (.not. file_exists) then
+        nuc % mp_present = .false.
+        return
+      elseif (readable(1:3) == 'NO') then
+        call fatal_error("Multipole library '" // trim(filename) // "' is not readable! &
+             &Change file permissions with chmod command.")
+      end if
 
-    ! display message
-    call write_message("Loading Multipole XS table: " // filename, 6)
+      ! display message
+      call write_message("Loading Multipole XS table: " // filename, 6)
 
-    allocate(nuc % multipole)
+      allocate(nuc % multipole)
 
-    ! Call the read routine
-    call multipole_read(filename, nuc % multipole, i_table)
-    nuc % mp_present = .true.
+      ! Call the read routine
+      call multipole_read(filename, nuc % multipole, i_table)
+      nuc % mp_present = .true.
 
-    ! Update the maximum number of poles, l indices, and polynomial order
-    if (nuc % multipole % max_w > max_poles) then
-      max_poles = nuc % multipole % max_w
-    end if
+      ! Update the maximum number of poles, l indices, and polynomial order
+      if (nuc % multipole % max_w > max_poles) then
+        max_poles = nuc % multipole % max_w
+      end if
 
-    if (nuc % multipole % num_l > max_L) then
-      max_L = nuc % multipole % num_l
-    end if
+      if (nuc % multipole % num_l > max_L) then
+        max_L = nuc % multipole % num_l
+      end if
 
-    if (nuc % multipole % fit_order + 1 > max_poly) then
-      max_poly = nuc % multipole % fit_order + 1
-    end if
+      if (nuc % multipole % fit_order + 1 > max_poly) then
+        max_poly = nuc % multipole % fit_order + 1
+      end if
 
-    ! Recreate nu-fission tables
-    if (nuc % fissionable) then
-      call generate_nu_fission(nuc)
-    end if
+      ! Recreate nu-fission tables
+      if (nuc % fissionable) then
+        call generate_nu_fission(nuc)
+      end if
 
-    if(associated(nuc)) nullify(nuc)
+    end associate
 
   end subroutine read_multipole_data
 

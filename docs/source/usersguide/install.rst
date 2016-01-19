@@ -9,8 +9,8 @@ Installing on Ubuntu with PPA
 -----------------------------
 
 For users with Ubuntu 15.04 or later, a binary package for OpenMC is available
-through a Personal Package Archive (PPA) and can be installed through the APT
-package manager. First, add the following PPA to the repository sources:
+through a `Personal Package Archive`_ (PPA) and can be installed through the
+`APT package manager`_. First, add the following PPA to the repository sources:
 
 .. code-block:: sh
 
@@ -31,9 +31,14 @@ Now OpenMC should be recognized within the repository and can be installed:
 Binary packages from this PPA may exist for earlier versions of Ubuntu, but they
 are no longer supported.
 
+.. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/staging
+.. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
+
 --------------------
 Building from Source
 --------------------
+
+.. _prerequisites:
 
 Prerequisites
 -------------

@@ -316,14 +316,14 @@ file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.py)
 # Check for MEM_CHECK and COVERAGE variables
 if (DEFINED ENV{MEM_CHECK})
   set(MEM_CHECK $ENV{MEM_CHECK})
-else(DEFINED ENV{MEM_CHECK})
+else()
   set(MEM_CHECK FALSE)
-endif(DEFINED ENV{MEM_CHECK})
+endif()
 if (DEFINED ENV{COVERAGE})
   set(COVERAGE $ENV{COVERAGE})
-else(DEFINED ENV{COVERAGE})
+else()
   set(COVERAGE FALSE)
-endif(DEFINED ENV{COVERAGE})
+endif()
 
 # Loop through all the tests
 foreach(test ${TESTS})
@@ -337,24 +337,20 @@ foreach(test ${TESTS})
 
     # Check serial/parallel
     if (${MPI_ENABLED})
-
       # Preform a parallel test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
         --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
-
-    else(${MPI_ENABLED})
-
+    else()
       # Perform a serial test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
-
-    endif(${MPI_ENABLED})
+    endif()
 
   # Handle special case for valgrind and gcov (run openmc directly, no python)
-  else(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
+  else()
 
     # If a plot test is encountered, run with "-p"
     if (${test} MATCHES "test_plot")
@@ -392,9 +388,9 @@ foreach(test ${TESTS})
         set(RESTART_FILE particle_9_555.h5)
       elseif(${test} MATCHES "test_particle_restart_fixed")
         set(RESTART_FILE particle_7_928.h5)
-      else(${test} MATCHES "test_statepoint_restart")
+      else()
         message(FATAL_ERROR "Restart test ${test} not recognized")
-      endif(${test} MATCHES "test_statepoint_restart")
+      endif()
 
       # Perform serial valgrind and coverage test
       add_test(NAME ${TEST_NAME}
@@ -411,15 +407,15 @@ foreach(test ${TESTS})
 
 
     # Handle standard tests for valgrind and gcov
-    else(${test} MATCHES "test_plot")
+    else()
 
       # Perform serial valgrind and coverage test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
 
-    endif(${test} MATCHES "test_plot")
+    endif()
 
-  endif(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
+  endif()
 
 endforeach(test)

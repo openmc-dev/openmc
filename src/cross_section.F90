@@ -299,6 +299,7 @@ contains
 
     micro_xs(i_nuclide) % last_E = E
     micro_xs(i_nuclide) % last_index_sab = i_sab
+    micro_xs(i_nuclide) % last_sqrtkT = sqrtkT
 
   end subroutine calculate_nuclide_xs
 
@@ -597,13 +598,13 @@ contains
     real(8), intent(out)             :: sigA                         ! Absorption cross section
     real(8), intent(out)             :: sigF                         ! Fission cross section
     complex(8) :: psi_ki   ! The value of the psi-ki function for the asymptotic form
-    complex(8) :: c_temp   ! complex temporary variable 
+    complex(8) :: c_temp   ! complex temporary variable
     complex(8) :: w_val    ! The faddeeva function evaluated at Z
     complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
     real(8) :: sqrtE       ! sqrt(E), eV
     real(8) :: invE        ! 1/E, eV
     real(8) :: dopp        ! sqrt(atomic weight ratio / kT)
-    real(8) :: dopp_ecoef  ! sqrt(atomic weight ratio * pi / kT) / E 
+    real(8) :: dopp_ecoef  ! sqrt(atomic weight ratio * pi / kT) / E
     real(8) :: temp        ! real temporary value
     real(8) :: E           ! energy, eV
     integer :: iP          ! index of pole

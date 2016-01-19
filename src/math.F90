@@ -736,7 +736,7 @@ contains
       ! Save time, ERF(6) is 1 to machine precision.
       ! beta/sqrtpi*exp(-beta**2) is also approximately 1 machine epsilon.
       erfBeta = ONE
-      exp_m_beta2 = ZERO 
+      exp_m_beta2 = ZERO
     else
       erfBeta = erf(beta)
       exp_m_beta2 = exp(-beta**2)

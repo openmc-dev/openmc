@@ -73,7 +73,6 @@ class MGXSTestHarness(PyAPITestHarness):
 
         return outstr
 
-
     def _cleanup(self):
         super(MGXSTestHarness, self)._cleanup()
         f = os.path.join(os.getcwd(), 'tallies.xml')

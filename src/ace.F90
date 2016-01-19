@@ -438,7 +438,7 @@ contains
     ! Check if Multipole library exists and is readable
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
-      nuc % mp_present = .FALSE.
+      nuc % mp_present = .false.
       return
     elseif (readable(1:3) == 'NO') then
       call fatal_error("Multipole library '" // trim(filename) // "' is not readable! &
@@ -452,23 +452,23 @@ contains
 
     ! Call the read routine
     call multipole_read(filename, nuc % multipole, i_table)
-    nuc % mp_present = .TRUE.
+    nuc % mp_present = .true.
 
     ! Update the maximum number of poles, l indices, and polynomial order
-    if(nuc % multipole % max_w > max_poles) then
+    if (nuc % multipole % max_w > max_poles) then
       max_poles = nuc % multipole % max_w
     end if
 
-    if(nuc % multipole % num_l > max_L) then
+    if (nuc % multipole % num_l > max_L) then
       max_L = nuc % multipole % num_l
     end if
 
-    if(nuc % multipole % fit_order + 1 > max_poly) then
+    if (nuc % multipole % fit_order + 1 > max_poly) then
       max_poly = nuc % multipole % fit_order + 1
     end if
 
     ! Recreate nu-fission tables
-    if(nuc % fissionable) then
+    if (nuc % fissionable) then
       call generate_nu_fission(nuc)
     end if
 

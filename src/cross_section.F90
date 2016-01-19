@@ -22,7 +22,7 @@ module cross_section
   complex(8), allocatable :: sigT_factor(:)
   real(8), allocatable :: twophi(:)
   real(8), allocatable :: broadened_polynomials(:)
-  logical :: mp_already_alloc = .FALSE.
+  logical :: mp_already_alloc = .false.
 
 !$omp threadprivate(sigT_factor, twophi, broadened_polynomials, mp_already_alloc)
 
@@ -168,9 +168,9 @@ contains
     mat => materials(i_mat)
 
     ! If MP, don't interpolate, it's all already baked in.
-    if( nuc % mp_present .AND. &
-         (E >= nuc % multipole % start_E/1.0D6 .AND.&
-          E <= nuc % multipole % end_E/1.0D6)) then
+    if (nuc % mp_present .and. &
+         (E >= nuc % multipole % start_E/1.0e6_8 .and.&
+          E <= nuc % multipole % end_E/1.0e6_8)) then
 
       ! Call multipole kernel
       call multipole_eval(nuc % multipole, E, sqrtkT, sigT, sigA, sigF)
@@ -181,7 +181,7 @@ contains
 
       if (nuc % fissionable) then
         micro_xs(i_nuclide) % fission = sigF
-        micro_xs(i_nuclide) % nu_fission = sigF * nu_total(nuc,E)
+        micro_xs(i_nuclide) % nu_fission = sigF * nu_total(nuc, E)
       else
         micro_xs(i_nuclide) % fission    = ZERO
         micro_xs(i_nuclide) % nu_fission = ZERO
@@ -581,7 +581,7 @@ contains
     allocate(twophi(max_L))
     allocate(broadened_polynomials(max_poly))
 
-    mp_already_alloc = .TRUE.
+    mp_already_alloc = .true.
   end subroutine
 
 !===============================================================================
@@ -590,42 +590,42 @@ contains
 !===============================================================================
 
   subroutine multipole_eval(multipole, Emev, sqrtkT, sigT, sigA, sigF)
-    type(MultipoleArray), intent(in) :: multipole                    !< The windowed multipole object to process.
-    real(8), intent(in)              :: Emev                         !< The energy at which to evaluate the cross section in MeV
-    real(8), intent(in)              :: sqrtkT                       !< The temperature in the form sqrt(kT (in eV)), at which to evaluate the cross section.
-    real(8), intent(out)             :: sigT                         !< Total cross section
-    real(8), intent(out)             :: sigA                         !< Absorption cross section
-    real(8), intent(out)             :: sigF                         !< Fission cross section
-    complex(8) :: PSIIKI
-    complex(8) :: CDUM1
-    complex(8) :: w_val
-    complex(8) :: Z
-    real(8) :: sqrtE
-    real(8) :: invE
-    real(8) :: DOPP
-    real(8) :: DOPP_ECOEF
-    real(8) :: temp
-    real(8) :: E
-    integer :: iP
-    integer :: iC
-    integer :: iW
-    integer :: startw
-    integer :: startw_1
-    integer :: startw_endw
-    integer :: endw
+    type(MultipoleArray), intent(in) :: multipole                    ! The windowed multipole object to process.
+    real(8), intent(in)              :: Emev                         ! The energy at which to evaluate the cross section in MeV
+    real(8), intent(in)              :: sqrtkT                       ! The temperature in the form sqrt(kT (in eV)), at which to evaluate the cross section.
+    real(8), intent(out)             :: sigT                         ! Total cross section
+    real(8), intent(out)             :: sigA                         ! Absorption cross section
+    real(8), intent(out)             :: sigF                         ! Fission cross section
+    complex(8) :: psi_ki   ! The value of the psi-ki function for the asymptotic form
+    complex(8) :: c_temp   ! complex temporary variable 
+    complex(8) :: w_val    ! The faddeeva function evaluated at Z
+    complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
+    real(8) :: sqrtE       ! sqrt(E), eV
+    real(8) :: invE        ! 1/E, eV
+    real(8) :: dopp        ! sqrt(atomic weight ratio / kT)
+    real(8) :: dopp_ecoef  ! sqrt(atomic weight ratio * pi / kT) / E 
+    real(8) :: temp        ! real temporary value
+    real(8) :: E           ! energy, eV
+    integer :: iP          ! index of pole
+    integer :: iC          ! index of curvefit
+    integer :: iW          ! index of window
+    integer :: startw      ! window start pointer (for poles)
+    integer :: startw_1    ! window start pointer - 1
+    integer :: startw_endw ! window start pointer - window end pointer
+    integer :: endw        ! window end pointer
 
     ! Convert to eV
-    E = Emev * 1.0D6
+    E = Emev * 1.0e6_8
 
     sqrtE = sqrt(E)
-    invE = E**(-1)
+    invE = ONE/E
 
-    if(mp_already_alloc .eqv. .FALSE.) then
+    if(.not. mp_already_alloc) then
       call multipole_eval_allocate()
     end if
 
     ! Locate us
-    iW = floor((sqrtE - sqrt(multipole % start_E))/multipole % spacing + 1.0_8)
+    iW = floor((sqrtE - sqrt(multipole % start_E))/multipole % spacing + ONE)
 
     startw = multipole % w_start(iW)
     startw_1 = startw - 1 ! This is an index shift parameter.
@@ -639,19 +639,19 @@ contains
 
     ! Generate some doppler broadening parameters
 
-    ! DOPP_ECOEF is inverse of dopp, divided by E, multiplied by sqrt(pi).
-    DOPP = multipole % sqrtAWR/sqrtKT
-    DOPP_ECOEF = DOPP*invE*SQRT_PI
+    ! dopp_ecoef is inverse of dopp, divided by E, multiplied by sqrt(pi).
+    dopp = multipole % sqrtAWR / sqrtKT
+    dopp_ecoef = dopp * invE * SQRT_PI
 
-    sigT = 0.0_8
-    sigA = 0.0_8
-    sigF = 0.0_8
+    sigT = ZERO
+    sigA = ZERO
+    sigF = ZERO
     ! Evaluate linefit first
 
-    if(sqrtkT /= 0 .AND. multipole % broaden_poly(iW) == 1) then ! Broaden the curvefit.
-      call broaden_n_polynomials(E, DOPP, multipole % fit_order + 1, broadened_polynomials)
+    if(sqrtkT /= 0 .and. multipole % broaden_poly(iW) == 1) then ! Broaden the curvefit.
+      call broaden_n_polynomials(E, dopp, multipole % fit_order + 1, broadened_polynomials)
 
-      do iC = 1,multipole % fit_order+1
+      do iC = 1, multipole % fit_order+1
         sigT = sigT + multipole % curvefit(FIT_T, iC, iW)*broadened_polynomials(iC)
         sigA = sigA + multipole % curvefit(FIT_A, iC, iW)*broadened_polynomials(iC)
         if (multipole % fissionable) then
@@ -660,7 +660,7 @@ contains
       end do
     else ! Evaluate as if it were a polynomial
       temp = invE
-      do iC = 1,multipole % fit_order+1
+      do iC = 1, multipole % fit_order+1
 
         sigT = sigT + multipole % curvefit(FIT_T, iC, iW)*temp
         sigA = sigA + multipole % curvefit(FIT_A, iC, iW)*temp
@@ -674,43 +674,42 @@ contains
 
     ! Then get the poles we want and broaden them.
 
-    if (sqrtkT == 0.0_8) then
+    if (sqrtkT == ZERO) then
       ! If at 0K, use asymptotic form.
       do iP = startw, endw
-        PSIIKI = -ONEI/(multipole % data(MP_EA, iP) - sqrtE)
-        CDUM1 = PSIIKI/E
+        psi_ki = -ONEI/(multipole % data(MP_EA, iP) - sqrtE)
+        c_temp = psi_ki/E
         if (multipole % formalism == FORM_MLBW) then
-          sigT = sigT + real(multipole % data(MLBW_RT, iP)*CDUM1* &
+          sigT = sigT + real(multipole % data(MLBW_RT, iP) * c_temp * &
                              sigT_factor(multipole % l_value(iP))) &
-                      + real(multipole % data(MLBW_RX, iP)*CDUM1)
-          sigA = sigA + real(multipole % data(MLBW_RA, iP)*CDUM1)
-          sigF = sigF + real(multipole % data(MLBW_RF, iP)*CDUM1)
+                      + real(multipole % data(MLBW_RX, iP) * c_temp)
+          sigA = sigA + real(multipole % data(MLBW_RA, iP) * c_temp)
+          sigF = sigF + real(multipole % data(MLBW_RF, iP) * c_temp)
         else if (multipole % formalism == FORM_RM) then
-          sigT = sigT + real(multipole % data(RM_RT, iP)*CDUM1* &
+          sigT = sigT + real(multipole % data(RM_RT, iP) * c_temp* &
                              sigT_factor(multipole % l_value(iP)))
-          sigA = sigA + real(multipole % data(RM_RA, iP)*CDUM1)
-          sigF = sigF + real(multipole % data(RM_RF, iP)*CDUM1)
+          sigA = sigA + real(multipole % data(RM_RA, iP) * c_temp)
+          sigF = sigF + real(multipole % data(RM_RF, iP) * c_temp)
         end if
       end do
     else
       ! At temperature, use Faddeeva function-based form.
       if(endw >= startw) then
         do iP = startw, endw
-          Z = (sqrtE - multipole % data(MP_EA, iP))*DOPP
-          call w(Z, w_val)
-          w_val = w_val*DOPP_ECOEF
+          Z = (sqrtE - multipole % data(MP_EA, iP)) * dopp
+          w_val = w(Z) * dopp_ecoef
 
           if (multipole % formalism == FORM_MLBW) then
-            sigT = sigT + real((multipole % data(MLBW_RT, iP)* &
+            sigT = sigT + real((multipole % data(MLBW_RT, iP) * &
                           sigT_factor(multipole%l_value(iP)) + &
-                          multipole % data(MLBW_RX, iP))*w_val)
-            sigA = sigA + real(multipole % data(MLBW_RA, iP)*w_val)
-            sigF = sigF + real(multipole % data(MLBW_RF, iP)*w_val)
+                          multipole % data(MLBW_RX, iP)) * w_val)
+            sigA = sigA + real(multipole % data(MLBW_RA, iP) * w_val)
+            sigF = sigF + real(multipole % data(MLBW_RF, iP) * w_val)
           else if (multipole % formalism == FORM_RM) then
-            sigT = sigT + real(multipole % data(RM_RT, iP)*w_val* &
+            sigT = sigT + real(multipole % data(RM_RT, iP) * w_val * &
                                sigT_factor(multipole % l_value(iP)))
-            sigA = sigA + real(multipole % data(RM_RA, iP)*w_val)
-            sigF = sigF + real(multipole % data(RM_RF, iP)*w_val)
+            sigA = sigA + real(multipole % data(RM_RA, iP) * w_val)
+            sigF = sigF + real(multipole % data(RM_RF, iP) * w_val)
           end if
         end do
       end if
@@ -734,14 +733,14 @@ contains
     real(8) :: arg
 
     do iL = 1, max_L
-      twophi(iL) = multipole%pseudo_k0RS(iL)*sqrtE
+      twophi(iL) = multipole % pseudo_k0RS(iL) * sqrtE
       if (iL == 2) then
         twophi(iL) = twophi(iL) - atan(twophi(iL))
       else if (iL == 3) then
-        arg = 3.0_8*twophi(iL)/(3.0_8-twophi(iL)**2)
+        arg = 3.0_8 * twophi(iL) / (3.0_8 - twophi(iL)**2)
         twophi(iL) = twophi(iL) - atan(arg)
       else if (iL == 4) then
-        arg = twophi(iL)*(15.0_8-twophi(iL)**2)/(15.0_8-6.0_8*twophi(iL)**2)
+        arg = twophi(iL) * (15.0_8 - twophi(iL)**2) / (15.0_8 - 6.0_8 * twophi(iL)**2)
         twophi(iL) = twophi(iL) - atan(arg)
       end if
     end do

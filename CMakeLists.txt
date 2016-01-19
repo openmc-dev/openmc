@@ -327,95 +327,21 @@ endif()
 
 # Loop through all the tests
 foreach(test ${TESTS})
-
   # Get test information
   get_filename_component(TEST_NAME ${test} NAME)
   get_filename_component(TEST_PATH ${test} PATH)
 
-  # Check for running standard tests (no valgrind, no gcov)
-  if(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
-
-    # Check serial/parallel
-    if (${MPI_ENABLED})
-      # Preform a parallel test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
-        --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
-    else()
-      # Perform a serial test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
-    endif()
-
-  # Handle special case for valgrind and gcov (run openmc directly, no python)
+  # Check serial/parallel
+  if (${MPI_ENABLED})
+    # Preform a parallel test
+    add_test(NAME ${TEST_NAME}
+      WORKING_DIRECTORY ${TEST_PATH}
+      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
+      --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
   else()
-
-    # If a plot test is encountered, run with "-p"
-    if (${test} MATCHES "test_plot")
-
-      # Perform serial valgrind and coverage test with plot flag
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -p ${TEST_PATH})
-
-    elseif(${test} MATCHES "test_filter_distribcell")
-
-      # Add each case for distribcell tests
-      add_test(NAME ${TEST_NAME}_case-1
-        WORKING_DIRECTORY ${TEST_PATH}/case-1
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-1)
-      add_test(NAME ${TEST_NAME}_case-2
-        WORKING_DIRECTORY ${TEST_PATH}/case-2
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-2)
-      add_test(NAME ${TEST_NAME}_case-3
-        WORKING_DIRECTORY ${TEST_PATH}/case-3
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-3)
-      add_test(NAME ${TEST_NAME}_case-4
-        WORKING_DIRECTORY ${TEST_PATH}/case-4
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-4)
-
-    # If a restart test is encounted, need to run with -r and restart file(s)
-    elseif(${test} MATCHES "restart")
-
-      # Handle restart tests separately
-      if(${test} MATCHES "test_statepoint_restart")
-        set(RESTART_FILE statepoint.07.h5)
-      elseif(${test} MATCHES "test_sourcepoint_restart")
-        set(RESTART_FILE statepoint.07.h5 source.07.h5)
-      elseif(${test} MATCHES "test_particle_restart_eigval")
-        set(RESTART_FILE particle_9_555.h5)
-      elseif(${test} MATCHES "test_particle_restart_fixed")
-        set(RESTART_FILE particle_7_928.h5)
-      else()
-        message(FATAL_ERROR "Restart test ${test} not recognized")
-      endif()
-
-      # Perform serial valgrind and coverage test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
-
-      # Perform serial valgrind and coverage restart test
-      add_test(NAME ${TEST_NAME}_restart
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -r ${RESTART_FILE} ${TEST_PATH})
-
-      # Set test dependency
-      set_tests_properties(${TEST_NAME}_restart PROPERTIES DEPENDS ${TEST_NAME})
-
-
-    # Handle standard tests for valgrind and gcov
-    else()
-
-      # Perform serial valgrind and coverage test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
-
-    endif()
-
+    # Perform a serial test
+    add_test(NAME ${TEST_NAME}
+      WORKING_DIRECTORY ${TEST_PATH}
+      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
   endif()
-
 endforeach(test)

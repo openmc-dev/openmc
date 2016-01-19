@@ -1944,9 +1944,9 @@ contains
         call get_node_ptr(node_mat, "temperature", node_temp)
         call get_node_value(node_temp, "value", temp_dble)
         mat % sqrtkT = sqrt(temp_dble * K_BOLTZMANN * 1.0D6)
-        temp_known = .TRUE.
+        temp_known = .true.
       else
-        temp_known = .FALSE.
+        temp_known = .false.
       end if
 
       ! =======================================================================
@@ -2056,12 +2056,12 @@ contains
         name = trim(temp_str) // "." // trim(name)
 
         ! If needed, look up temperature
-        if (temp_known .eqv. .FALSE.) then
+        if (.not. temp_known) then
           ! Find xs_listing and set the name/alias according to the listing
           index_list = xs_listing_dict % get_key(to_lower(name))
           if(xs_listings(index_list) % kT /= 0.0_8) then
             mat % sqrtkT = sqrt(xs_listings(index_list) % kT * 1.0D6)
-            temp_known = .TRUE.
+            temp_known = .true.
           end if
         end if
 
@@ -2154,12 +2154,12 @@ contains
         end if
 
         ! If still needed, look up temperature
-        if (temp_known .eqv. .FALSE.) then
+        if (.not. temp_known) then
           ! Find xs_listing and set kT
           index_list = xs_listing_dict % get_key(to_lower(list_names % tail % data))
           if(xs_listings(index_list) % kT /= 0.0_8) then
             mat % sqrtkT = sqrt(xs_listings(index_list) % kT * 1.0D6)
-            temp_known = .TRUE.
+            temp_known = .true.
           end if
         end if
 
@@ -2178,9 +2178,9 @@ contains
       end do NATURAL_ELEMENTS
 
       ! If still undefined, set the temperature to zero
-      if (temp_known .eqv. .FALSE.) then
+      if (.not. temp_known) then
         mat % sqrtkT = 0.0_8
-        temp_known = .TRUE.
+        temp_known = .true.
       end if
 
       ! ========================================================================

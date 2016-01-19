@@ -146,8 +146,8 @@ module ace_header
     type(UrrData), pointer :: urr_data => null()
 
     ! Multipole data
-    logical                       :: mp_present
-    type(MultipoleArray), pointer :: multipole => null()
+    logical                           :: mp_present
+    type(MultipoleArray), allocatable :: multipole
 
     ! Reactions
     integer :: n_reaction ! # of reactions
@@ -346,8 +346,7 @@ module ace_header
         deallocate(this % urr_data)
       end if
 
-      if (associated(this % multipole)) then
-        call this % multipole % clear()
+      if (this % mp_present) then
         deallocate(this % multipole)
       end if
 

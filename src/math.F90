@@ -12,12 +12,12 @@ module math
 !===============================================================================
 
   interface
-    COMPLEX (C_DOUBLE_COMPLEX) FUNCTION faddeeva_w &
-            (Z, RELERR) BIND(C, NAME='Faddeeva_w')
-            use ISO_C_BINDING
-            implicit none
-            COMPLEX(C_DOUBLE_COMPLEX), value :: Z
-            REAL(C_DOUBLE)           , value :: RELERR
+    function faddeeva_w(z, relerr) bind(C, name='Faddeeva_w') result(w)
+      use ISO_C_BINDING
+      implicit none
+      complex(C_DOUBLE_COMPLEX), value :: z
+      real(C_DOUBLE),            value :: relerr
+      complex(C_DOUBLE_COMPLEX)        :: w
     end function faddeeva_w
   end interface
 
@@ -679,31 +679,32 @@ contains
 ! W acts as a front end to the MIT Faddeeva function, Faddeeva_w.
 !===============================================================================
 
-  subroutine w(Z,wv)
-    use ISO_C_BINDING
-    complex(C_DOUBLE_COMPLEX), intent(inout) :: Z ! The point to evaluate Z at
-    complex(8), intent(out) :: wv                 ! The resulting w(Z) value
+  function w(z) result(wv)
+    complex(C_DOUBLE_COMPLEX), intent(in) :: z ! The point to evaluate Z at
+    complex(8)     :: wv     ! The resulting w(z) value
     real(C_DOUBLE) :: relerr ! Target relative error in inner loop of MIT Faddeeva
-    logical        :: mangle ! Do we need to perform the special mangling step?
 
-    ! There is some special mangling the true W function in WHOPPER does.  I
-    ! replicate it here.
-    if(aimag(Z) < 0) then
-      Z = conjg(Z)
-      mangle = .TRUE.
+    ! Technically, the value we want is given by the equation:
+    ! w(z) = I/Pi * Integrate[Exp[-t^2]/(z-t), {t, -Infinity, Infinity}]
+    ! as shown in Equation 63 from Hwang, R. N. "A rigorous pole
+    ! representation of multilevel cross sections and its practical
+    ! applications." Nuclear Science and Engineering 96.3 (1987): 192-209.
+    !
+    ! The MIT Faddeeva function evaluates w(z) = exp(-z^2)erfc(-iz). These
+    ! two forms of the Faddeeva function are related by a transformation.
+    !
+    ! If we call the integral form w_int, and the function form w_fun:
+    ! For imag(z) > 0, w_int(z) = w_fun(z)
+    ! For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
+
+    relerr = ZERO
+    if (aimag(z) > ZERO) then
+      wv = faddeeva_w(z, relerr)
     else
-      mangle = .FALSE.
+      wv = -conjg(faddeeva_w(conjg(z), relerr))
     end if
 
-    ! Calculate Faddeeva
-    relerr = 0.0_8
-    wv = faddeeva_w(Z,relerr)
-
-    ! Finish mangling the results
-    if(mangle .eqv. .TRUE.) then
-      wv = -conjg(wv)
-    end if
-  end subroutine
+  end function w
 
 !===============================================================================
 ! BROADEN_N_POLYNOMIALS doppler broadens polynomials of the form
@@ -711,31 +712,31 @@ contains
 ! exactly and quickly.
 !===============================================================================
 
-  subroutine broaden_n_polynomials(En, DOPP, n, factors)
+  subroutine broaden_n_polynomials(En, dopp, n, factors)
     real(8), intent(in) :: En         ! Energy to evaluate at
-    real(8), intent(in) :: DOPP       ! sqrt(atomic weight ratio / kT), kT given in eV.
+    real(8), intent(in) :: dopp       ! sqrt(atomic weight ratio / kT), kT given in eV.
     integer, intent(in) :: n          ! number of components to polynomial
     real(8), intent(out):: factors(n) ! output leading coefficient
 
     integer :: i
 
-    real(8) :: sqrtE
-    real(8) :: beta
-    real(8) :: halfinvDOPP2
-    real(8) :: quarterinvDOPP4
-    real(8) :: erfbeta
-    real(8) :: exp_m_beta2
+    real(8) :: sqrtE               ! Sqrt(energy)
+    real(8) :: beta                ! sqrt(atomic weight ratio * E / kT)
+    real(8) :: half_inv_dopp2      ! 0.5 / dopp**2
+    real(8) :: quarter_inv_dopp4   ! 0.25 / dopp**4
+    real(8) :: erfbeta             ! error function of beta
+    real(8) :: exp_m_beta2         ! exp(-beta**2)
 
     sqrtE = sqrt(En)
-    beta = sqrtE*DOPP
-    halfinvDOPP2 = 0.5_8/DOPP**2
-    quarterinvDOPP4 = 0.25_8/DOPP**4
+    beta = sqrtE * dopp
+    half_inv_dopp2 = HALF / dopp**2
+    quarter_inv_dopp4 = half_inv_dopp2**2
 
     if (beta > 6.0_8) then
       ! Save time, ERF(6) is 1 to machine precision.
       ! beta/sqrtpi*exp(-beta**2) is also approximately 1 machine epsilon.
-      erfBeta = 1.0_8
-      exp_m_beta2 = 0.0_8
+      erfBeta = ONE
+      exp_m_beta2 = ZERO 
     else
       erfBeta = erf(beta)
       exp_m_beta2 = exp(-beta**2)
@@ -744,19 +745,19 @@ contains
     ! Assume that, for sure, we'll use a second order (1/E, 1/V, const)
     ! fit, and no less.
 
-    factors(1) = erfbeta/En
-    factors(2) = 1.0_8/sqrtE
-    factors(3) = factors(1)*(halfinvDOPP2 + En) + exp_m_beta2/(beta*SQRT_PI)
+    factors(1) = erfbeta / En
+    factors(2) = ONE / sqrtE
+    factors(3) = factors(1) * (half_inv_dopp2 + En) + exp_m_beta2 / (beta * SQRT_PI)
 
     ! Perform recursive broadening of high order components
-    do i = 1,n-3
+    do i = 1, n-3
       if (i /= 1) then
-        factors(i+3) = -factors(i-1)*(i - 1.0_8)*i*quarterinvDOPP4 + &
-             factors(i+1)*(En + (1.0_8 + 2.0_8*i)*halfinvDOPP2)
+        factors(i+3) = -factors(i-1) * (i - ONE) * i * quarter_inv_dopp4 + &
+             factors(i+1) * (En + (ONE + TWO * i) * half_inv_dopp2)
       else
         ! Although it's mathematically identical, factors(0) will contain
         ! nothing, and we don't want to have to worry about memory.
-        factors(i+3) = factors(i+1)*(En + (1.0_8 + 2.0_8*i)*halfinvDOPP2)
+        factors(i+3) = factors(i+1)*(En + (ONE + TWO * i) * half_inv_dopp2)
       end if
     end do
   end subroutine broaden_n_polynomials

@@ -8,7 +8,7 @@ module multipole_header
   ! Formalisms
   integer, parameter :: FORM_MLBW = 2, &
                         FORM_RM   = 3, &
-                        FORM_LRM  = 7
+                        FORM_RML  = 7
 
   ! Constants that determine which value to access
   integer, parameter :: MP_EA = 1       ! Pole
@@ -51,7 +51,7 @@ module multipole_header
     logical                 :: fissionable = .false.  ! Is this isotope fissionable?
     integer                 :: length                 ! Number of poles
     integer, allocatable    :: l_value(:)             ! The l index of the pole
-    real(8), allocatable    :: pseudo_k0RS(:)         ! pseudo_k0RS for each of l
+    real(8), allocatable    :: pseudo_k0RS(:)         ! The value (sqrt(2*mass neutron)/reduced planck constant) * AWR/(AWR + 1) * scattering radius for each l
     complex(8), allocatable :: data(:,:)              ! Contains all of the pole-residue data
     real(8)                 :: sqrtAWR                ! Square root of the atomic weight ratio
 
@@ -78,29 +78,10 @@ module multipole_header
     integer :: formalism
 
     contains
-      procedure :: clear => multipole_clear ! Deallocates Multipole
       procedure :: allocate => multipole_allocate ! Allocates Multipole
   end type MultipoleArray
 
 contains
-
-!===============================================================================
-! MULTIPOLE_CLEAR resets and deallocates data in Multipole.
-!===============================================================================
-
-    subroutine multipole_clear(this)
-      class(MultipoleArray), intent(inout) :: this
-
-      if (allocated(this % data)) then
-        deallocate(this % data)
-        deallocate(this % w_start)
-        deallocate(this % w_end)
-        deallocate(this % curvefit)
-
-        deallocate(this % l_value)
-        deallocate(this % pseudo_k0RS)
-      end if
-    end subroutine
 
 !===============================================================================
 ! MULTIPOLE_ALLOCATE allocates necessary data for Multipole.

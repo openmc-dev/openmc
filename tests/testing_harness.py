@@ -230,6 +230,23 @@ class CMFDTestHarness(TestHarness):
 
 class ParticleRestartTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC particle restart tests."""
+    def _run_openmc(self):
+        # Set arguments
+        args = {'openmc_exec': self._opts.exe}
+        if self._opts.mpi_exec is not None:
+            args.update({'mpi_procs': self._opts.mpi_np,
+                         'mpi_exec': self._opts.mpi_exec})
+
+        # Initial run
+        executor = Executor()
+        returncode = executor.run_simulation(**args)
+        assert returncode == 0, 'OpenMC did not exit successfully.'
+
+        # Run particle restart
+        args.update({'restart_file': self._sp_name})
+        returncode = executor.run_simulation(**args)
+        assert returncode == 0, 'OpenMC did not exit successfully.'
+
     def _test_output_created(self):
         """Make sure the restart file has been created."""
         particle = glob.glob(os.path.join(os.getcwd(), self._sp_name))

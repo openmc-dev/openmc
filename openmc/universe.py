@@ -403,7 +403,6 @@ class Cell(object):
             element.set("name", str(self.name))
 
         if isinstance(self.fill, basestring):
-            assert self.fill.strip().lower() == 'void'
             element.set("material", "void")
 
         elif isinstance(self.fill, openmc.Material):

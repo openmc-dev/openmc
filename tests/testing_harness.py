@@ -152,49 +152,6 @@ class HashedTestHarness(TestHarness):
         return super(HashedTestHarness, self)._get_results(True)
 
 
-class PlotTestHarness(TestHarness):
-    """Specialized TestHarness for running OpenMC plotting tests."""
-    def __init__(self, plot_names):
-        super(PlotTestHarness, self).__init__(None, False)
-        self._plot_names = plot_names
-
-    def _run_openmc(self):
-        executor = Executor()
-        returncode = executor.plot_geometry(openmc_exec=self._opts.exe)
-        assert returncode == 0, 'OpenMC did not exit successfully.'
-
-    def _test_output_created(self):
-        """Make sure *.ppm has been created."""
-        for fname in self._plot_names:
-            assert os.path.exists(os.path.join(os.getcwd(), fname)), \
-                 'Plot output file does not exist.'
-
-    def _cleanup(self):
-        super(PlotTestHarness, self)._cleanup()
-        output = glob.glob(os.path.join(os.getcwd(), '*.ppm'))
-        for f in output:
-            if os.path.exists(f):
-                os.remove(f)
-
-    def _get_results(self):
-        """Return a string hash of the plot files."""
-        # Find the plot files.
-        plot_files = glob.glob(os.path.join(os.getcwd(), '*.ppm'))
-
-        # Read the plot files.
-        outstr = bytes()
-        for fname in sorted(plot_files):
-            with open(fname, 'rb') as fh:
-                outstr += fh.read()
-
-        # Hash the information and return.
-        sha512 = hashlib.sha512()
-        sha512.update(outstr)
-        outstr = sha512.hexdigest()
-
-        return outstr
-
-
 class CMFDTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC CMFD tests."""
     def _get_results(self):

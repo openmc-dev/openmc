@@ -965,6 +965,11 @@ contains
     end if
 
     if (run_mode == MODE_EIGENVALUE) then
+      size_fission_bank = 3*work
+
+      ! Load imbalance can be severer for dd runs
+      if (dd_run) size_fission_bank = 3*min(10*work, n_particles)
+
 #ifdef _OPENMP
       ! If OpenMP is being used, each thread needs its own private fission
       ! bank. Since the private fission banks need to be combined at the end of
@@ -977,17 +982,15 @@ contains
       thread_id = omp_get_thread_num()
 
       if (thread_id == 0) then
-        allocate(fission_bank(3*work))
+        allocate(fission_bank(size_fission_bank))
       else
-        allocate(fission_bank(5*work/n_threads))
+        allocate(fission_bank(size_fission_bank/n_threads))
       end if
 !$omp end parallel
-      allocate(master_fission_bank(3*work), STAT=alloc_err)
+      allocate(master_fission_bank(size_fission_bank), STAT=alloc_err)
 #else
-      allocate(fission_bank(3*work), STAT=alloc_err)
+      allocate(fission_bank(size_fission_bank), STAT=alloc_err)
 #endif
-
-      size_fission_bank = 3*work
 
       ! Check for allocation errors
       if (alloc_err /= 0) then

@@ -44,8 +44,8 @@ Installing from Source on Ubuntu 15.04+
 ---------------------------------------
 
 To build OpenMC from source, several :ref:`prerequisites <prerequisites>` are
-needed. If you are Ubuntu 15.04 or higher, all prerequisites can be installed
-directly from the package manager.
+needed. If you are using Ubuntu 15.04 or higher, all prerequisites can be
+installed directly from the package manager.
 
 .. code-block:: sh
 

@@ -397,10 +397,10 @@ class Cell(object):
 
     def create_xml_subelement(self, xml_element):
         element = ET.Element("cell")
-        element.set("id", str(self._id))
+        element.set("id", str(self.id))
 
         if len(self._name) > 0:
-            element.set("name", str(self._name))
+            element.set("name", str(self.name))
 
         if isinstance(self.fill, basestring):
             assert self.fill.strip().lower() == 'void'
@@ -415,11 +415,11 @@ class Cell(object):
 
         elif isinstance(self.fill, (Universe, Lattice)):
             element.set("fill", str(self.fill.id))
-            self._fill.create_xml_subelement(xml_element)
+            self.fill.create_xml_subelement(xml_element)
 
         else:
             element.set("fill", str(self.fill))
-            self._fill.create_xml_subelement(xml_element)
+            self.fill.create_xml_subelement(xml_element)
 
         if self.region is not None:
             # Set the region attribute with the region specification
@@ -446,11 +446,11 @@ class Cell(object):
             # Call the recursive function from the top node
             create_surface_elements(self.region, xml_element)
 
-        if self._translation is not None:
-            element.set("translation", ' '.join(map(str, self._translation)))
+        if self.translation is not None:
+            element.set("translation", ' '.join(map(str, self.translation)))
 
-        if self._rotation is not None:
-            element.set("rotation", ' '.join(map(str, self._rotation)))
+        if self.rotation is not None:
+            element.set("rotation", ' '.join(map(str, self.rotation)))
 
         return element
 

@@ -61,12 +61,13 @@ module tally_header
 
 
 !===============================================================================
-! TALLYDERIVATIVE
+! TALLYDERIVATIVE describes a first-order derivative that can be applied to
+! tallies.
 !===============================================================================
 
   type TallyDerivative
     real(8) :: flux_deriv
-    integer :: dep_var
+    integer :: variable
     integer :: diff_material
     integer :: diff_nuclide
   end type TallyDerivative

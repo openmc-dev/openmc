@@ -2996,11 +2996,11 @@ contains
         select case(temp_str)
 
         case("density")
-          t % deriv % dep_var = DIFF_DENSITY
+          t % deriv % variable = DIFF_DENSITY
           call get_node_value(node_deriv, "material", t % deriv % diff_material)
 
         case("nuclide_density")
-          t % deriv % dep_var = DIFF_NUCLIDE_DENSITY
+          t % deriv % variable = DIFF_NUCLIDE_DENSITY
           call get_node_value(node_deriv, "material", t % deriv % diff_material)
 
           call get_node_value(node_deriv, "nuclide", word)

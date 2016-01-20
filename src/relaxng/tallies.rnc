@@ -41,7 +41,13 @@ element tallies {
       (element type { xsd:string } | attribute type { xsd:string }) &
       (element threshold { xsd:double} | attribute threshold { xsd:double }) &
       (element scores { list { xsd:string { maxLength = "20" }+ } } | attribute scores { list { xsd:string { maxLength = "20"}+ } } )?
-    }*
+    }* &
+    element derivative {
+      (element variable { ( "density" | "nuclide_density") } |
+        attribute variable { ( "density" | "nuclide_density") } ) &
+      (element material { xsd:int } | attribute material { xsd:int }) &
+      (element nuclide { xsd:string } | attribute nuclide { xsd:string })?
+    }?
   }* &
 
   element assume_separate { xsd:boolean }?

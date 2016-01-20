@@ -1019,7 +1019,7 @@ contains
 
       ! Write derivative information.
       if (allocated(t % deriv)) then
-        select case (t % deriv % dep_var)
+        select case (t % deriv % variable)
         case (DIFF_DENSITY)
           write(unit=unit_tally, fmt="(' Density derivative  Material ',A)") &
                to_str(t % deriv % diff_material)

@@ -260,5 +260,39 @@
         <data type="boolean"/>
       </element>
     </optional>
+    <optional>
+      <element name="derivative">
+        <choice>
+          <element name="variable">
+            <choice>
+              <value>density</value>
+              <value>nuclide_density</value>
+            </choice>
+          </element>
+          <attribute name="variable">
+            <choice>
+              <value>density</value>
+              <value>nuclide_density</value>
+            </choice>
+          </attribute>
+        </choice>
+        <choice>
+          <element name="material">
+            <data type="int"/>
+          </element>
+          <attribute name="material">
+            <data type="int"/>
+          </attribute>
+        </choice>
+        <optional>
+          <element name="nuclide">
+            <data type="string"/>
+          </element>
+          <attribute name="nuclide">
+            <data type="string"/>
+          </attribute>
+        </optional>
+      </element>
+    </optional>
   </interleave>
 </element>

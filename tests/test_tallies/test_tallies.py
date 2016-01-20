@@ -5,9 +5,21 @@ import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
 from openmc import Filter, Mesh, Tally, TalliesFile
+from openmc.source import Source
+from openmc.stats import Box
 
 class TalliesTestHarness(PyAPITestHarness):
     def _build_inputs(self):
+        # Build default materials/geometry
+        self._input_set.build_default_materials_and_geometry()
+
+        # Set settings explicitly
+        self._input_set.settings.batches = 5
+        self._input_set.settings.inactive = 0
+        self._input_set.settings.particles = 400
+        self._input_set.settings.source = Source(space=Box(
+            [-160, -160, -183], [160, 160, 183]))
+
         azimuthal_bins = (-3.1416, -1.8850, -0.6283, 0.6283, 1.8850, 3.1416)
         azimuthal_filter1 = Filter(type='azimuthal', bins=azimuthal_bins)
         azimuthal_tally1 = Tally()
@@ -126,6 +138,7 @@ class TalliesTestHarness(PyAPITestHarness):
             t.add_score('(n,gamma)')
             t.add_score('nu-fission')
             t.add_score('scatter')
+            t.add_score('elastic')
             t.add_score('total')
         score_tallies[0].estimator = 'tracklength'
         score_tallies[1].estimator = 'analog'
@@ -170,6 +183,18 @@ class TalliesTestHarness(PyAPITestHarness):
         total_tallies[2].estimator = 'analog'
         total_tallies[3].estimator = 'collision'
 
+        questionable_tally = Tally()
+        questionable_tally.add_score('transport')
+        questionable_tally.add_score('n1n')
+
+        all_nuclide_tallies = [Tally(), Tally()]
+        for t in all_nuclide_tallies:
+            t.add_filter(cell_filter)
+            t.add_nuclide('all')
+            t.add_score('total')
+        all_nuclide_tallies[0].estimator = 'tracklength'
+        all_nuclide_tallies[0].estimator = 'collision'
+
         self._input_set.tallies = TalliesFile()
         self._input_set.tallies.add_tally(azimuthal_tally1)
         self._input_set.tallies.add_tally(azimuthal_tally2)
@@ -194,9 +219,14 @@ class TalliesTestHarness(PyAPITestHarness):
         self._input_set.tallies.add_tally(scatter_tally1)
         self._input_set.tallies.add_tally(scatter_tally2)
         [self._input_set.tallies.add_tally(t) for t in total_tallies]
+        self._input_set.tallies.add_tally(questionable_tally)
+        [self._input_set.tallies.add_tally(t) for t in all_nuclide_tallies]
         self._input_set.tallies.add_mesh(mesh_2x2)
 
-        super(TalliesTestHarness, self)._build_inputs()
+        self._input_set.export()
+
+    def _get_results(self):
+        return super(TalliesTestHarness, self)._get_results(hash_output=True)
 
     def _cleanup(self):
         super(TalliesTestHarness, self)._cleanup()
@@ -205,5 +235,5 @@ class TalliesTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = TalliesTestHarness('statepoint.10.*', True)
+    harness = TalliesTestHarness('statepoint.5.*', True)
     harness.main()

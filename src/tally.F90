@@ -772,7 +772,7 @@ contains
           end if
 
         case (ESTIMATOR_COLLISION)
-          if (t % deriv % dep_var == DIFF_NUCLIDE_DENSITY) then
+          if (t % deriv % variable == DIFF_NUCLIDE_DENSITY) then
             scoring_diff_nuclide = &
                  (materials(p % material) % id == t % deriv % diff_material) &
                  .and. (i_nuclide == t % deriv % diff_nuclide)
@@ -801,7 +801,7 @@ contains
             score = score * t % deriv % flux_deriv
 
           case (SCORE_TOTAL)
-            select case (t % deriv % dep_var)
+            select case (t % deriv % variable)
 
             case (DIFF_NUCLIDE_DENSITY)
               if (i_nuclide == -1 .and. &
@@ -819,7 +819,7 @@ contains
             end select
 
           case (SCORE_ABSORPTION)
-            select case (t % deriv % dep_var)
+            select case (t % deriv % variable)
 
             case (DIFF_NUCLIDE_DENSITY)
               if (i_nuclide == -1 .and. &
@@ -837,7 +837,7 @@ contains
             end select
 
           case (SCORE_FISSION)
-            select case (t % deriv % dep_var)
+            select case (t % deriv % variable)
 
             case (DIFF_NUCLIDE_DENSITY)
               if (i_nuclide == -1 .and. &
@@ -855,7 +855,7 @@ contains
             end select
 
           case (SCORE_NU_FISSION)
-            select case (t % deriv % dep_var)
+            select case (t % deriv % variable)
 
             case (DIFF_NUCLIDE_DENSITY)
               if (i_nuclide == -1 .and. &
@@ -873,7 +873,7 @@ contains
             end select
 
           case (SCORE_KEFF)
-            select case (t % deriv % dep_var)
+            select case (t % deriv % variable)
 
             case (DIFF_DENSITY)
               score = score * t % deriv % flux_deriv
@@ -2383,12 +2383,13 @@ contains
   end subroutine score_surface_current
 
 !===============================================================================
-! SCORE_TRACK_DERIVATIVE
+! SCORE_TRACK_DERIVATIVE Adjust flux derivatives on differential tallies to
+! account for a neutron travelling through a perturbed material.
 !===============================================================================
 
   subroutine score_track_derivative(p, distance)
     type(particle), intent(in) :: p
-    real(8),        intent(in) :: distance
+    real(8),        intent(in) :: distance ! Neutron flight distance
 
     integer :: i
 
@@ -2396,13 +2397,16 @@ contains
 
     do i = 1, active_tallies % size()
       associate (t => tallies(active_tallies % get_item(i)))
-        if (.not. allocated(t % deriv)) cycle
+        if (.not. allocated(t % deriv)) cycle  ! Ignore non-differential tallies
 
-        select case (t % deriv % dep_var)
+        select case (t % deriv % variable)
 
         case (DIFF_DENSITY)
           associate (mat => materials(p % material))
             if (mat % id == t % deriv % diff_material) then
+              ! phi = e^(-Sigma_tot * dist)
+              ! (1 / phi) * (d_phi / d_rho) = - (d_Sigma_tot / d_rho) * dist
+              ! (1 / phi) * (d_phi / d_rho) = - Sigma_tot / rho * dist
               t % deriv % flux_deriv = t % deriv % flux_deriv &
                    - distance * material_xs % total / mat % density_gpcc
             end if
@@ -2411,6 +2415,9 @@ contains
         case (DIFF_NUCLIDE_DENSITY)
           associate (mat => materials(p % material))
             if (mat % id == t % deriv % diff_material) then
+              ! phi = e^(-Sigma_tot * dist)
+              ! (1 / phi) * (d_phi / d_N) = - (d_Sigma_tot / d_N) * dist
+              ! (1 / phi) * (d_phi / d_N) = - sigma_tot * dist
               t % deriv % flux_deriv = t % deriv % flux_deriv &
                    - distance * micro_xs(t % deriv % diff_nuclide) % total
             end if
@@ -2418,10 +2425,11 @@ contains
         end select
       end associate
     end do
-  end subroutine
+  end subroutine score_track_derivative
 
 !===============================================================================
-! SCORE_COLLISION_DERIVATIVE
+! SCORE_COLLISION_DERIVATIVE Adjust flux derivatives on differential tallies to
+! account for a neutron colliding in the perturbed material.
 !===============================================================================
 
   subroutine score_collision_derivative(p)
@@ -2433,12 +2441,15 @@ contains
 
     do i = 1, active_tallies % size()
       associate (t => tallies(active_tallies % get_item(i)))
-        if (.not. allocated(t % deriv)) cycle
-        select case (t % deriv % dep_var)
+        if (.not. allocated(t % deriv)) cycle  ! Ignore non-differential tallies
+        select case (t % deriv % variable)
 
         case (DIFF_DENSITY)
           associate (mat => materials(p % material))
             if (mat % id == t % deriv % diff_material) then
+              ! phi = Sigma_MT
+              ! (1 / phi) * (d_phi / d_rho) = (d_Sigma_MT / d_rho) / Sigma_MT
+              ! (1 / phi) * (d_phi / d_rho) = 1 / rho
               t % deriv % flux_deriv = t % deriv % flux_deriv &
                    + ONE / mat % density_gpcc
             end if
@@ -2448,12 +2459,18 @@ contains
           associate (mat => materials(p % material))
             if (mat % id == t % deriv % diff_material &
                  .and. p % event_nuclide == t % deriv % diff_nuclide) then
+              ! Find the index in this material for the diff_nuclide.
               do j = 1, mat % n_nuclides
                 if (mat % nuclide(j) == t % deriv % diff_nuclide) exit
               end do
+              ! Make sure we found the nuclide.
               if (mat % nuclide(j) /= t % deriv % diff_nuclide) then
                 call fatal_error("Couldn't find the right nuclide.")
               end if
+              ! phi = Sigma_MT
+              ! (1 / phi) * (d_phi / d_N) = (d_Sigma_MT / d_N) / Sigma_MT
+              ! (1 / phi) * (d_phi / d_N) = sigma_MT / Sigma_MT
+              ! (1 / phi) * (d_phi / d_N) = 1 / N
               t % deriv % flux_deriv = t % deriv % flux_deriv &
                    + ONE / mat % atom_density(j)
             end if
@@ -2461,16 +2478,20 @@ contains
         end select
       end associate
     end do
-  end subroutine
+  end subroutine score_collision_derivative
 
-  subroutine clear_diff_flux_derivs()
+!===============================================================================
+! ZERO_FLUX_DERIVS Set the flux derivatives on differential tallies to zero.
+!===============================================================================
+
+  subroutine zero_flux_derivs()
     integer :: i
     do i = 1, n_tallies
       if (allocated(tallies(i) % deriv)) then
         tallies(i) % deriv % flux_deriv = ZERO
       end if
     end do
-  end subroutine
+  end subroutine zero_flux_derivs
 
 !===============================================================================
 ! GET_NEXT_BIN determines the next scoring bin for a particular filter variable

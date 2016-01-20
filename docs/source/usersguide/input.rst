@@ -1618,6 +1618,27 @@ The ``<tally>`` element accepts the following sub-elements:
 
      *Default*: "all"
 
+  :derivative:
+    Tally the first-order derivative of the quantity of interest with respect to
+    some material perturbation. Differential tallies are currently only
+    implemented for collision and analog estimators.
+
+    The ``derivative`` element has the following attributes/sub-elements:
+
+      :variable:
+        The independent variable of the derivative. Accepted options are
+        "density" and "nuclide_density". A "density" derivative will give the
+        derivative with respect to the density of the material in [g / cm^3]. A
+        "nuclide_density" derivative will give the derivative with respect to
+        the density of a particular nuclide in units of [atom / b / cm].
+
+      :material:
+        The perturbed material. (Necessary for both "density" and
+        "nuclide_density")
+
+      :nuclide:
+        The perturbed nuclide. (Necessary only for "nuclide_density")
+
 ``<mesh>`` Element
 ------------------
 

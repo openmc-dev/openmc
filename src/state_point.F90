@@ -311,7 +311,7 @@ contains
           if (allocated(tally % deriv)) then
             call write_dataset(tally_group, "derivative present", 1)
             deriv_group = create_group(tally_group, "derivative")
-            select case (tally % deriv % dep_var)
+            select case (tally % deriv % variable)
             case (DIFF_DENSITY)
               call write_dataset(deriv_group, "dependent variable", "density")
               call write_dataset(deriv_group, "material", &

@@ -313,35 +313,36 @@ include(CTest)
 # Get a list of all the tests to run
 file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.py)
 
-# Check for MEM_CHECK and COVERAGE variables
-if (DEFINED ENV{MEM_CHECK})
-  set(MEM_CHECK $ENV{MEM_CHECK})
-else()
-  set(MEM_CHECK FALSE)
-endif()
-if (DEFINED ENV{COVERAGE})
-  set(COVERAGE $ENV{COVERAGE})
-else()
-  set(COVERAGE FALSE)
-endif()
-
 # Loop through all the tests
 foreach(test ${TESTS})
   # Get test information
   get_filename_component(TEST_NAME ${test} NAME)
   get_filename_component(TEST_PATH ${test} PATH)
 
-  # Check serial/parallel
-  if (${MPI_ENABLED})
-    # Preform a parallel test
+  if (DEFINED ENV{MEM_CHECK})
+    # Generate input files if needed
+    if (NOT EXISTS "${TEST_PATH}/geometry.xml")
+      execute_process(COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --build-inputs
+        WORKING_DIRECTORY ${TEST_PATH})
+    endif()
+
+    # Add serial test
     add_test(NAME ${TEST_NAME}
       WORKING_DIRECTORY ${TEST_PATH}
-      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
-      --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
+      COMMAND $<TARGET_FILE:openmc>)
   else()
-    # Perform a serial test
-    add_test(NAME ${TEST_NAME}
-      WORKING_DIRECTORY ${TEST_PATH}
-      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
+    # Check serial/parallel
+    if (${MPI_ENABLED})
+      # Preform a parallel test
+      add_test(NAME ${TEST_NAME}
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
+        --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
+    else()
+      # Perform a serial test
+      add_test(NAME ${TEST_NAME}
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
+    endif()
   endif()
 endforeach(test)

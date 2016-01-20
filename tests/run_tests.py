@@ -8,7 +8,7 @@ import shutil
 import re
 import glob
 import socket
-from subprocess import call
+from subprocess import call, check_output
 from collections import OrderedDict
 from optparse import OptionParser
 
@@ -73,11 +73,11 @@ set(CTEST_UPDATE_COMMAND "git")
 set(CTEST_CONFIGURE_COMMAND "${{CMAKE_COMMAND}} -H${{CTEST_SOURCE_DIRECTORY}} -B${{CTEST_BINARY_DIRECTORY}} ${{CTEST_BUILD_OPTIONS}}")
 set(CTEST_MEMORYCHECK_COMMAND "{valgrind_cmd}")
 set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes")
-set(CTEST_MEMORYCHECK_SUPPRESSIONS_FILE ${{CTEST_SOURCE_DIRECTORY}}/../tests/valgrind.supp)
+#set(CTEST_MEMORYCHECK_SUPPRESSIONS_FILE ${{CTEST_SOURCE_DIRECTORY}}/../tests/valgrind.supp)
 set(MEM_CHECK {mem_check})
 set(ENV{{MEM_CHECK}} ${{MEM_CHECK}})
 
-set(CTEST_COVERAGE_COMMAND "{gcov_cmd}")
+set(CTEST_COVERAGE_COMMAND "gcov")
 set(COVERAGE {coverage})
 set(ENV{{COVERAGE}} ${{COVERAGE}})
 
@@ -87,9 +87,11 @@ ctest_start("{dashboard}")
 ctest_configure(RETURN_VALUE res)
 {update}
 ctest_build(RETURN_VALUE res)
+if(NOT MEM_CHECK)
 ctest_test({tests} PARALLEL_LEVEL {n_procs}, RETURN_VALUE res)
+endif()
 if(MEM_CHECK)
-ctest_memcheck({tests}, RETURN_VALUE res)
+ctest_memcheck({tests} RETURN_VALUE res)
 endif(MEM_CHECK)
 if(COVERAGE)
 ctest_coverage(RETURN_VALUE res)
@@ -105,6 +107,32 @@ endif()
 # Define test data structure
 tests = OrderedDict()
 
+def cleanup(path):
+    """Remove generated output files."""
+    for dirpath, dirnames, filenames in os.walk(path):
+        for fname in filenames:
+            for ext in ['.h5', '.ppm', '.voxel']:
+                if fname.endswith(ext):
+                    os.remove(os.path.join(dirpath, fname))
+
+
+def which(program):
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+    return None
+
+
 class Test(object):
     def __init__(self, name, debug=False, optimize=False, mpi=False, openmp=False,
                  phdf5=False, valgrind=False, coverage=False):
@@ -119,8 +147,6 @@ class Test(object):
         self.success = True
         self.msg = None
         self.skipped = False
-        self.valgrind_cmd = ""
-        self.gcov_cmd = ""
         self.cmake = ['cmake', '-H..', '-Bbuild',
                       '-DPYTHON_EXECUTABLE=' + sys.executable]
 
@@ -231,42 +257,6 @@ class Test(object):
             self.success = False
             self.msg = 'Failed on testing.'
 
-    # Checks to see if file exists in PWD or PATH
-    def check_compiler(self):
-        result = False
-        if os.path.isfile(self.fc):
-            result = True
-        for path in os.environ["PATH"].split(":"):
-            if os.path.isfile(os.path.join(path, self.fc)):
-                result = True
-        if not result:
-            self.msg = 'Compiler not found: {0}'.\
-                       format((os.path.join(path, self.fc)))
-            self.success = False
-
-    # Get valgrind command from user's environment
-    def find_valgrind(self):
-        result = False
-        for path in os.environ["PATH"].split(":"):
-            if os.path.isfile(os.path.join(path, 'valgrind')):
-                self.valgrind_cmd = os.path.join(path, 'valgrind')
-                result = True
-                break
-        if not result:
-            self.msg = 'valgrind not found.'
-            self.success = False
-
-    # Get coverage command from user's environment
-    def find_coverage(self):
-        result = False
-        for path in os.environ["PATH"].split(":"):
-            if os.path.isfile(os.path.join(path, 'gcov')):
-                self.gcov_cmd = os.path.join(path, 'gcov')
-                result = True
-                break
-        if not result:
-            self.msg = 'gcov not found.'
-            self.success = False
 
 # Simple function to add a test to the global tests dictionary
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
@@ -342,7 +332,7 @@ else:
 # Setup CTest script vars. Not used in non-script mode
 pwd = os.getcwd()
 ctest_vars = {
-    'source_dir': os.path.join(pwd, '..'),
+    'source_dir': os.path.join(pwd, os.pardir),
     'build_dir': os.path.join(pwd, 'build'),
     'host_name': socket.gethostname(),
     'dashboard': dash,
@@ -363,10 +353,10 @@ else:
 # Set up default valgrind tests (subset of all tests)
 # Currently takes too long to run all the tests with valgrind
 # Only used in script mode
-valgrind_default_tests = "basic|cmfd_feed|confidence_intervals|\
-density_atombcm|eigenvalue_genperbatch|energy_grid|entropy|\
-filter_cell|lattice_multiple|output|plot_background|reflective_plane|\
-rotation|salphabeta_multiple|score_absorption|seed|source_energy_mono|\
+valgrind_default_tests = "cmfd_feed|confidence_intervals|\
+density|eigenvalue_genperbatch|energy_grid|entropy|\
+lattice_multiple|output|plotreflective_plane|\
+rotation|salphabetascore_absorption|seed|source_energy_mono|\
 sourcepoint_batch|statepoint_interval|survival_biasing|\
 tally_assumesep|translation|uniform_fs|universe|void"
 
@@ -383,7 +373,7 @@ if len(list(tests.keys())) == 0:
 
 # Begin testing
 shutil.rmtree('build', ignore_errors=True)
-call(['./cleanup']) # removes all binary and hdf5 output files from tests
+cleanup('.')
 for key in iter(tests):
     test = tests[key]
 
@@ -395,29 +385,34 @@ for key in iter(tests):
         sys.stdout.flush()
 
     # Verify fortran compiler exists
-    test.check_compiler()
-    if not test.success:
+    if which(test.fc) is None:
+        self.msg = 'Compiler not found: {0}'.format(test.fc)
+        self.success = False
         continue
 
-    # Get valgrind command
+    # Verify valgrind command exists
     if test.valgrind:
-        test.find_valgrind()
-    if not test.success:
-        continue
+        valgrind_cmd = which('valgrind')
+        if valgrind_cmd is None:
+            self.msg = 'No valgrind executable found.'
+            self.success = False
+            continue
+    else:
+        valgrind_cmd = ''
 
-    # Get coverage command
+    # Verify gcov/lcov exist
     if test.coverage:
-        test.find_coverage()
-    if not test.success:
-        continue
+        if which('gcov') is None:
+            self.msg = 'No {} executable found.'.format(exe)
+            self.success = False
+            continue
 
     # Set test specific CTest script vars. Not used in non-script mode
     ctest_vars.update({'build_name': test.get_build_name()})
     ctest_vars.update({'build_opts': test.get_build_opts()})
     ctest_vars.update({'mem_check': test.valgrind})
     ctest_vars.update({'coverage': test.coverage})
-    ctest_vars.update({'valgrind_cmd': test.valgrind_cmd})
-    ctest_vars.update({'gcov_cmd': test.gcov_cmd})
+    ctest_vars.update({'valgrind_cmd': valgrind_cmd})
 
     # Check for user custom tests
     # INCLUDE is a CTest command that allows for a subset
@@ -458,7 +453,7 @@ for key in iter(tests):
         test.run_ctests()
 
         # Leave build directory
-        os.chdir('..')
+        os.chdir(os.pardir)
 
     # Copy over log file
     if script_mode:
@@ -473,15 +468,35 @@ for key in iter(tests):
 
     # For coverage builds, use lcov to generate HTML output
     if test.coverage:
-        call(['lcov', '--directory', '.', '--capture',
-              '--output-file', 'coverage.info'])
-        call(['genhtml', '--output-directory', 'coverage', 'coverage.info'])
+        if which('lcov') is None or which('genhtml') is None:
+            print('No lcov/genhtml command found. '
+                  'Could not generate coverage report.')
+        else:
+            shutil.rmtree('coverage', ignore_errors=True)
+            call(['lcov', '--directory', '.', '--capture',
+                  '--output-file', 'coverage.info'])
+            call(['genhtml', '--output-directory', 'coverage', 'coverage.info'])
+            os.remove('coverage.info')
+
+    if test.valgrind:
+        # Copy memcheck output to memcheck directory
+        shutil.rmtree('memcheck', ignore_errors=True)
+        os.mkdir('memcheck')
+        memcheck_out = glob.glob('build/Testing/Temporary/MemoryChecker.*.log')
+        for fname in memcheck_out:
+            shutil.copy(fname, 'memcheck/')
+
+        # Remove generated XML files
+        xml_files = check_output(['git', 'ls-files', '.',  '--exclude-standard',
+                                  '--others']).split()
+        for f in xml_files:
+            os.remove(f)
 
     # Clear build directory and remove binary and hdf5 files
     shutil.rmtree('build', ignore_errors=True)
     if script_mode:
         os.remove('ctestscript.run')
-    call(['./cleanup'])
+    cleanup('.')
 
 # Print out summary of results
 print('\n' + '='*54)

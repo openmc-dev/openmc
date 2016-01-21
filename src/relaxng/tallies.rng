@@ -120,12 +120,14 @@
                 <choice>
                   <value>analog</value>
                   <value>tracklength</value>
+                  <value>collision</value>
                 </choice>
               </element>
               <attribute name="estimator">
                 <choice>
                   <value>analog</value>
                   <value>tracklength</value>
+                  <value>collision</value>
                 </choice>
               </attribute>
             </choice>

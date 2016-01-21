@@ -45,7 +45,7 @@ contains
     call write_attribute_string(file_id, "n_batches", &
          "description", "Total number of batches")
 
-      ! Write eigenvalue information
+    ! Write eigenvalue information
     if (run_mode == MODE_EIGENVALUE) then
       ! write number of inactive/active batches and generations/batch
       call write_dataset(file_id, "n_inactive", n_inactive)
@@ -174,8 +174,10 @@ contains
       case (CELL_FILL)
         call write_dataset(cell_group, "fill_type", "universe")
         call write_dataset(cell_group, "fill", universes(c%fill)%id)
-        if (size(c%offset) > 0) then
-          call write_dataset(cell_group, "offset", c%offset)
+        if (allocated(c%offset)) then
+          if (size(c%offset) > 0) then
+            call write_dataset(cell_group, "offset", c%offset)
+          end if
         end if
 
         if (allocated(c%translation)) then
@@ -362,8 +364,10 @@ contains
       call write_dataset(lattice_group, "outer", lat%outer)
 
       ! Write distribcell offsets if present
-      if (size(lat%offset) > 0) then
-        call write_dataset(lattice_group, "offsets", lat%offset)
+      if (allocated(lat%offset)) then
+        if (size(lat%offset) > 0) then
+          call write_dataset(lattice_group, "offsets", lat%offset)
+        end if
       end if
 
       select type (lat)

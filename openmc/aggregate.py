@@ -237,7 +237,7 @@ class AggregateFilter(object):
             self.aggregate_op = aggregate_op
 
     def __hash__(self):
-        return hash((self.type, self.bins, self.aggregate_op))
+        return hash(repr(self))
 
     def __eq__(self, other):
         return str(other) == str(self)
@@ -405,5 +405,5 @@ class AggregateFilter(object):
         aggregate_bin_array = np.repeat(aggregate_bin_array, datasize)
 
         # Construct Pandas DataFrame for the AggregateFilter
-        df = pd.DataFrame({self.aggregate_filter.type: aggregate_bin_array})
+        df = pd.DataFrame({self.type: aggregate_bin_array})
         return df

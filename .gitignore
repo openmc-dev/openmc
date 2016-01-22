@@ -43,6 +43,8 @@ results_test.dat
 
 # Test build files
 tests/build/
+tests/coverage/
+tests/memcheck/
 tests/ctestscript.run
 
 # HDF5 files
@@ -60,6 +62,7 @@ data/nndc
 
 #Images
 *.ppm
+*.voxel
 
 # PyCharm project configuration files
 .idea

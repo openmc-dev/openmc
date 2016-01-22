@@ -1033,7 +1033,7 @@ contains
 
           ! Read energy law data
           call get_energy_dist(secondary%distribution(n)%obj, LAW, &
-               JXS(11), IDAT, nuc%awr, nuc%reactions(i)%Q_value)
+               JXS(11), IDAT, nuc%awr, nuc%reactions(i + 1)%Q_value)
 
           ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<
           ! Before the secondary distribution refactor, when the angle/energy

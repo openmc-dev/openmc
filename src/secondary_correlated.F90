@@ -6,6 +6,11 @@ module secondary_correlated
   use random_lcg, only: prn
   use search, only: binary_search
 
+!===============================================================================
+! CORRELATEDANGLEENERGY represents a correlated angle-energy distribution. This
+! corresponds to ACE law 61 and ENDF File 6, LAW=1, LANG/=2.
+!===============================================================================
+
   type AngleEnergyTable
     integer :: interpolation
     integer :: n_discrete
@@ -16,11 +21,11 @@ module secondary_correlated
   end type AngleEnergyTable
 
   type, extends(AngleEnergy) :: CorrelatedAngleEnergy
-    integer :: n_region
-    integer, allocatable :: breakpoints(:)
-    integer, allocatable :: interpolation(:)
-    real(8), allocatable :: energy_in(:)
-    type(AngleEnergyTable), allocatable :: table(:)
+    integer :: n_region                      ! number of interpolation regions
+    integer, allocatable :: breakpoints(:)   ! breakpoints of interpolation regions
+    integer, allocatable :: interpolation(:) ! interpolation region codes
+    real(8), allocatable :: energy_in(:)     ! incoming energies
+    type(AngleEnergyTable), allocatable :: table(:) ! outgoing E/mu distributions
   contains
     procedure :: sample => correlated_sample
   end type CorrelatedAngleEnergy
@@ -29,13 +34,13 @@ contains
 
   subroutine correlated_sample(this, E_in, E_out, mu)
     class(CorrelatedAngleEnergy), intent(in) :: this
-    real(8), intent(in) :: E_in
-    real(8), intent(out) :: E_out
-    real(8), intent(out) :: mu
+    real(8), intent(in)  :: E_in  ! incoming energy
+    real(8), intent(out) :: E_out ! sampled outgoing energy
+    real(8), intent(out) :: mu    ! sapmled scattering cosine
 
-    integer :: i, k, l
-    integer :: n_energy_in
-    integer :: n_energy_out
+    integer :: i, k, l        ! indices
+    integer :: n_energy_in    ! number of incoming energies
+    integer :: n_energy_out   ! number of outgoing energies
     real(8) :: r              ! interpolation factor on incoming energy
     real(8) :: r1             ! random number on [0,1)
     real(8) :: frac           ! interpolation factor on outgoing energy

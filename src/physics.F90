@@ -1315,7 +1315,7 @@ contains
     ! copy energy of neutron
     E_in = p % E
 
-    ! sample outgoing energy
+    ! sample outgoing energy and scattering cosine
     call rxn%secondary%sample(E_in, E, mu)
 
     ! if scattering system is in center-of-mass, transfer cosine of scattering
@@ -1337,7 +1337,7 @@ contains
     ! or 1
     if (abs(mu) > ONE) mu = sign(ONE,mu)
 
-      ! Set outgoing energy and scattering angle
+    ! Set outgoing energy and scattering angle
     p % E = E
     p % mu = mu
 

@@ -5,6 +5,12 @@ module secondary_kalbach
   use random_lcg, only: prn
   use search, only: binary_search
 
+!===============================================================================
+! KalbachMann represents a correlated angle-energy distribution with the angular
+! distribution represented using Kalbach-Mann systematics. This corresponds to
+! ACE law 44 and ENDF File 6, LAW=1, LANG=2.
+!===============================================================================
+
   type KalbachMannTable
     integer :: n_discrete
     integer :: interpolation
@@ -16,11 +22,11 @@ module secondary_kalbach
   end type KalbachMannTable
 
   type, extends(AngleEnergy) :: KalbachMann
-    integer :: n_region
-    integer, allocatable :: breakpoints(:)
-    integer, allocatable :: interpolation(:)
-    real(8), allocatable :: energy_in(:)
-    type(KalbachMannTable), allocatable :: table(:)
+    integer :: n_region                      ! number of interpolation regions
+    integer, allocatable :: breakpoints(:)   ! breakpoints of interpolation regions
+    integer, allocatable :: interpolation(:) ! interpolation region codes
+    real(8), allocatable :: energy_in(:)     ! incoming energies
+    type(KalbachMannTable), allocatable :: table(:) ! outgoing E/mu parameters
   contains
     procedure :: sample => kalbachmann_sample
   end type KalbachMann
@@ -29,13 +35,13 @@ contains
 
   subroutine kalbachmann_sample(this, E_in, E_out, mu)
     class(KalbachMann), intent(in) :: this
-    real(8), intent(in) :: E_in
-    real(8), intent(out) :: E_out
-    real(8), intent(out) :: mu
+    real(8), intent(in)  :: E_in  ! incoming energy
+    real(8), intent(out) :: E_out ! sampled outgoing energy
+    real(8), intent(out) :: mu    ! sampled scattering cosine
 
-    integer :: i, k, l
-    integer :: n_energy_in
-    integer :: n_energy_out
+    integer :: i, k, l        ! indices
+    integer :: n_energy_in    ! number of incoming energies
+    integer :: n_energy_out   ! number of outgoing energies
     real(8) :: r              ! interpolation factor on incoming energy
     real(8) :: r1             ! random number on [0,1)
     real(8) :: frac           ! interpolation factor on outgoing energy

@@ -8,6 +8,14 @@ module angle_distribution
   implicit none
   private
 
+!===============================================================================
+! ANGLEDISTRIBUTION represents an angular distribution that is to be used in an
+! uncorrelated angle-energy distribution. This occurs whenever the angle
+! distrbution is given in File 4 in an ENDF file. The distribution of angles
+! depends on the incoming energy of the neutron, so this type stores a
+! distribution for each of a set of incoming energies.
+!===============================================================================
+
   type, public :: AngleDistribution
     real(8), allocatable :: energy(:)
     type(DistributionContainer), allocatable :: distribution(:)
@@ -19,17 +27,17 @@ contains
 
   function angle_sample(this, E) result(mu)
     class(AngleDistribution), intent(in) :: this
-    real(8), intent(in) :: E
-    real(8) :: mu
+    real(8), intent(in) :: E  ! incoming energy
+    real(8)             :: mu ! sampled cosine of scattering angle
 
-    integer :: i
-    integer :: n
-    real(8) :: r
+    integer :: i  ! index on incoming energy grid
+    integer :: n  ! number of incoming energies
+    real(8) :: r  ! interpolation factor on incoming energy grid
 
-    ! determine number of incoming energies
+    ! Determine number of incoming energies
     n = size(this%energy)
 
-    ! find energy bin and calculate interpolation factor -- if the energy is
+    ! Find energy bin and calculate interpolation factor -- if the energy is
     ! outside the range of the tabulated energies, choose the first or last bins
     if (E < this%energy(1)) then
       i = 1

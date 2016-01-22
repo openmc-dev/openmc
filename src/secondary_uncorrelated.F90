@@ -6,6 +6,12 @@ module secondary_uncorrelated
   use secondary_header, only: AngleEnergy
   use random_lcg, only: prn
 
+!===============================================================================
+! UNCORRELATEDANGLEENERGY represents an uncorrelated angle-energy
+! distribution. This corresponds to when an energy distribution is given in ENDF
+! File 5/6 and an angular distribution is given in ENDF File 4.
+!===============================================================================
+
   type, extends(AngleEnergy) :: UncorrelatedAngleEnergy
     logical :: fission = .false.
     type(AngleDistribution) :: angle
@@ -18,9 +24,9 @@ contains
 
   subroutine uncorrelated_sample(this, E_in, E_out, mu)
     class(UncorrelatedAngleEnergy), intent(in) :: this
-    real(8), intent(in) :: E_in
-    real(8), intent(out) :: E_out
-    real(8), intent(out) :: mu
+    real(8), intent(in)  :: E_in  ! incoming energy
+    real(8), intent(out) :: E_out ! sampled outgoing energy
+    real(8), intent(out) :: mu    ! sampled scattering cosine
 
     ! Sample cosine of scattering angle
     if (this%fission) then

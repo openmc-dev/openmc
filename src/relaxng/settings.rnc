@@ -160,5 +160,25 @@ element settings {
       (element E_max { xsd:double } |
         attribute E_max { xsd:double })?
     }*
+  }? &
+  
+  element domain_decomposition {
+    (element mesh {
+      (element dimension { list { xsd:positiveInteger+ } } |
+        attribute dimension { list { xsd:positiveInteger+ } }) &
+      (element lower_left { list { xsd:double+ } } |
+        attribute lower_left { list { xsd:double+ } }) &
+      (element upper_right { list { xsd:double+ } } |
+          attribute upper_right { list { xsd:double+ } }) 
+    }) &
+    
+    (element nodemap { list { xsd:double+ } } |
+      attribute nodemap { list { xsd:double+ } })? &
+
+    (element allow_leakage { xsd:boolean } |
+      attribute allow_leakage { xsd:boolean })? &
+    
+    (element count_interactions { xsd:boolean } |
+      attribute count_interactions { xsd:boolean })? 
   }?
 }

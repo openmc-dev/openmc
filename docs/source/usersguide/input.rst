@@ -192,10 +192,9 @@ and process assignments. It has the following attributes/sub-elements:
 
     *Default*: false
 
-  .. Warning:: Domain decomposition must be run in a MPI parallel mode. The 
-               number of parallel processor must be equal or greater than the
-               number of domains. Domain decomposition is not implemented in
-               conjunction with OpenMP.
+  .. Warning:: Domain decomposition must be run in a MPI parallel mode (OpenMP/threads 
+               parallel is available). The number of parallel processors must be 
+               equal or greater than the number of domains.
 
 Here is an example of a domain decomposition input:
 

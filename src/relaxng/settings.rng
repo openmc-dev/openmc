@@ -731,5 +731,101 @@
         </zeroOrMore>
       </element>
     </optional>
+    <optional>
+      <element name="domain_decomposition">
+        <interleave>
+          <element name="mesh">
+            <interleave>
+              <choice>
+                <element name="dimension">
+                  <list>
+                    <oneOrMore>
+                      <data type="positiveInteger"/>
+                    </oneOrMore>
+                  </list>
+                </element>
+                <attribute name="dimension">
+                  <list>
+                    <oneOrMore>
+                      <data type="positiveInteger"/>
+                    </oneOrMore>
+                  </list>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="lower_left">
+                  <list>
+                    <oneOrMore>
+                      <data type="double"/>
+                    </oneOrMore>
+                  </list>
+                </element>
+                <attribute name="lower_left">
+                  <list>
+                    <oneOrMore>
+                      <data type="double"/>
+                    </oneOrMore>
+                  </list>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="upper_right">
+                  <list>
+                    <oneOrMore>
+                      <data type="double"/>
+                    </oneOrMore>
+                  </list>
+                </element>
+                <attribute name="upper_right">
+                  <list>
+                    <oneOrMore>
+                      <data type="double"/>
+                    </oneOrMore>
+                  </list>
+                </attribute>
+              </choice>
+            </interleave>
+          </element>
+          <optional>
+            <choice>
+              <element name="nodemap">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="nodemap">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="allow_leakage">
+                <data type="boolean"/>
+              </element>
+              <attribute name="allow_leakage">
+                <data type="boolean"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="count_interactions">
+                <data type="boolean"/>
+              </element>
+              <attribute name="count_interactions">
+                <data type="boolean"/>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+    </optional>
   </interleave>
 </element>

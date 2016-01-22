@@ -310,7 +310,6 @@ contains
               call write_dataset(filter_group, "type", "delayedgroup")
             end select
 
-            call write_dataset(filter_group, "offset", tally%filters(j)%offset)
             call write_dataset(filter_group, "n_bins", tally%filters(j)%n_bins)
             if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
                  tally % filters(j) % type == FILTER_ENERGYOUT .or. &
@@ -928,28 +927,16 @@ contains
 
   subroutine load_state_point()
 
-    integer :: i, j, k
+    integer :: i
     integer :: int_array(3)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group
-    integer(HID_T) :: mesh_group
     integer(HID_T) :: tallies_group
     integer(HID_T) :: tally_group
     real(8) :: real_array(3)
     logical :: source_present
     character(MAX_WORD_LEN) :: word
     type(TallyObject), pointer :: tally
-    integer, allocatable       :: id_array(:)
-    integer, allocatable       :: key_array(:)
-    integer, allocatable       :: filter_map_array(:)
-    type(RegularMesh), pointer :: mesh
-    integer                    :: otf_size_results_filters
-    integer                    :: dummy_filter_index
-    integer                    :: curr_key
-    integer, allocatable       :: temp_array(:)
-    integer                    :: n_order      ! loop index for moment orders
-    integer                    :: nm_order     ! loop index for Ynm moment orders
-    character(8)               :: moment_name  ! name of moment (e.g, P3, Y-1,1)
 
     ! Write message
     call write_message("Loading state point " // trim(path_state_point) &

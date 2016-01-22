@@ -9,4 +9,3 @@ module random_lcg_header
   integer, parameter :: STREAM_SOURCE = 3
 
 end module random_lcg_header
-

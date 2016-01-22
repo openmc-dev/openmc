@@ -18,6 +18,7 @@ module dd_comm
   use resize_arr,       only: resize_array, extend_array
   use search,           only: binary_search
   use string,           only: to_str
+  use stl_vector,       only: VectorInt
 
 #ifdef MPI
   use mpi
@@ -39,16 +40,16 @@ contains
 
     type(dd_type), intent(inout)  :: dd
 
-    integer(8) :: i           ! loop index over initially-sampled source sites
-    integer :: n_source_sites ! number of sites that will start in this domain
-    integer :: to_domain
-    integer :: to_rank        ! global rank of the processor to send to
-    integer :: alloc_err      ! allocation error code
-    integer :: n_request      ! number of communication requests
-    integer :: new_source     ! size of the source_bank after distribution
-    integer, allocatable    :: request(:) ! communication requests
+    integer(8) :: i              ! loop index over initially-sampled source sites
+    integer    :: n_source_sites ! number of sites that will start in this domain
+    integer    :: to_domain
+    integer    :: to_rank        ! global rank of the processor to send to
+    integer    :: alloc_err      ! allocation error code
+    integer(8) :: new_source     ! size of the source_bank after distribution
+    integer                 :: current_request  ! current communication request
+    type(VectorInt)         :: requests         ! communication requests
     integer, allocatable    :: n_send_domain(:) ! number sent to each domain
-    integer, allocatable    :: n_send_rank(:) ! number sent to each process
+    integer, allocatable    :: n_send_rank(:)   ! number sent to each process
     type(Bank), allocatable :: buffer(:)
 
     ! Since remote domains could have more than one process working on them, we
@@ -68,16 +69,6 @@ contains
     ! Check for allocation errors
     if (alloc_err /= 0) then
       call fatal_error("Failed to allocate source bank send buffer during &
-           &domain decomposition initialization.")
-    end if
-
-    ! TODO: This may be too conservative an allocation for most use-cases
-    allocate(request(work + n_particles), STAT=alloc_err)
-    n_request = 0
-
-    ! Check for allocation errors
-    if (alloc_err /= 0) then
-      call fatal_error("Failed to allocate communication request array during &
            &domain decomposition initialization.")
     end if
 
@@ -116,9 +107,9 @@ contains
 
         ! Post the send
 #ifdef MPI
-        n_request = n_request + 1
         call MPI_ISEND(buffer(i), 1, MPI_BANK, to_rank, rank, MPI_COMM_WORLD, &
-             request(n_request), mpi_err)
+             current_request, mpi_err)
+        call requests % push_back(current_request)
 #endif
       end if
 
@@ -134,25 +125,25 @@ contains
     ! we're using as the receive buffer), and resize the array if needed
     new_source = n_send_rank(rank + 1) + n_source_sites
     if (new_source > size_source_bank) &
-         call extend_array(source_bank, size_source_bank, int(new_source, 8), &
-             alloc_err)
-        call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
-             int(new_source, 8), alloc_err)
+         call extend_array(source_bank, size_source_bank, new_source, &
+              alloc_err)
+         call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
+              new_source, alloc_err)
 
     ! Receive sites from other processes
     do i = 1, n_send_rank(rank + 1)
 
       n_source_sites = n_source_sites + 1
-      n_request = n_request + 1
 #ifdef MPI
       call MPI_IRECV(source_bank(n_source_sites), 1, MPI_BANK, MPI_ANY_SOURCE, &
-           MPI_ANY_TAG, MPI_COMM_WORLD, request(n_request), mpi_err)
+           MPI_ANY_TAG, MPI_COMM_WORLD, current_request, mpi_err)
+      call requests % push_back(current_request)
 #endif
     end do
 
     ! Wait for all sends/recvs to complete
 #ifdef MPI
-    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
+    call MPI_WAITALL(requests%size(), requests%data, MPI_STATUSES_IGNORE, mpi_err)
 #endif
 
     ! Reset how much work needs to be done on this process
@@ -246,8 +237,8 @@ contains
     integer :: second_neighbor_bin
     integer :: to_rank        ! global rank of the processor to send to
     integer :: from_rank      ! global rank of the processor to recv from
-    integer :: request(10000)   ! communication request for send/recving particles TODO this should be allocated to an appropriate max size depending on the number of procs per domain
-    integer :: n_request      ! number of communication requests
+    integer         :: current_request  ! current communication request
+    type(VectorInt) :: requests         ! communication requests
 
     !===========================================================================
     ! SYNCHRONIZE SCATTER INFORMATION
@@ -269,7 +260,6 @@ contains
     ! to all other processors in the neighborhood.
 
     ! send info
-    n_request = 0
     if (dd % local_master) then
       do direct_neighbor_bin = 1, N_CARTESIAN_NEIGHBORS
         direct_neighbor_meshbin = dd % neighbor_meshbins(direct_neighbor_bin)
@@ -283,13 +273,10 @@ contains
           do pr = 1, dd % domain_n_procs(second_neighbor_meshbin)
               to_rank = dd % domain_masters(second_neighbor_meshbin) + pr - 1
 
-!              print *, 'send', rank, '-->', to_rank, &
-!                  dd % meshbin, '-->', direct_neighbor_meshbin
-
-              n_request = n_request + 1
               call MPI_ISEND(dd % n_scatters_domain(direct_neighbor_bin), 1, &
                    MPI_INTEGER, to_rank, direct_neighbor_meshbin, &
-                   MPI_COMM_WORLD, request(n_request), mpi_err)
+                   MPI_COMM_WORLD, current_request, mpi_err)
+              call requests % push_back(current_request)
 
           end do
         end do
@@ -308,20 +295,17 @@ contains
           if (second_neighbor_meshbin == dd % meshbin) cycle
           from_rank = dd % domain_masters(second_neighbor_meshbin)
 
-!          print *, 'recv', from_rank,'-->',rank, &
-!              second_neighbor_meshbin,'-->',direct_neighbor_meshbin
-
-          n_request = n_request + 1
           call MPI_IRECV(dd % n_scatters_neighborhood(second_neighbor_bin, &
                direct_neighbor_bin), 1, MPI_INTEGER, from_rank, &
-               direct_neighbor_meshbin, MPI_COMM_WORLD, request(n_request), &
+               direct_neighbor_meshbin, MPI_COMM_WORLD, current_request, &
                mpi_err)
+          call requests % push_back(current_request)
 
         end do
       end do
 
     ! Wait for the scatter information to be synchronized
-    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
+    call MPI_WAITALL(requests%size(), requests%data, MPI_STATUSES_IGNORE, mpi_err)
 
   end subroutine synchronize_transfer_info
 
@@ -349,13 +333,11 @@ contains
     integer :: neighbor_bin   ! domain meshbin of a neighbor to to_bin
     integer :: index_scatt    ! index in the 'global' scatter array
     integer :: domain_start
-    integer :: request(10000)   ! communication request for send/recving particles TODO this should be allocated to an appropriate max size depending on the number of procs per domain
-    integer :: n_request      ! number of communication requests
+    integer         :: current_request  ! current communication request
+    type(VectorInt) :: requests         ! communication requests
     integer :: n_recv
     integer :: pr_bin
     integer :: mod_
-
-    n_request = 0
 
     !===========================================================================
     ! DETERMINE PARTICLE SEND INFORMATION
@@ -403,8 +385,6 @@ contains
       ! communicator, and add the result to domain_start. (done previously)
       index_scatt = domain_start + dd % scatter_offest(to_bin)
 
-!      print *, rank, to_meshbin, domain_start, index_scatt
-
       ! Now we determine which parts of the array are owned by the receiving
       ! processors
 
@@ -422,8 +402,6 @@ contains
           dd % proc_finish(j) = dd % proc_finish(j) + mod_
         end if
       end do
-
-!      if (rank == 2 .and. to_meshbin == 1) print *, dd % proc_finish
 
       ! Determine which receiving processes this starting index corresponds to
       if (index_scatt <= dd % proc_finish(1)) then
@@ -469,10 +447,10 @@ contains
         ! Loop over each processor in the receiving bin
 
         pr_bin = (to_bin - 1) * dd % max_domain_procs + pr
-        n_request = n_request + 1
         to_rank = dd % domain_masters(to_meshbin) + pr - 1
         call MPI_ISEND(dd % send_rank_info(pr_bin), 1, MPI_INTEGER, to_rank, &
-             rank, MPI_COMM_WORLD, request(n_request), mpi_err)
+             rank, MPI_COMM_WORLD, current_request, mpi_err)
+        call requests % push_back(current_request)
 
       end do
     end do
@@ -488,16 +466,16 @@ contains
         ! Loop over each processor in the sending bin
 
         pr_bin = (from_bin - 1) * dd % max_domain_procs + pr
-        n_request = n_request + 1
         from_rank = dd % domain_masters(from_meshbin) + pr - 1
         call MPI_IRECV(dd % recv_rank_info(pr_bin), 1, MPI_INTEGER, from_rank, &
-             from_rank, MPI_COMM_WORLD, request(n_request), mpi_err)
+             from_rank, MPI_COMM_WORLD, current_request, mpi_err)
+        call requests % push_back(current_request)
 
       end do
     end do
 
     ! Wait for the scatter information to be synchronized
-    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
+    call MPI_WAITALL(requests%size(), requests%data, MPI_STATUSES_IGNORE, mpi_err)
 
   end subroutine synchronize_destination_info
 
@@ -558,8 +536,8 @@ contains
     integer :: to_rank        ! global rank of the processor to send to
     integer :: from_rank      ! global rank of the processor to recv from
     integer :: index_pbuffer  ! index in the particle buffer
-    integer :: request(10000) ! communication request for send/recving particles TODO this should be allocated to an appropriate max size depending on the number of procs per domain
-    integer :: n_request      ! number of communication requests
+    integer         :: current_request  ! current communication request
+    type(VectorInt) :: requests         ! communication requests
     integer :: n_recv
     integer :: n_send
     integer(8) :: start
@@ -576,8 +554,6 @@ contains
 
     call time_dd_sendrecv % start()
 
-    n_request = 0
-
     local_start = 1
     do from_bin = 1, N_CARTESIAN_NEIGHBORS
       ! Loop through each neighbor we might need to receive from
@@ -591,14 +567,12 @@ contains
         n_recv = dd % recv_rank_info(pr_bin)
         if (n_recv == 0) cycle
 
-        n_request = n_request + 1
         from_rank = dd % domain_masters(from_meshbin) + pr - 1
         call MPI_IRECV(dd % recv_buffer(local_start), n_recv, &
              MPI_PARTICLEBUFFER, from_rank, from_rank, MPI_COMM_WORLD, &
-             request(n_request), mpi_err)
+             current_request, mpi_err)
+        call requests % push_back(current_request)
         local_start = local_start + n_recv
-
-!        print *, current_stage,'recv',from_rank,'-->',rank, n_recv
 
       end do
     end do
@@ -646,20 +620,18 @@ contains
 
         end do
 
-        n_request = n_request + 1
         to_rank = dd % domain_masters(to_meshbin) + pr - 1
         call MPI_ISEND(dd % send_buffer(pbuffer_start), n_send, &
              MPI_PARTICLEBUFFER, to_rank, rank, MPI_COMM_WORLD, &
-             request(n_request), mpi_err)
-
-!        print *, current_stage,'send',rank,'-->',to_rank, n_send
+             current_request, mpi_err)
+        call requests % push_back(current_request)
 
       end do
 
     end do
 
     ! Wait for the particles to be sent
-    call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
+    call MPI_WAITALL(requests%size(), requests%data, MPI_STATUSES_IGNORE, mpi_err)
 
     call time_dd_sendrecv % stop()
 

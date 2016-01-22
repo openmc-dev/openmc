@@ -135,15 +135,14 @@ contains
       end if
 
       ! determine whether the particle is now transferred to right domain
-      if (dd_run .and. &
-           & p % stored_distance > ZERO) then
+      if (dd_run .and. p % stored_distance > ZERO) then
         xyz_temp = p % coord(1) % xyz
         p % coord(1) % xyz = xyz_temp + p % fly_dd_distance * p % coord(1) % uvw
         call distance_to_mesh_surface(p, domain_decomp % mesh, &
              distance, d_dd_mesh, meshbin=domain_decomp % meshbin)
         p % coord(1) % xyz = xyz_temp
         p % fly_dd_distance = p % fly_dd_distance + d_dd_mesh
-        if ( p % stored_distance - p % fly_dd_distance > FP_COINCIDENT) then
+        if (p % stored_distance - p % fly_dd_distance > FP_COINCIDENT) then
           ! Prepare particle for communication and stop tracking it
           call cross_domain_boundary(p, domain_decomp, p % stored_distance, &
                p % fly_dd_distance)
@@ -183,8 +182,7 @@ contains
       end if
 
       ! Check for domain boundary crossing
-      if (dd_run .and. &
-           d_dd_mesh <= distance) then
+      if (dd_run .and. d_dd_mesh <= distance) then
 
         ! Determine if we should communicate the particle
         call check_domain_boundary_crossing(d_dd_mesh, d_collision, d_boundary,&

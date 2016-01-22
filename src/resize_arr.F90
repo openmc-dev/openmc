@@ -19,7 +19,7 @@ module resize_arr
 
 !===============================================================================
 ! RESIZE_ARRAY resizes a 1D array to a larger size as specified, discarding the
-! contects of the original array
+! contents of the original array
 !===============================================================================
 
   interface resize_array

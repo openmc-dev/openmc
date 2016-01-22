@@ -815,7 +815,7 @@ contains
 
         call get_node_array(node_dd, "nodemap", domain_decomp % domain_load_dist)
 
-        if (any(domain_decomp % domain_load_dist < 0.0_8 )) then
+        if (any(domain_decomp % domain_load_dist < ZERO )) then
           call fatal_error("Negative value specified in domain decomposition &
                &<nodemap>.")
         end if
@@ -1607,7 +1607,6 @@ contains
       deallocate(coeffs)
 
       ! Boundary conditions
-      s % bc = BC_TRANSMIT
       word = ''
       if (check_for_node(node_surf, "boundary")) &
            call get_node_value(node_surf, "boundary", word)
@@ -5266,11 +5265,6 @@ contains
     end select
 
   end subroutine expand_natural_element
-
-!===============================================================================
-! LOAD_DEPLETION_ISOTOPES loads all isotopes from the specified depletion
-! libary for addition to materials with depletion on
-!===============================================================================
 
 !===============================================================================
 ! GENERATE_RPN implements the shunting-yard algorithm to generate a Reverse

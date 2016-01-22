@@ -1475,114 +1475,233 @@ The ``<tally>`` element accepts the following sub-elements:
     *Default*: ``tracklength`` but will revert to ``analog`` if necessary.
 
   :scores:
-    A space-separated list of the desired responses to be accumulated. Accepted
-    options are "flux", "total", "scatter", "absorption", "fission",
-    "nu-fission", "delayed-nu-fission", "kappa-fission", "nu-scatter",
-    "scatter-N", "scatter-PN", "scatter-YN", "nu-scatter-N", "nu-scatter-PN",
-    "nu-scatter-YN", "flux-YN", "total-YN", "current", "inverse-velocity" and
-    "events". These correspond to the following physical quantities:
+    A space-separated list of the desired responses to be accumulated. The accepted
+    options are listed in the following table:
 
-    :flux:
-      Total flux in particle-cm per source particle.
+    .. table:: Score types available in OpenMC
 
-      .. note::
-         The ``analog`` estimator is actually identical to the ``collision``
-         estimator for the flux score.
+        +----------------------+---------------------------------------------------+
+        |Score                 | Description                                       |
+        +======================+===================================================+
+        |flux                  |Total flux in particle-cm per source particle.     |
+        |                      |                                                   |
+        +----------------------+---------------------------------------------------+
+        |total                 |Total reaction rate in reactions per source        |
+        |                      |particle.                                          |
+        +----------------------+---------------------------------------------------+
+        |scatter               |Total scattering rate. Can also be identified with |
+        |                      |the "scatter-0" response type. Units are reactions |
+        |                      |per source particle.                               |
+        +----------------------+---------------------------------------------------+
+        |absorption            |Total absorption rate. This accounts for all       |
+        |                      |reactions which do not produce secondary           |
+        |                      |neutrons. Units are reactions per source particle. |
+        +----------------------+---------------------------------------------------+
+        |fission               |Total fission rate in reactions per source         |
+        |                      |particle.                                          |
+        +----------------------+---------------------------------------------------+
+        |nu-fission            |Total production of neutrons due to fission. Units |
+        |                      |are neutrons produced per source neutron.          |
+        +----------------------+---------------------------------------------------+
+        |delayed-nu-fission    |Total production of delayed neutrons due to        |
+        |                      |fission. Units are neutrons produced per source    |
+        |                      |neutron.                                           |
+        +----------------------+---------------------------------------------------+
+        |kappa-fission         |The recoverable energy production rate due to      |
+        |                      |fission. The recoverable energy is defined as the  |
+        |                      |fission product kinetic energy, prompt and delayed |
+        |                      |neutron kinetic energies, prompt and delayed       |
+        |                      |:math:`\gamma`-ray total energies, and the total   |
+        |                      |energy released by the delayed :math:`\beta`       |
+        |                      |particles. The neutrino energy does not contribute |
+        |                      |to this response. The prompt and delayed           |
+        |                      |:math:`\gamma`-rays are assumed to deposit their   |
+        |                      |energy locally. Units are MeV per source particle. |
+        +----------------------+---------------------------------------------------+
+        |scatter-N             |Tally the N\ :sup:`th` \ scattering moment, where N|
+        |                      |is the Legendre expansion order of the change in   |
+        |                      |particle angle :math:`\left(\mu\right)`. N must be |
+        |                      |between 0 and 10. As an example, tallying the 2\   |
+        |                      |:sup:`nd` \ scattering moment would be specified as|
+        |                      |``<scores>scatter-2</scores>``. Units are reactions|
+        |                      |per source particle.                               |
+        +----------------------+---------------------------------------------------+
+        |scatter-PN            |Tally all of the scattering moments from order 0 to|
+        |                      |N, where N is the Legendre expansion order of the  |
+        |                      |change in particle angle                           |
+        |                      |:math:`\left(\mu\right)`. That is, "scatter-P1" is |
+        |                      |equivalent to requesting tallies of "scatter-0" and|
+        |                      |"scatter-1".  Like for "scatter-N", N must be      |
+        |                      |between 0 and 10. As an example, tallying up to the|
+        |                      |2\ :sup:`nd` \ scattering moment would be specified|
+        |                      |as ``<scores> scatter-P2 </scores>``. Units are    |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |scatter-YN            |"scatter-YN" is similar to "scatter-PN" except an  |
+        |                      |additional expansion is performed for the incoming |
+        |                      |particle direction :math:`\left(\Omega\right)`     |
+        |                      |using the real spherical harmonics.  This is useful|
+        |                      |for performing angular flux moment weighting of the|
+        |                      |scattering moments. Like "scatter-PN", "scatter-YN"|
+        |                      |will tally all of the moments from order 0 to N; N |
+        |                      |again must be between 0 and 10. Units are reactions|
+        |                      |per source particle.                               |
+        +----------------------+---------------------------------------------------+
+        |nu-scatter,           |These scores are similar in functionality to their |
+        |nu-scatter-N,         |``scatter*`` equivalents except the total          |
+        |nu-scatter-PN,        |production of neutrons due to scattering is scored |
+        |nu-scatter-YN         |vice simply the scattering rate. This accounts for |
+        |                      |multiplicity from (n,2n), (n,3n), and (n,4n)       |
+        |                      |reactions. Units are neutrons produced per source  |
+        |                      |particle.                                          |
+        +----------------------+---------------------------------------------------+
+        |flux-YN               |Spherical harmonic expansion of the direction of   |
+        |                      |motion :math:`\left(\Omega\right)` of the total    |
+        |                      |flux. This score will tally all of the harmonic    |
+        |                      |moments of order 0 to N.  N must be between 0 and  |
+        |                      |10. Units are particle-cm per source particle.     |
+        +----------------------+---------------------------------------------------+
+        |total-YN              |The total reaction rate expanded via spherical     |
+        |                      |harmonics about the direction of motion of the     |
+        |                      |neutron, :math:`\Omega`. This score will tally all |
+        |                      |of the harmonic moments of order 0 to N.  N must be|
+        |                      |between 0 and 10. Units are reactions per source   |
+        |                      |particle.                                          |
+        +----------------------+---------------------------------------------------+
+        |current               |Partial currents on the boundaries of each cell in |
+        |                      |a mesh. Units are particles per source             |
+        |                      |particle. Note that this score can only be used if |
+        |                      |a mesh filter has been specified. Furthermore, it  |
+        |                      |may not be used in conjunction with any other      |
+        |                      |score.                                             |
+        +----------------------+---------------------------------------------------+
+        |inverse-velocity      |The flux-weighted inverse velocity where the       |
+        |                      |velocity is in units of centimeters per second.    |
+        +----------------------+---------------------------------------------------+
+        |events                |Number of scoring events. Units are events per     |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |elastic               |Elastic scattering reaction rate. Units are        |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,2nd)               |(n,2nd) reaction rate. Units are reactions per     |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,2n)                |(n,2n) reaction rate. Units are reactions per      |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,3n)                |(n,3n) reaction rate. Units are reactions per      |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,na)                |(n,n\ :math:`\alpha`\ ) reaction rate. Units are   |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,n3a)               |(n,n3\ :math:`\alpha`\ ) reaction rate. Units are  |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,2na)               |(n,2n\ :math:`\alpha`\ ) reaction rate. Units are  |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,3na)               |(n,3n\ :math:`\alpha`\ ) reaction rate. Units are  |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,np)                |(n,np) reaction rate. Units are reactions per      |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,n2a)               |(n,n2\ :math:`\alpha`\ ) reaction rate. Units are  |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,2n2a)              |(n,2n2\ :math:`\alpha`\ ) reaction rate. Units are |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,nd)                |(n,nd) reaction rate. Units are reactions per      |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,nt)                |(n,nt) reaction rate. Units are reactions per      |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,nHe-3)             |(n,n\ :sup:`3`\ He) reaction rate. Units are       |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,nd2a)              |(n,nd2\ :math:`\alpha`\ ) reaction rate. Units are |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,nt2a)              |(n,nt2\ :math:`\alpha`\ ) reaction rate. Units are |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,4n)                |(n,4n) reaction rate. Units are reactions per      |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,2np)               |(n,2np) reaction rate. Units are reactions per     |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,3np)               |(n,3np) reaction rate. Units are reactions per     |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,n2p)               |(n,n2p) reaction rate. Units are reactions per     |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,n*X*)              |Level inelastic scattering reaction rate. The *X*  |
+        |                      |indicates what which inelastic level, e.g., (n,n3) |
+        |                      |is third-level inelastic scattering. Units are     |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,nc)                |Continuum level inelastic scattering reaction      |
+        |                      |rate. Units are reactions per source particle.     |
+        +----------------------+---------------------------------------------------+
+        |(n,gamma)             |Radiative capture reaction rate. Units are         |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,p)                 |(n,p) reaction rate. Units are reactions per source|
+        |                      |particle.                                          |
+        +----------------------+---------------------------------------------------+
+        |(n,d)                 |(n,d) reaction rate. Units are reactions per source|
+        |                      |particle.                                          |
+        +----------------------+---------------------------------------------------+
+        |(n,t)                 |(n,t) reaction rate. Units are reactions per source|
+        |                      |particle.                                          |
+        +----------------------+---------------------------------------------------+
+        |(n,3He)               |(n,\ :sup:`3`\ He) reaction rate. Units are        |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,a)                 |(n,\ :math:`\alpha`\ ) reaction rate. Units are    |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,2a)                |(n,2\ :math:`\alpha`\ ) reaction rate. Units are   |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,3a)                |(n,3\ :math:`\alpha`\ ) reaction rate. Units are   |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,2p)                |(n,2p) reaction rate. Units are reactions per      |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,pa)                |(n,p\ :math:`\alpha`\ ) reaction rate. Units are   |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,t2a)               |(n,t2\ :math:`\alpha`\ ) reaction rate. Units are  |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,d2a)               |(n,d2\ :math:`\alpha`\ ) reaction rate. Units are  |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |(n,pd)                |(n,pd) reaction rate. Units are reactions per      |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,pt)                |(n,pt) reaction rate. Units are reactions per      |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |(n,da)                |(n,d\ :math:`\alpha`\ ) reaction rate. Units are   |
+        |                      |reactions per source particle.                     |
+        +----------------------+---------------------------------------------------+
+        |*Arbitrary integer*   |An arbitrary integer is interpreted to mean the    |
+        |                      |reaction rate for a reaction with a given ENDF MT  |
+        |                      |number. Units are reactions per source particle.   |
+        +----------------------+---------------------------------------------------+
 
-    :total:
-      Total reaction rate in reactions per source particle.
-
-    :scatter:
-      Total scattering rate. Can also be identified with the ``scatter-0``
-      response type. Units are reactions per source particle.
-
-    :absorption:
-      Total absorption rate. This accounts for all reactions which do not
-      produce secondary neutrons. Units are reactions per source particle.
-
-    :fission:
-      Total fission rate in reactions per source particle.
-
-    :nu-fission:
-      Total production of neutrons due to fission. Units are neutrons produced
-      per source neutron.
-
-    :delayed-nu-fission:
-      Total production of delayed neutrons due to fission. Units are neutrons produced
-      per source neutron.
-
-    :kappa-fission:
-      The recoverable energy production rate due to fission. The recoverable
-      energy is defined as the fission product kinetic energy, prompt and
-      delayed neutron kinetic energies, prompt and delayed :math:`\gamma`-ray
-      total energies, and the total energy released by the delayed :math:`\beta`
-      particles. The neutrino energy does not contribute to this response. The
-      prompt and delayed :math:`\gamma`-rays are assumed to deposit their energy
-      locally. Units are MeV per source particle.
-
-    :scatter-N:
-      Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre
-      expansion order of the change in particle angle :math:`\left(\mu\right)`.
-      N must be between 0 and 10. As an example, tallying the 2\ :sup:`nd` \
-      scattering moment would be specified as ``<scores> scatter-2
-      </scores>``. Units are reactions per source particle.
-
-    :scatter-PN:
-      Tally all of the scattering moments from order 0 to N, where N is the
-      Legendre expansion order of the change in particle angle
-      :math:`\left(\mu\right)`. That is, ``scatter-P1`` is equivalent to
-      requesting tallies of ``scatter-0`` and ``scatter-1``.  Like for
-      ``scatter-N``, N must be between 0 and 10. As an example, tallying up to
-      the 2\ :sup:`nd` \ scattering moment would be specified as ``<scores>
-      scatter-P2 </scores>``. Units are reactions per source particle.
-
-    :scatter-YN:
-      ``scatter-YN`` is similar to ``scatter-PN`` except an additional expansion
-      is performed for the incoming particle direction
-      :math:`\left(\Omega\right)` using the real spherical harmonics.  This is
-      useful for performing angular flux moment weighting of the scattering
-      moments. Like ``scatter-PN``, ``scatter-YN`` will tally all of the moments
-      from order 0 to N; N again must be between 0 and 10. Units are reactions
-      per source particle.
-
-    :nu-scatter, nu-scatter-N, nu-scatter-PN, nu-scatter-YN:
-      These scores are similar in functionality to their ``scatter*``
-      equivalents except the total production of neutrons due to scattering is
-      scored vice simply the scattering rate. This accounts for multiplicity
-      from (n,2n), (n,3n), and (n,4n) reactions. Units are neutrons produced per
-      source particle.
-
-    :flux-YN:
-      Spherical harmonic expansion of the direction of motion
-      :math:`\left(\Omega\right)` of the total flux.  This score will tally all
-      of the harmonic moments of order 0 to N.  N must be between 0
-      and 10. Units are particle-cm per source particle.
-
-    :total-YN:
-      The total reaction rate expanded via spherical harmonics about the
-      direction of motion of the neutron, :math:`\Omega`.
-      This score will tally all of the harmonic moments of order 0 to N.  N must
-      be between 0 and 10. Units are reactions per source particle.
-
-    :current:
-      Partial currents on the boundaries of each cell in a mesh. Units are
-      particles per source particle.
-
-      .. note::
-          This score can only be used if a mesh filter has been
-          specified. Furthermore, it may not be used in conjunction with any
-          other score.
-
-    :inverse-velocity:
-      The flux-weighted inverse velocity where the velocity is in units of
-      centimeters per second.
-
-      .. note::
-         The ``analog`` estimator is actually identical to the ``collision``
-         estimator for the inverse-velocity score.
-
-    :events:
-      Number of scoring events. Units are events per source particle.
+    .. note::
+       The ``analog`` estimator is actually identical to the ``collision``
+       estimator for the flux and inverse-velocity scores.
 
   :trigger:
     Precision trigger applied to all filter bins and nuclides for this tally.

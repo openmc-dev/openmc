@@ -114,7 +114,7 @@ module energy_distribution
   end type Evaporation
 
 !===============================================================================
-! EVAPORATION gives the energy distribution of neutrons emitted from a Watt
+! WATTENERGY gives the energy distribution of neutrons emitted from a Watt
 ! fission spectrum. This corresponds to ACE law 11 and ENDF File 5, LF=11.
 !===============================================================================
 

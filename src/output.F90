@@ -322,14 +322,8 @@ contains
 
     integer :: i                 ! loop index over nuclides
     integer :: unit_             ! unit to write to
-    integer :: size_total        ! memory used by nuclide (bytes)
-    integer :: size_angle_total  ! total memory used for angle dist. (bytes)
-    integer :: size_energy_total ! total memory used for energy dist. (bytes)
     integer :: size_xs           ! memory used for cross-sections (bytes)
-    integer :: size_angle        ! memory used for an angle distribution (bytes)
-    integer :: size_energy       ! memory used for a  energy distributions (bytes)
     integer :: size_urr          ! memory used for probability tables (bytes)
-    character(11) :: law         ! secondary energy distribution law
     type(UrrData),  pointer :: urr
 
     ! set default unit for writing information
@@ -340,8 +334,6 @@ contains
     end if
 
     ! Initialize totals
-    size_angle_total = 0
-    size_energy_total = 0
     size_urr = 0
     size_xs = 0
 
@@ -356,36 +348,15 @@ contains
     write(unit_,*) '  # of reactions = ' // trim(to_str(nuc % n_reaction))
 
     ! Information on each reaction
-    write(unit_,*) '  Reaction     Q-value  COM  Law    IE    size(angle) size(energy)'
+    write(unit_,*) '  Reaction     Q-value  COM    IE'
     do i = 1, nuc % n_reaction
       associate (rxn => nuc % reactions(i))
-!!$        ! Determine size of angle distribution
-!!$        if (rxn % has_angle_dist) then
-!!$          size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
-!!$        else
-!!$          size_angle = 0
-!!$        end if
-        size_angle = 0
-
-!!$        ! Determine size of energy distribution and law
-!!$        if (rxn % has_energy_dist) then
-!!$          size_energy = size(rxn % edist % data) * 8
-!!$          law = to_str(rxn % edist % law)
-!!$        else
-!!$          size_energy = 0
-!!$          law = 'None'
-!!$        end if
-        size_energy = 0
-        law = 'None'
-
-        write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
+        write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,I6)') &
              reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
-             law(1:4), rxn % threshold, size_angle, size_energy
+             rxn % threshold
 
         ! Accumulate data size
         size_xs = size_xs + (nuc % n_grid - rxn%threshold + 1) * 8
-        size_angle_total = size_angle_total + size_angle
-        size_energy_total = size_energy_total + size_energy
       end associate
     end do
 
@@ -411,19 +382,11 @@ contains
       size_urr = urr % n_energy * (urr % n_prob * 6 + 1) * 8
     end if
 
-    ! Calculate total memory
-    size_total = size_xs + size_angle_total + size_energy_total + size_urr
-
     ! Write memory used
     write(unit_,*) '  Memory Requirements'
     write(unit_,*) '    Cross sections = ' // trim(to_str(size_xs)) // ' bytes'
-    write(unit_,*) '    Secondary angle distributions = ' // &
-         trim(to_str(size_angle_total)) // ' bytes'
-    write(unit_,*) '    Secondary energy distributions = ' // &
-         trim(to_str(size_energy_total)) // ' bytes'
     write(unit_,*) '    Probability Tables = ' // &
          trim(to_str(size_urr)) // ' bytes'
-    write(unit_,*) '    Total = ' // trim(to_str(size_total)) // ' bytes'
 
     ! Blank line at end of nuclide
     write(unit_,*)

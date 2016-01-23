@@ -2257,123 +2257,54 @@ contains
     integer :: l                    ! loop index for nuclides in material
     logical :: scoring_diff_nuclide
 
-    select case (t % estimator)
+    select case (t % deriv % variable)
 
-    case (ESTIMATOR_ANALOG)
-      if (materials(p % material) % id == t % deriv % diff_material &
-           .and. p % event_nuclide == t % deriv % diff_nuclide) then
-        associate(mat => materials(p % material))
-          do l = 1, mat % n_nuclides
-            if (mat % nuclide(l) == t % deriv % diff_nuclide) exit
-          end do
-          score = score * (t % deriv % flux_deriv &
-               + ONE / mat % atom_density(l))
-        end associate
-      else
-        score = score * t % deriv % flux_deriv
-      end if
+    case (DIFF_DENSITY)
+      select case (t % estimator)
 
-    case (ESTIMATOR_COLLISION)
-      if (t % deriv % variable == DIFF_NUCLIDE_DENSITY) then
-        scoring_diff_nuclide = &
-             (materials(p % material) % id == t % deriv % diff_material) &
-             .and. (i_nuclide == t % deriv % diff_nuclide)
+      case (ESTIMATOR_ANALOG)
+        if (materials(p % material) % id == t % deriv % diff_material) then
+          score = score * (t % deriv % flux_deriv + ONE &
+               / materials(p % material) % density_gpcc)
+        else
+          score = score * t % deriv % flux_deriv
+        end if
+
+      case (ESTIMATOR_COLLISION)
+
         select case (score_bin)
+
+        case (SCORE_FLUX)
+          score = score * t % deriv % flux_deriv
+
         case (SCORE_TOTAL)
-            scoring_diff_nuclide = scoring_diff_nuclide .and. &
-                 micro_xs(t % deriv % diff_nuclide) % total /= ZERO
+          if (materials(p % material) % id == t % deriv % diff_material &
+               .and. material_xs % total /= ZERO) then
+            score = score * (t % deriv % flux_deriv + ONE &
+                 / materials(p % material) % density_gpcc)
+          else
+            score = score * t % deriv % flux_deriv
+          end if
+
         case (SCORE_ABSORPTION)
-            scoring_diff_nuclide = scoring_diff_nuclide .and. &
-                 micro_xs(t % deriv % diff_nuclide) % absorption /= ZERO
+          if (materials(p % material) % id == t % deriv % diff_material &
+               .and. material_xs % absorption /= ZERO) then
+            score = score * (t % deriv % flux_deriv + ONE &
+                 / materials(p % material) % density_gpcc)
+          else
+            score = score * t % deriv % flux_deriv
+          end if
+
         case (SCORE_FISSION)
-            scoring_diff_nuclide = scoring_diff_nuclide .and. &
-                 micro_xs(t % deriv % diff_nuclide) % fission /= ZERO
-        case (SCORE_NU_FISSION)
-            scoring_diff_nuclide = scoring_diff_nuclide .and. &
-                 micro_xs(t % deriv % diff_nuclide) % nu_fission /= ZERO
-        case (SCORE_KEFF)
-            scoring_diff_nuclide = scoring_diff_nuclide .and. &
-                 micro_xs(t % deriv % diff_nuclide) % nu_fission /= ZERO
-        end select
-      end if
-
-      select case (score_bin)
-
-      case (SCORE_FLUX)
-        score = score * t % deriv % flux_deriv
-
-      case (SCORE_TOTAL)
-        select case (t % deriv % variable)
-
-        case (DIFF_NUCLIDE_DENSITY)
-          if (i_nuclide == -1 .and. &
-               materials(p % material)%id== t % deriv % diff_material) then
-            score = score * (t % deriv % flux_deriv &
-                 + micro_xs(t % deriv % diff_nuclide) % total &
-                 / material_xs % total)
-          else if (scoring_diff_nuclide) then
-            score = score * (t % deriv % flux_deriv + ONE / atom_density)
+          if (materials(p % material) % id == t % deriv % diff_material &
+               .and. material_xs % fission /= ZERO) then
+            score = score * (t % deriv % flux_deriv + ONE &
+                 / materials(p % material) % density_gpcc)
           else
             score = score * t % deriv % flux_deriv
           end if
 
-        end select
-
-      case (SCORE_ABSORPTION)
-        select case (t % deriv % variable)
-
-        case (DIFF_NUCLIDE_DENSITY)
-          if (i_nuclide == -1 .and. &
-               materials(p % material)%id== t % deriv % diff_material) then
-            score = score * (t % deriv % flux_deriv &
-                 + micro_xs(t % deriv % diff_nuclide) % absorption &
-                 / material_xs % absorption )
-          else if (scoring_diff_nuclide) then
-            score = score * (t % deriv % flux_deriv + ONE / atom_density)
-          else
-            score = score * t % deriv % flux_deriv
-          end if
-
-        end select
-
-      case (SCORE_FISSION)
-        select case (t % deriv % variable)
-
-        case (DIFF_NUCLIDE_DENSITY)
-          if (i_nuclide == -1 .and. &
-               materials(p % material)%id== t % deriv % diff_material) then
-            score = score * (t % deriv % flux_deriv &
-                 + micro_xs(t % deriv % diff_nuclide) % fission &
-                 / material_xs % fission)
-          else if (scoring_diff_nuclide) then
-            score = score * (t % deriv % flux_deriv + ONE / atom_density)
-          else
-            score = score * t % deriv % flux_deriv
-          end if
-
-        end select
-
-      case (SCORE_NU_FISSION)
-        select case (t % deriv % variable)
-
-        case (DIFF_NUCLIDE_DENSITY)
-          if (i_nuclide == -1 .and. &
-               materials(p % material)%id== t % deriv % diff_material) then
-            score = score * (t % deriv % flux_deriv &
-                 + micro_xs(t % deriv % diff_nuclide) % nu_fission &
-                 / material_xs % nu_fission)
-          else if (scoring_diff_nuclide) then
-            score = score * (t % deriv % flux_deriv + ONE / atom_density)
-          else
-            score = score * t % deriv % flux_deriv
-          end if
-
-        end select
-
-      case (SCORE_KEFF)
-        select case (t % deriv % variable)
-
-        case (DIFF_DENSITY)
+        case (SCORE_NU_FISSION, SCORE_KEFF)
           if (materials(p % material) % id == t % deriv % diff_material &
                .and. material_xs % nu_fission /= ZERO) then
             score = score * (t % deriv % flux_deriv + ONE &
@@ -2382,23 +2313,109 @@ contains
             score = score * t % deriv % flux_deriv
           end if
 
-        case (DIFF_NUCLIDE_DENSITY)
-          if (scoring_diff_nuclide) then
+        case default
+          call fatal_error('Tally derivative not defined for a score on &
+               &tally ' // trim(to_str(t % id)))
+
+        end select
+
+      case default
+          call fatal_error("Differential tallies are only implemented for &
+               &analog and collision estimators.")
+
+      end select
+
+    case (DIFF_NUCLIDE_DENSITY)
+      select case (t % estimator)
+
+      case (ESTIMATOR_ANALOG)
+        if (materials(p % material) % id == t % deriv % diff_material &
+             .and. p % event_nuclide == t % deriv % diff_nuclide) then
+          associate(mat => materials(p % material))
+            do l = 1, mat % n_nuclides
+              if (mat % nuclide(l) == t % deriv % diff_nuclide) exit
+            end do
+            score = score * (t % deriv % flux_deriv &
+                 + ONE / mat % atom_density(l))
+          end associate
+        else
+          score = score * t % deriv % flux_deriv
+        end if
+
+      case (ESTIMATOR_COLLISION)
+        scoring_diff_nuclide = &
+             (materials(p % material) % id == t % deriv % diff_material) &
+             .and. (i_nuclide == t % deriv % diff_nuclide)
+
+        select case (score_bin)
+
+        case (SCORE_FLUX)
+          score = score * t % deriv % flux_deriv
+
+        case (SCORE_TOTAL)
+          if (i_nuclide == -1 .and. &
+               materials(p % material) % id == t % deriv % diff_material) then
+            score = score * (t % deriv % flux_deriv &
+                 + micro_xs(t % deriv % diff_nuclide) % total &
+                 / material_xs % total)
+          else if (scoring_diff_nuclide .and. &
+               micro_xs(t % deriv % diff_nuclide) % total /= ZERO) then
             score = score * (t % deriv % flux_deriv + ONE / atom_density)
           else
             score = score * t % deriv % flux_deriv
           end if
 
+        case (SCORE_ABSORPTION)
+          if (i_nuclide == -1 .and. &
+               materials(p % material) % id == t % deriv % diff_material) then
+            score = score * (t % deriv % flux_deriv &
+                 + micro_xs(t % deriv % diff_nuclide) % absorption &
+                 / material_xs % absorption )
+          else if (scoring_diff_nuclide .and. &
+               micro_xs(t % deriv % diff_nuclide) % absorption /= ZERO) then
+            score = score * (t % deriv % flux_deriv + ONE / atom_density)
+          else
+            score = score * t % deriv % flux_deriv
+          end if
+
+        case (SCORE_FISSION)
+          if (i_nuclide == -1 .and. &
+               materials(p % material) % id == t % deriv % diff_material) then
+            score = score * (t % deriv % flux_deriv &
+                 + micro_xs(t % deriv % diff_nuclide) % fission &
+                 / material_xs % fission)
+          else if (scoring_diff_nuclide .and. &
+               micro_xs(t % deriv % diff_nuclide) % fission /= ZERO) then
+            score = score * (t % deriv % flux_deriv + ONE / atom_density)
+          else
+            score = score * t % deriv % flux_deriv
+          end if
+
+        case (SCORE_NU_FISSION, SCORE_KEFF)
+          if (i_nuclide == -1 .and. &
+               materials(p % material) % id == t % deriv % diff_material) then
+            score = score * (t % deriv % flux_deriv &
+                 + micro_xs(t % deriv % diff_nuclide) % nu_fission &
+                 / material_xs % nu_fission)
+          else if (scoring_diff_nuclide .and. &
+               micro_xs(t % deriv % diff_nuclide) % nu_fission /= ZERO) then
+            score = score * (t % deriv % flux_deriv + ONE / atom_density)
+          else
+            score = score * t % deriv % flux_deriv
+          end if
+
+        case default
+          call fatal_error('Tally derivative not defined for a score on &
+               &tally ' // trim(to_str(t % id)))
+
         end select
 
       case default
-        call fatal_error('Tally derivative not defined for a score on &
-             &tally ' // trim(to_str(t % id)))
+          call fatal_error("Differential tallies are only implemented for &
+               &analog and collision estimators.")
+
       end select
 
-    case default
-        call fatal_error("Differential tallies are only implemented for &
-             &analog and collision estimators.")
     end select
   end subroutine apply_derivative_to_score
 

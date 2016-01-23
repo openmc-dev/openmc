@@ -19,16 +19,19 @@ class MGXSTestHarness(PyAPITestHarness):
         # Generate inputs using parent class routine
         super(MGXSTestHarness, self)._build_inputs()
 
-        # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6, 20.])
+        # Initialize a one-group structure
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.])
 
         # Initialize MGXS Library for a few cross section types
+        # for one material-filled cell in the geometry
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry.geometry)
         self.mgxs_lib.by_nuclide = False
         self.mgxs_lib.mgxs_types = ['transport', 'nu-fission',
                                     'nu-scatter matrix', 'chi']
         self.mgxs_lib.energy_groups = energy_groups
-        self.mgxs_lib.domain_type = 'material'
+        self.mgxs_lib.domain_type = 'distribcell'
+        material_cells = self.mgxs_lib.openmc_geometry.get_all_material_cells()
+        self.mgxs_lib.domains = [material_cells[-1]]
         self.mgxs_lib.build_library()
 
         # Initialize a tallies file
@@ -51,15 +54,14 @@ class MGXSTestHarness(PyAPITestHarness):
         # Load the MGXS library from the statepoint
         self.mgxs_lib.load_from_statepoint(sp)
 
-        # Build a condensed 1-group MGXS Library
-        one_group = openmc.mgxs.EnergyGroups([0., 20.])
-        condense_lib = self.mgxs_lib.get_condensed_library(one_group)
+        # Average the MGXS across distribcell subdomains
+        avg_lib = self.mgxs_lib.get_subdomain_avg_library()
 
         # Build a string from Pandas Dataframe for each 1-group MGXS
         outstr = ''
-        for domain in condense_lib.domains:
-            for mgxs_type in condense_lib.mgxs_types:
-                mgxs = condense_lib.get_mgxs(domain, mgxs_type)
+        for domain in avg_lib.domains:
+            for mgxs_type in avg_lib.mgxs_types:
+                mgxs = avg_lib.get_mgxs(domain, mgxs_type)
                 df = mgxs.get_pandas_dataframe()
                 outstr += df.to_string()
 
@@ -70,7 +72,6 @@ class MGXSTestHarness(PyAPITestHarness):
             outstr = sha512.hexdigest()
 
         return outstr
-
 
     def _cleanup(self):
         super(MGXSTestHarness, self)._cleanup()

@@ -28,7 +28,7 @@ Benchmarking
 
 - Khurrum S. Chaudri and Sikander M. Mirza, "Burnup dependent Monte Carlo
   neutron physics calculations of IAEA MTR benchmark," *Prog. Nucl. Energy*,
-  **81**, 43-52 (2015). `<http://dx.doi.org/j.pnucene.2014.12.018>`_
+  **81**, 43-52 (2015). `<http://dx.doi.org/10.1016/j.pnucene.2014.12.018>`_
 
 - Daniel J. Kelly, Brian N. Aviles, Paul K. Romano, Bryan R. Herman,
   Nicholas E. Horelik, and Benoit Forget, "Analysis of select BEAVRS PWR

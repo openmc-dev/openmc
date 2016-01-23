@@ -122,7 +122,7 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
     list(APPEND ldflags -pg)
   endif()
   if(optimize)
-    list(APPEND f90flags -O3)
+    list(APPEND f90flags -O3 -flto -fuse-linker-plugin)
   endif()
   if(openmp)
     list(APPEND f90flags -fopenmp)
@@ -263,7 +263,7 @@ endif()
 # set compile flags. Note that this sets the COMPILE_OPTIONS property (also
 # available only in 2.8.12+) rather than the COMPILE_FLAGS property, which is
 # deprecated. The former can handle lists whereas the latter cannot.
-if(CMAKE_VERSION VERSION_LESS 4.8.12)
+if(CMAKE_VERSION VERSION_LESS 2.8.12)
   string(REPLACE ";" " " f90flags "${f90flags}")
   set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
 else()
@@ -313,113 +313,36 @@ include(CTest)
 # Get a list of all the tests to run
 file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.py)
 
-# Check for MEM_CHECK and COVERAGE variables
-if (DEFINED ENV{MEM_CHECK})
-  set(MEM_CHECK $ENV{MEM_CHECK})
-else(DEFINED ENV{MEM_CHECK})
-  set(MEM_CHECK FALSE)
-endif(DEFINED ENV{MEM_CHECK})
-if (DEFINED ENV{COVERAGE})
-  set(COVERAGE $ENV{COVERAGE})
-else(DEFINED ENV{COVERAGE})
-  set(COVERAGE FALSE)
-endif(DEFINED ENV{COVERAGE})
-
 # Loop through all the tests
 foreach(test ${TESTS})
-
   # Get test information
   get_filename_component(TEST_NAME ${test} NAME)
   get_filename_component(TEST_PATH ${test} PATH)
 
-  # Check for running standard tests (no valgrind, no gcov)
-  if(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
+  if (DEFINED ENV{MEM_CHECK})
+    # Generate input files if needed
+    if (NOT EXISTS "${TEST_PATH}/geometry.xml")
+      execute_process(COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --build-inputs
+        WORKING_DIRECTORY ${TEST_PATH})
+    endif()
 
+    # Add serial test
+    add_test(NAME ${TEST_NAME}
+      WORKING_DIRECTORY ${TEST_PATH}
+      COMMAND $<TARGET_FILE:openmc>)
+  else()
     # Check serial/parallel
     if (${MPI_ENABLED})
-
       # Preform a parallel test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
         --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
-
-    else(${MPI_ENABLED})
-
+    else()
       # Perform a serial test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
-
-    endif(${MPI_ENABLED})
-
-  # Handle special case for valgrind and gcov (run openmc directly, no python)
-  else(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
-
-    # If a plot test is encountered, run with "-p"
-    if (${test} MATCHES "test_plot")
-
-      # Perform serial valgrind and coverage test with plot flag
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -p ${TEST_PATH})
-
-    elseif(${test} MATCHES "test_filter_distribcell")
-
-      # Add each case for distribcell tests
-      add_test(NAME ${TEST_NAME}_case-1
-        WORKING_DIRECTORY ${TEST_PATH}/case-1
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-1)
-      add_test(NAME ${TEST_NAME}_case-2
-        WORKING_DIRECTORY ${TEST_PATH}/case-2
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-2)
-      add_test(NAME ${TEST_NAME}_case-3
-        WORKING_DIRECTORY ${TEST_PATH}/case-3
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-3)
-      add_test(NAME ${TEST_NAME}_case-4
-        WORKING_DIRECTORY ${TEST_PATH}/case-4
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-4)
-
-    # If a restart test is encounted, need to run with -r and restart file(s)
-    elseif(${test} MATCHES "restart")
-
-      # Handle restart tests separately
-      if(${test} MATCHES "test_statepoint_restart")
-        set(RESTART_FILE statepoint.07.h5)
-      elseif(${test} MATCHES "test_sourcepoint_restart")
-        set(RESTART_FILE statepoint.07.h5 source.07.h5)
-      elseif(${test} MATCHES "test_particle_restart_eigval")
-        set(RESTART_FILE particle_9_555.h5)
-      elseif(${test} MATCHES "test_particle_restart_fixed")
-        set(RESTART_FILE particle_7_928.h5)
-      else(${test} MATCHES "test_statepoint_restart")
-        message(FATAL_ERROR "Restart test ${test} not recognized")
-      endif(${test} MATCHES "test_statepoint_restart")
-
-      # Perform serial valgrind and coverage test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
-
-      # Perform serial valgrind and coverage restart test
-      add_test(NAME ${TEST_NAME}_restart
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -r ${RESTART_FILE} ${TEST_PATH})
-
-      # Set test dependency
-      set_tests_properties(${TEST_NAME}_restart PROPERTIES DEPENDS ${TEST_NAME})
-
-
-    # Handle standard tests for valgrind and gcov
-    else(${test} MATCHES "test_plot")
-
-      # Perform serial valgrind and coverage test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
-
-    endif(${test} MATCHES "test_plot")
-
-  endif(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
-
+    endif()
+  endif()
 endforeach(test)

@@ -521,8 +521,8 @@ class MGXS(object):
                 self.tallies[key].add_trigger(trigger_clone)
 
             # Add all non-domain specific Filters (e.g., 'energy') to the Tally
-            for filter in filters:
-                self.tallies[key].add_filter(filter)
+            for add_filter in filters:
+                self.tallies[key].add_filter(add_filter)
 
             # If this is a by-nuclide cross-section, add all nuclides to Tally
             if self.by_nuclide and score != 'flux':
@@ -787,15 +787,15 @@ class MGXS(object):
             std_dev = tally.get_reshaped_data(value='std_dev')
 
             # Sum across all applicable fine energy group filters
-            for i, filter in enumerate(tally.filters):
-                if 'energy' not in filter.type:
+            for i, tally_filter in enumerate(tally.filters):
+                if 'energy' not in tally_filter.type:
                     continue
-                elif len(filter.bins) != len(fine_edges):
+                elif len(tally_filter.bins) != len(fine_edges):
                     continue
-                elif not np.allclose(filter.bins, fine_edges):
+                elif not np.allclose(tally_filter.bins, fine_edges):
                     continue
                 else:
-                    filter.bins = coarse_groups.group_edges
+                    tally_filter.bins = coarse_groups.group_edges
                     mean = np.add.reduceat(mean, energy_indices, axis=i)
                     std_dev = np.add.reduceat(std_dev**2, energy_indices, axis=i)
                     std_dev = np.sqrt(std_dev)
@@ -843,50 +843,20 @@ class MGXS(object):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains)
         else:
-            subdomains = [0]
+            subdomains = None
 
         # Clone this MGXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
         avg_xs._rxn_rate_tally = None
         avg_xs._xs_tally = None
-        avg_xs._sparse = False
-
-        # If domain is distribcell, make the new domain 'cell'
-        if self.domain_type == 'distribcell':
-            avg_xs.domain_type = 'cell'
 
         # Average each of the tallies across subdomains
         for tally_type, tally in avg_xs.tallies.items():
+            tally_avg = tally.summation(filter_type=self.domain_type,
+                                        filter_bins=subdomains)
+            avg_xs.tallies[tally_type] = tally_avg
 
-            # Make condensed tally derived and null out sum, sum_sq
-            tally._derived = True
-            tally._sum = None
-            tally._sum_sq = None
-
-            # Get tally data arrays reshaped with one dimension per filter
-            mean = tally.get_reshaped_data(value='mean')
-            std_dev = tally.get_reshaped_data(value='std_dev')
-
-            # Get the mean, std. dev. across requested subdomains
-            mean = np.sum(mean[subdomains, ...], axis=0)
-            std_dev = np.sum(std_dev[subdomains, ...]**2, axis=0)
-            std_dev = np.sqrt(std_dev)
-
-            # If domain is distribcell, make subdomain-averaged a 'cell' domain
-            domain_filter = tally.find_filter(self._domain_type)
-            if domain_filter.type == 'distribcell':
-                domain_filter.type = 'cell'
-                domain_filter.num_bins = 1
-
-            # Reshape averaged data arrays with one dimension for all filters
-            mean = np.reshape(mean, tally.shape)
-            std_dev = np.reshape(std_dev, tally.shape)
-
-            # Override tally's data with the new condensed data
-            tally._mean = mean
-            tally._std_dev = std_dev
-
-        # Compute the subdomain-averaged multi-group cross section
+        avg_xs._domain_type = 'sum({0})'.format(self.domain_type)
         avg_xs.sparse = self.sparse
         return avg_xs
 
@@ -1249,7 +1219,7 @@ class MGXS(object):
             df = self.xs_tally.get_pandas_dataframe(summary=summary)
 
         # Remove the score column since it is homogeneous and redundant
-        if summary and self.domain_type == 'distribcell':
+        if summary and 'distribcell' in self.domain_type:
             df = df.drop('score', level=0, axis=1)
         else:
             df = df.drop('score', axis=1)

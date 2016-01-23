@@ -24,7 +24,6 @@ contains
 !===============================================================================
 
   subroutine finalize_run()
-    integer :: i
     integer :: hdf5_err
 
     ! Start finalization timer

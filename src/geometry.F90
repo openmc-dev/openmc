@@ -5,7 +5,6 @@ module geometry
   use geometry_header,        only: Cell, Universe, Lattice, &
                                     &RectLattice, HexLattice
   use global
-  use material_header,        only: Material
   use mesh,                   only: get_mesh_bin, bin_to_mesh_indices, &
                                     distance_to_mesh_intersection_3d, &
                                     distance_to_mesh_intersection_2d
@@ -207,7 +206,6 @@ contains
     type(Cell),     pointer :: c    ! pointer to cell
     class(Lattice), pointer :: lat  ! pointer to lattice
     type(Universe), pointer :: univ ! universe to search in
-    type(Material), pointer :: mat  ! pointer to material
 
     do j = p % n_coord + 1, MAX_COORD
       call p % coord(j) % reset()
@@ -374,7 +372,7 @@ contains
 ! CALIBRATE_COORD recalculates lower level coordinates based on level data, to
 ! make sure coord() consistent with each other
 !===============================================================================
-subroutine calibrate_coord(p)
+  subroutine calibrate_coord(p)
 
     type(Particle), intent(inout) :: p
     integer :: j                    ! coordinate level index
@@ -382,9 +380,7 @@ subroutine calibrate_coord(p)
     type(Cell),     pointer :: c    ! pointer to cell
     class(Lattice), pointer :: lat  ! pointer to lattice
 
-    if(p % n_coord <= 1) then
-      return
-    end if
+    if (p % n_coord <= 1) return
 
     do j = 2, p % n_coord
       p % coord(j) % xyz = p % coord(j-1) % xyz
@@ -416,7 +412,7 @@ subroutine calibrate_coord(p)
       end if
     end do
 
-end subroutine calibrate_coord
+  end subroutine calibrate_coord
 
 !===============================================================================
 ! CROSS_SURFACE handles all surface crossings, whether the particle leaks out of

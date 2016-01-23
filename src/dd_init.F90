@@ -1,7 +1,7 @@
 module dd_init
 
   use constants
-  use dd_header,  only: dd_type
+  use dd_header,  only: DomainDecomType
   use error,      only: fatal_error, warning
   use global,     only: n_procs, n_particles, rank, mpi_err, master
   use mesh,       only: bin_to_mesh_indices, mesh_indices_to_bin
@@ -28,13 +28,15 @@ contains
 
   subroutine initialize_domain_decomp(dd)
 
-    type(dd_type), intent(inout) :: dd
+    type(DomainDecomType), intent(inout) :: dd
 
     integer :: d                ! neighbor bin
     integer :: neighbor_meshbin
     integer :: alloc_err        ! allocation error code
+#ifdef MPI
     integer :: world_group
     integer :: domain_master_group
+#endif
 
     call write_message("Initializing domain decomposition parameters...", 6)
 
@@ -161,7 +163,7 @@ contains
 
   subroutine calculate_domain_n_procs(dd)
 
-    type(dd_type), intent(inout) :: dd
+    type(DomainDecomType), intent(inout) :: dd
 
     integer                :: d
 
@@ -199,7 +201,7 @@ contains
 
   subroutine distribute_load_peak_shaving(dd)
 
-    type(dd_type), intent(inout) :: dd
+    type(DomainDecomType), intent(inout) :: dd
 
     integer                :: d
     integer                :: max_
@@ -265,7 +267,7 @@ contains
 
   subroutine set_neighbor_meshbins(dd)
 
-    type(dd_type), intent(inout) :: dd
+    type(DomainDecomType), intent(inout) :: dd
 
     dd % neighbor_meshbins = (/ &
             ! First-order neighbors

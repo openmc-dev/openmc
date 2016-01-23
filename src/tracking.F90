@@ -2,7 +2,7 @@ module tracking
 
   use constants,       only: MODE_EIGENVALUE
   use cross_section,   only: calculate_xs
-  use dd_header,       only: dd_type
+  use dd_header,       only: DomainDecomType
   use dd_tracking,    only: recalc_initial_xs, &
                             check_domain_boundary_crossing, &
                             cross_domain_boundary

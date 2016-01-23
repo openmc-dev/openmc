@@ -5,7 +5,7 @@ module global
   use bank_header,      only: Bank
   use cmfd_header
   use constants
-  use dd_header,        only: dd_type, deallocate_dd
+  use dd_header,        only: DomainDecomType, deallocate_dd
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
   use material_header,  only: Material
@@ -258,7 +258,7 @@ module global
   ! DOMAIN DECOMPOSITION VARIABLES
 
   ! Main object
-  type(dd_type), target :: domain_decomp
+  type(DomainDecomType), target :: domain_decomp
 
   ! Is domain decomposition active
   logical :: dd_run  = .false.

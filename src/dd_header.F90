@@ -8,7 +8,7 @@ module dd_header
   private
   public :: deallocate_dd
 
-  type, public :: dd_type
+  type, public :: DomainDecomType
 
     ! Domain mesh information
     type(RegularMesh), pointer :: mesh => null()
@@ -75,7 +75,7 @@ module dd_header
     logical    :: count_interactions = .false.
     integer(8) :: interaction_count = 0_8
 
-  end type dd_type
+  end type DomainDecomType
 
 contains
 
@@ -85,7 +85,7 @@ contains
 
   subroutine deallocate_dd(this)
 
-    type(dd_type), intent(inout) :: this ! dd instance
+    type(DomainDecomType), intent(inout) :: this ! dd instance
 
     if (associated(this % mesh)) deallocate(this % mesh)
     if (allocated(this % domain_load_dist)) deallocate(this % domain_load_dist)
@@ -103,6 +103,7 @@ contains
          deallocate(this % n_scatters_domain)
     if (allocated(this % n_scatters_local)) deallocate(this % n_scatters_local)
     if (allocated(this % scatter_offest)) deallocate(this % scatter_offest)
+    call this % bins_dict % clear()
 
   end subroutine deallocate_dd
 

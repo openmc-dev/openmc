@@ -2,7 +2,7 @@ module dd_tracking
 
   use constants
   use cross_section,     only: calculate_xs
-  use dd_header,         only: dd_type
+  use dd_header,         only: DomainDecomType
   use error,             only: fatal_error
   use global,            only: domain_decomp, surfaces, rank, verbosity, trace
   use particle_header,   only: Particle
@@ -69,7 +69,7 @@ contains
   subroutine cross_domain_boundary(p, dd, tracking_dist, flying_dist)
 
     type(Particle), intent(inout) :: p
-    type(dd_type), intent(inout)  :: dd
+    type(DomainDecomType), intent(inout)  :: dd
     real(8), intent(in)           :: tracking_dist ! distance p needs to travel
     real(8), intent(in)           :: flying_dist   ! distance p traveled already
 

@@ -2,7 +2,7 @@ module dd_comm
 
   use bank_header,      only: Bank
   use constants
-  use dd_header,        only: dd_type
+  use dd_header,        only: DomainDecomType
   use error,            only: fatal_error
   use global,           only: MPI_BANK, MPI_PARTICLEBUFFER, n_procs, rank, &
                               mpi_err, work, n_particles, work_index, &
@@ -38,7 +38,7 @@ contains
 
   subroutine distribute_source(dd)
 
-    type(dd_type), intent(inout)  :: dd
+    type(DomainDecomType), intent(inout)  :: dd
 
     integer(8) :: i              ! loop index over initially-sampled source sites
     integer    :: n_source_sites ! number of sites that will start in this domain
@@ -46,8 +46,10 @@ contains
     integer    :: to_rank        ! global rank of the processor to send to
     integer    :: alloc_err      ! allocation error code
     integer(8) :: new_source     ! size of the source_bank after distribution
+#ifdef MPI
     integer                 :: current_request  ! current communication request
     type(VectorInt)         :: requests         ! communication requests
+#endif
     integer, allocatable    :: n_send_domain(:) ! number sent to each domain
     integer, allocatable    :: n_send_rank(:)   ! number sent to each process
     type(Bank), allocatable :: buffer(:)
@@ -56,12 +58,12 @@ contains
     ! need to keep track of how many particles we've sent to each so that we can
     ! rotate through processes to send to
     allocate(n_send_domain(n_procs))
-    n_send_domain = 0
+    n_send_domain(:) = 0
 
     ! We're going to send sites one at a time, then ALLREDUCE the number of
     ! sent sites so each rank knows how many revcs to post
     allocate(n_send_rank(n_procs))
-    n_send_rank = 0
+    n_send_rank(:) = 0
 
     ! We need a copy of the send data
     allocate(buffer(work), STAT=alloc_err)
@@ -127,8 +129,8 @@ contains
     if (new_source > size_source_bank) &
          call extend_array(source_bank, size_source_bank, new_source, &
               alloc_err)
-         call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
-              new_source, alloc_err)
+    call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
+         new_source, alloc_err)
 
     ! Receive sites from other processes
     do i = 1, n_send_rank(rank + 1)
@@ -165,7 +167,7 @@ contains
 
   function synchronize_particles(dd) result(work)
 
-    type(dd_type), intent(inout) :: dd
+    type(DomainDecomType), intent(inout) :: dd
     integer(8) :: work
 
 #ifdef MPI
@@ -227,7 +229,7 @@ contains
 
   subroutine synchronize_transfer_info(dd)
 
-    type(dd_type), intent(inout) :: dd
+    type(DomainDecomType), intent(inout) :: dd
 
     integer :: pr             ! loop index over processors to send to
     integer :: nd             ! loop index over neighbor domains
@@ -316,7 +318,7 @@ contains
 
   subroutine synchronize_destination_info(dd)
 
-    type(dd_type), intent(inout)  :: dd
+    type(DomainDecomType), intent(inout)  :: dd
 
     integer(8) :: i           ! loop index over particle buffer
     integer :: j
@@ -486,7 +488,7 @@ contains
 
   subroutine verify_buffers(dd)
 
-    type(dd_type), intent(inout)  :: dd
+    type(DomainDecomType), intent(inout)  :: dd
 
     integer(8) :: n_recv, n_send
     integer    :: alloc_err      ! allocation error code
@@ -525,7 +527,7 @@ contains
 
   subroutine send_recv_particles(dd)
 
-    type(dd_type), intent(inout)  :: dd
+    type(DomainDecomType), intent(inout)  :: dd
 
     integer(8) :: i8
     integer :: pr             ! loop index over processors to send to
@@ -645,7 +647,7 @@ contains
 
   subroutine rebuild_particle_buffer(dd)
 
-    type(dd_type), intent(inout)  :: dd
+    type(DomainDecomType), intent(inout)  :: dd
 
     integer    :: i
     integer(8) :: size_buff
@@ -687,7 +689,7 @@ contains
 
   subroutine synchronize_bank_dd(dd)
 
-    type(dd_type), intent(inout)  :: dd
+    type(DomainDecomType), intent(inout)  :: dd
 
     integer    :: i            ! loop indices
     integer    :: j            ! loop indices

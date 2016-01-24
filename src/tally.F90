@@ -1046,8 +1046,12 @@ contains
       ! determine score based on bank site weight and keff
       score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
 
-      ! Add derivative information for differenetial tallies.
-      if (allocated(t % deriv)) score = score * t % deriv % flux_deriv
+      ! Add derivative information for differenetial tallies.  Note that the
+      ! i_nuclide and atom_density arguments do not matter since this is an
+      ! analog estimator.
+      if (allocated(t % deriv)) then
+        call apply_derivative_to_score(p, t, 0, ZERO, SCORE_NU_FISSION, score)
+      end if
 
       ! determine outgoing energy from fission bank
       E_out = fission_bank(n_bank - p % n_bank + k) % E

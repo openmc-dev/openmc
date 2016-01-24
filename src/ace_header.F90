@@ -3,41 +3,10 @@ module ace_header
   use constants,   only: MAX_FILE_LEN, ZERO
   use dict_header, only: DictIntInt
   use endf_header, only: Tab1
+  use secondary_header, only: SecondaryDistribution, AngleEnergyContainer
   use stl_vector,  only: VectorInt
 
   implicit none
-
-!===============================================================================
-! DISTANGLE contains data for a tabular secondary angle distribution whether it
-! be tabular or 32 equiprobable cosine bins
-!===============================================================================
-
-  type DistAngle
-    integer              :: n_energy    ! # of incoming energies
-    real(8), allocatable :: energy(:)   ! incoming energy grid
-    integer, allocatable :: type(:)     ! type of distribution
-    integer, allocatable :: location(:) ! location of each table
-    real(8), allocatable :: data(:)     ! angular distribution data
-  end type DistAngle
-
-!===============================================================================
-! DISTENERGY contains data for a secondary energy distribution for all
-! scattering laws
-!===============================================================================
-
-  type DistEnergy
-    integer    :: law                 ! secondary distribution law
-    type(Tab1) :: p_valid             ! probability of law validity
-    real(8), allocatable :: data(:)   ! energy distribution data
-
-    ! For reactions that may have multiple energy distributions such as (n,2n),
-    ! this pointer allows multiple laws to be stored
-    type(DistEnergy), pointer :: next => null()
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => distenergy_clear ! Deallocates DistEnergy
-  end type DistEnergy
 
 !===============================================================================
 ! REACTION contains the cross-section and secondary energy and angle
@@ -53,10 +22,7 @@ module ace_header
     logical :: scatter_in_cm           ! scattering system in center-of-mass?
     logical :: multiplicity_with_E = .false. ! Flag to indicate E-dependent multiplicity
     real(8), allocatable :: sigma(:)   ! Cross section values
-    logical :: has_angle_dist          ! Angle distribution present?
-    logical :: has_energy_dist         ! Energy distribution present?
-    type(DistAngle)           :: adist ! Secondary angular distribution
-    type(DistEnergy), pointer :: edist => null() ! Secondary energy distribution
+    type(SecondaryDistribution) :: secondary
 
     ! Type-Bound procedures
     contains
@@ -137,7 +103,7 @@ module ace_header
     integer :: n_precursor ! # of delayed neutron precursors
     real(8), allocatable :: nu_d_data(:)
     real(8), allocatable :: nu_d_precursor_data(:)
-    type(DistEnergy), pointer :: nu_d_edist(:) => null()
+    type(AngleEnergyContainer), allocatable :: nu_d_edist(:)
 
     ! Unresolved resonance data
     logical                :: urr_present
@@ -285,36 +251,13 @@ module ace_header
   contains
 
 !===============================================================================
-! DISTENERGY_CLEAR resets and deallocates data in DistEnergy.
-!===============================================================================
-
-    recursive subroutine distenergy_clear(this)
-
-      class(DistEnergy), intent(inout) :: this ! The DistEnergy object to clear
-
-      if (associated(this % next)) then
-        ! recursively clear this item
-        call this % next % clear()
-        deallocate(this % next)
-      end if
-
-    end subroutine distenergy_clear
-
-!===============================================================================
 ! REACTION_CLEAR resets and deallocates data in Reaction.
 !===============================================================================
 
     subroutine reaction_clear(this)
-
       class(Reaction), intent(inout) :: this ! The Reaction object to clear
 
       if (associated(this % multiplicity_E)) deallocate(this % multiplicity_E)
-
-      if (associated(this % edist)) then
-        call this % edist % clear()
-        deallocate(this % edist)
-      end if
-
     end subroutine reaction_clear
 
 !===============================================================================
@@ -322,21 +265,11 @@ module ace_header
 !===============================================================================
 
     subroutine nuclide_clear(this)
-
-      class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
+      class(Nuclide), intent(inout) :: this
 
       integer :: i ! Loop counter
 
-      if (associated(this % nu_d_edist)) then
-        do i = 1, size(this % nu_d_edist)
-          call this % nu_d_edist(i) % clear()
-        end do
-        deallocate(this % nu_d_edist)
-      end if
-
-      if (associated(this % urr_data)) then
-        deallocate(this % urr_data)
-      end if
+      if (associated(this % urr_data)) deallocate(this % urr_data)
 
       if (allocated(this % reactions)) then
         do i = 1, size(this % reactions)

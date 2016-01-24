@@ -676,13 +676,6 @@ contains
           end if
         end if
 
-      case (SCORE_KEFF)
-        if (t % estimator == ESTIMATOR_COLLISION) then
-          score = p % last_wgt * material_xs % nu_fission / material_xs % total
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          score = flux * material_xs % nu_fission
-        end if
-
       case default
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Any other score is assumed to be a MT number. Thus, we just need
@@ -2304,7 +2297,7 @@ contains
             score = score * t % deriv % flux_deriv
           end if
 
-        case (SCORE_NU_FISSION, SCORE_KEFF)
+        case (SCORE_NU_FISSION)
           if (materials(p % material) % id == t % deriv % diff_material &
                .and. material_xs % nu_fission /= ZERO) then
             score = score * (t % deriv % flux_deriv + ONE &
@@ -2391,7 +2384,7 @@ contains
             score = score * t % deriv % flux_deriv
           end if
 
-        case (SCORE_NU_FISSION, SCORE_KEFF)
+        case (SCORE_NU_FISSION)
           if (i_nuclide == -1 .and. &
                materials(p % material) % id == t % deriv % diff_material) then
             score = score * (t % deriv % flux_deriv &

@@ -3374,9 +3374,6 @@ contains
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
 
-          case ('keff')
-            t % score_bins(j) = SCORE_KEFF
-
           case ('elastic', '(n,elastic)')
             t % score_bins(j) = ELASTIC
           case ('(n,2nd)')

@@ -383,8 +383,6 @@ contains
               str_array(j) = "events"
             case (SCORE_INVERSE_VELOCITY)
               str_array(j) = "inverse-velocity"
-            case (SCORE_KEFF)
-              str_array(j) = "keff"
             case default
               str_array(j) = reaction_name(tally%score_bins(j))
             end select

@@ -23,6 +23,21 @@
     <nuclide name="Be-9" ao="1.0" />
     <nuclide name="O-16" ao="1.0" />
     <sab name="BeBeO" xs="71t" />
+    <sab name="OBeO" xs="71t" />
+  </material>
+
+  <material id="4">
+    <density value="5.90168" units="g/cm3" />
+    <nuclide name="H-1"    ao="0.3" />
+    <nuclide name="Zr-90"  ao="0.15" />
+    <nuclide name="Zr-91"  ao="0.1" />
+    <nuclide name="Zr-92"  ao="0.1" />
+    <nuclide name="Zr-94"  ao="0.05" />
+    <nuclide name="Zr-96"  ao="0.05" />
+    <nuclide name="U-235"  ao="0.1" />
+    <nuclide name="U-238"  ao="0.15" />
+    <sab name="ZrZrH" xs="71t" />
+    <sab name="HZrH" xs="71t" />
   </material>
 
 </materials>

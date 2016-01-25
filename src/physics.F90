@@ -1355,6 +1355,7 @@ contains
 
       ! determine outgoing angle in lab
       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
+
     end if
 
     ! change direction of particle

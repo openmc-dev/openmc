@@ -200,7 +200,9 @@ module constants
        LINEAR_LINEAR = 2, & ! y is linear in x
        LINEAR_LOG    = 3, & ! y is linear in ln(x)
        LOG_LINEAR    = 4, & ! ln(y) is linear in x
-       LOG_LOG       = 5    ! ln(y) is linear in ln(x)
+       LOG_LOG       = 5, & ! ln(y) is linear in ln(x)
+       SQRT_LINEAR   = 7, & ! y is linear in sqrt(x)
+       SQRT_LOG      = 8    ! ln(y) is linear in sqrt(x)
 
   ! Particle type
   integer, parameter :: &

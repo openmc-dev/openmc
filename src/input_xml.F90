@@ -28,8 +28,7 @@ module input_xml
                               load_urr_tables,&
                               l_waves,&
                               max_batches_avg_urr,&
-                              max_dE_point_urr,&
-                              max_E_point_urr,&
+                              max_E_urr,&
                               min_batches_avg_urr,&
                               min_dE_point_urr,&
                               n_bands,&
@@ -118,6 +117,8 @@ contains
 
     ! Check if settings.xml exists
     filename = trim(path_input) // "settings.xml"
+    if (len(trim(path_input)//'settings.xml') > len(filename))&
+         call fatal_error('settings.xml filepath exceeds maximum length')
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       call fatal_error("Settings XML file '" // trim(filename) // "' does not &
@@ -958,6 +959,8 @@ contains
     ! Check if geometry.xml exists
     filename = trim(path_input) // "geometry.xml"
     inquire(FILE=filename, EXIST=file_exists)
+    if (len(trim(path_input)//'geometry.xml') > len(filename))&
+         call fatal_error('geometry.xml filepath exceeds maximum length')
     if (.not. file_exists) then
       call fatal_error("Geometry XML file '" // trim(filename) // "' does not &
            &exist!")
@@ -1430,6 +1433,8 @@ contains
 
     ! Check is materials.xml exists
     filename = trim(path_input) // "materials.xml"
+    if (len(trim(path_input)//'materials.xml') > len(filename))&
+         call fatal_error('materials.xml filepath exceeds maximum length')
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       call fatal_error("Material XML file '" // trim(filename) // "' does not &
@@ -1857,6 +1862,8 @@ contains
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
+    if (len(trim(path_input)//'tallies.xml') > len(filename))&
+         call fatal_error('tallies.xml filepath exceeds maximum length')
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       ! Since a tallies.xml file is optional, no error is issued here
@@ -2747,6 +2754,8 @@ contains
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"
+    if (len(trim(path_input)//'plots.xml') > len(filename))&
+         call fatal_error('plots.xml filepath exceeds maximum length')
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       call fatal_error("Plots XML file '" // trim(filename) &
@@ -3197,8 +3206,8 @@ contains
   subroutine read_urr_xml()
 
     integer :: i ! re-usable index
-    character(80) :: temp_str
-    character(80) :: filename
+    character(MAX_LINE_LEN) :: temp_str
+    character(MAX_LINE_LEN) :: filename
     logical :: file_exists ! does urr.xml file exist?
     type(Node), pointer :: doc => null()
     type(Node), pointer :: otf_xs_node => null()
@@ -3209,6 +3218,8 @@ contains
 
     ! Check if urr.xml exists
     filename = trim(path_input) // "urr.xml"
+    if (len(trim(path_input)//'urr.xml') > len(filename))&
+         call fatal_error('urr.xml filepath exceeds maximum length')
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       ! Since a urr.xml file is optional, no error is issued here
@@ -3322,6 +3333,12 @@ contains
       call fatal_error('Must specify number of f-wave resonances in urr.xml')
     end if
 
+    if (check_for_node(doc, 'max_energy')) then
+      call get_node_value(doc, 'max_energy', max_E_urr)
+    else
+      max_E_urr = INF
+    end if
+
     ! Check for pointwise cross section calculation
     if (check_for_node(doc, "pointwise")) then
       if (represent_urr == ON_THE_FLY .or. represent_urr == PROB_BANDS) &
@@ -3336,22 +3353,11 @@ contains
         call fatal_error('No min energy spacing [eV] for cross section &
              &reconstruction is given in urr.xml')
       end if
-      if (check_for_node(point_xs_node, 'max_spacing')) then
-        call get_node_value(point_xs_node, 'max_spacing', max_dE_point_urr)
-      else
-        call fatal_error('No max energy spacing [eV] for cross section &
-             &reconstruction is given in urr.xml')
-      end if
       if (check_for_node(point_xs_node, 'tolerance')) then
         call get_node_value(point_xs_node, 'tolerance', tol_point_urr)
       else
         call fatal_error('No max fractional error tolerance for cross section&
              & reconstruction is given in urr.xml')
-      end if
-      if (check_for_node(point_xs_node, 'max_energy')) then
-        call get_node_value(point_xs_node, 'max_energy', max_E_point_urr)
-      else
-        max_E_point_urr = 1.0e100_8
       end if
     end if
 
@@ -3403,16 +3409,6 @@ contains
         else          
           call fatal_error('No ENDF-6 data file specified for nuclide ' &
                // trim(to_str(i)) // ' in urr.xml file')
-        end if
-
-        ! Check if a URR upper energy bound is given
-        if (check_for_node(nuc_node, 'E_upper')) then
-          call get_node_value(nuc_node, 'E_upper', isotopes(i) % EH_user)
-        else
-          isotopes(i) % EH_user = INF
-          if (master)&
-               call write_message('No URR upper energy bound specified&
-                    & for nuclide '//trim(to_str(i))//' in urr.xml file')
         end if
       end do
 
@@ -3544,10 +3540,20 @@ contains
         call get_node_value(prob_table_node, 'temperature_interpolation',&
              temp_str)
         select case(trim(adjustl(to_lower(temp_str))))
-        case('linlin')
+        case('histogram')
+          INT_T = HISTOGRAM
+        case('lin-lin')
           INT_T = LINEAR_LINEAR
-        case('loglog')
+        case('lin-log')
+          INT_T = LINEAR_LOG
+        case('log-lin')
+          INT_T = LOG_LINEAR
+        case('log-log')
           INT_T = LOG_LOG
+        case('sqrt-lin')
+          INT_T = SQRT_LINEAR
+        case('sqrt-log')
+          INT_T = SQRT_LOG
         case default
           call fatal_error('Unrecognized temperature interpolation scheme')
         end select

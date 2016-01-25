@@ -32,6 +32,7 @@ module initialize
                               isotopes,&
                               load_prob_tables,&
                               load_urr_tables,&
+                              max_E_urr,&
                               n_isotopes,&
                               pointwise_urr,&
                               real_freq,&
@@ -139,7 +140,7 @@ contains
         do i = 1, n_isotopes
           call isotopes(i) % alloc_local_realization()
           isotopes(i) % EH(isotopes(i) % i_urr)&
-               = min(isotopes(i) % EH(isotopes(i)%i_urr), isotopes(i) % EH_user)
+               = min(isotopes(i) % EH(isotopes(i)%i_urr), max_E_urr)
         end do
 
         select case (represent_urr)
@@ -192,7 +193,7 @@ contains
             do i_nuc = 1, n_nuclides_total
               if (isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
                 call resonance_ensemble(i)
-                call pointwise_urr(i, i_nuc, nuclides(i_nuc) % kT / K_BOLTZMANN)
+                call pointwise_urr(i, nuclides(i_nuc) % kT / K_BOLTZMANN)
               end if
             end do
           end do
@@ -214,7 +215,7 @@ contains
       end if
 
       ! Write user-requested energy-xs coordinate files
-      call write_xs()
+      if (master) call write_xs()
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()

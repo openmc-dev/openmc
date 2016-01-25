@@ -12,11 +12,12 @@ module cross_section
   use random_lcg,      only: prn
   use search,          only: binary_search
   use string,          only: to_str
-  use xs,              only: calculate_prob_band_xs, &
-                             calculate_urr_xs_otf, &
-                             calc_urr_xs_otf, &
-                             Isotope, &
-                             isotopes, &
+  use xs,              only: calculate_prob_band_xs,&
+                             calculate_urr_xs_otf,&
+                             calc_urr_xs_otf,&
+                             Isotope,&
+                             isotopes,&
+                             max_E_urr,&
                              real_freq
 
   implicit none
@@ -44,9 +45,9 @@ contains
     real(8), allocatable :: x_vals(:)        ! vector of abscissae
     real(8), allocatable :: y_vals(:)        ! vector of ordinates
     character(80) :: filename                ! name of xs grid output file
-    type(Material), pointer :: mat => null() ! material pointer
-    type(Nuclide),  pointer :: nuc => null() ! nuclide pointer
-    type(Isotope),  pointer :: tope => null() ! isotope pointer
+    type(Material), pointer :: mat  ! material pointer
+    type(Nuclide),  pointer :: nuc  ! nuclide pointer
+    type(Isotope),  pointer :: tope ! isotope pointer
 
     ! loop over all materials
     do i = 1, n_materials
@@ -65,7 +66,7 @@ contains
         if (nuc % i_sotope /= 0) then
           tope => isotopes(nuc % i_sotope)
         else
-          tope => null()
+          nullify(tope)
         end if
 
         ! loop over all requested energy-xs grid outputs
@@ -215,6 +216,10 @@ contains
         end do
       end do
     end do
+
+    nullify(mat)
+    nullify(nuc)
+    nullify(tope)
 
   end subroutine write_xs
 
@@ -438,8 +443,8 @@ contains
     ! if the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
 
-    if (associated(tope)) then
-      if (E * 1.0E6_8 >= tope % EL(tope % i_urr) &
+    if (associated(tope) .and. E * 1.0E6_8 <= max_E_urr) then
+      if (E * 1.0E6_8 >= tope % EL(tope % i_urr)&
            .and. E * 1.0E6_8 <= tope % EH(tope % i_urr)) then
         micro_xs(i_nuclide) % in_urr = .true.
         if (tope % prob_bands) then
@@ -455,9 +460,8 @@ contains
           case (BATCH)
             call fatal_error('Batch-based URR realizations not yet supported')
           case (SIMULATION)
-              ! used in physics, even though ptables aren't actually used
-              call calc_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E,&
-                   nuc % kT / K_BOLTZMANN)
+            call calc_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E,&
+                 nuc % kT / K_BOLTZMANN)
           case default
             call fatal_error('Unrecognized URR realization frequency')
           end select

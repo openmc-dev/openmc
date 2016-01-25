@@ -1132,14 +1132,16 @@ contains
 
     ! clean energy grid of duplicates, values outside URR
     i_list = 1
+    E_last = min(tope % EH(tope % i_urr), max_E_urr)
     do
       if (i_list == tope % E_tmp % size()) exit
       E_0 = tope % E_tmp % get_item(i_list)
       E_1 = tope % E_tmp % get_item(i_list+1)
       if (E_0 > E_1)&
-        call fatal_error('Pointwise URR energy grid not monotonically&
+           call fatal_error('Pointwise URR energy grid not monotonically&
              & increasing')
-      if ((E_0 == E_1).or.(E_0 > min(tope % EH(tope % i_urr), max_E_urr))&
+      if ((E_0 == E_1)&
+           .or. (E_0 > E_last)&
            .or. (E_0 < tope % EL(tope % i_urr))) then
         call tope % E_tmp % remove(E_0)
         cycle
@@ -1147,10 +1149,8 @@ contains
       i_list = i_list + 1
     end do
     E_0 = tope % E_tmp % get_item(i_list)
-    if ((E_0 >= min(tope % EH(tope % i_urr), max_E_urr))&
-         .or. (E_0 < tope % EL(tope % i_urr)))&
+    if ((E_0 >= E_last) .or. (E_0 < tope % EL(tope % i_urr)))&
          call tope % E_tmp % remove(E_0)
-    E_last = min(tope % EH(tope % i_urr), max_E_urr)
     call tope % E_tmp % append(E_last)
 
     ! set first two energy points
@@ -1207,17 +1207,17 @@ contains
             ! loop over contributing resolved resonance region resonances
             LOC_RRR_RESONANCES_LOOP_1: do i_res = n_rrr_res, 1, -1
               i_rrr_res = rrr_res(iso, i_res, tope % L, tope % J)
-              
+
               ! fewer RRR resonances w/ this J value then needed;
               ! just generate URR resonances instead
 !TODO: take however many RRR resonances there actually are, even if too few
               if (i_rrr_res == 0) exit
-              
+
               ! add this resolved resonance
               res % i_res = res % i_res + 1
               call set_parameters(res, iso, i_rrr_res, i_l, i_J,&
                    tope % i_urr - 1)
-            
+
             end do LOC_RRR_RESONANCES_LOOP_1
           end if
 
@@ -1246,10 +1246,10 @@ contains
 
       ! penetration
       tope % P_l_n = penetration(tope % L, tope % k_n * tope % ac(tope % i_urr))
-      
+
       ! resonance energy shift factor
       tope % S_l_n = shift(tope % L, tope % k_n * tope % ac(tope % i_urr))
-      
+
       ! hard-sphere phase shift
       tope % phi_l_n = phase_shift(tope % L, tope % k_n * tope % AP(tope%i_urr))
 
@@ -1314,10 +1314,10 @@ contains
 
       ! penetration
       tope % P_l_n = penetration(tope % L, tope % k_n * tope % ac(tope % i_urr))
-      
+
       ! resonance energy shift factor
       tope % S_l_n = shift(tope % L, tope % k_n * tope % ac(tope % i_urr))
-      
+
       ! hard-sphere phase shift
       tope % phi_l_n = phase_shift(tope % L, tope % k_n * tope % AP(tope%i_urr))
 
@@ -1390,10 +1390,10 @@ contains
 
         ! penetration
         tope % P_l_n = penetration(tope % L, tope % k_n * tope % ac(tope % i_urr))
-        
+
         ! resonance energy shift factor
         tope % S_l_n = shift(tope % L, tope % k_n * tope % ac(tope % i_urr))
-        
+
         ! hard-sphere phase shift
         tope % phi_l_n = phase_shift(tope % L, tope % k_n * tope % AP(tope%i_urr))
 
@@ -1508,17 +1508,17 @@ contains
                 ! loop over contributing resolved resonance region resonances
                 LOC_RRR_RESONANCES_LOOP_4: do i_res = n_rrr_res, 1, -1
                   i_rrr_res = rrr_res(iso, i_res, tope % L, tope % J)
-                  
+
                   ! fewer RRR resonances w/ this J value then needed;
                   ! just generate URR resonances instead
     !TODO: take however many RRR resonances there actually are, even if too few
                   if (i_rrr_res == 0) exit
-                  
+
                   ! add this resolved resonance
                   res % i_res = res % i_res + 1
                   call set_parameters(res, iso, i_rrr_res, i_l, i_J,&
                        tope % i_urr - 1)
-                
+
                 end do LOC_RRR_RESONANCES_LOOP_4
               end if
 
@@ -1547,10 +1547,10 @@ contains
 
           ! penetration
           tope % P_l_n = penetration(tope % L, tope % k_n * tope % ac(tope % i_urr))
-          
+
           ! resonance energy shift factor
           tope % S_l_n = shift(tope % L, tope % k_n * tope % ac(tope % i_urr))
-          
+
           ! hard-sphere phase shift
           tope % phi_l_n = phase_shift(tope % L, tope % k_n * tope % AP(tope%i_urr))
 
@@ -4930,10 +4930,10 @@ contains
 
       if (tope % E > tope % Eavg(tope % nEavg)) then
         i_avg = tope % nEavg - 1
-      
+
       else
         i_avg = binary_search(tope % Eavg, tope % nEavg, tope % E)
-      
+
       end if
 
       f_avg = interp_factor(tope % E,&
@@ -5081,7 +5081,7 @@ contains
     micro_xs(i_nuc) % total = micro_xs(i_nuc) % elastic &
          + micro_xs(i_nuc) % absorption + inelastic_xs
 
-  nullify(tope)
+    nullify(tope)
 
   end subroutine add_mf3_background
 

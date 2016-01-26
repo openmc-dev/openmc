@@ -5,7 +5,6 @@ module random_lcg
   implicit none
 
   private
-  save
 
   ! Random number seed
   integer(8), public :: seed = 1_8

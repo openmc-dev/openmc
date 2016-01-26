@@ -26,7 +26,6 @@ module input_xml
   use mpi
 #endif
   implicit none
-  save
 
   type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                          ! universe contains

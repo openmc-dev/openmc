@@ -15,7 +15,7 @@ module dd_comm
   use output,           only: write_message
   use particle_header,  only: buffer_to_particle, particle_to_buffer
   use random_lcg,       only: prn, prn_seed
-  use resize_arr,       only: resize_array, extend_array
+  use extend_arr,       only: extend_array
   use search,           only: binary_search
   use string,           only: to_str
   use stl_vector,       only: VectorInt
@@ -126,11 +126,13 @@ contains
     ! Check if we're not going to have enough space in the source_bank (which
     ! we're using as the receive buffer), and resize the array if needed
     new_source = n_send_rank(rank + 1) + n_source_sites
-    if (new_source > size_source_bank) &
-         call extend_array(source_bank, size_source_bank, new_source, &
-              alloc_err)
-    call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
-         new_source, alloc_err)
+    if (new_source > size_source_bank) then
+      call extend_array(source_bank, new_source, .true., alloc_err)
+      size_source_bank = size(source_bank)
+    end if
+
+    call extend_array(dd % particle_buffer, new_source, .false., alloc_err)
+    dd % size_particle_buffer = size(dd % particle_buffer)
 
     ! Receive sites from other processes
     do i = 1, n_send_rank(rank + 1)
@@ -502,8 +504,8 @@ contains
 
       ! Resize the receive buffer
       n_recv = ceiling(dble(n_recv) * DD_BUFFER_HEADROOM, 8)
-      call resize_array(dd % recv_buffer, dd % size_recv_buffer, n_recv, &
-           alloc_err)
+      call extend_array(dd % recv_buffer, n_recv, .false., alloc_err)
+      dd % size_recv_buffer = size(dd % recv_buffer)
 
     end if
 
@@ -513,8 +515,8 @@ contains
 
       ! Resize the send buffer
       n_send = ceiling(dble(n_send) * DD_BUFFER_HEADROOM, 8)
-      call resize_array(dd % send_buffer, dd % size_send_buffer, n_send, &
-           alloc_err)
+      call extend_array(dd % send_buffer, n_send, .false., alloc_err)
+      dd % size_send_buffer = size(dd % send_buffer)
 
     end if
 
@@ -657,14 +659,16 @@ contains
     if (dd % n_inscatt > dd % size_particle_buffer) then
 
       size_buff = ceiling(dble(dd % n_inscatt) * DD_BUFFER_HEADROOM, 8)
-      call resize_array(dd % particle_buffer, dd % size_particle_buffer, &
-           size_buff, alloc_err)
+      call extend_array(dd % particle_buffer, size_buff, .false., alloc_err)
+      dd % size_particle_buffer = size(dd % particle_buffer)
 
       ! We also need to resize the source bank and fission bank now that we
       ! have more particles
-      call resize_array(source_bank, size_source_bank, size_buff, alloc_err)
-      call extend_array(fission_bank, size_fission_bank, 3_8*size_buff, &
-           alloc_err)
+      call extend_array(source_bank, size_buff, .false., alloc_err)
+      size_source_bank = size(source_bank)
+
+      call extend_array(fission_bank, 3_8*size_buff, .true., alloc_err)
+      size_fission_bank = size(fission_bank)
       !TODO: fission bank might not be big enough! This only covers the particle
       ! buffer from this stage!
 
@@ -948,17 +952,20 @@ contains
     ! Grow the banks if we won't have enough space
 
     size_bank = ceiling(dble(index_local) * DD_BUFFER_HEADROOM, 8)
-    if (index_local > dd % size_particle_buffer) &
-         call resize_array(dd % particle_buffer,  &
-                        dd % size_particle_buffer, &
-                        size_bank, alloc_err)
+    if (index_local > dd % size_particle_buffer) then
+      call extend_array(dd % particle_buffer, size_bank, .false.,alloc_err)
+      dd % size_particle_buffer = size(dd % particle_buffer)
+    end if
 
     if (index_local > size_source_bank) then
-      call resize_array(source_bank, size_source_bank, size_bank,  alloc_err)
-      call resize_array(fission_bank, &
-                        size_fission_bank, &
-                        3_8*size_bank, alloc_err)
-      call extend_array(temp_sites, size_fission_bank, 3_8*size_bank, alloc_err)
+      call extend_array(source_bank, size_bank, .false., alloc_err)
+      size_source_bank = size(source_bank)
+
+      call extend_array(fission_bank, 3_8*size_bank, .false., alloc_err)
+      size_fission_bank = size(fission_bank)
+
+      call extend_array(temp_sites, 3_8*size_bank, .true., alloc_err)
+      size_fission_bank = size(temp_sites)
     end if
 
     ! ========================================================================

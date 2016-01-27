@@ -12,8 +12,7 @@ import sys
 import numpy as np
 
 from openmc import Mesh, Filter, Trigger, Nuclide
-from openmc.cross import CrossScore, CrossNuclide, CrossFilter
-from openmc.aggregate import AggregateScore, AggregateNuclide, AggregateFilter
+from openmc.cross import *
 from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
 from openmc.clean_xml import *
@@ -2680,11 +2679,11 @@ class Tally(object):
         new_tally = copy.deepcopy(self)
         new_tally.sparse = False
 
-        if self.sum is not None:
+        if not self.derived and self.sum is not None:
             new_sum = self.get_values(scores, filters, filter_bins,
                                       nuclides, 'sum')
             new_tally.sum = new_sum
-        if self.sum_sq is not None:
+        if not self.derived and self.sum_sq is not None:
             new_sum_sq = self.get_values(scores, filters, filter_bins,
                                          nuclides, 'sum_sq')
             new_tally.sum_sq = new_sum_sq
@@ -2955,10 +2954,10 @@ class Tally(object):
             diag_indices[start:end] = indices + (i * new_filter.num_bins**2)
 
         # Inject this Tally's data along the diagonal of the diagonalized Tally
-        if self.sum is not None:
+        if not self.derived and self.sum is not None:
             new_tally._sum = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum[diag_indices, :, :] = self.sum
-        if self.sum_sq is not None:
+        if not self.derived and self.sum_sq is not None:
             new_tally._sum_sq = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
         if self.mean is not None:

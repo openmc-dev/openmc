@@ -12,7 +12,7 @@ import sys
 import numpy as np
 
 from openmc import Mesh, Filter, Trigger, Nuclide
-from openmc.cross import *
+from openmc.arithmetic import *
 from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
 from openmc.clean_xml import *

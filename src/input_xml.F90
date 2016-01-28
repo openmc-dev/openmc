@@ -3247,7 +3247,7 @@ contains
               call fatal_error("Cannot tally absorption rate with an outgoing &
                    &energy filter.")
             end if
-          case ('fission')
+          case ('fission', '18')
             t % score_bins(j) = SCORE_FISSION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               call fatal_error("Cannot tally fission rate with an outgoing &

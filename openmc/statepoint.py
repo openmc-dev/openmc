@@ -1,4 +1,4 @@
-import sys
+mport sys
 import re
 import numpy as np
 
@@ -448,10 +448,6 @@ class StatePoint(object):
     @property
     def summary(self):
         return self._summary
-
-    @property
-    def with_summary(self):
-        return False if self.summary is False else True
 
     @sparse.setter
     def sparse(self, sparse):

@@ -583,7 +583,7 @@ class MGXS(object):
 
         cv.check_type('statepoint', statepoint, openmc.statepoint.StatePoint)
 
-        if not statepoint.with_summary:
+        if statepoint.summary is None:
             msg = 'Unable to load data from a statepoint which has not been ' \
                   'linked with a summary file'
             raise ValueError(msg)

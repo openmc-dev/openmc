@@ -451,7 +451,7 @@ class StatePoint(object):
 
     @property
     def with_summary(self):
-        return False if self.summary is None else True
+        return False if self.summary is False else True
 
     @sparse.setter
     def sparse(self, sparse):

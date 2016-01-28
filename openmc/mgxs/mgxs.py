@@ -612,6 +612,11 @@ class MGXS(object):
             filters = []
             filter_bins = []
 
+        # Clear any tallies previously loaded from a statepoint
+        self._tallies = None
+        self._xs_tally = None
+        self._rxn_rate_tally = None
+
         # Find, slice and store Tallies from StatePoint
         # The tally slicing is needed if tally merging was used
         for tally_type, tally in self.tallies.items():

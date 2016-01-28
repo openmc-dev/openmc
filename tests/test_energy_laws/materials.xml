@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<materials>
+  <default_xs>71c</default_xs>
+  <material id="1">
+    <density value="20" units="g/cc" />
+    <nuclide name="U-233" ao="1.0" />
+    <nuclide name="H-2" ao="1.0" />
+    <nuclide name="Na-23" ao="1.0" />
+    <nuclide name="Ta-181" ao="1.0" />
+  </material>
+</materials>

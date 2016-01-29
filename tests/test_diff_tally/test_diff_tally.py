@@ -10,8 +10,8 @@ except:
 import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from openmc import Filter, Mesh, Tally, TalliesFile, Summary, StatePoint
-#from openmc.statepoint import StatePoint
+from openmc import Filter, Mesh, Tally, TalliesFile, Summary, StatePoint, \
+                   TallyDerivative
 from openmc.source import Source
 from openmc.stats import Box
 
@@ -33,26 +33,35 @@ class DiffTallyTestHarness(PyAPITestHarness):
         filt_mats = Filter(type='material', bins=(1, 3))
         filt_eout = Filter(type='energyout', bins=(0.0, 1.0, 20.0))
 
+        # We want density derivatives for both water and fuel to get coverage
+        # for both fissile and non-fissile materials.
+        d1 = TallyDerivative(derivative_id=1)
+        d1.variable = 'density'
+        d1.material = 3
+        d2 = TallyDerivative(derivative_id=2)
+        d2.variable = 'density'
+        d2.material = 1
+
+        # O-16 is a good nuclide to test against because it is present in both
+        # water and fuel.  Some routines need to recognize that they have the
+        # perturbed nuclide but not the perturbed material.
+        d3 = TallyDerivative(derivative_id=3)
+        d3.variable = 'nuclide_density'
+        d3.material = 1
+        d3.nuclide = 'O-16'
+
+        # A fissile nuclide, just for good measure.
+        d4 = TallyDerivative(derivative_id=4)
+        d4.variable = 'nuclide_density'
+        d4.material = 1
+        d4.nuclide = 'U-235'
+
         def add_derivs(tally_list):
             assert len(tally_list) == 4
-            # We want density derivatives for both water and fuel to get
-            # coverage for both fissile and non-fissile materials.
-            tally_list[0].diff_variable = 'density'
-            tally_list[0].diff_material = 3
-            tally_list[1].diff_variable = 'density'
-            tally_list[1].diff_material = 1
-
-            # O-16 is a good nuclide to test against because it is present
-            # in both water and fuel.  Some routines need to recognize that they
-            # have the perturbed nuclide but not the perturbed material.
-            tally_list[2].diff_variable = 'nuclide_density'
-            tally_list[2].diff_material = 1
-            tally_list[2].diff_nuclide = 'O-16'
-
-            # A fissile nuclide, just for good measure.
-            tally_list[3].diff_variable = 'nuclide_density'
-            tally_list[3].diff_material = 1
-            tally_list[3].diff_nuclide = 'U-235'
+            tally_list[0].derivative = d1
+            tally_list[1].derivative = d2
+            tally_list[2].derivative = d3
+            tally_list[3].derivative = d4
 
         # Cover the flux score.
         tallies = [Tally() for i in range(4)]

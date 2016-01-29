@@ -66,6 +66,7 @@ module tally_header
 !===============================================================================
 
   type TallyDerivative
+    integer :: id
     real(8) :: flux_deriv
     integer :: variable
     integer :: diff_material
@@ -138,8 +139,8 @@ module tally_header
     integer                           :: n_triggers = 0  ! # of triggers
     type(TriggerObject),  allocatable :: triggers(:)     ! Array of triggers
 
-    ! Derivative for differentially tallies
-    type(TallyDerivative), allocatable :: deriv
+    ! Index for the TallyDerivative for differential tallies.
+    integer :: deriv = NONE
   end type TallyObject
 
 end module tally_header

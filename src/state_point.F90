@@ -52,7 +52,7 @@ contains
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group, tally_group
     integer(HID_T) :: meshes_group, mesh_group
-    integer(HID_T) :: filter_group, deriv_group
+    integer(HID_T) :: filter_group, derivs_group, deriv_group
     character(20), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
     type(RegularMesh), pointer :: meshp
@@ -194,6 +194,35 @@ contains
 
       call close_group(meshes_group)
 
+      ! Write information for derivatives.
+      if (size(tally_derivs) > 0) then
+        derivs_group = create_group(tallies_group, "derivatives")
+        do i = 1, size(tally_derivs)
+          associate(deriv => tally_derivs(i))
+            deriv_group = create_group(derivs_group, "derivative " &
+                 // trim(to_str(deriv % id)))
+            select case (deriv % variable)
+            case (DIFF_DENSITY)
+              call write_dataset(deriv_group, "dependent variable", "density")
+              call write_dataset(deriv_group, "material", deriv % diff_material)
+            case (DIFF_NUCLIDE_DENSITY)
+              call write_dataset(deriv_group, "dependent variable", &
+                   "nuclide_density")
+              call write_dataset(deriv_group, "material", deriv % diff_material)
+              i_list = nuclides(deriv % diff_nuclide) % listing
+              call write_dataset(deriv_group, "nuclide", &
+                   xs_listings(i_list) % alias)
+            case default
+              call fatal_error("Dependent variable for derivative " &
+                   // trim(to_str(deriv % id)) // " not defined in &
+                   &state_point.F90.")
+            end select
+            call close_group(deriv_group)
+          end associate
+        end do
+        call close_group(derivs_group)
+      end if
+
       ! Write number of tallies
       call write_dataset(tallies_group, "n_tallies", n_tallies)
 
@@ -308,30 +337,9 @@ contains
           deallocate(str_array)
 
           ! Write derivative information.
-          if (allocated(tally % deriv)) then
-            call write_dataset(tally_group, "derivative present", 1)
-            deriv_group = create_group(tally_group, "derivative")
-            select case (tally % deriv % variable)
-            case (DIFF_DENSITY)
-              call write_dataset(deriv_group, "dependent variable", "density")
-              call write_dataset(deriv_group, "material", &
-                   tally % deriv % diff_material)
-            case (DIFF_NUCLIDE_DENSITY)
-              call write_dataset(deriv_group, "dependent variable", &
-                   "nuclide_density")
-              call write_dataset(deriv_group, "material", &
-                   tally % deriv % diff_material)
-              i_list = nuclides(tally % deriv % diff_nuclide) % listing
-              call write_dataset(deriv_group, "nuclide", &
-                   xs_listings(i_list) % alias)
-            case default
-              call fatal_error("Differential tally dependent variable for &
-                   &tally " // trim(to_str(tally % id)) // " not defined in &
-                   &state_point.F90.")
-            end select
-            call close_group(deriv_group)
-          else
-            call write_dataset(tally_group, "derivative present", 0)
+          if (tally % deriv /= NONE) then
+            call write_dataset(tally_group, "derivative", &
+                 tally_derivs(tally % deriv) % id)
           end if
 
           ! Write scores.

@@ -1017,21 +1017,21 @@ contains
       endif
 
       ! Write derivative information.
-      if (allocated(t % deriv)) then
-        select case (t % deriv % variable)
-        case (DIFF_DENSITY)
-          write(unit=unit_tally, fmt="(' Density derivative  Material ',A)") &
-               to_str(t % deriv % diff_material)
-        case (DIFF_NUCLIDE_DENSITY)
-          i_listing = nuclides(t % deriv % diff_nuclide) % listing
-          write(unit=unit_tally, fmt="(' Nuclide density derivative  Material '&
-               &,A,'  Nuclide ',A)") trim(to_str(t % deriv % diff_material)), &
-               trim(xs_listings(i_listing) % alias)
-        case default
-          call fatal_error("Differential tally dependent variable for tally " &
-               // trim(to_str(t % id)) // " not defined in output.F90.")
-        end select
-      end if
+      !if (allocated(t % deriv)) then
+      !  select case (t % deriv % variable)
+      !  case (DIFF_DENSITY)
+      !    write(unit=unit_tally, fmt="(' Density derivative  Material ',A)") &
+      !         to_str(t % deriv % diff_material)
+      !  case (DIFF_NUCLIDE_DENSITY)
+      !    i_listing = nuclides(t % deriv % diff_nuclide) % listing
+      !    write(unit=unit_tally, fmt="(' Nuclide density derivative  Material '&
+      !         &,A,'  Nuclide ',A)") trim(to_str(t % deriv % diff_material)), &
+      !         trim(xs_listings(i_listing) % alias)
+      !  case default
+      !    call fatal_error("Differential tally dependent variable for tally " &
+      !         // trim(to_str(t % id)) // " not defined in output.F90.")
+      !  end select
+      !end if
 
       ! Handle surface current tallies separately
       if (t % type == TALLY_SURFACE_CURRENT) then

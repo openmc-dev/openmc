@@ -116,25 +116,14 @@ contains
       ! Calculate microscopic and macroscopic cross sections -- note: if the
       ! material is the same as the last material and the energy of the
       ! particle hasn't changed, we don't need to lookup cross sections again.
-      if (p % material /= p % last_material ) then
 
-        if (dd_run) then
-          ! NOTE: calculate_xs does not re-calculate XS on a per-nuclide
-          ! basis if the energy hasn't changed. For DD reproducibility we'd
-          ! need to send a prn seed for each nuclide along with particles as
-          ! they cross domain boundaries.  This would just about double the
-          ! amount of info that goes with particles across boundaries, so we
-          ! disable it for DD runs.  If we care about XS calculation speed more
-          ! than network communication load, we might consider communicating
-          ! these seeds with particles.  Or, we could comment out these two
-          ! lines and lose random number reproducibility.
-          micro_xs % last_E = ZERO
-          micro_xs % last_index_sab = NONE
-        end if
-        call calculate_xs(p)
-      end if
+      if (p % material /= p % last_material) call calculate_xs(p)
 
-      ! determine whether the particle is now transferred to right domain
+      ! Determine whether the particle is now transferred to correct domain.
+      ! Move particle forward the previous domain distance and calculating new
+      ! distance to domain boundary. If the total dd distance is still less than
+      ! stored tracking distance, let the particle cross domain once more.
+      ! Note the particle coordinates are recovered back.
       if (dd_run .and. p % stored_distance > ZERO) then
         xyz_temp = p % coord(1) % xyz
         p % coord(1) % xyz = xyz_temp + p % fly_dd_distance * p % coord(1) % uvw

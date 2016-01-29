@@ -94,7 +94,7 @@ contains
         call create_fission_sites(p, i_nuclide, i_reaction, fission_bank, n_bank)
       elseif (run_mode == MODE_FIXEDSOURCE) then
         call create_fission_sites(p, i_nuclide, i_reaction, &
-             p%secondary_bank, p%n_secondary)
+             p % secondary_bank, p % n_secondary)
       end if
     end if
 
@@ -1174,7 +1174,8 @@ contains
 
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
-      bank_array(i) % E = sample_fission_energy(nuc, nuc%reactions(i_reaction), p)
+      bank_array(i) % E = sample_fission_energy(nuc, &
+           nuc % reactions(i_reaction), p)
 
       ! Set the delayed group of the neutron
       bank_array(i) % delayed_group = p % delayed_group

@@ -63,7 +63,7 @@ contains
     endif
 
     ! Every particle starts with no accumulated flux derivative.
-    call zero_flux_derivs()
+    if (active_tallies % size() > 0) call zero_flux_derivs()
 
     EVENT_LOOP: do
       ! If the cell hasn't been determined based on the particle's location,
@@ -120,7 +120,7 @@ contains
       end if
 
       ! Score flux derivative accumulators for differential tallies.
-      call score_track_derivative(p, distance)
+      if (active_tallies % size() > 0) call score_track_derivative(p, distance)
 
       if (d_collision > d_boundary) then
         ! ====================================================================
@@ -197,7 +197,7 @@ contains
         end do
 
         ! Score flux derivative accumulators for differential tallies.
-        call score_collision_derivative(p)
+        if (active_tallies % size() > 0) call score_collision_derivative(p)
       end if
 
       ! If particle has too many events, display warning and kill it

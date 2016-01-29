@@ -11,7 +11,7 @@ import sys
 
 import numpy as np
 
-from openmc import Mesh, Filter, Trigger, Nuclide
+from openmc import Mesh, Filter, Trigger, Nuclide, TallyDerivative
 from openmc.cross import CrossScore, CrossNuclide, CrossFilter
 from openmc.aggregate import AggregateScore, AggregateNuclide, AggregateFilter
 from openmc.filter import _FILTER_TYPES
@@ -95,6 +95,8 @@ class Tally(object):
     sparse : bool
         Whether or not the tally uses SciPy's LIL sparse matrix format for
         compressed data storage
+    derivative : openmc.tally_derivative.TallyDerivative
+        A material perturbation derivative to apply to all scores in the tally.
 
     """
 
@@ -107,9 +109,7 @@ class Tally(object):
         self._scores = []
         self._estimator = None
         self._triggers = []
-        self._diff_variable = None
-        self._diff_material = None
-        self._diff_nuclide = None
+        self._derivative = None
 
         self._num_realizations = 0
         self._with_summary = False
@@ -134,9 +134,7 @@ class Tally(object):
             clone.id = self.id
             clone.name = self.name
             clone.estimator = self.estimator
-            clone._diff_variable = self.diff_variable
-            clone._diff_material = self.diff_material
-            clone._diff_nuclide = self.diff_nuclide
+            clone._derivative = self.derivative
             clone.num_realizations = self.num_realizations
             clone._sum = copy.deepcopy(self._sum, memo)
             clone._sum_sq = copy.deepcopy(self._sum_sq, memo)
@@ -194,11 +192,7 @@ class Tally(object):
                 return False
 
         # Check derivatives
-        if self.diff_variable != other.diff_variable:
-            return False
-        if self.diff_material != other.diff_material:
-            return False
-        if self.diff_nuclide != other.diff_nuclide:
+        if self.derivative != other.derivative:
             return False
 
         # Check all scores
@@ -225,20 +219,9 @@ class Tally(object):
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
 
-        if self.diff_variable is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tDerivative', '=\t',
-                                                self.diff_variable)
-            if self.diff_variable == 'density':
-                string += '{0: <16}{1}{2}\n'.format('\tDiff_material', '=\t',
-                                                    self.diff_material)
-            elif self.diff_variable == 'nuclide_density':
-                string += '{0: <16}{1}{2}\n'.format('\tDiff_material', '=\t',
-                                                    self.diff_material)
-                string += '{0: <16}{1}{2}\n'.format('\tDiff_nuclide', '=\t',
-                                                    self.diff_nuclide)
-            else:
-                raise RuntimeError("Encountered unrecognized differential "
-                                   "variable in a tally.")
+        if self.derivative is not None:
+            string += '{0: <16}id =\t{1}\n'.format('\tDerivative', '=\t',
+                                                   str(self.derivative.id))
 
         string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
 
@@ -443,16 +426,8 @@ class Tally(object):
         return self._derived
 
     @property
-    def diff_variable(self):
-        return self._diff_variable
-
-    @property
-    def diff_material(self):
-        return self._diff_material
-
-    @property
-    def diff_nuclide(self):
-        return self._diff_nuclide
+    def derivative(self):
+        return self._derivative
 
     @property
     def sparse(self):
@@ -501,26 +476,11 @@ class Tally(object):
         else:
             self._name = ''
 
-    @diff_variable.setter
-    def diff_variable(self, var):
-        if var is not None:
-            cv.check_type('differential variable', var, basestring)
-            if var not in ('density', 'nuclide_density'):
-                raise ValueError("A tally differential variable must be either "
-                     "'density' or 'nuclide_density'")
-            self._diff_variable = var
-
-    @diff_material.setter
-    def diff_material(self, mat):
-        if mat is not None:
-            cv.check_type('differential material', mat, Integral)
-            self._diff_material = mat
-
-    @diff_nuclide.setter
-    def diff_nuclide(self, nuc):
-        if nuc is not None:
-            cv.check_type('differential nuclide', nuc, basestring)
-            self._diff_nuclide = nuc
+    @derivative.setter
+    def derivative(self, deriv):
+        if deriv is not None:
+            cv.check_type('tally derivative', deriv, TallyDerivative)
+            self._derivative = deriv
 
     def add_filter(self, new_filter):
         """Add a filter to the tally
@@ -884,21 +844,6 @@ class Tally(object):
             subelement = ET.SubElement(element, "nuclides")
             subelement.text = nuclides.rstrip(' ')
 
-        # Optional derivative
-        if self.diff_variable is not None:
-            if self.diff_variable == 'density':
-                subelement = ET.SubElement(element, "derivative")
-                subelement.set("variable", self.diff_variable)
-                subelement.set("material", str(self.diff_material))
-            elif self.diff_variable == 'nuclide_density':
-                subelement = ET.SubElement(element, "derivative")
-                subelement.set("variable", self.diff_variable)
-                subelement.set("material", str(self.diff_material))
-                subelement.set("nuclide", self.diff_nuclide)
-            else:
-                raise RuntimeError("Encountered unrecognized differential "
-                                   "variable in a tally.")
-
         # Scores
         if len(self.scores) == 0:
             msg = 'Unable to get XML for Tally ID="{0}" since it does not ' \
@@ -921,6 +866,11 @@ class Tally(object):
         # Optional Triggers
         for trigger in self.triggers:
             trigger.get_trigger_xml(element)
+
+        # Optional derivatives
+        if self.derivative is not None:
+            subelement = ET.SubElement(element, "derivative")
+            subelement.text = str(self.derivative.id)
 
         return element
 
@@ -1421,12 +1371,12 @@ class Tally(object):
             df['score'] = np.tile(self.scores, int(tile_factor))
 
         # Include columns for derivatives if user requested it
-        if derivative and (self.diff_variable is not None):
-            df['d_variable'] = self.diff_variable
-            if self.diff_material is not None:
-                df['d_material'] = self.diff_material
-            if self.diff_nuclide is not None:
-                df['d_nuclide'] = self.diff_nuclide
+        if derivative and (self.derivative is not None):
+            df['d_variable'] = self.derivative.variable
+            if self.derivative.material is not None:
+                df['d_material'] = self.derivative.material
+            if self.derivative.nuclide is not None:
+                df['d_nuclide'] = self.derivative.nuclide
 
         # Append columns with mean, std. dev. for each tally bin
         df['mean'] = self.mean.ravel()
@@ -3199,6 +3149,18 @@ class TalliesFile(object):
             xml_element = mesh.get_mesh_xml()
             self._tallies_file.append(xml_element)
 
+    def _create_derivative_subelements(self):
+        # Get a list of all derivatives referenced in a tally.
+        derivs = []
+        for tally in self._tallies:
+            deriv = tally.derivative
+            if deriv is not None and deriv not in derivs:
+                derivs.append(deriv)
+
+        # Add the derivatives to the XML tree.
+        for d in derivs:
+            self._tallies_file.append(d.get_derivative_xml())
+
     def export_to_xml(self):
         """Create a tallies.xml file that can be used for a simulation.
 
@@ -3209,6 +3171,7 @@ class TalliesFile(object):
 
         self._create_mesh_subelements()
         self._create_tally_subelements()
+        self._create_derivative_subelements()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._tallies_file)

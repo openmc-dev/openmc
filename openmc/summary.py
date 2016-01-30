@@ -368,7 +368,6 @@ class Summary(object):
                 lattice.universes = universes
 
                 if offsets is not None:
-                    offsets = np.swapaxes(offsets, 0, 2)
                     lattice.offsets = offsets
 
                 # Add the Lattice to the global dictionary of all Lattices

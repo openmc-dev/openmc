@@ -1101,8 +1101,8 @@ class RectLattice(Lattice):
 
         # For 3D Lattices
         else:
-            offset = self._offsets[i[1]-1, i[2]-1, i[3]-1, distribcell_index-1]
-            offset += self._universes[i[1]-1][i[2]-1][i[3]-1].get_cell_instance(
+            offset = self._offsets[i[3]-1, i[2]-1, i[1]-1, distribcell_index-1]
+            offset += self._universes[i[3]-1][i[2]-1][i[1]-1].get_cell_instance(
                                                         path, distribcell_index)
 
         return offset

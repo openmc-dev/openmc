@@ -823,7 +823,8 @@ class AggregateFilter(object):
 
         """
 
-        if filter_bin not in self.bins:
+        if filter_bin not in self.bins and \
+           filter_bin != self._aggregate_filter.bins:
             msg = 'Unable to get the bin index for AggregateFilter since ' \
                   '"{0}" is not one of the bins'.format(filter_bin)
             raise ValueError(msg)

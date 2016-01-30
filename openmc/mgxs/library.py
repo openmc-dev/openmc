@@ -568,8 +568,9 @@ class Library(object):
         for domain in self.domains:
             for mgxs_type in self.mgxs_types:
                 mgxs = subdomain_avg_library.get_mgxs(domain, mgxs_type)
-                avg_mgxs = mgxs.get_subdomain_avg_xs()
-                subdomain_avg_library.all_mgxs[domain.id][mgxs_type] = avg_mgxs
+                if mgxs.domain_type == 'distribcell':
+                    avg_mgxs = mgxs.get_subdomain_avg_xs()
+                    subdomain_avg_library.all_mgxs[domain.id][mgxs_type] = avg_mgxs
 
         return subdomain_avg_library
 

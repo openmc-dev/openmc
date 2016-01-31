@@ -922,6 +922,9 @@ def get_opencg_lattice(openmc_lattice):
                 universe_id = universes[z][y][x].id
                 universe_array[z][y][x] = unique_universes[universe_id]
 
+    # Reverse y-dimension in array to match ordering in OpenCG
+    universe_array = universe_array[:, ::-1, :]
+
     opencg_lattice = opencg.Lattice(lattice_id, name)
     opencg_lattice.dimension = dimension
     opencg_lattice.width = pitch

@@ -467,12 +467,14 @@ class StatePoint(object):
                 for d_id in deriv_ids:
                     base = 'tallies/derivatives/derivative {:d}'.format(d_id)
                     deriv = openmc.TallyDerivative(derivative_id=d_id)
-                    deriv.variable = self._f[base + '/dependent variable'].value
+                    deriv.variable = \
+                         self._f[base + '/dependent variable'].value.decode()
                     if deriv.variable == 'density':
                         deriv.material = self._f[base + '/material'].value
                     elif deriv.variable == 'nuclide_density':
                         deriv.material = self._f[base + '/material'].value
-                        deriv.nuclide = self._f[base + '/nuclide'].value.decode()
+                        deriv.nuclide = \
+                             self._f[base + '/nuclide'].value.decode()
                     else:
                         raise RuntimeError('Unrecognized tally differential '
                              'variable')

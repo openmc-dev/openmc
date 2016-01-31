@@ -2,12 +2,14 @@
 
 import glob
 import os
-import pandas as pd
 try:
     from StringIO import StringIO
 except:
     from io import StringIO
 import sys
+
+import pandas as pd
+
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
 from openmc import Filter, Mesh, Tally, TalliesFile, Summary, StatePoint, \
@@ -26,7 +28,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
         self._input_set.settings.particles = 400
         self._input_set.settings.source = Source(space=Box(
             [-160, -160, -183], [160, 160, 183]))
-        self._input_set.settings.output = {'summary':True}
+        self._input_set.settings.output = {'summary': True}
 
         self._input_set.tallies = TalliesFile()
 
@@ -56,52 +58,50 @@ class DiffTallyTestHarness(PyAPITestHarness):
         d4.material = 1
         d4.nuclide = 'U-235'
 
-        def add_derivs(tally_list):
-            assert len(tally_list) == 4
-            tally_list[0].derivative = d1
-            tally_list[1].derivative = d2
-            tally_list[2].derivative = d3
-            tally_list[3].derivative = d4
+        derivs = [d1, d2, d3, d4]
 
         # Cover the flux score.
-        tallies = [Tally() for i in range(4)]
-        for t in tallies: t.add_score('flux')
-        for t in tallies: t.add_filter(filt_mats)
-        add_derivs(tallies)
-        for t in tallies: self._input_set.tallies.add_tally(t)
+        for i in range(4):
+            t = Tally()
+            t.add_score('flux')
+            t.add_filter(filt_mats)
+            t.derivative = derivs[i]
+            self._input_set.tallies.add_tally(t)
 
         # Cover supported scores with a collision estimator.
-        tallies = [Tally() for i in range(4)]
-        for t in tallies: t.add_score('total')
-        for t in tallies: t.add_score('absorption')
-        for t in tallies: t.add_score('fission')
-        for t in tallies: t.add_score('nu-fission')
-        for t in tallies: t.add_filter(filt_mats)
-        for t in tallies: t.add_nuclide('total')
-        for t in tallies: t.add_nuclide('U-235')
-        add_derivs(tallies)
-        for t in tallies: self._input_set.tallies.add_tally(t)
+        for i in range(4):
+            t = Tally()
+            t.add_score('total')
+            t.add_score('absorption')
+            t.add_score('fission')
+            t.add_score('nu-fission')
+            t.add_filter(filt_mats)
+            t.add_nuclide('total')
+            t.add_nuclide('U-235')
+            t.derivative = derivs[i]
+            self._input_set.tallies.add_tally(t)
 
         # Cover an analog estimator.
-        tallies = [Tally() for i in range(4)]
-        for t in tallies: t.add_score('absorption')
-        for t in tallies: t.add_filter(filt_mats)
-        for t in tallies: t.estimator = 'analog'
-        add_derivs(tallies)
-        for t in tallies: self._input_set.tallies.add_tally(t)
+        for i in range(4):
+            t = Tally()
+            t.add_score('absorption')
+            t.add_filter(filt_mats)
+            t.estimator = 'analog'
+            t.derivative = derivs[i]
+            self._input_set.tallies.add_tally(t)
 
         # And the special fission with energyout filter.
-        tallies = [Tally() for i in range(4)]
-        for t in tallies: t.add_score('nu-fission')
-        for t in tallies: t.add_filter(filt_mats)
-        for t in tallies: t.add_filter(filt_eout)
-        add_derivs(tallies)
-        for t in tallies: self._input_set.tallies.add_tally(t)
+        for i in range(4):
+            t = Tally()
+            t.add_score('nu-fission')
+            t.add_filter(filt_mats)
+            t.add_filter(filt_eout)
+            t.derivative = derivs[i]
+            self._input_set.tallies.add_tally(t)
 
         self._input_set.export()
 
     def _get_results(self):
-        #return super(DiffTallyTestHarness, self)._get_results(hash_output=True)
         # Read the statepoint and summary files.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)

@@ -583,7 +583,7 @@ class MGXS(object):
 
         cv.check_type('statepoint', statepoint, openmc.statepoint.StatePoint)
 
-        if not statepoint.with_summary:
+        if statepoint.summary is None:
             msg = 'Unable to load data from a statepoint which has not been ' \
                   'linked with a summary file'
             raise ValueError(msg)
@@ -611,6 +611,11 @@ class MGXS(object):
         else:
             filters = []
             filter_bins = []
+
+        # Clear any tallies previously loaded from a statepoint
+        self._tallies = None
+        self._xs_tally = None
+        self._rxn_rate_tally = None
 
         # Find, slice and store Tallies from StatePoint
         # The tally slicing is needed if tally merging was used
@@ -673,14 +678,14 @@ class MGXS(object):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if groups != 'all':
+        if not isinstance(groups, basestring):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
                 filters.append('energy')
@@ -838,7 +843,7 @@ class MGXS(object):
         """
 
         # Construct a collection of the subdomain filter bins to average across
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains)
@@ -881,7 +886,7 @@ class MGXS(object):
         """
 
         # Construct a collection of the subdomains to report
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1010,7 +1015,7 @@ class MGXS(object):
             xs_results = h5py.File(filename, 'w')
 
         # Construct a collection of the subdomains to report
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1192,7 +1197,7 @@ class MGXS(object):
 
         """
 
-        if groups != 'all':
+        if not isinstance(groups, basestring):
             cv.check_iterable_type('groups', groups, Integral)
         if nuclides != 'all' and nuclides != 'sum':
             cv.check_iterable_type('nuclides', nuclides, basestring)
@@ -1252,7 +1257,7 @@ class MGXS(object):
             columns = ['group in']
 
         # Select out those groups the user requested
-        if groups != 'all':
+        if not isinstance(groups, basestring):
             if 'group in' in df:
                 df = df[df['group in'].isin(groups)]
             if 'group out' in df:
@@ -1789,21 +1794,21 @@ class ScatterMatrixXS(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if in_groups != 'all':
+        if not isinstance(in_groups, basestring):
             cv.check_iterable_type('groups', in_groups, Integral)
             for group in in_groups:
                 filters.append('energy')
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if out_groups != 'all':
+        if not isinstance(out_groups, basestring):
             cv.check_iterable_type('groups', out_groups, Integral)
             for group in out_groups:
                 filters.append('energyout')
@@ -1887,7 +1892,7 @@ class ScatterMatrixXS(MGXS):
         """
 
         # Construct a collection of the subdomains to report
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1925,12 +1930,6 @@ class ScatterMatrixXS(MGXS):
         for group in range(1, self.num_groups+1):
             bounds = self.energy_groups.get_group_bounds(group)
             string += template.format('', group, bounds[0], bounds[1])
-
-        if subdomains == 'all':
-            if self.domain_type == 'distribcell':
-                subdomains = np.arange(self.num_subdomains, dtype=np.int)
-            else:
-                subdomains = [self.domain.id]
 
         # Loop over all subdomains
         for subdomain in subdomains:
@@ -2135,14 +2134,14 @@ class Chi(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if groups != 'all':
+        if not isinstance(groups, basestring):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
                 filters.append('energyout')

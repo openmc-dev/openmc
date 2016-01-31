@@ -1,17 +1,23 @@
 module ace
 
-  use ace_header,       only: Nuclide, Reaction, SAlphaBeta, XsListing, &
-                              DistEnergy
+  use ace_header, only: Nuclide, Reaction, SAlphaBeta, XsListing
   use constants
-  use endf,             only: reaction_name, is_fission, is_disappearance
-  use error,            only: fatal_error, warning
-  use fission,          only: nu_total
+  use distribution_univariate, only: Uniform, Equiprobable, Tabular
+  use endf, only: is_fission, is_disappearance
+  use energy_distribution, only: TabularEquiprobable, LevelInelastic, &
+       ContinuousTabular, MaxwellEnergy, Evaporation, WattEnergy, NBodyPhaseSpace
+  use error, only: fatal_error, warning
+  use fission, only: nu_total
   use global
-  use list_header,      only: ListInt
-  use material_header,  only: Material
-  use output,           only: write_message
-  use set_header,       only: SetChar
-  use string,           only: to_str, to_lower
+  use list_header, only: ListInt
+  use material_header, only: Material
+  use output, only: write_message
+  use set_header, only: SetChar
+  use secondary_header, only: AngleEnergy
+  use secondary_correlated, only: CorrelatedAngleEnergy
+  use secondary_kalbach, only: KalbachMann
+  use secondary_uncorrelated, only: UncorrelatedAngleEnergy
+  use string, only: to_str, to_lower
 
   implicit none
 
@@ -372,8 +378,8 @@ contains
       else
         call read_nu_data(nuc)
         call read_reactions(nuc)
-        call read_angular_dist(nuc)
         call read_energy_dist(nuc)
+        call read_angular_dist(nuc)
         call read_unr_res(nuc)
       end if
 
@@ -516,9 +522,10 @@ contains
     integer :: LED    ! location of energy distribution locators
     integer :: LDIS   ! location of all energy distributions
     integer :: LOCC   ! location of energy distributions for given MT
+    integer :: LAW
+    integer :: IDAT
     integer :: lc     ! locator
     integer :: length ! length of data to allocate
-    type(DistEnergy), pointer :: edist
 
     JXS2  = JXS(2)
     JXS24 = JXS(24)
@@ -661,11 +668,15 @@ contains
       ! Loop over all delayed neutron precursor groups
       do i = 1, NPCR
         ! find location of energy distribution data
-        LOCC = int(XSS(LED + i - 1))
+        LOCC = nint(XSS(LED + i - 1))
+
+        ! Determine law and location of data
+        LAW = nint(XSS(LDIS + LOCC))
+        IDAT = nint(XSS(LDIS + LOCC + 1))
 
         ! read energy distribution data
-        edist => nuc % nu_d_edist(i)
-        call get_energy_dist(edist, LOCC, .true.)
+        call get_energy_dist(nuc%nu_d_edist(i)%obj, LAW, LDIS, IDAT, &
+             ZERO, ZERO)
       end do
 
       ! =======================================================================
@@ -738,8 +749,8 @@ contains
       rxn%multiplicity  = 1
       rxn%threshold     = 1
       rxn%scatter_in_cm = .true.
-      rxn%has_angle_dist = .false.
-      rxn%has_energy_dist = .false.
+      allocate(rxn%secondary%distribution(1))
+      allocate(UncorrelatedAngleEnergy :: rxn%secondary%distribution(1)%obj)
     end associate
 
     ! Add contribution of elastic scattering to total cross section
@@ -754,10 +765,6 @@ contains
 
     do i = 1, NMT
       associate (rxn => nuc % reactions(i+1))
-        ! set defaults
-        rxn % has_angle_dist  = .false.
-        rxn % has_energy_dist = .false.
-
         ! read MT number, Q-value, and neutrons produced
         rxn % MT            = int(XSS(LMT + i - 1))
         rxn % Q_value       = XSS(JXS4 + i - 1)
@@ -887,86 +894,96 @@ contains
   subroutine read_angular_dist(nuc)
     type(Nuclide), intent(inout) :: nuc
 
-    integer :: JXS8   ! location of angular distribution locators
-    integer :: JXS9   ! location of angular distributions
     integer :: LOCB   ! location of angular distribution for given MT
     integer :: NE     ! number of incoming energies
     integer :: NP     ! number of points for cosine distribution
-    integer :: LC     ! locator
     integer :: i      ! index in reactions array
     integer :: j      ! index over incoming energies
-    integer :: length ! length of data array to allocate
-
-    JXS8 = JXS(8)
-    JXS9 = JXS(9)
+    integer :: k      ! index over energy distributions
+    integer :: interp
+    integer, allocatable :: LC(:) ! locator
 
     ! loop over all reactions with secondary neutrons -- NXS(5) does not include
     ! elastic scattering
     do i = 1, NXS(5) + 1
       associate (rxn => nuc%reactions(i))
-
         ! find location of angular distribution
-        LOCB = int(XSS(JXS8 + i - 1))
-        if (LOCB == -1) then
-          ! Angular distribution data are specified through LAWi = 44 in the DLW
-          ! block
-          cycle
-        elseif (LOCB == 0) then
-          ! No angular distribution data are given for this reaction, isotropic
-          ! scattering is assumed (in CM if TY < 0 and in LAB if TY > 0)
-          cycle
-        end if
-        rxn % has_angle_dist = .true.
+        LOCB = int(XSS(JXS(8) + i - 1))
 
-        ! allocate space for incoming energies and locations
-        NE = int(XSS(JXS9 + LOCB - 1))
-        rxn % adist % n_energy = NE
-        allocate(rxn % adist % energy(NE))
-        allocate(rxn % adist % type(NE))
-        allocate(rxn % adist % location(NE))
+        ! Angular distribution given as part of a correlated angle-energy distribution
+        if (LOCB == -1) cycle
 
-        ! read incoming energy grid and location of nucs
-        XSS_index = JXS9 + LOCB
-        rxn % adist % energy   = get_real(NE)
-        rxn % adist % location = get_int(NE)
+        ! No angular distribution data are given for this reaction, isotropic
+        ! scattering is assumed (in CM if TY < 0 and in LAB if TY > 0)
+        if (LOCB == 0) cycle
 
-        ! determine dize of data block
-        length = 0
-        do j = 1, NE
-          LC = rxn % adist % location(j)
-          if (LC == 0) then
-            ! isotropic
-            rxn % adist % type(j) = ANGLE_ISOTROPIC
-          elseif (LC > 0) then
-            ! 32 equiprobable bins
-            rxn % adist % type(j) = ANGLE_32_EQUI
-            length = length + 33
-          elseif (LC < 0) then
-            ! tabular distribution
-            rxn % adist % type(j) = ANGLE_TABULAR
-            NP = int(XSS(JXS9 + abs(LC)))
-            length = length + 2 + 3*NP
-          end if
-        end do
+        ! Loop over each separate energy distribution. Even though there is only
+        ! "one" angular distribution, it is repeated as many times as there are
+        ! energy distributions for this reaction since the
+        ! UncorrelatedAngleEnergy type holds one angle and energy distribution.
+        do k = 1, size(rxn%secondary%distribution)
+          select type (aedist => rxn%secondary%distribution(k)%obj)
+          type is (UncorrelatedAngleEnergy)
+            ! allocate space for incoming energies and locations
+            NE = int(XSS(JXS(9) + LOCB - 1))
+            allocate(aedist%angle%energy(NE))
+            allocate(aedist%angle%distribution(NE))
+            allocate(LC(NE))
 
-        ! allocate angular distribution data and read
-        allocate(rxn % adist % data(length))
+            ! read incoming energy grid and location of nucs
+            XSS_index = JXS(9) + LOCB
+            aedist%angle%energy(:) = get_real(NE)
+            LC(:) = get_int(NE)
 
-        ! read angular distribution -- currently this does not actually parse the
-        ! angular distribution tables for each incoming energy, that must be done
-        ! on-the-fly
-        XSS_index = JXS9 + LOCB + 2 * NE
-        rxn % adist % data = get_real(length)
+            ! determine dize of data block
+            do j = 1, NE
+              if (LC(j) == 0) then
+                ! isotropic
+                allocate(Uniform :: aedist%angle%distribution(j)%obj)
+                select type (adist => aedist%angle%distribution(j)%obj)
+                type is (Uniform)
+                  adist%a = -ONE
+                  adist%b = ONE
+                end select
 
-        ! change location pointers since they are currently relative to JXS(9)
-        LC = LOCB + 2 * NE + 1
-        do j = 1, NE
-          ! For consistency, leave location as 0 if type is isotropic.
-          ! This is not necessary for current correctness, but can avoid
-          ! future issues
-          if (rxn % adist % location(j) /= 0) then
-            rxn % adist % location(j) = abs(rxn % adist % location(j)) - LC
-          end if
+              elseif (LC(j) > 0) then
+                ! 32 equiprobable bins
+                allocate(Equiprobable :: aedist%angle%distribution(j)%obj)
+                select type (adist => aedist%angle%distribution(j)%obj)
+                type is (Equiprobable)
+                  allocate(adist%x(33))
+                end select
+
+              elseif (LC(j) < 0) then
+                ! tabular distribution
+                allocate(Tabular :: aedist%angle%distribution(j)%obj)
+              end if
+            end do
+
+            ! read angular distribution -- currently this does not actually parse the
+            ! angular distribution tables for each incoming energy, that must be done
+            ! on-the-fly
+            do j = 1, NE
+              XSS_index = JXS(9) + abs(LC(j)) - 1
+              select type(adist => aedist%angle%distribution(j)%obj)
+              type is (Equiprobable)
+                adist%x(:) = get_real(33)
+              type is (Tabular)
+                ! determine interpolation and number of points
+                interp = nint(XSS(XSS_index))
+                NP = nint(XSS(XSS_index + 1))
+
+                ! Get probability density data
+                XSS_index = XSS_index + 2
+                allocate(adist%x(NP), adist%p(NP), adist%c(NP))
+                adist%x(:) = get_real(NP)
+                adist%p(:) = get_real(NP)
+                adist%c(:) = get_real(NP)
+              end select
+            end do
+            deallocate(LC)
+
+          end select
         end do
       end associate
     end do
@@ -981,25 +998,62 @@ contains
   subroutine read_energy_dist(nuc)
     type(Nuclide), intent(inout) :: nuc
 
-    integer :: LED   ! location of energy distribution locators
-    integer :: LOCC  ! location of energy distributions for given MT
     integer :: i     ! loop index
-
-    LED  = JXS(10)
+    integer :: n
+    integer :: IDAT  ! locator for distribution data
+    integer :: LNW   ! location of next energy law
+    integer :: LAW   ! Type of energy law
 
     ! Loop over all reactions
     do i = 1, NXS(5)
-      associate (rxn => nuc % reactions(i+1)) ! skip over elastic scattering
-        rxn % has_energy_dist = .true.
+      ! Determine how many energy distributions are present for this reaction
+      LNW = nint(XSS(JXS(10) + i - 1))
+      n = 0
+      do while (LNW > 0)
+        n = n + 1
+        LNW = nint(XSS(JXS(11) + LNW - 1))
+      end do
 
-        ! find location of energy distribution data
-        LOCC = int(XSS(LED + i - 1))
+      ! Allocate space for distributions and probability of validity
+      associate (secondary => nuc%reactions(i + 1)%secondary)
+        allocate(secondary%applicability(n))
+        allocate(secondary%distribution(n))
 
-        ! allocate energy distribution
-        allocate(rxn % edist)
+        LNW = nint(XSS(JXS(10) + i - 1))
+        n = 0
+        do while (LNW > 0)
+          n = n + 1
 
-        ! read data for energy distribution
-        call get_energy_dist(rxn % edist, LOCC)
+          ! Determine energy law and location of data
+          LAW  = nint(XSS(JXS(11) + LNW))
+          IDAT = nint(XSS(JXS(11) + LNW + 1))
+
+          ! Read probability of law validity
+          call secondary%applicability(n)%from_ace(XSS, JXS(11) + LNW + 2)
+
+          ! Read energy law data
+          call get_energy_dist(secondary%distribution(n)%obj, LAW, &
+               JXS(11), IDAT, nuc%awr, nuc%reactions(i + 1)%Q_value)
+
+          ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<
+          ! Before the secondary distribution refactor, when the angle/energy
+          ! distribution was uncorrelated, no angle was actually sampled. With
+          ! the refactor, an angle is always sampled for an uncorrelated
+          ! distribution even when no angle distribution exists in the ACE file
+          ! (isotropic is assumed). To preserve the RNG stream, we explicitly
+          ! mark fission reactions so that we avoid the angle sampling.
+          if (any(nuc%reactions(i + 1)%MT == &
+               [N_FISSION, N_F, N_NF, N_2NF, N_3NF])) then
+            select type (aedist => secondary%distribution(n)%obj)
+            type is (UncorrelatedAngleEnergy)
+              aedist%fission = .true.
+            end select
+          end if
+          ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+          ! Get locator for next distribution
+          LNW = nint(XSS(JXS(11) + LNW - 1))
+        end do
       end associate
     end do
 
@@ -1011,281 +1065,319 @@ contains
 ! single reaction
 !===============================================================================
 
-  recursive subroutine get_energy_dist(edist, loc_law, delayed_n)
-    type(DistEnergy), intent(inout) :: edist     ! energy distribution
-    integer, intent(in)             :: loc_law   ! locator for data
-    logical, intent(in), optional   :: delayed_n ! is this for delayed neutrons?
+  recursive subroutine get_energy_dist(aedist, law, LDIS, IDAT, awr, Q_value)
+    class(AngleEnergy), allocatable, intent(inout) :: aedist
+    integer, intent(in) :: law
+    integer, intent(in) :: LDIS
+    integer, intent(in) :: IDAT
+    real(8), intent(in) :: awr
+    real(8), intent(in) :: Q_value
 
-    integer :: LDIS   ! location of all energy distributions
-    integer :: LNW    ! location of next energy distribution if multiple
-    integer :: LAW    ! secondary energy distribution law
+    integer :: i, j
     integer :: NR     ! number of interpolation regions
     integer :: NE     ! number of incoming energies
-    integer :: IDAT   ! location of first energy distribution for given MT
-    integer :: lc     ! locator
-    integer :: length ! length of data to allocate
-    integer :: length_interp_data ! length of interpolation data
+    integer :: NP     ! number of outgoing energies/angles
+    integer :: interp
+    integer, allocatable :: L(:)  ! locations of distributions for each Ein
+    integer, allocatable :: LC(:)  ! locations of distributions for each Ein
 
-    ! determine location of energy distribution
-    if (present(delayed_n)) then
-      LDIS = JXS(27)
+    XSS_index = LDIS + IDAT - 1
+
+    if (law == 44) then
+      allocate(KalbachMann :: aedist)
+    elseif (law == 61) then
+      allocate(CorrelatedAngleEnergy :: aedist)
     else
-      LDIS = JXS(11)
+      allocate(UncorrelatedAngleEnergy :: aedist)
     end if
 
-    ! locator for next law and information on this law
-    LNW  = int(XSS(LDIS + loc_law - 1))
-    LAW  = int(XSS(LDIS + loc_law))
-    IDAT = int(XSS(LDIS + loc_law + 1))
-    NR   = int(XSS(LDIS + loc_law + 2))
-    edist % law = LAW
-    edist % p_valid % n_regions = NR
+    select type (aedist)
+    type is (UncorrelatedAngleEnergy)
+      ! ========================================================================
+      ! UNCORRELATED ENERGY DISTRIBUTIONS
 
-    ! allocate space for ENDF interpolation parameters
-    if (NR > 0) then
-      allocate(edist % p_valid % nbt(NR))
-      allocate(edist % p_valid % int(NR))
-    end if
-
-    ! read ENDF interpolation parameters
-    XSS_index = LDIS + loc_law + 3
-    if (NR > 0) then
-      edist % p_valid % nbt = int(get_real(NR))
-      edist % p_valid % int = int(get_real(NR))
-    end if
-
-    ! allocate space for law validity data
-    NE = int(XSS(LDIS + loc_law + 3 + 2*NR))
-    edist % p_valid % n_pairs = NE
-    allocate(edist % p_valid % x(NE))
-    allocate(edist % p_valid % y(NE))
-
-    length_interp_data = 5 + 2*(NR + NE)
-
-    ! read law validity data
-    XSS_index = LDIS + loc_law + 4 + 2*NR
-    edist % p_valid % x = get_real(NE)
-    edist % p_valid % y = get_real(NE)
-
-    ! Set index to beginning of IDAT array
-    lc = LDIS + IDAT - 2
-
-    ! determine length of energy distribution
-    length = length_energy_dist(lc, LAW, loc_law, length_interp_data)
-
-    ! allocate secondary energy distribution array
-    allocate(edist % data(length))
-
-    ! read secondary energy distribution
-    XSS_index = lc + 1
-    edist % data = get_real(length)
-
-    ! read next energy distribution if present
-    if (LNW > 0) then
-      allocate(edist % next)
-      call get_energy_dist(edist % next, LNW)
-    end if
-
-  end subroutine get_energy_dist
-
-!===============================================================================
-! LENGTH_ENERGY_DIST determines how many values are contained in an LDAT energy
-! distribution array based on the secondary energy law and location in XSS
-!===============================================================================
-
-  function length_energy_dist(lc, law, LOCC, lid) result(length)
-    integer, intent(in) :: lc     ! location in XSS array
-    integer, intent(in) :: law    ! energy distribution law
-    integer, intent(in) :: LOCC   ! location of energy distribution
-    integer, intent(in) :: lid    ! length of interpolation data
-    integer             :: length ! length of energy distribution (LDAT)
-
-    integer :: i     ! loop index for incoming energies
-    integer :: j     ! loop index for outgoing energies
-    integer :: k     ! dummy index in XSS
-    integer :: NR    ! number of interpolation regions
-    integer :: NE    ! number of incoming energies
-    integer :: NP    ! number of points in outgoing energy distribution
-    integer :: NMU   ! number of points in outgoing cosine distribution
-    integer :: NRa   ! number of interpolation regions for Watt 'a'
-    integer :: NEa   ! number of energies for Watt 'a'
-    integer :: NRb   ! number of interpolation regions for Watt 'b'
-    integer :: NEb   ! number of energies for Watt 'b'
-    real(8), allocatable :: L(:)  ! locations of distributions for each Ein
-
-    ! initialize length
-    length = 0
-
-    select case (law)
-    case (1)
-      ! Tabular equiprobable energy bins
-      NR = int(XSS(lc + 1))
-      NE = int(XSS(lc + 2 + 2*NR))
-      NP = int(XSS(lc + 3 + 2*NR + NE))
-      length = 3 + 2*NR + NE + 3*NP*NE
-
-    case (2)
-      ! Discrete photon energy
-      length = 2
-
-    case (3)
-      ! Level scattering
-      length = 2
-
-    case (4)
-      ! Continuous tabular distribution
-      NR = int(XSS(lc + 1))
-      NE = int(XSS(lc + 2 + 2*NR))
-      allocate(L(NE))
-      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
-
-      ! Continue with finding data length
-      length = length + 2 + 2*NR + 2*NE
-      do i = 1,NE
-        ! Some older data sets use the same LDAT for multiple Ein tables.
-        ! If this is the case, we should skip incrementing length when it is
-        ! not needed.
-        if (i < NE) then
-          if (any(L(i) == L(i + 1: NE))) then
-            ! adjust location for this block
-            j = lc + 2 + 2*NR + NE + i
-            XSS(j) = XSS(j) - LOCC - lid
-            cycle
+      select case (law)
+      case (1)
+        allocate(TabularEquiprobable :: aedist%energy)
+        select type (edist => aedist%energy)
+        type is (TabularEquiprobable)
+          NR = nint(XSS(XSS_index))
+          NE = nint(XSS(XSS_index + 1 + 2*NR))
+          if (NR > 0) then
+            call fatal_error("Multiple interpolation regions not yet supported &
+                 &for tabular equiprobable energy distributions.")
           end if
-        end if
-        ! determine length
-        NP = int(XSS(lc + length + 2))
-        length = length + 2 + 3*NP
+          edist%n_region = NR
 
-        ! adjust location for this block
-        j = lc + 2 + 2*NR + NE + i
-        XSS(j) = XSS(j) - LOCC - lid
+          ! Read incoming energies for which outgoing energies are tabulated
+          allocate(edist%energy_in(NE))
+          XSS_index = XSS_index + 2 + 2*NR
+          edist%energy_in(:) = get_real(NE)
+
+          ! Read outgoing energy tables
+          NP = nint(XSS(XSS_index))
+          allocate(edist%energy_out(NP, NE))
+          XSS_index = XSS_index + 1
+          do i = 1, NE
+            edist%energy_out(:, i) = get_real(NP)
+          end do
+        end select
+
+      case (3)
+        allocate(LevelInelastic :: aedist%energy)
+        select type (edist => aedist%energy)
+        type is (LevelInelastic)
+          edist%threshold = XSS(XSS_index)
+          edist%mass_ratio = XSS(XSS_index + 1)
+        end select
+
+      case (4)
+        allocate(ContinuousTabular :: aedist%energy)
+        select type (edist => aedist%energy)
+        type is (ContinuousTabular)
+          NR = nint(XSS(XSS_index))
+          XSS_index = XSS_index + 1
+          if (NR > 1) then
+            call fatal_error("Multiple interpolation regions not yet supported &
+                 &for continuous tabular energy distributions.")
+          end if
+          edist%n_region = NR
+
+          ! Read breakpoints and interpolation parameters
+          if (NR > 0) then
+            allocate(edist%breakpoints(NR))
+            allocate(edist%interpolation(NR))
+            edist%breakpoints(:) = get_int(NR)
+            edist%interpolation(:) = get_int(NR)
+          end if
+
+          ! Read incoming energies for which outgoing energies are tabulated and
+          ! locators
+          NE = nint(XSS(XSS_index))
+          XSS_index = XSS_index + 1
+          allocate(edist%energy_in(NE))
+          allocate(L(NE))
+          edist%energy_in(:) = get_real(NE)
+          L(:) = get_int(NE)
+
+          ! Read outgoing energy tables
+          allocate(edist%energy_out(NE))
+          do i = 1, NE
+            ! Determine interpolation and number of discrete points
+            XSS_index = LDIS + L(i) - 1
+            interp = nint(XSS(XSS_index))
+            edist%energy_out(i)%interpolation = mod(interp, 10)
+            edist%energy_out(i)%n_discrete = (interp - &
+                 edist%energy_out(i)%interpolation)/10
+
+            ! check for discrete lines present
+            if (edist%energy_out(i)%n_discrete > 0) then
+              call fatal_error("Discrete lines in continuous tabular &
+                   &distribution not yet supported")
+            end if
+
+            ! Determine number of points and allocate space
+            NP = nint(XSS(XSS_index + 1))
+            allocate(edist%energy_out(i)%e_out(NP))
+            allocate(edist%energy_out(i)%p(NP))
+            allocate(edist%energy_out(i)%c(NP))
+
+            ! Read tabular PDF for outgoing energy
+            XSS_index = XSS_index + 2
+            edist%energy_out(i)%e_out(:) = get_real(NP)
+            edist%energy_out(i)%p(:) = get_real(NP)
+            edist%energy_out(i)%c(:) = get_real(NP)
+          end do
+
+          deallocate(L)
+        end select
+
+      case (7)
+        allocate(MaxwellEnergy :: aedist%energy)
+        select type (edist => aedist%energy)
+        type is (MaxwellEnergy)
+          call edist%theta%from_ace(XSS, XSS_index)
+          edist%u = XSS(XSS_index + 2 + 2*edist%theta%n_regions + &
+               2*edist%theta%n_pairs)
+        end select
+
+      case (9)
+        allocate(Evaporation :: aedist%energy)
+        select type(edist => aedist%energy)
+        type is (Evaporation)
+          call edist%theta%from_ace(XSS, XSS_index)
+          edist%u = XSS(XSS_index + 2 + 2*edist%theta%n_regions + &
+               2*edist%theta%n_pairs)
+        end select
+
+      case (11)
+        allocate(WattEnergy :: aedist%energy)
+        select type(edist => aedist%energy)
+        type is (WattEnergy)
+          call edist%a%from_ace(XSS, XSS_index)
+          XSS_index = XSS_index + 2 + 2*edist%a%n_regions + 2*edist%a%n_pairs
+          call edist%b%from_ace(XSS, XSS_index)
+          XSS_index = XSS_index + 2 + 2*edist%b%n_regions + 2*edist%b%n_pairs
+          edist%u = XSS(XSS_index)
+        end select
+
+      case (66)
+        allocate(NBodyPhaseSpace :: aedist%energy)
+        select type(edist => aedist%energy)
+        type is (NBodyPhaseSpace)
+          edist%n_bodies = int(XSS(XSS_index))
+          edist%mass_ratio = XSS(XSS_index + 1)
+          edist%A = awr
+          edist%Q = Q_value
+        end select
+
+      end select
+
+    type is (KalbachMann)
+      ! ========================================================================
+      ! CORRELATED KALBACH-MANN DISTRIBUTION
+
+      NR = int(XSS(XSS_index))
+      NE = int(XSS(XSS_index + 1 + 2*NR))
+      if (NR > 0) then
+        call fatal_error("Multiple interpolation regions not yet supported &
+             &for Kalbach-Mann energy distributions.")
+      end if
+      aedist%n_region = NR
+
+      ! Read incoming energies for which outgoing energies are tabulated and locators
+      allocate(aedist%energy_in(NE))
+      allocate(L(NE))
+      XSS_index = XSS_index + 2 + 2*NR
+      aedist%energy_in(:) = get_real(NE)
+      L(:) = get_int(NE)
+
+      ! Read outgoing energy tables
+      allocate(aedist%table(NE))
+      do i = 1, NE
+        ! Determine interpolation and number of discrete points
+        XSS_index = LDIS + L(i) - 1
+        interp = nint(XSS(XSS_index))
+        aedist%table(i)%interpolation = mod(interp, 10)
+        aedist%table(i)%n_discrete = (interp - aedist%table(i)%interpolation)/10
+
+        ! check for discrete lines present
+        if (aedist%table(i)%n_discrete > 0) then
+          call fatal_error("Discrete lines in Kalbach-Mann distribution not &
+               &yet supported")
+        end if
+
+        ! Determine number of points and allocate space
+        NP = nint(XSS(XSS_index + 1))
+        allocate(aedist%table(i)%e_out(NP))
+        allocate(aedist%table(i)%p(NP))
+        allocate(aedist%table(i)%c(NP))
+        allocate(aedist%table(i)%r(NP))
+        allocate(aedist%table(i)%a(NP))
+
+        ! Read tabular PDF for outgoing energy
+        XSS_index = XSS_index + 2
+        aedist%table(i)%e_out(:) = get_real(NP)
+        aedist%table(i)%p(:) = get_real(NP)
+        aedist%table(i)%c(:) = get_real(NP)
+        aedist%table(i)%r(:) = get_real(NP)
+        aedist%table(i)%a(:) = get_real(NP)
       end do
+
       deallocate(L)
 
-    case (5)
-      ! General evaporation spectrum
-      NR = int(XSS(lc + 1))
-      NE = int(XSS(lc + 2 + 2*NR))
-      NP = int(XSS(lc + 3 + 2*NR + 2*NE))
-      length = 3 + 2*NR + 2*NE + NP
+    type is (CorrelatedAngleEnergy)
+      ! ========================================================================
+      ! CORRELATED ANGLE-ENERGY DISTRIBUTION
 
-    case (7)
-      ! Maxwell fission spectrum
-      NR = int(XSS(lc + 1))
-      NE = int(XSS(lc + 2 + 2*NR))
-      length = 3 + 2*NR + 2*NE
+      NR = int(XSS(XSS_index))
+      NE = int(XSS(XSS_index + 1 + 2*NR))
+      if (NR > 0) then
+        call fatal_error("Multiple interpolation regions not yet supported &
+             &for correlated angle-energy distributions.")
+      end if
+      aedist%n_region = NR
 
-    case (9)
-      ! Evaporation spectrum
-      NR = int(XSS(lc + 1))
-      NE = int(XSS(lc + 2 + 2*NR))
-      length = 3 + 2*NR + 2*NE
-
-    case (11)
-      ! Watt spectrum
-      NRa = int(XSS(lc + 1))
-      NEa = int(XSS(lc + 2 + 2*NRa))
-      NRb = int(XSS(lc + 3 + 2*(NRa+NEa)))
-      NEb = int(XSS(lc + 4 + 2*(NRa+NEa+NRb)))
-      length = 5 + 2*(NRa + NEa + NRb + NEb)
-
-    case (44)
-      ! Kalbach-Mann correlated scattering
-      NR = int(XSS(lc + 1))
-      NE = int(XSS(lc + 2 + 2*NR))
+      ! Read incoming energies for which outgoing energies are tabulated and
+      ! locators
+      allocate(aedist%energy_in(NE))
       allocate(L(NE))
-      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      XSS_index = XSS_index + 2 + 2*NR
+      aedist%energy_in(:) = get_real(NE)
+      L(:) = get_int(NE)
 
-      ! Continue with finding data length
-      length = length + 2 + 2*NR + 2*NE
-      do i = 1,NE
-        ! Some older data sets use the same LDAT for multiple Ein tables.
-        ! If this is the case, we should skip incrementing length when it is
-        ! not needed.
-        if (i < NE) then
-          if (any(L(i) == L(i + 1: NE))) then
-            ! adjust location for this block
-            j = lc + 2 + 2*NR + NE + i
-            XSS(j) = XSS(j) - LOCC - lid
-            cycle
-          end if
-        end if
-        NP = int(XSS(lc + length + 2))
-        length = length + 2 + 5*NP
+      ! Read outgoing energy tables
+      allocate(aedist%table(NE))
+      do i = 1, NE
+        ! Determine interpolation and number of discrete points
+        XSS_index = LDIS + L(i) - 1
+        interp = nint(XSS(XSS_index))
+        aedist%table(i)%interpolation = mod(interp, 10)
+        aedist%table(i)%n_discrete = (interp - aedist%table(i)%interpolation)/10
 
-        ! adjust location for this block
-        j = lc + 2 + 2*NR + NE + i
-        XSS(j) = XSS(j) - LOCC - lid
-      end do
-      deallocate(L)
-
-    case (61)
-      ! Correlated energy and angle distribution
-      NR = int(XSS(lc + 1))
-      NE = int(XSS(lc + 2 + 2*NR))
-      allocate(L(NE))
-      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
-
-      ! Continue with finding data length
-      length = length + 2 + 2*NR + 2*NE
-      do i = 1,NE
-        ! Some older data sets use the same LDAT for multiple Ein tables.
-        ! If this is the case, we should skip incrementing length when it is
-        ! not needed.
-        if (i < NE) then
-          if (any(L(i) == L(i + 1: NE))) then
-            ! adjust locators for energy distribution
-            j = lc + 2 + 2*NR + NE + i
-            XSS(j) = XSS(j) - LOCC - lid
-            cycle
-          end if
+        ! check for discrete lines present
+        if (aedist%table(i)%n_discrete > 0) then
+          call fatal_error("Discrete lines in correlated angle-energy &
+               &distribution not yet supported")
         end if
 
-        ! outgoing energy distribution
-        NP = int(XSS(lc + length + 2))
+        ! Determine number of points and allocate space
+        NP = nint(XSS(XSS_index + 1))
+        allocate(aedist%table(i)%e_out(NP))
+        allocate(aedist%table(i)%p(NP))
+        allocate(aedist%table(i)%c(NP))
+        allocate(LC(NP))
 
-        ! adjust locators for angular distribution
+        ! Read tabular PDF for outgoing energy
+        XSS_index = XSS_index + 2
+        aedist%table(i)%e_out(:) = get_real(NP)
+        aedist%table(i)%p(:) = get_real(NP)
+        aedist%table(i)%c(:) = get_real(NP)
+        LC(:) = get_int(NP)
+
+        ! allocate angular distributions for each incoming/outgoing energy
+        allocate(aedist%table(i)%angle(NP))
         do j = 1, NP
-          k = lc + length + 2 + 3*NP + j
-          if (XSS(k) /= 0) XSS(k) = XSS(k) - LOCC - lid
+          if (LC(j) == 0) then
+            ! isotropic
+            allocate(Uniform :: aedist%table(i)%angle(j)%obj)
+            select type (adist => aedist%table(i)%angle(j)%obj)
+            type is (Uniform)
+              adist%a = -ONE
+              adist%b = ONE
+            end select
+
+          elseif (LC(j) > 0) then
+            ! tabular distribution
+            allocate(Tabular :: aedist%table(i)%angle(j)%obj)
+          end if
         end do
 
-        length = length + 2 + 4*NP
+        ! read angular distributions
         do j = 1, NP
-          ! outgoing angle distribution -- NMU here is actually
-          ! referred to as NP in the MCNP documentation
-          NMU = int(XSS(lc + length + 2))
-          length = length + 2 + 3*NMU
+          XSS_index = LDIS + abs(LC(j)) - 1
+          select type(adist => aedist%table(i)%angle(j)%obj)
+          type is (Tabular)
+            ! determine interpolation and number of points
+            interp = nint(XSS(XSS_index))
+            NP = nint(XSS(XSS_index + 1))
+
+            ! Get probability density data
+            XSS_index = XSS_index + 2
+            allocate(adist%x(NP), adist%p(NP), adist%c(NP))
+            adist%x(:) = get_real(NP)
+            adist%p(:) = get_real(NP)
+            adist%c(:) = get_real(NP)
+          end select
         end do
+        deallocate(LC)
 
-        ! adjust locators for energy distribution
-        j = lc + 2 + 2*NR + NE + i
-        XSS(j) = XSS(j) - LOCC - lid
       end do
-      deallocate(L)
-    case (66)
-      ! N-body phase space distribution
-      length = 2
 
-    case (67)
-      ! Laboratory energy-angle law
-      NR  = int(XSS(lc + 1))
-      NE  = int(XSS(lc + 2 + 2*NR))
-      ! Before progressing, check to see if data set uses L(I) values
-      ! in a way inconsistent with the current form of the ACE Format Guide
-      ! (MCNP5 Manual, Vol 3)
-      allocate(L(NE))
-      L(:) = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
-      ! Don't currently do anything with L
       deallocate(L)
-      ! Continue with finding data length
-      NMU = int(XSS(lc + 4 + 2*NR + 2*NE))
-      length = 4 + 2*(NR + NE + NMU)
-
     end select
 
-  end function length_energy_dist
+  end subroutine get_energy_dist
 
 !===============================================================================
 ! READ_UNR_RES reads in unresolved resonance probability tables if present.

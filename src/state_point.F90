@@ -346,54 +346,7 @@ contains
           call write_dataset(tally_group, "n_score_bins", tally%n_score_bins)
           allocate(str_array(size(tally%score_bins)))
           do j = 1, size(tally%score_bins)
-            select case(tally%score_bins(j))
-            case (SCORE_FLUX)
-              str_array(j) = "flux"
-            case (SCORE_TOTAL)
-              str_array(j) = "total"
-            case (SCORE_SCATTER)
-              str_array(j) = "scatter"
-            case (SCORE_NU_SCATTER)
-              str_array(j) = "nu-scatter"
-            case (SCORE_SCATTER_N)
-              str_array(j) = "scatter-n"
-            case (SCORE_SCATTER_PN)
-              str_array(j) = "scatter-pn"
-            case (SCORE_NU_SCATTER_N)
-              str_array(j) = "nu-scatter-n"
-            case (SCORE_NU_SCATTER_PN)
-              str_array(j) = "nu-scatter-pn"
-            case (SCORE_TRANSPORT)
-              str_array(j) = "transport"
-            case (SCORE_N_1N)
-              str_array(j) = "n1n"
-            case (SCORE_ABSORPTION)
-              str_array(j) = "absorption"
-            case (SCORE_FISSION)
-              str_array(j) = "fission"
-            case (SCORE_NU_FISSION)
-              str_array(j) = "nu-fission"
-            case (SCORE_DELAYED_NU_FISSION)
-              str_array(j) = "delayed-nu-fission"
-            case (SCORE_KAPPA_FISSION)
-              str_array(j) = "kappa-fission"
-            case (SCORE_CURRENT)
-              str_array(j) = "current"
-            case (SCORE_FLUX_YN)
-              str_array(j) = "flux-yn"
-            case (SCORE_TOTAL_YN)
-              str_array(j) = "total-yn"
-            case (SCORE_SCATTER_YN)
-              str_array(j) = "scatter-yn"
-            case (SCORE_NU_SCATTER_YN)
-              str_array(j) = "nu-scatter-yn"
-            case (SCORE_EVENTS)
-              str_array(j) = "events"
-            case (SCORE_INVERSE_VELOCITY)
-              str_array(j) = "inverse-velocity"
-            case default
-              str_array(j) = reaction_name(tally%score_bins(j))
-            end select
+            str_array(j) = reaction_name(tally%score_bins(j))
           end do
           call write_dataset(tally_group, "score_bins", str_array)
           call write_dataset(tally_group, "n_user_score_bins", tally%n_user_score_bins)

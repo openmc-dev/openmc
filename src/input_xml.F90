@@ -2591,8 +2591,8 @@ contains
           ! Check if no nuclide was found
           if (.not. associated(pair_list)) then
             call fatal_error("Could not find the nuclide " &
-                 &// trim(word) // " specified in derivative " &
-                 &// trim(to_str(deriv % id)) // " in any material.")
+                 // trim(word) // " specified in derivative " &
+                 // trim(to_str(deriv % id)) // " in any material.")
           end if
           deallocate(pair_list)
 
@@ -3021,8 +3021,8 @@ contains
             ! Check if no nuclide was found
             if (.not. associated(pair_list)) then
               call fatal_error("Could not find the nuclide " &
-                   &// trim(word) // " specified in tally " &
-                   &// trim(to_str(t % id)) // " in any material.")
+                   // trim(word) // " specified in tally " &
+                   // trim(to_str(t % id)) // " in any material.")
             end if
             deallocate(pair_list)
 

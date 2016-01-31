@@ -1,26 +1,9 @@
 from __future__ import division
 
-#from collections import Iterable, defaultdict
-#import copy
-#import os
-#import pickle
-#import itertools
 from numbers import Integral
 from xml.etree import ElementTree as ET
-#import sys
-#
-#import numpy as np
-#
-#from openmc import Mesh, Filter, Trigger, Nuclide
-#from openmc.cross import CrossScore, CrossNuclide, CrossFilter
-#from openmc.aggregate import AggregateScore, AggregateNuclide, AggregateFilter
-#from openmc.filter import _FILTER_TYPES
+
 import openmc.checkvalue as cv
-#from openmc.clean_xml import *
-#
-#
-#if sys.version_info[0] >= 3:
-#    basestring = str
 
 # "Static" variable for auto-generated TallyDerivative IDs
 AUTO_TALLY_DERIV_ID = 10000
@@ -108,9 +91,6 @@ class TallyDerivative(object):
                                                 self.material)
             string += '{0: <16}{1}{2}\n'.format('\tNuclide', '=\t',
                                                 self.nuclide)
-        else:
-            raise RuntimeError("Encountered unrecognized differential "
-                               "variable in a tally.")
 
         return string
 

@@ -1,9 +1,15 @@
 from __future__ import division
 
+import sys
 from numbers import Integral
+
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
+
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 # "Static" variable for auto-generated TallyDerivative IDs
 AUTO_TALLY_DERIV_ID = 10000

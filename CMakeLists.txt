@@ -107,7 +107,7 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
     message(FATAL_ERROR "gfortran version must be 4.6 or higher")
   endif()
 
-  # GNU Fortran compiler options
+  # GCC compiler options
   list(APPEND f90flags -cpp -std=f2008 -fbacktrace)
   list(APPEND cflags -cpp -std=c99)
   if(debug)
@@ -142,7 +142,7 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   endif()
 
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
-  # Intel Fortran compiler options
+  # Intel compiler options
   list(APPEND f90flags -fpp -std08 -assume byterecl -traceback)
   list(APPEND cflags -std=c99)
   if(debug)
@@ -258,11 +258,17 @@ add_subdirectory(src/xml/fox)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 #===============================================================================
+# Build faddeeva library
+#===============================================================================
+
+add_library(faddeeva STATIC src/Faddeeva.c)
+
+#===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
 set(program "openmc")
-file(GLOB source src/Faddeeva.c src/*.F90 src/xml/openmc_fox.F90)
+file(GLOB source src/*.F90 src/xml/openmc_fox.F90)
 add_executable(${program} ${source})
 
 # target_include_directories was added in CMake 2.8.11 and is the recommended
@@ -274,19 +280,18 @@ else()
 endif()
 
 # target_compile_options was added in CMake 2.8.12 and is the recommended way to
-# set compile flag, but it doesn't seem to work with both Fortran and C.  In
-# theory the commented code below might work but I couldn't get it running.
-# Maybe it requires a newer version of CMake?
-#target_compile_options(${program} PUBLIC 
-#  $<$<COMPILE_LANGUAGE:Fortran>:${f90flags}>
-#  $<$<COMPILE_LANGUAGE:C>:${cflags}>)
-# This is not the recommended method, but it is a functional method.  Convert
-# the semicolon-delineated lists into space-delineated ones then set them as the
-# compiler flags.
+# set compile flags. Note that this sets the COMPILE_OPTIONS property (also
+# available only in 2.8.12+) rather than the COMPILE_FLAGS property, which is
+# deprecated. The former can handle lists whereas the latter cannot.
+if (CMAKE_VERSION VERSION_LESS 2.8.12)
   string(REPLACE ";" " " f90flags "${f90flags}")
-string(REPLACE ";" " " cflags "${cflags}")
-set(CMAKE_C_FLAGS "${cflags}")
-set(CMAKE_Fortran_FLAGS "${f90flags}")
+  string(REPLACE ";" " " cflags "${cflags}")
+  set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
+  set_property(TARGET faddeeva PROPERTY COMPILE_FLAGS "${cflags}")
+else()
+  target_compile_options(${program} PUBLIC ${f90flags})
+  target_compile_options(faddeeva PRIVATE ${cflags})
+endif()
 
 # Add HDF5 library directories to link line with -L
 foreach(LIBDIR ${HDF5_LIBRARY_DIRS})
@@ -295,7 +300,7 @@ endforeach()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom)
+target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom faddeeva)
 
 #===============================================================================
 # Install executable, scripts, manpage, license

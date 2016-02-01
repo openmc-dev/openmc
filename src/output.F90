@@ -900,9 +900,6 @@ contains
           trim(to_str(domain_decomp % ijk(3)))
     write(ou, "(1X,A,T30,I12)") trim(ijk), domain_decomp % interaction_count
 
-100 format (1X,A,T30,A)
-101 format (1X,A,T30,I12)
-
   end subroutine print_domain_interactions
 
 !===============================================================================

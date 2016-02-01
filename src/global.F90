@@ -5,7 +5,7 @@ module global
   use bank_header,      only: Bank
   use cmfd_header
   use constants
-  use dd_header,        only: DomainDecomType, deallocate_dd
+  use dd_header,        only: DomainDecomType
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
   use material_header,  only: Material
@@ -548,7 +548,7 @@ contains
     end if
 
     ! Deallocate domain decomposition
-    call deallocate_dd(domain_decomp)
+    call domain_decomp % deallocate()
 
   end subroutine free_memory
 

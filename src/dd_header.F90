@@ -5,8 +5,6 @@ module dd_header
   use particle_header,  only: Particle, ParticleBuffer
 
   implicit none
-  private
-  public :: deallocate_dd
 
   type, public :: DomainDecomType
 
@@ -75,6 +73,9 @@ module dd_header
     logical    :: count_interactions = .false.
     integer(8) :: interaction_count = 0_8
 
+  contains
+    procedure :: deallocate => deallocate_dd
+
   end type DomainDecomType
 
 contains
@@ -85,7 +86,7 @@ contains
 
   subroutine deallocate_dd(this)
 
-    type(DomainDecomType), intent(inout) :: this ! dd instance
+    class(DomainDecomType), intent(inout) :: this ! dd instance
 
     if (associated(this % mesh)) deallocate(this % mesh)
     if (allocated(this % domain_load_dist)) deallocate(this % domain_load_dist)

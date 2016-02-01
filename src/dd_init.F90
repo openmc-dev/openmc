@@ -3,7 +3,7 @@ module dd_init
   use constants
   use dd_header,  only: DomainDecomType
   use error,      only: fatal_error, warning
-  use global,     only: n_procs, n_particles, rank, mpi_err, master
+  use global,     only: n_procs, n_particles, rank, mpi_err
   use mesh,       only: bin_to_mesh_indices, mesh_indices_to_bin
   use output,     only: write_message
   use search,     only: binary_search
@@ -11,10 +11,6 @@ module dd_init
 
 #ifdef MPI
   use mpi
-#endif
-
-#ifdef _OPENMP
-    use omp_lib
 #endif
 
   implicit none

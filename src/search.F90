@@ -1,7 +1,6 @@
 module search
 
   use constants
-  use error,     only: fatal_error
 
   implicit none
 

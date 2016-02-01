@@ -87,7 +87,7 @@ module particle_header
     logical    :: write_track = .false.
 
     ! Secondary particles created
-    integer    :: n_secondary = 0
+    integer(8) :: n_secondary = 0
     type(Bank) :: secondary_bank(MAX_SECONDARY)
     ! Was this particle just created?
     logical    :: new_particle = .true.

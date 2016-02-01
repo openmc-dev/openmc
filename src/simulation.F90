@@ -201,9 +201,6 @@ contains
       ! domains/proceses since we're carrying around the random number streams
       prn_seed = p % prn_seed
 
-      ! Note: tally results will not match the non-DD version of the same run
-      ! (unless you run in DD mode with one domain).
-
     end if
 
     ! set particle trace

@@ -1,6 +1,5 @@
 module finalize
 
-  use constants
   use global
   use output,         only: header, print_runtime, print_results, &
                             print_overlap_check, write_tallies, &

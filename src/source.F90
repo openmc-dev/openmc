@@ -48,8 +48,8 @@ contains
       ! assumed source distribution
 
       if (dd_run) then
-        call fatal_error("Reading source from binary file not " // &
-                         "implemented for domain decomposition.")
+        call fatal_error("Reading source from binary file not &
+                          &implemented for domain decomposition.")
       end if
 
       call write_message('Reading source file from ' // trim(path_source) &

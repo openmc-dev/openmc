@@ -924,7 +924,7 @@ contains
     ! display header block for geometry debugging section
     if (master) then
       call header("Domain Interaction Counts")
-      write(ou,100) 'Domain Mesh I-J-K','No. Interactions'
+      write(ou, "(1X,A,T30,A)") 'Domain Mesh I-J-K','No. Interactions'
     end if
 
     ! TODO: really this should be reduced to master for printing in order, and
@@ -932,7 +932,7 @@ contains
     ijk = trim(to_str(domain_decomp % ijk(1))) // "-" // &
           trim(to_str(domain_decomp % ijk(2))) // "-" // &
           trim(to_str(domain_decomp % ijk(3)))
-    write(ou,101) trim(ijk), domain_decomp % interaction_count
+    write(ou, "(1X,A,T30,I12)") trim(ijk), domain_decomp % interaction_count
 
 100 format (1X,A,T30,A)
 101 format (1X,A,T30,I12)

@@ -358,7 +358,7 @@ contains
       if (dd % local_master) dd % scatter_offest(to_bin) = 0
     end do
 
-      ! Now figure out where to send the particles
+    ! Now figure out where to send the particles
     dd % send_rank_info = 0
     do to_bin = 1, N_CARTESIAN_NEIGHBORS
       ! loop over each of the neighbors we need to send to

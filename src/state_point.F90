@@ -195,7 +195,7 @@ contains
       call close_group(meshes_group)
 
       ! Write information for derivatives.
-      if (allocated(tally_derivs) .and. size(tally_derivs) > 0) then
+      if (size(tally_derivs) > 0) then
         derivs_group = create_group(tallies_group, "derivatives")
         do i = 1, size(tally_derivs)
           associate(deriv => tally_derivs(i))

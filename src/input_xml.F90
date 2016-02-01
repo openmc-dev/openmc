@@ -2349,6 +2349,11 @@ contains
     filename = trim(path_input) // "tallies.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
+      ! We need each thread to allocate tally_derivs to avoid segfaults
+!$omp parallel
+      allocate(tally_derivs(0))
+!$omp end parallel
+
       ! Since a tallies.xml file is optional, no error is issued here
       return
     end if
@@ -2533,8 +2538,12 @@ contains
     ! Get pointer list to XML <derivative>.
     call get_node_list(doc, "derivative", node_deriv_list)
 
-    ! Allocate TallyDerivative array.
+    ! Allocate TallyDerivative array on each thread.  The attributes of the
+    ! TallyDerivatives will be set on the master thread and then 'copyin'ed
+    ! in simulate.F90
+!$omp parallel
     allocate(tally_derivs(get_list_size(node_deriv_list)))
+!$omp end parallel
 
     ! Read derivative attributes.
     do i = 1, get_list_size(node_deriv_list)

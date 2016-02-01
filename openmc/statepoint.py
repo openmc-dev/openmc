@@ -468,7 +468,7 @@ class StatePoint(object):
                     base = 'tallies/derivatives/derivative {:d}'.format(d_id)
                     deriv = openmc.TallyDerivative(derivative_id=d_id)
                     deriv.variable = \
-                         self._f[base + '/dependent variable'].value.decode()
+                         self._f[base + '/independent variable'].value.decode()
                     if deriv.variable == 'density':
                         deriv.material = self._f[base + '/material'].value
                     elif deriv.variable == 'nuclide_density':

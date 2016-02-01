@@ -156,6 +156,18 @@ if run_mode == 'k-eigenvalue':
 
     Width of each mesh cell in each dimension.
 
+**/tallies/derivatives/derivative <id>/independent variable** (*char[]*)
+
+    Independent variable of tally derivative
+
+**/tallies/derivatives/derivative <id>/material** (*int*)
+
+    ID of the perturbed material
+
+**/tallies/derivatives/derivative <id>/nuclide** (*char[]*)
+
+    Alias of the perturbed nuclide
+
 **/tallies/n_tallies** (*int*)
 
     Number of user-defined tallies.
@@ -197,6 +209,10 @@ if run_mode == 'k-eigenvalue':
 
     Array of nuclides to tally. Note that if no nuclide is specified in the user
     input, a single 'total' nuclide appears here.
+
+**/tallies/tally <uid>/derivative** (*int*)
+
+    ID of the derivative applied to the tally.
 
 **/tallies/tally <uid>/n_score_bins** (*int*)
 

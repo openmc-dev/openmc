@@ -352,7 +352,7 @@ module constants
        K_TRACKLENGTH = 3, &
        LEAKAGE       = 4
 
-  ! Differential tally dependent variables
+  ! Differential tally independent variables
   integer, parameter :: &
        DIFF_DENSITY = 1, &
        DIFF_NUCLIDE_DENSITY = 2

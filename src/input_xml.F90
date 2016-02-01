@@ -2570,7 +2570,7 @@ contains
                // trim(to_str(deriv % id)))
         end do
 
-        ! Read the dependent variable name.
+        ! Read the independent variable name.
         temp_str = ""
         call get_node_value(node_deriv, "variable", temp_str)
         temp_str = to_lower(temp_str)

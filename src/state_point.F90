@@ -203,17 +203,17 @@ contains
                  // trim(to_str(deriv % id)))
             select case (deriv % variable)
             case (DIFF_DENSITY)
-              call write_dataset(deriv_group, "dependent variable", "density")
+              call write_dataset(deriv_group, "independent variable", "density")
               call write_dataset(deriv_group, "material", deriv % diff_material)
             case (DIFF_NUCLIDE_DENSITY)
-              call write_dataset(deriv_group, "dependent variable", &
+              call write_dataset(deriv_group, "independent variable", &
                    "nuclide_density")
               call write_dataset(deriv_group, "material", deriv % diff_material)
               i_list = nuclides(deriv % diff_nuclide) % listing
               call write_dataset(deriv_group, "nuclide", &
                    xs_listings(i_list) % alias)
             case default
-              call fatal_error("Dependent variable for derivative " &
+              call fatal_error("Independent variable for derivative " &
                    // trim(to_str(deriv % id)) // " not defined in &
                    &state_point.F90.")
             end select

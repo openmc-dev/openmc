@@ -389,7 +389,7 @@ class StatePoint(object):
                         new_filter.mesh = self.meshes[key]
 
                     # Add Filter to the Tally
-                    tally.add_filter(new_filter)
+                    tally.filters.append(new_filter)
 
                 # Read Nuclide bins
                 nuclide_names = \
@@ -398,7 +398,7 @@ class StatePoint(object):
                 # Add all Nuclides to the Tally
                 for name in nuclide_names:
                     nuclide = openmc.Nuclide(name.decode().strip())
-                    tally.add_nuclide(nuclide)
+                    tally.nuclides.append(nuclide)
 
                 scores = self._f['{0}{1}/score_bins'.format(
                     base, tally_key)].value
@@ -425,7 +425,7 @@ class StatePoint(object):
                     pattern = r'-n$|-pn$|-yn$'
                     score = re.sub(pattern, '-' + moments[j].decode(), score)
 
-                    tally.add_score(score)
+                    tally.scores.append(score)
 
                 # Add Tally to the global dictionary of all Tallies
                 tally.sparse = self.sparse

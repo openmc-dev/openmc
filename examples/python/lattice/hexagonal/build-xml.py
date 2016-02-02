@@ -166,8 +166,8 @@ plot_file.export_to_xml()
 
 # Instantiate a distribcell Tally
 tally = openmc.Tally(tally_id=1)
-tally.add_filter(openmc.Filter(type='distribcell', bins=[cell2.id]))
-tally.add_score('total')
+tally.filters = [openmc.Filter(type='distribcell', bins=[cell2.id])]
+tally.scores = ['total']
 
 # Instantiate a TalliesFile, register Tally/Mesh, and export to XML
 tallies_file = openmc.TalliesFile()

@@ -257,7 +257,7 @@ contains
   end subroutine distribute_load_peak_shaving
 
 !===============================================================================
-! SET_NEIGHBOR_BINS determines the domian meshbins for the neighbors of the
+! SET_NEIGHBOR_BINS determines the domain meshbins for the neighbors of the
 ! current domain with 1 and 2 degrees of separation
 !===============================================================================
 
@@ -265,58 +265,25 @@ contains
 
     type(DomainDecomType), intent(inout) :: dd
 
-    dd % neighbor_meshbins = (/ &
-            ! First-order neighbors
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0,  0/)), &  !-x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0,  0/)), &  !+x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1,  0/)), &  !-y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1,  0/)), &  !+y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0, -1/)), &  !-z
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0,  1/)), &  !+z
-            ! Second-order neighbors (neighbors of the first-order neighbors)
-            ! -x
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/-2,  0,  0/)), & !-x
-            dd % meshbin                                             , & !+x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1, -1,  0/)), & !-y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  1,  0/)), & !+y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0, -1/)), & !-z
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0,  1/)), & !+z
-            ! +x
-      dd % meshbin                                             , & !-x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 2,  0,  0/)), & !+x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1, -1,  0/)), & !-y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  1,  0/)), & !+y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0, -1/)), & !-z
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0,  1/)), & !+z
-            ! -y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1, -1,  0/)), & !-x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1, -1,  0/)), & !+x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -2,  0/)), & !-y
-            dd % meshbin                                             , & !+y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1, -1/)), & !-z
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1,  1/)), & !+z
-            ! +y
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  1,  0/)), & !-x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  1,  0/)), & !+x
-            dd % meshbin                                             , & !-y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  2,  0/)), & !+y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1, -1/)), & !-z
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1,  1/)), & !+z
-            ! -z
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0, -1/)), & !-x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0, -1/)), & !+x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1, -1/)), & !-y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1, -1/)), & !+y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0, -2/)), & !-z
-            dd % meshbin                                             , & !+z
-            ! +z
-      mesh_indices_to_bin(dd % mesh, dd % ijk + (/-1,  0,  1/)), & !-x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 1,  0,  1/)), & !+x
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0, -1,  1/)), & !-y
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  1,  1/)), & !+y
-            dd % meshbin                                             , & !-z
-            mesh_indices_to_bin(dd % mesh, dd % ijk + (/ 0,  0,  2/))  & !+z
-                 /)
+    integer, dimension(3, 0:6) :: indices ! Neighbor indices displacements
+    integer                    :: i,j     ! Loop index
+
+    indices(1:3, 0) = (/ 0,  0,  0/) ! self, for first order neighbors
+    indices(1:3, 1) = (/-1,  0,  0/) ! -x
+    indices(1:3, 2) = (/ 1,  0,  0/) ! +x
+    indices(1:3, 3) = (/ 0, -1,  0/) ! -y
+    indices(1:3, 4) = (/ 0,  1,  0/) ! +y
+    indices(1:3, 5) = (/ 0,  0, -1/) ! -z
+    indices(1:3, 6) = (/ 0,  0,  1/) ! +z
+
+    ! Loop to set up first-order (i = 0) and second-order (i = 1-6) neighbors
+    ! Note the second-order neighbors are neighbors of the first-order neighbors
+    do i = 0, 6
+      do j = 1, 6
+        dd % neighbor_meshbins( i * 6 + j ) = mesh_indices_to_bin( &
+             dd % mesh, dd % ijk + indices(1:3, i) + indices(1:3, j))
+      end do
+    end do
 
   end subroutine set_neighbor_meshbins
 

@@ -196,11 +196,8 @@ mesh_filter.mesh = mesh
 
 # Instantiate the Tally
 tally = openmc.Tally(tally_id=1, name='tally 1')
-tally.add_filter(energy_filter)
-tally.add_filter(mesh_filter)
-tally.add_score('flux')
-tally.add_score('fission')
-tally.add_score('nu-fission')
+tally.filters = [energy_filter, mesh_filter]
+tally.scores = ['flux', 'fission', 'nu-fission']
 
 # Instantiate a TalliesFile, register all Tallies, and export to XML
 tallies_file = openmc.TalliesFile()

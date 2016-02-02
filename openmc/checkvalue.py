@@ -41,9 +41,9 @@ def check_type(name, value, expected_type, expected_iter_type=None):
         Description of value being checked
     value : object
         Object to check type of
-    expected_type : type
+    expected_type : type or Iterable of type
         type to check object against
-    expected_iter_type : type or None, optional
+    expected_iter_type : type or Iterable of type or None, optional
         Expected type of each element in value, assuming it is iterable. If
         None, no check will be performed.
 
@@ -57,9 +57,15 @@ def check_type(name, value, expected_type, expected_iter_type=None):
     if expected_iter_type:
         for item in value:
             if not _isinstance(item, expected_iter_type):
-                msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
-                      'of type "{2}"'.format(name, value,
-                                           expected_iter_type.__name__)
+                if isinstance(expected_iter_type, Iterable):
+                    msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
+                          'one of the following types: "{2}"'.format(
+                              name, value, ', '.join([t.__name__ for t in
+                                                      expected_iter_type]))
+                else:
+                    msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
+                          'of type "{2}"'.format(name, value,
+                                                 expected_iter_type.__name__)
                 raise ValueError(msg)
 
 

@@ -2,7 +2,7 @@ module particle_header
 
   use bank_header,     only: Bank
   use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
-                             MAX_DELAYED_GROUPS
+                             MAX_DELAYED_GROUPS, NO_OUTSCATTER
   use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
   use random_lcg_header, only: N_STREAMS
@@ -91,6 +91,7 @@ module particle_header
     type(Bank) :: secondary_bank(MAX_SECONDARY)
     ! Was this particle just created?
     logical    :: new_particle = .true.
+    logical    :: sec_particle = .false.
 
     ! Data needed to restart a particle stored in a bank after changing domains
     real(8)    :: stored_xyz(3)
@@ -102,7 +103,7 @@ module particle_header
 
     ! Domain information
     integer    :: dd_meshbin    ! DD meshbin the particle is to be run in next
-    integer    :: outscatter_destination ! Which domain to transmit particle to
+    integer    :: outscatter_destination = NO_OUTSCATTER ! Domain to transmit
 
   contains
     procedure :: initialize => initialize_particle
@@ -185,6 +186,7 @@ contains
     this % new_particle      = .true.
     this % stored_distance   = ZERO
     this % fly_dd_distance   = ZERO
+    this % outscatter_destination = NO_OUTSCATTER
 
     ! Set up base level coordinates
     this % coord(1) % universe = BASE_UNIVERSE

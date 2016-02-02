@@ -4,13 +4,15 @@ module dd_tracking
   use cross_section,     only: calculate_xs
   use dd_header,         only: DomainDecomType
   use error,             only: fatal_error
-  use global,            only: domain_decomp, surfaces, rank, verbosity, trace
+  use global,            only: domain_decomp, surfaces, rank, verbosity, trace,&
+                               n_stage_secondary, current_work, work
   use particle_header,   only: Particle
   use mesh,              only: get_mesh_bin
   use output,            only: write_message
   use random_lcg,        only: prn_seed
   use random_lcg_header, only: N_STREAMS
   use string,            only: to_str
+  use extend_arr,        only: extend_array
 
   implicit none
   public
@@ -66,19 +68,22 @@ contains
 ! particle enters into right domain.
 !===============================================================================
 
-  subroutine cross_domain_boundary(p, dd, tracking_dist, flying_dist)
+  subroutine cross_domain_boundary(p, dd, tracking_dist, domain_dist)
 
     type(Particle), intent(inout) :: p
     type(DomainDecomType), intent(inout)  :: dd
     real(8), intent(in)           :: tracking_dist ! distance p needs to travel
-    real(8), intent(in)           :: flying_dist   ! distance p traveled already
+    real(8), intent(in)           :: domain_dist   ! distance to domain boundary
+
+    integer(8) :: size_buff
+    integer    :: alloc_err      ! allocation error code
 
     real(8) :: xyz(3)
     integer :: to_meshbin  ! domain meshbin the particle is traveling to
     integer :: to_bin      ! local relative bin the particle is traveling to
 
     ! Calculate current point and calculate the bin in the DD mesh
-    xyz = p % coord(1) % xyz + (TINY_BIT + flying_dist)* p % coord(1) % uvw
+    xyz = p % coord(1) % xyz + (TINY_BIT + domain_dist)* p % coord(1) % uvw
     call get_mesh_bin(dd % mesh, xyz, to_meshbin)
 
     ! Check for particle leaking out of domain mesh - this is a user input error
@@ -136,11 +141,24 @@ contains
     p % stored_xyz      = p % coord(1) % xyz
     p % stored_uvw      = p % coord(1) % uvw
     p % stored_distance = tracking_dist
-    p % fly_dd_distance = flying_dist
+    p % fly_dd_distance = domain_dist
     p % prn_seed        = prn_seed
 
-  end subroutine cross_domain_boundary
+    ! Save particle info to particle_buffer. If it is a secondary particle,
+    ! add it behind the location of work
+    if (.not. p % sec_particle) then
+      dd % particle_buffer(current_work) = p
+    else
+      if (work + n_stage_secondary > dd % size_particle_buffer) then
+        size_buff = ceiling(dble(work+n_stage_secondary)*DD_BUFFER_HEADROOM, 8)
+        call extend_array(dd % particle_buffer, size_buff, .true., alloc_err)
+        dd % size_particle_buffer = size(dd % particle_buffer)
+      end if
 
+      dd % particle_buffer(work + n_stage_secondary) = p
+    end if
+
+  end subroutine cross_domain_boundary
 
 !===============================================================================
 ! RECALC_INITIAL_XS recalculates the inital cross sections for a particle using

@@ -3,9 +3,9 @@ module tracking
   use constants,       only: MODE_EIGENVALUE
   use cross_section,   only: calculate_xs
   use dd_header,       only: DomainDecomType
-  use dd_tracking,    only: recalc_initial_xs, &
-                            check_domain_boundary_crossing, &
-                            cross_domain_boundary
+  use dd_tracking,     only: recalc_initial_xs, &
+                             check_domain_boundary_crossing, &
+                             cross_domain_boundary
   use error,           only: fatal_error, warning
   use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
                              cross_lattice, check_cell_overlap, &
@@ -135,7 +135,30 @@ contains
           ! Prepare particle for communication and stop tracking it
           call cross_domain_boundary(p, domain_decomp, p % stored_distance, &
                p % fly_dd_distance)
-          exit
+
+          ! Keep on tracking secondary particles
+          if (p % n_secondary > 0) then
+            call p % initialize_from_source(p % secondary_bank(p % n_secondary))
+            p % n_secondary = p % n_secondary - 1
+            n_event = 0
+
+            ! Set the random number seed and clear crossing data for dd
+            if (dd_run) then
+              prn_seed = p % prn_seed
+              micro_xs % last_E = ZERO
+              micro_xs % last_index_sab = NONE
+              p % sec_particle = .true.
+              n_stage_secondary = n_stage_secondary + 1
+            end if
+
+            ! Enter new particle in particle track file
+            if (p % write_track) call add_particle_track()
+
+            cycle
+          else
+            exit
+          end if
+
         end if
       end if
 
@@ -183,7 +206,29 @@ contains
 
           ! Prepare particle for communication and stop tracking it
           call cross_domain_boundary(p, domain_decomp, distance, d_dd_mesh)
-          exit
+
+          ! Keep on tracking secondary particles
+          if (p % n_secondary > 0) then
+            call p % initialize_from_source(p % secondary_bank(p % n_secondary))
+            p % n_secondary = p % n_secondary - 1
+            n_event = 0
+
+            ! Set the random number seed and clear crossing data for dd
+            if (dd_run) then
+              prn_seed = p % prn_seed
+              micro_xs % last_E = ZERO
+              micro_xs % last_index_sab = NONE
+              p % sec_particle = .true.
+              n_stage_secondary = n_stage_secondary + 1
+            end if
+
+            ! Enter new particle in particle track file
+            if (p % write_track) call add_particle_track()
+
+            cycle
+          else
+            exit
+          end if
 
         end if
 
@@ -294,6 +339,15 @@ contains
           call p % initialize_from_source(p % secondary_bank(p % n_secondary))
           p % n_secondary = p % n_secondary - 1
           n_event = 0
+
+          ! Set the random number seed and clear crossing data for dd
+          if (dd_run) then
+            prn_seed = p % prn_seed
+            micro_xs % last_E = ZERO
+            micro_xs % last_index_sab = NONE
+            p % sec_particle = .true.
+            n_stage_secondary = n_stage_secondary + 1
+          end if
 
           ! Enter new particle in particle track file
           if (p % write_track) call add_particle_track()

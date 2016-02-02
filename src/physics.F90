@@ -1185,7 +1185,7 @@ contains
         nu_d(p % delayed_group) = nu_d(p % delayed_group) + 1
       end if
 
-      ! Store a new random number seed to continue this site with
+      ! Store a new random number seed to continue this site for dd runs
       if (dd_run) fission_bank(i)%prn_seed = int(9220000000000000000_8*prn(), 8)
 
     end do
@@ -1368,15 +1368,16 @@ contains
       yield = interpolate_tab1(rxn % multiplicity_E, E_in)
       p % wgt = yield * p % wgt
     else
-      ! multiplicity cannot be used for domain decomposition
-      if (.not. dd_run) then
-        do i = 1, rxn % multiplicity - 1
-          call p % create_secondary(p % coord(1) % uvw, NEUTRON)
-        end do
-      else
-        yield = rxn % multiplicity
-        p % wgt = yield * p % wgt
-      end if
+      do i = 1, rxn % multiplicity - 1
+        call p % create_secondary(p % coord(1) % uvw, NEUTRON)
+
+        ! Store a new random number seed for dd runs
+        if (dd_run) then
+          p % secondary_bank(p % n_secondary) % prn_seed = &
+               int(9220000000000000000_8*prn(), 8)
+        end if
+
+      end do
     end if
 
   end subroutine inelastic_scatter

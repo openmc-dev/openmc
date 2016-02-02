@@ -602,7 +602,7 @@ contains
 
         pbuffer_start = index_pbuffer
         n_send = 0
-        do i8 = start, work
+        do i8 = start, dd % size_particle_buffer
 
           ! Add outscatter particles to send buffer
           if (dd % particle_buffer(i8) % outscatter_destination == to_bin) then

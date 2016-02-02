@@ -262,6 +262,7 @@ module global
 
   ! Is domain decomposition active
   logical :: dd_run  = .false.
+  integer :: n_stage_secondary = 0
 
   ! ============================================================================
   ! TIMING VARIABLES

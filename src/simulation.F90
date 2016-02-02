@@ -93,12 +93,14 @@ contains
             current_work = i_work
             if (dd_run) then
 
-              ! Initialize particle in buffer
-              call initialize_history( &
-                    domain_decomp % particle_buffer(i_work), current_work)
+              ! Grab particle from particle_buffer
+              p = domain_decomp % particle_buffer(i_work)
+
+              ! Initialize particle
+              call initialize_history(p, current_work)
 
               ! Transport particle
-              call transport(domain_decomp % particle_buffer(i_work))
+              call transport(p)
 
             else
 
@@ -295,10 +297,15 @@ contains
 
     current_stage = current_stage + 1
 
+    n_stage_secondary = 0
+
     if (dd_run) then
 
       domain_decomp % n_scatters_local = 0
       domain_decomp % n_scatters_domain = 0
+
+      domain_decomp % particle_buffer % sec_particle = .false.
+      domain_decomp % particle_buffer % n_secondary = 0
 
       domain_decomp % particle_buffer % id = -1
       domain_decomp % particle_buffer % outscatter_destination = NO_OUTSCATTER

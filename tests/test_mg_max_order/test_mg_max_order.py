@@ -70,16 +70,16 @@ class MGNuclideInputSet(MGInputSet):
 
         self.geometry.geometry = geometry
 
-class MGNuclideTestHarness(PyAPITestHarness):
+class MGMaxOrderTestHarness(PyAPITestHarness):
     def __init__(self, statepoint_name, tallies_present, mg=False):
-        TestHarness.__init__(self, statepoint_name, tallies_present)
+        PyAPITestHarness.__init__(self, statepoint_name, tallies_present)
         self._input_set = MGNuclideInputSet()
 
     def _build_inputs(self):
-        super(MGNuclideTestHarness, self)._build_inputs()
+        super(MGMaxOrderTestHarness, self)._build_inputs()
         # Set P1 scattering
         self._input_set.settings.max_order = 1
 
 if __name__ == '__main__':
-    harness = MGNuclideTestHarness('statepoint.10.*', False, mg=True)
+    harness = MGMaxOrderTestHarness('statepoint.10.*', False, mg=True)
     harness.main()

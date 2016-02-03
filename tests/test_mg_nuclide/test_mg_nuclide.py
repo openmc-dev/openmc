@@ -71,7 +71,7 @@ class MGNuclideInputSet(MGInputSet):
 
 class MGNuclideTestHarness(PyAPITestHarness):
     def __init__(self, statepoint_name, tallies_present, mg=False):
-        TestHarness.__init__(self, statepoint_name, tallies_present)
+        PyAPITestHarness.__init__(self, statepoint_name, tallies_present)
         self._input_set = MGNuclideInputSet()
 
     def _build_inputs(self):

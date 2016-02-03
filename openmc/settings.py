@@ -1063,6 +1063,8 @@ class SettingsFile(object):
         self._create_confidence_intervals()
         self._create_cross_sections_subelement()
         self._create_energy_grid_subelement()
+        self._create_energy_mode_subelement()
+        self._create_max_order_subelement()
         self._create_ptables_subelement()
         self._create_run_cmfd_subelement()
         self._create_seed_subelement()

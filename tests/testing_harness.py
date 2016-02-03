@@ -244,7 +244,7 @@ class ParticleRestartTestHarness(TestHarness):
 
 class PyAPITestHarness(TestHarness):
     def __init__(self, statepoint_name, tallies_present=False, mg=False):
-                super(PyAPITestHarness, self).__init__(statepoint_name, tallies_present)
+        super(PyAPITestHarness, self).__init__(statepoint_name, tallies_present)
         self.parser.add_option('--build-inputs', dest='build_only',
                                action='store_true', default=False)
         if mg:

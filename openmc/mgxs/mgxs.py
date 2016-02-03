@@ -66,6 +66,10 @@ class MGXS(object):
         The energy group structure for energy condensation
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
+    nuclides : Iterable of basestring
+        The user-specified nuclides to compute cross sections. If by_nuclide
+        is True but nuclides are not specified by the user, all nuclides in the
+        spatial domain will be used.
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
@@ -122,6 +126,7 @@ class MGXS(object):
         self._name = ''
         self._rxn_type = None
         self._by_nuclide = None
+        self._nuclides = None
         self._domain = None
         self._domain_type = None
         self._energy_groups = None
@@ -150,6 +155,7 @@ class MGXS(object):
             clone._name = self.name
             clone._rxn_type = self.rxn_type
             clone._by_nuclide = self.by_nuclide
+            clone._nuclides = self._nuclides
             clone._domain = self.domain
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
@@ -258,6 +264,11 @@ class MGXS(object):
     def by_nuclide(self, by_nuclide):
         cv.check_type('by_nuclide', by_nuclide, bool)
         self._by_nuclide = by_nuclide
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_iterable_type('nuclides', nuclides, basestring)
+        self._nuclides = nuclides
 
     @domain.setter
     def domain(self, domain):
@@ -386,8 +397,14 @@ class MGXS(object):
         if self.domain is None:
             raise ValueError('Unable to get all nuclides without a domain')
 
-        nuclides = self.domain.get_all_nuclides()
-        return nuclides.keys()
+        # If the user defined nuclides, return them
+        if self._nuclides:
+            return self._nuclides
+
+        # Otherwise, return all nuclides in the spatial domain
+        else:
+            nuclides = self.domain.get_all_nuclides()
+            return nuclides.keys()
 
     def get_nuclide_density(self, nuclide):
         """Get the atomic number density in units of atoms/b-cm for a nuclide
@@ -550,7 +567,7 @@ class MGXS(object):
         # If computing xs for each nuclide, replace CrossNuclides with originals
         if self.by_nuclide:
             self.xs_tally._nuclides = []
-            nuclides = self.domain.get_all_nuclides()
+            nuclides = self.get_all_nuclides()
             for nuclide in nuclides:
                 self.xs_tally.add_nuclide(openmc.Nuclide(nuclide))
 
@@ -864,6 +881,70 @@ class MGXS(object):
         avg_xs._domain_type = 'sum({0})'.format(self.domain_type)
         avg_xs.sparse = self.sparse
         return avg_xs
+
+    def get_slice(self, nuclides=[], groups=[]):
+        """Build a sliced MGXS for the specified nuclides and energy groups.
+
+        This method constructs a new MGXS to encapsulate a subset of the data
+        represented by this MGXS. The subset of data to include in the tally
+        slice is determined by the nuclides and energy groups specified in
+        the input parameters.
+
+        Parameters
+        ----------
+        nuclides : list of str
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
+        groups : list of Integral
+            A list of energy group indices starting at 1 for the high energies
+            (e.g., [1, 2, 3]; default is [])
+
+        Returns
+        -------
+        MGXS
+            A new tally which encapsulates the subset of data requested for the
+            nuclide(s) and/or energy group(s) requested in the parameters.
+
+        """
+
+        cv.check_iterable_type('nuclides', nuclides, basestring)
+        cv.check_iterable_type('energy_groups', groups, Integral)
+
+        # Build lists of filters and filter bins to slice
+        if len(groups) == 0:
+            filters = []
+            filter_bins = []
+        else:
+            filter_bins = []
+            for group in groups:
+                group_bounds = self.energy_groups.get_group_bounds(group)
+                filter_bins.append(group_bounds)
+            filter_bins = [tuple(filter_bins)]
+            filters = ['energy']
+
+        # Clone this MGXS to initialize the sliced version
+        slice_xs = copy.deepcopy(self)
+        slice_xs._rxn_rate_tally = None
+        slice_xs._xs_tally = None
+
+        # Slice each of the tallies across nuclides and energy groups
+        for tally_type, tally in slice_xs.tallies.items():
+            slice_nuclides = [nuc for nuc in nuclides if nuc in tally.nuclides]
+            tally_slice = tally.get_slice(filters=filters,
+                filter_bins=filter_bins, nuclides=slice_nuclides)
+            slice_xs.tallies[tally_type] = tally_slice
+
+        # Assign sliced energy group structure to sliced MGXS
+        if groups:
+            energy_filter = slice_xs.tallies.values()[0].find_filter('energy')
+            slice_xs.energy_groups.group_edges = energy_filter.bins
+
+        # Assign sliced nuclides to sliced MGXS
+        if nuclides:
+            slice_xs.nuclides = nuclides
+
+        slice_xs.sparse = self.sparse
+        return slice_xs
 
     def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
         """Print a string representation for the multi-group cross section.

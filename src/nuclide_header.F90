@@ -94,7 +94,7 @@ module nuclide_header
     integer :: n_precursor ! # of delayed neutron precursors
     real(8), allocatable :: nu_d_data(:)
     real(8), allocatable :: nu_d_precursor_data(:)
-    type(DistEnergy), pointer :: nu_d_edist(:) => null()
+    type(AngleEnergyContainer), allocatable :: nu_d_edist(:)
 
     ! Unresolved resonance data
     logical                :: urr_present
@@ -308,16 +308,7 @@ module nuclide_header
 
       integer :: i ! Loop counter
 
-      if (associated(this % nu_d_edist)) then
-        do i = 1, size(this % nu_d_edist)
-          call this % nu_d_edist(i) % clear()
-        end do
-        deallocate(this % nu_d_edist)
-      end if
-
-      if (associated(this % urr_data)) then
-        deallocate(this % urr_data)
-      end if
+      if (associated(this % urr_data)) deallocate(this % urr_data)
 
       if (allocated(this % reactions)) then
         do i = 1, size(this % reactions)
@@ -389,7 +380,6 @@ module nuclide_header
 
     subroutine nuclide_ce_print(this, unit)
       class(Nuclide_CE), intent(in) :: this
-      type(Nuclide), intent(in) :: nuc
       integer, intent(in), optional :: unit
 
       integer :: i                 ! loop index over nuclides
@@ -410,36 +400,36 @@ module nuclide_header
       size_xs = 0
 
       ! Basic nuclide information
-      write(unit_,*) 'Nuclide ' // trim(nuc % name)
-      write(unit_,*) '  zaid = ' // trim(to_str(nuc % zaid))
-      write(unit_,*) '  awr = ' // trim(to_str(nuc % awr))
-      write(unit_,*) '  kT = ' // trim(to_str(nuc % kT))
-      write(unit_,*) '  # of grid points = ' // trim(to_str(nuc % n_grid))
-      write(unit_,*) '  Fissionable = ', nuc % fissionable
-      write(unit_,*) '  # of fission reactions = ' // trim(to_str(nuc % n_fission))
-      write(unit_,*) '  # of reactions = ' // trim(to_str(nuc % n_reaction))
+      write(unit_,*) 'Nuclide ' // trim(this % name)
+      write(unit_,*) '  zaid = ' // trim(to_str(this % zaid))
+      write(unit_,*) '  awr = ' // trim(to_str(this % awr))
+      write(unit_,*) '  kT = ' // trim(to_str(this % kT))
+      write(unit_,*) '  # of grid points = ' // trim(to_str(this % n_grid))
+      write(unit_,*) '  Fissionable = ', this % fissionable
+      write(unit_,*) '  # of fission reactions = ' // trim(to_str(this % n_fission))
+      write(unit_,*) '  # of reactions = ' // trim(to_str(this % n_reaction))
 
       ! Information on each reaction
       write(unit_,*) '  Reaction     Q-value  COM    IE'
-      do i = 1, nuc % n_reaction
-        associate (rxn => nuc % reactions(i))
+      do i = 1, this % n_reaction
+        associate (rxn => this % reactions(i))
           write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,I6)') &
                reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
                rxn % threshold
 
           ! Accumulate data size
-          size_xs = size_xs + (nuc % n_grid - rxn%threshold + 1) * 8
+          size_xs = size_xs + (this % n_grid - rxn%threshold + 1) * 8
         end associate
       end do
 
       ! Add memory required for summary reactions (total, absorption, fission,
       ! nu-fission)
-      size_xs = 8 * nuc % n_grid * 4
+      size_xs = 8 * this % n_grid * 4
 
       ! Write information about URR probability tables
       size_urr = 0
-      if (nuc % urr_present) then
-        urr => nuc % urr_data
+      if (this % urr_present) then
+        urr => this % urr_data
         write(unit_,*) '  Unresolved resonance probability table:'
         write(unit_,*) '    # of energies = ' // trim(to_str(urr % n_energy))
         write(unit_,*) '    # of probabilities = ' // trim(to_str(urr % n_prob))

@@ -1,6 +1,6 @@
 module physics
 
-  use ace_header,             only: Reaction, DistEnergy
+  use ace_header,             only: Reaction
   use constants
   use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
@@ -1343,7 +1343,7 @@ contains
       p % wgt = yield * p % wgt
     else
       do i = 1, rxn % multiplicity - 1
-        call p % create_secondary(p % coord(1) % uvw, NEUTRON)
+        call p % create_secondary(p % coord(1) % uvw, NEUTRON, run_CE=.True.)
       end do
     end if
 

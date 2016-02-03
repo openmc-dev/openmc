@@ -2,7 +2,7 @@ module output
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use ace_header,      only: Nuclide, Reaction, UrrData
+  use ace_header,      only: Reaction, UrrData
   use constants
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning

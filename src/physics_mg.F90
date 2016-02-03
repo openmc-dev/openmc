@@ -16,6 +16,7 @@ module physics_mg
   use random_lcg,             only: prn
   use scattdata_header
   use simple_string,          only: to_str
+  use spectra,                only: rotate_angle
 
   implicit none
 
@@ -71,7 +72,6 @@ contains
     ! absorption (including fission)
 
     if (mat % fissionable) then
-      call sample_fission(i_nuclide, i_reaction)
       if (run_mode == MODE_EIGENVALUE) then
         call create_fission_sites(p, fission_bank, n_bank)
       elseif (run_mode == MODE_FIXEDSOURCE) then
@@ -233,10 +233,6 @@ contains
 
     ! Bank source neutrons
     if (nu == 0 .or. size_bank == size(bank_array)) return
-
-    ! Initialize counter of delayed neutrons encountered for each delayed group
-    ! to zero.
-    nu_d(:) = 0
 
     p % fission = .true. ! Fission neutrons will be banked
     do i = int(size_bank,4) + 1, int(min(size_bank + nu, int(size(bank_array),8)),4)

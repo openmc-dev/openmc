@@ -126,9 +126,10 @@ module geometry_header
     integer :: fill                        ! universe # filling this cell
     integer :: instances                   ! number of instances of this cell in
                                            !  the geom
-    integer :: material                    ! Material within cell (0 for
-                                           !  universe)
-    integer, allocatable :: offset (:)     ! Distribcell offset for tally
+    integer, allocatable :: material(:)    ! Material within cell.  Multiple
+                                           !  materials for distribcell
+                                           !  instances.  0 signifies a universe
+    integer, allocatable :: offset(:)      ! Distribcell offset for tally
                                            !  counter
     integer, allocatable :: region(:)      ! Definition of spatial region as
                                            !  Boolean expression of half-spaces

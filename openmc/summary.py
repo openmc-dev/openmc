@@ -1,3 +1,4 @@
+from collections import Iterable
 import numpy as np
 import re
 
@@ -369,8 +370,8 @@ class Summary(object):
                 # Set the universes for the lattice
                 lattice.universes = universes
 
+                # Set the distribcell offsets for the lattice
                 if offsets is not None:
-                    offsets = np.swapaxes(offsets, 0, 2)
                     lattice.offsets = offsets
 
                 # Add the Lattice to the global dictionary of all Lattices
@@ -480,10 +481,14 @@ class Summary(object):
 
             # Retrieve the object corresponding to the fill type and ID
             if fill_type == 'normal':
-                if fill_id > 0:
-                    fill = self.get_material_by_id(fill_id)
+                if isinstance(fill_id, Iterable):
+                    fill = [self.get_material_by_id(mat) if mat > 0 else 'void'
+                            for mat in fill_id]
                 else:
-                    fill = 'void'
+                    if fill_id > 0:
+                        fill = self.get_material_by_id(fill_id)
+                    else:
+                        fill = 'void'
             elif fill_type == 'universe':
                 fill = self.get_universe_by_id(fill_id)
             else:
@@ -554,11 +559,11 @@ class Summary(object):
                 bins = self._f['{0}/bins'.format(subsubbase)][...]
 
                 # Create Filter object
-                filter = openmc.Filter(filter_type, bins)
-                filter.num_bins = num_bins
+                new_filter = openmc.Filter(filter_type, bins)
+                new_filter.num_bins = num_bins
 
                 # Add Filter to the Tally
-                tally.add_filter(filter)
+                tally.add_filter(new_filter)
 
             # Add Tally to the global dictionary of all Tallies
             self.tallies[tally_id] = tally

@@ -1,10 +1,9 @@
 module interpolation
 
   use constants
-  use endf_header,   only: Tab1
-  use error,         only: fatal_error
-  use search,        only: binary_search
-  use simple_string, only: to_str
+  use endf_header, only: Tab1
+  use search,      only: binary_search
+  use string,      only: to_str
 
   implicit none
 

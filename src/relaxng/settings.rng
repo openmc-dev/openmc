@@ -281,209 +281,184 @@
         <data type="positiveInteger"/>
       </element>
     </optional>
-    <optional>
+    <zeroOrMore>
       <element name="source">
-        <interleave>
-          <optional>
-            <element name="file">
-              <data type="string">
-                <param name="maxLength">255</param>
-              </data>
-            </element>
-          </optional>
-          <optional>
-            <element name="space">
-              <interleave>
+        <grammar>
+          <start>
+            <interleave>
+              <optional>
                 <choice>
-                  <element name="type">
-                    <data type="string">
-                      <param name="maxLength">16</param>
-                    </data>
+                  <element name="strength">
+                    <data type="double"/>
                   </element>
-                  <attribute name="type">
-                    <data type="string">
-                      <param name="maxLength">16</param>
-                    </data>
+                  <attribute name="strength">
+                    <data type="double"/>
                   </attribute>
                 </choice>
-                <optional>
-                  <choice>
-                    <element name="length">
-                      <data type="int"/>
-                    </element>
-                    <attribute name="length">
-                      <data type="int"/>
-                    </attribute>
-                  </choice>
-                </optional>
-                <optional>
-                  <choice>
-                    <element name="interpolation">
-                      <data type="string">
-                        <param name="maxLength">10</param>
-                      </data>
-                    </element>
-                    <attribute name="interplation">
-                      <data type="string">
-                        <param name="maxLength">10</param>
-                      </data>
-                    </attribute>
-                  </choice>
-                </optional>
-                <optional>
-                  <choice>
-                    <element name="parameters">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </element>
-                    <attribute name="parameters">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </attribute>
-                  </choice>
-                </optional>
-              </interleave>
-            </element>
-          </optional>
-          <optional>
-            <element name="angle">
-              <interleave>
+              </optional>
+              <optional>
                 <choice>
-                  <element name="type">
-                    <data type="string">
-                      <param name="maxLength">16</param>
-                    </data>
+                  <element name="file">
+                    <data type="string"/>
                   </element>
-                  <attribute name="type">
-                    <data type="string">
-                      <param name="maxLength">16</param>
-                    </data>
+                  <attribute name="file">
+                    <data type="string"/>
                   </attribute>
                 </choice>
-                <optional>
-                  <choice>
-                    <element name="length">
-                      <data type="int"/>
-                    </element>
-                    <attribute name="length">
-                      <data type="int"/>
-                    </attribute>
-                  </choice>
-                </optional>
-                <optional>
-                  <choice>
-                    <element name="interpolation">
-                      <data type="string">
-                        <param name="maxLength">10</param>
-                      </data>
-                    </element>
-                    <attribute name="interplation">
-                      <data type="string">
-                        <param name="maxLength">10</param>
-                      </data>
-                    </attribute>
-                  </choice>
-                </optional>
-                <optional>
-                  <choice>
-                    <element name="parameters">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </element>
-                    <attribute name="parameters">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </attribute>
-                  </choice>
-                </optional>
-              </interleave>
-            </element>
-          </optional>
-          <optional>
-            <element name="energy">
-              <interleave>
+              </optional>
+              <optional>
+                <element name="space">
+                  <interleave>
+                    <choice>
+                      <element name="type">
+                        <data type="string"/>
+                      </element>
+                      <attribute name="type">
+                        <data type="string"/>
+                      </attribute>
+                    </choice>
+                    <optional>
+                      <choice>
+                        <element name="parameters">
+                          <list>
+                            <oneOrMore>
+                              <data type="double"/>
+                            </oneOrMore>
+                          </list>
+                        </element>
+                        <attribute name="parameters">
+                          <list>
+                            <oneOrMore>
+                              <data type="double"/>
+                            </oneOrMore>
+                          </list>
+                        </attribute>
+                      </choice>
+                    </optional>
+                    <optional>
+                      <element name="x">
+                        <ref name="distribution"/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="y">
+                        <ref name="distribution"/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="z">
+                        <ref name="distribution"/>
+                      </element>
+                    </optional>
+                  </interleave>
+                </element>
+              </optional>
+              <optional>
+                <element name="angle">
+                  <interleave>
+                    <choice>
+                      <element name="type">
+                        <data type="string"/>
+                      </element>
+                      <attribute name="type">
+                        <data type="string"/>
+                      </attribute>
+                    </choice>
+                    <optional>
+                      <choice>
+                        <element name="reference_uvw">
+                          <list>
+                            <data type="double"/>
+                            <data type="double"/>
+                            <data type="double"/>
+                          </list>
+                        </element>
+                        <attribute name="reference_uvw">
+                          <list>
+                            <data type="double"/>
+                            <data type="double"/>
+                            <data type="double"/>
+                          </list>
+                        </attribute>
+                      </choice>
+                    </optional>
+                    <optional>
+                      <element name="mu">
+                        <ref name="distribution"/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="phi">
+                        <ref name="distribution"/>
+                      </element>
+                    </optional>
+                  </interleave>
+                </element>
+              </optional>
+              <optional>
+                <element name="energy">
+                  <ref name="distribution"/>
+                </element>
+              </optional>
+              <optional>
                 <choice>
-                  <element name="type">
-                    <data type="string">
-                      <param name="maxLength">16</param>
-                    </data>
+                  <element name="write_initial">
+                    <data type="boolean"/>
                   </element>
-                  <attribute name="type">
-                    <data type="string">
-                      <param name="maxLength">16</param>
-                    </data>
+                  <attribute name="write_initial">
+                    <data type="boolean"/>
                   </attribute>
                 </choice>
-                <optional>
-                  <choice>
-                    <element name="length">
-                      <data type="int"/>
-                    </element>
-                    <attribute name="length">
-                      <data type="int"/>
-                    </attribute>
-                  </choice>
-                </optional>
-                <optional>
-                  <choice>
-                    <element name="interpolation">
-                      <data type="string">
-                        <param name="maxLength">10</param>
-                      </data>
-                    </element>
-                    <attribute name="interplation">
-                      <data type="string">
-                        <param name="maxLength">10</param>
-                      </data>
-                    </attribute>
-                  </choice>
-                </optional>
-                <optional>
-                  <choice>
-                    <element name="parameters">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </element>
-                    <attribute name="parameters">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </attribute>
-                  </choice>
-                </optional>
-              </interleave>
-            </element>
-          </optional>
-          <optional>
-            <choice>
-              <element name="write_initial">
-                <data type="boolean"/>
-              </element>
-              <attribute name="write_initial">
-                <data type="boolean"/>
-              </attribute>
-            </choice>
-          </optional>
-        </interleave>
+              </optional>
+            </interleave>
+          </start>
+          <define name="distribution">
+            <interleave>
+              <choice>
+                <element name="type">
+                  <data type="string">
+                    <param name="maxLength">16</param>
+                  </data>
+                </element>
+                <attribute name="type">
+                  <data type="string">
+                    <param name="maxLength">16</param>
+                  </data>
+                </attribute>
+              </choice>
+              <optional>
+                <choice>
+                  <element name="interpolation">
+                    <data type="string"/>
+                  </element>
+                  <attribute name="interpolation">
+                    <data type="string"/>
+                  </attribute>
+                </choice>
+              </optional>
+              <optional>
+                <choice>
+                  <element name="parameters">
+                    <list>
+                      <oneOrMore>
+                        <data type="double"/>
+                      </oneOrMore>
+                    </list>
+                  </element>
+                  <attribute name="parameters">
+                    <list>
+                      <oneOrMore>
+                        <data type="double"/>
+                      </oneOrMore>
+                    </list>
+                  </attribute>
+                </choice>
+              </optional>
+            </interleave>
+          </define>
+        </grammar>
       </element>
-    </optional>
+    </zeroOrMore>
     <optional>
       <element name="state_point">
         <choice>

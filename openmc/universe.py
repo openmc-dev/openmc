@@ -50,7 +50,7 @@ class Cell(object):
         Unique identifier for the cell
     name : str
         Name of the cell
-    fill : Material or Universe or Lattice or 'void'
+    fill : Material or Universe or Lattice or 'void' or iterable of Material
         Indicates what the region of space is filled with
     region : openmc.region.Region
         Region of space that is assigned to the cell.
@@ -112,6 +112,12 @@ class Cell(object):
         if isinstance(self._fill, openmc.Material):
             string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
                                                 self._fill._id)
+        elif isinstance(self._fill, Iterable):
+            string += '{0: <16}{1}'.format('\tMaterial', '=\t')
+            string += '['
+            string += ', '.join(['void' if m == 'void' else str(m.id)
+                                 for m in self.fill])
+            string += ']\n'
         elif isinstance(self._fill, (Universe, Lattice)):
             string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t',
                                                 self._fill._id)
@@ -203,6 +209,11 @@ class Cell(object):
                 raise ValueError(msg)
 
         elif isinstance(fill, openmc.Material):
+            self._type = 'normal'
+
+        elif isinstance(fill, Iterable):
+            cv.check_type('cell.fill', fill, Iterable,
+                          (openmc.Material, basestring))
             self._type = 'normal'
 
         elif isinstance(fill, Universe):
@@ -386,24 +397,28 @@ class Cell(object):
 
     def create_xml_subelement(self, xml_element):
         element = ET.Element("cell")
-        element.set("id", str(self._id))
+        element.set("id", str(self.id))
 
         if len(self._name) > 0:
-            element.set("name", str(self._name))
+            element.set("name", str(self.name))
 
-        if isinstance(self._fill, openmc.Material):
-            element.set("material", str(self._fill._id))
-
-        elif isinstance(self._fill, (Universe, Lattice)):
-            element.set("fill", str(self._fill._id))
-            self._fill.create_xml_subelement(xml_element)
-
-        elif self._fill.strip().lower() == "void":
+        if isinstance(self.fill, basestring):
             element.set("material", "void")
 
+        elif isinstance(self.fill, openmc.Material):
+            element.set("material", str(self.fill.id))
+
+        elif isinstance(self.fill, Iterable):
+            element.set("material", ' '.join([m if m == 'void' else str(m.id)
+                                              for m in self.fill]))
+
+        elif isinstance(self.fill, (Universe, Lattice)):
+            element.set("fill", str(self.fill.id))
+            self.fill.create_xml_subelement(xml_element)
+
         else:
-            element.set("fill", str(self._fill))
-            self._fill.create_xml_subelement(xml_element)
+            element.set("fill", str(self.fill))
+            self.fill.create_xml_subelement(xml_element)
 
         if self.region is not None:
             # Set the region attribute with the region specification
@@ -430,11 +445,11 @@ class Cell(object):
             # Call the recursive function from the top node
             create_surface_elements(self.region, xml_element)
 
-        if self._translation is not None:
-            element.set("translation", ' '.join(map(str, self._translation)))
+        if self.translation is not None:
+            element.set("translation", ' '.join(map(str, self.translation)))
 
-        if self._rotation is not None:
-            element.set("rotation", ' '.join(map(str, self._rotation)))
+        if self.rotation is not None:
+            element.set("rotation", ' '.join(map(str, self.rotation)))
 
         return element
 
@@ -1080,14 +1095,14 @@ class RectLattice(Lattice):
 
         # For 2D Lattices
         if len(self._dimension) == 2:
-            offset = self._offsets[i[1]-1, i[2]-1, 0, distribcell_index-1]
+            offset = self._offsets[i[3]-1, i[2]-1, i[1]-1, distribcell_index-1]
             offset += self._universes[i[1]-1][i[2]-1].get_cell_instance(path,
                                                               distribcell_index)
 
         # For 3D Lattices
         else:
-            offset = self._offsets[i[1]-1, i[2]-1, i[3]-1, distribcell_index-1]
-            offset += self._universes[i[1]-1][i[2]-1][i[3]-1].get_cell_instance(
+            offset = self._offsets[i[3]-1, i[2]-1, i[1]-1, distribcell_index-1]
+            offset += self._universes[i[3]-1][i[2]-1][i[1]-1].get_cell_instance(
                                                         path, distribcell_index)
 
         return offset

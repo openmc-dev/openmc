@@ -846,6 +846,32 @@ class Tally(object):
 
         return element
 
+    def contains_filter(self, filter_type):
+        """Looks for a filter in the tally that matches a specified type
+
+        Parameters
+        ----------
+        filter_type : str
+            Type of the filter, e.g. 'mesh'
+
+        Returns
+        -------
+        filter_found : bool
+            True if the tally contains a filter of the requested type;
+            otherwise false
+
+        """
+
+        filter_found = False
+
+        # Look through all of this Tally's Filters for the type requested
+        for test_filter in self.filters:
+            if test_filter.type == filter_type:
+                filter_found = True
+                break
+
+        return filter_found
+
     def find_filter(self, filter_type):
         """Return a filter in the tally that matches a specified type
 

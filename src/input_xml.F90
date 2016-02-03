@@ -428,22 +428,7 @@ contains
                &// "' does not exist!")
         end if
 
-        ! Read parameters for spatial distribution
-        if (n < coeffs_reqd) then
-          call fatal_error("Not enough parameters specified for spatial &
-               &distribution of external source.")
-        elseif (n > coeffs_reqd) then
-          call fatal_error("Too many parameters specified for spatial &
-               &distribution of external source.")
-        elseif (n > 0) then
-          allocate(external_source % params_space(n))
-          call get_node_array(node_dist, "parameters", &
-               external_source % params_space)
-        end if
       else
-        call fatal_error("No spatial distribution specified for external &
-             &source.")
-      end if
 
         ! Spatial distribution for external source
         if (check_for_node(node_source, "space")) then

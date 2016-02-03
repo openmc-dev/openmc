@@ -70,10 +70,14 @@ contains
     ! change when sampling fission sites. The following block handles all
     ! absorption (including fission)
 
-    if (mat % fissionable .and. run_mode == MODE_EIGENVALUE) then
-      call create_fission_sites(p)
+    if (mat % fissionable) then
+      call sample_fission(i_nuclide, i_reaction)
+      if (run_mode == MODE_EIGENVALUE) then
+        call create_fission_sites(p, fission_bank, n_bank)
+      elseif (run_mode == MODE_FIXEDSOURCE) then
+        call create_fission_sites(p, p % secondary_bank, p % n_secondary)
+      end if
     end if
-
     ! If survival biasing is being used, the following subroutine adjusts the
     ! weight of the particle. Otherwise, it checks to see if absorption occurs
 
@@ -162,22 +166,24 @@ contains
 ! neutrons produced from fission and creates appropriate bank sites.
 !===============================================================================
 
-  subroutine create_fission_sites(p)
-
+  subroutine create_fission_sites(p, bank_array, size_bank)
     type(Particle), intent(inout) :: p
+    type(Bank),     intent(inout) :: bank_array(:)
+    integer(8),     intent(inout) :: size_bank
 
-    integer :: i            ! loop index
-    integer :: nu           ! actual number of neutrons produced
-    integer :: ijk(3)       ! indices in ufs mesh
-    real(8) :: nu_t         ! total nu
-    real(8) :: mu           ! fission neutron angular cosine
-    real(8) :: phi          ! fission neutron azimuthal angle
-    real(8) :: weight       ! weight adjustment for ufs method
-    logical :: in_mesh      ! source site in ufs mesh?
+    integer :: i                        ! loop index
+    integer :: nu                       ! actual number of neutrons produced
+    integer :: ijk(3)                   ! indices in ufs mesh
+    real(8) :: nu_t                     ! total nu
+    real(8) :: mu                       ! fission neutron angular cosine
+    real(8) :: phi                      ! fission neutron azimuthal angle
+    real(8) :: weight                   ! weight adjustment for ufs method
+    logical :: in_mesh                  ! source site in ufs mesh?
     class(MacroXS_Base), pointer :: xs
 
     ! Get Pointers
     xs => macro_xs(p % material) % obj
+
     ! TODO: Heat generation from fission
 
     ! If uniform fission source weighting is turned on, we increase of decrease
@@ -210,22 +216,35 @@ contains
       nu = int(nu_t) + 1
     end if
 
-    ! Check for fission bank size getting hit
-    if (n_bank + nu > size(fission_bank)) then
-      if (master) call warning("Maximum number of sites in fission bank &
-           &reached. This can result in irreproducible results using different &
-           &numbers of processes/threads.")
+    ! Check for bank size getting hit. For fixed source calculations, this is a
+    ! fatal error. For eigenvalue calculations, it just means that k-effective
+    ! was too high for a single batch.
+    if (size_bank + nu > size(bank_array)) then
+      if (run_mode == MODE_FIXEDSOURCE) then
+        call fatal_error("Secondary particle bank size limit reached. If you &
+             &are running a subcritical multiplication problem, k-effective &
+             &may be too close to one.")
+      else
+        if (master) call warning("Maximum number of sites in fission bank &
+             &reached. This can result in irreproducible results using different &
+             &numbers of processes/threads.")
+      end if
     end if
 
     ! Bank source neutrons
-    if (nu == 0 .or. n_bank == size(fission_bank)) return
+    if (nu == 0 .or. size_bank == size(bank_array)) return
+
+    ! Initialize counter of delayed neutrons encountered for each delayed group
+    ! to zero.
+    nu_d(:) = 0
+
     p % fission = .true. ! Fission neutrons will be banked
-    do i = int(n_bank,4) + 1, int(min(n_bank + nu, int(size(fission_bank),8)),4)
+    do i = int(size_bank,4) + 1, int(min(size_bank + nu, int(size(bank_array),8)),4)
       ! Bank source neutrons by copying particle data
-      fission_bank(i) % xyz = p % coord(1) % xyz
+      bank_array(i) % xyz = p % coord(1) % xyz
 
       ! Set weight of fission bank site
-      fission_bank(i) % wgt = ONE/weight
+      bank_array(i) % wgt = ONE/weight
 
       ! Sample cosine of angle -- fission neutrons are always emitted
       ! isotropically. Sometimes in ACE data, fission reactions actually have
@@ -235,18 +254,18 @@ contains
 
       ! Sample azimuthal angle uniformly in [0,2*pi)
       phi = TWO*PI*prn()
-      fission_bank(i) % uvw(1) = mu
-      fission_bank(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-      fission_bank(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+      bank_array(i) % uvw(1) = mu
+      bank_array(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+      bank_array(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
-      fission_bank(i) % g = sample_fission_energy(xs, p % g, fission_bank(i) % uvw)
-      fission_bank(i) % E = energy_bin_avg(fission_bank(i) % g)
+      bank_array(i) % g = sample_fission_energy(xs, p % g, fission_bank(i) % uvw)
+      bank_array(i) % E = energy_bin_avg(fission_bank(i) % g)
     end do
 
     ! increment number of bank sites
-    n_bank = min(n_bank + nu, int(size(fission_bank),8))
+    size_bank = min(size_bank + nu, int(size(bank_array),8))
 
     ! Store total weight banked for analog fission tallies
     p % n_bank   = nu

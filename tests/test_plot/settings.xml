@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<settings>
+
+  <eigenvalue>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <particles>1000</particles>
+  </eigenvalue>
+
+  <source>
+    <space type="box">
+      <parameters>-4 -4 -4  4  4  4</parameters>
+    </space>
+  </source>
+
+  <entropy>
+    <dimension>5 4 3</dimension>
+    <lower_left>-10 -10 -10</lower_left>
+    <upper_right>10 10 10</upper_right>
+  </entropy>
+
+</settings>

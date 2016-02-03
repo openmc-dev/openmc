@@ -15,8 +15,9 @@ openmc.egg-info/
 # Inputs generated from Python API
 examples/python/**/*.xml
 
-# emacs backups
+# emacs and vim backups
 *~
+*.swp
 
 # OpenMC statepoints
 *.binary
@@ -42,6 +43,8 @@ results_test.dat
 
 # Test build files
 tests/build/
+tests/coverage/
+tests/memcheck/
 tests/ctestscript.run
 
 # HDF5 files
@@ -59,6 +62,7 @@ data/nndc
 
 #Images
 *.ppm
+*.voxel
 
 # PyCharm project configuration files
 .idea

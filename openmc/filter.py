@@ -35,8 +35,8 @@ class Filter(object):
     Attributes
     ----------
     type : str
-        The type of the tally filter.
-    bins : Integral or Iterable of Integral or Iterable of Real
+        The type of the tally filter
+    bins : Integral or Iterable of Real
         The bins for the filter
     num_bins : Integral
         The number of filter bins
@@ -227,12 +227,12 @@ class Filter(object):
 
         self._stride = stride
 
-    def can_merge(self, filter):
+    def can_merge(self, other):
         """Determine if filter can be merged with another.
 
         Parameters
         ----------
-        filter : Filter
+        other : Filter
             Filter to compare with
 
         Returns
@@ -242,11 +242,11 @@ class Filter(object):
 
         """
 
-        if not isinstance(filter, Filter):
+        if not isinstance(other, Filter):
             return False
 
         # Filters must be of the same type
-        elif self.type != filter.type:
+        elif self.type != other.type:
             return False
 
         # Distribcell filters cannot have more than one bin
@@ -264,12 +264,12 @@ class Filter(object):
         else:
             return True
 
-    def merge(self, filter):
+    def merge(self, other):
         """Merge this filter with another.
 
         Parameters
         ----------
-        filter : Filter
+        other : Filter
             Filter to merge with
 
         Returns
@@ -279,16 +279,16 @@ class Filter(object):
 
         """
 
-        if not self.can_merge(filter):
+        if not self.can_merge(other):
             msg = 'Unable to merge "{0}" with "{1}" ' \
-                  'filters'.format(self.type, filter.type)
+                  'filters'.format(self.type, other.type)
             raise ValueError(msg)
 
         # Create deep copy of filter to return as merged filter
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = list(set(np.concatenate((self.bins, filter.bins))))
+        merged_bins = list(set(np.concatenate((self.bins, other.bins))))
         merged_filter.bins = merged_bins
         merged_filter.num_bins = len(merged_bins)
 

@@ -1,10 +1,8 @@
 module string
 
   use constants,     only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL, &
-                           OP_LEFT_PAREN, OP_RIGHT_PAREN, OP_COMPLEMENT, &
-                           OP_INTERSECTION, OP_UNION
+       OP_LEFT_PAREN, OP_RIGHT_PAREN, OP_COMPLEMENT, OP_INTERSECTION, OP_UNION
   use error,         only: fatal_error, warning
-  use global,        only: master
   use simple_string, only: str_to_int, str_to_real
   use stl_vector,    only: VectorInt
 
@@ -48,8 +46,8 @@ contains
         if (i_end > 0) then
           n = n + 1
           if (i_end - i_start + 1 > len(words(n))) then
-            if (master) call warning("The word '" // string(i_start:i_end) &
-                 &// "' is longer than the space allocated for it.")
+            call warning("The word '" // string(i_start:i_end) &
+                 // "' is longer than the space allocated for it.")
           end if
           words(n) = string(i_start:i_end)
           ! reset indices

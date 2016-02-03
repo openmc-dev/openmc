@@ -120,12 +120,14 @@
                 <choice>
                   <value>analog</value>
                   <value>tracklength</value>
+                  <value>collision</value>
                 </choice>
               </element>
               <attribute name="estimator">
                 <choice>
                   <value>analog</value>
                   <value>tracklength</value>
+                  <value>collision</value>
                 </choice>
               </attribute>
             </choice>
@@ -208,7 +210,7 @@
               </oneOrMore>
             </list>
           </element>
-          <optional>
+          <zeroOrMore>
             <element name="trigger">
               <interleave>
                 <choice>
@@ -251,7 +253,7 @@
                 </optional>
               </interleave>
             </element>
-          </optional>
+          </zeroOrMore>
         </interleave>
       </element>
     </zeroOrMore>

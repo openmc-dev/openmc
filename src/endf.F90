@@ -17,6 +17,53 @@ contains
     character(20)       :: string
 
     select case (MT)
+    ! Special reactions for tallies
+    case (SCORE_FLUX)
+      string = "flux"
+    case (SCORE_TOTAL)
+      string = "total"
+    case (SCORE_SCATTER)
+      string = "scatter"
+    case (SCORE_NU_SCATTER)
+      string = "nu-scatter"
+    case (SCORE_SCATTER_N)
+      string = "scatter-n"
+    case (SCORE_SCATTER_PN)
+      string = "scatter-pn"
+    case (SCORE_NU_SCATTER_N)
+      string = "nu-scatter-n"
+    case (SCORE_NU_SCATTER_PN)
+      string = "nu-scatter-pn"
+    case (SCORE_TRANSPORT)
+      string = "transport"
+    case (SCORE_N_1N)
+      string = "n1n"
+    case (SCORE_ABSORPTION)
+      string = "absorption"
+    case (SCORE_FISSION)
+      string = "fission"
+    case (SCORE_NU_FISSION)
+      string = "nu-fission"
+    case (SCORE_DELAYED_NU_FISSION)
+      string = "delayed-nu-fission"
+    case (SCORE_KAPPA_FISSION)
+      string = "kappa-fission"
+    case (SCORE_CURRENT)
+      string = "current"
+    case (SCORE_FLUX_YN)
+      string = "flux-yn"
+    case (SCORE_TOTAL_YN)
+      string = "total-yn"
+    case (SCORE_SCATTER_YN)
+      string = "scatter-yn"
+    case (SCORE_NU_SCATTER_YN)
+      string = "nu-scatter-yn"
+    case (SCORE_EVENTS)
+      string = "events"
+    case (SCORE_INVERSE_VELOCITY)
+      string = "inverse-velocity"
+
+    ! Normal ENDF-based reactions
     case (TOTAL_XS)
       string = '(n,total)'
     case (ELASTIC)

@@ -63,8 +63,6 @@ class MGXSTestHarness(PyAPITestHarness):
                 df = mgxs.get_pandas_dataframe()
                 outstr += df.to_string()
 
-        print(outstr)
-
         # Hash the results if necessary
         if hash_output:
             sha512 = hashlib.sha512()

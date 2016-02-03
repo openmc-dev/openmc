@@ -23,12 +23,18 @@ class TestHarness(object):
     def __init__(self, statepoint_name, tallies_present=False):
         self._sp_name = statepoint_name
         self._tallies = tallies_present
+        self.parser = OptionParser()
+        self.parser.add_option('--exe', dest='exe', default='openmc')
+        self.parser.add_option('--mpi_exec', dest='mpi_exec', default=None)
+        self.parser.add_option('--mpi_np', dest='mpi_np', type=int, default=3)
+        self.parser.add_option('--update', dest='update', action='store_true',
+                               default=False)
         self._opts = None
         self._args = None
 
     def main(self):
         """Accept commandline arguments and either run or update tests."""
-        self._parse_args()
+        (self._opts, self._args) = self.parser.parse_args()
         if self._opts.update:
             self.update_results()
         else:
@@ -55,15 +61,6 @@ class TestHarness(object):
             self._overwrite_results()
         finally:
             self._cleanup()
-
-    def _parse_args(self):
-        parser = OptionParser()
-        parser.add_option('--exe', dest='exe', default='openmc')
-        parser.add_option('--mpi_exec', dest='mpi_exec', default=None)
-        parser.add_option('--mpi_np', dest='mpi_np', type=int, default=3)
-        parser.add_option('--update', dest='update', action='store_true',
-                          default=False)
-        (self._opts, self._args) = parser.parse_args()
 
     def _run_openmc(self):
         executor = Executor()
@@ -152,51 +149,7 @@ class HashedTestHarness(TestHarness):
     """Specialized TestHarness that hashes the results."""
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
-        return TestHarness._get_results(self, True)
-
-
-class PlotTestHarness(TestHarness):
-    """Specialized TestHarness for running OpenMC plotting tests."""
-    def __init__(self, plot_names):
-        self._plot_names = plot_names
-        self._opts = None
-        self._args = None
-
-    def _run_openmc(self):
-        executor = Executor()
-        returncode = executor.plot_geometry(openmc_exec=self._opts.exe)
-        assert returncode == 0, 'OpenMC did not exit successfully.'
-
-    def _test_output_created(self):
-        """Make sure *.ppm has been created."""
-        for fname in self._plot_names:
-            assert os.path.exists(os.path.join(os.getcwd(), fname)), \
-                 'Plot output file does not exist.'
-
-    def _cleanup(self):
-        TestHarness._cleanup(self)
-        output = glob.glob(os.path.join(os.getcwd(), '*.ppm'))
-        for f in output:
-            if os.path.exists(f):
-                os.remove(f)
-
-    def _get_results(self):
-        """Return a string hash of the plot files."""
-        # Find the plot files.
-        plot_files = glob.glob(os.path.join(os.getcwd(), '*.ppm'))
-
-        # Read the plot files.
-        outstr = bytes()
-        for fname in sorted(plot_files):
-            with open(fname, 'rb') as fh:
-                outstr += fh.read()
-
-        # Hash the information and return.
-        sha512 = hashlib.sha512()
-        sha512.update(outstr)
-        outstr = sha512.hexdigest()
-
-        return outstr
+        return super(HashedTestHarness, self)._get_results(True)
 
 
 class CMFDTestHarness(TestHarness):
@@ -208,7 +161,7 @@ class CMFDTestHarness(TestHarness):
         sp = StatePoint(statepoint)
 
         # Write out the eigenvalue and tallies.
-        outstr = TestHarness._get_results(self)
+        outstr = super(CMFDTestHarness, self)._get_results()
 
         # Write out CMFD data.
         outstr += 'cmfd indices\n'
@@ -234,6 +187,23 @@ class CMFDTestHarness(TestHarness):
 
 class ParticleRestartTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC particle restart tests."""
+    def _run_openmc(self):
+        # Set arguments
+        args = {'openmc_exec': self._opts.exe}
+        if self._opts.mpi_exec is not None:
+            args.update({'mpi_procs': self._opts.mpi_np,
+                         'mpi_exec': self._opts.mpi_exec})
+
+        # Initial run
+        executor = Executor()
+        returncode = executor.run_simulation(**args)
+        assert returncode == 0, 'OpenMC did not exit successfully.'
+
+        # Run particle restart
+        args.update({'restart_file': self._sp_name})
+        returncode = executor.run_simulation(**args)
+        assert returncode == 0, 'OpenMC did not exit successfully.'
+
     def _test_output_created(self):
         """Make sure the restart file has been created."""
         particle = glob.glob(os.path.join(os.getcwd(), self._sp_name))
@@ -274,11 +244,22 @@ class ParticleRestartTestHarness(TestHarness):
 
 class PyAPITestHarness(TestHarness):
     def __init__(self, statepoint_name, tallies_present=False, mg=False):
-        TestHarness.__init__(self, statepoint_name, tallies_present)
+                super(PyAPITestHarness, self).__init__(statepoint_name, tallies_present)
+        self.parser.add_option('--build-inputs', dest='build_only',
+                               action='store_true', default=False)
         if mg:
             self._input_set = MGInputSet()
         else:
             self._input_set = InputSet()
+    def main(self):
+        """Accept commandline arguments and either run or update tests."""
+        (self._opts, self._args) = self.parser.parse_args()
+        if self._opts.build_only:
+            self._build_inputs()
+        elif self._opts.update:
+            self.update_results()
+        else:
+            self.execute_test()
 
     def execute_test(self):
         """Build input XMLs, run OpenMC, and verify correct results."""
@@ -318,7 +299,8 @@ class PyAPITestHarness(TestHarness):
 
     def _get_inputs(self):
         """Return a hash digest of the input XML files."""
-        xmls = ('geometry.xml', 'tallies.xml', 'materials.xml', 'settings.xml')
+        xmls = ('geometry.xml', 'tallies.xml', 'materials.xml', 'settings.xml',
+                'plots.xml')
         xmls = [os.path.join(os.getcwd(), fname) for fname in xmls]
         outstr = '\n'.join([open(fname).read() for fname in xmls
                             if os.path.exists(fname)])
@@ -350,7 +332,7 @@ class PyAPITestHarness(TestHarness):
 
     def _cleanup(self):
         """Delete XMLs, statepoints, tally, and test files."""
-        TestHarness._cleanup(self)
+        super(PyAPITestHarness, self)._cleanup()
         output = [os.path.join(os.getcwd(), 'materials.xml')]
         output.append(os.path.join(os.getcwd(), 'geometry.xml'))
         output.append(os.path.join(os.getcwd(), 'settings.xml'))

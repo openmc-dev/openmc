@@ -3,7 +3,7 @@ module ace
   use ace_header, only: Nuclide, Reaction, SAlphaBeta, XsListing
   use constants
   use distribution_univariate, only: Uniform, Equiprobable, Tabular
-  use endf, only: reaction_name, is_fission, is_disappearance
+  use endf, only: is_fission, is_disappearance
   use energy_distribution, only: TabularEquiprobable, LevelInelastic, &
        ContinuousTabular, MaxwellEnergy, Evaporation, WattEnergy, NBodyPhaseSpace
   use error, only: fatal_error, warning

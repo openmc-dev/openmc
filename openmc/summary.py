@@ -367,9 +367,9 @@ class Summary(object):
                 # Set the universes for the lattice
                 lattice.universes = universes
 
+                # Set the distribcell offsets for the lattice
                 if offsets is not None:
-                    offsets = np.swapaxes(offsets, 0, 2)
-                    lattice.offsets = offsets
+                    lattice.offsets = offsets[:, ::-1, :]
 
                 # Add the Lattice to the global dictionary of all Lattices
                 self.lattices[index] = lattice

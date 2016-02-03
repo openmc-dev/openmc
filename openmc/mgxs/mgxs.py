@@ -939,8 +939,12 @@ class MGXS(object):
 
         # Assign sliced energy group structure to sliced MGXS
         if groups:
-            energy_filter = slice_xs.tallies.values()[0].find_filter('energy')
-            slice_xs.energy_groups.group_edges = energy_filter.bins
+            new_group_edges = []
+            for group in groups:
+                group_edges = self.energy_groups.get_group_bounds(group)
+                new_group_edges.extend(group_edges)
+            new_group_edges = np.unique(new_group_edges)
+            slice_xs.energy_groups.group_edges = sorted(new_group_edges)
 
         # Assign sliced nuclides to sliced MGXS
         if nuclides:
@@ -1850,11 +1854,12 @@ class ScatterMatrixXS(MGXS):
 
         """
 
+        # Call super class method and null out derived tallies
         slice_xs = super(ScatterMatrixXS, self).get_slice(nuclides, groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 
-        # Build lists of filters and filter bins to slice
+        # Slice energy groups if needed
         if len(groups) != 0:
             filter_bins = []
             for group in groups:
@@ -1862,7 +1867,7 @@ class ScatterMatrixXS(MGXS):
                 filter_bins.append(group_bounds)
             filter_bins = [tuple(filter_bins)]
 
-            # Slice each of the tallies across nuclides and energy groups
+            # Slice each of the tallies across energyout groups
             for tally_type, tally in slice_xs.tallies.items():
                 if tally.contains_filter('energyout'):
                     tally_slice = tally.get_slice(filters=['energyout'],
@@ -2214,6 +2219,63 @@ class Chi(MGXS):
             nu_fission_in.add_filter(energy_filter)
 
         return self._xs_tally
+
+    def get_slice(self, nuclides=[], groups=[]):
+        """Build a sliced MGXS for the specified nuclides and energy groups.
+
+        This method constructs a new MGXS to encapsulate a subset of the data
+        represented by this MGXS. The subset of data to include in the tally
+        slice is determined by the nuclides and energy groups specified in
+        the input parameters.
+
+        Parameters
+        ----------
+        nuclides : list of str
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
+        groups : list of Integral
+            A list of energy group indices starting at 1 for the high energies
+            (e.g., [1, 2, 3]; default is [])
+
+        Returns
+        -------
+        MGXS
+            A new tally which encapsulates the subset of data requested for the
+            nuclide(s) and/or energy group(s) requested in the parameters.
+
+        """
+
+        # Temporarily remove energy filter from nu-fission-in since its
+        # group structure will work in super MGXS.get_slice(...) method
+        nu_fission_in = self.tallies['nu-fission-in']
+        energy_filter = nu_fission_in.find_filter('energy')
+        nu_fission_in.remove_filter(energy_filter)
+
+        # Call super class method and null out derived tallies
+        slice_xs = super(Chi, self).get_slice(nuclides, groups)
+        slice_xs._rxn_rate_tally = None
+        slice_xs._xs_tally = None
+
+        # Slice energy groups if needed
+        if len(groups) != 0:
+            filter_bins = []
+            for group in groups:
+                group_bounds = self.energy_groups.get_group_bounds(group)
+                filter_bins.append(group_bounds)
+            filter_bins = [tuple(filter_bins)]
+
+            # Slice nu-fission-out tally along energyout filter
+            nu_fission_out = slice_xs.tallies['nu-fission-out']
+            tally_slice = nu_fission_out.get_slice(filters=['energyout'],
+                                                   filter_bins=filter_bins)
+            slice_xs._tallies['nu-fission-out'] = tally_slice
+
+        # Add energy filter back to nu-fission-in tallies
+        self.tallies['nu-fission-in'].add_filter(energy_filter)
+        slice_xs._tallies['nu-fission-in'].add_filter(energy_filter)
+
+        slice_xs.sparse = self.sparse
+        return slice_xs
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing', value='mean'):

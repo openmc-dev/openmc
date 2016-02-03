@@ -22,7 +22,6 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         # Extract all universes from the full core geometry
         geometry = self._input_set.geometry.geometry
         all_univs = geometry.get_all_universes()
-        print(all_univs.keys())
 
         # Extract universes encapsulating fuel and water assemblies
         water = all_univs[7]
@@ -55,7 +54,7 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         # Over-ride geometry in the input set with this 3x3 lattice
         self._input_set.geometry.geometry.root_universe = root_univ
 
-        # Initialize a "distribcell" filter for the cold fuel pin cell
+        # Initialize a "distribcell" filter for the fuel pin cell
         distrib_filter = openmc.Filter(type='distribcell', bins=[27])
 
         # Initialize the tallies
@@ -70,11 +69,14 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         # Assign the tallies file to the input set
         self._input_set.tallies = tallies_file
 
-        # Specify summary output and correct source sampling box
+
         self._input_set.build_default_settings()
+
+        # Specify summary output and correct source sampling box
+        source = Source(space=Box([-32, -32, 0], [32, 32, 32]))
+        source.only_fissionable = True
+        self._input_set.settings.source = source
         self._input_set.settings.output = {'summary': True}
-        self._input_set.settings.source = Source(space=Box(
-            [0, 0, 0], [32.13, 32.13, 32.13]))
 
         # Write input XML files
         self._input_set.export()

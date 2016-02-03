@@ -214,8 +214,8 @@ module constants
 
   ! MGXS Table Types
   integer, parameter :: &
-       ISOTROPIC   = 1, & ! Isotropically Weighted Data
-       ANGLE       = 2    ! Data by Angular Bins
+       MGXS_ISOTROPIC   = 1, & ! Isotropically Weighted Data
+       MGXS_ANGLE       = 2    ! Data by Angular Bins
 
   ! Fission neutron emission (nu) type
   integer, parameter ::   &

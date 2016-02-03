@@ -106,22 +106,22 @@ contains
             call get_node_value(node_xsdata, "representation", temp_str)
             temp_str = trim(to_lower(temp_str))
             if (temp_str == 'isotropic' .or. temp_str == 'iso') then
-              representation = ISOTROPIC
+              representation = MGXS_ISOTROPIC
             else if (temp_str == 'angle') then
-              representation = ANGLE
+              representation = MGXS_ANGLE
             else
               call fatal_error("Invalid Data Representation!")
             end if
           else
             ! Default to isotropic representation
-            representation = ISOTROPIC
+            representation = MGXS_ISOTROPIC
           end if
 
           ! Now allocate accordingly
           select case(representation)
-          case(ISOTROPIC)
+          case(MGXS_ISOTROPIC)
             allocate(Nuclide_Iso :: nuclides_MG(i_nuclide) % obj)
-          case(ANGLE)
+          case(MGXS_ANGLE)
             allocate(Nuclide_Angle :: nuclides_MG(i_nuclide) % obj)
           end select
 
@@ -677,17 +677,17 @@ contains
       legendre_mu_points = nuclides_MG(mat % nuclide(1)) % obj % legendre_mu_points
       select type(nuc => nuclides_MG(mat % nuclide(1)) % obj)
       type is (Nuclide_Iso)
-        representation = ISOTROPIC
+        representation = MGXS_ISOTROPIC
       type is (Nuclide_Angle)
-        representation = ANGLE
+        representation = MGXS_ANGLE
       end select
       scatt_type = nuclides_MG(mat % nuclide(1)) % obj % scatt_type
 
       ! Now allocate accordingly
       select case(representation)
-      case(ISOTROPIC)
+      case(MGXS_ISOTROPIC)
         allocate(MacroXS_Iso :: macro_xs(i_mat) % obj)
-      case(ANGLE)
+      case(MGXS_ANGLE)
         allocate(MacroXS_Angle :: macro_xs(i_mat) % obj)
       end select
 

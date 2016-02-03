@@ -19,7 +19,7 @@ module ace
   use secondary_correlated, only: CorrelatedAngleEnergy
   use secondary_kalbach, only: KalbachMann
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
-  use simple_string, only: to_str, to_lower
+  use string, only: to_str, to_lower
 
   implicit none
 

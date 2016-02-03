@@ -12,7 +12,7 @@ module summary
   use nuclide_header
   use output,          only: time_stamp
   use surface_header
-  use simple_string,   only: to_str
+  use string,          only: to_str
   use tally_header,    only: TallyObject
 
   use hdf5

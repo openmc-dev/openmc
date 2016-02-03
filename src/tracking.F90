@@ -13,7 +13,7 @@ module tracking
   use physics,         only: collision
   use physics_mg,      only: collision_mg
   use random_lcg,      only: prn
-  use simple_string,   only: to_str
+  use string,          only: to_str
   use tally,           only: score_analog_tally, score_tracklength_tally, &
                              score_collision_tally, score_surface_current
   use track_output,    only: initialize_particle_track, write_particle_track, &

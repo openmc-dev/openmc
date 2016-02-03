@@ -16,7 +16,7 @@ module output
   use particle_header, only: LocalCoord, Particle
   use plot_header
   use sab_header,      only: SAlphaBeta
-  use simple_string,   only: to_upper, to_str
+  use string,          only: to_upper, to_str
   use tally_header,    only: TallyObject
 
   implicit none

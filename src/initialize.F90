@@ -1,32 +1,31 @@
 module initialize
 
-  use ace,              only: read_ace_xs, same_nuclide_list
-  use bank_header,      only: Bank
+  use ace,             only: read_ace_xs, same_nuclide_list
+  use bank_header,     only: Bank
   use constants
-  use dict_header,      only: DictIntInt, ElemKeyValueII
-  use set_header,       only: SetInt
-  use energy_grid,      only: logarithmic_grid, grid_method, unionized_grid
-  use error,            only: fatal_error, warning
-  use geometry,         only: neighbor_lists, count_instance, calc_offsets,    &
-                              maximum_levels
-  use geometry_header,  only: Cell, Universe, Lattice, RectLattice, HexLattice,&
-                              &BASE_UNIVERSE
+  use dict_header,     only: DictIntInt, ElemKeyValueII
+  use set_header,      only: SetInt
+  use energy_grid,     only: logarithmic_grid, grid_method, unionized_grid
+  use error,           only: fatal_error, warning
+  use geometry,        only: neighbor_lists, count_instance, calc_offsets,    &
+                             maximum_levels
+  use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
+                             &BASE_UNIVERSE
   use global
-  use hdf5_interface,   only: file_open, read_dataset, file_close, hdf5_bank_t,&
-                              hdf5_tallyresult_t, hdf5_integer8_t
-  use input_xml,        only: read_input_xml, cells_in_univ_dict, read_plots_xml
-  use material_header,  only: Material
-  use mgxs_data,        only: read_mgxs, same_nuclide_mg_list, create_macro_xs
-  use output,           only: title, header, print_version, write_message,     &
-                              print_usage, write_xs_summary, print_plot
-  use random_lcg,       only: initialize_prng
-  use state_point,      only: load_state_point
-  use simple_string,    only: to_str, starts_with, ends_with
-  use string,           only: str_to_int
-  use summary,          only: write_summary
-  use tally_header,     only: TallyObject, TallyResult, TallyFilter
-  use tally_initialize, only: configure_tallies
-  use tally,            only: init_tally_routines
+  use hdf5_interface,  only: file_open, read_dataset, file_close, hdf5_bank_t,&
+                             hdf5_tallyresult_t, hdf5_integer8_t
+  use input_xml,       only: read_input_xml, cells_in_univ_dict, read_plots_xml
+  use material_header, only: Material
+  use mgxs_data,       only: read_mgxs, same_nuclide_mg_list, create_macro_xs
+  use output,          only: title, header, print_version, write_message,     &
+                             print_usage, write_xs_summary, print_plot
+  use random_lcg,      only: initialize_prng
+  use state_point,     only: load_state_point
+  use string,          only: to_str, starts_with, ends_with, str_to_int
+  use summary,         only: write_summary
+  use tally_header,    only: TallyObject, TallyResult, TallyFilter
+  use tally_initialize,only: configure_tallies
+  use tally,           only: init_tally_routines
 
 #ifdef MPI
   use message_passing

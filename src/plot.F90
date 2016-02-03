@@ -14,7 +14,7 @@ module plot
   use ppmlib,          only: Image, init_image, allocate_image, &
                              deallocate_image, set_pixel
   use progress_header, only: ProgressBar
-  use simple_string,   only: to_str
+  use string,          only: to_str
 
   use hdf5
 

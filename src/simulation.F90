@@ -19,7 +19,7 @@ module simulation
   use random_lcg,      only: set_particle_seed
   use source,          only: initialize_source
   use state_point,     only: write_state_point, write_source_point
-  use simple_string,   only: to_str
+  use string,          only: to_str
   use tally,           only: synchronize_tallies, setup_active_usertallies, &
                              reset_result
   use trigger,         only: check_triggers

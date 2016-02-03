@@ -18,8 +18,7 @@ module state_point
   use global
   use hdf5_interface
   use output,             only: write_message, time_stamp
-  use simple_string,      only: to_str, count_digits
-  use string,             only: zero_padded
+  use string,             only: to_str, count_digits, zero_padded
   use tally_header,       only: TallyObject
   use mesh_header,        only: RegularMesh
   use dict_header,        only: ElemKeyValueII, ElemKeyValueCI

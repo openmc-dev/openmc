@@ -449,10 +449,6 @@ class StatePoint(object):
     def summary(self):
         return self._summary
 
-    @property
-    def with_summary(self):
-        return False if self.summary is None else True
-
     @sparse.setter
     def sparse(self, sparse):
         """Convert tally data from NumPy arrays to SciPy list of lists (LIL)

@@ -74,7 +74,7 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
 
         # Specify summary output and correct source sampling box
         source = Source(space=Box([-32, -32, 0], [32, 32, 32]))
-        source.only_fissionable = True
+        source.space.only_fissionable = True
         self._input_set.settings.source = source
         self._input_set.settings.output = {'summary': True}
 

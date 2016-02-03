@@ -930,8 +930,11 @@ class MGXS(object):
         # Slice each of the tallies across nuclides and energy groups
         for tally_type, tally in slice_xs.tallies.items():
             slice_nuclides = [nuc for nuc in nuclides if nuc in tally.nuclides]
-            tally_slice = tally.get_slice(filters=filters,
-                filter_bins=filter_bins, nuclides=slice_nuclides)
+            if len(groups) != 0 and tally.contains_filter('energy'):
+                tally_slice = tally.get_slice(filters=filters,
+                    filter_bins=filter_bins, nuclides=slice_nuclides)
+            else:
+                tally_slice = tally.get_slice(nuclides=slice_nuclides)
             slice_xs.tallies[tally_type] = tally_slice
 
         # Assign sliced energy group structure to sliced MGXS
@@ -1821,6 +1824,53 @@ class ScatterMatrixXS(MGXS):
     def correction(self, correction):
         cv.check_value('correction', correction, ('P0', None))
         self._correction = correction
+
+    def get_slice(self, nuclides=[], groups=[]):
+        """Build a sliced MGXS for the specified nuclides and energy groups.
+
+        This method constructs a new MGXS to encapsulate a subset of the data
+        represented by this MGXS. The subset of data to include in the tally
+        slice is determined by the nuclides and energy groups specified in
+        the input parameters.
+
+        Parameters
+        ----------
+        nuclides : list of str
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
+        groups : list of Integral
+            A list of energy group indices starting at 1 for the high energies
+            (e.g., [1, 2, 3]; default is [])
+
+        Returns
+        -------
+        MGXS
+            A new tally which encapsulates the subset of data requested for the
+            nuclide(s) and/or energy group(s) requested in the parameters.
+
+        """
+
+        slice_xs = super(ScatterMatrixXS, self).get_slice(nuclides, groups)
+        slice_xs._rxn_rate_tally = None
+        slice_xs._xs_tally = None
+
+        # Build lists of filters and filter bins to slice
+        if len(groups) != 0:
+            filter_bins = []
+            for group in groups:
+                group_bounds = self.energy_groups.get_group_bounds(group)
+                filter_bins.append(group_bounds)
+            filter_bins = [tuple(filter_bins)]
+
+            # Slice each of the tallies across nuclides and energy groups
+            for tally_type, tally in slice_xs.tallies.items():
+                if tally.contains_filter('energyout'):
+                    tally_slice = tally.get_slice(filters=['energyout'],
+                                                  filter_bins=filter_bins)
+                    slice_xs.tallies[tally_type] = tally_slice
+
+        slice_xs.sparse = self.sparse
+        return slice_xs
 
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all', xs_type='macro',

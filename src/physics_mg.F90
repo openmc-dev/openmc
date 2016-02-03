@@ -8,6 +8,7 @@ module physics_mg
   use macroxs_header,         only: MacroXS_Base, MacroXSContainer
   use macroxs,                only: sample_fission_energy, sample_scatter
   use material_header,        only: Material
+  use math,                   only: rotate_angle
   use mesh,                   only: get_mesh_indices
   use output,                 only: write_message
   use particle_header,        only: Particle
@@ -16,7 +17,6 @@ module physics_mg
   use random_lcg,             only: prn
   use scattdata_header
   use string,                 only: to_str
-  use spectra,                only: rotate_angle
 
   implicit none
 

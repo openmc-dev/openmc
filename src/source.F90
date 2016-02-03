@@ -14,7 +14,7 @@ module source
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream
   use search,           only: binary_search
   use string,           only: to_str
-  use spectra
+  use math
   use state_point,      only: read_source_bank, write_source_bank
 
 #ifdef MPI

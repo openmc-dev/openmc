@@ -3,7 +3,7 @@ module distribution_multivariate
   use constants,               only: ONE, TWO, PI
   use distribution_univariate, only: Distribution
   use random_lcg,              only: prn
-  use spectra,                 only: rotate_angle
+  use math,                    only: rotate_angle
 
   implicit none
 

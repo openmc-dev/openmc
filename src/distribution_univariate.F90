@@ -4,7 +4,7 @@ module distribution_univariate
        MAX_LINE_LEN, MAX_WORD_LEN
   use error,      only: fatal_error
   use random_lcg, only: prn
-  use spectra,    only: maxwell_spectrum, watt_spectrum
+  use math,       only: maxwell_spectrum, watt_spectrum
   use string,     only: to_lower
   use xml_interface
 

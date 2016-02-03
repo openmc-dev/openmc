@@ -18,7 +18,7 @@ module physics
   use random_lcg,             only: prn
   use search,                 only: binary_search
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
-  use simple_string,          only: to_str
+  use string,                 only: to_str
   use spectra
 
   implicit none

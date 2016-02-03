@@ -10,7 +10,7 @@ module geometry
   use particle_restart_write, only: write_particle_restart
   use surface_header
   use stl_vector,             only: VectorInt
-  use simple_string,          only: to_str
+  use string,                 only: to_str
   use tally,                  only: score_surface_current
 
   implicit none

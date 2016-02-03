@@ -45,10 +45,10 @@ contains
   subroutine read_cmfd_xml()
 
     use constants, only: ZERO, ONE
-    use error,         only: fatal_error, warning
+    use error,     only: fatal_error, warning
     use global
-    use output,        only: write_message
-    use simple_string, only: to_lower
+    use output,    only: write_message
+    use string,    only: to_lower
     use xml_interface
     use, intrinsic :: ISO_FORTRAN_ENV
 

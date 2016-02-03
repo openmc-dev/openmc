@@ -6,12 +6,12 @@ module trigger
 
   use constants
   use global
-  use simple_string,    only: to_str
-  use output,           only: warning, write_message
-  use mesh,             only: mesh_indices_to_bin
-  use mesh_header,      only: RegularMesh
-  use trigger_header,   only: TriggerObject
-  use tally,            only: TallyObject
+  use string,         only: to_str
+  use output,         only: warning, write_message
+  use mesh,           only: mesh_indices_to_bin
+  use mesh_header,    only: RegularMesh
+  use trigger_header, only: TriggerObject
+  use tally,          only: TallyObject
 
   implicit none
 

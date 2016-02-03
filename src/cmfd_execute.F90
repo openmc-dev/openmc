@@ -89,9 +89,9 @@ contains
 
   subroutine calc_fission_source()
 
-    use constants,     only: CMFD_NOACCEL, ZERO, TWO
-    use global,        only: cmfd, cmfd_coremap, master, entropy_on, current_batch
-    use simple_string, only: to_str
+    use constants, only: CMFD_NOACCEL, ZERO, TWO
+    use global,    only: cmfd, cmfd_coremap, master, entropy_on, current_batch
+    use string,    only: to_str
 
 #ifdef MPI
     use global,     only: mpi_err
@@ -213,14 +213,14 @@ contains
 
   subroutine cmfd_reweight(new_weights)
 
-    use constants,     only: ZERO, ONE
-    use error,         only: warning, fatal_error
-    use global,        only: meshes, source_bank, work, n_user_meshes, cmfd, &
-                             master
-    use mesh_header,   only: RegularMesh
-    use mesh,          only: count_bank_sites, get_mesh_indices
-    use search,        only: binary_search
-    use simple_string, only: to_str
+    use constants,   only: ZERO, ONE
+    use error,       only: warning, fatal_error
+    use global,      only: meshes, source_bank, work, n_user_meshes, cmfd, &
+                           master
+    use mesh_header, only: RegularMesh
+    use mesh,        only: count_bank_sites, get_mesh_indices
+    use search,      only: binary_search
+    use string,      only: to_str
 
 #ifdef MPI
     use global,      only: mpi_err

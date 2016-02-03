@@ -15,7 +15,7 @@ module physics_mg
   use physics_common
   use random_lcg,             only: prn
   use scattdata_header
-  use simple_string,          only: to_str
+  use string,                 only: to_str
   use spectra,                only: rotate_angle
 
   implicit none

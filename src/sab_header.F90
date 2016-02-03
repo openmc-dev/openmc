@@ -3,7 +3,7 @@ module sab_header
   use, intrinsic :: ISO_FORTRAN_ENV
 
   use constants
-  use simple_string, only: to_str
+  use string, only: to_str
 
   implicit none
 

@@ -17,8 +17,8 @@ module input_xml
   use random_lcg,       only: prn, seed
   use surface_header
   use stl_vector,       only: VectorInt
-  use simple_string,    only: to_lower, to_str, starts_with, ends_with
-  use string,           only: str_to_int, str_to_real, tokenize
+  use string,           only: str_to_int, str_to_real, tokenize, &
+                              to_lower, to_str, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
   use xml_interface

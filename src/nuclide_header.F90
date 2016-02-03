@@ -7,8 +7,7 @@ module nuclide_header
   use endf,        only: reaction_name
   use list_header, only: ListInt
   use math,        only: evaluate_legendre
-  !use scattdata_header
-  use simple_string
+  use string
 
   implicit none
 

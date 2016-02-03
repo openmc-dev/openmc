@@ -1,14 +1,14 @@
 module mgxs_data
 
 use constants
-  use error,            only: fatal_error
+  use error,           only: fatal_error
   use global
   use macroxs_header
-  use material_header,  only: Material
+  use material_header, only: Material
   use nuclide_header
-  use output,           only: write_message
-  use set_header,       only: SetChar
-  use simple_string,    only: to_lower
+  use output,          only: write_message
+  use set_header,      only: SetChar
+  use string,          only: to_lower
   use xml_interface
 
   implicit none

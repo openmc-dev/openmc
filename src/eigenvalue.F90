@@ -4,15 +4,15 @@ module eigenvalue
   use message_passing
 #endif
 
-  use constants,     only: ZERO
-  use error,         only: fatal_error, warning
+  use constants,   only: ZERO
+  use error,       only: fatal_error, warning
   use global
-  use math,          only: t_percentile
-  use mesh,          only: count_bank_sites
-  use mesh_header,   only: RegularMesh
-  use random_lcg,    only: prn, set_particle_seed, prn_skip
-  use search,        only: binary_search
-  use simple_string, only: to_str
+  use math,        only: t_percentile
+  use mesh,        only: count_bank_sites
+  use mesh_header, only: RegularMesh
+  use random_lcg,  only: prn, set_particle_seed, prn_skip
+  use search,      only: binary_search
+  use string,      only: to_str
 
   implicit none
 

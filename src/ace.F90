@@ -1,6 +1,6 @@
 module ace
 
-  use ace_header, only: Nuclide, Reaction, SAlphaBeta, XsListing
+  use ace_header, only: Reaction
   use constants
   use distribution_univariate, only: Uniform, Equiprobable, Tabular
   use endf, only: is_fission, is_disappearance
@@ -11,13 +11,15 @@ module ace
   use global
   use list_header, only: ListInt
   use material_header, only: Material
+  use nuclide_header
   use output, only: write_message
+  use sab_header
   use set_header, only: SetChar
   use secondary_header, only: AngleEnergy
   use secondary_correlated, only: CorrelatedAngleEnergy
   use secondary_kalbach, only: KalbachMann
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
-  use string, only: to_str, to_lower
+  use simple_string, only: to_str, to_lower
 
   implicit none
 
@@ -1472,7 +1474,7 @@ contains
 !===============================================================================
 
   subroutine generate_nu_fission(nuc)
-    type(Nuclide), intent(inout) :: nuc
+    type(Nuclide_CE), intent(inout) :: nuc
 
     integer :: i  ! index on nuclide energy grid
     real(8) :: E  ! energy

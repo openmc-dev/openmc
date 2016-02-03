@@ -3,9 +3,9 @@ module energy_distribution
   use constants, only: ZERO, ONE, TWO, PI, HISTOGRAM, LINEAR_LINEAR
   use endf_header, only: Tab1
   use interpolation, only: interpolate_tab1
-  use math, only: maxwell_spectrum, watt_spectrum
   use random_lcg, only: prn
   use search, only: binary_search
+  use spectra, only: maxwell_spectrum, watt_spectrum
 
 !===============================================================================
 ! ENERGYDISTRIBUTION (abstract) defines an energy distribution that is a

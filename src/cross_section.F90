@@ -105,10 +105,13 @@ contains
       i_nuclide = mat % nuclide(i)
 
       ! Calculate microscopic cross section for this nuclide
-      if (p % E /= micro_xs(i_nuclide) % last_E .or. mat % sqrtkT /= micro_xs(i_nuclide) % last_sqrtkT) then
-        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, i_grid, mat % sqrtkT)
+      if (p % E /= micro_xs(i_nuclide) % last_E &
+           .or. p % sqrtkT /= micro_xs(i_nuclide) % last_sqrtkT) then
+        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, &
+             i_grid, p % sqrtkT)
       else if (i_sab /= micro_xs(i_nuclide) % last_index_sab) then
-        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, i_grid, mat % sqrtkT)
+        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, &
+             i_grid, p % sqrtkT)
       end if
 
       ! ========================================================================
@@ -145,7 +148,8 @@ contains
 ! given index in the nuclides array at the energy of the given particle
 !===============================================================================
 
-  subroutine calculate_nuclide_xs(i_nuclide, i_sab, E, i_mat, i_nuc_mat, i_log_union, sqrtkT)
+  subroutine calculate_nuclide_xs(i_nuclide, i_sab, E, i_mat, i_nuc_mat, &
+       i_log_union, sqrtkT)
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: i_sab     ! index into sab_tables array
     real(8), intent(in) :: E         ! energy
@@ -590,14 +594,20 @@ contains
 ! sections in the resolved resonance regions
 !===============================================================================
 
-  subroutine multipole_eval(multipole, Emev, sqrtkT, sigT, sigA, sigF)
-    type(MultipoleArray), intent(in) :: multipole                    ! The windowed multipole object to process.
-    real(8), intent(in)              :: Emev                         ! The energy at which to evaluate the cross section in MeV
-    real(8), intent(in)              :: sqrtkT                       ! The temperature in the form sqrt(kT (in eV)), at which to evaluate the cross section.
-    real(8), intent(out)             :: sigT                         ! Total cross section
-    real(8), intent(out)             :: sigA                         ! Absorption cross section
-    real(8), intent(out)             :: sigF                         ! Fission cross section
-    complex(8) :: psi_ki   ! The value of the psi-ki function for the asymptotic form
+  subroutine multipole_eval(multipole, Emev, sqrtkT_, sigT, sigA, sigF)
+    type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
+                                                  !  object to process.
+    real(8), intent(in)              :: Emev      ! The energy at which to
+                                                  !  evaluate the cross section
+                                                  !  in MeV
+    real(8), intent(in)              :: sqrtkT_   ! The temperature in the form
+                                                  !  sqrt(kT (in MeV)), at which
+                                                  !  to evaluate the XS.
+    real(8), intent(out)             :: sigT      ! Total cross section
+    real(8), intent(out)             :: sigA      ! Absorption cross section
+    real(8), intent(out)             :: sigF      ! Fission cross section
+    complex(8) :: psi_ki   ! The value of the psi-ki function for the asymptotic
+                           !  form
     complex(8) :: c_temp   ! complex temporary variable
     complex(8) :: w_val    ! The faddeeva function evaluated at Z
     complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
@@ -607,6 +617,7 @@ contains
     real(8) :: dopp_ecoef  ! sqrt(atomic weight ratio * pi / kT) / E
     real(8) :: temp        ! real temporary value
     real(8) :: E           ! energy, eV
+    real(8) :: sqrtkT      ! sqrt(kT (in eV))
     integer :: iP          ! index of pole
     integer :: iC          ! index of curvefit
     integer :: iW          ! index of window
@@ -617,6 +628,7 @@ contains
 
     ! Convert to eV
     E = Emev * 1.0e6_8
+    sqrtkT = sqrtkT_ * 1.0e3_8
 
     sqrtE = sqrt(E)
     invE = ONE/E

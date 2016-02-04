@@ -139,6 +139,9 @@ module geometry_header
                                            !  only)
     integer :: distribcell_index           ! Index corresponding to this cell in
                                            !  distribcell arrays
+    real(8), allocatable :: sqrtkT(:)      ! Square root of k_Boltzmann *
+                                           !  temperature in MeV.  Multiple for
+                                           !  distribcell
 
     ! Rotation matrix and translation vector
     real(8), allocatable :: translation(:)

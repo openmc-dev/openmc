@@ -117,8 +117,7 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
     endif()
     list(APPEND f90flags -g -pedantic -fbounds-check
       -ffpe-trap=invalid,overflow,underflow)
-    list(APPEND cflags -g -pedantic -fbounds-check
-      -ffpe-trap=invalid,overflow,underflow)
+    list(APPEND cflags -g -pedantic -fbounds-check)
     list(APPEND ldflags -g)
   endif()
   if(profile)

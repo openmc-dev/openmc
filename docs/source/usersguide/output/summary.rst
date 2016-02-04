@@ -98,6 +98,10 @@ The current revision of the summary file format is 1.
     material.  The data is an array if the cell uses distributed materials,
     otherwise it is a scalar.
 
+**/geometry/cells/cell <uid>/temperature** (*double[]*)
+
+    Temperature of the cell in Kelvin.
+
 **/geometry/cells/cell <uid>/offset** (*int[]*)
 
     Offsets used for distribcell tally filter. This dataset is present only if

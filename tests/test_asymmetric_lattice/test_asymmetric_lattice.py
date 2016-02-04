@@ -69,7 +69,7 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         # Assign the tallies file to the input set
         self._input_set.tallies = tallies_file
 
-
+        # Build default settings
         self._input_set.build_default_settings()
 
         # Specify summary output and correct source sampling box

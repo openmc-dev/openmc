@@ -150,22 +150,6 @@ contains
                 nuc % reactions(j) % threshold = 1 ! TODO: reconsider implications.
                 nuc % reactions(j) % Q_value = nuc % reactions(j) % Q_value / 1.0D6
 
-                ! Update edist values TODO: does this do anything when
-                ! the version of data is identical?
-                if (associated(nuc % reactions(j) % edist)) then
-                  if (nuc % reactions(j) % edist % law == 3) then
-                    ! Search for first XS /= 0 for the threshold.
-                    searchQ: do k = 1, nuc % n_grid
-                      if (nuc % reactions(j) % sigma(k) /= ZERO) then
-                        if (k /= 1) then
-                          nuc % reactions(j) % edist % data(1) = nuc % energy(k-1)
-                        end if
-                        exit searchQ
-                      end if
-                    end do searchQ
-                  end if
-                end if
-
                 ! Accumulate total
                 if (MT(i) /= N_LEVEL .and. MT(i) <= N_DA) then
                   nuc % total = nuc % total + nuc % reactions(j) % sigma

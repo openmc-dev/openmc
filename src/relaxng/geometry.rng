@@ -66,6 +66,24 @@
           </choice>
           <optional>
             <choice>
+              <element name="temperature">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="temperature">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
               <element name="region">
                 <data type="string"/>
               </element>

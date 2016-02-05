@@ -9,6 +9,8 @@ element geometry {
       (element material { ( xsd:int | "void" )+ } |
         attribute material { ( xsd:int | "void" )+ })
     ) &
+    (element temperature { list { xsd:double+ } } |
+      attribute temperature { list { xsd:double+ } } )? &
     (element region { xsd:string } | attribute region { xsd:string })? &
     (element rotation { list { xsd:double+ } } | attribute rotation { list { xsd:double+ } })? &
     (element translation { list { xsd:double+ } } | attribute translation { list { xsd:double+ } })?

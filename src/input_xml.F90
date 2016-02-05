@@ -1297,6 +1297,40 @@ contains
         call get_node_array(node_cell, "translation", c % translation)
       end if
 
+      ! Read cell temperatures.  If the temperature is not specified, set it to
+      ! ERROR_REAL for now.  During initialization we'll replace ERROR_REAL with
+      ! the temperature from the material data.
+      if (check_for_node(node_cell, "temperature")) then
+        n = get_arraysize_double(node_cell, "temperature")
+        if (n > 0) then
+          ! Make sure this is a "normal" cell.
+          if (c % material(1) == NONE) call fatal_error("Cell " &
+               // trim(to_str(c % id)) // " was specified with a temperature &
+               &but no material. Temperature specification is only valid for &
+               &cells filled with a material.")
+
+          ! Copy in temperatures
+          allocate(c % sqrtkT(n))
+          call get_node_array(node_cell, "temperature", c % sqrtkT)
+
+          ! Make sure all temperatues are positive
+          do j = 1, size(c % sqrtkT)
+            if (c % sqrtkT(j) < ZERO) call fatal_error("Cell " &
+                 // trim(to_str(c % id)) // " was specified with a negative &
+                 &temperature. All cell temperatures must be non-negative.")
+          end do
+
+          ! Convert to sqrt(kT)
+          c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
+        else
+          allocate(c % sqrtkT(1))
+          c % sqrtkT(1) = ERROR_REAL
+        end if
+      else
+        allocate(c % sqrtkT(1))
+        c % sqrtkT = ERROR_REAL
+      end if
+
       ! Add cell to dictionary
       call cell_dict % add_key(c % id, i)
 
@@ -1854,7 +1888,6 @@ contains
     real(8) :: temp_dble     ! temporary double prec. real
     logical :: file_exists   ! does materials.xml exist?
     logical :: sum_density   ! density is taken to be sum of nuclide densities
-    logical :: temp_known    ! Has the temperature yet been defined?
     character(12) :: name    ! name of isotope, e.g. 92235.03c
     character(12) :: alias   ! alias of nuclide, e.g. U-235.03c
     character(MAX_WORD_LEN) :: units    ! units on density
@@ -1936,17 +1969,6 @@ contains
         ! add to the dictionary and skip xs processing
         call material_dict % add_key(mat % id, i)
         cycle
-      end if
-
-      ! =======================================================================
-      ! READ AND PARSE <temperature> TAG
-      if (check_for_node(node_mat, "temperature")) then
-        call get_node_ptr(node_mat, "temperature", node_temp)
-        call get_node_value(node_temp, "value", temp_dble)
-        mat % sqrtkT = sqrt(temp_dble * K_BOLTZMANN * 1.0D6)
-        temp_known = .true.
-      else
-        temp_known = .false.
       end if
 
       ! =======================================================================
@@ -2055,16 +2077,6 @@ contains
              call get_node_value(node_nuc, "xs", name)
         name = trim(temp_str) // "." // trim(name)
 
-        ! If needed, look up temperature
-        if (.not. temp_known) then
-          ! Find xs_listing and set the name/alias according to the listing
-          index_list = xs_listing_dict % get_key(to_lower(name))
-          if(xs_listings(index_list) % kT /= 0.0_8) then
-            mat % sqrtkT = sqrt(xs_listings(index_list) % kT * 1.0D6)
-            temp_known = .true.
-          end if
-        end if
-
         ! save name and density to list
         call list_names % append(name)
 
@@ -2153,16 +2165,6 @@ contains
           temp_str = "data"
         end if
 
-        ! If still needed, look up temperature
-        if (.not. temp_known) then
-          ! Find xs_listing and set kT
-          index_list = xs_listing_dict % get_key(to_lower(list_names % tail % data))
-          if(xs_listings(index_list) % kT /= 0.0_8) then
-            mat % sqrtkT = sqrt(xs_listings(index_list) % kT * 1.0D6)
-            temp_known = .true.
-          end if
-        end if
-
         ! Set ace or iso-in-lab scattering for each nuclide in element
         do k = 1, n_nuc_ele
           if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
@@ -2176,12 +2178,6 @@ contains
         end do
 
       end do NATURAL_ELEMENTS
-
-      ! If still undefined, set the temperature to zero
-      if (.not. temp_known) then
-        mat % sqrtkT = 0.0_8
-        temp_known = .true.
-      end if
 
       ! ========================================================================
       ! COPY NUCLIDES TO ARRAYS IN MATERIAL

@@ -108,6 +108,7 @@ contains
     integer          :: i, j, k, m
     integer, allocatable :: lattice_universes(:,:,:)
     integer, allocatable :: cell_materials(:)
+    real(8), allocatable :: cell_temperatures(:)
     integer(HID_T) :: geom_group
     integer(HID_T) :: cells_group, cell_group
     integer(HID_T) :: surfaces_group, surface_group
@@ -151,6 +152,7 @@ contains
       select case (c%type)
       case (CELL_NORMAL)
         call write_dataset(cell_group, "fill_type", "normal")
+
         if (size(c % material) == 1) then
           if (c % material(1) == MATERIAL_VOID) then
             call write_dataset(cell_group, "material", MATERIAL_VOID)
@@ -170,6 +172,12 @@ contains
           call write_dataset(cell_group, "material", cell_materials)
           deallocate(cell_materials)
         end if
+
+        allocate(cell_temperatures(size(c % sqrtkT)))
+        cell_temperatures(:) = c % sqrtkT(:)
+        cell_temperatures(:) = cell_temperatures(:)**2 / K_BOLTZMANN
+        call write_dataset(cell_group, "temperature", cell_temperatures)
+        deallocate(cell_temperatures)
 
       case (CELL_FILL)
         call write_dataset(cell_group, "fill_type", "universe")

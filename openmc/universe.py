@@ -51,9 +51,13 @@ class Cell(object):
     name : str
         Name of the cell
     fill : Material or Universe or Lattice or 'void' or iterable of Material
-        Indicates what the region of space is filled with
+        Indicates what the region of space is filled with.  Multiple materials
+        can be given to give each distributed cell instance a unique material.
     region : openmc.region.Region
         Region of space that is assigned to the cell.
+    temperature : float or iterable of float
+        Temperature of the cell in Kelvin.  Multiple temperatures can be given
+        to give each distributed cell instance a unique temperature.
     rotation : ndarray
         If the cell is filled with a universe, this array specifies the angles
         in degrees about the x, y, and z axes that the filled universe should be
@@ -75,6 +79,7 @@ class Cell(object):
         self._fill = None
         self._type = None
         self._region = None
+        self._temperature = None
         self._rotation = None
         self._translation = None
         self._offsets = None
@@ -90,6 +95,8 @@ class Cell(object):
         elif self.fill != other.fill:
              return False
         elif self.region != other.region:
+            return False
+        elif self.temperature != other.temperature:
             return False
         elif self.rotation != other.rotation:
             return False
@@ -126,6 +133,10 @@ class Cell(object):
 
         string += '{0: <16}{1}{2}\n'.format('\tRegion', '=\t', self._region)
 
+        if self.fill_type == 'material':
+            string += '\t{0: <15}=\t{1}\n'.format('Temperature',
+                                                  self.temperature)
+
         string += '{0: <16}{1}{2}\n'.format('\tRotation', '=\t',
                                             self._rotation)
         string += '{0: <16}{1}{2}\n'.format('\tTranslation', '=\t',
@@ -150,7 +161,7 @@ class Cell(object):
 
     @property
     def fill_type(self):
-        if isinstance(self.fill, openmc.Material):
+        if isinstance(self.fill, (openmc.Material, Iterable)):
             return 'material'
         elif isinstance(self.fill, openmc.Universe):
             return 'universe'
@@ -162,6 +173,10 @@ class Cell(object):
     @property
     def region(self):
         return self._region
+
+    @property
+    def temperature(self):
+        return self._temperature
 
     @property
     def rotation(self):
@@ -250,6 +265,17 @@ class Cell(object):
     def region(self, region):
         cv.check_type('cell region', region, Region)
         self._region = region
+
+    @temperature.setter
+    def temperature(self, temperature):
+        cv.check_type('cell temperature', temperature, (Iterable, Real))
+        if isinstance(temperature, Iterable):
+            cv.check_type('cell temperature', temperature, Iterable, Real)
+            for T in temperature:
+                cv.check_greater_than('cell temperature', T, 0.0, True)
+        else:
+            cv.check_greater_than('cell temperature', temperature, 0.0, True)
+        self._temperature = temperature
 
     @distribcell_index.setter
     def distribcell_index(self, ind):
@@ -444,6 +470,13 @@ class Cell(object):
 
             # Call the recursive function from the top node
             create_surface_elements(self.region, xml_element)
+
+        if self.temperature is not None:
+            if isinstance(self.temperature, Iterable):
+                element.set("temperature", ' '.join(
+                            [str(t) for t in self.temperature]))
+            else:
+                element.set("temperature", str(self.temperature))
 
         if self.translation is not None:
             element.set("translation", ' '.join(map(str, self.translation)))

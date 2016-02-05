@@ -140,7 +140,7 @@ contains
 !===============================================================================
 
   subroutine macroxs_sample_scatter(scatt, gin, gout, mu, wgt)
-    Class(ScattData_Base), intent(in) :: scatt ! Scattering Object to Use
+    class(ScattData_Base), intent(in) :: scatt ! Scattering Object to Use
     integer,             intent(in)   :: gin   ! Incoming neutron group
     integer,            intent(out)   :: gout  ! Sampled outgoin group
     real(8),            intent(out)   :: mu    ! Sampled change in angle

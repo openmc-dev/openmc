@@ -2071,7 +2071,7 @@ contains
         call get_list_item(node_macro_list, 1, node_nuc)
 
         ! Check for empty name on nuclide
-        if (.not.check_for_node(node_nuc, "name")) then
+        if (.not. check_for_node(node_nuc, "name")) then
           call fatal_error("No name specified on macroscopic data in material " &
                // trim(to_str(mat % id)))
         end if

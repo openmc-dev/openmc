@@ -558,7 +558,7 @@ contains
   end function calc_rn
 
 !===============================================================================
-! EXPAND_HARMONIC expands a given series of harmonics
+! EXPAND_HARMONIC expands a given series of real spherical harmonics
 !===============================================================================
   pure function expand_harmonic(data, order, uvw) result(val)
     real(8), intent(in) :: data(:)

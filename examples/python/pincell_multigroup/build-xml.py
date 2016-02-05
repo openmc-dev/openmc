@@ -72,7 +72,7 @@ mg_cross_sections_file.export_to_xml()
 uo2_data = openmc.Macroscopic('UO2', '300K')
 h2o_data = openmc.Macroscopic('LWTR', '300K')
 
-# Instantiate some Materials and register the appropriate Nuclides
+# Instantiate some Materials and register the appropriate Macroscopic objects
 uo2 = openmc.Material(material_id=1, name='UO2 fuel')
 uo2.set_density('macro', 1.0)
 uo2.add_macroscopic(uo2_data)

@@ -16,11 +16,10 @@ module scattdata_header
     real(8), allocatable :: mult(:,:)   ! (Gout x Gin)
     real(8), allocatable :: data(:,:,:) ! (Order/Nmu x Gout x Gin)
 
-    ! Type-Bound procedures
-    contains
-      procedure(init_), deferred, pass   :: init   ! Initializes ScattData
-      procedure(calc_f_), deferred, pass :: calc_f ! Calculates f, given mu
-      procedure(clear_), deferred, pass  :: clear  ! Deallocates ScattData
+  ! Type-Bound procedures
+  contains
+    procedure(init_), deferred, pass   :: init   ! Initializes ScattData
+    procedure(calc_f_), deferred, pass :: calc_f ! Calculates f, given mu
   end type ScattData_Base
 
   abstract interface
@@ -42,37 +41,29 @@ module scattdata_header
       real(8)                           :: f    ! Return value of f(mu)
 
     end function calc_f_
-
-    subroutine clear_(this)
-      import ScattData_Base
-      class(ScattData_Base), intent(inout) :: this ! The ScattData to clear
-    end subroutine clear_
   end interface
 
   type, extends(ScattData_Base) :: ScattData_Legendre
-    contains
-      procedure, pass :: init   => scattdata_legendre_init
-      procedure, pass :: calc_f => scattdata_legendre_calc_f
-      procedure, pass :: clear  => scattdata_legendre_clear
+  contains
+    procedure, pass :: init   => scattdata_legendre_init
+    procedure, pass :: calc_f => scattdata_legendre_calc_f
   end type ScattData_Legendre
 
   type, extends(ScattData_Base) :: ScattData_Histogram
     real(8), allocatable :: mu(:) ! Mu bins
     real(8)              :: dmu   ! Mu spacing
-    contains
-      procedure, pass :: init   => scattdata_histogram_init
-      procedure, pass :: calc_f => scattdata_histogram_calc_f
-      procedure, pass :: clear  => scattdata_histogram_clear
+  contains
+    procedure, pass :: init   => scattdata_histogram_init
+    procedure, pass :: calc_f => scattdata_histogram_calc_f
   end type ScattData_Histogram
 
   type, extends(ScattData_Base) :: ScattData_Tabular
     real(8), allocatable :: mu(:)      ! Mu bins
     real(8)              :: dmu        ! Mu spacing
     real(8), allocatable :: fmu(:,:,:) ! PDF of f(mu)
-    contains
-      procedure, pass :: init   => scattdata_tabular_init
-      procedure, pass :: calc_f => scattdata_tabular_calc_f
-      procedure, pass :: clear  => scattdata_tabular_clear
+  contains
+    procedure, pass :: init   => scattdata_tabular_init
+    procedure, pass :: calc_f => scattdata_tabular_calc_f
   end type ScattData_Tabular
 
 !===============================================================================
@@ -240,56 +231,6 @@ contains
     end subroutine scattdata_tabular_init
 
 !===============================================================================
-! SCATTDATA_CLEAR resets and deallocates data in ScattData.
-!===============================================================================
-
-    subroutine scattdata_base_clear(this)
-      class(ScattData_Base), intent(inout) :: this
-
-      if (allocated(this % energy)) then
-        deallocate(this % energy)
-      end if
-
-      if (allocated(this % mult)) then
-        deallocate(this % mult)
-      end if
-
-      if (allocated(this % data)) then
-        deallocate(this % data)
-      end if
-
-    end subroutine scattdata_base_clear
-
-    subroutine scattdata_legendre_clear(this)
-      class(ScattData_Legendre), intent(inout) :: this
-
-      call scattdata_base_clear(this)
-
-    end subroutine scattdata_legendre_clear
-
-    subroutine scattdata_histogram_clear(this)
-      class(ScattData_Histogram), intent(inout) :: this
-
-      call scattdata_base_clear(this)
-
-      if (allocated(this % mu)) then
-        deallocate(this % mu)
-      end if
-
-    end subroutine scattdata_histogram_clear
-
-    subroutine scattdata_tabular_clear(this)
-      class(ScattData_Tabular), intent(inout) :: this
-
-      call scattdata_base_clear(this)
-
-      if (allocated(this % mu)) then
-        deallocate(this % mu)
-      end if
-
-    end subroutine scattdata_tabular_clear
-
-!===============================================================================
 ! SCATTDATA_*_CALC_F Calculates the value of f given mu (and gin,gout pair)
 !===============================================================================
 
@@ -349,7 +290,5 @@ contains
            r * this % data(imu + 1, gout, gin)
 
     end function scattdata_tabular_calc_f
-
-
 
 end module scattdata_header

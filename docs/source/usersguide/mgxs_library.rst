@@ -114,20 +114,25 @@ attributes/sub-elements required to describe the meta-data:
     *Default*: "isotropic"
 
   :num_azimuthal:
-    This element provides the number of equi-width bins that the azimuthal
-    angular domain is subdivided in the case of angle-dependent cross sections
-    (i.e., "angle" is passed to the ``representation`` element).
+    This element provides the number of equal width angular bins that the
+    azimuthal angular domain is subdivided in the case of angle-dependent
+    cross sections (i.e., "angle" is passed to the ``representation`` element).
+    Note that these bins are equal in azimuthal angle widths, not equal in the
+    cosine of the azimuthal angle widths.
 
-    *Default*: If ``representation`` is "angle", this must be provided.  If
-    not, this parameter is not used.
+    *Default*: If ``representation`` is "angle", this must be provided.  This
+    parameter is not used for other ``representation`` types.
 
   :num_polar:
-    This element provides the number of equi-width bins that the polar angular
-    domain is subdivided in the case of angle-dependent cross sections
-    (i.e., "angle" is passed to the ``representation`` element).
+    This element provides the number of equal width angular bins that the
+    polar angular domain is subdivided in the case of angle-dependent
+    cross sections (i.e., "angle" is passed to the ``representation`` element).
+    Note that these bins are equal in polar angle widths, not equal in the
+    cosine of the polar angle widths.
 
-    *Default*: If ``representation`` is "angle", this must be provided.  If
-    not, this parameter is not used.
+
+    *Default*: If ``representation`` is "angle", this must be provided.  This
+    parameter is not used for other ``representation`` types.
 
   :scatt_type:
     This element provides the representation of the angular distribution

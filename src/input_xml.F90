@@ -5,6 +5,7 @@ module input_xml
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use distribution_multivariate
   use distribution_univariate
+  use endf,             only: reaction_name
   use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
@@ -3281,7 +3282,7 @@ contains
               call fatal_error("Cannot tally absorption rate with an outgoing &
                    &energy filter.")
             end if
-          case ('fission')
+          case ('fission', '18')
             t % score_bins(j) = SCORE_FISSION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               call fatal_error("Cannot tally fission rate with an outgoing &
@@ -3461,6 +3462,32 @@ contains
 
         ! Deallocate temporary string array of scores
         deallocate(sarray)
+
+        ! Check that no duplicate scores exist
+        j = 1
+        do while (j < n_scores)
+          ! Determine number of bins for scores with expansions
+          n_order = t % moment_order(j)
+          select case (t % score_bins(j))
+          case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+            n_bins = n_order + 1
+          case (SCORE_FLUX_YN, SCORE_TOTAL_YN, SCORE_SCATTER_YN, &
+               SCORE_NU_SCATTER_YN)
+            n_bins = (n_order + 1)**2
+          case default
+            n_bins = 1
+          end select
+
+          do k = j + n_bins, n_scores
+            if (t % score_bins(j) == t % score_bins(k) .and. &
+                 t % moment_order(j) == t % moment_order(k)) then
+              call fatal_error("Duplicate score of type '" // trim(&
+                   reaction_name(t % score_bins(j))) // "' found in tally " &
+                   // trim(to_str(t % id)))
+            end if
+          end do
+          j = j + n_bins
+        end do
       else
         call fatal_error("No <scores> specified on tally " &
              &// trim(to_str(t % id)) // ".")

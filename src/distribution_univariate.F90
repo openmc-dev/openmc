@@ -1,7 +1,7 @@
 module distribution_univariate
 
-  use constants, only: ZERO, HALF, HISTOGRAM, LINEAR_LINEAR, MAX_LINE_LEN, &
-       MAX_WORD_LEN
+  use constants, only: ZERO, ONE, HALF, HISTOGRAM, LINEAR_LINEAR, &
+       MAX_LINE_LEN, MAX_WORD_LEN
   use error, only: fatal_error
   use math, only: maxwell_spectrum, watt_spectrum
   use random_lcg, only: prn
@@ -77,6 +77,12 @@ module distribution_univariate
     procedure :: sample => tabular_sample
     procedure :: initialize => tabular_initialize
   end type Tabular
+
+  type, extends(Distribution) :: Equiprobable
+    real(8), allocatable :: x(:)
+  contains
+    procedure :: sample => equiprobable_sample
+  end type Equiprobable
 
 contains
 
@@ -237,6 +243,25 @@ contains
     this%p(:) = this%p(:)/this%c(n)
     this%c(:) = this%c(:)/this%c(n)
   end subroutine tabular_initialize
+
+  function equiprobable_sample(this) result(x)
+    class(Equiprobable), intent(in) :: this
+    real(8) :: x
+
+    integer :: i
+    integer :: n
+    real(8) :: r
+    real(8) :: xl, xr
+
+    n = size(this%x)
+
+    r = prn()
+    i = 1 + int((n - 1)*r)
+
+    xl = this%x(i)
+    xr = this%x(i+1)
+    x = xl + ((n - 1)*r - i + ONE) * (xr - xl)
+  end function equiprobable_sample
 
   subroutine distribution_from_xml(dist, node_dist)
     class(Distribution), allocatable, intent(inout) :: dist

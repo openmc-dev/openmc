@@ -45,7 +45,7 @@ contains
     call write_attribute_string(file_id, "n_batches", &
          "description", "Total number of batches")
 
-      ! Write eigenvalue information
+    ! Write eigenvalue information
     if (run_mode == MODE_EIGENVALUE) then
       ! write number of inactive/active batches and generations/batch
       call write_dataset(file_id, "n_inactive", n_inactive)
@@ -182,8 +182,10 @@ contains
       case (CELL_FILL)
         call write_dataset(cell_group, "fill_type", "universe")
         call write_dataset(cell_group, "fill", universes(c%fill)%id)
-        if (size(c%offset) > 0) then
-          call write_dataset(cell_group, "offset", c%offset)
+        if (allocated(c%offset)) then
+          if (size(c%offset) > 0) then
+            call write_dataset(cell_group, "offset", c%offset)
+          end if
         end if
 
         if (allocated(c%translation)) then
@@ -370,8 +372,10 @@ contains
       call write_dataset(lattice_group, "outer", lat%outer)
 
       ! Write distribcell offsets if present
-      if (size(lat%offset) > 0) then
-        call write_dataset(lattice_group, "offsets", lat%offset)
+      if (allocated(lat%offset)) then
+        if (size(lat%offset) > 0) then
+          call write_dataset(lattice_group, "offsets", lat%offset)
+        end if
       end if
 
       select type (lat)
@@ -643,54 +647,7 @@ contains
       call write_dataset(tally_group, "n_score_bins", t%n_score_bins)
       allocate(str_array(size(t%score_bins)))
       do j = 1, size(t%score_bins)
-        select case(t%score_bins(j))
-        case (SCORE_FLUX)
-          str_array(j) = "flux"
-        case (SCORE_TOTAL)
-          str_array(j) = "total"
-        case (SCORE_SCATTER)
-          str_array(j) = "scatter"
-        case (SCORE_NU_SCATTER)
-          str_array(j) = "nu-scatter"
-        case (SCORE_SCATTER_N)
-          str_array(j) = "scatter-n"
-        case (SCORE_SCATTER_PN)
-          str_array(j) = "scatter-pn"
-        case (SCORE_NU_SCATTER_N)
-          str_array(j) = "nu-scatter-n"
-        case (SCORE_NU_SCATTER_PN)
-          str_array(j) = "nu-scatter-pn"
-        case (SCORE_TRANSPORT)
-          str_array(j) = "transport"
-        case (SCORE_N_1N)
-          str_array(j) = "n1n"
-        case (SCORE_ABSORPTION)
-          str_array(j) = "absorption"
-        case (SCORE_FISSION)
-          str_array(j) = "fission"
-        case (SCORE_NU_FISSION)
-          str_array(j) = "nu-fission"
-        case (SCORE_DELAYED_NU_FISSION)
-          str_array(j) = "delayed-nu-fission"
-        case (SCORE_KAPPA_FISSION)
-          str_array(j) = "kappa-fission"
-        case (SCORE_CURRENT)
-          str_array(j) = "current"
-        case (SCORE_FLUX_YN)
-          str_array(j) = "flux-yn"
-        case (SCORE_TOTAL_YN)
-          str_array(j) = "total-yn"
-        case (SCORE_SCATTER_YN)
-          str_array(j) = "scatter-yn"
-        case (SCORE_NU_SCATTER_YN)
-          str_array(j) = "nu-scatter-yn"
-        case (SCORE_EVENTS)
-          str_array(j) = "events"
-        case (SCORE_INVERSE_VELOCITY)
-          str_array(j) = "inverse-velocity"
-        case default
-          str_array(j) = reaction_name(t%score_bins(j))
-        end select
+        str_array(j) = reaction_name(t%score_bins(j))
       end do
       call write_dataset(tally_group, "score_bins", str_array)
 

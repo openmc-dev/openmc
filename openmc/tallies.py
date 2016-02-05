@@ -12,8 +12,7 @@ import sys
 import numpy as np
 
 from openmc import Mesh, Filter, Trigger, Nuclide
-from openmc.cross import CrossScore, CrossNuclide, CrossFilter
-from openmc.aggregate import AggregateScore, AggregateNuclide, AggregateFilter
+from openmc.arithmetic import *
 from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
 from openmc.clean_xml import *
@@ -1003,16 +1002,17 @@ class Tally(object):
             A list of filter type strings
             (e.g., ['mesh', 'energy']; default is [])
         filter_bins : list of Iterables
-            A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
-            in the list is the integer ID for 'material', 'surface', 'cell',
-            'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell' Filters. Each bin is a 2-tuple of
-            floats for 'energy' and 'energyout' filters corresponding to the
-            energy boundaries of the bin of interest.  The bin is a (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell of
-            interest. The order of the bins in the list must correspond to the
-            filter_types parameter.
+            A list of tuples of filter bins corresponding to the filter_types
+            parameter (e.g., [(1,), ((0., 0.625e-6),)]; default is []). Each
+            tuple contains bins for the corresponding filter type in the filters
+            parameter. Each bins is the integer ID for 'material', 'surface',
+            'cell', 'cellborn', and 'universe' Filters. Each bin is an integer
+            for the cell instance ID for 'distribcell' Filters. Each bin is a
+            2-tuple of floats for 'energy' and 'energyout' filters corresponding
+            to the energy boundaries of the bin of interest. The bin is an
+            (x,y,z) 3-tuple for 'mesh' filters corresponding to the mesh cell
+            of interest. The order of the bins in the list must correspond to
+            the filter_types parameter.
 
         Returns
         -------
@@ -1174,16 +1174,17 @@ class Tally(object):
             A list of filter type strings
             (e.g., ['mesh', 'energy']; default is [])
         filter_bins : list of Iterables
-            A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
-            in the list is the integer ID for 'material', 'surface', 'cell',
-            'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell' Filters. Each bin is a 2-tuple of
-            floats for 'energy' and 'energyout' filters corresponding to the
-            energy boundaries of the bin of interest.  The bin is a (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell of
-            interest. The order of the bins in the list must correspond to the
-            filter_types parameter.
+            A list of tuples of filter bins corresponding to the filter_types
+            parameter (e.g., [(1,), ((0., 0.625e-6),)]; default is []). Each
+            tuple contains bins for the corresponding filter type in the filters
+            parameter. Each bins is the integer ID for 'material', 'surface',
+            'cell', 'cellborn', and 'universe' Filters. Each bin is an integer
+            for the cell instance ID for 'distribcell' Filters. Each bin is a
+            2-tuple of floats for 'energy' and 'energyout' filters corresponding
+            to the energy boundaries of the bin of interest. The bin is an
+            (x,y,z) 3-tuple for 'mesh' filters corresponding to the mesh cell
+            of interest. The order of the bins in the list must correspond to
+            the filter_types parameter.
         nuclides : list of str
             A list of nuclide name strings
             (e.g., ['U-235', 'U-238']; default is [])
@@ -2641,16 +2642,17 @@ class Tally(object):
             A list of filter type strings
             (e.g., ['mesh', 'energy']; default is [])
         filter_bins : list of Iterables
-            A list of the filter bins corresponding to the filter_types
-            parameter (e.g., [(1,), (0., 0.625e-6)]; default is []). Each bin
-            in the list is the integer ID for 'material', 'surface', 'cell',
-            'cellborn', and 'universe' Filters. Each bin is an integer for the
-            cell instance ID for 'distribcell' Filters. Each bin is a 2-tuple of
-            floats for 'energy' and 'energyout' filters corresponding to the
-            energy boundaries of the bin of interest.  The bin is a (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell of
-            interest. The order of the bins in the list must correspond to the
-            filter_types parameter.
+            A list of tuples of filter bins corresponding to the filter_types
+            parameter (e.g., [(1,), ((0., 0.625e-6),)]; default is []). Each
+            tuple contains bins to slice for the corresponding filter type in
+            the filters parameter. Each bins is the integer ID for 'material',
+            'surface', 'cell', 'cellborn', and 'universe' Filters. Each bin is
+            an integer for the cell instance ID for 'distribcell' Filters. Each
+            bin is a 2-tuple of floats for 'energy' and 'energyout' filters
+            corresponding to the energy boundaries of the bin of interest. The
+            bin is an (x,y,z) 3-tuple for 'mesh' filters corresponding to the
+            mesh cell of interest. The order of the bins in the list must
+            correspond to the filter_types parameter.
         nuclides : list of str
             A list of nuclide name strings
             (e.g., ['U-235', 'U-238']; default is [])
@@ -2677,11 +2679,11 @@ class Tally(object):
         new_tally = copy.deepcopy(self)
         new_tally.sparse = False
 
-        if self.sum is not None:
+        if not self.derived and self.sum is not None:
             new_sum = self.get_values(scores, filters, filter_bins,
                                       nuclides, 'sum')
             new_tally.sum = new_sum
-        if self.sum_sq is not None:
+        if not self.derived and self.sum_sq is not None:
             new_sum_sq = self.get_values(scores, filters, filter_bins,
                                          nuclides, 'sum_sq')
             new_tally.sum_sq = new_sum_sq
@@ -2736,6 +2738,7 @@ class Tally(object):
                 for filter_bin in filter_bins[i]:
                     bin_index = find_filter.get_bin_index(filter_bin)
                     if filter_type in ['energy', 'energyout']:
+                        bin_indices.extend([bin_index])
                         bin_indices.extend([bin_index, bin_index+1])
                         num_bins += 1
                     elif filter_type == 'distribcell':
@@ -2745,7 +2748,7 @@ class Tally(object):
                         bin_indices.append(bin_index)
                         num_bins += 1
 
-                find_filter.bins = find_filter.bins[bin_indices]
+                find_filter.bins = np.unique(find_filter.bins[bin_indices])
                 find_filter.num_bins = num_bins
 
         # Update the new tally's filter strides
@@ -2951,10 +2954,10 @@ class Tally(object):
             diag_indices[start:end] = indices + (i * new_filter.num_bins**2)
 
         # Inject this Tally's data along the diagonal of the diagonalized Tally
-        if self.sum is not None:
+        if not self.derived and self.sum is not None:
             new_tally._sum = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum[diag_indices, :, :] = self.sum
-        if self.sum_sq is not None:
+        if not self.derived and self.sum_sq is not None:
             new_tally._sum_sq = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
         if self.mean is not None:

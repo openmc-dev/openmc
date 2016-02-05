@@ -583,7 +583,7 @@ class MGXS(object):
 
         cv.check_type('statepoint', statepoint, openmc.statepoint.StatePoint)
 
-        if not statepoint.with_summary:
+        if statepoint.summary is None:
             msg = 'Unable to load data from a statepoint which has not been ' \
                   'linked with a summary file'
             raise ValueError(msg)
@@ -611,6 +611,11 @@ class MGXS(object):
         else:
             filters = []
             filter_bins = []
+
+        # Clear any tallies previously loaded from a statepoint
+        self._tallies = None
+        self._xs_tally = None
+        self._rxn_rate_tally = None
 
         # Find, slice and store Tallies from StatePoint
         # The tally slicing is needed if tally merging was used
@@ -673,14 +678,14 @@ class MGXS(object):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if groups != 'all':
+        if not isinstance(groups, basestring):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
                 filters.append('energy')
@@ -838,55 +843,25 @@ class MGXS(object):
         """
 
         # Construct a collection of the subdomain filter bins to average across
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains)
         else:
-            subdomains = [0]
+            subdomains = None
 
         # Clone this MGXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
         avg_xs._rxn_rate_tally = None
         avg_xs._xs_tally = None
-        avg_xs._sparse = False
-
-        # If domain is distribcell, make the new domain 'cell'
-        if self.domain_type == 'distribcell':
-            avg_xs.domain_type = 'cell'
 
         # Average each of the tallies across subdomains
         for tally_type, tally in avg_xs.tallies.items():
+            tally_avg = tally.summation(filter_type=self.domain_type,
+                                        filter_bins=subdomains)
+            avg_xs.tallies[tally_type] = tally_avg
 
-            # Make condensed tally derived and null out sum, sum_sq
-            tally._derived = True
-            tally._sum = None
-            tally._sum_sq = None
-
-            # Get tally data arrays reshaped with one dimension per filter
-            mean = tally.get_reshaped_data(value='mean')
-            std_dev = tally.get_reshaped_data(value='std_dev')
-
-            # Get the mean, std. dev. across requested subdomains
-            mean = np.sum(mean[subdomains, ...], axis=0)
-            std_dev = np.sum(std_dev[subdomains, ...]**2, axis=0)
-            std_dev = np.sqrt(std_dev)
-
-            # If domain is distribcell, make subdomain-averaged a 'cell' domain
-            domain_filter = tally.find_filter(self._domain_type)
-            if domain_filter.type == 'distribcell':
-                domain_filter.type = 'cell'
-                domain_filter.num_bins = 1
-
-            # Reshape averaged data arrays with one dimension for all filters
-            mean = np.reshape(mean, tally.shape)
-            std_dev = np.reshape(std_dev, tally.shape)
-
-            # Override tally's data with the new condensed data
-            tally._mean = mean
-            tally._std_dev = std_dev
-
-        # Compute the subdomain-averaged multi-group cross section
+        avg_xs._domain_type = 'sum({0})'.format(self.domain_type)
         avg_xs.sparse = self.sparse
         return avg_xs
 
@@ -911,7 +886,7 @@ class MGXS(object):
         """
 
         # Construct a collection of the subdomains to report
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1040,7 +1015,7 @@ class MGXS(object):
             xs_results = h5py.File(filename, 'w')
 
         # Construct a collection of the subdomains to report
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1222,7 +1197,7 @@ class MGXS(object):
 
         """
 
-        if groups != 'all':
+        if not isinstance(groups, basestring):
             cv.check_iterable_type('groups', groups, Integral)
         if nuclides != 'all' and nuclides != 'sum':
             cv.check_iterable_type('nuclides', nuclides, basestring)
@@ -1249,7 +1224,7 @@ class MGXS(object):
             df = self.xs_tally.get_pandas_dataframe(summary=summary)
 
         # Remove the score column since it is homogeneous and redundant
-        if summary and self.domain_type == 'distribcell':
+        if summary and 'distribcell' in self.domain_type:
             df = df.drop('score', level=0, axis=1)
         else:
             df = df.drop('score', axis=1)
@@ -1282,7 +1257,7 @@ class MGXS(object):
             columns = ['group in']
 
         # Select out those groups the user requested
-        if groups != 'all':
+        if not isinstance(groups, basestring):
             if 'group in' in df:
                 df = df[df['group in'].isin(groups)]
             if 'group out' in df:
@@ -1819,21 +1794,21 @@ class ScatterMatrixXS(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if in_groups != 'all':
+        if not isinstance(in_groups, basestring):
             cv.check_iterable_type('groups', in_groups, Integral)
             for group in in_groups:
                 filters.append('energy')
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if out_groups != 'all':
+        if not isinstance(out_groups, basestring):
             cv.check_iterable_type('groups', out_groups, Integral)
             for group in out_groups:
                 filters.append('energyout')
@@ -1917,7 +1892,7 @@ class ScatterMatrixXS(MGXS):
         """
 
         # Construct a collection of the subdomains to report
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1955,12 +1930,6 @@ class ScatterMatrixXS(MGXS):
         for group in range(1, self.num_groups+1):
             bounds = self.energy_groups.get_group_bounds(group)
             string += template.format('', group, bounds[0], bounds[1])
-
-        if subdomains == 'all':
-            if self.domain_type == 'distribcell':
-                subdomains = np.arange(self.num_subdomains, dtype=np.int)
-            else:
-                subdomains = [self.domain.id]
 
         # Loop over all subdomains
         for subdomain in subdomains:
@@ -2165,14 +2134,14 @@ class Chi(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if subdomains != 'all':
+        if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if groups != 'all':
+        if not isinstance(groups, basestring):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
                 filters.append('energyout')

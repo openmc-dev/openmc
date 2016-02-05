@@ -673,9 +673,11 @@ class Filter(object):
 
                         # Assign entry to Lattice Multi-index column
                         else:
+                            # Reverse y index per lattice ordering in OpenCG
                             level_dict[lat_id_key][offset] = coords._lattice._id
                             level_dict[lat_x_key][offset] = coords._lat_x
-                            level_dict[lat_y_key][offset] = coords._lat_y
+                            level_dict[lat_y_key][offset] = \
+                                coords._lattice.dimension[1] - coords._lat_y - 1
                             level_dict[lat_z_key][offset] = coords._lat_z
 
                         # Move to next node in LocalCoords linked list

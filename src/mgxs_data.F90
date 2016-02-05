@@ -76,8 +76,7 @@ contains
           get_fiss = .true.
         end if
       end do
-      if (get_kfiss .and. get_fiss) &
-           exit
+      if (get_kfiss .and. get_fiss) exit
     end do
 
     ! ==========================================================================

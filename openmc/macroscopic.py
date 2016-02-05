@@ -8,7 +8,7 @@ if sys.version_info[0] >= 3:
 
 
 class Macroscopic(object):
-    """A nuclide that can be used in a material.
+    """A Macroscopic object that can be used in a material.
 
     Parameters
     ----------

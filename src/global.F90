@@ -490,10 +490,6 @@ contains
     end if
 
     if (allocated(macro_xs)) then
-    ! First call the clear routines
-      do i = 1, size(macro_xs)
-        call macro_xs(i) % obj % clear()
-      end do
       deallocate(macro_xs)
     end if
 

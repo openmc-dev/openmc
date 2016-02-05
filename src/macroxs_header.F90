@@ -19,10 +19,9 @@ module macroxs_header
     integer :: order
 
     ! Type-Bound procedures
-    contains
-      procedure(macroxs_init_),   deferred, pass :: init     ! initializes object
-      procedure(macroxs_clear_),  deferred, pass :: clear    ! Deallocates object
-      procedure(macroxs_get_xs_), deferred, pass :: get_xs   ! Return xs
+  contains
+    procedure(macroxs_init_),   deferred, pass :: init     ! initializes object
+    procedure(macroxs_get_xs_), deferred, pass :: get_xs   ! Return xs
   end type MacroXS_Base
 
   abstract interface
@@ -79,11 +78,10 @@ module macroxs_header
     real(8), allocatable :: scattxs(:)    ! scattering xs
     real(8), allocatable :: chi(:,:)      ! fission spectra
 
-    ! Type-Bound procedures
-    contains
-      procedure, pass :: init        => macroxs_iso_init        ! inits object
-      procedure, pass :: clear       => macroxs_iso_clear       ! Deallocates object
-      procedure, pass :: get_xs      => macroxs_iso_get_xs      ! Returns xs
+  ! Type-Bound procedures
+  contains
+    procedure, pass :: init        => macroxs_iso_init        ! inits object
+    procedure, pass :: get_xs      => macroxs_iso_get_xs      ! Returns xs
   end type MacroXS_Iso
 
   type, extends(MacroXS_Base) :: MacroXS_Angle
@@ -99,11 +97,10 @@ module macroxs_header
     real(8), allocatable :: polar(:)          ! polar angles
     real(8), allocatable :: azimuthal(:)      ! azimuthal angles
 
-    ! Type-Bound procedures
-    contains
-      procedure, pass :: init     => macroxs_angle_init   ! inits object
-      procedure, pass :: clear    => macroxs_angle_clear  ! Deallocates object
-      procedure, pass :: get_xs   => macroxs_angle_get_xs ! Returns xs
+  ! Type-Bound procedures
+  contains
+    procedure, pass :: init     => macroxs_angle_init   ! inits object
+    procedure, pass :: get_xs   => macroxs_angle_get_xs ! Returns xs
   end type MacroXS_Angle
 
 !===============================================================================
@@ -658,68 +655,6 @@ contains
   end subroutine macroxs_angle_init
 
 !===============================================================================
-! MACROXS*_CLEAR resets and deallocates data in MacroXS.
-!===============================================================================
-
-  subroutine macroxs_iso_clear(this)
-
-    class(MacroXS_Iso), intent(inout) :: this ! The MacroXS to clear
-
-    if (allocated(this % total)) then
-      deallocate(this % total, this % absorption, &
-                 this % nu_fission)
-    end if
-
-    if (allocated(this % fission)) then
-      deallocate(this % fission)
-    end if
-
-    if (allocated(this % k_fission)) then
-      deallocate(this % k_fission)
-    end if
-
-    call this % scatter % clear()
-
-    if (allocated(this % chi)) then
-      deallocate(this % chi)
-    end if
-
-  end subroutine macroxs_iso_clear
-
-  subroutine macroxs_angle_clear(this)
-
-    class(MacroXS_Angle), intent(inout) :: this ! The MacroXS to clear
-    integer :: i, j
-
-    if (allocated(this % total)) then
-      deallocate(this % total, this % absorption, &
-                 this % nu_fission)
-    end if
-
-    if (allocated(this % fission)) then
-      deallocate(this % fission)
-    end if
-
-    if (allocated(this % k_fission)) then
-      deallocate(this % k_fission)
-    end if
-
-    do i = 1, size(this % scatter,dim=2)
-      do j = 1, size(this % scatter,dim=1)
-        call this % scatter(j,i) % obj % clear()
-      end do
-    end do
-    if (allocated(this % scatter)) then
-      deallocate(this % scatter)
-    end if
-
-    if (allocated(this % chi)) then
-      deallocate(this % chi)
-    end if
-
-  end subroutine macroxs_angle_clear
-
-!===============================================================================
 ! MACROXS_*_GET_XS returns the requested data type
 !===============================================================================
 
@@ -789,131 +724,5 @@ contains
     end if
 
   end function macroxs_angle_get_xs
-
-!===============================================================================
-! THIN_GRID thins an (x,y) set while also thinning an associated y2
-!===============================================================================
-
-  subroutine thin_grid(xout, yout, yout2, tol, compression, maxerr)
-    real(8), allocatable, intent(inout) :: xout(:)     ! Resultant x grid
-    real(8), allocatable, intent(inout) :: yout(:)     ! Resultant y values
-    real(8), allocatable, intent(inout) :: yout2(:)     ! Secondary y values
-    real(8), intent(in)                 :: tol         ! Desired fractional error to maintain
-    real(8), intent(out)                :: compression ! Data reduction fraction
-    real(8), intent(inout)              :: maxerr      ! Maximum error due to compression
-
-    real(8), allocatable :: xin(:)      ! Incoming x grid
-    real(8), allocatable :: yin(:)      ! Incoming y values
-    real(8), allocatable :: yin2(:)     ! Secondary Incoming y values
-    integer :: k, klo, khi
-    integer :: all_ok
-    real(8) :: x1, y1, x2, y2, x, y, testval
-    integer :: num_keep, remove_it
-    real(8) :: initial_size
-    real(8) :: error
-    real(8) :: x_frac
-
-    initial_size = real(size(xout), 8)
-
-    allocate(xin(size(xout)))
-    xin = xout
-    allocate(yin(size(yout)))
-    yin = yout
-    allocate(yin2(size(yout2)))
-    yin2 = yout2
-
-    all_ok = size(yin)
-    maxerr = 0.0_8
-
-    ! This loop will step through each entry in dim==3 and check to see if
-    ! all of the values in other 2 dims can be replaced with linear interp.
-    ! If not, the value will be saved to a new array, if so, it will be
-    ! skipped.
-
-    xout = 0.0_8
-    yout = 0.0_8
-
-    ! Keep first point's data
-    xout(1) = xin(1)
-    yout(1) = yin(1)
-    yout2(1) = yin2(1)
-
-    ! Initialize data
-    num_keep = 1
-    klo = 1
-    khi = 3
-    k = 2
-    do while (khi <= size(xin))
-      remove_it = 0
-      x1 = xin(klo)
-      x2 = xin(khi)
-      x  = xin(k)
-      x_frac = 1.0_8 / (x2 - x1) * (x - x1)  ! Linear interp.
-
-      ! Check for removal. Otherwise, it stays. This is accomplished by leaving
-      ! remove_it as 0, entering the else portion of if(remove_it==all_ok)
-      y1 = yin(klo)
-      y2 = yin(khi)
-      y  = yin(k)
-
-      testval = y1 + (y2 - y1) * x_frac
-      error = abs(testval - y)
-      if (y /= 0.0_8) then
-        error = error / y
-      end if
-      if (error <= tol) then
-        remove_it = remove_it + 1
-        if (error > maxerr) then
-          maxerr = abs(testval - y)
-        end if
-      end if
-      ! Now place the point in to the proper bin and advance iterators.
-      if (remove_it /= 0) then
-        ! Then don't put it in the new grid but advance iterators
-        k = k + 1
-        khi = khi + 1
-      else
-        ! Put it in new grid and advance iterators accordingly
-        num_keep = num_keep + 1
-        xout(num_keep) = xin(k)
-        yout(num_keep) = yin(k)
-        yout2(num_keep) = yin2(k)
-        klo = k
-        k = k + 1
-        khi = khi + 1
-      end if
-    end do
-    ! Save the last point's data
-    num_keep = num_keep + 1
-    xout(num_keep) = xin(size(xin))
-    yout(num_keep) = yin(size(xin))
-    yout2(num_keep) = yin2(size(xin))
-
-    ! Finally, xout and yout were sized to match xin and yin since we knew
-    ! they would be no larger than those.  Now we must resize these arrays
-    ! and copy only the useful data in. Will use xin/yin for temp arrays.
-    xin = xout(1:num_keep)
-    yin = yout(1:num_keep)
-    yin2 = yout2(1:num_keep)
-
-    deallocate(xout)
-    deallocate(yout)
-    deallocate(yout2)
-    allocate(xout(num_keep))
-    allocate(yout(size(yin)))
-    allocate(yout2(size(yin2)))
-
-    xout = xin(1:num_keep)
-    yout = yin(1:num_keep)
-    yout2 = yin2(1:num_keep)
-
-    ! Clean up
-    deallocate(xin)
-    deallocate(yin)
-    deallocate(yin2)
-
-    compression = (initial_size - real(size(xout),8)) / initial_size
-
-  end subroutine thin_grid
 
 end module macroxs_header

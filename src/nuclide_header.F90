@@ -155,7 +155,7 @@ module nuclide_header
     end function nuclide_calc_f_
   end interface
 
-  !===============================================================================
+!===============================================================================
 ! NUCLIDE_ISO contains the base MGXS data for a nuclide specifically for
 ! isotropically weighted MGXS
 !===============================================================================
@@ -688,11 +688,12 @@ module nuclide_header
     end function nuclide_angle_get_xs
 
 !===============================================================================
-! NUCLIDE_*_CALC_F Finds the value of f(mu), the scattering probability, given mu
+! NUCLIDE_*_CALC_F Finds the value of f(mu), the scattering angle probability,
+! given mu
 !===============================================================================
 
-  pure function nuclide_mg_iso_calc_f(this, gin, gout, mu, uvw, i_azi, i_pol) &
-       result(f)
+    pure function nuclide_mg_iso_calc_f(this, gin, gout, mu, uvw, i_azi, i_pol) &
+         result(f)
       class(Nuclide_Iso), intent(in) :: this
       integer, intent(in)            :: gin  ! Incoming Energy Group
       integer, intent(in)            :: gout ! Outgoing Energy Group
@@ -791,6 +792,7 @@ module nuclide_header
       end if
 
     end function nuclide_mg_angle_calc_f
+
 !===============================================================================
 ! find_angle finds the closest angle on the data grid and returns that index
 !===============================================================================

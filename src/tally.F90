@@ -26,6 +26,8 @@ module tally
 
   integer :: position(N_FILTER_TYPES - 3) = 0 ! Tally map positioning array
 
+!$omp threadprivate(position)
+
   procedure(score_general_intfc),    pointer :: score_general => null()
   procedure(get_scoring_bins_intfc), pointer :: get_scoring_bins => null()
 
@@ -51,8 +53,6 @@ module tally
     end subroutine get_scoring_bins_intfc
 
   end interface
-
-!$omp threadprivate(position)
 
 contains
 
@@ -1255,97 +1255,95 @@ contains
     real(8) :: uvw(3)
 
     select case(score_bin)
-
-
-      case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-        ! Find the scattering order for a singly requested moment, and
-        ! store its moment contribution.
-        if (t % moment_order(i) == 1) then
-          score = score * p % mu ! avoid function call overhead
-        else
-          score = score * calc_pn(t % moment_order(i), p % mu)
-        endif
+    case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+      ! Find the scattering order for a singly requested moment, and
+      ! store its moment contribution.
+      if (t % moment_order(i) == 1) then
+        score = score * p % mu ! avoid function call overhead
+      else
+        score = score * calc_pn(t % moment_order(i), p % mu)
+      endif
 !$omp atomic
-        t % results(score_index, filter_index) % value = &
-             t % results(score_index, filter_index) % value + score
+      t % results(score_index, filter_index) % value = &
+           t % results(score_index, filter_index) % value + score
 
 
-      case(SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN)
-        score_index = score_index - 1
-        num_nm = 1
-        ! Find the order for a collection of requested moments
-        ! and store the moment contribution of each
-        do n = 0, t % moment_order(i)
-          ! determine scoring bin index
-          score_index = score_index + num_nm
-          ! Update number of total n,m bins for this n (m = [-n: n])
-          num_nm = 2 * n + 1
+    case(SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN)
+      score_index = score_index - 1
+      num_nm = 1
+      ! Find the order for a collection of requested moments
+      ! and store the moment contribution of each
+      do n = 0, t % moment_order(i)
+        ! determine scoring bin index
+        score_index = score_index + num_nm
+        ! Update number of total n,m bins for this n (m = [-n: n])
+        num_nm = 2 * n + 1
 
-          ! multiply score by the angular flux moments and store
+        ! multiply score by the angular flux moments and store
 !$omp critical (score_general_scatt_yn)
-          t % results(score_index: score_index + num_nm - 1, filter_index) &
-               % value = t &
-               % results(score_index: score_index + num_nm - 1, filter_index)&
-               % value &
-               + score * calc_pn(n, p % mu) * calc_rn(n, p % last_uvw)
+        t % results(score_index: score_index + num_nm - 1, filter_index) &
+             % value = t &
+             % results(score_index: score_index + num_nm - 1, filter_index)&
+             % value &
+             + score * calc_pn(n, p % mu) * calc_rn(n, p % last_uvw)
 !$omp end critical (score_general_scatt_yn)
-        end do
-        i = i + (t % moment_order(i) + 1)**2 - 1
+      end do
+      i = i + (t % moment_order(i) + 1)**2 - 1
 
 
-      case(SCORE_FLUX_YN, SCORE_TOTAL_YN)
-        score_index = score_index - 1
-        num_nm = 1
-        if (t % estimator == ESTIMATOR_ANALOG .or. &
-             t % estimator == ESTIMATOR_COLLISION) then
-          uvw = p % last_uvw
-        else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          uvw = p % coord(1) % uvw
-        end if
-        ! Find the order for a collection of requested moments
-        ! and store the moment contribution of each
-        do n = 0, t % moment_order(i)
-          ! determine scoring bin index
-          score_index = score_index + num_nm
-          ! Update number of total n,m bins for this n (m = [-n: n])
-          num_nm = 2 * n + 1
+    case(SCORE_FLUX_YN, SCORE_TOTAL_YN)
+      score_index = score_index - 1
+      num_nm = 1
+      if (t % estimator == ESTIMATOR_ANALOG .or. &
+           t % estimator == ESTIMATOR_COLLISION) then
+        uvw = p % last_uvw
+      else if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+        uvw = p % coord(1) % uvw
+      end if
+      ! Find the order for a collection of requested moments
+      ! and store the moment contribution of each
+      do n = 0, t % moment_order(i)
+        ! determine scoring bin index
+        score_index = score_index + num_nm
+        ! Update number of total n,m bins for this n (m = [-n: n])
+        num_nm = 2 * n + 1
 
-          ! multiply score by the angular flux moments and store
+        ! multiply score by the angular flux moments and store
 !$omp critical (score_general_flux_tot_yn)
-          t % results(score_index: score_index + num_nm - 1, filter_index) &
-               % value = t &
-               % results(score_index: score_index + num_nm - 1, filter_index)&
-               % value &
-               + score * calc_rn(n, uvw)
+        t % results(score_index: score_index + num_nm - 1, filter_index) &
+             % value = t &
+             % results(score_index: score_index + num_nm - 1, filter_index)&
+             % value &
+             + score * calc_rn(n, uvw)
 !$omp end critical (score_general_flux_tot_yn)
-        end do
-        i = i + (t % moment_order(i) + 1)**2 - 1
+      end do
+      i = i + (t % moment_order(i) + 1)**2 - 1
 
 
-      case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-        score_index = score_index - 1
-        ! Find the scattering order for a collection of requested moments
-        ! and store the moment contribution of each
-        do n = 0, t % moment_order(i)
-          ! determine scoring bin index
-          score_index = score_index + 1
+    case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+      score_index = score_index - 1
+      ! Find the scattering order for a collection of requested moments
+      ! and store the moment contribution of each
+      do n = 0, t % moment_order(i)
+        ! determine scoring bin index
+        score_index = score_index + 1
 
-          ! get the score and tally it
-!$omp atomic
-          t % results(score_index, filter_index) % value = &
-               t % results(score_index, filter_index) % value &
-               + score * calc_pn(n, p % mu)
-        end do
-        i = i + t % moment_order(i)
-
-
-      case default
+        ! get the score and tally it
 !$omp atomic
         t % results(score_index, filter_index) % value = &
-             t % results(score_index, filter_index) % value + score
+             t % results(score_index, filter_index) % value &
+             + score * calc_pn(n, p % mu)
+      end do
+      i = i + t % moment_order(i)
 
 
-      end select
+    case default
+!$omp atomic
+      t % results(score_index, filter_index) % value = &
+           t % results(score_index, filter_index) % value + score
+
+
+    end select
 
   end subroutine expand_and_score
 

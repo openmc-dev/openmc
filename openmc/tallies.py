@@ -673,65 +673,161 @@ class Tally(object):
 
         self._nuclides.remove(nuclide)
 
-    def can_merge(self, tally):
-        """Determine if another tally can be merged with this one
+    def _can_merge_filters(self, other):
+        """Determine if another tally's filters can be merged with this one's
+
+        The types of filters between the two tallies must match identically.
+        The bins in all of the filters must match identically, or be mergeable
+        in only one filter. This is a helper method for the can_merge(...)
+        and merge(...) methods.
 
         Parameters
         ----------
-        tally : Tally
-            Tally to check for merging
+        other : Tally
+            Tally to check for mergeable scores
 
         """
 
-        if not isinstance(tally, Tally):
+        # Two tallys must have the same number of filters
+        if len(self.filters) != len(other.filters):
             return False
-
-        # Must have same estimator
-        if self.estimator != tally.estimator:
-            return False
-
-        # Must have same nuclides
-        if len(self.nuclides) != len(tally.nuclides):
-            return False
-
-        for nuclide in self.nuclides:
-            if nuclide not in tally.nuclides:
-                return False
-
-        # Must have same or mergeable filters
-        if len(self.filters) != len(tally.filters):
-            return False
-
-        # Check if only one tally contains a delayed group filter
-        tally1_dg = False
-        for filter1 in self.filters:
-            if filter1.type == 'delayedgroup':
-                tally1_dg = True
-
-        tally2_dg = False
-        for filter2 in tally.filters:
-            if filter2.type == 'delayedgroup':
-                tally2_dg = True
 
         # Return False if only one tally has a delayed group filter
-        if (tally1_dg or tally2_dg) and not (tally1_dg and tally2_dg):
+        tally1_dg = self.contains_filter('delayedgroup')
+        tally2_dg = other.contains_filter('delayedgroup')
+        if sum(tally1_dg, tally2_dg) == 1:
             return False
 
         # Look to see if all filters are the same, or one or more can be merged
         for filter1 in self.filters:
             mergeable_filter = False
 
-            for filter2 in tally.filters:
-                if filter1 == filter2 or filter1.can_merge(filter2):
+            for filter2 in other.filters:
+
+                # If filters match, they are mergeable
+                if filter1 == filter2:
                     mergeable_filter = True
                     break
+
+                # If filters are first mergeable filters encountered
+                elif filter1.can_merge(filter2) and not merge_filters:
+                    merge_filters = True
+                    mergeable_filter = True
+                    break
+
+                # If filters are the second mergeable filters encountered
+                elif filter1.can_merge(filter2) and merge_filters:
+                    return False
 
             # If no mergeable filter was found, the tallies are not mergeable
             if not mergeable_filter:
                 return False
 
-        # Tallies are mergeable if all conditional checks passed
+        # Tally filters are mergeable if all conditional checks passed
         return True
+
+    def _can_merge_nuclides(self, other):
+        """Determine if another tally's nuclides can be merged with this one's
+
+        The nuclides between the two tallies must be mutually exclusive or
+        identically matching. This is a helper method for the can_merge(...)
+        and merge(...) methods.
+
+        Parameters
+        ----------
+        other : Tally
+            Tally to check for mergeable nuclides
+
+        """
+
+        no_nuclides_match = True
+        all_nuclides_match = True
+
+        # Search for each of this tally's nuclides in the other tally
+        for nuclide in self.nuclides:
+            if nuclide not in other.nuclides:
+                all_nuclides_match = False
+            else:
+                no_nuclides_match = False
+
+        # Search for each of the other tally's nuclides in this tally
+        for nuclide in other.nuclides:
+            if nuclide not in self.nuclides:
+                all_nuclides_match = False
+            else:
+                no_nuclides_match = False
+
+        # Either all nuclides should match, or none should
+        if no_nuclides_match:
+            return True
+        if not no_nuclides_match and not all_nuclides_match:
+            return False
+
+    def _can_merge_scores(self, other):
+        """Determine if another tally's scores can be merged with this one's
+
+        The scores between the two tallies must be mutually exclusive or
+        identically matching. This is a helper method for the can_merge(...)
+        and merge(...) methods.
+
+        Parameters
+        ----------
+        other : Tally
+            Tally to check for mergeable scores
+
+        """
+
+        no_scores_match = True
+        all_scores_match = True
+
+        # Search for each of this tally's scores in the other tally
+        for score in self.scores:
+            if score not in other.scores:
+                all_scores_match = False
+            else:
+                no_scores_match = False
+
+        # Search for each of the other tally's scores in this tally
+        for score in other.scores:
+            if score not in self.scores:
+                all_scores_match = False
+            else:
+                no_scores_match = False
+
+        # Either all scores should match, or none should
+        if no_scores_match:
+            return True
+        elif not no_scores_match and not all_scores_match:
+            return False
+
+    def can_merge(self, other):
+        """Determine if another tally can be merged with this one
+
+        Parameters
+        ----------
+        other : Tally
+            Tally to check for merging
+
+        """
+
+        if not isinstance(other, Tally):
+            return False
+
+        # Must have same estimator
+        if self.estimator != other.estimator:
+            return False
+
+        # Variables to indicate matching filter bins, nuclides and scores
+        merge_filters = self._can_merge_filters(other)
+        merge_nuclides = self._can_merge_nuclides(other)
+        merge_scores = self._can_merge_scores(other)
+
+        # Tallies are mergeable if only one of filters, nuclides and
+        # scores is mergeable
+        if sum(merge_filters, merge_nuclides, merge_scores) == 1:
+            return True
+        else:
+            return False
 
     def merge(self, tally):
         """Merge another tally with this one
@@ -777,6 +873,116 @@ class Tally(object):
             merged_tally.add_trigger(trigger)
 
         return merged_tally
+
+    def join(self, other):
+        """Join another tally with this one
+
+        Parameters
+        ----------
+        tally : Tally
+            Tally to join with this one
+
+        Returns
+        -------
+        joined_tally : Tally
+            Joined tallies
+
+        """
+
+        if not self.can_merge(other):
+            msg = 'Unable to join tally ID="{0}" with ' + \
+                   '"{1}"'.format(other.id, self.id)
+            raise ValueError(msg)
+
+        # Create deep copy of tally to return as merged tally
+        joined_tally = copy.deepcopy(self)
+
+        # Differentiate Tally with a new auto-generated Tally ID
+        joined_tally.id = None
+
+        # Create deep copy of other tally to use for array concatenation
+        other_copy = copy.deepcopy(other)
+
+        # If two tallies can be merged along a filter's bins
+        if self._can_merge_filters(other):
+
+            # Search for mergeable filters
+            for i, filter1 in enumerate(self.filters):
+                for j, filter2 in enumerate(other.filters):
+                    if filter1 != filter2 and filter1.can_merge(filter2):
+                        other_copy._swap_filters(other_copy.filters[i], filter1)
+                        joined_tally.filters[i] = filter1.merge(filter2)
+                        join_axis = i
+                        break
+
+        # If two tallies can be merged along nuclide bins
+        elif self._can_merge_nuclides(other):
+            join_axis = self.num_filters
+
+            # Add unique nuclides from other tally to merged tally
+            for nuclide in other.nuclides:
+                if nuclide not in joined_tally.nuclides:
+                    joined_tally.add_score(nuclide)
+
+        # If two tallies can be merged along score bins
+        elif self._can_merge_scores(other):
+            join_axis = self.num_filters + 1
+
+            # Add unique scores from other tally to merged tally
+            for score in other.scores:
+                if score not in joined_tally.scores:
+                    joined_tally.add_score(score)
+
+        else:
+            raise ValueError('Unable to merge tallies')
+
+        # Update filter strides in joined tally
+        joined_tally._update_filter_strides()
+
+        # Concatenate sum arrays if present in both tallies
+        if self.sum is not None and other_copy.sum is not None:
+            self_sum = self.get_reshaped_data(value='sum')
+            other_sum = other_copy.get_reshaped_data(value='sum')
+            joined_tally._sum = \
+                np.concatenate((self_sum, other_sum), axis=join_axis)
+            joined_tally._sum = \
+                np.reshape(joined_tally._sum, joined_tally.shape)
+
+        # Concatenate sum_sq arrays if present in both tallies
+        if self.sum_sq is not None and other.sum_sq is not None:
+            self_sum_sq = self.get_reshaped_data(value='sum_sq')
+            other_sum_sq = other_copy.get_reshaped_data(value='sum_sq')
+            joined_tally._sum_sq = \
+                np.concatenate((self_sum_sq, other_sum_sq), axis=join_axis)
+            joined_tally._sum_sq = \
+                np.reshape(joined_tally._sum_sq, joined_tally.shape)
+
+        # Concatenate mean arrays if present in both tallies
+        if self.mean is not None and other.mean is not None:
+            self_mean = self.get_reshaped_data(value='mean')
+            other_mean = other_copy.get_reshaped_data(value='mean')
+            joined_tally._mean = \
+                np.concatenate((self_mean, other_mean), axis=join_axis)
+            joined_tally._mean = \
+                np.reshape(joined_tally._mean, joined_tally.shape)
+
+        # Concatenate std. dev. arrays if present in both tallies
+        if self.std_dev is not None and other.std_dev is not None:
+            self_std_dev = self.get_reshaped_data(value='std_dev')
+            other_std_dev = other_copy.get_reshaped_data(value='std_dev')
+            joined_tally._std_dev = \
+                np.concatenate((self_std_dev, other_std_dev), axis=join_axis)
+            joined_tally._std_dev = \
+                np.reshape(joined_tally._std_dev, joined_tally.shape)
+
+        # Sparsify joined tally if both tallies are sparse
+        joined_tally.sparse = self.sparse and other.sparse
+
+        # Add triggers from other tally to merged tally
+        for trigger in other.triggers:
+            joined_tally.add_trigger(trigger)
+
+        return joined_tally
 
     def get_tally_xml(self):
         """Return XML representation of the tally
@@ -1980,8 +2186,7 @@ class Tally(object):
 
         # Check that the filters exist in the tally and are not the same
         if filter1 == filter2:
-            msg = 'Unable to swap a filter with itself'
-            raise ValueError(msg)
+            return
         elif filter1 not in self.filters:
             msg = 'Unable to swap "{0}" filter1 in Tally ID="{1}" since it ' \
                   'does not contain such a filter'.format(filter1.type, self.id)
@@ -2011,6 +2216,8 @@ class Tally(object):
             filter2_bins = np.arange(filter2.num_bins)
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
+
+        # FIXME: Why doesn't this swap data for sum and sum_sq???
 
         # Adjust the mean data array to relect the new filter order
         if self.mean is not None:
@@ -2083,6 +2290,8 @@ class Tally(object):
         self.nuclides[nuclide1_index] = nuclide2
         self.nuclides[nuclide2_index] = nuclide1
 
+        # FIXME: Why doesn't this swap data for sum and sum_sq???
+
         # Adjust the mean data array to relect the new nuclide order
         if self.mean is not None:
             nuclide1_mean = self.mean[:, nuclide1_index, :].copy()
@@ -2154,6 +2363,8 @@ class Tally(object):
         score2_index = self.get_score_index(score2)
         self.scores[score1_index] = score2
         self.scores[score2_index] = score1
+
+        # FIXME: Why doesn't this swap data for sum and sum_sq???
 
         # Adjust the mean data array to relect the new nuclide order
         if self.mean is not None:

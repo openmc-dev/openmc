@@ -257,9 +257,17 @@ class Filter(object):
         elif self.type == 'mesh':
             return False
 
-        # Different energy bins are not mergeable
+        # Different energy bins structures must be mutually exclusive and
+        # share only one shared bin edge at the minimum or maximum energy
         elif 'energy' in self.type:
-            return False
+            # This low energy edge coincides with other's high energy edge
+            if self.bins[0] == other.bins[-1]:
+                return True
+            # This high energy edge coincides with other's low energy edge
+            elif self.bins[-1] == other.bins[0]:
+                return True
+            else:
+                return False
 
         else:
             return True
@@ -288,9 +296,14 @@ class Filter(object):
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = list(set(np.concatenate((self.bins, other.bins))))
-        merged_filter.bins = merged_bins
-        merged_filter.num_bins = len(merged_bins)
+        merged_bins = set(np.concatenate((self.bins, other.bins)))
+        merged_filter.bins = list(sorted(merged_bins))
+
+        # Count bins in the merged filter
+        if 'energy' in merged_filter.type:
+            merged_filter.num_bins = len(merged_bins) -1
+        else:
+            merged_filter.num_bins = len(merged_bins)
 
         return merged_filter
 

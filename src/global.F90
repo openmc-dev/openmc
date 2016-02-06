@@ -482,10 +482,6 @@ contains
     end if
 
     if (allocated(nuclides_MG)) then
-      ! First call the clear routines
-      do i = 1, size(nuclides_MG)
-        call nuclides_MG(i) % obj % clear()
-      end do
       deallocate(nuclides_MG)
     end if
 

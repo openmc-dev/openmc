@@ -684,7 +684,7 @@ class Tally(object):
         Parameters
         ----------
         other : Tally
-            Tally to check for mergeable scores
+            Tally to check for mergeable filters
 
         """
 
@@ -829,52 +829,7 @@ class Tally(object):
         else:
             return False
 
-    def merge(self, tally):
-        """Merge another tally with this one
-
-        Parameters
-        ----------
-        tally : Tally
-            Tally to merge with this one
-
-        Returns
-        -------
-        merged_tally : Tally
-            Merged tallies
-
-        """
-
-        if not self.can_merge(tally):
-            msg = 'Unable to merge tally ID="{0}" with ' + \
-                   '"{1}"'.format(tally.id, self.id)
-            raise ValueError(msg)
-
-        # Create deep copy of tally to return as merged tally
-        merged_tally = copy.deepcopy(self)
-
-        # Differentiate Tally with a new auto-generated Tally ID
-        merged_tally.id = None
-
-        # Merge filters
-        for i, filter1 in enumerate(merged_tally.filters):
-            for filter2 in tally.filters:
-                if filter1 != filter2 and filter1.can_merge(filter2):
-                    merged_filter = filter1.merge(filter2)
-                    merged_tally.filters[i] = merged_filter
-                    break
-
-        # Add unique scores from second tally to merged tally
-        for score in tally.scores:
-            if score not in merged_tally.scores:
-                merged_tally.add_score(score)
-
-        # Add triggers from second tally to merged tally
-        for trigger in tally.triggers:
-            merged_tally.add_trigger(trigger)
-
-        return merged_tally
-
-    def join(self, other):
+    def merge(self, other):
         """Join another tally with this one
 
         Parameters

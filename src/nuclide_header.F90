@@ -31,16 +31,10 @@ module nuclide_header
     logical :: fissionable         ! nuclide is fissionable?
 
     contains
-      procedure(nuclidebase_clear_), deferred, pass :: clear ! Deallocates Nuclide
       procedure(print_nuclide_),     deferred, pass :: print ! Writes nuclide info
   end type NuclideBase
 
   abstract interface
-
-    subroutine nuclidebase_clear_(this)
-      import NuclideBase
-      class(NuclideBase), intent(inout) :: this
-    end subroutine nuclidebase_clear_
 
     subroutine print_nuclide_(this, unit)
       import NuclideBase
@@ -174,7 +168,6 @@ module nuclide_header
 
     ! Type-Bound procedures
     contains
-      procedure, pass :: clear  => nuclideiso_clear  ! Deallocates Nuclide
       procedure, pass :: print  => nuclideiso_print  ! Writes nuclide info
       procedure, pass :: get_xs => nuclideiso_get_xs ! Gets Size of Data w/in Object
       procedure, pass :: calc_f => nuclideiso_calc_f ! Calcs f given mu
@@ -205,7 +198,6 @@ module nuclide_header
 
     ! Type-Bound procedures
     contains
-      procedure, pass :: clear  => nuclideangle_clear  ! Deallocates Nuclide
       procedure, pass :: print  => nuclideangle_print  ! Gets Size of Data w/in Object
       procedure, pass :: get_xs => nuclideangle_get_xs ! Gets Size of Data w/in Object
       procedure, pass :: calc_f => nuclideangle_calc_f ! Calcs f given mu
@@ -297,7 +289,7 @@ module nuclide_header
   contains
 
 !===============================================================================
-! NUCLIDE_*_CLEAR resets and deallocates data in NuclideBase, NuclideIso
+! NUCLIDECE_CLEAR resets and deallocates data in NuclideBase, NuclideIso
 ! or NuclideAngle
 !===============================================================================
 
@@ -319,61 +311,8 @@ module nuclide_header
 
     end subroutine nuclidece_clear
 
-    subroutine nuclideiso_clear(this)
-
-      class(NuclideIso), intent(inout) :: this ! The Nuclide object to clear
-
-      ! Cler the extended information
-      if (allocated(this % total)) then
-        deallocate(this % total, this % absorption, this % scatter)
-      end if
-      if (allocated(this % fission)) then
-        deallocate(this % fission, this % nu_fission)
-      end if
-      if (allocated(this % k_fission)) then
-        deallocate(this % k_fission)
-      end if
-      if (allocated(this % chi)) then
-        deallocate(this % chi)
-      end if
-      if (allocated(this % mult)) then
-        deallocate(this % mult)
-      end if
-
-    end subroutine nuclideiso_clear
-
-    subroutine nuclideangle_clear(this)
-
-      class(NuclideAngle), intent(inout) :: this ! The Nuclide object to clear
-
-      ! Cler the extended information
-      if (allocated(this % total)) then
-        deallocate(this % total, this % absorption, this % scatter)
-      end if
-      if (allocated(this % fission)) then
-        deallocate(this % fission, this % nu_fission)
-      end if
-      if (allocated(this % k_fission)) then
-        deallocate(this % k_fission)
-      end if
-      if (allocated(this % chi)) then
-        deallocate(this % chi)
-      end if
-
-      if (allocated(this % polar)) then
-        deallocate(this % polar)
-      end if
-      if (allocated(this % azimuthal)) then
-        deallocate(this % azimuthal)
-      end if
-      if (allocated(this % mult)) then
-        deallocate(this % mult)
-      end if
-
-    end subroutine nuclideangle_clear
-
 !===============================================================================
-! PRINT_NUCLIDE_* displays information about a continuous-energy neutron
+! NUCLIDE*_PRINT displays information about a continuous-energy neutron
 ! cross_section table and its reactions and secondary angle/energy distributions
 !===============================================================================
 
@@ -570,7 +509,7 @@ module nuclide_header
     end subroutine nuclideangle_print
 
 !===============================================================================
-! NUCLIDE_*_GET_XS Returns the requested data type
+! NUCLIDE*_GET_XS Returns the requested data type
 !===============================================================================
 
     function nuclideiso_get_xs(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
@@ -688,7 +627,7 @@ module nuclide_header
     end function nuclideangle_get_xs
 
 !===============================================================================
-! NUCLIDE_*_CALC_F Finds the value of f(mu), the scattering angle probability,
+! NUCLIDE*_CALC_F Finds the value of f(mu), the scattering angle probability,
 ! given mu
 !===============================================================================
 

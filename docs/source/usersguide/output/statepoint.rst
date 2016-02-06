@@ -4,7 +4,7 @@
 State Point File Format
 =======================
 
-The current revision of the statepoint file format is 14.
+The current revision of the statepoint file format is 15.
 
 **/filetype** (*char[]*)
 

@@ -350,10 +350,10 @@ contains
         call sab_tables(i) % print(unit=unit_xs)
       end do SAB_TABLES_LOOP
     else
-      NUCLIDE_MG_LOOP: do i = 1, n_nuclides_total
+      NuclideMG_LOOP: do i = 1, n_nuclides_total
         ! Print information about nuclide
         call nuclides_mg(i) % obj % print(unit=unit_xs)
-      end do NUCLIDE_MG_LOOP
+      end do NuclideMG_LOOP
     end if
 
     ! Close cross section summary file

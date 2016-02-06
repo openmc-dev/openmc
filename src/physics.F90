@@ -75,7 +75,7 @@ contains
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_nuc_mat    ! index in material's nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
-    type(Nuclide_CE), pointer :: nuc
+    type(NuclideCE), pointer :: nuc
 
     call sample_nuclide(p, 'total  ', i_nuclide, i_nuc_mat)
 
@@ -198,7 +198,7 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide_CE),  pointer :: nuc
+    type(NuclideCE),  pointer :: nuc
 
     ! Get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -296,7 +296,7 @@ contains
     real(8) :: uvw_new(3) ! outgoing uvw for iso-in-lab scattering
     real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
     real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
-    type(Nuclide_CE),  pointer :: nuc
+    type(NuclideCE),  pointer :: nuc
 
     ! copy incoming direction
     uvw_old(:) = p % coord(1) % uvw
@@ -411,7 +411,7 @@ contains
     real(8) :: v_cm(3)   ! velocity of center-of-mass
     real(8) :: v_t(3)    ! velocity of target nucleus
     real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
-    type(Nuclide_CE), pointer :: nuc
+    type(NuclideCE), pointer :: nuc
 
     ! get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -737,7 +737,7 @@ contains
 !===============================================================================
 
   subroutine sample_target_velocity(nuc, v_target, E, uvw, v_neut, wgt, xs_eff)
-    type(Nuclide_CE), intent(in) :: nuc ! target nuclide at temperature T
+    type(NuclideCE), intent(in) :: nuc ! target nuclide at temperature T
     real(8), intent(out)   :: v_target(3) ! target velocity
     real(8), intent(in)    :: v_neut(3)   ! neutron velocity
     real(8), intent(in)    :: E           ! particle energy
@@ -982,7 +982,7 @@ contains
 !===============================================================================
 
   subroutine sample_cxs_target_velocity(nuc, v_target, E, uvw)
-    type(Nuclide_CE), intent(in) :: nuc ! target nuclide at temperature
+    type(NuclideCE), intent(in) :: nuc ! target nuclide at temperature
     real(8), intent(out)         :: v_target(3)
     real(8), intent(in)          :: E
     real(8), intent(in)          :: uvw(3)
@@ -1070,7 +1070,7 @@ contains
     real(8) :: phi                      ! fission neutron azimuthal angle
     real(8) :: weight                   ! weight adjustment for ufs method
     logical :: in_mesh                  ! source site in ufs mesh?
-    type(Nuclide_CE),  pointer :: nuc
+    type(NuclideCE),  pointer :: nuc
 
     ! Get pointers
     nuc => nuclides(i_nuclide)
@@ -1180,7 +1180,7 @@ contains
 
   function sample_fission_energy(nuc, rxn, p) result(E_out)
 
-    type(Nuclide_CE), intent(in) :: nuc
+    type(NuclideCE), intent(in) :: nuc
     type(Reaction),   intent(in) :: rxn
     type(Particle), intent(inout) :: p     ! Particle causing fission
     real(8)                       :: E_out ! outgoing energy of fission neutron
@@ -1293,7 +1293,7 @@ contains
 !===============================================================================
 
   subroutine inelastic_scatter(nuc, rxn, p)
-    type(Nuclide_CE), intent(in)    :: nuc
+    type(NuclideCE), intent(in)    :: nuc
     type(Reaction),   intent(in)    :: rxn
     type(Particle),   intent(inout) :: p
 

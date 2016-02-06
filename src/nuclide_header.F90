@@ -12,12 +12,12 @@ module nuclide_header
   implicit none
 
 !===============================================================================
-! NUCLIDE_BASE contains the base nuclidic data for a nuclide, which does not depend
+! NuclideBase contains the base nuclidic data for a nuclide, which does not depend
 ! upon how the nuclear data is represented (i.e., CE, or any variant of MG).
-! The extended types, Nuclide_CE and Nuclide_MG deal with the rest
+! The extended types, NuclideCE and NuclideMG deal with the rest
 !===============================================================================
 
-  type, abstract :: Nuclide_Base
+  type, abstract :: NuclideBase
     character(12) :: name    ! name of nuclide, e.g. 92235.03c
     integer       :: zaid    ! Z and A identifier, e.g. 92235
     real(8)       :: awr     ! Atomic Weight Ratio
@@ -31,26 +31,26 @@ module nuclide_header
     logical :: fissionable         ! nuclide is fissionable?
 
     contains
-      procedure(nuclide_base_clear_), deferred, pass :: clear ! Deallocates Nuclide
-      procedure(print_nuclide_),      deferred, pass :: print ! Writes nuclide info
-  end type Nuclide_Base
+      procedure(nuclidebase_clear_), deferred, pass :: clear ! Deallocates Nuclide
+      procedure(print_nuclide_),     deferred, pass :: print ! Writes nuclide info
+  end type NuclideBase
 
   abstract interface
 
-    subroutine nuclide_base_clear_(this)
-      import Nuclide_Base
-      class(Nuclide_Base), intent(inout) :: this
-    end subroutine nuclide_base_clear_
+    subroutine nuclidebase_clear_(this)
+      import NuclideBase
+      class(NuclideBase), intent(inout) :: this
+    end subroutine nuclidebase_clear_
 
     subroutine print_nuclide_(this, unit)
-      import Nuclide_Base
-      class(Nuclide_Base),intent(in) :: this
+      import NuclideBase
+      class(NuclideBase),intent(in) :: this
       integer, optional,  intent(in) :: unit
     end subroutine print_nuclide_
 
   end interface
 
-  type, extends(Nuclide_Base) :: Nuclide_CE
+  type, extends(NuclideBase) :: NuclideCE
     ! Energy grid information
     integer :: n_grid                     ! # of nuclide grid points
     integer, allocatable :: grid_index(:) ! log grid mapping indices
@@ -108,29 +108,29 @@ module nuclide_header
 
     ! Type-Bound procedures
     contains
-      procedure, pass :: clear => nuclide_ce_clear
-      procedure, pass :: print => nuclide_ce_print
-  end type Nuclide_CE
+      procedure, pass :: clear => nuclidece_clear
+      procedure, pass :: print => nuclidece_print
+  end type NuclideCE
 
-  type, abstract, extends(Nuclide_Base) :: Nuclide_MG
+  type, abstract, extends(NuclideBase) :: NuclideMG
     ! Scattering Order Information
-    integer :: order      ! Order of data (Scattering for Nuclide_Iso,
-                          ! Number of angles for all in Nuclide_Angle)
+    integer :: order      ! Order of data (Scattering for NuclideIso,
+                          ! Number of angles for all in NuclideAngle)
     integer :: scatt_type ! either legendre, histogram, or tabular.
     integer :: legendre_mu_points ! Number of tabular points to use to represent
                                   ! Legendre distribs, -1 if sample with the
                                   ! Legendres themselves
 ! Type-Bound procedures
     contains
-      procedure(nuclide_mg_get_xs_), deferred, pass :: get_xs ! Get the xs
-      procedure(nuclide_calc_f_), deferred, pass    :: calc_f ! Calculates f, given mu
-  end type Nuclide_MG
+      procedure(nuclidemg_get_xs), deferred, pass :: get_xs ! Get the xs
+      procedure(nuclide_calc_f_), deferred, pass  :: calc_f ! Calculates f, given mu
+  end type NuclideMG
 
   abstract interface
-    function nuclide_mg_get_xs_(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
+    function nuclidemg_get_xs(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
          result(xs)
-      import Nuclide_MG
-      class(Nuclide_MG), intent(in) :: this
+      import NuclideMG
+      class(NuclideMG), intent(in) :: this
       integer, intent(in)           :: g      ! Incoming Energy group
       character(*), intent(in)      :: xstype ! Cross Section Type
       integer, optional, intent(in) :: gout   ! Outgoing Group
@@ -139,11 +139,11 @@ module nuclide_header
       integer, optional, intent(in) :: i_azi  ! Azimuthal Index
       integer, optional, intent(in) :: i_pol  ! Polar Index
       real(8)                       :: xs     ! Resultant xs
-    end function nuclide_mg_get_xs_
+    end function nuclidemg_get_xs
 
     pure function nuclide_calc_f_(this, gin, gout, mu, uvw, i_azi, i_pol) result(f)
-      import Nuclide_MG
-      class(Nuclide_MG), intent(in) :: this
+      import NuclideMG
+      class(NuclideMG), intent(in) :: this
       integer, intent(in)           :: gin   ! Incoming Energy Group
       integer, intent(in)           :: gout  ! Outgoing Energy Group
       real(8), intent(in)           :: mu    ! Angle of interest
@@ -156,11 +156,11 @@ module nuclide_header
   end interface
 
 !===============================================================================
-! NUCLIDE_ISO contains the base MGXS data for a nuclide specifically for
+! NuclideIso contains the base MGXS data for a nuclide specifically for
 ! isotropically weighted MGXS
 !===============================================================================
 
-  type, extends(Nuclide_MG) :: Nuclide_Iso
+  type, extends(NuclideMG) :: NuclideIso
 
     ! Microscopic cross sections
     real(8), allocatable :: total(:)        ! total cross section
@@ -174,18 +174,18 @@ module nuclide_header
 
     ! Type-Bound procedures
     contains
-      procedure, pass :: clear  => nuclide_iso_clear     ! Deallocates Nuclide
-      procedure, pass :: print  => nuclide_iso_print     ! Writes nuclide info
-      procedure, pass :: get_xs => nuclide_iso_get_xs    ! Gets Size of Data w/in Object
-      procedure, pass :: calc_f => nuclide_mg_iso_calc_f ! Calcs f given mu
-  end type Nuclide_Iso
+      procedure, pass :: clear  => nuclideiso_clear  ! Deallocates Nuclide
+      procedure, pass :: print  => nuclideiso_print  ! Writes nuclide info
+      procedure, pass :: get_xs => nuclideiso_get_xs ! Gets Size of Data w/in Object
+      procedure, pass :: calc_f => nuclideiso_calc_f ! Calcs f given mu
+  end type NuclideIso
 
 !===============================================================================
-! NUCLIDE_ANGLE contains the base MGXS data for a nuclide specifically for
+! NuclideAngle contains the base MGXS data for a nuclide specifically for
 ! explicit angle-dependent weighted MGXS
 !===============================================================================
 
-  type, extends(Nuclide_MG) :: Nuclide_Angle
+  type, extends(NuclideMG) :: NuclideAngle
 
     ! Microscopic cross sections. Dimensions are: (Npol, Nazi, Nl, Ng, Ng)
     real(8), allocatable :: total(:,:,:)        ! total cross section
@@ -205,23 +205,23 @@ module nuclide_header
 
     ! Type-Bound procedures
     contains
-      procedure, pass :: clear  => nuclide_angle_clear     ! Deallocates Nuclide
-      procedure, pass :: print  => nuclide_angle_print     ! Gets Size of Data w/in Object
-      procedure, pass :: get_xs => nuclide_angle_get_xs    ! Gets Size of Data w/in Object
-      procedure, pass :: calc_f => nuclide_mg_angle_calc_f ! Calcs f given mu
-  end type Nuclide_Angle
+      procedure, pass :: clear  => nuclideangle_clear  ! Deallocates Nuclide
+      procedure, pass :: print  => nuclideangle_print  ! Gets Size of Data w/in Object
+      procedure, pass :: get_xs => nuclideangle_get_xs ! Gets Size of Data w/in Object
+      procedure, pass :: calc_f => nuclideangle_calc_f ! Calcs f given mu
+  end type NuclideAngle
 
 !===============================================================================
 ! NUCLIDEMGCONTAINER pointer array for storing Nuclides
 !===============================================================================
 
   type NuclideMGContainer
-    class(Nuclide_MG), pointer :: obj
+    class(NuclideMG), pointer :: obj
   end type NuclideMGContainer
 
 !===============================================================================
 ! NUCLIDE0K temporarily contains all 0K cross section data and other parameters
-! needed to treat resonance scattering before transferring them to NUCLIDE_CE
+! needed to treat resonance scattering before transferring them to NuclideCE
 !===============================================================================
 
   type Nuclide0K
@@ -297,13 +297,13 @@ module nuclide_header
   contains
 
 !===============================================================================
-! NUCLIDE_*_CLEAR resets and deallocates data in Nuclide_Base, Nuclide_Iso
-! or Nuclide_Angle
+! NUCLIDE_*_CLEAR resets and deallocates data in NuclideBase, NuclideIso
+! or NuclideAngle
 !===============================================================================
 
-    subroutine nuclide_ce_clear(this)
+    subroutine nuclidece_clear(this)
 
-      class(Nuclide_CE), intent(inout) :: this ! The Nuclide object to clear
+      class(NuclideCE), intent(inout) :: this ! The Nuclide object to clear
 
       integer :: i ! Loop counter
 
@@ -317,11 +317,11 @@ module nuclide_header
 
       call this % reaction_index % clear()
 
-    end subroutine nuclide_ce_clear
+    end subroutine nuclidece_clear
 
-    subroutine nuclide_iso_clear(this)
+    subroutine nuclideiso_clear(this)
 
-      class(Nuclide_Iso), intent(inout) :: this ! The Nuclide object to clear
+      class(NuclideIso), intent(inout) :: this ! The Nuclide object to clear
 
       ! Cler the extended information
       if (allocated(this % total)) then
@@ -340,11 +340,11 @@ module nuclide_header
         deallocate(this % mult)
       end if
 
-    end subroutine nuclide_iso_clear
+    end subroutine nuclideiso_clear
 
-    subroutine nuclide_angle_clear(this)
+    subroutine nuclideangle_clear(this)
 
-      class(Nuclide_Angle), intent(inout) :: this ! The Nuclide object to clear
+      class(NuclideAngle), intent(inout) :: this ! The Nuclide object to clear
 
       ! Cler the extended information
       if (allocated(this % total)) then
@@ -370,15 +370,15 @@ module nuclide_header
         deallocate(this % mult)
       end if
 
-    end subroutine nuclide_angle_clear
+    end subroutine nuclideangle_clear
 
 !===============================================================================
 ! PRINT_NUCLIDE_* displays information about a continuous-energy neutron
 ! cross_section table and its reactions and secondary angle/energy distributions
 !===============================================================================
 
-    subroutine nuclide_ce_print(this, unit)
-      class(Nuclide_CE), intent(in) :: this
+    subroutine nuclidece_print(this, unit)
+      class(NuclideCE), intent(in) :: this
       integer, intent(in), optional :: unit
 
       integer :: i                 ! loop index over nuclides
@@ -451,10 +451,10 @@ module nuclide_header
 
       ! Blank line at end of nuclide
       write(unit_,*)
-    end subroutine nuclide_ce_print
+    end subroutine nuclidece_print
 
-    subroutine nuclide_mg_print(this, unit_)
-      class(Nuclide_MG), intent(in) :: this
+    subroutine nuclidemg_print(this, unit_)
+      class(NuclideMG), intent(in) :: this
       integer, intent(in)           :: unit_
 
       character(MAX_LINE_LEN) :: temp_str
@@ -484,11 +484,11 @@ module nuclide_header
       end if
       write(unit_,*) '  Fissionable = ', this % fissionable
 
-    end subroutine nuclide_mg_print
+    end subroutine nuclidemg_print
 
-    subroutine nuclide_iso_print(this, unit)
+    subroutine nuclideiso_print(this, unit)
 
-      class(Nuclide_Iso), intent(in) :: this
+      class(NuclideIso), intent(in) :: this
       integer, optional, intent(in)  :: unit
 
       integer :: unit_             ! unit to write to
@@ -502,7 +502,7 @@ module nuclide_header
       end if
 
       ! Write Basic Nuclide Information
-      call nuclide_mg_print(this, unit_)
+      call nuclidemg_print(this, unit_)
 
       ! Determine size of mgxs and scattering matrices
       size_scattmat = (size(this % scatter) + size(this % mult)) * 8
@@ -524,11 +524,11 @@ module nuclide_header
       ! Blank line at end of nuclide
       write(unit_,*)
 
-    end subroutine nuclide_iso_print
+    end subroutine nuclideiso_print
 
-    subroutine nuclide_angle_print(this, unit)
+    subroutine nuclideangle_print(this, unit)
 
-      class(Nuclide_Angle), intent(in) :: this
+      class(NuclideAngle), intent(in) :: this
       integer, optional, intent(in)    :: unit
 
       integer :: unit_             ! unit to write to
@@ -542,7 +542,7 @@ module nuclide_header
       end if
 
       ! Write Basic Nuclide Information
-      call nuclide_mg_print(this, unit_)
+      call nuclidemg_print(this, unit_)
       write(unit_,*) '  # of Polar Angles = ' // trim(to_str(this % Npol))
       write(unit_,*) '  # of Azimuthal Angles = ' // trim(to_str(this % Nazi))
 
@@ -567,15 +567,15 @@ module nuclide_header
       write(unit_,*)
 
 
-    end subroutine nuclide_angle_print
+    end subroutine nuclideangle_print
 
 !===============================================================================
 ! NUCLIDE_*_GET_XS Returns the requested data type
 !===============================================================================
 
-    function nuclide_iso_get_xs(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
+    function nuclideiso_get_xs(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
          result(xs)
-      class(Nuclide_Iso), intent(in) :: this
+      class(NuclideIso), intent(in) :: this
       integer, intent(in)            :: g      ! Incoming Energy group
       character(*), intent(in)       :: xstype ! Cross Section Type
       integer, optional, intent(in)  :: gout   ! Outgoing Group
@@ -622,11 +622,11 @@ module nuclide_header
           xs = this % total(g) - this % absorption(g)
         end select
       end if
-    end function nuclide_iso_get_xs
+    end function nuclideiso_get_xs
 
-    function nuclide_angle_get_xs(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
+    function nuclideangle_get_xs(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
          result(xs)
-      class(Nuclide_Angle), intent(in) :: this
+      class(NuclideAngle), intent(in) :: this
       integer, intent(in)              :: g      ! Incoming Energy group
       character(*), intent(in)         :: xstype ! Cross Section Type
       integer, optional, intent(in)    :: gout   ! Outgoing Group
@@ -685,16 +685,16 @@ module nuclide_header
         end select
       end if
 
-    end function nuclide_angle_get_xs
+    end function nuclideangle_get_xs
 
 !===============================================================================
 ! NUCLIDE_*_CALC_F Finds the value of f(mu), the scattering angle probability,
 ! given mu
 !===============================================================================
 
-    pure function nuclide_mg_iso_calc_f(this, gin, gout, mu, uvw, i_azi, i_pol) &
+    pure function nuclideiso_calc_f(this, gin, gout, mu, uvw, i_azi, i_pol) &
          result(f)
-      class(Nuclide_Iso), intent(in) :: this
+      class(NuclideIso), intent(in) :: this
       integer, intent(in)            :: gin  ! Incoming Energy Group
       integer, intent(in)            :: gout ! Outgoing Energy Group
       real(8), intent(in)            :: mu   ! Angle of interest
@@ -737,11 +737,11 @@ module nuclide_header
 
       end if
 
-    end function nuclide_mg_iso_calc_f
+    end function nuclideiso_calc_f
 
-    pure function nuclide_mg_angle_calc_f(this, gin, gout, mu, uvw, i_azi, &
+    pure function nuclideangle_calc_f(this, gin, gout, mu, uvw, i_azi, &
                                           i_pol) result(f)
-      class(Nuclide_Angle), intent(in) :: this
+      class(NuclideAngle), intent(in) :: this
       integer, intent(in)              :: gin  ! Incoming Energy Group
       integer, intent(in)              :: gout ! Outgoing Energy Group
       real(8), intent(in)              :: mu   ! Angle of interest
@@ -791,7 +791,7 @@ module nuclide_header
 
       end if
 
-    end function nuclide_mg_angle_calc_f
+    end function nuclideangle_calc_f
 
 !===============================================================================
 ! find_angle finds the closest angle on the data grid and returns that index

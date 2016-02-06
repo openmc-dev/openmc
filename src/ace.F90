@@ -54,7 +54,7 @@ contains
     character(12)  :: name  ! name of isotope, e.g. 92235.03c
     character(12)  :: alias ! alias of nuclide, e.g. U-235.03c
     type(Material),   pointer :: mat
-    type(Nuclide_CE), pointer :: nuc
+    type(NuclideCE), pointer :: nuc
     type(SAlphaBeta), pointer :: sab
     type(SetChar) :: already_read
 
@@ -265,7 +265,7 @@ contains
     character(10) :: mat           ! material identifier
     character(70) :: comment       ! comment for ACE table
     character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
-    type(Nuclide_CE), pointer :: nuc
+    type(NuclideCE), pointer :: nuc
     type(SAlphaBeta), pointer :: sab
     type(XsListing),  pointer :: listing
 
@@ -422,7 +422,7 @@ contains
 !===============================================================================
 
   subroutine read_esz(nuc, data_0K)
-    type(Nuclide_CE), intent(inout) :: nuc
+    type(NuclideCE), intent(inout) :: nuc
     logical,          intent(in)    :: data_0K ! are we reading 0K data?
 
     integer :: NE ! number of energy points for total and elastic cross sections
@@ -510,7 +510,7 @@ contains
 !===============================================================================
 
   subroutine read_nu_data(nuc)
-    type(Nuclide_CE), intent(inout) :: nuc
+    type(NuclideCE), intent(inout) :: nuc
 
     integer :: i      ! loop index
     integer :: JXS2   ! location for fission nu data
@@ -714,7 +714,7 @@ contains
 !===============================================================================
 
   subroutine read_reactions(nuc)
-    type(Nuclide_CE), intent(inout) :: nuc
+    type(NuclideCE), intent(inout) :: nuc
 
     integer :: i         ! loop indices
     integer :: i_fission ! index in nuc % index_fission
@@ -894,7 +894,7 @@ contains
 !===============================================================================
 
   subroutine read_angular_dist(nuc)
-    type(Nuclide_CE), intent(inout) :: nuc
+    type(NuclideCE), intent(inout) :: nuc
 
     integer :: LOCB   ! location of angular distribution for given MT
     integer :: NE     ! number of incoming energies
@@ -998,7 +998,7 @@ contains
 !===============================================================================
 
   subroutine read_energy_dist(nuc)
-    type(Nuclide_CE), intent(inout) :: nuc
+    type(NuclideCE), intent(inout) :: nuc
 
     integer :: i     ! loop index
     integer :: n
@@ -1386,7 +1386,7 @@ contains
 !===============================================================================
 
   subroutine read_unr_res(nuc)
-    type(Nuclide_CE), intent(inout) :: nuc
+    type(NuclideCE), intent(inout) :: nuc
 
     integer :: JXS23 ! location of URR data
     integer :: lc    ! locator
@@ -1474,7 +1474,7 @@ contains
 !===============================================================================
 
   subroutine generate_nu_fission(nuc)
-    type(Nuclide_CE), intent(inout) :: nuc
+    type(NuclideCE), intent(inout) :: nuc
 
     integer :: i  ! index on nuclide energy grid
     real(8) :: E  ! energy

@@ -6,7 +6,7 @@ module macroxs
   use material_header, only: Material
   use math
   use nuclide_header,  only: find_angle, MaterialMacroXS, NuclideMicroXS, &
-                             Nuclide_MG, NuclideMGContainer
+                             NuclideMG, NuclideMGContainer
   use random_lcg,      only: prn
   use scattdata_header
   use search

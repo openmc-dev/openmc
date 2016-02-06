@@ -119,13 +119,13 @@ contains
           ! Now allocate accordingly
           select case(representation)
           case(MGXS_ISOTROPIC)
-            allocate(Nuclide_Iso :: nuclides_MG(i_nuclide) % obj)
+            allocate(NuclideIso :: nuclides_MG(i_nuclide) % obj)
           case(MGXS_ANGLE)
-            allocate(Nuclide_Angle :: nuclides_MG(i_nuclide) % obj)
+            allocate(NuclideAngle :: nuclides_MG(i_nuclide) % obj)
           end select
 
           ! Now read in the data specific to the type we just declared
-          call nuclide_mg_init(nuclides_MG(i_nuclide) % obj, node_xsdata, &
+          call NuclideMG_init(nuclides_MG(i_nuclide) % obj, node_xsdata, &
                                energy_groups, get_kfiss, get_fiss, error_code, &
                                error_text)
 
@@ -175,7 +175,7 @@ contains
 ! in multiple entries in the nuclides array for a single zaid number.
 !===============================================================================
 
-  subroutine same_nuclide_mg_list()
+  subroutine same_NuclideMG_list()
 
     integer :: i ! index in nuclides array
     integer :: j ! index in nuclides array
@@ -188,15 +188,15 @@ contains
       end do
     end do
 
-  end subroutine same_nuclide_mg_list
+  end subroutine same_NuclideMG_list
 
 !===============================================================================
 ! NUCLIDE_*_INIT reads in the data from the XML file, as already accessed
 !===============================================================================
 
-    subroutine nuclide_mg_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
+    subroutine NuclideMG_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
                                   error_code, error_text)
-      class(Nuclide_MG), intent(inout) :: this        ! Working Object
+      class(NuclideMG), intent(inout) :: this        ! Working Object
       type(Node), pointer, intent(in)  :: node_xsdata ! Data from data.xml
       integer, intent(in)              :: groups      ! Number of Energy groups
       logical, intent(in)              :: get_kfiss   ! Need Kappa-Fission?
@@ -296,19 +296,19 @@ contains
       end if
 
       select type(this)
-      type is (Nuclide_Iso)
-        call nuclide_iso_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
+      type is (NuclideIso)
+        call NuclideIso_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
                               error_code, error_text)
-      type is (Nuclide_Angle)
-        call nuclide_angle_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
+      type is (NuclideAngle)
+        call NuclideAngle_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
                                 error_code, error_text)
       end select
 
-    end subroutine nuclide_mg_init
+    end subroutine NuclideMG_init
 
-    subroutine nuclide_iso_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
+    subroutine NuclideIso_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
                                 error_code, error_text)
-      class(Nuclide_Iso), intent(inout)  :: this        ! Working Object
+      class(NuclideIso), intent(inout)  :: this        ! Working Object
       type(Node), pointer, intent(in)    :: node_xsdata ! Data from data.xml
       integer, intent(in)                :: groups      ! Number of Energy groups
       logical, intent(in)                :: get_kfiss   ! Need Kappa-Fission?
@@ -435,11 +435,11 @@ contains
         this % mult = ONE
       end if
 
-    end subroutine nuclide_iso_init
+    end subroutine NuclideIso_init
 
-    subroutine nuclide_angle_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
+    subroutine NuclideAngle_init(this, node_xsdata, groups, get_kfiss, get_fiss, &
                                   error_code, error_text)
-      class(Nuclide_Angle), intent(inout) :: this        ! Working Object
+      class(NuclideAngle), intent(inout) :: this        ! Working Object
       type(Node), pointer, intent(in)     :: node_xsdata ! Data from data.xml
       integer, intent(in)                 :: groups      ! Number of Energy groups
       logical, intent(in)                 :: get_kfiss   ! Need Kappa-Fission?
@@ -627,7 +627,7 @@ contains
         this % mult = ONE
       end if
 
-    end subroutine nuclide_angle_init
+    end subroutine NuclideAngle_init
 
 
 !===============================================================================
@@ -675,9 +675,9 @@ contains
       ! how we allocate the scatter object within macroxs
       legendre_mu_points = nuclides_MG(mat % nuclide(1)) % obj % legendre_mu_points
       select type(nuc => nuclides_MG(mat % nuclide(1)) % obj)
-      type is (Nuclide_Iso)
+      type is (NuclideIso)
         representation = MGXS_ISOTROPIC
-      type is (Nuclide_Angle)
+      type is (NuclideAngle)
         representation = MGXS_ANGLE
       end select
       scatt_type = nuclides_MG(mat % nuclide(1)) % obj % scatt_type

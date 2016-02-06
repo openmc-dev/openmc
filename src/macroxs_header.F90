@@ -135,7 +135,7 @@ contains
     integer :: i             ! loop index over nuclides
     integer :: gin, gout     ! group indices
     real(8) :: atom_density  ! atom density of a nuclide
-    ! class(Nuclide_Base), pointer  :: nuc ! current nuclide
+    ! class(NuclideBase), pointer  :: nuc ! current nuclide
     integer :: imu
     real(8) :: norm
     integer :: mat_max_order, order, l
@@ -239,7 +239,7 @@ contains
 
       ! Perform our operations which depend upon the type
       select type(nuc => nuclides(mat % nuclide(i)) % obj)
-      type is (Nuclide_Iso)
+      type is (NuclideIso)
 
         ! Add contributions to total, absorption, and fission data (if necessary)
         this % total = this % total + atom_density * nuc % total
@@ -305,9 +305,9 @@ contains
                  nuc % mult(gout,gin)
           end do
         end do
-      type is (Nuclide_Angle)
+      type is (NuclideAngle)
         error_code = 1
-        error_text = "Invalid Passing of Nuclide_Angle to MacroXS_Iso Object"
+        error_text = "Invalid Passing of NuclideAngle to MacroXS_Iso Object"
         return
       end select
     end do
@@ -393,12 +393,12 @@ contains
     error_text = ''
 
     ! Get the number of each polar and azi angles and make sure all the
-    ! Nuclide_Angle types have the same number of these angles
+    ! NuclideAngle types have the same number of these angles
     npol = -1
     nazi = -1
     do i = 1, mat % n_nuclides
       select type(nuc => nuclides(mat % nuclide(i)) % obj)
-      type is (Nuclide_Angle)
+      type is (NuclideAngle)
         if (npol == -1) then
           npol = nuc % Npol
           nazi = nuc % Nazi
@@ -522,11 +522,11 @@ contains
 
       ! Perform our operations which depend upon the type
       select type(nuc => nuclides(mat % nuclide(i)) % obj)
-      type is (Nuclide_Iso)
+      type is (NuclideIso)
         error_code = 1
-        error_text = "Invalid Passing of Nuclide_Iso to MacroXS_Angle Object"
+        error_text = "Invalid Passing of NuclideIso to MacroXS_Angle Object"
         return
-      type is (Nuclide_Angle)
+      type is (NuclideAngle)
         ! Add contributions to total, absorption, and fission data (if necessary)
         this % total = this % total + atom_density * nuc % total
         this % absorption = this % absorption + &

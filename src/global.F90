@@ -86,7 +86,7 @@ module global
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
 
   ! Cross section arrays
-  type(Nuclide_CE), allocatable, target :: nuclides(:)    ! Nuclide cross-sections
+  type(NuclideCE), allocatable, target :: nuclides(:)    ! Nuclide cross-sections
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
 
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables

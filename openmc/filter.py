@@ -502,9 +502,9 @@ class Filter(object):
             2. separate columns for the cell IDs, universe IDs, and lattice IDs
                and x,y,z cell indices corresponding to each (with summary info).
 
-            For 'energy' and 'energyout' filters, the DataFrame include a single
-            column with each element comprising a string with the lower, upper
-            energy bounds for each filter bin.
+            For 'energy' and 'energyout' filters, the DataFrame includes one
+            column for the lower energy bound and one column for the upper
+            energy bound for each filter bin.
 
             For 'mesh' filters, the DataFrame includes three columns for the
             x,y,z mesh cell indices corresponding to each filter bin.
@@ -719,21 +719,20 @@ class Filter(object):
 
         # energy, energyout filters
         elif 'energy' in self.type:
-            bins = self.bins
-            num_bins = self.num_bins
+            # Extract the lower and upper energy bounds for each result.
+            lo_bins = self.bins[:-1]
+            hi_bins = self.bins[1:]
 
-            # Create strings for
-            template = '({0:.1e} - {1:.1e})'
-            filter_bins = []
-            for i in range(num_bins):
-                filter_bins.append(template.format(bins[i], bins[i+1]))
+            # Repeat and tile them as necessary to account for other filters.
+            lo_bins = np.repeat(lo_bins, self.stride)
+            hi_bins = np.repeat(hi_bins, self.stride)
+            tile_factor = data_size / len(lo_bins)
+            lo_bins = np.tile(lo_bins, tile_factor)
+            hi_bins = np.tile(hi_bins, tile_factor)
 
-            # Tile the energy bins into a DataFrame column
-            filter_bins = np.repeat(filter_bins, self.stride)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = filter_bins
-            df = pd.concat([df, pd.DataFrame({self.type + ' [MeV]' : filter_bins})])
+            # Now stick 'em in the DataFrame.
+            df.loc[:, self.type + ' low [MeV]'] = lo_bins
+            df.loc[:, self.type + ' high [MeV]'] = hi_bins
 
         # universe, material, surface, cell, and cellborn filters
         else:

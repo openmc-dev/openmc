@@ -77,6 +77,23 @@ class Filter(object):
     def __ne__(self, other):
         return not self == other
 
+    def __gt__(self, other):
+        if self.type != other.type:
+            if self.type in _FILTER_TYPES and other.type in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.type) - \
+                        _FILTER_TYPES.index(other.type)
+                return True if delta > 0 else False
+            else:
+                return False
+        else:
+            if 'energy' in self.type and 'energy' in other.type:
+                return self.bins[0] >= other.bins[-1]
+            else:
+                return max(self.bins) > max(other.bins)
+
+    def __lt__(self, other):
+        return not self > other
+
     def __hash__(self):
         return hash(repr(self))
 
@@ -297,7 +314,13 @@ class Filter(object):
 
         # Merge unique filter bins
         merged_bins = set(np.concatenate((self.bins, other.bins)))
-        merged_filter.bins = list(sorted(merged_bins))
+
+        # Sort energy bin edges
+        if 'energy' in self.type:
+            merged_bins = sorted(merged_bins)
+
+        # Assign merged bins to merged filter
+        merged_filter.bins = list(merged_bins)
 
         # Count bins in the merged filter
         if 'energy' in merged_filter.type:

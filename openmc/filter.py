@@ -719,18 +719,15 @@ class Filter(object):
 
         # energy, energyout filters
         elif 'energy' in self.type:
-            # Extract the lower and upper energy bounds for each result.
-            lo_bins = self.bins[:-1]
-            hi_bins = self.bins[1:]
-
-            # Repeat and tile them as necessary to account for other filters.
-            lo_bins = np.repeat(lo_bins, self.stride)
-            hi_bins = np.repeat(hi_bins, self.stride)
+            # Extract the lower and upper energy bounds, then repeat and tile
+            # them as necessary to account for other filters.
+            lo_bins = np.repeat(self.bins[:-1], self.stride)
+            hi_bins = np.repeat(self.bins[1:], self.stride)
             tile_factor = data_size / len(lo_bins)
             lo_bins = np.tile(lo_bins, tile_factor)
             hi_bins = np.tile(hi_bins, tile_factor)
 
-            # Now stick 'em in the DataFrame.
+            # Add the new energy columns to the DataFrame.
             df.loc[:, self.type + ' low [MeV]'] = lo_bins
             df.loc[:, self.type + ' high [MeV]'] = hi_bins
 

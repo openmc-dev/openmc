@@ -430,7 +430,7 @@ class CrossFilter(object):
         filter_index = left_index * self.right_filter.num_bins + right_index
         return filter_index
 
-    def get_pandas_dataframe(self, datasize, summary=None, **kwargs):
+    def get_pandas_dataframe(self, datasize, summary=None):
         """Builds a Pandas DataFrame for the CrossFilter's bins.
 
         This method constructs a Pandas DataFrame object for the CrossFilter
@@ -454,14 +454,6 @@ class CrossFilter(object):
             column with a geometric "path" to each distribcell instance.
             NOTE: This option requires the OpenCG Python package.
 
-        Keyword arguments
-        -----------------
-        energy_fmt : None or string
-            If a format string is provided, energy and energyout filter bins
-            will be converted from floats to strings using the given format. If
-            None is provided, the values will be left as floats. The default is
-            '{:.2e}'.
-
         Returns
         -------
         pandas.DataFrame
@@ -480,15 +472,12 @@ class CrossFilter(object):
 
         # If left and right filters are identical, do not combine bins
         if self.left_filter == self.right_filter:
-            df = self.left_filter.get_pandas_dataframe(datasize, summary,
-                                                       **kwargs)
+            df = self.left_filter.get_pandas_dataframe(datasize, summary)
 
         # If left and right filters are different, combine their bins
         else:
-            left_df = self.left_filter.get_pandas_dataframe(datasize, summary,
-                                                            **kwargs)
-            right_df = self.right_filter.get_pandas_dataframe(datasize, summary,
-                                                              **kwargs)
+            left_df = self.left_filter.get_pandas_dataframe(datasize, summary)
+            right_df = self.right_filter.get_pandas_dataframe(datasize, summary)
             left_df = left_df.astype(str)
             right_df = right_df.astype(str)
             df = '(' + left_df + ' ' + self.binary_op + ' ' + right_df + ')'
@@ -842,7 +831,7 @@ class AggregateFilter(object):
         else:
             return 0
 
-    def get_pandas_dataframe(self, datasize, summary=None, **kwargs):
+    def get_pandas_dataframe(self, datasize, summary=None):
         """Builds a Pandas DataFrame for the AggregateFilter's bins.
 
         This method constructs a Pandas DataFrame object for the AggregateFilter

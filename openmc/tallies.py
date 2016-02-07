@@ -2,6 +2,7 @@ from __future__ import division
 
 from collections import Iterable, defaultdict
 import copy
+from functools import partial
 import os
 import pickle
 import itertools
@@ -1244,7 +1245,7 @@ class Tally(object):
         return data
 
     def get_pandas_dataframe(self, filters=True, nuclides=True,
-                             scores=True, summary=None, **kwargs):
+                             scores=True, summary=None, float_format='{:.2e}'):
         """Build a Pandas DataFrame for the Tally data.
 
         This method constructs a Pandas DataFrame object for the Tally data
@@ -1268,14 +1269,9 @@ class Tally(object):
             information in the Summary object is embedded into a Multi-index
             column with a geometric "path" to each distribcell intance.
             NOTE: This option requires the OpenCG Python package.
-
-        Keyword arguments
-        -----------------
-        energy_fmt : None or string
-            If a format string is provided, energy and energyout filter bins
-            will be converted from floats to strings using the given format. If
-            None is provided, the values will be left as floats. The default is
-            '{:.2e}'.
+        float_format : string
+            All floats in the DataFrame will be formatted using the given
+            format string before printing.
 
         Returns
         -------
@@ -1324,8 +1320,7 @@ class Tally(object):
 
             # Append each Filter's DataFrame to the overall DataFrame
             for self_filter in self.filters:
-                filter_df = self_filter.get_pandas_dataframe(data_size, summary,
-                                                             **kwargs)
+                filter_df = self_filter.get_pandas_dataframe(data_size, summary)
                 df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it
@@ -1375,6 +1370,10 @@ class Tally(object):
 
             # Create and set a MultiIndex for the DataFrame's columns
             df.columns = pd.MultiIndex.from_tuples(columns)
+
+        # Modify the df.to_string method so that it prints formatted strings.
+        # Credit to http://stackoverflow.com/users/3657742/chrisb for this trick
+        df.to_string = partial(df.to_string, float_format=float_format.format)
 
         return df
 

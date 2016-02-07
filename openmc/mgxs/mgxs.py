@@ -953,6 +953,10 @@ class MGXS(object):
         slice_xs.sparse = self.sparse
         return slice_xs
 
+    # FIXME
+    def merge(self, other):
+        raise NotImplementedError('not yet implemented')
+
     def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
         """Print a string representation for the multi-group cross section.
 

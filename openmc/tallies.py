@@ -695,10 +695,11 @@ class Tally(object):
         # Return False if only one tally has a delayed group filter
         tally1_dg = self.contains_filter('delayedgroup')
         tally2_dg = other.contains_filter('delayedgroup')
-        if sum(tally1_dg, tally2_dg) == 1:
+        if sum([tally1_dg, tally2_dg]) == 1:
             return False
 
         # Look to see if all filters are the same, or one or more can be merged
+        merge_filters = False
         for filter1 in self.filters:
             mergeable_filter = False
 
@@ -758,9 +759,9 @@ class Tally(object):
                 no_nuclides_match = False
 
         # Either all nuclides should match, or none should
-        if no_nuclides_match:
+        if no_nuclides_match or all_nuclides_match:
             return True
-        if not no_nuclides_match and not all_nuclides_match:
+        else:
             return False
 
     def _can_merge_scores(self, other):
@@ -794,14 +795,22 @@ class Tally(object):
             else:
                 no_scores_match = False
 
+        # Nuclides cannot be specified on 'flux' scores
+        if 'flux' in self.scores or 'flux' in other.scores:
+            if self.nuclides != other.nuclides:
+                return False
+
         # Either all scores should match, or none should
-        if no_scores_match:
+        if no_scores_match or all_scores_match:
             return True
-        elif not no_scores_match and not all_scores_match:
+        else:
             return False
 
     def can_merge(self, other):
         """Determine if another tally can be merged with this one
+
+        If results have been loaded from a statepoint, then tallies are only
+        mergeable along one and only one of filter bins, nuclides or scores.
 
         Parameters
         ----------
@@ -821,39 +830,43 @@ class Tally(object):
         merge_filters = self._can_merge_filters(other)
         merge_nuclides = self._can_merge_nuclides(other)
         merge_scores = self._can_merge_scores(other)
+        mergeability = [merge_filters, merge_nuclides, merge_scores]
 
-        # Tallies are mergeable if only one of filters, nuclides and
-        # scores is mergeable
-        if sum(merge_filters, merge_nuclides, merge_scores) == 1:
-            return True
-        else:
+        # If the tally results have been read from the statepoint, we can only
+        # merge along one of filter bins, scores or nuclides
+        if self._results_read and sum(mergeability) > 1:
             return False
+        else:
+            return all([merge_filters, merge_nuclides, merge_scores])
 
     def merge(self, other):
-        """Join another tally with this one
+        """Merge another tally with this one
+
+        If results have been loaded from a statepoint, then tallies are only
+        mergeable along one and only one of filter bins, nuclides or scores.
 
         Parameters
         ----------
         tally : Tally
-            Tally to join with this one
+            Tally to merge with this one
 
         Returns
         -------
-        joined_tally : Tally
-            Joined tallies
+        merged_tally : Tally
+            Merged tallies
 
         """
 
         if not self.can_merge(other):
-            msg = 'Unable to join tally ID="{0}" with ' + \
+            msg = 'Unable to merge tally ID="{0}" with ' \
                    '"{1}"'.format(other.id, self.id)
             raise ValueError(msg)
 
         # Create deep copy of tally to return as merged tally
-        joined_tally = copy.deepcopy(self)
+        merged_tally = copy.deepcopy(self)
 
         # Differentiate Tally with a new auto-generated Tally ID
-        joined_tally.id = None
+        merged_tally.id = None
 
         # Create deep copy of other tally to use for array concatenation
         other_copy = copy.deepcopy(other)
@@ -865,79 +878,76 @@ class Tally(object):
             for i, filter1 in enumerate(self.filters):
                 for j, filter2 in enumerate(other.filters):
                     if filter1 != filter2 and filter1.can_merge(filter2):
-                        other_copy._swap_filters(other_copy.filters[i], filter1)
-                        joined_tally.filters[i] = filter1.merge(filter2)
-                        join_axis = i
+                        other_copy._swap_filters(other_copy.filters[i], filter2)
+                        merged_tally.filters[i] = filter1.merge(filter2)
+                        merge_axis = i
                         break
 
         # If two tallies can be merged along nuclide bins
-        elif self._can_merge_nuclides(other):
-            join_axis = self.num_filters
+        if self._can_merge_nuclides(other):
+            merge_axis = self.num_filters
 
             # Add unique nuclides from other tally to merged tally
             for nuclide in other.nuclides:
-                if nuclide not in joined_tally.nuclides:
-                    joined_tally.add_score(nuclide)
+                if nuclide not in merged_tally.nuclides:
+                    merged_tally.add_nuclide(nuclide)
 
         # If two tallies can be merged along score bins
-        elif self._can_merge_scores(other):
-            join_axis = self.num_filters + 1
+        if self._can_merge_scores(other):
+            merge_axis = self.num_filters + 1
 
             # Add unique scores from other tally to merged tally
             for score in other.scores:
-                if score not in joined_tally.scores:
-                    joined_tally.add_score(score)
+                if score not in merged_tally.scores:
+                    merged_tally.add_score(score)
 
-        else:
-            raise ValueError('Unable to merge tallies')
-
-        # Update filter strides in joined tally
-        joined_tally._update_filter_strides()
+        # Update filter strides in merged tally
+        merged_tally._update_filter_strides()
 
         # Concatenate sum arrays if present in both tallies
         if self.sum is not None and other_copy.sum is not None:
             self_sum = self.get_reshaped_data(value='sum')
             other_sum = other_copy.get_reshaped_data(value='sum')
-            joined_tally._sum = \
-                np.concatenate((self_sum, other_sum), axis=join_axis)
-            joined_tally._sum = \
-                np.reshape(joined_tally._sum, joined_tally.shape)
+            merged_tally._sum = \
+                np.concatenate((self_sum, other_sum), axis=merge_axis)
+            merged_tally._sum = \
+                np.reshape(merged_tally._sum, merged_tally.shape)
 
         # Concatenate sum_sq arrays if present in both tallies
         if self.sum_sq is not None and other.sum_sq is not None:
             self_sum_sq = self.get_reshaped_data(value='sum_sq')
             other_sum_sq = other_copy.get_reshaped_data(value='sum_sq')
-            joined_tally._sum_sq = \
-                np.concatenate((self_sum_sq, other_sum_sq), axis=join_axis)
-            joined_tally._sum_sq = \
-                np.reshape(joined_tally._sum_sq, joined_tally.shape)
+            merged_tally._sum_sq = \
+                np.concatenate((self_sum_sq, other_sum_sq), axis=merge_axis)
+            merged_tally._sum_sq = \
+                np.reshape(merged_tally._sum_sq, merged_tally.shape)
 
         # Concatenate mean arrays if present in both tallies
         if self.mean is not None and other.mean is not None:
             self_mean = self.get_reshaped_data(value='mean')
             other_mean = other_copy.get_reshaped_data(value='mean')
-            joined_tally._mean = \
-                np.concatenate((self_mean, other_mean), axis=join_axis)
-            joined_tally._mean = \
-                np.reshape(joined_tally._mean, joined_tally.shape)
+            merged_tally._mean = \
+                np.concatenate((self_mean, other_mean), axis=merge_axis)
+            merged_tally._mean = \
+                np.reshape(merged_tally._mean, merged_tally.shape)
 
         # Concatenate std. dev. arrays if present in both tallies
         if self.std_dev is not None and other.std_dev is not None:
             self_std_dev = self.get_reshaped_data(value='std_dev')
             other_std_dev = other_copy.get_reshaped_data(value='std_dev')
-            joined_tally._std_dev = \
-                np.concatenate((self_std_dev, other_std_dev), axis=join_axis)
-            joined_tally._std_dev = \
-                np.reshape(joined_tally._std_dev, joined_tally.shape)
+            merged_tally._std_dev = \
+                np.concatenate((self_std_dev, other_std_dev), axis=merge_axis)
+            merged_tally._std_dev = \
+                np.reshape(merged_tally._std_dev, merged_tally.shape)
 
-        # Sparsify joined tally if both tallies are sparse
-        joined_tally.sparse = self.sparse and other.sparse
+        # Sparsify merged tally if both tallies are sparse
+        merged_tally.sparse = self.sparse and other.sparse
 
         # Add triggers from other tally to merged tally
         for trigger in other.triggers:
-            joined_tally.add_trigger(trigger)
+            merged_tally.add_trigger(trigger)
 
-        return joined_tally
+        return merged_tally
 
     def get_tally_xml(self):
         """Return XML representation of the tally
@@ -2131,10 +2141,10 @@ class Tally(object):
         """
 
         # Check that results have been read
-        if not self.derived and self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
-                  'since it does not contain any results.'.format(self.id)
-            raise ValueError(msg)
+#        if not self.derived and self.sum is None:
+#            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
+#                  'since it does not contain any results.'.format(self.id)
+#            raise ValueError(msg)
 
         cv.check_type('filter1', filter1, Filter)
         cv.check_type('filter2', filter2, Filter)

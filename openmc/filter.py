@@ -462,7 +462,7 @@ class Filter(object):
 
         return filter_bin
 
-    def get_pandas_dataframe(self, data_size, summary=None):
+    def get_pandas_dataframe(self, data_size, summary=None, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -483,6 +483,14 @@ class Filter(object):
             information in the Summary object is embedded into a Multi-index
             column with a geometric "path" to each distribcell instance.
             NOTE: This option requires the OpenCG Python package.
+
+        Keyword arguments
+        -----------------
+        energy_fmt : None or string
+            If a format string is provided, energy and energyout filter bins
+            will be converted from floats to strings using the given format. If
+            None is provided, the values will be left as floats. The default is
+            '{:.2e}'.
 
         Returns
         -------
@@ -726,6 +734,12 @@ class Filter(object):
             tile_factor = data_size / len(lo_bins)
             lo_bins = np.tile(lo_bins, tile_factor)
             hi_bins = np.tile(hi_bins, tile_factor)
+
+            # Format the energy values, if necessary.
+            energy_fmt = kwargs.setdefault('energy_fmt', '{:.2e}')
+            if energy_fmt is not None:
+                lo_bins = [energy_fmt.format(E) for E in lo_bins]
+                hi_bins = [energy_fmt.format(E) for E in hi_bins]
 
             # Add the new energy columns to the DataFrame.
             df.loc[:, self.type + ' low [MeV]'] = lo_bins

@@ -1244,7 +1244,7 @@ class Tally(object):
         return data
 
     def get_pandas_dataframe(self, filters=True, nuclides=True,
-                             scores=True, summary=None):
+                             scores=True, summary=None, **kwargs):
         """Build a Pandas DataFrame for the Tally data.
 
         This method constructs a Pandas DataFrame object for the Tally data
@@ -1268,6 +1268,14 @@ class Tally(object):
             information in the Summary object is embedded into a Multi-index
             column with a geometric "path" to each distribcell intance.
             NOTE: This option requires the OpenCG Python package.
+
+        Keyword arguments
+        -----------------
+        energy_fmt : None or string
+            If a format string is provided, energy and energyout filter bins
+            will be converted from floats to strings using the given format. If
+            None is provided, the values will be left as floats. The default is
+            '{:.2e}'.
 
         Returns
         -------
@@ -1316,7 +1324,8 @@ class Tally(object):
 
             # Append each Filter's DataFrame to the overall DataFrame
             for self_filter in self.filters:
-                filter_df = self_filter.get_pandas_dataframe(data_size, summary)
+                filter_df = self_filter.get_pandas_dataframe(data_size, summary,
+                                                             **kwargs)
                 df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it

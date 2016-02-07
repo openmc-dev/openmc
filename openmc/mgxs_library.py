@@ -418,12 +418,12 @@ class XSdata(object):
     @multiplicity.setter
     def multiplicity(self, multiplicity):
         if self._representation is 'isotropic':
-            shape = (self._energy_groups.num_group,
+            shape = (self._energy_groups.num_groups,
                      self._energy_groups.num_groups)
             max_depth = 2
         elif self._representation is 'angle':
             shape = (self._num_polar, self._num_azimuthal,
-                     self._energy_groups.num_group,
+                     self._energy_groups.num_groups,
                      self._energy_groups.num_groups)
             max_depth = 4
         # check we have a numpy list
@@ -455,7 +455,7 @@ class XSdata(object):
             shape_vec = (self._num_polar, self._num_azimuthal,
                          self._energy_groups.num_groups)
             shape_mat = (self._num_polar, self._num_azimuthal,
-                         self._energy_groups.num_group,
+                         self._energy_groups.num_groups,
                          self._energy_groups.num_groups)
 
         # Begin by checking the case when chi has already been given and thus

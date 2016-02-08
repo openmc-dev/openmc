@@ -289,24 +289,6 @@ class Filter(object):
         else:
             return True
 
-        '''
-        # FIXME: Should all bins be completely separate???
-        # FIMXE: This is necessary if merging will choose out unique bins
-        else:
-            # None of the bins in this filter should match in the other filter
-            for bin in self.bins:
-                if bin in other.bins:
-                    return False
-
-            # None of the bins in the other filter should match in this filter
-            for bin in other.bins:
-                if bin in self.bins:
-                    return False
-
-            # If all conditional checks pass then filters are mergeable
-            return True
-        '''
-
     def merge(self, other):
         """Merge this filter with another.
 

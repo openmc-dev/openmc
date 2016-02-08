@@ -859,7 +859,7 @@ class Tally(object):
 
         Parameters
         ----------
-        tally : Tally
+        other : Tally
             Tally to merge with this one
 
         Returns
@@ -879,6 +879,10 @@ class Tally(object):
 
         # Differentiate Tally with a new auto-generated Tally ID
         merged_tally.id = None
+
+        # If the two tallies are equal, simpy return copy
+        if self == other:
+            return merged_tally
 
         # Create deep copy of other tally to use for array concatenation
         other_copy = copy.deepcopy(other)

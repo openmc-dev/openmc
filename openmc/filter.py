@@ -735,6 +735,19 @@ class Filter(object):
             filter_bins = filter_bins
             df = pd.concat([df, pd.DataFrame({self.type + ' [MeV]' : filter_bins})])
 
+        elif self.type in ('azimuthal', 'polar'):
+            # Extract the lower and upper angle bounds, then repeat and tile
+            # them as necessary to account for other filters.
+            lo_bins = np.repeat(self.bins[:-1], self.stride)
+            hi_bins = np.repeat(self.bins[1:], self.stride)
+            tile_factor = data_size / len(lo_bins)
+            lo_bins = np.tile(lo_bins, tile_factor)
+            hi_bins = np.tile(hi_bins, tile_factor)
+
+            # Add the new angle columns to the DataFrame.
+            df.loc[:, self.type + ' low'] = lo_bins
+            df.loc[:, self.type + ' high'] = hi_bins
+
         # universe, material, surface, cell, and cellborn filters
         else:
             filter_bins = np.repeat(self.bins, self.stride)

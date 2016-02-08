@@ -155,7 +155,7 @@ class MGXS(object):
             clone._name = self.name
             clone._rxn_type = self.rxn_type
             clone._by_nuclide = self.by_nuclide
-            clone._nuclides = self._nuclides
+            clone._nuclides = copy.deepcopy(self._nuclides)
             clone._domain = self.domain
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
@@ -953,9 +953,93 @@ class MGXS(object):
         slice_xs.sparse = self.sparse
         return slice_xs
 
-    # FIXME
+    def can_merge(self, other):
+        """Determine if another MGXS can be merged with this one
+
+        If results have been loaded from a statepoint, then MGXS are only
+        mergeable along one and only one of enegy groups or nuclides.
+
+        Parameters
+        ----------
+        other : MGXS
+            MGXS to check for merging
+
+        """
+
+        if not isinstance(other, type(self)):
+            return False
+
+        # Compare reaction type, energy groups, nuclides, domain type
+        if self.rxn_type != other.rxn_type:
+            return False
+        elif not self.energy_groups.can_merge(other.energy_groups):
+            return False
+        elif self.by_nuclide != other.by_nuclide:
+            return False
+        elif self.domain_type != other.domain_type:
+            return False
+        elif 'distribcell' not in self.domain_type and self.domain != other.domain:
+            return False
+        elif len(self.tallies) != len(other.tallies):
+            return False
+
+        # See if each individual tally is mergeable
+        for tally_key in self.tallies:
+            if not self.tallies[tally_key].can_merge(other.tallies[tally_key]):
+                return False
+
+        # If all conditionals pass then MGXS are mergeable
+        return True
+
     def merge(self, other):
-        raise NotImplementedError('not yet implemented')
+        """Merge another MGXS with this one
+
+        If results have been loaded from a statepoint, then MGXS are only
+        mergeable along one and only one of energy groups or nuclides.
+
+        Parameters
+        ----------
+        other : MGXS
+            MGXS to merge with this one
+
+        Returns
+        -------
+        merged_mgxs : MGXS
+            Merged MGXS
+
+        """
+
+        if not self.can_merge(other):
+            raise ValueError('Unable to merge MGXS')
+
+        # Create deep copy of tally to return as merged tally
+        merged_mgxs = copy.deepcopy(self)
+        merged_mgxs._rxn_rate_tally = None
+        merged_mgxs._xs_tally = None
+
+        # Merge energy groups
+        if self.energy_groups != other.energy_groups:
+            merged_groups = self.energy_groups.merge(other.energy_groups)
+            merged_mgxs.energy_groups = merged_groups
+
+        # Merge nuclides
+        if self.nuclides != other.nuclides:
+
+            # The nuclides must be mutually exclusive
+            for nuclide in self.nuclides:
+                if nuclide in other.nuclides:
+                    msg = 'Unable to merge MGXS with shared nuclides'
+                    raise ValueError(msg)
+
+            # Concatenate lists of nuclides for the merged MGXS
+            merged_mgxs.nuclides = self.nuclides + other.nuclides
+
+        # Merge tallies
+        for tally_key in self.tallies:
+            merged_tally = self.tallies[tally_key].merge(other.tallies[tally_key])
+            merged_mgxs.tallies[tally_key] = merged_tally
+
+        return merged_mgxs
 
     def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
         """Print a string representation for the multi-group cross section.

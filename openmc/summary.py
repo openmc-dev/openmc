@@ -264,6 +264,9 @@ class Summary(object):
                       self._f['geometry/cells'][key]['rotation'][...]
                     rotation = np.asarray(rotation, dtype=np.int)
                     cell.rotation = rotation
+            elif fill_type == 'normal':
+                cell.temperature = \
+                  self._f['geometry/cells'][key]['temperature'][...]
 
             # Store Cell fill information for after Universe/Lattice creation
             self._cell_fills[index] = (fill_type, fill)
@@ -367,9 +370,9 @@ class Summary(object):
                 # Set the universes for the lattice
                 lattice.universes = universes
 
+                # Set the distribcell offsets for the lattice
                 if offsets is not None:
-                    offsets = np.swapaxes(offsets, 0, 2)
-                    lattice.offsets = offsets
+                    lattice.offsets = offsets[:, ::-1, :]
 
                 # Add the Lattice to the global dictionary of all Lattices
                 self.lattices[index] = lattice

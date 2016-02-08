@@ -1,5 +1,7 @@
 import sys
+import copy
 from numbers import Integral
+from collections import Iterable
 
 import numpy as np
 
@@ -430,7 +432,7 @@ class CrossFilter(object):
         filter_index = left_index * self.right_filter.num_bins + right_index
         return filter_index
 
-    def get_pandas_dataframe(self, datasize, summary=None):
+    def get_pandas_dataframe(self, data_size, summary=None):
         """Builds a Pandas DataFrame for the CrossFilter's bins.
 
         This method constructs a Pandas DataFrame object for the CrossFilter
@@ -445,7 +447,7 @@ class CrossFilter(object):
 
         Parameters
         ----------
-        datasize : Integral
+        data_size : Integral
             The total number of bins in the tally corresponding to this filter
         summary : None or Summary
             An optional Summary object to be used to construct columns for
@@ -472,12 +474,12 @@ class CrossFilter(object):
 
         # If left and right filters are identical, do not combine bins
         if self.left_filter == self.right_filter:
-            df = self.left_filter.get_pandas_dataframe(datasize, summary)
+            df = self.left_filter.get_pandas_dataframe(data_size, summary)
 
         # If left and right filters are different, combine their bins
         else:
-            left_df = self.left_filter.get_pandas_dataframe(datasize, summary)
-            right_df = self.right_filter.get_pandas_dataframe(datasize, summary)
+            left_df = self.left_filter.get_pandas_dataframe(data_size, summary)
+            right_df = self.right_filter.get_pandas_dataframe(data_size, summary)
             left_df = left_df.astype(str)
             right_df = right_df.astype(str)
             df = '(' + left_df + ' ' + self.binary_op + ' ' + right_df + ')'
@@ -713,6 +715,13 @@ class AggregateFilter(object):
     def __ne__(self, other):
         return not self == other
 
+    def __gt__(self, other):
+        # FIXME
+        return False
+
+    def __lt__(self, other):
+        return not self > other
+
     def __repr__(self):
         string = 'AggregateFilter\n'
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
@@ -757,7 +766,7 @@ class AggregateFilter(object):
 
     @property
     def num_bins(self):
-        return 1 if self.aggregate_filter else 0
+        return len(self.bins) if self.aggregate_filter else 0
 
     @property
     def stride(self):
@@ -779,8 +788,10 @@ class AggregateFilter(object):
 
     @bins.setter
     def bins(self, bins):
-        cv.check_iterable_type('bins', bins, (Integral, tuple))
-        self._bins = bins
+        cv.check_iterable_type('bins', bins, Iterable)
+        self._bins = []
+        for bin in bins:
+            self._bins.append(tuple(bin))
 
     @aggregate_op.setter
     def aggregate_op(self, aggregate_op):
@@ -825,9 +836,9 @@ class AggregateFilter(object):
                   '"{0}" is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
         else:
-            return 0
+            return self.bins.index(filter_bin)
 
-    def get_pandas_dataframe(self, datasize, summary=None):
+    def get_pandas_dataframe(self, data_size, summary=None):
         """Builds a Pandas DataFrame for the AggregateFilter's bins.
 
         This method constructs a Pandas DataFrame object for the AggregateFilter
@@ -836,7 +847,7 @@ class AggregateFilter(object):
 
         Parameters
         ----------
-        datasize : Integral
+        data_size : Integral
             The total number of bins in the tally corresponding to this filter
         summary : None or Summary
             An optional Summary object to be used to construct columns for
@@ -864,14 +875,85 @@ class AggregateFilter(object):
 
         import pandas as pd
 
-        # Construct a sring representing the filter aggregation
-        aggregate_bin = '{0}('.format(self.aggregate_op)
-        aggregate_bin += ', '.join(map(str, self.bins)) + ')'
+        # Create NumPy array of the bin tuples for repeating / tiling
+        filter_bins = np.empty(self.num_bins, dtype=tuple)
+        for i, bin in enumerate(self.bins):
+            filter_bins[i] = bin
 
-        # Construct NumPy array of bin repeated for each element in dataframe
-        aggregate_bin_array = np.array([aggregate_bin])
-        aggregate_bin_array = np.repeat(aggregate_bin_array, datasize)
+        # Repeat and tile bins as needed for DataFrame
+        filter_bins = np.repeat(filter_bins, self.stride)
+        tile_factor = data_size / len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
 
-        # Construct Pandas DataFrame for the AggregateFilter
-        df = pd.DataFrame({self.type: aggregate_bin_array})
+        # Create DataFrame with aggregated bins
+        df = pd.DataFrame({self.type: filter_bins})
         return df
+
+    def can_merge(self, other):
+        """Determine if AggregateFilter can be merged with another.
+
+        Parameters
+        ----------
+        other : AggregateFilter
+            Filter to compare with
+
+        Returns
+        -------
+        bool
+            Whether the filter can be merged
+
+        """
+
+        if not isinstance(other, AggregateFilter):
+            return False
+
+        # Filters must be of the same type
+        elif self.type != other.type:
+            return False
+
+        # None of the bins in this filter should match in the other filter
+        for bin in self.bins:
+            if bin in other.bins:
+                return False
+
+        # None of the bins in the other filter should match in this filter
+        for bin in other.bins:
+            if bin in self.bins:
+                return False
+
+        # If all conditional checks passed then filters are mergeable
+        return True
+
+    def merge(self, other):
+        """Merge this aggregatefilter with another.
+
+        Parameters
+        ----------
+        other : AggregateFilter
+            Filter to merge with
+
+        Returns
+        -------
+        merged_filter : AggregateFilter
+            Filter resulting from the merge
+
+        """
+
+        if not self.can_merge(other):
+            msg = 'Unable to merge "{0}" with "{1}" ' \
+                  'filters'.format(self.type, other.type)
+            raise ValueError(msg)
+
+        # Create deep copy of filter to return as merged filter
+        merged_filter = copy.deepcopy(self)
+
+        # Merge unique filter bins
+        merged_bins = self.bins + other.bins
+
+        # Sort energy bin edges
+        if 'energy' in self.type:
+            merged_bins = sorted(merged_bins)
+
+        # Assign merged bins to merged filter
+        merged_filter.bins = list(merged_bins)
+        return merged_filter

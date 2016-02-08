@@ -301,7 +301,7 @@ class Tally(object):
 
     @property
     def sum(self):
-        if not self._sp_filename:
+        if not self._sp_filename or self.derived:
             return None
 
         if not self._results_read:
@@ -924,6 +924,17 @@ class Tally(object):
                 if score not in merged_tally.scores:
                     merged_tally.add_score(score)
 
+        # Add triggers from other tally to merged tally
+        for trigger in other.triggers:
+            merged_tally.add_trigger(trigger)
+
+        # If results have not been read, then return tally for input generation
+        if self._sp_filename is None:
+            return merged_tally
+        #Otherwise, this is a derived tally which needs merged results arrays
+        else:
+            self._derived = True
+
         # Update filter strides in merged tally
         merged_tally._update_filter_strides()
 
@@ -985,10 +996,6 @@ class Tally(object):
 
         # Sparsify merged tally if both tallies are sparse
         merged_tally.sparse = self.sparse and other.sparse
-
-        # Add triggers from other tally to merged tally
-        for trigger in other.triggers:
-            merged_tally.add_trigger(trigger)
 
         return merged_tally
 
@@ -1538,14 +1545,8 @@ class Tally(object):
                   'Summary info'.format(self.id)
             raise KeyError(msg)
 
-        # Attempt to import Pandas
-        try:
-            import pandas as pd
-        except ImportError:
-            msg = 'The Pandas Python package must be installed on your system'
-            raise ImportError(msg)
-
         # Initialize a pandas dataframe for the tally data
+        import pandas as pd
         df = pd.DataFrame()
 
         # Find the total length of the tally data array
@@ -2189,8 +2190,8 @@ class Tally(object):
 #                  'since it does not contain any results.'.format(self.id)
 #            raise ValueError(msg)
 
-        cv.check_type('filter1', filter1, Filter)
-        cv.check_type('filter2', filter2, Filter)
+        cv.check_type('filter1', filter1, (Filter, CrossFilter, AggregateFilter))
+        cv.check_type('filter2', filter2, (Filter, CrossFilter, AggregateFilter))
 
         # Check that the filters exist in the tally and are not the same
         if filter1 == filter2:
@@ -2923,6 +2924,7 @@ class Tally(object):
 
         # Create deep copy of tally to return as sliced tally
         new_tally = copy.deepcopy(self)
+        new_tally._derived = True
 
         # Differentiate Tally with a new auto-generated Tally ID
         new_tally.id = None
@@ -3094,7 +3096,7 @@ class Tally(object):
                     # Add AggregateFilter to the tally sum
                     if not remove_filter:
                         filter_sum = \
-                            AggregateFilter(self_filter, filter_bins, 'sum')
+                            AggregateFilter(self_filter, [tuple(filter_bins)], 'sum')
                         tally_sum.add_filter(filter_sum)
 
                 # Add a copy of each filter not summed across to the tally sum
@@ -3243,7 +3245,7 @@ class Tally(object):
                     # Add AggregateFilter to the tally avg
                     if not remove_filter:
                         filter_sum = \
-                            AggregateFilter(self_filter, filter_bins, 'avg')
+                            AggregateFilter(self_filter, [tuple(filter_bins)], 'avg')
                         tally_avg.add_filter(filter_sum)
 
                 # Add a copy of each filter not averaged across to the tally avg

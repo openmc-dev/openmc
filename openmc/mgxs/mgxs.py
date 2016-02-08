@@ -1232,28 +1232,35 @@ class MGXS(object):
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
         all_groups = np.repeat(all_groups, self.num_nuclides)
-        if 'energy [MeV]' in df and 'energyout [MeV]' in df:
-            df.rename(columns={'energy [MeV]': 'group in'}, inplace=True)
+        if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
+            df.rename(columns={'energy low [MeV]': 'group in'},
+                      inplace=True)
             in_groups = np.tile(all_groups, self.num_subdomains)
             in_groups = np.repeat(in_groups, self.num_groups)
             df['group in'] = in_groups
+            del df['energy high [MeV]']
 
-            df.rename(columns={'energyout [MeV]': 'group out'}, inplace=True)
+            df.rename(columns={'energyout low [MeV]': 'group out'},
+                      inplace=True)
             out_groups = \
                 np.tile(all_groups, self.num_subdomains * self.num_groups)
             df['group out'] = out_groups
+            del df['energyout high [MeV]']
             columns = ['group in', 'group out']
 
-        elif 'energyout [MeV]' in df:
-            df.rename(columns={'energyout [MeV]': 'group out'}, inplace=True)
+        elif 'energyout low [MeV]' in df:
+            df.rename(columns={'energyout low [MeV]': 'group out'},
+                      inplace=True)
             in_groups = np.tile(all_groups, self.num_subdomains)
             df['group out'] = in_groups
+            del df['energyout high [MeV]']
             columns = ['group out']
 
-        elif 'energy [MeV]' in df:
-            df.rename(columns={'energy [MeV]': 'group in'}, inplace=True)
+        elif 'energy low [MeV]' in df:
+            df.rename(columns={'energy low [MeV]': 'group in'}, inplace=True)
             in_groups = np.tile(all_groups, self.num_subdomains)
             df['group in'] = in_groups
+            del df['energy high [MeV]']
             columns = ['group in']
 
         # Select out those groups the user requested

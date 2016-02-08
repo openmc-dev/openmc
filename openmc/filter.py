@@ -263,11 +263,11 @@ class Filter(object):
             return False
 
         # Filters must be of the same type
-        elif self.type != other.type:
+        if self.type != other.type:
             return False
 
         # Distribcell filters cannot have more than one bin
-        elif self.type == 'distribcell':
+        if self.type == 'distribcell':
             return False
 
         # Mesh filters cannot have more than one bin
@@ -288,6 +288,24 @@ class Filter(object):
 
         else:
             return True
+
+        '''
+        # FIXME: Should all bins be completely separate???
+        # FIMXE: This is necessary if merging will choose out unique bins
+        else:
+            # None of the bins in this filter should match in the other filter
+            for bin in self.bins:
+                if bin in other.bins:
+                    return False
+
+            # None of the bins in the other filter should match in this filter
+            for bin in other.bins:
+                if bin in self.bins:
+                    return False
+
+            # If all conditional checks pass then filters are mergeable
+            return True
+        '''
 
     def merge(self, other):
         """Merge this filter with another.
@@ -313,7 +331,8 @@ class Filter(object):
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = set(np.concatenate((self.bins, other.bins)))
+        merged_bins = np.concatenate((self.bins, other.bins))
+        merged_bins = np.unique(merged_bins)
 
         # Sort energy bin edges
         if 'energy' in self.type:
@@ -557,14 +576,8 @@ class Filter(object):
 
         """
 
-        # Attempt to import Pandas
-        try:
-            import pandas as pd
-        except ImportError:
-            msg = 'The Pandas Python package must be installed on your system'
-            raise ImportError(msg)
-
         # Initialize Pandas DataFrame
+        import pandas as pd
         df = pd.DataFrame()
 
         # mesh filters
@@ -743,7 +756,6 @@ class Filter(object):
             filter_bins = np.repeat(filter_bins, self.stride)
             tile_factor = data_size / len(filter_bins)
             filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = filter_bins
             df = pd.DataFrame({self.type : filter_bins})
 
             # If OpenCG level info DataFrame was created, concatenate

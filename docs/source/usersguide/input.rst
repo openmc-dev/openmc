@@ -987,6 +987,15 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
     *Default*: A region filling all space.
 
+  :temperature:
+    The temperature of the cell in Kelvin. If windowed-multipole data is
+    avalable, this temperature will be used to Doppler broaden some cross
+    sections in the resolved resonance region. A list of temperatures can be
+    specified for the "distributed temperature" feature. This will give each
+    unique instance of the cell its own temperature.
+
+    *Default*: The temperature of the coldest nuclide in the cell's material(s)
+
   :rotation:
     If the cell is filled with a universe, this element specifies the angles in
     degrees about the x, y, and z axes that the filled universe should be

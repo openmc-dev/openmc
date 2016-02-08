@@ -2785,7 +2785,7 @@ class Tally(object):
                         bin_indices.append(bin_index)
                         num_bins += 1
 
-                find_filter.bins = set(find_filter.bins[bin_indices])
+                find_filter.bins = np.unique(find_filter.bins[bin_indices])
                 find_filter.num_bins = num_bins
 
         # Update the new tally's filter strides

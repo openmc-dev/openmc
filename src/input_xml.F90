@@ -1298,6 +1298,40 @@ contains
         call get_node_array(node_cell, "translation", c % translation)
       end if
 
+      ! Read cell temperatures.  If the temperature is not specified, set it to
+      ! ERROR_REAL for now.  During initialization we'll replace ERROR_REAL with
+      ! the temperature from the material data.
+      if (check_for_node(node_cell, "temperature")) then
+        n = get_arraysize_double(node_cell, "temperature")
+        if (n > 0) then
+          ! Make sure this is a "normal" cell.
+          if (c % material(1) == NONE) call fatal_error("Cell " &
+               // trim(to_str(c % id)) // " was specified with a temperature &
+               &but no material. Temperature specification is only valid for &
+               &cells filled with a material.")
+
+          ! Copy in temperatures
+          allocate(c % sqrtkT(n))
+          call get_node_array(node_cell, "temperature", c % sqrtkT)
+
+          ! Make sure all temperatues are positive
+          do j = 1, size(c % sqrtkT)
+            if (c % sqrtkT(j) < ZERO) call fatal_error("Cell " &
+                 // trim(to_str(c % id)) // " was specified with a negative &
+                 &temperature. All cell temperatures must be non-negative.")
+          end do
+
+          ! Convert to sqrt(kT)
+          c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
+        else
+          allocate(c % sqrtkT(1))
+          c % sqrtkT(1) = ERROR_REAL
+        end if
+      else
+        allocate(c % sqrtkT(1))
+        c % sqrtkT = ERROR_REAL
+      end if
+
       ! Add cell to dictionary
       call cell_dict % add_key(c % id, i)
 
@@ -1867,6 +1901,7 @@ contains
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
     type(Node), pointer :: node_dens => null()
+    type(Node), pointer :: node_temp => null()
     type(Node), pointer :: node_nuc => null()
     type(Node), pointer :: node_ele => null()
     type(Node), pointer :: node_sab => null()

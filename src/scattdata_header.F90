@@ -10,68 +10,67 @@ module scattdata_header
 ! angular distribution
 !===============================================================================
 
-  type, abstract :: ScattData_Base
+  type, abstract :: ScattData
     ! p0 matrix on its own for sampling energy
     real(8), allocatable :: energy(:,:) ! (Gout x Gin)
     real(8), allocatable :: mult(:,:)   ! (Gout x Gin)
     real(8), allocatable :: data(:,:,:) ! (Order/Nmu x Gout x Gin)
 
-  ! Type-Bound procedures
   contains
-    procedure(init_), deferred, pass   :: init   ! Initializes ScattData
-    procedure(calc_f_), deferred, pass :: calc_f ! Calculates f, given mu
-  end type ScattData_Base
+    procedure(init_), deferred   :: init   ! Initializes ScattData
+    procedure(calc_f_), deferred :: calc_f ! Calculates f, given mu
+  end type ScattData
 
   abstract interface
     subroutine init_(this, order, energy, mult, coeffs)
-      import ScattData_Base
-      class(ScattData_Base), intent(inout) :: this          ! Object to work on
-      integer, intent(in)                  :: order         ! Data Order
-      real(8), intent(in)                  :: energy(:,:) ! Energy Transfer Matrix
-      real(8), intent(in)                  :: mult(:,:)     ! Scatter Prod'n Matrix
-      real(8), intent(in)                  :: coeffs(:,:,:) ! Coefficients to use
+      import ScattData
+      class(ScattData), intent(inout) :: this          ! Object to work on
+      integer, intent(in)             :: order         ! Data Order
+      real(8), intent(in)             :: energy(:,:)   ! Energy Transfer Matrix
+      real(8), intent(in)             :: mult(:,:)     ! Scatter Prod'n Matrix
+      real(8), intent(in)             :: coeffs(:,:,:) ! Coefficients to use
     end subroutine init_
 
     pure function calc_f_(this, gin, gout, mu) result(f)
-      import ScattData_Base
-      class(ScattData_Base), intent(in) :: this ! The ScattData to evaluate
-      integer, intent(in)               :: gin  ! Incoming Energy Group
-      integer, intent(in)               :: gout ! Outgoing Energy Group
-      real(8), intent(in)               :: mu   ! Angle of interest
-      real(8)                           :: f    ! Return value of f(mu)
+      import ScattData
+      class(ScattData), intent(in) :: this ! The ScattData to evaluate
+      integer, intent(in)          :: gin  ! Incoming Energy Group
+      integer, intent(in)          :: gout ! Outgoing Energy Group
+      real(8), intent(in)          :: mu   ! Angle of interest
+      real(8)                      :: f    ! Return value of f(mu)
 
     end function calc_f_
   end interface
 
-  type, extends(ScattData_Base) :: ScattData_Legendre
+  type, extends(ScattData) :: ScattDataLegendre
   contains
-    procedure, pass :: init   => scattdata_legendre_init
-    procedure, pass :: calc_f => scattdata_legendre_calc_f
-  end type ScattData_Legendre
+    procedure :: init   => scattdatalegendre_init
+    procedure :: calc_f => scattdatalegendre_calc_f
+  end type ScattDataLegendre
 
-  type, extends(ScattData_Base) :: ScattData_Histogram
-    real(8), allocatable :: mu(:) ! Mu bins
-    real(8)              :: dmu   ! Mu spacing
+  type, extends(ScattData) :: ScattDataHistogram
+    real(8), allocatable   :: mu(:) ! Mu bins
+    real(8)                :: dmu   ! Mu spacing
   contains
-    procedure, pass :: init   => scattdata_histogram_init
-    procedure, pass :: calc_f => scattdata_histogram_calc_f
-  end type ScattData_Histogram
+    procedure :: init   => scattdatahistogram_init
+    procedure :: calc_f => scattdatahistogram_calc_f
+  end type ScattDataHistogram
 
-  type, extends(ScattData_Base) :: ScattData_Tabular
-    real(8), allocatable :: mu(:)      ! Mu bins
-    real(8)              :: dmu        ! Mu spacing
-    real(8), allocatable :: fmu(:,:,:) ! PDF of f(mu)
+  type, extends(ScattData) :: ScattDataTabular
+    real(8), allocatable   :: mu(:)      ! Mu bins
+    real(8)                :: dmu        ! Mu spacing
+    real(8), allocatable   :: fmu(:,:,:) ! PDF of f(mu)
   contains
-    procedure, pass :: init   => scattdata_tabular_init
-    procedure, pass :: calc_f => scattdata_tabular_calc_f
-  end type ScattData_Tabular
+    procedure :: init   => scattdatatabular_init
+    procedure :: calc_f => scattdatatabular_calc_f
+  end type ScattDataTabular
 
 !===============================================================================
 ! SCATTDATACONTAINER allocatable array for storing ScattData Objects (for angle)
 !===============================================================================
 
   type ScattDataContainer
-    class(ScattData_Base), allocatable :: obj
+    class(ScattData), allocatable :: obj
   end type ScattDataContainer
 
 contains
@@ -80,8 +79,8 @@ contains
 ! SCATTDATA_INIT builds the scattdata object
 !===============================================================================
 
-    subroutine scattdata_base_init(this, order, energy, mult)
-      class(ScattData_Base), intent(inout) :: this        ! Object to work on
+    subroutine scattdatabase_init(this, order, energy, mult)
+      class(ScattData), intent(inout) :: this        ! Object to work on
       integer, intent(in)                  :: order       ! Data Order
       real(8), intent(in)                  :: energy(:,:) ! Energy Transfer Matrix
       real(8), intent(in)                  :: mult(:,:)   ! Scatter Prod'n Matrix
@@ -97,23 +96,23 @@ contains
       allocate(this % data(order, groups, groups))
       this % data = ZERO
 
-    end subroutine scattdata_base_init
+    end subroutine scattdatabase_init
 
-    subroutine scattdata_legendre_init(this, order, energy, mult, coeffs)
-      class(ScattData_Legendre), intent(inout) :: this   ! Object to work on
+    subroutine scattdatalegendre_init(this, order, energy, mult, coeffs)
+      class(ScattDataLegendre), intent(inout) :: this   ! Object to work on
       integer, intent(in)                      :: order  ! Data Order
       real(8), intent(in)              :: energy(:,:) ! Energy Transfer Matrix
       real(8), intent(in)              :: mult(:,:)   ! Scatter Prod'n Matrix
       real(8), intent(in)              :: coeffs(:,:,:) ! Coefficients to use
 
-      call scattdata_base_init(this, order, energy, mult)
+      call scattdatabase_init(this, order, energy, mult)
 
       this % data = coeffs
 
-    end subroutine scattdata_legendre_init
+    end subroutine scattdatalegendre_init
 
-    subroutine scattdata_histogram_init(this, order, energy, mult, coeffs)
-      class(ScattData_Histogram), intent(inout) :: this   ! Object to work on
+    subroutine scattdatahistogram_init(this, order, energy, mult, coeffs)
+      class(ScattDataHistogram), intent(inout) :: this   ! Object to work on
       integer, intent(in)                       :: order  ! Data Order
       real(8), intent(in)              :: energy(:,:) ! Energy Transfer Matrix
       real(8), intent(in)              :: mult(:,:)   ! Scatter Prod'n Matrix
@@ -124,10 +123,10 @@ contains
 
       groups = size(energy,dim=1)
 
-      call scattdata_base_init(this, order, energy, mult)
+      call scattdatabase_init(this, order, energy, mult)
 
       allocate(this % mu(order))
-      this % dmu = TWO / (real(order,8))
+      this % dmu = TWO / real(order,8)
       this % mu(1) = -ONE
       do imu = 2, order
         this % mu(imu) = -ONE + (imu - 1) * this % dmu
@@ -152,10 +151,10 @@ contains
         end do
       end do
 
-    end subroutine scattdata_histogram_init
+    end subroutine scattdatahistogram_init
 
-    subroutine scattdata_tabular_init(this, order, energy, mult, coeffs)
-      class(ScattData_Tabular), intent(inout) :: this   ! Object to work on
+    subroutine scattdatatabular_init(this, order, energy, mult, coeffs)
+      class(ScattDataTabular), intent(inout) :: this   ! Object to work on
       integer, intent(in)                     :: order  ! Data Order
       real(8), intent(in)              :: energy(:,:) ! Energy Transfer Matrix
       real(8), intent(in)              :: mult(:,:)   ! Scatter Prod'n Matrix
@@ -176,10 +175,10 @@ contains
 
       groups = size(energy,dim=1)
 
-      call scattdata_base_init(this, this_order, energy, mult)
+      call scattdatabase_init(this, this_order, energy, mult)
 
       allocate(this % mu(this_order))
-      this % dmu = TWO / (real(this_order) - 1)
+      this % dmu = TWO / real(this_order - 1)
       do imu = 1, this_order - 1
         this % mu(imu) = -ONE + real(imu - 1) * this % dmu
       end do
@@ -228,14 +227,14 @@ contains
         end do
       end do
 
-    end subroutine scattdata_tabular_init
+    end subroutine scattdatatabular_init
 
 !===============================================================================
 ! SCATTDATA_*_CALC_F Calculates the value of f given mu (and gin,gout pair)
 !===============================================================================
 
-    pure function scattdata_legendre_calc_f(this, gin, gout, mu) result(f)
-      class(ScattData_Legendre), intent(in) :: this ! The ScattData to evaluate
+    pure function scattdatalegendre_calc_f(this, gin, gout, mu) result(f)
+      class(ScattDataLegendre), intent(in) :: this ! The ScattData to evaluate
       integer, intent(in)                   :: gin  ! Incoming Energy Group
       integer, intent(in)                   :: gout ! Outgoing Energy Group
       real(8), intent(in)                   :: mu   ! Angle of interest
@@ -244,10 +243,10 @@ contains
       ! Plug mu in to the legendre expansion and go from there
       f = evaluate_legendre(this % data(:, gout, gin), mu)
 
-    end function scattdata_legendre_calc_f
+    end function scattdatalegendre_calc_f
 
-    pure function scattdata_histogram_calc_f(this, gin, gout, mu) result(f)
-      class(ScattData_Histogram), intent(in) :: this ! The ScattData to evaluate
+    pure function scattdatahistogram_calc_f(this, gin, gout, mu) result(f)
+      class(ScattDataHistogram), intent(in) :: this ! The ScattData to evaluate
       integer, intent(in)                    :: gin  ! Incoming Energy Group
       integer, intent(in)                    :: gout ! Outgoing Energy Group
       real(8), intent(in)                    :: mu   ! Angle of interest
@@ -265,10 +264,10 @@ contains
       ! Use histogram interpolation to find f(mu)
       f = this % data(imu, gout, gin)
 
-    end function scattdata_histogram_calc_f
+    end function scattdatahistogram_calc_f
 
-    pure function scattdata_tabular_calc_f(this, gin, gout, mu) result(f)
-      class(ScattData_Tabular), intent(in) :: this ! The ScattData to evaluate
+    pure function scattdatatabular_calc_f(this, gin, gout, mu) result(f)
+      class(ScattDataTabular), intent(in) :: this ! The ScattData to evaluate
       integer, intent(in)                  :: gin  ! Incoming Energy Group
       integer, intent(in)                  :: gout ! Outgoing Energy Group
       real(8), intent(in)                  :: mu   ! Angle of interest
@@ -289,6 +288,6 @@ contains
       f = (ONE - r) * this % data(imu, gout, gin) + &
            r * this % data(imu + 1, gout, gin)
 
-    end function scattdata_tabular_calc_f
+    end function scattdatatabular_calc_f
 
 end module scattdata_header

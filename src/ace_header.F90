@@ -24,9 +24,8 @@ module ace_header
     real(8), allocatable :: sigma(:)   ! Cross section values
     type(SecondaryDistribution) :: secondary
 
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => reaction_clear ! Deallocates Reaction
+  contains
+    procedure :: clear => reaction_clear ! Deallocates Reaction
   end type Reaction
 
 !===============================================================================

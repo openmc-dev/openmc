@@ -12,12 +12,12 @@ module nuclide_header
   implicit none
 
 !===============================================================================
-! NuclideBase contains the base nuclidic data for a nuclide, which does not depend
+! Nuclide contains the base nuclidic data for a nuclide, which does not depend
 ! upon how the nuclear data is represented (i.e., CE, or any variant of MG).
 ! The extended types, NuclideCE and NuclideMG deal with the rest
 !===============================================================================
 
-  type, abstract :: NuclideBase
+  type, abstract :: Nuclide
     character(12) :: name    ! name of nuclide, e.g. 92235.03c
     integer       :: zaid    ! Z and A identifier, e.g. 92235
     real(8)       :: awr     ! Atomic Weight Ratio
@@ -30,21 +30,21 @@ module nuclide_header
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
 
-    contains
-      procedure(print_nuclide_),     deferred, pass :: print ! Writes nuclide info
-  end type NuclideBase
+  contains
+    procedure(print_nuclide_),     deferred :: print ! Writes nuclide info
+  end type Nuclide
 
   abstract interface
 
     subroutine print_nuclide_(this, unit)
-      import NuclideBase
-      class(NuclideBase),intent(in) :: this
-      integer, optional,  intent(in) :: unit
+      import Nuclide
+      class(Nuclide),intent(in)     :: this
+      integer, optional, intent(in) :: unit
     end subroutine print_nuclide_
 
   end interface
 
-  type, extends(NuclideBase) :: NuclideCE
+  type, extends(Nuclide) :: NuclideCE
     ! Energy grid information
     integer :: n_grid                     ! # of nuclide grid points
     integer, allocatable :: grid_index(:) ! log grid mapping indices
@@ -100,13 +100,12 @@ module nuclide_header
     type(DictIntInt) :: reaction_index ! map MT values to index in reactions
                                        ! array; used at tally-time
 
-    ! Type-Bound procedures
-    contains
-      procedure, pass :: clear => nuclidece_clear
-      procedure, pass :: print => nuclidece_print
+  contains
+    procedure :: clear => nuclidece_clear
+    procedure :: print => nuclidece_print
   end type NuclideCE
 
-  type, abstract, extends(NuclideBase) :: NuclideMG
+  type, abstract, extends(Nuclide) :: NuclideMG
     ! Scattering Order Information
     integer :: order      ! Order of data (Scattering for NuclideIso,
                           ! Number of angles for all in NuclideAngle)
@@ -114,10 +113,9 @@ module nuclide_header
     integer :: legendre_mu_points ! Number of tabular points to use to represent
                                   ! Legendre distribs, -1 if sample with the
                                   ! Legendres themselves
-! Type-Bound procedures
-    contains
-      procedure(nuclidemg_get_xs), deferred, pass :: get_xs ! Get the xs
-      procedure(nuclide_calc_f_), deferred, pass  :: calc_f ! Calculates f, given mu
+  contains
+    procedure(nuclidemg_get_xs), deferred :: get_xs ! Get the xs
+    procedure(nuclide_calc_f_), deferred  :: calc_f ! Calculates f, given mu
   end type NuclideMG
 
   abstract interface
@@ -166,11 +164,10 @@ module nuclide_header
     real(8), allocatable :: chi(:)          ! Fission Spectra
     real(8), allocatable :: mult(:,:)       ! Scatter multiplicity (Gout x Gin)
 
-    ! Type-Bound procedures
-    contains
-      procedure, pass :: print  => nuclideiso_print  ! Writes nuclide info
-      procedure, pass :: get_xs => nuclideiso_get_xs ! Gets Size of Data w/in Object
-      procedure, pass :: calc_f => nuclideiso_calc_f ! Calcs f given mu
+  contains
+    procedure :: print  => nuclideiso_print  ! Writes nuclide info
+    procedure :: get_xs => nuclideiso_get_xs ! Gets Size of Data w/in Object
+    procedure :: calc_f => nuclideiso_calc_f ! Calcs f given mu
   end type NuclideIso
 
 !===============================================================================
@@ -196,11 +193,10 @@ module nuclide_header
     real(8), allocatable :: polar(:)     ! polar angles
     real(8), allocatable :: azimuthal(:) ! azimuthal angles
 
-    ! Type-Bound procedures
-    contains
-      procedure, pass :: print  => nuclideangle_print  ! Gets Size of Data w/in Object
-      procedure, pass :: get_xs => nuclideangle_get_xs ! Gets Size of Data w/in Object
-      procedure, pass :: calc_f => nuclideangle_calc_f ! Calcs f given mu
+  contains
+    procedure :: print  => nuclideangle_print  ! Gets Size of Data w/in Object
+    procedure :: get_xs => nuclideangle_get_xs ! Gets Size of Data w/in Object
+    procedure :: calc_f => nuclideangle_calc_f ! Calcs f given mu
   end type NuclideAngle
 
 !===============================================================================
@@ -217,14 +213,12 @@ module nuclide_header
 !===============================================================================
 
   type Nuclide0K
-
     character(10) :: nuclide             ! name of nuclide, e.g. U-238
     character(16) :: scheme = 'ares'     ! target velocity sampling scheme
     character(10) :: name                ! name of nuclide, e.g. 92235.03c
     character(10) :: name_0K             ! name of 0K nuclide, e.g. 92235.00c
     real(8)       :: E_min = 0.01e-6_8   ! lower cutoff energy for res scattering
     real(8)       :: E_max = 1000.0e-6_8 ! upper cutoff energy for res scattering
-
   end type Nuclide0K
 
 !===============================================================================
@@ -289,7 +283,7 @@ module nuclide_header
   contains
 
 !===============================================================================
-! NUCLIDECE_CLEAR resets and deallocates data in NuclideBase, NuclideIso
+! NUCLIDECE_CLEAR resets and deallocates data in Nuclide, NuclideIso
 ! or NuclideAngle
 !===============================================================================
 
@@ -648,7 +642,7 @@ module nuclide_header
       if (this % scatt_type == ANGLE_LEGENDRE) then
         f = evaluate_legendre(this % scatter(gout,gin,:), mu)
       else if (this % scatt_type == ANGLE_TABULAR) then
-        dmu = TWO / (real(this % order) - 1)
+        dmu = TWO / real(this % order - 1)
         ! Find mu bin algebraically, knowing that the spacing is equal
         f   = (mu + ONE) / dmu + ONE
         imu = floor(f)
@@ -702,7 +696,7 @@ module nuclide_header
       if (this % scatt_type == ANGLE_LEGENDRE) then
         f = evaluate_legendre(this % scatter(gout,gin,:,i_azi_,i_pol_), mu)
       else if (this % scatt_type == ANGLE_TABULAR) then
-        dmu = TWO / (real(this % order) - 1)
+        dmu = TWO / real(this % order - 1)
         ! Find mu bin algebraically, knowing that the spacing is equal
         f   = (mu + ONE) / dmu + ONE
         imu = floor(f)
@@ -751,9 +745,9 @@ module nuclide_header
       my_azi = atan2(uvw(2), uvw(1))
 
       ! Search for equi-binned angles
-      dangle = PI / (real(size(polar),8))
+      dangle = PI / real(size(polar),8)
       i_pol  = floor(my_pol / dangle + ONE)
-      dangle = TWO * PI / (real(size(azimuthal),8))
+      dangle = TWO * PI / real(size(azimuthal),8)
       i_azi  = floor((my_azi + PI) / dangle + ONE)
 
     end subroutine find_angle

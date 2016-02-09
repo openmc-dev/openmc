@@ -1,7 +1,7 @@
-module macroxs
+module macroxs_operations
 
   use constants
-  use macroxs_header,  only: MacroXS_Base, MacroXS_Iso, MacroXS_Angle, &
+  use macroxs_header,  only: MacroXS, MacroXSIso, MacroXSAngle, &
                              expand_harmonic
   use material_header, only: Material
   use math
@@ -20,7 +20,7 @@ contains
 !===============================================================================
 
   subroutine calculate_mgxs(this, gin, uvw, xs)
-    class(MacroXS_Base),   intent(in)    :: this
+    class(MacroXS),        intent(in)    :: this
     integer,               intent(in)    :: gin         ! Incoming neutron group
     real(8),               intent(in)    :: uvw(3)      ! Incoming neutron direction
     type(MaterialMacroXS), intent(inout) :: xs
@@ -28,13 +28,13 @@ contains
     integer :: iazi, ipol
 
     select type(this)
-    type is (MacroXS_Iso)
+    type is (MacroXSIso)
       xs % total         = this % total(gin)
       xs % elastic       = this % scattxs(gin)
       xs % absorption    = this % absorption(gin)
       xs % nu_fission    = this % nu_fission(gin)
 
-    type is (MacroXS_Angle)
+    type is (MacroXSAngle)
       call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
       xs % total         = this % total(gin, iazi, ipol)
       xs % elastic       = this % scattxs(gin, iazi, ipol)
@@ -50,16 +50,16 @@ contains
 !===============================================================================
 
   function sample_fission_energy(this, gin, uvw) result(gout)
-    class(MacroXS_Base), intent(in) :: this   ! Data to work with
+    class(MacroXS),      intent(in) :: this   ! Data to work with
     integer, intent(in)             :: gin    ! Incoming energy group
     real(8), intent(in)             :: uvw(3) ! Particle Direction
     integer                         :: gout   ! Sampled outgoing group
 
     select type(this)
-    type is (MacroXS_Iso)
-      gout = macroxs_iso_sample_fission_energy(this, gin, uvw)
-    type is (MacroXS_Angle)
-      gout = macroxs_angle_sample_fission_energy(this, gin, uvw)
+    type is (MacroXSIso)
+      gout = macroxsiso_sample_fission_energy(this, gin, uvw)
+    type is (MacroXSAngle)
+      gout = macroxsangle_sample_fission_energy(this, gin, uvw)
     end select
 
   end function sample_fission_energy
@@ -69,11 +69,11 @@ contains
 ! Implemented as % scatter.
 !===============================================================================
 
-  function macroxs_iso_sample_fission_energy(this, gin, uvw) result(gout)
-    class(MacroXS_Iso), intent(in)  :: this   ! Data to work with
-    integer, intent(in)             :: gin    ! Incoming energy group
-    real(8), intent(in)             :: uvw(3) ! Particle Direction
-    integer                         :: gout   ! Sampled outgoing group
+  function macroxsiso_sample_fission_energy(this, gin, uvw) result(gout)
+    class(MacroXSIso), intent(in) :: this   ! Data to work with
+    integer, intent(in)           :: gin    ! Incoming energy group
+    real(8), intent(in)           :: uvw(3) ! Particle Direction
+    integer                       :: gout   ! Sampled outgoing group
     real(8) :: xi               ! Our random number
     real(8) :: prob             ! Running probability
 
@@ -86,10 +86,10 @@ contains
       prob = prob + this % chi(gout,gin)
     end do
 
-  end function macroxs_iso_sample_fission_energy
+  end function macroxsiso_sample_fission_energy
 
-  function macroxs_angle_sample_fission_energy(this, gin, uvw) result(gout)
-    class(MacroXS_Angle), intent(in) :: this  ! Data to work with
+  function macroxsangle_sample_fission_energy(this, gin, uvw) result(gout)
+    class(MacroXSAngle), intent(in) :: this  ! Data to work with
     integer, intent(in)             :: gin    ! Incoming energy group
     real(8), intent(in)             :: uvw(3) ! Particle Direction
     integer                         :: gout   ! Sampled outgoing group
@@ -108,14 +108,14 @@ contains
       prob = prob + this % chi(gout,gin,iazi,ipol)
     end do
 
-  end function macroxs_angle_sample_fission_energy
+  end function macroxsangle_sample_fission_energy
 
 !===============================================================================
 ! SAMPLE_SCATTER acts as a templating code for macroxs_*_sample_scatter
 !===============================================================================
 
   subroutine sample_scatter(this, uvw, gin, gout, mu, wgt)
-    class(MacroXS_Base), intent(in)   :: this
+    class(MacroXS), intent(in)        :: this
     real(8),             intent(in)   :: uvw(3) ! Incoming neutron direction
     integer,             intent(in)   :: gin    ! Incoming neutron group
     integer,            intent(out)   :: gout   ! Sampled outgoin group
@@ -125,9 +125,9 @@ contains
     integer :: iazi, ipol ! Angular indices
 
     select type(this)
-    type is (MacroXS_Iso)
+    type is (MacroXSIso)
       call macroxs_sample_scatter(this % scatter, gin, gout, mu, wgt)
-    type is (MacroXS_Angle)
+    type is (MacroXSAngle)
       call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
       call macroxs_sample_scatter(this % scatter(iazi,ipol) % obj,gin,gout,mu,wgt)
     end select
@@ -140,11 +140,11 @@ contains
 !===============================================================================
 
   subroutine macroxs_sample_scatter(scatt, gin, gout, mu, wgt)
-    class(ScattData_Base), intent(in) :: scatt ! Scattering Object to Use
-    integer,             intent(in)   :: gin   ! Incoming neutron group
-    integer,            intent(out)   :: gout  ! Sampled outgoin group
-    real(8),            intent(out)   :: mu    ! Sampled change in angle
-    real(8),            intent(inout) :: wgt   ! Particle weight
+    class(ScattData), intent(in)    :: scatt ! Scattering Object to Use
+    integer,          intent(in)    :: gin   ! Incoming neutron group
+    integer,          intent(out)   :: gout  ! Sampled outgoin group
+    real(8),          intent(out)   :: mu    ! Sampled change in angle
+    real(8),          intent(inout) :: wgt   ! Particle weight
 
     real(8) :: xi     ! Our random number
     real(8) :: prob   ! Running probability
@@ -164,7 +164,7 @@ contains
     end do
 
     select type (scatt)
-    type is (ScattData_Histogram)
+    type is (ScattDataHistogram)
       xi = prn()
       if (xi < scatt % data(1,gout,gin)) then
         imu = 1
@@ -176,7 +176,7 @@ contains
       ! Randomly select a mu in this bin.
       mu = prn() * scatt % dmu + scatt % mu(imu)
 
-    type is (ScattData_Tabular)
+    type is (ScattDataTabular)
       ! determine outgoing cosine bin
       NP = size(scatt % data(:,gout,gin))
       xi = prn()
@@ -211,7 +211,7 @@ contains
         mu = ONE
       end if
 
-    type is (ScattData_Legendre)
+    type is (ScattDataLegendre)
       ! Now we can sample mu using the legendre representation of the scattering
       ! kernel in data(1:this % order)
 
@@ -240,4 +240,4 @@ contains
 
   end subroutine macroxs_sample_scatter
 
-end module macroxs
+end module macroxs_operations

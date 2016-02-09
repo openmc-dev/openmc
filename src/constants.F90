@@ -357,7 +357,8 @@ module constants
   ! Differential tally independent variables
   integer, parameter :: &
        DIFF_DENSITY = 1, &
-       DIFF_NUCLIDE_DENSITY = 2
+       DIFF_NUCLIDE_DENSITY = 2, &
+       DIFF_TEMPERATURE = 3
 
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS

@@ -730,6 +730,40 @@ contains
   end subroutine
 
 !===============================================================================
+! MULTIPOLE_DERIV_EVAL evaluates the windowed multipole equations for the
+! derivative of cross sections in the resolved resonance regions with respect to
+! temperature.
+!===============================================================================
+
+  subroutine multipole_deriv_eval(multipole, Emev, sqrtkT, sigT, sigA, sigF)
+    type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
+                                                  !  object to process.
+    real(8), intent(in)              :: Emev      ! The energy at which to
+                                                  !  evaluate the cross section
+                                                  !  derivative in MeV
+    real(8), intent(in)              :: sqrtkT    ! The temperature in the form
+                                                  !  sqrt(kT (in MeV)), at which
+                                                  !  to evaluate the XS.
+    real(8), intent(out)             :: sigT      ! Total cross section
+    real(8), intent(out)             :: sigA      ! Absorption cross section
+    real(8), intent(out)             :: sigF      ! Fission cross section
+    real(8), parameter :: T_DIFF = 10.0_8
+    real(8) :: kT, sqrtkT_hi, sqrtkT_lo
+    real(8) :: sigT_hi, sigT_lo, sigA_hi, sigA_lo, sigF_hi, sigF_lo
+
+    kT = sqrtkT**2
+    sqrtkT_hi = sqrt(kT + K_BOLTZMANN*T_DIFF/2.0)
+    sqrtkT_lo = sqrt(kT - K_BOLTZMANN*T_DIFF/2.0)
+
+    call multipole_eval(multipole, Emev, sqrtkT_hi, sigT_hi, sigA_hi, sigF_hi)
+    call multipole_eval(multipole, Emev, sqrtkT_lo, sigT_lo, sigA_lo, sigF_lo)
+
+    sigT = (sigT_hi - sigT_lo) / T_DIFF
+    sigA = (sigA_hi - sigA_lo) / T_DIFF
+    sigF = (sigF_hi - sigF_lo) / T_DIFF
+  end subroutine multipole_deriv_eval
+
+!===============================================================================
 ! FILL_FACTORS calculates the value of phi, the hardsphere phase shift factor,
 ! and sigT_factor, a factor inside of the sigT equation not present in the
 ! sigA and sigF equations.

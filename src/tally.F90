@@ -2,6 +2,7 @@ module tally
 
   use ace_header,       only: Reaction
   use constants
+  use cross_section,    only: multipole_deriv_eval
   use error,            only: fatal_error
   use geometry_header
   use global
@@ -2409,6 +2410,21 @@ contains
             call fatal_error("Differential tallies are only implemented for &
                  &analog and collision estimators.")
         end select
+
+      case (DIFF_TEMPERATURE)
+        select case (t % estimator)
+
+        case (ESTIMATOR_ANALOG)
+
+        case (ESTIMATOR_COLLISION)
+
+          select case (score_bin)
+
+          case (SCORE_FLUX)
+            score = score * deriv % flux_deriv
+
+          end select
+        end select
       end select
     end associate
   end subroutine apply_derivative_to_score
@@ -2422,7 +2438,8 @@ contains
     type(particle), intent(in) :: p
     real(8),        intent(in) :: distance ! Neutron flight distance
 
-    integer :: i
+    integer :: i, l
+    real(8) :: dsigT, dsigA, dsigF
 
     ! A void material cannot be perturbed so it will not affect flux derivatives
     if (p % material == MATERIAL_VOID) return
@@ -2450,6 +2467,24 @@ contains
               ! (1 / phi) * (d_phi / d_N) = - sigma_tot * dist
               deriv % flux_deriv = deriv % flux_deriv &
                    - distance * micro_xs(deriv % diff_nuclide) % total
+            end if
+          end associate
+
+        case (DIFF_TEMPERATURE)
+          associate (mat => materials(p % material))
+            if (mat % id == deriv % diff_material) then
+              do l=1, mat % n_nuclides
+                associate (nuc => nuclides(mat % nuclide(l)))
+                  if (nuc % mp_present .and. &
+                       p % E >= nuc % multipole % start_E/1.0e6_8 .and. &
+                       p % E <= nuc % multipole % end_E/1.0e6_8) then
+                    call multipole_deriv_eval(nuc % multipole, p % E, &
+                         p % sqrtkT, dsigT, dsigA, dsigF)
+                    deriv % flux_deriv = deriv % flux_deriv &
+                         - distance * dsigT * mat % atom_density(l)
+                  end if
+                end associate
+              end do
             end if
           end associate
         end select

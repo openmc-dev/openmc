@@ -212,6 +212,10 @@ contains
               i_list = nuclides(deriv % diff_nuclide) % listing
               call write_dataset(deriv_group, "nuclide", &
                    xs_listings(i_list) % alias)
+            case (DIFF_TEMPERATURE)
+              call write_dataset(deriv_group, "independent variable", &
+                   "temperature")
+              call write_dataset(deriv_group, "material", deriv % diff_material)
             case default
               call fatal_error("Independent variable for derivative " &
                    // trim(to_str(deriv % id)) // " not defined in &

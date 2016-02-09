@@ -94,10 +94,10 @@ module particle_header
     type(Bank) :: secondary_bank(MAX_SECONDARY)
 
   contains
-    procedure, pass :: initialize => initialize_particle
-    procedure, pass :: clear => clear_particle
-    procedure, pass :: initialize_from_source => initialize_from_source
-    procedure, pass :: create_secondary => create_secondary
+    procedure :: initialize => initialize_particle
+    procedure :: clear => clear_particle
+    procedure :: initialize_from_source => initialize_from_source
+    procedure :: create_secondary => create_secondary
   end type Particle
 
 contains

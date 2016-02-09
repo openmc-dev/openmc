@@ -486,7 +486,7 @@ contains
         return
         call get_node_array(node_xsdata, "polar", this % polar)
       else
-        dangle = PI / (real(this % Npol,8))
+        dangle = PI / real(this % Npol,8)
         do iangle = 1, this % Npol
           this % polar(iangle) = (real(iangle,8) - 0.5_8) * dangle
         end do
@@ -497,7 +497,7 @@ contains
         return
         call get_node_array(node_xsdata, "azimuthal", this % azimuthal)
       else
-        dangle = TWO * PI / (real(this % Nazi,8))
+        dangle = TWO * PI / real(this % Nazi,8)
         do iangle = 1, this % Nazi
           this % azimuthal(iangle) = -PI + (real(iangle,8) - 0.5_8) * dangle
         end do
@@ -685,9 +685,9 @@ contains
       ! Now allocate accordingly
       select case(representation)
       case(MGXS_ISOTROPIC)
-        allocate(MacroXS_Iso :: macro_xs(i_mat) % obj)
+        allocate(MacroXSIso :: macro_xs(i_mat) % obj)
       case(MGXS_ANGLE)
-        allocate(MacroXS_Angle :: macro_xs(i_mat) % obj)
+        allocate(MacroXSAngle :: macro_xs(i_mat) % obj)
       end select
 
       call macro_xs(i_mat) % obj % init(mat, nuclides_MG, energy_groups, &

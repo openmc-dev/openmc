@@ -60,8 +60,8 @@ module sab_header
     real(8), allocatable :: elastic_e_in(:)
     real(8), allocatable :: elastic_P(:)
     real(8), allocatable :: elastic_mu(:,:)
-    contains
-        procedure, pass :: print => print_sab_table
+  contains
+      procedure :: print => print_sab_table
   end type SAlphaBeta
 
   contains

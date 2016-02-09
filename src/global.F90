@@ -5,7 +5,7 @@ module global
   use constants
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
-  use macroxs_header,   only: MacroXS_Base, MacroXSContainer
+  use macroxs_header,   only: MacroXSContainer
   use material_header,  only: Material
   use mesh_header,      only: RegularMesh
   use nuclide_header

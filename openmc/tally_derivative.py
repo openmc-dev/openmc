@@ -33,7 +33,7 @@ class TallyDerivative(object):
     id : Integral
         Unique identifier for the tally derivative
     variable : str
-        Either 'density' or 'nuclide_density'
+        Accepted values are 'density', 'nuclide_density', and 'temperature'
     material : Integral
         The perutrubed material
     nuclide : str
@@ -97,6 +97,9 @@ class TallyDerivative(object):
                                                 self.material)
             string += '{0: <16}{1}{2}\n'.format('\tNuclide', '=\t',
                                                 self.nuclide)
+        elif self.variable == 'temperature':
+            string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
+                                                self.material)
 
         return string
 
@@ -132,9 +135,9 @@ class TallyDerivative(object):
     def variable(self, var):
         if var is not None:
             cv.check_type('derivative variable', var, basestring)
-            if var not in ('density', 'nuclide_density'):
-                raise ValueError("A tally differential variable must be either "
-                     "'density' or 'nuclide_density'")
+            if var not in ('density', 'nuclide_density', 'temperature'):
+                raise ValueError("A tally differential variable must be "
+                     "'density', 'nuclide_density', or 'temperature'")
             self._variable = var
 
     @material.setter

@@ -475,6 +475,8 @@ class StatePoint(object):
                         deriv.material = self._f[base + '/material'].value
                         deriv.nuclide = \
                              self._f[base + '/nuclide'].value.decode()
+                    elif deriv.variable == 'temperature':
+                        deriv.material = self._f[base + '/material'].value
                     else:
                         raise RuntimeError('Unrecognized tally differential '
                              'variable')

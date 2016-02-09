@@ -1901,7 +1901,6 @@ contains
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
     type(Node), pointer :: node_dens => null()
-    type(Node), pointer :: node_temp => null()
     type(Node), pointer :: node_nuc => null()
     type(Node), pointer :: node_ele => null()
     type(Node), pointer :: node_sab => null()
@@ -2642,6 +2641,10 @@ contains
           deallocate(pair_list)
 
           deriv % diff_nuclide = nuclide_dict % get_key(word)
+
+        case("temperature")
+          deriv % variable = DIFF_TEMPERATURE
+          call get_node_value(node_deriv, "material", deriv % diff_material)
         end select
       end associate
     end do

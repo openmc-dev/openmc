@@ -2500,7 +2500,8 @@ contains
   subroutine score_collision_derivative(p)
     type(particle), intent(in) :: p
 
-    integer :: i, j
+    integer :: i, j, l
+    real(8) :: dsigT, dsigA, dsigF
 
     ! A void material cannot be perturbed so it will not affect flux derivatives
     if (p % material == MATERIAL_VOID) return
@@ -2538,6 +2539,35 @@ contains
               ! (1 / phi) * (d_phi / d_N) = 1 / N
               deriv % flux_deriv = deriv % flux_deriv &
                    + ONE / mat % atom_density(j)
+            end if
+          end associate
+
+        case (DIFF_TEMPERATURE)
+          associate (mat => materials(p % material))
+            if (mat % id == deriv % diff_material) then
+              do l=1, mat % n_nuclides
+                associate (nuc => nuclides(mat % nuclide(l)))
+                  if (mat % nuclide(l) == p % event_nuclide .and. &
+                       nuc % mp_present .and. &
+                       p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
+                       p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                    ! phi = Sigma_MT
+                    ! (1 / phi) * (d_phi / d_T) = (d_Sigma_MT / d_T) / Sigma_MT
+                    ! (1 / phi) * (d_phi / d_T) = (d_sigma_MT / d_T) / sigma_MT
+                    call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                         p % sqrtkT, dsigT, dsigA, dsigF)
+                    select case(p % event)
+                    case (EVENT_SCATTER)
+                      deriv % flux_deriv = deriv % flux_deriv + (dsigT - dsigA)&
+                           / (micro_xs(mat % nuclide(l)) % total &
+                           - micro_xs(mat % nuclide(l)) % absorption)
+                    case (EVENT_ABSORB)
+                      deriv % flux_deriv = deriv % flux_deriv &
+                           + dsigA / micro_xs(mat % nuclide(l)) % absorption
+                    end select
+                  end if
+                end associate
+              end do
             end if
           end associate
         end select

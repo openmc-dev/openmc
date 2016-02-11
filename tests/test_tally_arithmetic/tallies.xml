@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+    <mesh id="1" type="regular">
+        <dimension>2 2 2</dimension>
+        <lower_left>-160.0 -160.0 -183.0</lower_left>
+        <upper_right>160.0 160.0 183.0</upper_right>
+    </mesh>
+    <tally id="10000" name="tally 1">
+        <filter bins="1 3" type="material" />
+        <filter bins="0.0 2.53e-07 0.001 1.0 20.0" type="energy" />
+        <filter bins="60" type="distribcell" />
+        <nuclides>U-235 Pu-239</nuclides>
+        <scores>nu-fission total</scores>
+    </tally>
+    <tally id="10001" name="tally 2">
+        <filter bins="0.0 2.53e-07 0.001 1.0 20.0" type="energy" />
+        <filter bins="1" type="mesh" />
+        <nuclides>U-238 U-235</nuclides>
+        <scores>total fission</scores>
+    </tally>
+</tallies>

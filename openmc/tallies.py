@@ -887,7 +887,7 @@ class Tally(object):
         # Create deep copy of other tally to use for array concatenation
         other_copy = copy.deepcopy(other)
 
-        # FIXME: document and create vars for merge_filters, etc.
+        # Identify if filters, nuclides and scores are mergeable and/or equal
         merge_filters = self._can_merge_filters(other)
         merge_nuclides = self._can_merge_nuclides(other)
         merge_scores = self._can_merge_scores(other)
@@ -2224,8 +2224,6 @@ class Tally(object):
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
-        # FIXME: Why doesn't this swap data for sum and sum_sq???
-
         # Adjust the mean data array to relect the new filter order
         if self.mean is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
@@ -2296,8 +2294,6 @@ class Tally(object):
         nuclide2_index = self.get_nuclide_index(nuclide2)
         self.nuclides[nuclide1_index] = nuclide2
         self.nuclides[nuclide2_index] = nuclide1
-
-        # FIXME: Why doesn't this swap data for sum and sum_sq???
 
         # Adjust the mean data array to relect the new nuclide order
         if self.mean is not None:
@@ -2370,8 +2366,6 @@ class Tally(object):
         score2_index = self.get_score_index(score2)
         self.scores[score1_index] = score2
         self.scores[score2_index] = score1
-
-        # FIXME: Why doesn't this swap data for sum and sum_sq???
 
         # Adjust the mean data array to relect the new nuclide order
         if self.mean is not None:

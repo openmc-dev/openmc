@@ -261,6 +261,7 @@ contains
             enable_leg_mu = .true.
           elseif (temp_str == 'false' .or. temp_str == '0') then
             enable_leg_mu = .false.
+            this % legendre_mu_points = 1
           else
             call fatal_error("Unrecognized tabular_legendre/enable: " // temp_str)
           end if

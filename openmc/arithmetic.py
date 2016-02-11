@@ -647,7 +647,7 @@ class AggregateNuclide(object):
     @nuclides.setter
     def nuclides(self, nuclides):
         cv.check_iterable_type('nuclides', nuclides,
-                               (basestring, Nuclide, CrossNuclide))
+            (basestring, Nuclide, CrossNuclide))
         self._nuclides = nuclides
 
     @aggregate_op.setter
@@ -716,8 +716,16 @@ class AggregateFilter(object):
         return not self == other
 
     def __gt__(self, other):
-        # FIXME
-        return False
+        if self.type != other.type:
+            if self.aggregate_filter.type in _FILTER_TYPES and \
+              other.aggregate_filter.type in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.aggregate_filter.type) - \
+                        _FILTER_TYPES.index(other.aggregate_filter.type)
+                return True if delta > 0 else False
+            else:
+                return False
+        else:
+            return False
 
     def __lt__(self, other):
         return not self > other
@@ -789,9 +797,7 @@ class AggregateFilter(object):
     @bins.setter
     def bins(self, bins):
         cv.check_iterable_type('bins', bins, Iterable)
-        self._bins = []
-        for bin in bins:
-            self._bins.append(tuple(bin))
+        self._bins = map(tuple, bins)
 
     @aggregate_op.setter
     def aggregate_op(self, aggregate_op):

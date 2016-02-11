@@ -1917,7 +1917,8 @@ class ScatterMatrixXS(MGXS):
         self._correction = correction
 
     def get_slice(self, nuclides=[], groups=[]):
-        """Build a sliced MGXS for the specified nuclides and energy groups.
+        """Build a sliced ScatterMatrix for the specified nuclides and
+        energy groups.
 
         This method constructs a new MGXS to encapsulate a subset of the data
         represented by this MGXS. The subset of data to include in the tally
@@ -2308,7 +2309,7 @@ class Chi(MGXS):
         return self._xs_tally
 
     def get_slice(self, nuclides=[], groups=[]):
-        """Build a sliced MGXS for the specified nuclides and energy groups.
+        """Build a sliced Chi for the specified nuclides and energy groups.
 
         This method constructs a new MGXS to encapsulate a subset of the data
         represented by this MGXS. The subset of data to include in the tally

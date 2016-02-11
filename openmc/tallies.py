@@ -2188,12 +2188,6 @@ class Tally(object):
 
         """
 
-        # Check that results have been read
-#        if not self.derived and self.sum is None:
-#            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
-#                  'since it does not contain any results.'.format(self.id)
-#            raise ValueError(msg)
-
         cv.check_type('filter1', filter1, (Filter, CrossFilter, AggregateFilter))
         cv.check_type('filter2', filter2, (Filter, CrossFilter, AggregateFilter))
 

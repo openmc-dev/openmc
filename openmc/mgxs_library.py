@@ -289,7 +289,10 @@ class XSdata(object):
             check_value('num_points', num_points, Integral)
             check_greater_than('num_points', num_points, 0)
         else:
-            num_points = 33
+            if enable == False:
+                num_points = 1
+            else:
+                num_points = 33
         self._tabular_legendre = {'enable': enable, 'num_points': num_points}
 
     @num_polar.setter

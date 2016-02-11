@@ -110,6 +110,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         # Slice the tallies by score
         score_prod = itertools.product(tallies, self.scores)
         tallies = map(lambda ts: ts[0].get_slice(scores=[ts[1]]), score_prod)
+        tallies = list(tallies)
 
         # Initialize an output string
         outstr = ''
@@ -120,11 +121,10 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
             outstr += df.to_string()
 
         # Merge all tallies together
-        while len(list(tallies)) != 1:
-            tallies = list(tallies)
+        while len(tallies) != 1:
             halfway = int(len(tallies) / 2)
             zip_split = zip(tallies[:halfway], tallies[halfway:])
-            tallies = map(lambda xy: xy[0].merge(xy[1]), zip_split)
+            tallies = list(map(lambda xy: xy[0].merge(xy[1]), zip_split))
 
         # Append merged Tally Pandas DataFrame to output string
         df = tallies[0].get_pandas_dataframe()

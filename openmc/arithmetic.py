@@ -797,7 +797,7 @@ class AggregateFilter(object):
     @bins.setter
     def bins(self, bins):
         cv.check_iterable_type('bins', bins, Iterable)
-        self._bins = map(tuple, bins)
+        self._bins = list(map(tuple, bins))
 
     @aggregate_op.setter
     def aggregate_op(self, aggregate_op):

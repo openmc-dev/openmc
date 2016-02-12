@@ -110,7 +110,7 @@ contains
     integer, save :: num_resamples = 0 ! Number of resamples encountered
 
     ! Set weight to one by default
-    site%wgt = ONE
+    site % wgt = ONE
 
     ! Set the random number generator to the source stream.
     call prn_set_stream(STREAM_SOURCE)
@@ -118,10 +118,10 @@ contains
     ! Sample from among multiple source distributions
     n_source = size(external_source)
     if (n_source > 1) then
-      r(1) = prn()*sum(external_source(:)%strength)
+      r(1) = prn()*sum(external_source(:) % strength)
       c = ZERO
       do i = 1, n_source
-        c = c + external_source(i)%strength
+        c = c + external_source(i) % strength
         if (r(1) < c) exit
       end do
     else
@@ -132,14 +132,14 @@ contains
     found = .false.
     do while (.not.found)
       ! Set particle defaults
-      call p%initialize()
+      call p % initialize()
 
       ! Sample spatial distribution
-      site%xyz(:) = external_source(i)%space%sample()
+      site % xyz(:) = external_source(i) % space % sample()
 
       ! Fill p with needed data
-      p%coord(1)%xyz(:) = site%xyz
-      p%coord(1)%uvw(:) = [ ONE, ZERO, ZERO ]
+      p % coord(1) % xyz(:) = site % xyz
+      p % coord(1) % uvw(:) = [ ONE, ZERO, ZERO ]
 
       ! Now search to see if location exists in geometry
       call find_cell(p, found)
@@ -152,27 +152,27 @@ contains
       end if
 
       ! Check if spatial site is in fissionable material
-      select type (space => external_source(i)%space)
+      select type (space => external_source(i) % space)
       type is (SpatialBox)
-        if (space%only_fissionable) then
-          if (p%material == MATERIAL_VOID) then
+        if (space % only_fissionable) then
+          if (p % material == MATERIAL_VOID) then
             found = .false.
-          elseif (.not. materials(p%material)%fissionable) then
+          elseif (.not. materials(p % material) % fissionable) then
             found = .false.
           end if
         end if
       end select
     end do
 
-    call p%clear()
+    call p % clear()
 
     ! Sample angle
-    site%uvw(:) = external_source(i)%angle%sample()
+    site % uvw(:) = external_source(i) % angle % sample()
 
     ! Check for monoenergetic source above maximum neutron energy
-    select type (energy => external_source(i)%energy)
+    select type (energy => external_source(i) % energy)
     type is (Discrete)
-      if (any(energy%x >= energy_max_neutron)) then
+      if (any(energy % x >= energy_max_neutron)) then
         call fatal_error("Source energy above range of energies of at least &
              &one cross section table")
       end if
@@ -180,23 +180,23 @@ contains
 
     do
       ! Sample energy spectrum
-      site%E = external_source(i)%energy%sample()
+      site % E = external_source(i) % energy % sample()
 
       ! resample if energy is greater than maximum neutron energy
-      if (site%E < energy_max_neutron) exit
+      if (site % E < energy_max_neutron) exit
     end do
 
     ! Set delayed group
-    site%delayed_group = 0
+    site % delayed_group = 0
 
-    ! If running in MG, convert site%E to group
+    ! If running in MG, convert site % E to group
     if (.not. run_CE) then
-      if (site%E <= energy_bins(1)) then
-        site%g = 1
-      else if (site%E > energy_bins(energy_groups + 1)) then
-        site%g = energy_groups
+      if (site % E <= energy_bins(1)) then
+        site % g = 1
+      else if (site % E > energy_bins(energy_groups + 1)) then
+        site % g = energy_groups
       else
-        site%g = binary_search(energy_bins, energy_groups + 1, site%E)
+        site % g = binary_search(energy_bins, energy_groups + 1, site % E)
       end if
     end if
 

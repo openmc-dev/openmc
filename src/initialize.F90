@@ -126,7 +126,7 @@ contains
       if (run_CE) then
         call same_nuclide_list()
       else
-        call same_NuclideMG_list()
+        call same_nuclidemg_list()
       end if
 
       ! Construct information needed for nuclear data

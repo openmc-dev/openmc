@@ -96,8 +96,8 @@ module particle_header
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle
-    procedure :: initialize_from_source => initialize_from_source
-    procedure :: create_secondary => create_secondary
+    procedure :: initialize_from_source
+    procedure :: create_secondary
   end type Particle
 
 contains

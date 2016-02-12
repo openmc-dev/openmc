@@ -79,7 +79,7 @@ contains
 ! SCATTDATA_INIT builds the scattdata object
 !===============================================================================
 
-    subroutine scattdatabase_init(this, order, energy, mult)
+    subroutine scattdata_init(this, order, energy, mult)
       class(ScattData), intent(inout) :: this        ! Object to work on
       integer, intent(in)                  :: order       ! Data Order
       real(8), intent(in)                  :: energy(:,:) ! Energy Transfer Matrix
@@ -96,7 +96,7 @@ contains
       allocate(this % data(order, groups, groups))
       this % data = ZERO
 
-    end subroutine scattdatabase_init
+    end subroutine scattdata_init
 
     subroutine scattdatalegendre_init(this, order, energy, mult, coeffs)
       class(ScattDataLegendre), intent(inout) :: this   ! Object to work on
@@ -105,7 +105,7 @@ contains
       real(8), intent(in)              :: mult(:,:)   ! Scatter Prod'n Matrix
       real(8), intent(in)              :: coeffs(:,:,:) ! Coefficients to use
 
-      call scattdatabase_init(this, order, energy, mult)
+      call scattdata_init(this, order, energy, mult)
 
       this % data = coeffs
 
@@ -123,7 +123,7 @@ contains
 
       groups = size(energy,dim=1)
 
-      call scattdatabase_init(this, order, energy, mult)
+      call scattdata_init(this, order, energy, mult)
 
       allocate(this % mu(order))
       this % dmu = TWO / real(order,8)
@@ -175,7 +175,7 @@ contains
 
       groups = size(energy,dim=1)
 
-      call scattdatabase_init(this, this_order, energy, mult)
+      call scattdata_init(this, this_order, energy, mult)
 
       allocate(this % mu(this_order))
       this % dmu = TWO / real(this_order - 1)

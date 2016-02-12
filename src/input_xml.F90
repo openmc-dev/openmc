@@ -216,8 +216,8 @@ contains
     end if
 
     ! Make sure that either eigenvalue or fixed source was specified
-    if (.not.check_for_node(doc, "eigenvalue") .and. &
-         .not.check_for_node(doc, "fixed_source")) then
+    if (.not. check_for_node(doc, "eigenvalue") .and. &
+         .not. check_for_node(doc, "fixed_source")) then
       call fatal_error("<eigenvalue> or <fixed_source> not specified.")
     end if
 
@@ -230,7 +230,7 @@ contains
       call get_node_ptr(doc, "eigenvalue", node_mode)
 
       ! Check number of particles
-      if (.not.check_for_node(node_mode, "particles")) then
+      if (.not. check_for_node(node_mode, "particles")) then
         call fatal_error("Need to specify number of particles per generation.")
       end if
 
@@ -300,7 +300,7 @@ contains
       call get_node_ptr(doc, "fixed_source", node_mode)
 
       ! Check number of particles
-      if (.not.check_for_node(node_mode, "particles")) then
+      if (.not. check_for_node(node_mode, "particles")) then
         call fatal_error("Need to specify number of particles per batch.")
       end if
 
@@ -2050,9 +2050,9 @@ contains
       ! READ AND PARSE <nuclide> TAGS
 
       ! Check to ensure material has at least one nuclide
-      if ((.not. check_for_node(node_mat, "nuclide") .and. &
-           .not. check_for_node(node_mat, "element")) .and. &
-           (.not. check_for_node(node_mat, "macroscopic"))) then
+      if (.not. check_for_node(node_mat, "nuclide") .and. &
+          .not. check_for_node(node_mat, "element") .and. &
+          .not. check_for_node(node_mat, "macroscopic")) then
         call fatal_error("No macroscopic data, nuclides or natural elements &
                          &specified on material " // trim(to_str(mat % id)))
       end if
@@ -2061,7 +2061,7 @@ contains
       ! them as nuclides. This is all really a facade so the user thinks they
       ! are entering in macroscopic data but the code treats them the same
       ! as nuclides internally.
-      ! Get pointer list of XML <nuclide>
+      ! Get pointer list of XML <macroscopic>
       call get_node_list(node_mat, "macroscopic", node_macro_list)
       if (get_list_size(node_macro_list) > 1) then
         call fatal_error("Only one macroscopic object permitted per material, " &
@@ -2077,7 +2077,7 @@ contains
         end if
 
         ! Check for cross section
-        if (.not.check_for_node(node_nuc, "xs")) then
+        if (.not. check_for_node(node_nuc, "xs")) then
           if (default_xs == '') then
             call fatal_error("No cross section specified for macroscopic data &
                  & in material " // trim(to_str(mat % id)))
@@ -2130,13 +2130,13 @@ contains
           call get_list_item(node_nuc_list, j, node_nuc)
 
           ! Check for empty name on nuclide
-          if (.not.check_for_node(node_nuc, "name")) then
+          if (.not. check_for_node(node_nuc, "name")) then
             call fatal_error("No name specified on nuclide in material " &
                  // trim(to_str(mat % id)))
           end if
 
           ! Check for cross section
-          if (.not.check_for_node(node_nuc, "xs")) then
+          if (.not. check_for_node(node_nuc, "xs")) then
             if (default_xs == '') then
               call fatal_error("No cross section specified for nuclide in &
                    &material " // trim(to_str(mat % id)))
@@ -2160,8 +2160,8 @@ contains
           if (units == 'macro') then
             call list_density % append(ONE)
           else
-            if (.not.check_for_node(node_nuc, "ao") .and. &
-                 .not.check_for_node(node_nuc, "wo")) then
+            if (.not. check_for_node(node_nuc, "ao") .and. &
+                 .not. check_for_node(node_nuc, "wo")) then
               call fatal_error("No atom or weight percent specified for nuclide " &
                    // trim(name))
             elseif (check_for_node(node_nuc, "ao") .and. &
@@ -2192,7 +2192,7 @@ contains
         call get_list_item(node_ele_list, j, node_ele)
 
         ! Check for empty name on natural element
-        if (.not.check_for_node(node_ele, "name")) then
+        if (.not. check_for_node(node_ele, "name")) then
           call fatal_error("No name specified on nuclide in material " &
                // trim(to_str(mat % id)))
         end if
@@ -2212,8 +2212,8 @@ contains
 
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
-        if (.not.check_for_node(node_ele, "ao") .and. &
-             .not.check_for_node(node_ele, "wo")) then
+        if (.not. check_for_node(node_ele, "ao") .and. &
+             .not. check_for_node(node_ele, "wo")) then
           call fatal_error("No atom or weight percent specified for element " &
                // trim(name))
         elseif (check_for_node(node_ele, "ao") .and. &
@@ -2357,8 +2357,8 @@ contains
             call get_list_item(node_sab_list, j, node_sab)
 
             ! Determine name of S(a,b) table
-            if (.not.check_for_node(node_sab, "name") .or. &
-                 .not.check_for_node(node_sab, "xs")) then
+            if (.not. check_for_node(node_sab, "name") .or. &
+                 .not. check_for_node(node_sab, "xs")) then
               call fatal_error("Need to specify <name> and <xs> for S(a,b) &
                    &table.")
             end if
@@ -2588,8 +2588,8 @@ contains
       end if
 
       ! Make sure either upper-right or width was specified
-      if (.not.check_for_node(node_mesh, "upper_right") .and. &
-           .not.check_for_node(node_mesh, "width")) then
+      if (.not. check_for_node(node_mesh, "upper_right") .and. &
+           .not. check_for_node(node_mesh, "width")) then
         call fatal_error("Must specify either <upper_right> and <width> on a &
              &tally mesh.")
       end if
@@ -3377,29 +3377,11 @@ contains
           case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
 
-            ! Disallow for MG mode since data not present
-            if (.not. run_CE) then
-              call fatal_error("Cannot tally (n,2n) reaction rate in &
-                               &multi-group mode")
-            end if
-
           case ('n3n', '(n,3n)')
             t % score_bins(j) = N_3N
 
-            ! Disallow for MG mode since data not present
-            if (.not. run_CE) then
-              call fatal_error("Cannot tally (n,3n) reaction rate in &
-                               &multi-group mode")
-            end if
-
           case ('n4n', '(n,4n)')
             t % score_bins(j) = N_4N
-
-            ! Disallow for MG mode since data not present
-            if (.not. run_CE) then
-              call fatal_error("Cannot tally (n,4n) reaction rate in &
-                               &multi-group mode")
-            end if
 
           case ('absorption')
             t % score_bins(j) = SCORE_ABSORPTION
@@ -3590,10 +3572,10 @@ contains
           ! Do a check at the end (instead of for every case) to make sure
           ! the tallies are compatible with MG mode where we have less detailed
           ! nuclear data
-            if (.not. run_CE .and. t % score_bins(j) > 0) then
-              call fatal_error("Cannot tally " // trim(score_name) // &
-                               " reaction rate in multi-group mode")
-            end if
+          if (.not. run_CE .and. t % score_bins(j) > 0) then
+            call fatal_error("Cannot tally " // trim(score_name) // &
+                             " reaction rate in multi-group mode")
+          end if
         end do
 
         t % n_score_bins = n_scores
@@ -4455,7 +4437,7 @@ contains
       end if
 
       ! determine metastable state
-      if (.not.check_for_node(node_ace, "metastable")) then
+      if (.not. check_for_node(node_ace, "metastable")) then
         listing % metastable = .false.
       else
         listing % metastable = .true.

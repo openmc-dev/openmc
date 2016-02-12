@@ -27,10 +27,7 @@ module macroxs_header
     subroutine macroxs_init_(this, mat, nuclides, groups, get_kfiss, get_fiss, &
                              max_order, scatt_type, legendre_mu_points, &
                              error_code, error_text)
-      import MacroXS
-      import Material
-      import NuclideMGContainer
-      import MAX_LINE_LEN
+      import MacroXS, Material, NuclideMGContainer, MAX_LINE_LEN
       class(MacroXS), intent(inout)        :: this ! The MacroXS to initialize
       type(Material), pointer, intent(in)  :: mat  ! base material
       type(NuclideMGContainer), intent(in) :: nuclides(:) ! List of nuclides to harvest from
@@ -383,14 +380,14 @@ contains
       select type(nuc => nuclides(mat % nuclide(i)) % obj)
       type is (NuclideAngle)
         if (npol == -1) then
-          npol = nuc % Npol
-          nazi = nuc % Nazi
+          npol = nuc % n_pol
+          nazi = nuc % n_azi
           allocate(this % polar(npol))
           this % polar = nuc % polar
           allocate(this % azimuthal(nazi))
           this % azimuthal = nuc % azimuthal
         else
-          if ((npol /= nuc % Npol) .or. (nazi /= nuc % Nazi)) then
+          if ((npol /= nuc % n_pol) .or. (nazi /= nuc % n_azi)) then
             error_code = 1
             error_text = "All Angular Data Must Be Same Length!"
           end if

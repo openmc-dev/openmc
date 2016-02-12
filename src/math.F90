@@ -560,6 +560,7 @@ contains
 !===============================================================================
 ! EXPAND_HARMONIC expands a given series of real spherical harmonics
 !===============================================================================
+
   pure function expand_harmonic(data, order, uvw) result(val)
     real(8), intent(in) :: data(:)
     integer, intent(in) :: order
@@ -584,6 +585,7 @@ contains
 ! EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
 ! and the value of x
 !===============================================================================
+
   pure function evaluate_legendre(data, x) result(val)
     real(8), intent(in) :: data(:)
     real(8), intent(in) :: x
@@ -591,9 +593,9 @@ contains
 
     integer :: l
 
-    val = 0.5_8 * data(1)
+    val =  HALF * data(1)
     do l = 1, size(data) - 1
-      val = val + (real(l,8) + 0.5_8) * data(l + 1) * calc_pn(l,x)
+      val = val + (real(l,8) +  HALF) * data(l + 1) * calc_pn(l,x)
     end do
 
   end function evaluate_legendre

@@ -177,7 +177,7 @@ module nuclide_header
 
   type, extends(NuclideMG) :: NuclideAngle
 
-    ! Microscopic cross sections. Dimensions are: (Npol, Nazi, Nl, Ng, Ng)
+    ! Microscopic cross sections. Dimensions are: (n_pol, n_azi, Nl, Ng, Ng)
     real(8), allocatable :: total(:,:,:)        ! total cross section
     real(8), allocatable :: absorption(:,:,:)   ! absorption cross section
     real(8), allocatable :: scatter(:,:,:,:,:)  ! scattering information
@@ -188,8 +188,8 @@ module nuclide_header
     real(8), allocatable :: mult(:,:,:,:)       ! Scatter multiplicity (Gout x Gin)
 
     ! In all cases, right-most indices are theta, phi
-    integer              :: Npol         ! Number of polar angles
-    integer              :: Nazi         ! Number of azimuthal angles
+    integer              :: n_pol         ! Number of polar angles
+    integer              :: n_azi         ! Number of azimuthal angles
     real(8), allocatable :: polar(:)     ! polar angles
     real(8), allocatable :: azimuthal(:) ! azimuthal angles
 
@@ -476,8 +476,8 @@ module nuclide_header
 
       ! Write Basic Nuclide Information
       call nuclidemg_print(this, unit_)
-      write(unit_,*) '  # of Polar Angles = ' // trim(to_str(this % Npol))
-      write(unit_,*) '  # of Azimuthal Angles = ' // trim(to_str(this % Nazi))
+      write(unit_,*) '  # of Polar Angles = ' // trim(to_str(this % n_pol))
+      write(unit_,*) '  # of Azimuthal Angles = ' // trim(to_str(this % n_azi))
 
       ! Determine size of mgxs and scattering matrices
       size_scattmat = (size(this % scatter) + size(this % mult)) * 8

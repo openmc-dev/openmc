@@ -2051,8 +2051,8 @@ contains
 
       ! Check to ensure material has at least one nuclide
       if (.not. check_for_node(node_mat, "nuclide") .and. &
-          .not. check_for_node(node_mat, "element") .and. &
-          .not. check_for_node(node_mat, "macroscopic")) then
+           .not. check_for_node(node_mat, "element") .and. &
+           .not. check_for_node(node_mat, "macroscopic")) then
         call fatal_error("No macroscopic data, nuclides or natural elements &
                          &specified on material " // trim(to_str(mat % id)))
       end if

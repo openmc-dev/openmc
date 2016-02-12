@@ -699,8 +699,8 @@ class Tally(object):
             return False
 
         # Look to see if all filters are the same, or one or more can be merged
-        merge_filters = False
         for filter1 in self.filters:
+            merge_filters = False
             mergeable_filter = False
 
             for filter2 in other.filters:

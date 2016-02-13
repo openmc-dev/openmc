@@ -11,8 +11,8 @@
   -->
   <xsdata>
     <!-- Meta data for this data -->
-    <name>UO2.71c</name>
-    <alias>UO2.71c</alias>
+    <name>UO2.70m</name>
+    <alias>UO2.70m</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>true</fissionable>
@@ -67,8 +67,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>MOX1.71c</name>
-    <alias>MOX1.71c</alias>
+    <name>MOX1.70m</name>
+    <alias>MOX1.70m</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>true</fissionable>
@@ -124,8 +124,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>MOX2.71c</name>
-    <alias>MOX2.71c</alias>
+    <name>MOX2.70m</name>
+    <alias>MOX2.70m</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>true</fissionable>
@@ -180,8 +180,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>MOX3.71c</name>
-    <alias>MOX3.71c</alias>
+    <name>MOX3.70m</name>
+    <alias>MOX3.70m</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>true</fissionable>
@@ -236,8 +236,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>FC.71c</name>
-    <alias>FC.71c</alias>
+    <name>FC.70m</name>
+    <alias>FC.70m</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>true</fissionable>
@@ -286,8 +286,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>GT.71c</name>
-    <alias>GT.71c</alias>
+    <name>GT.70m</name>
+    <alias>GT.70m</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>false</fissionable>
@@ -318,8 +318,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>LWTR.71c</name>
-    <alias>LWTR.71c</alias>
+    <name>LWTR.70m</name>
+    <alias>LWTR.70m</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>false</fissionable>
@@ -351,8 +351,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>CR.71c</name>
-    <alias>CR.71c</alias>
+    <name>CR.70m</name>
+    <alias>CR.70m</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>false</fissionable>

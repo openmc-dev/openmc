@@ -6,7 +6,6 @@ module physics_mg
   use error,                  only: fatal_error, warning
   use global
   use macroxs_header,         only: MacroXS, MacroXSContainer
-  use macroxs_operations,     only: sample_fission_energy, sample_scatter
   use material_header,        only: Material
   use math,                   only: rotate_angle
   use mesh,                   only: get_mesh_indices
@@ -146,9 +145,9 @@ contains
 
     type(Particle), intent(inout)  :: p
 
-    call sample_scatter(macro_xs(p % material) % obj, &
-                        p % coord(1) % uvw, p % last_g, p % g, &
-                        p % mu, p % wgt)
+    call macro_xs(p % material) % obj % sample_scatter(p % coord(1) % uvw, &
+                                                       p % last_g, p % g, &
+                                                       p % mu, p % wgt)
 
     ! Update energy value for downstream compatability (in tallying)
     p % E = energy_bin_avg(p % g)
@@ -256,7 +255,7 @@ contains
 
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
-      bank_array(i) % g = sample_fission_energy(xs, p % g, fission_bank(i) % uvw)
+      bank_array(i) % g = xs % sample_fission_energy(p % g, fission_bank(i) % uvw)
       bank_array(i) % E = energy_bin_avg(fission_bank(i) % g)
     end do
 

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <materials>
-  <!-- Set default xs set to 300 Kelvin -->
-  <default_xs>300K</default_xs>
+  <!-- Set default xs set -->
+  <default_xs>70m</default_xs>
 
   <!-- UO2 -->
   <material id="1">

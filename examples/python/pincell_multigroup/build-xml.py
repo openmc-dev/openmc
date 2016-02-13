@@ -1,5 +1,7 @@
 import openmc
 import openmc.mgxs
+from openmc.source import Source
+from openmc.stats import Box
 import numpy as np
 
 ###############################################################################
@@ -20,7 +22,7 @@ groups = openmc.mgxs.EnergyGroups(group_edges=[1E-11, 0.0635E-6, 10.0E-6,
                                                1.0E-4, 1.0E-3, 0.5, 1.0, 20.0])
 
 # Instantiate the 7-group (C5G7) cross section data
-uo2_xsdata = openmc.XSdata('UO2.300K', groups)
+uo2_xsdata = openmc.XSdata('UO2.70m', groups)
 uo2_xsdata.order = 0
 uo2_xsdata.total = np.array([0.1779492, 0.3298048, 0.4803882, 0.5543674,
                             0.3118013, 0.3951678, 0.5644058])
@@ -43,7 +45,7 @@ uo2_xsdata.nu_fission = np.array([2.005998E-02, 2.027303E-03, 1.570599E-02,
 uo2_xsdata.chi = np.array([5.8791E-01, 4.1176E-01, 3.3906E-04, 1.1761E-07,
                            0.0000E+00, 0.0000E+00, 0.0000E+00])
 
-h2o_xsdata = openmc.XSdata('LWTR.300K', groups)
+h2o_xsdata = openmc.XSdata('LWTR.70m', groups)
 h2o_xsdata.order = 0
 h2o_xsdata.total = np.array([0.15920605, 0.412969593, 0.59030986, 0.58435,
                              0.718, 1.2544497, 2.650379])
@@ -69,8 +71,8 @@ mg_cross_sections_file.export_to_xml()
 ###############################################################################
 
 # Instantiate some Macroscopic Data
-uo2_data = openmc.Macroscopic('UO2', '300K')
-h2o_data = openmc.Macroscopic('LWTR', '300K')
+uo2_data = openmc.Macroscopic('UO2', '70m')
+h2o_data = openmc.Macroscopic('LWTR', '70m')
 
 # Instantiate some Materials and register the appropriate Macroscopic objects
 uo2 = openmc.Material(material_id=1, name='UO2 fuel')
@@ -83,7 +85,7 @@ water.add_macroscopic(h2o_data)
 
 # Instantiate a MaterialsFile, register all Materials, and export to XML
 materials_file = openmc.MaterialsFile()
-materials_file.default_xs = '300K'
+materials_file.default_xs = '70m'
 materials_file.add_materials([uo2, water])
 materials_file.export_to_xml()
 
@@ -143,8 +145,7 @@ settings_file.cross_sections = "./mg_cross_sections.xml"
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
-settings_file.set_source_space('box', [-0.63, -0.63, -1, \
-                                      0.63, 0.63, 1])
+settings_file.source = Source(space=Box([-0.63, -0.63, -1.], [0.63, 0.63, 1.]))
 
 ###############################################################################
 #                   Exporting to OpenMC tallies.xml File

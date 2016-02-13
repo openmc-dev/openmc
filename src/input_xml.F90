@@ -3072,7 +3072,7 @@ contains
 
             ! Append default_xs specifier to nuclide if needed
             if ((default_xs /= '') .and. (.not. ends_with(sarray(j), 'c'))) then
-              word = trim(word) // "." // default_xs
+              word = trim(word) // "." // trim(default_xs)
             end if
 
             ! Search through nuclides

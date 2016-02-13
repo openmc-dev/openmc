@@ -83,10 +83,13 @@ attributes/sub-elements required to describe the meta-data:
 
   :name:
     The name of the microscopic or macroscopic data set.  An extension to the
-    name must be provided (e.g., the ``.70m`` in ``UO2.70m``).  This extension,
+    name must be provided (e.g., the ``.300K`` in ``UO2.300K``).  The name and
+    extension together must be twelve or less characters in length.  This
+    extension must follow a period and be five characters or less in length.
     similar to the equivalent in the continuous-energy ``cross_sections.xml``
-    file is used to denote variants of the particular nuclide or material of
-    interest (i.e. the ``UO2`` in this example).
+    file, is used to denote variants of the particular nuclide or material of
+    interest (i.e. the ``UO2`` data in this example could have been generated
+    at a temperature of 300K).
 
     *Default*: None, this must be provided.
 

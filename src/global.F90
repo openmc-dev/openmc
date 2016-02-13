@@ -79,8 +79,8 @@ module global
   type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: xs_listing_dict
 
-  ! Default xs identifier (e.g. 70c)
-  character(3):: default_xs
+  ! Default xs identifier (e.g. 70c or 300K)
+  character(5):: default_xs
 
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES

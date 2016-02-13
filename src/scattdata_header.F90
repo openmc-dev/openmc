@@ -56,6 +56,8 @@ module scattdata_header
   end interface
 
   type, extends(ScattData) :: ScattDataLegendre
+    ! Maximal value for rejection sampling from rectangle
+    real(8), allocatable  :: max_val(:,:)
   contains
     procedure :: init   => scattdatalegendre_init
     procedure :: calc_f => scattdatalegendre_calc_f
@@ -116,14 +118,46 @@ contains
 
     subroutine scattdatalegendre_init(this, order, energy, mult, coeffs)
       class(ScattDataLegendre), intent(inout) :: this   ! Object to work on
-      integer, intent(in)                      :: order  ! Data Order
-      real(8), intent(in)              :: energy(:,:) ! Energy Transfer Matrix
-      real(8), intent(in)              :: mult(:,:)   ! Scatter Prod'n Matrix
+      integer, intent(in)                     :: order  ! Data Order
+      real(8), intent(in)              :: energy(:,:)   ! Energy Transfer Matrix
+      real(8), intent(in)              :: mult(:,:)     ! Scatter Prod'n Matrix
       real(8), intent(in)              :: coeffs(:,:,:) ! Coefficients to use
+
+      real(8) :: dmu, mu, f
+      integer :: imu, Nmu, gout, gin, groups
 
       call scattdata_init(this, order, energy, mult)
 
       this % data = coeffs
+
+      groups = size(this % energy,dim=1)
+
+      allocate(this % max_val(groups, groups))
+      this % max_val = ZERO
+      ! Step through the polynomial with fixed number of points to identify
+      ! the maximal value.
+      Nmu = 1001
+      dmu = TWO / real(Nmu,8)
+      do imu = 1, Nmu
+        ! Update mu. Do first and last seperate to avoid float errors
+        if (imu == 1) then
+          mu = -ONE
+        else if (imu == Nmu) then
+          mu = ONE
+        end if
+        mu = -ONE + real(imu - 1,8) * dmu
+        do gin = 1, groups
+          do gout = 1, groups
+            ! Calculate probability
+            f = this % calc_f(gin,gout,mu)
+            ! If this is a new max, store it.
+            if (f > this % max_val(gout,gin)) this % max_val(gout,gin) = f
+          end do
+        end do
+      end do
+
+      ! Finally, since we may not have caught the exact max, add 10% margin
+      this % max_val = this % max_val * 1.1_8
 
     end subroutine scattdatalegendre_init
 
@@ -145,7 +179,7 @@ contains
       this % dmu = TWO / real(order,8)
       this % mu(1) = -ONE
       do imu = 2, order
-        this % mu(imu) = -ONE + (imu - 1) * this % dmu
+        this % mu(imu) = -ONE + real(imu - 1,8) * this % dmu
       end do
 
       ! Best to integrate this histogram so we can avoid rejection sampling
@@ -335,12 +369,15 @@ contains
     ! kernel in data(1:this % order)
 
     ! Do with rejection sampling
-    ! Set upper bound (instead of searching for max - though this is inefficient)
-    M = 4.0_8
+    ! Set maximal value
+    M = this % max_val(gout,gin)
     samples = 0
     do
       mu = TWO * prn() - ONE
       f = this % calc_f(gin,gout,mu)
+if (f > M) then
+call fatal_error("Legendre exceeds Max Value!!!")
+end if
       if (f > ZERO) then
         u = prn() * M
         if (u <= f) then

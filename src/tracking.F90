@@ -7,7 +7,7 @@ module tracking
                                 cross_lattice, check_cell_overlap
   use geometry_header,    only: Universe, BASE_UNIVERSE
   use global
-  use macroxs_operations, only: calculate_mgxs
+  use macroxs_header,     only: MacroXS
   use output,             only: write_message
   use particle_header,    only: LocalCoord, Particle
   use physics,            only: collision
@@ -92,8 +92,8 @@ contains
         ! Since the MGXS can be angle dependent, this needs to be done
         ! After every collision for the MGXS mode
         if (p % material /= MATERIAL_VOID) then
-          call calculate_mgxs(macro_xs(p % material) % obj, p % g, &
-                              p % coord(p % n_coord) % uvw, material_xs)
+          call macro_xs(p % material) % obj % calculate_xs(p % g, &
+               p % coord(p % n_coord) % uvw, material_xs)
         else
           material_xs % total      = ZERO
           material_xs % elastic    = ZERO

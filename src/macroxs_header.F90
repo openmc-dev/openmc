@@ -3,8 +3,9 @@ module macroxs_header
   use constants,       only: MAX_FILE_LEN, ZERO, ONE, TWO, PI
   use list_header,     only: ListInt
   use material_header, only: material
-  use math,            only: calc_pn, calc_rn, expand_harmonic
+  use math,            only: calc_pn, calc_rn, expand_harmonic, find_angle
   use nuclide_header
+  use random_lcg,      only: prn
   use scattdata_header
 
   implicit none
@@ -19,8 +20,14 @@ module macroxs_header
     integer :: order
 
   contains
-    procedure(macroxs_init_),   deferred :: init     ! initializes object
-    procedure(macroxs_get_xs_), deferred :: get_xs   ! Return xs
+    procedure(macroxs_init_),   deferred :: init   ! initializes object
+    procedure(macroxs_get_xs_), deferred :: get_xs ! Return xs
+    ! Sample the outgoing energy from a fission event
+    procedure(macroxs_sample_fission_), deferred :: sample_fission_energy
+    ! Sample the outgoing energy and angle from a scatter event
+    procedure(macroxs_sample_scatter_), deferred :: sample_scatter
+    ! Calculate the material specific MGXS data from the nuclides
+    procedure(macroxs_calculate_xs_), deferred   :: calculate_xs
   end type MacroXS
 
   abstract interface
@@ -50,6 +57,33 @@ module macroxs_header
       real(8), optional, intent(in)   :: uvw(3) ! Requested Angle
       real(8)                         :: xs     ! Resultant xs
     end function macroxs_get_xs_
+
+    function macroxs_sample_fission_(this, gin, uvw) result(gout)
+      import MacroXS
+      class(MacroXS), intent(in) :: this   ! Data to work with
+      integer, intent(in)        :: gin    ! Incoming energy group
+      real(8), intent(in)        :: uvw(3) ! Particle Direction
+      integer                    :: gout   ! Sampled outgoing group
+
+    end function macroxs_sample_fission_
+
+    subroutine macroxs_sample_scatter_(this, uvw, gin, gout, mu, wgt)
+      import MacroXS
+      class(MacroXS), intent(in)    :: this
+      real(8),        intent(in)    :: uvw(3) ! Incoming neutron direction
+      integer,        intent(in)    :: gin    ! Incoming neutron group
+      integer,        intent(out)   :: gout   ! Sampled outgoin group
+      real(8),        intent(out)   :: mu     ! Sampled change in angle
+      real(8),        intent(inout) :: wgt    ! Particle weight
+    end subroutine macroxs_sample_scatter_
+
+    subroutine macroxs_calculate_xs_(this, gin, uvw, xs)
+      import MacroXS, MaterialMacroXS
+      class(MacroXS),        intent(in)    :: this
+      integer,               intent(in)    :: gin         ! Incoming neutron group
+      real(8),               intent(in)    :: uvw(3)      ! Incoming neutron direction
+      type(MaterialMacroXS), intent(inout) :: xs
+    end subroutine macroxs_calculate_xs_
   end interface
 
   type, extends(MacroXS) :: MacroXSIso
@@ -64,8 +98,11 @@ module macroxs_header
     real(8), allocatable :: chi(:,:)      ! fission spectra
 
   contains
-    procedure :: init        => macroxsiso_init        ! inits object
-    procedure :: get_xs      => macroxsiso_get_xs      ! Returns xs
+    procedure :: init        => macroxsiso_init   ! inits object
+    procedure :: get_xs      => macroxsiso_get_xs ! Returns xs
+    procedure :: sample_fission_energy => macroxsiso_sample_fission_energy
+    procedure :: sample_scatter => macroxsiso_sample_scatter
+    procedure :: calculate_xs => macroxsiso_calculate_xs
   end type MacroXSIso
 
   type, extends(MacroXS) :: MacroXSAngle
@@ -84,6 +121,9 @@ module macroxs_header
   contains
     procedure :: init     => macroxsangle_init   ! inits object
     procedure :: get_xs   => macroxsangle_get_xs ! Returns xs
+    procedure :: sample_fission_energy => macroxsangle_sample_fission_energy
+    procedure :: sample_scatter => macroxsangle_sample_scatter
+    procedure :: calculate_xs => macroxsangle_calculate_xs
   end type MacroXSAngle
 
 !===============================================================================
@@ -704,5 +744,117 @@ contains
     end if
 
   end function macroxsangle_get_xs
+
+!===============================================================================
+! MACROXS_*_SAMPLE_FISSION_ENERGY samples the outgoing energy from a fission
+! event
+!===============================================================================
+
+  function macroxsiso_sample_fission_energy(this, gin, uvw) result(gout)
+    class(MacroXSIso), intent(in) :: this   ! Data to work with
+    integer, intent(in)           :: gin    ! Incoming energy group
+    real(8), intent(in)           :: uvw(3) ! Particle Direction
+    integer                       :: gout   ! Sampled outgoing group
+    real(8) :: xi               ! Our random number
+    real(8) :: prob             ! Running probability
+
+    xi = prn()
+    prob = ZERO
+    gout = 0
+
+    do while (prob < xi)
+      gout = gout + 1
+      prob = prob + this % chi(gout,gin)
+    end do
+
+  end function macroxsiso_sample_fission_energy
+
+  function macroxsangle_sample_fission_energy(this, gin, uvw) result(gout)
+    class(MacroXSAngle), intent(in) :: this  ! Data to work with
+    integer, intent(in)             :: gin    ! Incoming energy group
+    real(8), intent(in)             :: uvw(3) ! Particle Direction
+    integer                         :: gout   ! Sampled outgoing group
+    real(8) :: xi               ! Our random number
+    real(8) :: prob             ! Running probability
+    integer :: iazi, ipol
+
+    call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
+
+    xi = prn()
+    prob = ZERO
+    gout = 0
+
+    do while (prob < xi)
+      gout = gout + 1
+      prob = prob + this % chi(gout,gin,iazi,ipol)
+    end do
+
+  end function macroxsangle_sample_fission_energy
+
+!===============================================================================
+! MACROXS*_SAMPLE_SCATTER Selects outgoing energy and angle after a scatter
+! event
+!===============================================================================
+
+  subroutine macroxsiso_sample_scatter(this, uvw, gin, gout, mu, wgt)
+    class(MacroXSIso), intent(in)    :: this
+    real(8),           intent(in)    :: uvw(3) ! Incoming neutron direction
+    integer,           intent(in)    :: gin    ! Incoming neutron group
+    integer,           intent(out)   :: gout   ! Sampled outgoin group
+    real(8),           intent(out)   :: mu     ! Sampled change in angle
+    real(8),           intent(inout) :: wgt    ! Particle weight
+
+    call this % scatter % sample(gin, gout, mu, wgt)
+
+  end subroutine macroxsiso_sample_scatter
+
+  subroutine macroxsangle_sample_scatter(this, uvw, gin, gout, mu, wgt)
+    class(MacroXSAngle), intent(in)    :: this
+    real(8),             intent(in)    :: uvw(3) ! Incoming neutron direction
+    integer,             intent(in)    :: gin    ! Incoming neutron group
+    integer,             intent(out)   :: gout   ! Sampled outgoin group
+    real(8),             intent(out)   :: mu     ! Sampled change in angle
+    real(8),             intent(inout) :: wgt    ! Particle weight
+
+    integer :: iazi, ipol ! Angular indices
+
+    call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
+    call this % scatter(iazi,ipol) % obj % sample(gin,gout,mu,wgt)
+
+  end subroutine macroxsangle_sample_scatter
+
+!===============================================================================
+! MACROXS*_CALCULATE_XS determines the multi-group macroscopic cross sections
+! for the material the particle is currently traveling through.
+!===============================================================================
+
+  subroutine macroxsiso_calculate_xs(this, gin, uvw, xs)
+    class(MacroXSIso),     intent(in)    :: this
+    integer,               intent(in)    :: gin    ! Incoming neutron group
+    real(8),               intent(in)    :: uvw(3) ! Incoming neutron direction
+    type(MaterialMacroXS), intent(inout) :: xs     ! Resultant MacroXS Data
+
+    xs % total         = this % total(gin)
+    xs % elastic       = this % scattxs(gin)
+    xs % absorption    = this % absorption(gin)
+    xs % nu_fission    = this % nu_fission(gin)
+
+  end subroutine macroxsiso_calculate_xs
+
+  subroutine macroxsangle_calculate_xs(this, gin, uvw, xs)
+    class(MacroXSAngle),   intent(in)    :: this
+    integer,               intent(in)    :: gin    ! Incoming neutron group
+    real(8),               intent(in)    :: uvw(3) ! Incoming neutron direction
+    type(MaterialMacroXS), intent(inout) :: xs     ! Resultant MacroXS Data
+
+    integer :: iazi, ipol
+
+    call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
+    xs % total         = this % total(gin, iazi, ipol)
+    xs % elastic       = this % scattxs(gin, iazi, ipol)
+    xs % absorption    = this % absorption(gin, iazi, ipol)
+    xs % nu_fission    = this % nu_fission(gin, iazi, ipol)
+
+  end subroutine macroxsangle_calculate_xs
 
 end module macroxs_header

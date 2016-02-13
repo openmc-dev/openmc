@@ -7,9 +7,10 @@ module nuclide_header
   use endf,        only: reaction_name
   use error,       only: fatal_error
   use list_header, only: ListInt
-  use math,        only: evaluate_legendre
+  use math,        only: evaluate_legendre, find_angle
   use string
   use xml_interface
+
   implicit none
 
 !===============================================================================
@@ -300,12 +301,9 @@ module nuclide_header
 ! NUCLIDE_*_INIT reads in the data from the XML file, as already accessed
 !===============================================================================
 
-    subroutine nuclidemg_init(this, node_xsdata, groups, get_kfiss, get_fiss)
+    subroutine nuclidemg_init(this, node_xsdata)
       class(NuclideMG), intent(inout) :: this        ! Working Object
       type(Node), pointer, intent(in) :: node_xsdata ! Data from MGXS xml
-      integer, intent(in)             :: groups      ! Number of Energy groups
-      logical, intent(in)             :: get_kfiss   ! Need Kappa-Fission?
-      logical, intent(in)             :: get_fiss    ! Should we get fiss data?
 
       type(Node), pointer     :: node_legendre_mu
       character(MAX_LINE_LEN) :: temp_str
@@ -403,7 +401,7 @@ module nuclide_header
       integer :: order_dim
 
       ! Call generic data gathering routine
-      call nuclidemg_init(this, node_xsdata, groups, get_kfiss, get_fiss)
+      call nuclidemg_init(this, node_xsdata)
 
       ! Load the more specific data
       if (this % fissionable) then
@@ -525,7 +523,7 @@ module nuclide_header
       integer :: order_dim
 
       ! Call generic data gathering routine
-      call nuclidemg_init(this, node_xsdata, groups, get_kfiss, get_fiss)
+      call nuclidemg_init(this, node_xsdata)
 
       if (this % scatt_type == ANGLE_LEGENDRE) then
         order_dim = this % order + 1
@@ -1043,13 +1041,13 @@ module nuclide_header
       if (this % scatt_type == ANGLE_LEGENDRE) then
         f = evaluate_legendre(this % scatter(gout,gin,:), mu)
       else if (this % scatt_type == ANGLE_TABULAR) then
-        dmu = TWO / real(this % order - 1)
+        dmu = TWO / real(this % order - 1,8)
         ! Find mu bin algebraically, knowing that the spacing is equal
         f   = (mu + ONE) / dmu + ONE
         imu = floor(f)
         ! But save the amount that mu is past the previous index
         ! so we can use interpolation later.
-        f = f - real(imu)
+        f = f - real(imu,8)
         ! Adjust so interpolation works on the last bin if necessary
         if (imu == size(this % scatter, dim=3)) then
           imu = imu - 1
@@ -1060,7 +1058,7 @@ module nuclide_header
         f = (ONE - r) * this % scatter(gout,gin,imu) + &
              r * this % scatter(gout,gin,imu+1)
       else ! (ANGLE_HISTOGRAM)
-        dmu = TWO / real(this % order)
+        dmu = TWO / real(this % order,8)
         ! Find mu bin algebraically, knowing that the spacing is equal
         imu   = floor((mu + ONE) / dmu + ONE)
         ! Adjust so interpolation works on the last bin if necessary
@@ -1097,13 +1095,13 @@ module nuclide_header
       if (this % scatt_type == ANGLE_LEGENDRE) then
         f = evaluate_legendre(this % scatter(gout,gin,:,i_azi_,i_pol_), mu)
       else if (this % scatt_type == ANGLE_TABULAR) then
-        dmu = TWO / real(this % order - 1)
+        dmu = TWO / real(this % order - 1,8)
         ! Find mu bin algebraically, knowing that the spacing is equal
         f   = (mu + ONE) / dmu + ONE
         imu = floor(f)
         ! But save the amount that mu is past the previous index
         ! so we can use interpolation later.
-        f = f - real(imu)
+        f = f - real(imu,8)
         ! Adjust so interpolation works on the last bin if necessary
         if (imu == size(this % scatter, dim=3)) then
           imu = imu - 1
@@ -1114,7 +1112,7 @@ module nuclide_header
         f = (ONE - r) * this % scatter(gout,gin,imu,i_azi_,i_pol_) + &
              r * this % scatter(gout,gin,imu+1,i_azi_,i_pol_)
       else ! (ANGLE_HISTOGRAM)
-        dmu = TWO / real(this % order)
+        dmu = TWO / real(this % order,8)
         ! Find mu bin algebraically, knowing that the spacing is equal
         imu   = floor((mu + ONE) / dmu + ONE)
         ! Adjust so interpolation works on the last bin if necessary
@@ -1126,31 +1124,5 @@ module nuclide_header
       end if
 
     end function nuclideangle_calc_f
-
-!===============================================================================
-! find_angle finds the closest angle on the data grid and returns that index
-!===============================================================================
-
-    pure subroutine find_angle(polar, azimuthal, uvw, i_azi, i_pol)
-      real(8), intent(in) :: polar(:)     ! Polar angles [0,pi]
-      real(8), intent(in) :: azimuthal(:) ! Azi. angles [-pi,pi]
-      real(8), intent(in) :: uvw(3)       ! Direction of motion
-      integer, intent(inout) :: i_pol     ! Closest polar bin
-      integer, intent(inout) :: i_azi     ! Closest azi bin
-
-      real(8) my_pol, my_azi, dangle
-
-      ! Convert uvw to polar and azi
-
-      my_pol = acos(uvw(3))
-      my_azi = atan2(uvw(2), uvw(1))
-
-      ! Search for equi-binned angles
-      dangle = PI / real(size(polar),8)
-      i_pol  = floor(my_pol / dangle + ONE)
-      dangle = TWO * PI / real(size(azimuthal),8)
-      i_azi  = floor((my_azi + PI) / dangle + ONE)
-
-    end subroutine find_angle
 
 end module nuclide_header

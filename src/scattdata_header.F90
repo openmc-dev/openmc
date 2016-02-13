@@ -375,9 +375,6 @@ contains
     do
       mu = TWO * prn() - ONE
       f = this % calc_f(gin,gout,mu)
-if (f > M) then
-call fatal_error("Legendre exceeds Max Value!!!")
-end if
       if (f > ZERO) then
         u = prn() * M
         if (u <= f) then

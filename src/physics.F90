@@ -51,7 +51,7 @@ contains
     end if
 
     ! Check for very low energy
-    if (p % alive .and. p % E < 1.0e-100_8) then
+    if (p % alive .and. p % E < VERY_LOW_ENERGY) then
       p % alive = .false.
       if (master) call warning("Killing neutron with extremely low energy")
     end if
@@ -1337,7 +1337,7 @@ contains
     ! anything else in this subroutine.  Those small E values can cause some
     ! ugly floating point errors in rotate_angle, and secondaries created with
     ! low energy will cause errors in calculate_xs.
-    if (E < 1.0e-100_8) then
+    if (E < VERY_LOW_ENERGY) then
       p % E = ZERO
       p % alive = .false.
       if (master) call warning("Killing neutron with extremely low energy")

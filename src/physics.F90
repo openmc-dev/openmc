@@ -50,8 +50,8 @@ contains
            &// ". Energy = " // trim(to_str(p % E * 1e6_8)) // " eV.")
     end if
 
-    ! check for very low energy
-    if (p % E < 1.0e-100_8) then
+    ! Check for very low energy
+    if (p % alive .and. p % E < 1.0e-100_8) then
       p % alive = .false.
       if (master) call warning("Killing neutron with extremely low energy")
     end if
@@ -1332,6 +1332,17 @@ contains
 
     ! sample outgoing energy and scattering cosine
     call rxn%secondary%sample(E_in, E, mu)
+
+    ! If the sampled energy is very low, kill the particle and don't finish
+    ! anything else in this subroutine.  Those small E values can cause some
+    ! ugly floating point errors in rotate_angle, and secondaries created with
+    ! low energy will cause errors in calculate_xs.
+    if (E < 1.0e-100_8) then
+      p % E = ZERO
+      p % alive = .false.
+      if (master) call warning("Killing neutron with extremely low energy")
+      return
+    end if
 
     ! if scattering system is in center-of-mass, transfer cosine of scattering
     ! angle and outgoing energy from CM to LAB

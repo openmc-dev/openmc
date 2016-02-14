@@ -372,7 +372,7 @@ class Summary(object):
 
                 # Set the distribcell offsets for the lattice
                 if offsets is not None:
-                    lattice.offsets = offsets
+                    lattice.offsets = offsets[:, ::-1, :]
 
                 # Add the Lattice to the global dictionary of all Lattices
                 self.lattices[index] = lattice

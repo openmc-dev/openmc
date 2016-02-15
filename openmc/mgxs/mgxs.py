@@ -696,7 +696,7 @@ class MGXS(object):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
+            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=2)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
@@ -1195,6 +1195,9 @@ class MGXS(object):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
+        elif self.domain_type == 'sum(distribcell)':
+            domain_filter = self.xs_tally.find_filter('sum(distribcell)')
+            subdomains = domain_filter.bins
         else:
             subdomains = [self.domain.id]
 
@@ -2019,7 +2022,7 @@ class ScatterMatrixXS(MGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
+            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=2)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
@@ -2416,7 +2419,7 @@ class Chi(MGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
+            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=2)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))

@@ -933,7 +933,7 @@ class Tally(object):
             merged_tally.add_trigger(trigger)
 
         # If results have not been read, then return tally for input generation
-        if self._sp_filename is None:
+        if self._results_read is None:
             return merged_tally
         #Otherwise, this is a derived tally which needs merged results arrays
         else:

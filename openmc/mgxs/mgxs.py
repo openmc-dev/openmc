@@ -1414,12 +1414,11 @@ class MGXS(object):
         if 'energy [MeV]' in df and 'energyout [MeV]' in df:
             df.rename(columns={'energy [MeV]': 'group in'}, inplace=True)
             in_groups = np.tile(all_groups, self.num_subdomains)
-            in_groups = np.repeat(in_groups, self.num_groups)
+            in_groups = np.repeat(in_groups, df.shape[0] / in_groups.size)
             df['group in'] = in_groups
 
             df.rename(columns={'energyout [MeV]': 'group out'}, inplace=True)
-            out_groups = \
-                np.tile(all_groups, self.num_subdomains * self.num_groups)
+            out_groups = np.tile(all_groups, df.shape[0] / all_groups.size)
             df['group out'] = out_groups
             columns = ['group in', 'group out']
 
@@ -1919,7 +1918,7 @@ class ScatterMatrixXS(MGXS):
         cv.check_value('correction', correction, ('P0', None))
         self._correction = correction
 
-    def get_slice(self, nuclides=[], groups=[]):
+    def get_slice(self, nuclides=[], in_groups=[], out_groups=[]):
         """Build a sliced ScatterMatrix for the specified nuclides and
         energy groups.
 
@@ -1933,9 +1932,12 @@ class ScatterMatrixXS(MGXS):
         nuclides : list of str
             A list of nuclide name strings
             (e.g., ['U-235', 'U-238']; default is [])
-        groups : list of Integral
-            A list of energy group indices starting at 1 for the high energies
-            (e.g., [1, 2, 3]; default is [])
+        in_groups : list of Integral
+            A list of incoming energy group indices starting at 1 for the high
+            energies (e.g., [1, 2, 3]; default is [])
+        out_groups : list of Integral
+            A list of outgoing energy group indices starting at 1 for the high
+            energies (e.g., [1, 2, 3]; default is [])
 
         Returns
         -------
@@ -1946,14 +1948,14 @@ class ScatterMatrixXS(MGXS):
         """
 
         # Call super class method and null out derived tallies
-        slice_xs = super(ScatterMatrixXS, self).get_slice(nuclides, groups)
+        slice_xs = super(ScatterMatrixXS, self).get_slice(nuclides, in_groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 
-        # Slice energy groups if needed
-        if len(groups) != 0:
+        # Slice outgoing energy groups if needed
+        if len(out_groups) != 0:
             filter_bins = []
-            for group in groups:
+            for group in out_groups:
                 group_bounds = self.energy_groups.get_group_bounds(group)
                 filter_bins.append(group_bounds)
             filter_bins = [tuple(filter_bins)]

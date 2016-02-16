@@ -91,6 +91,9 @@ module global
   ! What to assume for expanding natural elements
   integer :: default_expand = ENDF_BVII1
 
+  ! Whether or not windowed multipole cross sections should be used.
+  logical :: multipole_active = .false.
+
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 

@@ -72,6 +72,10 @@ class SettingsFile(object):
         cross_sections.xml). If it is not set, the :envvar:`CROSS_SECTIONS`
         environment variable will be used to find the path to the XML cross
         section listing.
+    multipole_library : str
+        Indicates the path to a directory containing a windowed multipole
+        cross section library. If it is not set, the :envvar:`MULTIPOLE_LIBRARY'
+        environment variable will be used. A multipole library is optional.
     energy_grid : str
         Set the method used to search energy grids. Acceptable values are
         'nuclide', 'logarithm', and 'material-union'.
@@ -139,6 +143,7 @@ class SettingsFile(object):
 
         self._confidence_intervals = None
         self._cross_sections = None
+        self._multipole_library = None
         self._energy_grid = None
         self._ptables = None
         self._run_cmfd = None
@@ -232,6 +237,10 @@ class SettingsFile(object):
     @property
     def cross_sections(self):
         return self._cross_sections
+
+    @property
+    def multipole_library(self):
+        return self._multipole_library
 
     @property
     def energy_grid(self):
@@ -527,6 +536,11 @@ class SettingsFile(object):
     def cross_sections(self, cross_sections):
         check_type('cross sections', cross_sections, basestring)
         self._cross_sections = cross_sections
+
+    @multipole_library.setter
+    def multipole_library(self, multipole_library):
+        check_type('cross sections', multipole_library, basestring)
+        self._multipole_library = multipole_library
 
     @energy_grid.setter
     def energy_grid(self, energy_grid):
@@ -861,6 +875,11 @@ class SettingsFile(object):
             element = ET.SubElement(self._settings_file, "cross_sections")
             element.text = str(self._cross_sections)
 
+    def _create_multipole_library_subelement(self):
+        if self._multipole_library is not None:
+            element = ET.SubElement(self._settings_file, "multipole_library")
+            element.text = str(self._multipole_library)
+
     def _create_energy_grid_subelement(self):
         if self._energy_grid is not None:
             element = ET.SubElement(self._settings_file, "energy_grid")
@@ -1024,6 +1043,7 @@ class SettingsFile(object):
         self._create_sourcepoint_subelement()
         self._create_confidence_intervals()
         self._create_cross_sections_subelement()
+        self._create_multipole_library_subelement()
         self._create_energy_grid_subelement()
         self._create_ptables_subelement()
         self._create_run_cmfd_subelement()

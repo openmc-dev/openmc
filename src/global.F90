@@ -282,6 +282,7 @@ module global
 
   character(MAX_FILE_LEN) :: path_input            ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections   ! Path to cross_sections.xml
+  character(MAX_FILE_LEN) :: path_multipole        ! Path to wmp library
   character(MAX_FILE_LEN) :: path_source = ''      ! Path to binary source
   character(MAX_FILE_LEN) :: path_state_point      ! Path to binary state point
   character(MAX_FILE_LEN) :: path_source_point     ! Path to binary source point

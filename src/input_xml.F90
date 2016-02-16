@@ -127,6 +127,21 @@ contains
       end if
     end if
 
+    ! Find the windowed multipole library
+    if (run_mode /= MODE_PLOTTING) then
+      if (.not. check_for_node(doc, "multipole_library") .and. &
+           run_mode /= MODE_PLOTTING) then
+        ! No library location specified in settings.xml, check
+        ! environment variable
+        call get_environment_variable("MULTIPOLE_LIBRARY", env_variable)
+        path_multipole = trim(env_variable)
+      else
+        call get_node_value(doc, "multipole_library", path_multipole)
+      end if
+      if (.not. ends_with(path_multipole, "/")) &
+           path_multipole = trim(path_multipole) // "/"
+    end if
+
     ! Set output directory if a path has been specified on the <output_path>
     ! element
     if (check_for_node(doc, "output_path")) then
@@ -1901,7 +1916,6 @@ contains
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
     type(Node), pointer :: node_dens => null()
-    type(Node), pointer :: node_temp => null()
     type(Node), pointer :: node_nuc => null()
     type(Node), pointer :: node_ele => null()
     type(Node), pointer :: node_sab => null()

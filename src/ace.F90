@@ -114,7 +114,7 @@ contains
           end if
 
           ! Read multipole file into the appropriate entry on the nuclides array
-          call read_multipole_data(i_nuclide)
+          if (multipole_active) call read_multipole_data(i_nuclide)
 
           ! Add name and alias to dictionary
           call already_read % add(name)

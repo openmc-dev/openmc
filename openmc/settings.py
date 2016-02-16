@@ -125,6 +125,9 @@ class SettingsFile(object):
         Coordinates of the lower-left point of the UFS mesh
     ufs_upper_right : tuple or list
         Coordinates of the upper-right point of the UFS mesh
+    use_windowed_multipole : bool
+        Whether or not windowed multipole can be used to evaluate resolved
+        resonance cross sections.
 
     """
 
@@ -201,6 +204,7 @@ class SettingsFile(object):
         self._settings_file = ET.Element("settings")
         self._run_mode_subelement = None
         self._source_element = None
+        self._multipole_active = None
 
     @property
     def run_mode(self):
@@ -385,6 +389,10 @@ class SettingsFile(object):
     @property
     def dd_count_interactions(self):
         return self._dd_count_interactions
+
+    @property
+    def use_windowed_multipole(self):
+        return self._multipole_active
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -750,6 +758,11 @@ class SettingsFile(object):
 
         self._dd_count_interactions = interactions
 
+    @use_windowed_multipole.setter
+    def use_windowed_multipole(self, active):
+        check_type('use_windowed_multipole', active, bool)
+        self._multipole_active = active
+
     def _create_run_mode_subelement(self):
 
         if self.run_mode == 'eigenvalue':
@@ -1024,6 +1037,12 @@ class SettingsFile(object):
             subelement = ET.SubElement(element, "count_interactions")
             subelement.text = str(self._dd_count_interactions).lower()
 
+    def _create_use_multipole_subelement(self):
+        if self._multipole_active is not None:
+            element = ET.SubElement(self._settings_file,
+                                    "use_windowed_multipole")
+            element.text = str(self._multipole_active)
+
     def export_to_xml(self):
         """Create a settings.xml file that can be used for a simulation.
 
@@ -1059,6 +1078,7 @@ class SettingsFile(object):
         self._create_track_subelement()
         self._create_ufs_subelement()
         self._create_dd_subelement()
+        self._create_use_multipole_subelement()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._settings_file)

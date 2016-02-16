@@ -1054,6 +1054,20 @@ contains
       end select
     end if
 
+    ! Check to see if windowed multipole functionality is requested
+    if (check_for_node(doc, "use_windowed_multipole")) then
+      call get_node_value(doc, "use_windowed_multipole", temp_str)
+      select case (to_lower(temp_str))
+      case ('true', 't', '1', 'y')
+        multipole_active = .true.
+      case ('false', 'f', '0', 'n')
+        multipole_active = .false.
+      case default
+        call fatal_error("Unrecognized value for <use_windowed_multipole> in &
+             &settings.xml")
+      end select
+    end if
+
     ! Close settings XML file
     call close_xmldoc(doc)
 

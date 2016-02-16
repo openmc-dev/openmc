@@ -112,7 +112,7 @@ module ace_header
     type(UrrData), pointer :: urr_data => null()
 
     ! Multipole data
-    logical                           :: mp_present
+    logical                           :: mp_present = .false.
     type(MultipoleArray), allocatable :: multipole
 
     ! Reactions

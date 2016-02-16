@@ -162,5 +162,7 @@ element settings {
       (element E_max { xsd:double } |
         attribute E_max { xsd:double })?
     }*
-  }?
+  }? &
+
+  element use_windowed_multipole { xsd:boolean }?
 }

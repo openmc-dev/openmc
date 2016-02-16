@@ -738,5 +738,10 @@
         </zeroOrMore>
       </element>
     </optional>
+    <optional>
+      <element name="use_windowed_multipole">
+        <data type="boolean"/>
+      </element>
+    </optional>
   </interleave>
 </element>

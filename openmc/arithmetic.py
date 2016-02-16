@@ -188,6 +188,23 @@ class CrossNuclide(object):
             return existing
 
     def __repr__(self):
+        return self.name
+
+
+    @property
+    def left_nuclide(self):
+        return self._left_nuclide
+
+    @property
+    def right_nuclide(self):
+        return self._right_nuclide
+
+    @property
+    def binary_op(self):
+        return self._binary_op
+
+    @property
+    def name(self):
 
         string = ''
 
@@ -208,18 +225,6 @@ class CrossNuclide(object):
             string += str(self.right_nuclide) + ')'
 
         return string
-
-    @property
-    def left_nuclide(self):
-        return self._left_nuclide
-
-    @property
-    def right_nuclide(self):
-        return self._right_nuclide
-
-    @property
-    def binary_op(self):
-        return self._binary_op
 
     @left_nuclide.setter
     def left_nuclide(self, left_nuclide):

@@ -57,10 +57,12 @@ src/bin/
 src/cmake_install.cmake
 src/install_manifest.txt
 
-# Data downloaded from NNDC
+# Nuclear data
 data/nndc
+data/wmp
+data/multipole_lib.tar.gz
 
-#Images
+# Images
 *.ppm
 *.voxel
 

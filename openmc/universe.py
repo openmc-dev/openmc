@@ -16,9 +16,6 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-# DeprecationWarning filter for the Cell.add_surface(...) method
-warnings.simplefilter('always', DeprecationWarning)
-
 # A static variable for auto-generated Cell IDs
 AUTO_CELL_ID = 10000
 

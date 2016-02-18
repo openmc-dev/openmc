@@ -23,9 +23,6 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-# DeprecationWarning filter for the Tally.add_*(...) methods
-warnings.simplefilter('always', DeprecationWarning)
-
 # "Static" variable for auto-generated Tally IDs
 AUTO_TALLY_ID = 10000
 

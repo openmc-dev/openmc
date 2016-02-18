@@ -1,5 +1,6 @@
 from collections import Iterable, OrderedDict
 from xml.etree import ElementTree as ET
+import re
 
 import openmc
 from openmc.clean_xml import *
@@ -94,7 +95,16 @@ class Geometry(object):
 
         """
 
-        return self._root_universe.get_all_cells()
+        all_cells = self._root_universe.get_all_cells()
+        cells = set()
+
+        for cell_id, cell in all_cells.items():
+            if cell._type == 'normal':
+                cells.add(cell)
+
+        cells = list(cells)
+        cells.sort(key=lambda x: x.id)
+        return cells
 
     def get_all_universes(self):
         """Return all universes defined
@@ -106,7 +116,16 @@ class Geometry(object):
 
         """
 
-        return self._root_universe.get_all_universes()
+        all_universes = self._root_universe.get_all_universes()
+        universes = set()
+
+        for universe_id, universe in all_universes.items():
+            if universe._type == 'normal':
+                universes.add(universe)
+
+        universes = list(universes)
+        universes.sort(key=lambda x: x.id)
+        return universes
 
     def get_all_nuclides(self):
         """Return all nuclides assigned to a material in the geometry
@@ -150,6 +169,15 @@ class Geometry(object):
         return materials
 
     def get_all_material_cells(self):
+        """Return all cells filled by a material
+
+        Returns
+        -------
+        list of openmc.universe.Cell
+            Cells filled by Materials in the geometry
+
+        """
+
         all_cells = self.get_all_cells()
         material_cells = set()
 
@@ -175,7 +203,7 @@ class Geometry(object):
         material_universes = set()
 
         for universe_id, universe in all_universes.items():
-            cells = universe._cells
+            cells = universe.cells
             for cell_id, cell in cells.items():
                 if cell._type == 'normal':
                     material_universes.add(universe)
@@ -183,6 +211,228 @@ class Geometry(object):
         material_universes = list(material_universes)
         material_universes.sort(key=lambda x: x.id)
         return material_universes
+
+    def get_all_lattices(self):
+        """Return all lattices defined
+
+        Returns
+        -------
+        list of openmc.universe.Lattice
+            Lattices in the geometry
+
+        """
+
+        cells = self.get_all_cells()
+        lattices = set()
+
+        for cell in cells:
+            if isinstance(cell.fill, openmc.Lattice):
+                lattices.add(cell.fill)
+
+        lattices = list(lattices)
+        lattices.sort(key=lambda x: x.id)
+        return lattices
+
+    def get_materials_by_name(self, name, case_sensitive=False, matching=False):
+        """Return a list of materials with names matching a regular expression.
+
+        Parameters
+        ----------
+        name : str
+            The name to search for (regular expressions are acceptable)
+        case_sensitive : bool
+            Whether to distinguish upper and lower case letters in each
+            material's name (default is True)
+        matching : bool
+            Whether the names must match completely (default is True)
+
+        Returns
+        -------
+        list of openmc.material.Material
+            Materials matching the queried name
+
+        """
+
+        regex = re.compile(b'{0}'.format(name))
+
+        all_materials = self.get_all_materials()
+        materials = set()
+
+        for material in all_materials:
+            material_name = material.name
+            if not case_sensitive:
+                material_name = material_name.lower()
+
+            match = regex.findall(material_name)
+            if match and matching:
+                materials.add(material)
+            elif match and match[0] == name:
+                materials.add(material)
+
+        materials = list(materials)
+        materials.sort(key=lambda x: x.id)
+        return materials
+
+    def get_cells_by_name(self, name, case_sensitive=False, matching=False):
+        """Return a list of cells with names matching a regular expression.
+
+        Parameters
+        ----------
+        name : str
+            The name to search for (regular expressions are acceptable)
+        case_sensitive : bool
+            Whether to distinguish upper and lower case letters in each
+            cell's name (default is True)
+        matching : bool
+            Whether the names must match completely (default is True)
+
+        Returns
+        -------
+        list of openmc.universe.Cell
+            Cells matching the queried name
+
+        """
+
+        regex = re.compile(b'{0}'.format(name))
+
+        all_cells = self.get_all_cells()
+        cells = set()
+
+        for cell in all_cells:
+            cell_name = cell.name
+            if not case_sensitive:
+                cell_name = cell_name.lower()
+
+            match = regex.findall(cell_name)
+            if match and matching:
+                cells.add(cell)
+            elif match and match[0] == name:
+                cells.add(cell)
+
+        cells = list(cells)
+        cells.sort(key=lambda x: x.id)
+        return cells
+
+    def get_cells_by_fill_name(self, name, case_sensitive=False, matching=False):
+        """Return a list of cells with fills with names matching a
+        regular expression.
+
+        Parameters
+        ----------
+        name : str
+            The name to search for (regular expressions are acceptable)
+        case_sensitive : bool
+            Whether to distinguish upper and lower case letters in each
+            cell's name (default is True)
+        matching : bool
+            Whether the names must match completely (default is True)
+
+        Returns
+        -------
+        list of openmc.universe.Cell
+            Cells with fills matching the queried name
+
+        """
+
+        regex = re.compile(b'{0}'.format(name))
+
+        all_cells = self.get_all_cells()
+        cells = set()
+
+        for cell in all_cells:
+            cell_fill_name = cell.fill.name
+            if not case_sensitive:
+                cell_fill_name = cell_fill_name.lower()
+
+            match = regex.findall(cell_fill_name)
+            if match and matching:
+                cells.add(cell)
+            elif match and match[0] == name:
+                cells.add(cell)
+
+        cells = list(cells)
+        cells.sort(key=lambda x: x.id)
+        return cells
+
+    def get_universes_by_name(self, name, case_sensitive=False, matching=False):
+        """Return a list of universes with names matching a regular expression.
+
+        Parameters
+        ----------
+        name : str
+            The name to search for (regular expressions are acceptable)
+        case_sensitive : bool
+            Whether to distinguish upper and lower case letters in each
+            universe's name (default is True)
+        matching : bool
+            Whether the names must match completely (default is True)
+
+        Returns
+        -------
+        list of openmc.universe.Universe
+            Universes matching the queried name
+
+        """
+
+        regex = re.compile(b'{0}'.format(name))
+
+        all_universes = self.get_all_universes()
+        universes = set()
+
+        for universe in all_universes:
+            universe_name = universe.name
+            if not case_sensitive:
+                universe_name = universe_name.lower()
+
+            match = regex.findall(universe_name)
+            if match and matching:
+                universes.add(universe)
+            elif match and match[0] == name:
+                universes.add(universe)
+
+        universes = list(universes)
+        universes.sort(key=lambda x: x.id)
+        return universes
+
+    def get_lattices_by_name(self, name, case_sensitive=False, matching=False):
+        """Return a list of lattices with names matching a regular expression.
+
+        Parameters
+        ----------
+        name : str
+            The name to search for (regular expressions are acceptable)
+        case_sensitive : bool
+            Whether to distinguish upper and lower case letters in each
+            lattice's name (default is True)
+        matching : bool
+            Whether the names must match completely (default is True)
+
+        Returns
+        -------
+        list of openmc.universe.Lattice
+            Lattices matching the queried name
+
+        """
+
+        regex = re.compile(b'{0}'.format(name))
+
+        all_lattices = self.get_all_lattices()
+        lattices = set()
+
+        for lattice in all_lattices:
+            lattice_name = lattice.name
+            if not case_sensitive:
+                lattice_name = lattice_name.lower()
+
+            match = regex.findall(lattice_name)
+            if match and matching:
+                lattices.add(lattice)
+            elif match and match[0] == name:
+                lattices.add(lattice)
+
+        lattices = list(lattices)
+        lattices.sort(key=lambda x: x.id)
+        return lattices
 
 
 class GeometryFile(object):

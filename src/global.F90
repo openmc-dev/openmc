@@ -390,7 +390,7 @@ module global
   type(SetInt) :: sourcepoint_batch
 
   ! Various output options
-  logical :: output_summary = .false.
+  logical :: output_summary = .true.
   logical :: output_xs      = .false.
   logical :: output_tallies = .true.
 

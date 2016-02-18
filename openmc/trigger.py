@@ -9,10 +9,6 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-# DeprecationWarning filter for the Trigger.add_score(...) method
-warnings.simplefilter('always', DeprecationWarning)
-
-
 class Trigger(object):
     """A criterion for when to finish a simulation based on tally uncertainties.
 

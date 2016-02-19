@@ -1123,26 +1123,26 @@ contains
     end if
 
     ! Check for fission bank size getting hit
-    if (n_bank + nu > size(fission_bank)) then
+    if (n_bank + nu > size(fission_bank)/n_delay) then
       if (master) call warning("Maximum number of sites in fission bank &
            &reached. This can result in irreproducible results using different &
            &numbers of processes/threads.")
     end if
 
     ! Bank source neutrons
-    if (nu == 0 .or. n_bank == size(fission_bank)) return
+    if (nu == 0 .or. n_bank == size(fission_bank)/n_delay) return
 
     ! Initialize counter of delayed neutrons encountered for each delayed group
     ! to zero.
     nu_d(:) = 0
 
     p % fission = .true. ! Fission neutrons will be banked
-    do i = int(n_bank,4) + 1, int(min(n_bank + nu, int(size(fission_bank),8)),4)
+    do i = int(n_bank,4) + 1, int(min(n_bank + nu, int(size(fission_bank)/n_delay,8)),4)
       ! Bank source neutrons by copying particle data
-      fission_bank(i) % xyz = p % coord(1) % xyz
+      fission_bank( local_push_pointer + i ) % xyz = p % coord(1) % xyz
 
       ! Set weight of fission bank site
-      fission_bank(i) % wgt = ONE/weight
+      fission_bank( local_push_pointer + i ) % wgt = ONE/weight
 
       ! Sample cosine of angle -- fission neutrons are always emitted
       ! isotropically. Sometimes in ACE data, fission reactions actually have
@@ -1152,17 +1152,17 @@ contains
 
       ! Sample azimuthal angle uniformly in [0,2*pi)
       phi = TWO*PI*prn()
-      fission_bank(i) % uvw(1) = mu
-      fission_bank(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-      fission_bank(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+      fission_bank( local_push_pointer + i ) % uvw(1) = mu
+      fission_bank( local_push_pointer + i ) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+      fission_bank( local_push_pointer + i ) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
-      fission_bank(i) % E = sample_fission_energy(nuc, nuc%reactions(&
+      fission_bank( local_push_pointer + i ) % E = sample_fission_energy(nuc, nuc%reactions(&
            i_reaction), p)
 
       ! Set the delayed group of the neutron
-      fission_bank(i) % delayed_group = p % delayed_group
+      fission_bank( local_push_pointer + i ) % delayed_group = p % delayed_group
 
       ! Increment the number of neutrons born delayed
       if (p % delayed_group > 0) then
@@ -1171,8 +1171,7 @@ contains
     end do
 
     ! increment number of bank sites
-    n_bank = min(n_bank + nu, int(size(fission_bank),8))
-
+    n_bank = min(n_bank + nu, int(size(fission_bank)/n_delay,8))
     ! Store total and delayed weight banked for analog fission tallies
     p % n_bank   = nu
     p % wgt_bank = nu/weight
@@ -1378,7 +1377,6 @@ contains
 
     ! change direction of particle
     p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
-
     ! change weight of particle based on yield
     if (rxn % multiplicity_with_E) then
       yield = interpolate_tab1(rxn % multiplicity_E, E_in)

@@ -153,6 +153,9 @@ module global
   logical :: tallies_on = .false.
   logical :: active_batches = .false.
 
+  ! Flag for setting fission_bank pointers
+  logical :: inactive_batches = .true.
+  logical :: intermediate_batches = .false. 
   ! Assume all tallies are spatially distinct
   logical :: assume_separate = .false.
 
@@ -165,11 +168,15 @@ module global
   integer(8) :: n_particles = 0   ! # of particles per generation
   integer    :: n_batches         ! # of batches
   integer    :: n_inactive        ! # of inactive batches
+  integer    :: n_delay           ! # of delayed batches (1 generation per batch if delayed)
   integer    :: n_active          ! # of active batches
   integer    :: gen_per_batch = 1 ! # of generations per batch
   integer    :: current_batch = 0 ! current batch
   integer    :: current_gen   = 0 ! current generation within a batch
   integer    :: overall_gen   = 0 ! overall generation in the run
+  integer    :: current_delay = 0 ! 
+  integer(8) :: bank_pull_pointer ! pointer in the fission bank to pull fission_sites into source bank
+  integer(8) :: bank_push_pointer ! pointer in the fission bank to store (push) fission_sites
 
   ! ============================================================================
   ! TALLY PRECISION TRIGGER VARIABLES
@@ -191,6 +198,8 @@ module global
   type(Bank), allocatable, target :: master_fission_bank(:)
 #endif
   integer(8) :: n_bank       ! # of sites in fission bank
+  integer(8) :: local_push_pointer! pointer in the local bank to store (push) fission_sites
+  integer(8), allocatable :: n_banks(:)    ! array storing n_bank for each delayed batch
   integer(8) :: work         ! number of particles per processor
   integer(8), allocatable :: work_index(:) ! starting index in source bank for each process
   integer(8) :: current_work ! index in source bank of current history simulated
@@ -405,7 +414,7 @@ module global
   integer :: n_res_scatterers_total = 0 ! total number of resonant scatterers
   type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
 
-!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
+!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, local_push_pointer, &
 !$omp&              trace, thread_id, current_work, matching_bins)
 
 contains

@@ -608,7 +608,7 @@ contains
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
          entropy(overall_gen)
 
-    if (overall_gen - n_inactive*gen_per_batch > 1) then
+    if (overall_gen - (n_inactive + n_delay)*gen_per_batch > 1) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
            keff, keff_std
     end if
@@ -636,7 +636,7 @@ contains
          entropy(current_batch*gen_per_batch)
 
     ! write out accumulated k-effective if after first active batch
-    if (overall_gen - n_inactive*gen_per_batch > 1) then
+    if (overall_gen - (n_inactive+n_delay)*gen_per_batch > 1) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
            keff, keff_std
     else
@@ -793,7 +793,7 @@ contains
       end if
     else
       if (n_inactive > 0) then
-        speed_inactive = real(n_particles * n_inactive * gen_per_batch) / &
+        speed_inactive = real(n_particles * (n_inactive + n_delay) * gen_per_batch) / &
              time_inactive % elapsed
       end if
       speed_active = real(n_particles * n_active * gen_per_batch) / &

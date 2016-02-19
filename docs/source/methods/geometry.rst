@@ -84,10 +84,10 @@ to fully define the surface.
     | Plane perpendicular  | x-plane    | :math:`x - x_0 = 0`          | :math:`x_0`             |
     | to :math:`x`-axis    |            |                              |                         |
     +----------------------+------------+------------------------------+-------------------------+
-    | Plane perpendicular  | y-plane    | :math:`x - x_0 = 0`          | :math:`y_0`             |
+    | Plane perpendicular  | y-plane    | :math:`y - y_0 = 0`          | :math:`y_0`             |
     | to :math:`y`-axis    |            |                              |                         |
     +----------------------+------------+------------------------------+-------------------------+
-    | Plane perpendicular  | z-plane    | :math:`x - x_0 = 0`          | :math:`z_0`             |
+    | Plane perpendicular  | z-plane    | :math:`z - z_0 = 0`          | :math:`z_0`             |
     | to :math:`z`-axis    |            |                              |                         |
     +----------------------+------------+------------------------------+-------------------------+
     | Arbitrary plane      | plane      | :math:`Ax + By + Cz = D`     | :math:`A\;B\;C\;D`      |

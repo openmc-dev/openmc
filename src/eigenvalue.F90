@@ -30,6 +30,7 @@ contains
 
   subroutine synchronize_bank()
 
+    integer(8)  :: m_bank       ! m_bank should be n_bank of the delayed generation
     integer    :: i            ! loop indices
     integer    :: j            ! loop indices
     integer(8) :: start        ! starting index in global bank
@@ -64,25 +65,29 @@ contains
     ! fission bank its own sites starts in order to ensure reproducibility by
     ! skipping ahead to the proper seed.
 
+    n_banks(bank_push_pointer/(work*3)+1) = n_bank 
+    m_bank = n_banks(bank_pull_pointer/(work*3)+1)
 #ifdef MPI
     start = 0_8
-    call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, &
+    call MPI_EXSCAN(m_bank, start, 1, MPI_INTEGER8, MPI_SUM, &
          MPI_COMM_WORLD, mpi_err)
+    ! start is accumulated m_bank
 
     ! While we would expect the value of start on rank 0 to be 0, the MPI
     ! standard says that the receive buffer on rank 0 is undefined and not
     ! significant
     if (rank == 0) start = 0_8
 
-    finish = start + n_bank
+    finish = start + m_bank
     total = finish
     call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, &
          MPI_COMM_WORLD, mpi_err)
+    !every process has total from process: n_procs - 1
 
 #else
     start  = 0_8
-    finish = n_bank
-    total  = n_bank
+    finish = m_bank
+    total  = m_bank
 #endif
 
     ! If there are not that many particles per generation, it's possible that no
@@ -90,7 +95,7 @@ contains
     ! extra logic to treat this circumstance, we really want to ensure the user
     ! runs enough particles to avoid this in the first place.
 
-    if (n_bank == 0) then
+    if (m_bank == 0) then
       call fatal_error("No fission sites banked on processor " // to_str(rank))
     end if
 
@@ -121,7 +126,7 @@ contains
     index_temp = 0_8
     if (.not. allocated(temp_sites)) allocate(temp_sites(3*work))
 
-    do i = 1, int(n_bank,4)
+    do i = 1, int(m_bank,4)
 
       ! If there are less than n_particles particles banked, automatically add
       ! int(n_particles/total) sites to temp_sites. For example, if you need
@@ -130,14 +135,14 @@ contains
       if (total < n_particles) then
         do j = 1, int(n_particles/total)
           index_temp = index_temp + 1
-          temp_sites(index_temp) = fission_bank(i)
+          temp_sites(index_temp) = fission_bank(bank_pull_pointer + i)
         end do
       end if
 
       ! Randomly sample sites needed
       if (prn() < p_sample) then
         index_temp = index_temp + 1
-        temp_sites(index_temp) = fission_bank(i)
+        temp_sites(index_temp) = fission_bank(bank_pull_pointer + i)
       end if
     end do
 
@@ -152,12 +157,14 @@ contains
     start = 0_8
     call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, &
          MPI_COMM_WORLD, mpi_err)
+    ! start = accumulative index_temp
     finish = start + index_temp
 
     ! Allocate space for bank_position if this hasn't been done yet
     if (.not. allocated(bank_position)) allocate(bank_position(n_procs))
     call MPI_ALLGATHER(start, 1, MPI_INTEGER8, bank_position, 1, &
          MPI_INTEGER8, MPI_COMM_WORLD, mpi_err)
+    ! bank_position stores start of each process
 #else
     start  = 0_8
     finish = index_temp
@@ -179,7 +186,7 @@ contains
         sites_needed = n_particles - finish
         do i = 1, int(sites_needed,4)
           index_temp = index_temp + 1
-          temp_sites(index_temp) = fission_bank(n_bank - sites_needed + i)
+          temp_sites(index_temp) = fission_bank(bank_pull_pointer + m_bank - sites_needed + i)
         end do
       end if
 
@@ -290,7 +297,7 @@ contains
     ! Deallocate space for the temporary source bank on the last generation
     if (current_batch == n_max_batches .and. current_gen == gen_per_batch) &
          deallocate(temp_sites)
-
+    
   end subroutine synchronize_bank
 
 !===============================================================================
@@ -338,7 +345,8 @@ contains
 
     ! count number of fission sites over mesh
     call count_bank_sites(m, fission_bank, entropy_p, &
-         size_bank=n_bank, sites_outside=sites_outside)
+         size_bank=n_bank, sites_outside=sites_outside, & 
+         is_fission_bank=.true.)
 
     ! display warning message if there were sites outside entropy box
     if (sites_outside) then
@@ -596,13 +604,15 @@ contains
     ! Initialize the total number of fission bank sites
     total = 0
 
+
 !$omp parallel
 
     ! Copy thread fission bank sites to one shared copy
 !$omp do ordered schedule(static)
     do i = 1, n_threads
 !$omp ordered
-      master_fission_bank(total+1:total+n_bank) = fission_bank(1:n_bank)
+      master_fission_bank(bank_push_pointer+total+1:bank_push_pointer+total+n_bank) &
+           = fission_bank(local_push_pointer+1:local_push_pointer+n_bank)
       total = total + n_bank
 !$omp end ordered
     end do
@@ -614,7 +624,8 @@ contains
     ! Now copy the shared fission bank sites back to the master thread's copy.
     if (thread_id == 0) then
       n_bank = total
-      fission_bank(1:n_bank) = master_fission_bank(1:n_bank)
+      fission_bank(bank_push_pointer+1:bank_push_pointer+n_bank) = &
+      master_fission_bank(bank_push_pointer+1:bank_push_pointer+n_bank)
     else
       n_bank = 0
     end if

@@ -874,11 +874,11 @@ class MGXS(object):
 
         # Average each of the tallies across subdomains
         for tally_type, tally in avg_xs.tallies.items():
-            tally_avg = tally.summation(filter_type=self.domain_type,
-                                        filter_bins=subdomains)
+            tally_avg = tally.average(filter_type=self.domain_type,
+                                      filter_bins=subdomains)
             avg_xs.tallies[tally_type] = tally_avg
 
-        avg_xs._domain_type = 'sum({0})'.format(self.domain_type)
+        avg_xs._domain_type = 'avg({0})'.format(self.domain_type)
         avg_xs.sparse = self.sparse
         return avg_xs
 
@@ -1195,8 +1195,8 @@ class MGXS(object):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
-        elif self.domain_type == 'sum(distribcell)':
-            domain_filter = self.xs_tally.find_filter('sum(distribcell)')
+        elif self.domain_type == 'avg(distribcell)':
+            domain_filter = self.xs_tally.find_filter('avg(distribcell)')
             subdomains = domain_filter.bins
         else:
             subdomains = [self.domain.id]

@@ -198,9 +198,16 @@ contains
         n_max_batches = n_batches
       end if
 
+      ! Get number of intermediate batches
+      n_delay = 1
+      if (check_for_node(node_mode, "delayed")) then
+        call get_node_value(node_mode, "delayed", n_delay)
+      end if
+
+
       ! Get number of inactive batches
       call get_node_value(node_mode, "inactive", n_inactive)
-      n_active = n_batches - n_inactive
+      n_active = n_batches - n_inactive - n_delay
       if (check_for_node(node_mode, "generations_per_batch")) then
         call get_node_value(node_mode, "generations_per_batch", gen_per_batch)
       end if

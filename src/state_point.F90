@@ -658,7 +658,10 @@ contains
     file_id = file_open(path_state_point, 'r', parallel=.true.)
 
     ! Read filetype
-    call read_dataset(file_id, "filetype", int_array(1))
+    call read_dataset(file_id, "filetype", word)
+    if (trim(word) /= 'statepoint') then
+      call fatal_error("OpenMC tried to restart from a non-statepoint file.")
+    end if
 
     ! Read revision number for state point file and make sure it matches with
     ! current version
@@ -755,7 +758,8 @@ contains
 
       ! Check if tally results are present
       tallies_group = open_group(file_id, "tallies")
-      call read_dataset(file_id, "tallies_present", int_array(1), indep=.true.)
+      call read_dataset(tallies_group, "tallies_present", int_array(1), &
+                        indep=.true.)
 
       ! Read in sum and sum squared
       if (int_array(1) == 1) then

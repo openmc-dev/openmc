@@ -157,7 +157,7 @@ contains
 !===============================================================================
 
   subroutine count_bank_sites(m, bank_array, cnt, energies, size_bank, &
-       sites_outside)
+       sites_outside, is_fission_bank)
 
     type(RegularMesh), pointer :: m             ! mesh to count sites
     type(Bank), intent(in)        :: bank_array(:) ! fission or source bank
@@ -166,6 +166,8 @@ contains
     real(8), intent(in), optional :: energies(:)   ! energy grid to search
     integer(8), intent(in), optional :: size_bank     ! # of bank sites (on each proc)
     logical, intent(inout), optional :: sites_outside ! were there sites outside mesh?
+    ! bank_array is fission_bank or source_bank
+    logical, intent(in), optional    :: is_fission_bank 
 
     integer :: i        ! loop index for local fission sites
     integer :: n_sites  ! size of bank array
@@ -174,6 +176,7 @@ contains
     integer :: e_bin    ! energy_bin
     logical :: in_mesh  ! was single site outside mesh?
     logical :: outside  ! was any site outside mesh?
+    integer(8) :: bank_pointer 
 #ifdef MPI
     integer :: n        ! total size of count variable
     real(8) :: dummy    ! temporary receive buffer for non-root reductions
@@ -182,7 +185,6 @@ contains
     ! initialize variables
     cnt = ZERO
     outside = .false.
-
     ! Set size of bank
     if (present(size_bank)) then
       n_sites = int(size_bank,4)
@@ -190,6 +192,11 @@ contains
       n_sites = size(bank_array)
     end if
 
+    if (present(is_fission_bank) .and. is_fission_bank) then 
+      bank_pointer = bank_push_pointer
+    else
+      bank_pointer = 0
+    endif
     ! Determine number of energies in group structure
     if (present(energies)) then
       n_groups = size(energies) - 1
@@ -200,7 +207,7 @@ contains
     ! loop over fission sites and count how many are in each mesh box
     FISSION_SITES: do i = 1, n_sites
       ! determine scoring bin for entropy mesh
-      call get_mesh_indices(m, bank_array(i) % xyz, ijk, in_mesh)
+      call get_mesh_indices(m, bank_array(bank_pointer + i) % xyz, ijk, in_mesh)
 
       ! if outside mesh, skip particle
       if (.not. in_mesh) then
@@ -210,12 +217,12 @@ contains
 
       ! determine energy bin
       if (present(energies)) then
-        if (bank_array(i) % E < energies(1)) then
+        if (bank_array(bank_pointer+i) % E < energies(1)) then
           e_bin = 1
-        elseif (bank_array(i) % E > energies(n_groups+1)) then
+        elseif (bank_array(bank_pointer+i) % E > energies(n_groups+1)) then
           e_bin = n_groups
         else
-          e_bin = binary_search(energies, n_groups + 1, bank_array(i) % E)
+          e_bin = binary_search(energies, n_groups + 1, bank_array(bank_pointer+i) % E)
         end if
       else
         e_bin = 1
@@ -223,7 +230,7 @@ contains
 
       ! add to appropriate mesh box
       cnt(e_bin,ijk(1),ijk(2),ijk(3)) = cnt(e_bin,ijk(1),ijk(2),ijk(3)) + &
-           bank_array(i) % wgt
+           bank_array(bank_pointer+i) % wgt
     end do FISSION_SITES
 
 #ifdef MPI

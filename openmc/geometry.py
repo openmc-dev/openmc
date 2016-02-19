@@ -66,8 +66,10 @@ class Geometry(object):
 
         # Find the distribcell index of the cell.
         cells = self.get_all_cells()
-        if path[-1] in cells:
-            distribcell_index = cells[path[-1]].distribcell_index
+        for cell in cells:
+            if cell.id == path[-1]:
+                distribcell_index = cell.distribcell_index
+                break
         else:
             raise RuntimeError('Could not find cell {} specified in a \
                                 distribcell filter'.format(path[-1]))
@@ -181,7 +183,7 @@ class Geometry(object):
         all_cells = self.get_all_cells()
         material_cells = set()
 
-        for cell_id, cell in all_cells.items():
+        for cell in all_cells:
             if cell._type == 'normal':
                 material_cells.add(cell)
 
@@ -202,9 +204,9 @@ class Geometry(object):
         all_universes = self.get_all_universes()
         material_universes = set()
 
-        for universe_id, universe in all_universes.items():
+        for universe in all_universes:
             cells = universe.cells
-            for cell_id, cell in cells.items():
+            for cell in cells:
                 if cell._type == 'normal':
                     material_universes.add(universe)
 

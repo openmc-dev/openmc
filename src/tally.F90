@@ -1036,10 +1036,10 @@ contains
     ! loop over number of particles banked
     do k = 1, p % n_bank
       ! determine score based on bank site weight and keff
-      score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
+      score = keff * fission_bank(local_push_pointer + n_bank - p % n_bank + k) % wgt
 
       ! determine outgoing energy from fission bank
-      E_out = fission_bank(n_bank - p % n_bank + k) % E
+      E_out = fission_bank(local_push_pointer + n_bank - p % n_bank + k) % E
 
       ! check if outgoing energy is within specified range on filter
       if (E_out < t % filters(i) % real_bins(1) .or. &
@@ -1105,16 +1105,16 @@ contains
     do k = 1, p % n_bank
 
       ! get the delayed group
-      g = fission_bank(n_bank - p % n_bank + k) % delayed_group
+      g = fission_bank(local_push_pointer + n_bank - p % n_bank + k) % delayed_group
 
       ! check if the particle was born delayed
       if (g /= 0) then
 
         ! determine score based on bank site weight and keff
-        score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
+        score = keff * fission_bank(local_push_pointer + n_bank - p % n_bank + k) % wgt
 
         ! determine outgoing energy from fission bank
-        E_out = fission_bank(n_bank - p % n_bank + k) % E
+        E_out = fission_bank(local_push_pointer + n_bank - p % n_bank + k) % E
 
         ! check if outgoing energy is within specified range on filter
         if (E_out < t % filters(i) % real_bins(1) .or. &

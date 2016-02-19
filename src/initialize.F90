@@ -918,14 +918,16 @@ contains
       thread_id = omp_get_thread_num()
 
       if (thread_id == 0) then
-        allocate(fission_bank(3*work))
+        allocate(fission_bank(3*work*n_delay))
       else
-        allocate(fission_bank(3*work/n_threads))
+        allocate(fission_bank(3*work*n_delay/n_threads))
       end if
 !$omp end parallel
-      allocate(master_fission_bank(3*work), STAT=alloc_err)
+      allocate(master_fission_bank(3*work*n_delay), STAT=alloc_err)
+      allocate(n_banks(n_delay), STAT=alloc_err)
 #else
-      allocate(fission_bank(3*work), STAT=alloc_err)
+      allocate(fission_bank(3*work*n_delay), STAT=alloc_err)
+      allocate(n_banks(n_delay), STAT=alloc_err)
 #endif
 
       ! Check for allocation errors

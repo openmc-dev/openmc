@@ -1008,7 +1008,7 @@ class SettingsFile(object):
             element = ET.SubElement(self._settings_file, "uniform_fs")
 
             subelement = ET.SubElement(element, "dimension")
-            subelement.text = str(self._ufs_dimension)
+            subelement.text = ' '.join(map(str, self._ufs_dimension))
 
             subelement = ET.SubElement(element, "lower_left")
             subelement.text = ' '.join(map(str, self._ufs_lower_left))

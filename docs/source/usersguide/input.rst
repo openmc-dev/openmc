@@ -340,10 +340,10 @@ out the file and "false" will not.
     *Default*: false
 
   :summary:
-    Writes out an ASCII summary file describing all of the user input files that
+    Writes out an HDF5 summary file describing all of the user input files that
     were read in.
 
-    *Default*: false
+    *Default*: true
 
   :tallies:
     Write out an ASCII file of tally results.

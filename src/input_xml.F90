@@ -948,8 +948,8 @@ contains
       if (check_for_node(node_output, "summary")) then
         call get_node_value(node_output, "summary", temp_str)
         temp_str = to_lower(temp_str)
-        if (trim(temp_str) == 'true' .or. &
-             trim(temp_str) == '1') output_summary = .true.
+        if (trim(temp_str) == 'false' .or. &
+             trim(temp_str) == '0') output_summary = .false.
       end if
 
       ! Check for cross sections option

@@ -127,6 +127,21 @@ contains
       end if
     end if
 
+    ! Find the windowed multipole library
+    if (run_mode /= MODE_PLOTTING) then
+      if (.not. check_for_node(doc, "multipole_library") .and. &
+           run_mode /= MODE_PLOTTING) then
+        ! No library location specified in settings.xml, check
+        ! environment variable
+        call get_environment_variable("MULTIPOLE_LIBRARY", env_variable)
+        path_multipole = trim(env_variable)
+      else
+        call get_node_value(doc, "multipole_library", path_multipole)
+      end if
+      if (.not. ends_with(path_multipole, "/")) &
+           path_multipole = trim(path_multipole) // "/"
+    end if
+
     ! Set output directory if a path has been specified on the <output_path>
     ! element
     if (check_for_node(doc, "output_path")) then
@@ -1039,6 +1054,20 @@ contains
       end select
     end if
 
+    ! Check to see if windowed multipole functionality is requested
+    if (check_for_node(doc, "use_windowed_multipole")) then
+      call get_node_value(doc, "use_windowed_multipole", temp_str)
+      select case (to_lower(temp_str))
+      case ('true', 't', '1', 'y')
+        multipole_active = .true.
+      case ('false', 'f', '0', 'n')
+        multipole_active = .false.
+      case default
+        call fatal_error("Unrecognized value for <use_windowed_multipole> in &
+             &settings.xml")
+      end select
+    end if
+
     ! Close settings XML file
     call close_xmldoc(doc)
 
@@ -1901,7 +1930,6 @@ contains
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
     type(Node), pointer :: node_dens => null()
-    type(Node), pointer :: node_temp => null()
     type(Node), pointer :: node_nuc => null()
     type(Node), pointer :: node_ele => null()
     type(Node), pointer :: node_sab => null()

@@ -72,6 +72,10 @@ class SettingsFile(object):
         cross_sections.xml). If it is not set, the :envvar:`CROSS_SECTIONS`
         environment variable will be used to find the path to the XML cross
         section listing.
+    multipole_library : str
+        Indicates the path to a directory containing a windowed multipole
+        cross section library. If it is not set, the :envvar:`MULTIPOLE_LIBRARY'
+        environment variable will be used. A multipole library is optional.
     energy_grid : str
         Set the method used to search energy grids. Acceptable values are
         'nuclide', 'logarithm', and 'material-union'.
@@ -121,6 +125,9 @@ class SettingsFile(object):
         Coordinates of the lower-left point of the UFS mesh
     ufs_upper_right : tuple or list
         Coordinates of the upper-right point of the UFS mesh
+    use_windowed_multipole : bool
+        Whether or not windowed multipole can be used to evaluate resolved
+        resonance cross sections.
 
     """
 
@@ -139,6 +146,7 @@ class SettingsFile(object):
 
         self._confidence_intervals = None
         self._cross_sections = None
+        self._multipole_library = None
         self._energy_grid = None
         self._ptables = None
         self._run_cmfd = None
@@ -196,6 +204,7 @@ class SettingsFile(object):
         self._settings_file = ET.Element("settings")
         self._run_mode_subelement = None
         self._source_element = None
+        self._multipole_active = None
 
     @property
     def run_mode(self):
@@ -232,6 +241,10 @@ class SettingsFile(object):
     @property
     def cross_sections(self):
         return self._cross_sections
+
+    @property
+    def multipole_library(self):
+        return self._multipole_library
 
     @property
     def energy_grid(self):
@@ -376,6 +389,10 @@ class SettingsFile(object):
     @property
     def dd_count_interactions(self):
         return self._dd_count_interactions
+
+    @property
+    def use_windowed_multipole(self):
+        return self._multipole_active
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -527,6 +544,11 @@ class SettingsFile(object):
     def cross_sections(self, cross_sections):
         check_type('cross sections', cross_sections, basestring)
         self._cross_sections = cross_sections
+
+    @multipole_library.setter
+    def multipole_library(self, multipole_library):
+        check_type('cross sections', multipole_library, basestring)
+        self._multipole_library = multipole_library
 
     @energy_grid.setter
     def energy_grid(self, energy_grid):
@@ -736,6 +758,11 @@ class SettingsFile(object):
 
         self._dd_count_interactions = interactions
 
+    @use_windowed_multipole.setter
+    def use_windowed_multipole(self, active):
+        check_type('use_windowed_multipole', active, bool)
+        self._multipole_active = active
+
     def _create_run_mode_subelement(self):
 
         if self.run_mode == 'eigenvalue':
@@ -860,6 +887,11 @@ class SettingsFile(object):
         if self._cross_sections is not None:
             element = ET.SubElement(self._settings_file, "cross_sections")
             element.text = str(self._cross_sections)
+
+    def _create_multipole_library_subelement(self):
+        if self._multipole_library is not None:
+            element = ET.SubElement(self._settings_file, "multipole_library")
+            element.text = str(self._multipole_library)
 
     def _create_energy_grid_subelement(self):
         if self._energy_grid is not None:
@@ -1005,6 +1037,12 @@ class SettingsFile(object):
             subelement = ET.SubElement(element, "count_interactions")
             subelement.text = str(self._dd_count_interactions).lower()
 
+    def _create_use_multipole_subelement(self):
+        if self._multipole_active is not None:
+            element = ET.SubElement(self._settings_file,
+                                    "use_windowed_multipole")
+            element.text = str(self._multipole_active)
+
     def export_to_xml(self):
         """Create a settings.xml file that can be used for a simulation.
 
@@ -1024,6 +1062,7 @@ class SettingsFile(object):
         self._create_sourcepoint_subelement()
         self._create_confidence_intervals()
         self._create_cross_sections_subelement()
+        self._create_multipole_library_subelement()
         self._create_energy_grid_subelement()
         self._create_ptables_subelement()
         self._create_run_cmfd_subelement()
@@ -1039,6 +1078,7 @@ class SettingsFile(object):
         self._create_track_subelement()
         self._create_ufs_subelement()
         self._create_dd_subelement()
+        self._create_use_multipole_subelement()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._settings_file)

@@ -1,6 +1,5 @@
 from collections import Iterable, OrderedDict
 from xml.etree import ElementTree as ET
-import re
 
 import openmc
 from openmc.clean_xml import *
@@ -122,8 +121,7 @@ class Geometry(object):
         universes = set()
 
         for universe_id, universe in all_universes.items():
-            if universe._type == 'normal':
-                universes.add(universe)
+            universes.add(universe)
 
         universes = list(universes)
         universes.sort(key=lambda x: x.id)
@@ -236,12 +234,12 @@ class Geometry(object):
         return lattices
 
     def get_materials_by_name(self, name, case_sensitive=False, matching=False):
-        """Return a list of materials with names matching a regular expression.
+        """Return a list of materials with matching names.
 
         Parameters
         ----------
         name : str
-            The name to search for (regular expressions are acceptable)
+            The name to match
         case_sensitive : bool
             Whether to distinguish upper and lower case letters in each
             material's name (default is True)
@@ -255,7 +253,8 @@ class Geometry(object):
 
         """
 
-        regex = re.compile(b'{0}'.format(name))
+        if case_sensitive:
+            name = name.lower()
 
         all_materials = self.get_all_materials()
         materials = set()
@@ -265,10 +264,9 @@ class Geometry(object):
             if not case_sensitive:
                 material_name = material_name.lower()
 
-            match = regex.findall(material_name)
-            if match and matching:
+            if material_name == name:
                 materials.add(material)
-            elif match and match[0] == name:
+            elif not matching and name in material_name:
                 materials.add(material)
 
         materials = list(materials)
@@ -276,12 +274,12 @@ class Geometry(object):
         return materials
 
     def get_cells_by_name(self, name, case_sensitive=False, matching=False):
-        """Return a list of cells with names matching a regular expression.
+        """Return a list of cells with matching names.
 
         Parameters
         ----------
         name : str
-            The name to search for (regular expressions are acceptable)
+            The name to search match
         case_sensitive : bool
             Whether to distinguish upper and lower case letters in each
             cell's name (default is True)
@@ -295,7 +293,8 @@ class Geometry(object):
 
         """
 
-        regex = re.compile(b'{0}'.format(name))
+        if case_sensitive:
+            name = name.lower()
 
         all_cells = self.get_all_cells()
         cells = set()
@@ -305,10 +304,9 @@ class Geometry(object):
             if not case_sensitive:
                 cell_name = cell_name.lower()
 
-            match = regex.findall(cell_name)
-            if match and matching:
+            if cell_name == name:
                 cells.add(cell)
-            elif match and match[0] == name:
+            elif not matching and name in cell_name:
                 cells.add(cell)
 
         cells = list(cells)
@@ -316,13 +314,12 @@ class Geometry(object):
         return cells
 
     def get_cells_by_fill_name(self, name, case_sensitive=False, matching=False):
-        """Return a list of cells with fills with names matching a
-        regular expression.
+        """Return a list of cells with fills with matching names.
 
         Parameters
         ----------
         name : str
-            The name to search for (regular expressions are acceptable)
+            The name to match
         case_sensitive : bool
             Whether to distinguish upper and lower case letters in each
             cell's name (default is True)
@@ -336,7 +333,8 @@ class Geometry(object):
 
         """
 
-        regex = re.compile(b'{0}'.format(name))
+        if case_sensitive:
+            name = name.lower()
 
         all_cells = self.get_all_cells()
         cells = set()
@@ -346,10 +344,9 @@ class Geometry(object):
             if not case_sensitive:
                 cell_fill_name = cell_fill_name.lower()
 
-            match = regex.findall(cell_fill_name)
-            if match and matching:
+            if cell_fill_name == name:
                 cells.add(cell)
-            elif match and match[0] == name:
+            elif not matching and name in cell_fill_name:
                 cells.add(cell)
 
         cells = list(cells)
@@ -357,12 +354,12 @@ class Geometry(object):
         return cells
 
     def get_universes_by_name(self, name, case_sensitive=False, matching=False):
-        """Return a list of universes with names matching a regular expression.
+        """Return a list of universes with matching names.
 
         Parameters
         ----------
         name : str
-            The name to search for (regular expressions are acceptable)
+            The name to match
         case_sensitive : bool
             Whether to distinguish upper and lower case letters in each
             universe's name (default is True)
@@ -376,7 +373,8 @@ class Geometry(object):
 
         """
 
-        regex = re.compile(b'{0}'.format(name))
+        if case_sensitive:
+            name = name.lower()
 
         all_universes = self.get_all_universes()
         universes = set()
@@ -386,10 +384,9 @@ class Geometry(object):
             if not case_sensitive:
                 universe_name = universe_name.lower()
 
-            match = regex.findall(universe_name)
-            if match and matching:
+            if universe_name == name:
                 universes.add(universe)
-            elif match and match[0] == name:
+            elif not matching and name in universe_name:
                 universes.add(universe)
 
         universes = list(universes)
@@ -397,12 +394,12 @@ class Geometry(object):
         return universes
 
     def get_lattices_by_name(self, name, case_sensitive=False, matching=False):
-        """Return a list of lattices with names matching a regular expression.
+        """Return a list of lattices with matching names.
 
         Parameters
         ----------
         name : str
-            The name to search for (regular expressions are acceptable)
+            The name to match
         case_sensitive : bool
             Whether to distinguish upper and lower case letters in each
             lattice's name (default is True)
@@ -416,7 +413,8 @@ class Geometry(object):
 
         """
 
-        regex = re.compile(b'{0}'.format(name))
+        if case_sensitive:
+            name = name.lower()
 
         all_lattices = self.get_all_lattices()
         lattices = set()
@@ -426,10 +424,9 @@ class Geometry(object):
             if not case_sensitive:
                 lattice_name = lattice_name.lower()
 
-            match = regex.findall(lattice_name)
-            if match and matching:
+            if lattice_name == name:
                 lattices.add(lattice)
-            elif match and match[0] == name:
+            elif not matching and name in lattice_name:
                 lattices.add(lattice)
 
         lattices = list(lattices)

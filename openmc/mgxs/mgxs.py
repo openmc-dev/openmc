@@ -114,6 +114,8 @@ class MGXS(object):
     sparse : bool
         Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
         for compressed data storage
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
 
     """
 
@@ -135,6 +137,7 @@ class MGXS(object):
         self._rxn_rate_tally = None
         self._xs_tally = None
         self._sparse = False
+        self._derived = False
 
         self.name = name
         self.by_nuclide = by_nuclide
@@ -163,6 +166,7 @@ class MGXS(object):
             clone._rxn_rate_tally = copy.deepcopy(self._rxn_rate_tally, memo)
             clone._xs_tally = copy.deepcopy(self._xs_tally, memo)
             clone._sparse = self.sparse
+            clone._derived = self.derived
 
             clone._tallies = OrderedDict()
             for tally_type, tally in self.tallies.items():
@@ -254,6 +258,10 @@ class MGXS(object):
             return self.get_all_nuclides()
         else:
             return 'sum'
+
+    @property
+    def derived(self):
+        return self._derived
 
     @name.setter
     def name(self, name):
@@ -1014,8 +1022,7 @@ class MGXS(object):
 
         # Create deep copy of tally to return as merged tally
         merged_mgxs = copy.deepcopy(self)
-        merged_mgxs._rxn_rate_tally = None
-        merged_mgxs._xs_tally = None
+        merged_mgxs._derived = True
 
         # Merge energy groups
         if self.energy_groups != other.energy_groups:
@@ -1034,10 +1041,10 @@ class MGXS(object):
             # Concatenate lists of nuclides for the merged MGXS
             merged_mgxs.nuclides = self.nuclides + other.nuclides
 
-        # Merge tallies
-        for tally_key in self.tallies:
-            merged_tally = self.tallies[tally_key].merge(other.tallies[tally_key])
-            merged_mgxs.tallies[tally_key] = merged_tally
+        # Null base tallies but merge reaction rate and cross section tallies
+        merged_mgxs._tallies = OrderedDict()
+        merged_mgxs._rxn_rate_tally = self.rxn_rate_tally.merge(other.rxn_rate_tally)
+        merged_mgxs._xs_tally = self.xs_tally.merge(other.xs_tally)
 
         return merged_mgxs
 
@@ -2376,6 +2383,56 @@ class Chi(MGXS):
 
         slice_xs.sparse = self.sparse
         return slice_xs
+
+    def merge(self, other):
+        """Merge another Chi with this one
+
+        If results have been loaded from a statepoint, then Chi are only
+        mergeable along one and only one of energy groups or nuclides.
+
+        Parameters
+        ----------
+        other : MGXS
+            MGXS to merge with this one
+
+        Returns
+        -------
+        merged_mgxs : MGXS
+            Merged MGXS
+        """
+
+        if not self.can_merge(other):
+            raise ValueError('Unable to merge Chi')
+
+        # Create deep copy of tally to return as merged tally
+        merged_mgxs = copy.deepcopy(self)
+        merged_mgxs._derived = True
+        merged_mgxs._rxn_rate_tally = None
+        merged_mgxs._xs_tally = None
+
+        # Merge energy groups
+        if self.energy_groups != other.energy_groups:
+            merged_groups = self.energy_groups.merge(other.energy_groups)
+            merged_mgxs.energy_groups = merged_groups
+
+        # Merge nuclides
+        if self.nuclides != other.nuclides:
+
+            # The nuclides must be mutually exclusive
+            for nuclide in self.nuclides:
+                if nuclide in other.nuclides:
+                    msg = 'Unable to merge Chi with shared nuclides'
+                    raise ValueError(msg)
+
+            # Concatenate lists of nuclides for the merged MGXS
+            merged_mgxs.nuclides = self.nuclides + other.nuclides
+
+        # Merge tallies
+        for tally_key in self.tallies:
+            merged_tally = self.tallies[tally_key].merge(other.tallies[tally_key])
+            merged_mgxs.tallies[tally_key] = merged_tally
+
+        return merged_mgxs
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing', value='mean'):

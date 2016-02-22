@@ -747,8 +747,13 @@ contains
            &file")
     end if
 
-    ! Read tallies to master
+    ! Read tallies to master.  If we are using Parallel HDF5, all processors
+    ! need to be included in the HDF5 calls.
+#ifdef PHDF5
+    if (.true.) then
+#else
     if (master) then
+#endif
 
       ! Read number of realizations for global tallies
       call read_dataset(file_id, "n_realizations", n_realizations, indep=.true.)

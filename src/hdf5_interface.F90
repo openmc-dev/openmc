@@ -62,6 +62,7 @@ module hdf5_interface
     module procedure read_string_1D
     module procedure read_tally_result_1D
     module procedure read_tally_result_2D
+    module procedure read_complex_2D
   end interface read_dataset
 
   public :: write_dataset
@@ -1920,5 +1921,94 @@ contains
 
     mpio = (driver == H5FD_MPIO_F)
   end function using_mpio_device
+
+!===============================================================================
+! READ_COMPLEX_2D reads double precision complex 2-D array data as output by
+! the h5py HDF5 python module.
+!===============================================================================
+
+  subroutine read_complex_2D(group_id, name, buffer, indep)
+    integer(HID_T), intent(in) :: group_id
+    character(*), intent(in)            :: name        ! name of data
+    complex(8),   intent(inout), target :: buffer(:,:) ! data to write
+    logical,      intent(in), optional  :: indep       ! independent I/O
+
+    integer(HSIZE_T) :: dims(2)
+
+    dims(:) = shape(buffer)
+    if (present(indep)) then
+      call read_complex_2D_explicit(group_id, dims, name, buffer, indep)
+    else
+      call read_complex_2D_explicit(group_id, dims, name, buffer)
+    end if
+  end subroutine read_complex_2D
+
+  subroutine read_complex_2D_explicit(group_id, dims, name, buffer, indep)
+    integer(HID_T), intent(in) :: group_id
+    integer(HSIZE_T), intent(in) :: dims(2)
+    character(*), intent(in)            :: name      ! name of data
+    complex(8),   intent(inout), target :: buffer(dims(1),dims(2))
+    logical,      intent(in), optional  :: indep   ! independent I/O
+
+    real(8), target :: buffer_r(dims(1), dims(2))
+    real(8), target :: buffer_i(dims(1), dims(2))
+
+    integer(HSIZE_T) :: i, j
+
+    integer :: hdf5_err
+    integer :: data_xfer_mode
+#ifdef PHDF5
+    integer(HID_T) :: plist   ! property list
+#endif
+    integer(HID_T) :: dset    ! data set handle
+    type(c_ptr) :: f_ptr_r, f_ptr_i
+
+    ! Components needed for complex type support
+    integer(HID_T)   :: dtype_real
+    integer(HID_T)   :: dtype_imag
+    integer(SIZE_T)  :: size_double
+    integer :: error
+
+    ! Create the complex type
+    call h5tget_size_f(H5T_NATIVE_DOUBLE, size_double, error)
+
+    ! Insert the 'r' and 'i' identifiers
+    call h5tcreate_f(H5T_COMPOUND_F, size_double, dtype_real, error)
+    call h5tcreate_f(H5T_COMPOUND_F, size_double, dtype_imag, error)
+    call h5tinsert_f(dtype_real, "r", 0_8, H5T_NATIVE_DOUBLE, error)
+    call h5tinsert_f(dtype_imag, "i", 0_8, H5T_NATIVE_DOUBLE, error)
+
+    ! Set up collective vs. independent I/O
+    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
+    if (present(indep)) then
+      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
+    end if
+
+    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
+    f_ptr_r = c_loc(buffer_r)
+    f_ptr_i = c_loc(buffer_i)
+
+    if (using_mpio_device(group_id)) then
+#ifdef PHDF5
+      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
+      call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
+      call h5dread_f(dset, dtype_real, f_ptr_r, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset, dtype_imag, f_ptr_i, hdf5_err, xfer_prp=plist)
+      call h5pclose_f(plist, hdf5_err)
+#endif
+    else
+      call h5dread_f(dset, dtype_real, f_ptr_r, hdf5_err)
+      call h5dread_f(dset, dtype_imag, f_ptr_i, hdf5_err)
+    end if
+
+    ! Reconstitute the complex numbers
+    do i = 1,dims(1)
+      do j = 1,dims(2)
+        buffer(i,j) = cmplx(buffer_r(i,j), buffer_i(i,j), kind=8)
+      end do
+    end do
+
+    call h5dclose_f(dset, hdf5_err)
+  end subroutine read_complex_2D_explicit
 
 end module hdf5_interface

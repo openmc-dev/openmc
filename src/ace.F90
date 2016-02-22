@@ -11,6 +11,8 @@ module ace
   use global
   use list_header, only: ListInt
   use material_header, only: Material
+  use multipole,        only: multipole_read
+  use multipole_header, only: max_L, max_poles, max_poly
   use output, only: write_message
   use set_header, only: SetChar
   use secondary_header, only: AngleEnergy
@@ -110,6 +112,9 @@ contains
               end if
             end do
           end if
+
+          ! Read multipole file into the appropriate entry on the nuclides array
+          if (multipole_active) call read_multipole_data(i_nuclide)
 
           ! Add name and alias to dictionary
           call already_read % add(name)
@@ -413,6 +418,68 @@ contains
     deallocate(XSS)
 
   end subroutine read_ace_table
+
+!===============================================================================
+! READ_MULTIPOLE_DATA checks for the existence of a multipole library in the
+! directory and loads it using multipole_read
+!===============================================================================
+
+  subroutine read_multipole_data(i_table)
+
+    integer, intent(in) :: i_table   ! index in nuclides/sab_tables
+
+    logical       :: file_exists   ! does multipole library exist?
+    character(7)  :: readable      ! is multipole library readable?
+    character(6)  :: zaid_string   ! String of the ZAID
+    character(MAX_FILE_LEN+9)  :: filename  ! path to multipole xs library
+
+    ! For the time being, and I know this is a bit hacky, we just assume
+    ! that the file will be zaid.h5.
+    associate (nuc => nuclides(i_table))
+
+      write(zaid_string, '(I6.6)') nuc % zaid
+      filename = trim(path_multipole) // zaid_string // ".h5"
+
+      ! Check if Multipole library exists and is readable
+      inquire(FILE=filename, EXIST=file_exists, READ=readable)
+      if (.not. file_exists) then
+        nuc % mp_present = .false.
+        return
+      elseif (readable(1:3) == 'NO') then
+        call fatal_error("Multipole library '" // trim(filename) // "' is not &
+             &readable! Change file permissions with chmod command.")
+      end if
+
+      ! Display message
+      call write_message("Loading Multipole XS table: " // filename, 6)
+
+      allocate(nuc % multipole)
+
+      ! Call the read routine
+      call multipole_read(filename, nuc % multipole, i_table)
+      nuc % mp_present = .true.
+
+      ! Update the maximum number of poles, l indices, and polynomial order
+      if (nuc % multipole % max_w > max_poles) then
+        max_poles = nuc % multipole % max_w
+      end if
+
+      if (nuc % multipole % num_l > max_L) then
+        max_L = nuc % multipole % num_l
+      end if
+
+      if (nuc % multipole % fit_order + 1 > max_poly) then
+        max_poly = nuc % multipole % fit_order + 1
+      end if
+
+      ! Recreate nu-fission tables
+      if (nuc % fissionable) then
+        call generate_nu_fission(nuc)
+      end if
+
+    end associate
+
+  end subroutine read_multipole_data
 
 !===============================================================================
 ! READ_ESZ - reads through the ESZ block. This block contains the energy grid,

@@ -127,6 +127,21 @@ contains
       end if
     end if
 
+    ! Find the windowed multipole library
+    if (run_mode /= MODE_PLOTTING) then
+      if (.not. check_for_node(doc, "multipole_library") .and. &
+           run_mode /= MODE_PLOTTING) then
+        ! No library location specified in settings.xml, check
+        ! environment variable
+        call get_environment_variable("MULTIPOLE_LIBRARY", env_variable)
+        path_multipole = trim(env_variable)
+      else
+        call get_node_value(doc, "multipole_library", path_multipole)
+      end if
+      if (.not. ends_with(path_multipole, "/")) &
+           path_multipole = trim(path_multipole) // "/"
+    end if
+
     ! Set output directory if a path has been specified on the <output_path>
     ! element
     if (check_for_node(doc, "output_path")) then
@@ -1039,6 +1054,20 @@ contains
       end select
     end if
 
+    ! Check to see if windowed multipole functionality is requested
+    if (check_for_node(doc, "use_windowed_multipole")) then
+      call get_node_value(doc, "use_windowed_multipole", temp_str)
+      select case (to_lower(temp_str))
+      case ('true', 't', '1', 'y')
+        multipole_active = .true.
+      case ('false', 'f', '0', 'n')
+        multipole_active = .false.
+      case default
+        call fatal_error("Unrecognized value for <use_windowed_multipole> in &
+             &settings.xml")
+      end select
+    end if
+
     ! Close settings XML file
     call close_xmldoc(doc)
 
@@ -1296,6 +1325,40 @@ contains
         ! Copy translation vector
         allocate(c % translation(3))
         call get_node_array(node_cell, "translation", c % translation)
+      end if
+
+      ! Read cell temperatures.  If the temperature is not specified, set it to
+      ! ERROR_REAL for now.  During initialization we'll replace ERROR_REAL with
+      ! the temperature from the material data.
+      if (check_for_node(node_cell, "temperature")) then
+        n = get_arraysize_double(node_cell, "temperature")
+        if (n > 0) then
+          ! Make sure this is a "normal" cell.
+          if (c % material(1) == NONE) call fatal_error("Cell " &
+               // trim(to_str(c % id)) // " was specified with a temperature &
+               &but no material. Temperature specification is only valid for &
+               &cells filled with a material.")
+
+          ! Copy in temperatures
+          allocate(c % sqrtkT(n))
+          call get_node_array(node_cell, "temperature", c % sqrtkT)
+
+          ! Make sure all temperatues are positive
+          do j = 1, size(c % sqrtkT)
+            if (c % sqrtkT(j) < ZERO) call fatal_error("Cell " &
+                 // trim(to_str(c % id)) // " was specified with a negative &
+                 &temperature. All cell temperatures must be non-negative.")
+          end do
+
+          ! Convert to sqrt(kT)
+          c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
+        else
+          allocate(c % sqrtkT(1))
+          c % sqrtkT(1) = ERROR_REAL
+        end if
+      else
+        allocate(c % sqrtkT(1))
+        c % sqrtkT = ERROR_REAL
       end if
 
       ! Add cell to dictionary

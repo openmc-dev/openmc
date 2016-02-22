@@ -1417,7 +1417,7 @@ contains
     do i = 1, n
       ! If the cell matches the goal and the offset matches final, write to the
       ! geometry stack
-      if (univ % cells(i) == goal .AND. offset == final) then
+      if (univ % cells(i) == goal .and. offset == final) then
         c => cells(univ % cells(i))
         path = trim(path) // "->" // to_str(c % id)
         return

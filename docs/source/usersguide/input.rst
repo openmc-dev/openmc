@@ -264,6 +264,18 @@ based on the recommended value in LA-UR-14-24530_.
 
   *Default*: 8000
 
+``<multipole_library>`` Element
+-------------------------------
+
+The ``<multipole_library>`` element indicates the directory containing a
+windowed multipole library. If a windowed multipole library is available,
+OpenMC can use it for on-the-fly Doppler-broadening of resolved resonance range
+cross sections. If this element is absent from the settings.xml file, the
+:envvar:`MULTIPOLE_LIBRARY` environment variable will be used.
+
+  .. note:: The <use_windowed_multipole> element must also be set to "True"
+    for windowed multipole functionality.
+
 .. _natural_elements:
 
 ``<natural_elements>`` Element
@@ -765,6 +777,17 @@ problem. It has the following attributes/sub-elements:
 
     *Default*: None
 
+
+``<use_windowed_multipole>`` Element
+------------------------------------
+
+The ``<use_windowed_multipole>`` element toggles the windowed multipole
+capability on or off. If this element is set to "True" and the relevant data is
+available, OpenMC will use the windowed multipole method to evaluate and Doppler
+broaden cross sections in the resolved resonance range.
+
+  *Default*: False
+
 ``<verbosity>`` Element
 -----------------------
 
@@ -986,6 +1009,15 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
               fill its entire universe.
 
     *Default*: A region filling all space.
+
+  :temperature:
+    The temperature of the cell in Kelvin. If windowed-multipole data is
+    avalable, this temperature will be used to Doppler broaden some cross
+    sections in the resolved resonance region. A list of temperatures can be
+    specified for the "distributed temperature" feature. This will give each
+    unique instance of the cell its own temperature.
+
+    *Default*: The temperature of the coldest nuclide in the cell's material(s)
 
   :rotation:
     If the cell is filled with a universe, this element specifies the angles in

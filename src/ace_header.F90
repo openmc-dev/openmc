@@ -3,6 +3,7 @@ module ace_header
   use constants,   only: MAX_FILE_LEN, ZERO
   use dict_header, only: DictIntInt
   use endf_header, only: Tab1
+  use multipole_header, only: MultipoleArray
   use secondary_header, only: SecondaryDistribution, AngleEnergyContainer
   use stl_vector,  only: VectorInt
 
@@ -109,6 +110,10 @@ module ace_header
     logical                :: urr_present
     integer                :: urr_inelastic
     type(UrrData), pointer :: urr_data => null()
+
+    ! Multipole data
+    logical                       :: mp_present = .false.
+    type(MultipoleArray), pointer :: multipole => null()
 
     ! Reactions
     integer :: n_reaction ! # of reactions
@@ -233,6 +238,9 @@ module ace_header
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
     real(8) :: last_prn
+
+    ! Information for Doppler broadening
+    real(8) :: last_sqrtkT = ZERO  ! last temperature in sqrt(Boltzmann constant * temperature (MeV))
   end type NuclideMicroXS
 
 !===============================================================================
@@ -271,6 +279,10 @@ module ace_header
 
       if (associated(this % urr_data)) deallocate(this % urr_data)
 
+      if (this % mp_present) then
+        deallocate(this % multipole)
+      end if
+
       if (allocated(this % reactions)) then
         do i = 1, size(this % reactions)
           call this % reactions(i) % clear()
@@ -278,6 +290,8 @@ module ace_header
       end if
 
       call this % reaction_index % clear()
+
+      if (associated(this % multipole)) deallocate(this % multipole)
 
     end subroutine nuclide_clear
 

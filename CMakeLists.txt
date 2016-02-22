@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
-project(openmc Fortran)
+project(openmc Fortran C)
 
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -107,49 +107,62 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
     message(FATAL_ERROR "gfortran version must be 4.6 or higher")
   endif()
 
-  # GNU Fortran compiler options
+  # GCC compiler options
   list(APPEND f90flags -cpp -std=f2008 -fbacktrace)
+  list(APPEND cflags -cpp -std=c99)
   if(debug)
     if(NOT (GCC_VERSION VERSION_LESS 4.7))
       list(APPEND f90flags -Wall)
+      list(APPEND cflags -Wall)
     endif()
     list(APPEND f90flags -g -pedantic -fbounds-check
       -ffpe-trap=invalid,overflow,underflow)
+    list(APPEND cflags -g -pedantic -fbounds-check)
     list(APPEND ldflags -g)
   endif()
   if(profile)
     list(APPEND f90flags -pg)
+    list(APPEND cflags -pg)
     list(APPEND ldflags -pg)
   endif()
   if(optimize)
     list(APPEND f90flags -O3 -flto -fuse-linker-plugin)
+    list(APPEND cflags -O3)
   endif()
   if(openmp)
     list(APPEND f90flags -fopenmp)
+    list(APPEND cflags -fopenmp)
     list(APPEND ldflags -fopenmp)
   endif()
   if(coverage)
     list(APPEND f90flags -coverage)
+    list(APPEND cflags -coverage)
     list(APPEND ldflags -coverage)
   endif()
 
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
-  # Intel Fortran compiler options
+  # Intel compiler options
   list(APPEND f90flags -fpp -std08 -assume byterecl -traceback)
+  list(APPEND cflags -std=c99)
   if(debug)
     list(APPEND f90flags -g -warn -ftrapuv -fp-stack-check
+      "-check all" -fpe0)
+    list(APPEND cflags -g -warn -ftrapuv -fp-stack-check
       "-check all" -fpe0)
     list(APPEND ldflags -g)
   endif()
   if(profile)
     list(APPEND f90flags -pg)
+    list(APPEND cflags -pg)
     list(APPEND ldflags -pg)
   endif()
   if(optimize)
     list(APPEND f90flags -O3)
+    list(APPEND cflags -O3)
   endif()
   if(openmp)
     list(APPEND f90flags -openmp)
+    list(APPEND cflags -openmp)
     list(APPEND ldflags -openmp)
   endif()
 
@@ -244,6 +257,12 @@ add_subdirectory(src/xml/fox)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 #===============================================================================
+# Build faddeeva library
+#===============================================================================
+
+add_library(faddeeva STATIC src/Faddeeva.c)
+
+#===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
@@ -263,11 +282,14 @@ endif()
 # set compile flags. Note that this sets the COMPILE_OPTIONS property (also
 # available only in 2.8.12+) rather than the COMPILE_FLAGS property, which is
 # deprecated. The former can handle lists whereas the latter cannot.
-if(CMAKE_VERSION VERSION_LESS 2.8.12)
+if (CMAKE_VERSION VERSION_LESS 2.8.12)
   string(REPLACE ";" " " f90flags "${f90flags}")
+  string(REPLACE ";" " " cflags "${cflags}")
   set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
+  set_property(TARGET faddeeva PROPERTY COMPILE_FLAGS "${cflags}")
 else()
   target_compile_options(${program} PUBLIC ${f90flags})
+  target_compile_options(faddeeva PRIVATE ${cflags})
 endif()
 
 # Add HDF5 library directories to link line with -L
@@ -277,7 +299,7 @@ endforeach()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom)
+target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom faddeeva)
 
 #===============================================================================
 # Install executable, scripts, manpage, license

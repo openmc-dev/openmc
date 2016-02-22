@@ -1,18 +1,30 @@
 module cross_section
 
-  use ace_header,      only: Nuclide, SAlphaBeta, Reaction, UrrData
+  use ace_header,       only: Nuclide, SAlphaBeta, Reaction, UrrData
   use constants
-  use energy_grid,     only: grid_method, log_spacing
-  use error,           only: fatal_error
-  use fission,         only: nu_total
+  use energy_grid,      only: grid_method, log_spacing
+  use error,            only: fatal_error
+  use fission,          only: nu_total
   use global
-  use list_header,     only: ListElemInt
-  use material_header, only: Material
-  use particle_header, only: Particle
-  use random_lcg,      only: prn
-  use search,          only: binary_search
+  use list_header,      only: ListElemInt
+  use material_header,  only: Material
+  use math,             only: w, broaden_n_polynomials
+  use multipole_header, only: FORM_RM, FORM_MLBW, MP_EA, RM_RT, RM_RA, RM_RF, &
+                              MLBW_RT, MLBW_RX, MLBW_RA, MLBW_RF, FIT_T, FIT_A, FIT_F, &
+                              MultipoleArray, max_poly, max_L, max_poles
+  use particle_header,  only: Particle
+  use random_lcg,       only: prn
+  use search,           only: binary_search
 
   implicit none
+
+  ! Allocatable arrays for multipole that are allocated once for speed purposes
+  complex(8), allocatable :: sigT_factor(:)
+  real(8), allocatable :: twophi(:)
+  real(8), allocatable :: broadened_polynomials(:)
+  logical :: mp_already_alloc = .false.
+
+!$omp threadprivate(sigT_factor, twophi, broadened_polynomials, mp_already_alloc)
 
 contains
 
@@ -93,10 +105,13 @@ contains
       i_nuclide = mat % nuclide(i)
 
       ! Calculate microscopic cross section for this nuclide
-      if (p % E /= micro_xs(i_nuclide) % last_E) then
-        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, i_grid)
+      if (p % E /= micro_xs(i_nuclide) % last_E &
+           .or. p % sqrtkT /= micro_xs(i_nuclide) % last_sqrtkT) then
+        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, &
+             i_grid, p % sqrtkT)
       else if (i_sab /= micro_xs(i_nuclide) % last_index_sab) then
-        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, i_grid)
+        call calculate_nuclide_xs(i_nuclide, i_sab, p % E, p % material, i, &
+             i_grid, p % sqrtkT)
       end if
 
       ! ========================================================================
@@ -133,7 +148,8 @@ contains
 ! given index in the nuclides array at the energy of the given particle
 !===============================================================================
 
-  subroutine calculate_nuclide_xs(i_nuclide, i_sab, E, i_mat, i_nuc_mat, i_log_union)
+  subroutine calculate_nuclide_xs(i_nuclide, i_sab, E, i_mat, i_nuc_mat, &
+       i_log_union, sqrtkT)
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: i_sab     ! index into sab_tables array
     real(8), intent(in) :: E         ! energy
@@ -141,11 +157,13 @@ contains
     integer, intent(in) :: i_nuc_mat ! index into nuclides array for a material
     integer, intent(in) :: i_log_union ! index into logarithmic mapping array or
                                        ! material union energy grid
+    real(8), intent(in) :: sqrtkT    ! Square root of kT, material dependent
 
     integer :: i_grid ! index on nuclide energy grid
     integer :: i_low  ! lower logarithmic mapping index
     integer :: i_high ! upper logarithmic mapping index
     real(8) :: f      ! interp factor on nuclide energy grid
+    real(8) :: sigT, sigA, sigF ! Intermediate multipole variables
     type(Nuclide),  pointer :: nuc
     type(Material), pointer :: mat
 
@@ -153,53 +171,111 @@ contains
     nuc => nuclides(i_nuclide)
     mat => materials(i_mat)
 
-    ! Determine index on nuclide energy grid
-    select case (grid_method)
-    case (GRID_MAT_UNION)
+    ! If MP, don't interpolate, it's all already baked in.
+    if (nuc % mp_present .and. &
+         (E >= nuc % multipole % start_E/1.0e6_8 .and.&
+          E <= nuc % multipole % end_E/1.0e6_8)) then
 
-      i_grid = mat % nuclide_grid_index(i_nuc_mat, i_log_union)
+      ! Call multipole kernel
+      call multipole_eval(nuc % multipole, E, sqrtkT, sigT, sigA, sigF)
 
-    case (GRID_LOGARITHM)
-      ! Determine the energy grid index using a logarithmic mapping to reduce
-      ! the energy range over which a binary search needs to be performed
+      micro_xs(i_nuclide) % total = sigT
+      micro_xs(i_nuclide) % absorption = sigA
+      micro_xs(i_nuclide) % elastic = sigT - sigA
 
-      if (E < nuc % energy(1)) then
-        i_grid = 1
-      elseif (E > nuc % energy(nuc % n_grid)) then
-        i_grid = nuc % n_grid - 1
+      if (nuc % fissionable) then
+        micro_xs(i_nuclide) % fission = sigF
+        micro_xs(i_nuclide) % nu_fission = sigF * nu_total(nuc, E)
       else
-        ! Determine bounding indices based on which equal log-spaced interval
-        ! the energy is in
-        i_low  = nuc % grid_index(i_log_union)
-        i_high = nuc % grid_index(i_log_union + 1) + 1
-
-        ! Perform binary search over reduced range
-        i_grid = binary_search(nuc % energy(i_low:i_high), &
-             i_high - i_low + 1, E) + i_low - 1
+        micro_xs(i_nuclide) % fission    = ZERO
+        micro_xs(i_nuclide) % nu_fission = ZERO
       end if
 
-    case (GRID_NUCLIDE)
-      ! Perform binary search on the nuclide energy grid in order to determine
-      ! which points to interpolate between
+      ! Ensure these values are set
+      ! Note, the only time either is used is in one of 4 places:
+      ! 1. physics.F90 - scatter - For inelastic scatter.
+      ! 2. physics.F90 - sample_fission - For partial fissions.
+      ! 3. tally.F90 - score_general - For tallying on MTxxx reactions.
+      ! 4. cross_section.F90 - calculate_urr_xs - For unresolved purposes.
+      ! It is worth noting that none of these occur in the resolved
+      ! resonance range, so the value here does not matter.
+      micro_xs(i_nuclide) % index_grid    = 0
+      micro_xs(i_nuclide) % interp_factor = ZERO
+    else
+      ! Determine index on nuclide energy grid
+      select case (grid_method)
+      case (GRID_MAT_UNION)
 
-      if (E <= nuc % energy(1)) then
-        i_grid = 1
-      elseif (E > nuc % energy(nuc % n_grid)) then
-        i_grid = nuc % n_grid - 1
-      else
-        i_grid = binary_search(nuc % energy, nuc % n_grid, E)
+        i_grid = mat % nuclide_grid_index(i_nuc_mat, i_log_union)
+
+      case (GRID_LOGARITHM)
+        ! Determine the energy grid index using a logarithmic mapping to reduce
+        ! the energy range over which a binary search needs to be performed
+
+        if (E < nuc % energy(1)) then
+          i_grid = 1
+        elseif (E > nuc % energy(nuc % n_grid)) then
+          i_grid = nuc % n_grid - 1
+        else
+          ! Determine bounding indices based on which equal log-spaced interval
+          ! the energy is in
+          i_low  = nuc % grid_index(i_log_union)
+          i_high = nuc % grid_index(i_log_union + 1) + 1
+
+          ! Perform binary search over reduced range
+          i_grid = binary_search(nuc % energy(i_low:i_high), &
+               i_high - i_low + 1, E) + i_low - 1
+        end if
+
+      case (GRID_NUCLIDE)
+        ! Perform binary search on the nuclide energy grid in order to determine
+        ! which points to interpolate between
+
+        if (E <= nuc % energy(1)) then
+          i_grid = 1
+        elseif (E > nuc % energy(nuc % n_grid)) then
+          i_grid = nuc % n_grid - 1
+        else
+          i_grid = binary_search(nuc % energy, nuc % n_grid, E)
+        end if
+
+      end select
+
+      ! check for rare case where two energy points are the same
+      if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) i_grid = i_grid + 1
+
+      ! calculate interpolation factor
+      f = (E - nuc%energy(i_grid))/(nuc%energy(i_grid+1) - nuc%energy(i_grid))
+
+      micro_xs(i_nuclide) % index_grid    = i_grid
+      micro_xs(i_nuclide) % interp_factor = f
+
+      ! Initialize nuclide cross-sections to zero
+      micro_xs(i_nuclide) % fission    = ZERO
+      micro_xs(i_nuclide) % nu_fission = ZERO
+
+      ! Calculate microscopic nuclide total cross section
+      micro_xs(i_nuclide) % total = (ONE - f) * nuc % total(i_grid) &
+           + f * nuc % total(i_grid+1)
+
+      ! Calculate microscopic nuclide elastic cross section
+      micro_xs(i_nuclide) % elastic = (ONE - f) * nuc % elastic(i_grid) &
+           + f * nuc % elastic(i_grid+1)
+
+      ! Calculate microscopic nuclide absorption cross section
+      micro_xs(i_nuclide) % absorption = (ONE - f) * nuc % absorption( &
+           i_grid) + f * nuc % absorption(i_grid+1)
+
+      if (nuc % fissionable) then
+        ! Calculate microscopic nuclide total cross section
+        micro_xs(i_nuclide) % fission = (ONE - f) * nuc % fission(i_grid) &
+             + f * nuc % fission(i_grid+1)
+
+        ! Calculate microscopic nuclide nu-fission cross section
+        micro_xs(i_nuclide) % nu_fission = (ONE - f) * nuc % nu_fission( &
+             i_grid) + f * nuc % nu_fission(i_grid+1)
       end if
-
-    end select
-
-    ! check for rare case where two energy points are the same
-    if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) i_grid = i_grid + 1
-
-    ! calculate interpolation factor
-    f = (E - nuc%energy(i_grid))/(nuc%energy(i_grid+1) - nuc%energy(i_grid))
-
-    micro_xs(i_nuclide) % index_grid    = i_grid
-    micro_xs(i_nuclide) % interp_factor = f
+    end if
 
     ! Initialize sab treatment to false
     micro_xs(i_nuclide) % index_sab   = NONE
@@ -207,32 +283,6 @@ contains
 
     ! Initialize URR probability table treatment to false
     micro_xs(i_nuclide) % use_ptable  = .false.
-
-    ! Initialize nuclide cross-sections to zero
-    micro_xs(i_nuclide) % fission    = ZERO
-    micro_xs(i_nuclide) % nu_fission = ZERO
-
-    ! Calculate microscopic nuclide total cross section
-    micro_xs(i_nuclide) % total = (ONE - f) * nuc % total(i_grid) &
-         + f * nuc % total(i_grid+1)
-
-    ! Calculate microscopic nuclide elastic cross section
-    micro_xs(i_nuclide) % elastic = (ONE - f) * nuc % elastic(i_grid) &
-         + f * nuc % elastic(i_grid+1)
-
-    ! Calculate microscopic nuclide absorption cross section
-    micro_xs(i_nuclide) % absorption = (ONE - f) * nuc % absorption( &
-         i_grid) + f * nuc % absorption(i_grid+1)
-
-    if (nuc % fissionable) then
-      ! Calculate microscopic nuclide total cross section
-      micro_xs(i_nuclide) % fission = (ONE - f) * nuc % fission(i_grid) &
-           + f * nuc % fission(i_grid+1)
-
-      ! Calculate microscopic nuclide nu-fission cross section
-      micro_xs(i_nuclide) % nu_fission = (ONE - f) * nuc % nu_fission( &
-           i_grid) + f * nuc % nu_fission(i_grid+1)
-    end if
 
     ! If there is S(a,b) data for this nuclide, we need to do a few
     ! things. Since the total cross section was based on non-S(a,b) data, we
@@ -253,6 +303,7 @@ contains
 
     micro_xs(i_nuclide) % last_E = E
     micro_xs(i_nuclide) % last_index_sab = i_sab
+    micro_xs(i_nuclide) % last_sqrtkT = sqrtkT
 
   end subroutine calculate_nuclide_xs
 
@@ -524,6 +575,192 @@ contains
     end if
 
   end function find_energy_index
+
+!===============================================================================
+! MULTIPOLE_EVAL_ALLOCATE allocates fixed-length arrays that vary based on
+! what nuclides are loaded into the problem
+!===============================================================================
+
+  subroutine multipole_eval_allocate()
+    allocate(sigT_factor(max_L))
+    allocate(twophi(max_L))
+    allocate(broadened_polynomials(max_poly))
+
+    mp_already_alloc = .true.
+  end subroutine
+
+!===============================================================================
+! MULTIPOLE_EVAL evaluates the windowed multipole equations for cross
+! sections in the resolved resonance regions
+!===============================================================================
+
+  subroutine multipole_eval(multipole, Emev, sqrtkT_, sigT, sigA, sigF)
+    type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
+                                                  !  object to process.
+    real(8), intent(in)              :: Emev      ! The energy at which to
+                                                  !  evaluate the cross section
+                                                  !  in MeV
+    real(8), intent(in)              :: sqrtkT_   ! The temperature in the form
+                                                  !  sqrt(kT (in MeV)), at which
+                                                  !  to evaluate the XS.
+    real(8), intent(out)             :: sigT      ! Total cross section
+    real(8), intent(out)             :: sigA      ! Absorption cross section
+    real(8), intent(out)             :: sigF      ! Fission cross section
+    complex(8) :: psi_ki   ! The value of the psi-ki function for the asymptotic
+                           !  form
+    complex(8) :: c_temp   ! complex temporary variable
+    complex(8) :: w_val    ! The faddeeva function evaluated at Z
+    complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
+    real(8) :: sqrtE       ! sqrt(E), eV
+    real(8) :: invE        ! 1/E, eV
+    real(8) :: dopp        ! sqrt(atomic weight ratio / kT)
+    real(8) :: dopp_ecoef  ! sqrt(atomic weight ratio * pi / kT) / E
+    real(8) :: temp        ! real temporary value
+    real(8) :: E           ! energy, eV
+    real(8) :: sqrtkT      ! sqrt(kT (in eV))
+    integer :: iP          ! index of pole
+    integer :: iC          ! index of curvefit
+    integer :: iW          ! index of window
+    integer :: startw      ! window start pointer (for poles)
+    integer :: startw_1    ! window start pointer - 1
+    integer :: startw_endw ! window start pointer - window end pointer
+    integer :: endw        ! window end pointer
+
+    ! Convert to eV
+    E = Emev * 1.0e6_8
+    sqrtkT = sqrtkT_ * 1.0e3_8
+
+    sqrtE = sqrt(E)
+    invE = ONE/E
+
+    if(.not. mp_already_alloc) then
+      call multipole_eval_allocate()
+    end if
+
+    ! Locate us
+    iW = floor((sqrtE - sqrt(multipole % start_E))/multipole % spacing + ONE)
+
+    startw = multipole % w_start(iW)
+    startw_1 = startw - 1 ! This is an index shift parameter.
+    endw = multipole % w_end(iW)
+    startw_endw = endw - startw + 1
+
+    ! Fill in factors
+    if (startw <= endw) then
+      call fill_factors(multipole, sqrtE, sigT_factor, twophi, multipole % num_l)
+    end if
+
+    ! Generate some doppler broadening parameters
+
+    ! dopp_ecoef is inverse of dopp, divided by E, multiplied by sqrt(pi).
+    dopp = multipole % sqrtAWR / sqrtKT
+    dopp_ecoef = dopp * invE * SQRT_PI
+
+    sigT = ZERO
+    sigA = ZERO
+    sigF = ZERO
+    ! Evaluate linefit first
+
+    if(sqrtkT /= 0 .and. multipole % broaden_poly(iW) == 1) then ! Broaden the curvefit.
+      call broaden_n_polynomials(E, dopp, multipole % fit_order + 1, broadened_polynomials)
+
+      do iC = 1, multipole % fit_order+1
+        sigT = sigT + multipole % curvefit(FIT_T, iC, iW)*broadened_polynomials(iC)
+        sigA = sigA + multipole % curvefit(FIT_A, iC, iW)*broadened_polynomials(iC)
+        if (multipole % fissionable) then
+          sigF = sigF + multipole % curvefit(FIT_F, iC, iW)*broadened_polynomials(iC)
+        end if
+      end do
+    else ! Evaluate as if it were a polynomial
+      temp = invE
+      do iC = 1, multipole % fit_order+1
+
+        sigT = sigT + multipole % curvefit(FIT_T, iC, iW)*temp
+        sigA = sigA + multipole % curvefit(FIT_A, iC, iW)*temp
+        if (multipole % fissionable) then
+          sigF = sigF + multipole % curvefit(FIT_F, iC, iW)*temp
+        end if
+
+        temp = temp * sqrtE
+      end do
+    end if
+
+    ! Then get the poles we want and broaden them.
+
+    if (sqrtkT == ZERO) then
+      ! If at 0K, use asymptotic form.
+      do iP = startw, endw
+        psi_ki = -ONEI/(multipole % data(MP_EA, iP) - sqrtE)
+        c_temp = psi_ki/E
+        if (multipole % formalism == FORM_MLBW) then
+          sigT = sigT + real(multipole % data(MLBW_RT, iP) * c_temp * &
+                             sigT_factor(multipole % l_value(iP))) &
+                      + real(multipole % data(MLBW_RX, iP) * c_temp)
+          sigA = sigA + real(multipole % data(MLBW_RA, iP) * c_temp)
+          sigF = sigF + real(multipole % data(MLBW_RF, iP) * c_temp)
+        else if (multipole % formalism == FORM_RM) then
+          sigT = sigT + real(multipole % data(RM_RT, iP) * c_temp* &
+                             sigT_factor(multipole % l_value(iP)))
+          sigA = sigA + real(multipole % data(RM_RA, iP) * c_temp)
+          sigF = sigF + real(multipole % data(RM_RF, iP) * c_temp)
+        end if
+      end do
+    else
+      ! At temperature, use Faddeeva function-based form.
+      if(endw >= startw) then
+        do iP = startw, endw
+          Z = (sqrtE - multipole % data(MP_EA, iP)) * dopp
+          w_val = w(Z) * dopp_ecoef
+
+          if (multipole % formalism == FORM_MLBW) then
+            sigT = sigT + real((multipole % data(MLBW_RT, iP) * &
+                          sigT_factor(multipole%l_value(iP)) + &
+                          multipole % data(MLBW_RX, iP)) * w_val)
+            sigA = sigA + real(multipole % data(MLBW_RA, iP) * w_val)
+            sigF = sigF + real(multipole % data(MLBW_RF, iP) * w_val)
+          else if (multipole % formalism == FORM_RM) then
+            sigT = sigT + real(multipole % data(RM_RT, iP) * w_val * &
+                               sigT_factor(multipole % l_value(iP)))
+            sigA = sigA + real(multipole % data(RM_RA, iP) * w_val)
+            sigF = sigF + real(multipole % data(RM_RF, iP) * w_val)
+          end if
+        end do
+      end if
+    end if
+  end subroutine
+
+!===============================================================================
+! FILL_FACTORS calculates the value of phi, the hardsphere phase shift factor,
+! and sigT_factor, a factor inside of the sigT equation not present in the
+! sigA and sigF equations.
+!===============================================================================
+
+  subroutine fill_factors(multipole, sqrtE, sigT_factor, twophi, max_L)
+    type(MultipoleArray), intent(in)   :: multipole
+    real(8), intent(in)                  :: sqrtE
+    integer, intent(in)                  :: max_L
+    complex(8), intent(out)              :: sigT_factor(max_L)
+    real(8), intent(out)                 :: twophi(max_L)
+
+    integer :: iL
+    real(8) :: arg
+
+    do iL = 1, max_L
+      twophi(iL) = multipole % pseudo_k0RS(iL) * sqrtE
+      if (iL == 2) then
+        twophi(iL) = twophi(iL) - atan(twophi(iL))
+      else if (iL == 3) then
+        arg = 3.0_8 * twophi(iL) / (3.0_8 - twophi(iL)**2)
+        twophi(iL) = twophi(iL) - atan(arg)
+      else if (iL == 4) then
+        arg = twophi(iL) * (15.0_8 - twophi(iL)**2) / (15.0_8 - 6.0_8 * twophi(iL)**2)
+        twophi(iL) = twophi(iL) - atan(arg)
+      end if
+    end do
+
+    twophi = 2.0_8 * twophi
+    sigT_factor = cmplx(cos(twophi),-sin(twophi), KIND=8)
+  end subroutine
 
 !===============================================================================
 ! 0K_ELASTIC_XS determines the microscopic 0K elastic cross section

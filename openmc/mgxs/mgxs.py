@@ -1467,7 +1467,7 @@ class MGXS(object):
 
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal
-        df.sort([self.domain_type] + columns, inplace=True)
+        df.sort_values(by=[self.domain_type] + columns, inplace=True)
         return df
 
 

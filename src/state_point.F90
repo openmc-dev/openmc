@@ -659,7 +659,7 @@ contains
 
     ! Read filetype
     call read_dataset(file_id, "filetype", word)
-    if (trim(word) /= 'statepoint') then
+    if (word /= 'statepoint') then
       call fatal_error("OpenMC tried to restart from a non-statepoint file.")
     end if
 
@@ -767,10 +767,12 @@ contains
           ! Set pointer to tally
           tally => tallies(i)
 
-          ! Read sum and sum_sq for each bin
+          ! Read sum, sum_sq, and N for each bin
           tally_group = open_group(tallies_group, "tally " // &
-               trim(to_str(tally%id)))
-          call read_dataset(tally_group, "results", tally%results)
+               trim(to_str(tally % id)))
+          call read_dataset(tally_group, "results", tally % results)
+          call read_dataset(tally_group, "n_realizations", &
+               &tally % n_realizations)
           call close_group(tally_group)
         end do TALLY_RESULTS
       end if

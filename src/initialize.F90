@@ -327,8 +327,6 @@ contains
          c_loc(tmpb(1)%uvw)), coordinates_t, hdf5_err)
     call h5tinsert_f(hdf5_bank_t, "E", h5offsetof(c_loc(tmpb(1)), &
          c_loc(tmpb(1)%E)), H5T_NATIVE_DOUBLE, hdf5_err)
-    call h5tinsert_f(hdf5_bank_t, "g", h5offsetof(c_loc(tmpb(1)), &
-         c_loc(tmpb(1)%g)), H5T_NATIVE_INTEGER, hdf5_err)
     call h5tinsert_f(hdf5_bank_t, "delayed_group", h5offsetof(c_loc(tmpb(1)), &
          c_loc(tmpb(1)%delayed_group)), H5T_NATIVE_INTEGER, hdf5_err)
 

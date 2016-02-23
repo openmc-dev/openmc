@@ -4,7 +4,7 @@
 Particle Restart File Format
 ============================
 
-The current revision of the particle restart file format is 2.
+The current revision of the particle restart file format is 1.
 
 **/filetype** (*char[]*)
 
@@ -46,13 +46,8 @@ The current revision of the particle restart file format is 2.
 
 **/energy** (*double*)
 
-    Energy of the particle in MeV.  This is always provided but only used
-    for continuous-energy mode.
-
-**/energy_group** (*int*)
-
-    Energy group of the particle.  This is always provided but only used
-    for multi-group mode.
+    Energy of the particle in MeV for continuous-energy mode, or the energy
+    group of the particle for multi-group mode.
 
 **/xyz** (*double[3]*)
 

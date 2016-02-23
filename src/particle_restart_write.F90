@@ -57,7 +57,6 @@ contains
     call write_dataset(file_id, 'id', p%id)
     call write_dataset(file_id, 'weight', src%wgt)
     call write_dataset(file_id, 'energy', src%E)
-    call write_dataset(file_id, 'energy_group', src%g)
     call write_dataset(file_id, 'xyz', src%xyz)
     call write_dataset(file_id, 'uvw', src%uvw)
 

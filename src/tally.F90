@@ -1601,7 +1601,7 @@ contains
 
       if (t % energyout_matches_groups) then
         ! determine outgoing energy from fission bank
-        gout = fission_bank(n_bank - p % n_bank + k) % g
+        gout = int(fission_bank(n_bank - p % n_bank + k) % E)
 
         ! change outgoing energy bin
         matching_bins(i) = gout

@@ -2417,6 +2417,110 @@ contains
 
         case (ESTIMATOR_ANALOG)
 
+          select case (score_bin)
+
+          case (SCORE_FLUX)
+            score = score * deriv % flux_deriv
+
+          case (SCORE_TOTAL)
+            if (materials(p % material) % id == deriv % diff_material .and. &
+                 micro_xs(p % event_nuclide) % total > ZERO) then
+              associate(mat => materials(p % material))
+                do l = 1, mat % n_nuclides
+                  if (mat % nuclide(l) == p % event_nuclide) exit
+                end do
+                dsigT = ZERO
+                associate (nuc => nuclides(p % event_nuclide))
+                  if (nuc % mp_present .and. &
+                       p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
+                       p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                    call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                         p % sqrtkT, dsigT, dsigA, dsigF)
+                  end if
+                end associate
+                score = score * (deriv % flux_deriv &
+                     + dsigT * mat % atom_density(l) / material_xs % total)
+              end associate
+            else
+              score = score * deriv % flux_deriv
+            end if
+
+          case (SCORE_ABSORPTION)
+            if (materials(p % material) % id == deriv % diff_material .and. &
+                 micro_xs(p % event_nuclide) % absorption > ZERO) then
+              associate(mat => materials(p % material))
+                do l = 1, mat % n_nuclides
+                  if (mat % nuclide(l) == p % event_nuclide) exit
+                end do
+                dsigA = ZERO
+                associate (nuc => nuclides(p % event_nuclide))
+                  if (nuc % mp_present .and. &
+                       p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
+                       p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                    call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                         p % sqrtkT, dsigT, dsigA, dsigF)
+                  end if
+                end associate
+                score = score * (deriv % flux_deriv &
+                     + dsigA * mat % atom_density(l) / material_xs % absorption)
+              end associate
+            else
+              score = score * deriv % flux_deriv
+            end if
+
+          case (SCORE_FISSION)
+            if (materials(p % material) % id == deriv % diff_material .and. &
+                 micro_xs(p % event_nuclide) % fission > ZERO) then
+              associate(mat => materials(p % material))
+                do l = 1, mat % n_nuclides
+                  if (mat % nuclide(l) == p % event_nuclide) exit
+                end do
+                dsigF = ZERO
+                associate (nuc => nuclides(p % event_nuclide))
+                  if (nuc % mp_present .and. &
+                       p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
+                       p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                    call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                         p % sqrtkT, dsigT, dsigA, dsigF)
+                  end if
+                end associate
+                score = score * (deriv % flux_deriv &
+                     + dsigF * mat % atom_density(l) / material_xs % fission)
+              end associate
+            else
+              score = score * deriv % flux_deriv
+            end if
+
+          case (SCORE_NU_FISSION)
+            if (materials(p % material) % id == deriv % diff_material .and. &
+                 micro_xs(p % event_nuclide) % nu_fission > ZERO) then
+              associate(mat => materials(p % material))
+                do l = 1, mat % n_nuclides
+                  if (mat % nuclide(l) == p % event_nuclide) exit
+                end do
+                dsigF = ZERO
+                associate (nuc => nuclides(p % event_nuclide))
+                  if (nuc % mp_present .and. &
+                       p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
+                       p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                    call multipole_deriv_eval(nuc % multipole, p % last_E, &
+                         p % sqrtkT, dsigT, dsigA, dsigF)
+                  end if
+                end associate
+                score = score * (deriv % flux_deriv &
+                     + dsigF * mat % atom_density(l) / material_xs % fission &
+                     * micro_xs(p % event_nuclide) % nu_fission &
+                     / micro_xs(p % event_nuclide) % fission)
+              end associate
+            else
+              score = score * deriv % flux_deriv
+            end if
+
+          case default
+            call fatal_error('Tally derivative not defined for a score on &
+                 &tally ' // trim(to_str(t % id)))
+          end select
+
         case (ESTIMATOR_COLLISION)
 
           select case (score_bin)

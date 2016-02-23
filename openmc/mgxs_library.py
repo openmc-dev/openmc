@@ -17,6 +17,7 @@ from openmc.clean_xml import *
 # Supported incoming particle MGXS angular treatment representations
 _REPRESENTATIONS = ['isotropic', 'angle']
 
+
 def ndarray_to_string(arr):
     """Converts a numpy ndarray in to a join with spaces between entries
     similar to ' '.join(map(str,arr)) but applied to all sub-dimensions.
@@ -48,14 +49,14 @@ def ndarray_to_string(arr):
         for i in range(shape[0]):
             text += tab
             for j in range(shape[1]):
-                text += '{:.7E} '.format(arr[i,j])
+                text += '{:.7E} '.format(arr[i, j])
             text += indent
     elif ndim == 3:
         for i in range(shape[0]):
             for j in range(shape[1]):
                 text += tab
                 for k in range(shape[2]):
-                    text += '{:.7E} '.format(arr[i,j,k])
+                    text += '{:.7E} '.format(arr[i, j, k])
                 text += indent
     elif ndim == 4:
         for i in range(shape[0]):
@@ -63,7 +64,7 @@ def ndarray_to_string(arr):
                 for k in range(shape[2]):
                     text += tab
                     for l in range(shape[3]):
-                        text += '{:.7E} '.format(arr[i,j,k,l])
+                        text += '{:.7E} '.format(arr[i, j, k, l])
                     text += indent
     elif ndim == 5:
         for i in range(shape[0]):
@@ -72,7 +73,7 @@ def ndarray_to_string(arr):
                     for l in range(shape[3]):
                         text += tab
                         for m in range(shape[4]):
-                            text += '{:.7E} '.format(arr[i,j,k,l,m])
+                            text += '{:.7E} '.format(arr[i, j, k, l, m])
                         text += indent
 
     return text
@@ -289,7 +290,7 @@ class XSdata(object):
             check_value('num_points', num_points, Integral)
             check_greater_than('num_points', num_points, 0)
         else:
-            if enable == False:
+            if not enable:
                 num_points = 1
             else:
                 num_points = 33
@@ -563,6 +564,7 @@ class XSdata(object):
 
         return element
 
+
 class MGXSLibraryFile(object):
     """Multi-Group Cross Sections file used for an OpenMC simulation.
     Corresponds directly to the MG version of the cross_sections.xml input file.
@@ -685,7 +687,6 @@ class MGXSLibraryFile(object):
         for xsdata in self._xsdatas:
             xml_element = xsdata._get_xsdata_xml()
             self._cross_sections_file.append(xml_element)
-
 
     def export_to_xml(self, filename='mg_cross_sections.xml'):
         """Create an mg_cross_sections.xml file that can be used for a

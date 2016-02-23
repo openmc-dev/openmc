@@ -129,11 +129,11 @@ contains
         ! No cross_sections.xml file specified in settings.xml, check
         ! environment variable
         if (run_CE) then
-          call get_environment_variable("CROSS_SECTIONS", env_variable)
+          call get_environment_variable("OPENMC_CROSS_SECTIONS", env_variable)
           if (len_trim(env_variable) == 0) then
             call fatal_error("No cross_sections.xml file was specified in &
-                 &settings.xml or in the CROSS_SECTIONS environment variable. &
-                 &OpenMC needs such a file to identify where to &
+                 &settings.xml or in the OPENMC_CROSS_SECTIONS environment &
+                 &variable. OpenMC needs such a file to identify where to &
                  &find ACE cross section libraries. Please consult the user's &
                  &guide at http://mit-crpg.github.io/openmc for information on &
                  &how to set up ACE cross section libraries.")
@@ -141,11 +141,11 @@ contains
             path_cross_sections = trim(env_variable)
           end if
         else
-          call get_environment_variable("MG_CROSS_SECTIONS", env_variable)
+          call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", env_variable)
           if (len_trim(env_variable) == 0) then
             call fatal_error("No cross_sections.xml file was specified in &
-                 &settings.xml or in the MG_CROSS_SECTIONS environment variable. &
-                 &OpenMC needs such a file to identify where to &
+                 &settings.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
+                 &variable. OpenMC needs such a file to identify where to &
                  &find the cross section libraries. Please consult the user's &
                  &guide at http://mit-crpg.github.io/openmc for information on &
                  &how to set up the cross section libraries.")

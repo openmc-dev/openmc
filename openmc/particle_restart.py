@@ -43,11 +43,11 @@ class Particle(object):
         if 'filetype' not in self._f or self._f[
                 'filetype'].value.decode() != 'particle restart':
             raise IOError('{} is not a particle restart file.'.format(filename))
-        if self._f['revision'].value != 2:
+        if self._f['revision'].value != 1:
             raise IOError('Particle restart file has a file revision of {} '
                           'which is not consistent with the revision this '
                           'version of OpenMC expects ({}).'.format(
-                              self._f['revision'].value, 2))
+                              self._f['revision'].value, 1))
 
     @property
     def current_batch(self):

@@ -747,7 +747,7 @@ contains
            &file")
     end if
 
-    ! Read tallies to master.  If we are using Parallel HDF5, all processors
+    ! Read tallies to master. If we are using Parallel HDF5, all processes
     ! need to be included in the HDF5 calls.
 #ifdef PHDF5
     if (.true.) then
@@ -777,7 +777,7 @@ contains
                trim(to_str(tally % id)))
           call read_dataset(tally_group, "results", tally % results)
           call read_dataset(tally_group, "n_realizations", &
-               &tally % n_realizations)
+               tally % n_realizations)
           call close_group(tally_group)
         end do TALLY_RESULTS
       end if

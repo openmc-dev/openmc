@@ -201,7 +201,7 @@ contains
 
   subroutine initialize_mpi()
 
-    integer                   :: bank_blocks(6)   ! Count for each datatype
+    integer                   :: bank_blocks(5)   ! Count for each datatype
 #ifdef MPIF08
     type(MPI_Datatype)        :: bank_types(5)
     type(MPI_Datatype)        :: result_types(1)

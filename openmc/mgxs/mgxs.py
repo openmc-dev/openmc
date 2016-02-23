@@ -25,6 +25,7 @@ MGXS_TYPES = ['total',
               'capture',
               'fission',
               'nu-fission',
+              'kappa-fission',
               'scatter',
               'nu-scatter',
               'scatter matrix',
@@ -315,7 +316,7 @@ class MGXS(object):
 
         Parameters
         ----------
-        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
+        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
             The type of multi-group cross section object to return
         domain : Material or Cell or Universe
             The domain for spatial homogenization
@@ -352,6 +353,8 @@ class MGXS(object):
             mgxs = FissionXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'nu-fission':
             mgxs = NuFissionXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'kappa-fission':
+            mgxs = KappaFissionXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'scatter':
             mgxs = ScatterXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'nu-scatter':
@@ -1484,96 +1487,80 @@ class CaptureXS(MGXS):
             self._rxn_rate_tally.sparse = self.sparse
         return self._rxn_rate_tally
 
+class FissionXSBase(MGXS):
+    """A fission production multi-group cross section base class
+       for NuFission and KappaFission
+    """
 
-class FissionXS(MGXS):
+    # This is an abstract class which cannot be instantiated
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, rxn_type, domain=None, domain_type=None,
+                 groups=None, by_nuclide=False, name=''):
+        super(FissionXSBase, self).__init__(domain, domain_type,
+                                            groups, by_nuclide, name)
+        self._rxn_type = rxn_type
+
+    @property
+    def tallies(self):
+        """Construct the OpenMC tallies needed to compute this cross section.
+
+        This method constructs two tracklength tallies to compute the 'flux'
+        and 'rxn_type' reaction rates in the spatial domain and energy
+        groups of interest.
+
+        """
+
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
+
+            # Create a list of scores for each Tally to be created
+            scores = ['flux', self._rxn_type]
+            estimator = 'tracklength'
+            keys = scores
+
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energy_filter = openmc.Filter('energy', group_edges)
+            filters = [[energy_filter], [energy_filter]]
+
+            # Initialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
+
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = self.tallies[self._rxn_type]
+            self._rxn_rate_tally.sparse = self.sparse
+        return self._rxn_rate_tally
+
+
+class FissionXS(FissionXSBase):
     """A fission multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
-        super(FissionXS, self).__init__(domain, domain_type,
+        super(FissionXS, self).__init__('fission', domain, domain_type,
                                         groups, by_nuclide, name)
-        self._rxn_type = 'fission'
-
-    @property
-    def tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross section.
-
-        This method constructs two tracklength tallies to compute the 'flux'
-        and 'fission' reaction rates in the spatial domain and energy
-        groups of interest.
-
-        """
-
-        # Instantiate tallies if they do not exist
-        if self._tallies is None:
-
-            # Create a list of scores for each Tally to be created
-            scores = ['flux', 'fission']
-            estimator = 'tracklength'
-            keys = scores
-
-            # Create the non-domain specific Filters for the Tallies
-            group_edges = self.energy_groups.group_edges
-            energy_filter = openmc.Filter('energy', group_edges)
-            filters = [[energy_filter], [energy_filter]]
-
-            # Initialize the Tallies
-            self._create_tallies(scores, filters, keys, estimator)
-
-        return self._tallies
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['fission']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
 
 
-class NuFissionXS(MGXS):
+class NuFissionXS(FissionXSBase):
     """A fission production multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
-        super(NuFissionXS, self).__init__(domain, domain_type,
+        super(NuFissionXS, self).__init__('nu-fission', domain, domain_type,
                                           groups, by_nuclide, name)
-        self._rxn_type = 'nu-fission'
 
-    @property
-    def tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross section.
+class KappaFissionXS(FissionXSBase):
+    """A recoverable fission energy production rate multi-group cross section."""
 
-        This method constructs two tracklength tallies to compute the 'flux'
-        and 'nu-fission' reaction rates in the spatial domain and energy
-        groups of interest.
-
-        """
-
-        # Instantiate tallies if they do not exist
-        if self._tallies is None:
-
-            # Create a list of scores for each Tally to be created
-            scores = ['flux', 'nu-fission']
-            estimator = 'tracklength'
-            keys = scores
-
-            # Create the non-domain specific Filters for the Tallies
-            group_edges = self.energy_groups.group_edges
-            energy_filter = openmc.Filter('energy', group_edges)
-            filters = [[energy_filter], [energy_filter]]
-
-            # Initialize the Tallies
-            self._create_tallies(scores, filters, keys, estimator)
-
-        return self._tallies
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['nu-fission']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
-
+    def __init__(self, domain=None, domain_type=None,
+                 groups=None, by_nuclide=False, name=''):
+        super(KappaFissionXS, self).__init__('kappa-fission', domain, domain_type,
+                                             groups, by_nuclide, name)
 
 class ScatterXS(MGXS):
     """A scatter multi-group cross section."""

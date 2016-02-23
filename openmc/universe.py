@@ -257,6 +257,10 @@ class Cell(object):
         """Add a half-space to the list of half-spaces whose intersection defines the
         cell.
 
+        .. deprecated:: 0.7.1
+            Use the Cell.region property to directly specify a Region
+            expression.
+
         Parameters
         ----------
         surface : openmc.surface.Surface

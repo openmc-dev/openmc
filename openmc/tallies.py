@@ -432,6 +432,10 @@ class Tally(object):
     def add_trigger(self, trigger):
         """Add a tally trigger to the tally
 
+        .. deprecated:: 0.8
+            Use the Tally.triggers property directly, i.e.,
+            Tally.triggers.append(...)
+
         Parameters
         ----------
         trigger : openmc.trigger.Trigger
@@ -516,6 +520,10 @@ class Tally(object):
     def add_filter(self, new_filter):
         """Add a filter to the tally
 
+        .. deprecated:: 0.8
+            Use the Tally.filters property directly, i.e.,
+            Tally.filters.append(...)
+
         Parameters
         ----------
         new_filter : Filter, CrossFilter or AggregateFilter
@@ -537,6 +545,10 @@ class Tally(object):
     def add_nuclide(self, nuclide):
         """Specify that scores for a particular nuclide should be accumulated
 
+        .. deprecated:: 0.8
+            Use the Tally.nuclides property directly, i.e.,
+            Tally.nuclides.append(...)
+
         Parameters
         ----------
         nuclide : str, Nuclide, CrossNuclide or AggregateNuclide
@@ -557,6 +569,10 @@ class Tally(object):
 
     def add_score(self, score):
         """Specify a quantity to be scored
+
+        .. deprecated:: 0.8
+            Use the Tally.scores property directly, i.e.,
+            Tally.scores.append(...)
 
         Parameters
         ----------

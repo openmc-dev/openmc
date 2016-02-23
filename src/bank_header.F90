@@ -5,7 +5,7 @@ module bank_header
   implicit none
 
 !===============================================================================
-! BANK* is used for storing fission sites in eigenvalue calculations. Since all
+! BANK is used for storing fission sites in eigenvalue calculations. Since all
 ! the state information of a neutron is not needed, this type allows sites to be
 ! stored with less memory
 !===============================================================================

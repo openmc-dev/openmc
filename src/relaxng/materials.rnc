@@ -13,8 +13,8 @@ element materials {
     element nuclide {
       (element name { xsd:string { maxLength = "7" } } |
         attribute name { xsd:string { maxLength = "7" } }) &
-      (element xs { xsd:string { maxLength = "3" } } |
-        attribute xs { xsd:string { maxLength = "3" } })? &
+      (element xs { xsd:string { maxLength = "5" } } |
+        attribute xs { xsd:string { maxLength = "5" } })? &
       (element scattering { ( "data" | "iso-in-lab" ) } |
         attribute scattering { ( "data" | "iso-in-lab" ) })? &
       (
@@ -24,17 +24,17 @@ element materials {
     }*  &
 
     element macroscopic {
-      (element name { xsd:string { maxLength = "7" } } |
-        attribute name { xsd:string { maxLength = "7" } }) &
-      (element xs { xsd:string { maxLength = "3" } } |
-        attribute xs { xsd:string { maxLength = "3" } })
+      (element name { xsd:string } |
+        attribute name { xsd:string }) &
+      (element xs { xsd:string { maxLength = "5" } } |
+        attribute xs { xsd:string { maxLength = "5" } })
     }*  &
 
     element element {
       (element name { xsd:string { maxLength = "2" } } |
         attribute name { xsd:string { maxLength = "2" } }) &
-      (element xs { xsd:string { maxLength = "3" } } |
-        attribute xs { xsd:string { maxLength = "3" } })? &
+      (element xs { xsd:string { maxLength = "5" } } |
+        attribute xs { xsd:string { maxLength = "5" } })? &
       (element scattering { ( "data" | "iso-in-lab" ) } |
         attribute scattering { ( "data" | "iso-in-lab" ) })? &
       (
@@ -46,10 +46,10 @@ element materials {
     element sab {
       (element name { xsd:string { maxLength = "7" } } |
         attribute name { xsd:string { maxLength = "7" } }) &
-      (element xs { xsd:string { maxLength = "3" } } |
-        attribute xs { xsd:string { maxLength = "3" } })?
+      (element xs { xsd:string { maxLength = "5" } } |
+        attribute xs { xsd:string { maxLength = "5" } })?
     }*
   }+ &
 
-  element default_xs { xsd:string { maxLength = "3" } }?
+  element default_xs { xsd:string { maxLength = "5" } }?
 }

@@ -112,10 +112,11 @@ standard deviation.
 
 The ``<cross_sections>`` element has no attributes and simply indicates the path
 to an XML cross section listing file (usually named cross_sections.xml). If this
-element is absent from the settings.xml file, the :envvar:`CROSS_SECTIONS`
-environment variable will be used to find the path to the XML cross section
-listing when in continuous-energy mode, and the :envvar:`MG_CROSS_SECTIONS`
-environment variable will be used in multi-group mode.
+element is absent from the settings.xml file, the
+:envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used to find the
+path to the XML cross section listing when in continuous-energy mode, and the
+:envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable will be used in
+multi-group mode.
 
 ``<cutoff>`` Element
 --------------------
@@ -1728,7 +1729,7 @@ The ``<tally>`` element accepts the following sub-elements:
         |inverse-velocity      |The flux-weighted inverse velocity where the       |
         |                      |velocity is in units of centimeters per second.    |
         |                      |This score type is not used in the                 |
-        |                      |multi-group :ref:`energy_mode`.                    | 
+        |                      |multi-group :ref:`energy_mode`.                    |
         +----------------------+---------------------------------------------------+
         |kappa-fission         |The recoverable energy production rate due to      |
         |                      |fission. The recoverable energy is defined as the  |

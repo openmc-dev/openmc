@@ -270,7 +270,7 @@ attributes/sub-elements required to describe the meta-data:
     with the inner-dimension being groups, intermediate-dimension being
     azimuthal angles and outer-dimension being the polar angles.
 
-    *Default*: None, this is required only if :ref:`kappa_fission` tallies are
+    *Default*: None, this is required only if kappa_fission tallies are
     requested and the material is fissionable.
 
   :chi:

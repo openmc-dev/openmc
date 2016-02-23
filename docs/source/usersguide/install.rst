@@ -227,6 +227,7 @@ your PATH environment variable and subsequently uses it to determine library
 locations and compile flags. If you have multiple installations of HDF5 or one
 that does not appear on your PATH, you can set the HDF5_ROOT environment
 variable to the root directory of the HDF5 installation, e.g.
+
 .. code-block:: sh
 
     export HDF5_ROOT=/opt/hdf5/1.8.15

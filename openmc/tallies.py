@@ -1,6 +1,6 @@
 from __future__ import division
 
-from collections import Iterable, defaultdict
+from collections import Iterable, MutableSequence, defaultdict
 import copy
 from functools import partial
 import os
@@ -426,7 +426,7 @@ class Tally(object):
 
     @triggers.setter
     def triggers(self, triggers):
-        cv.check_type('tally triggers', trigger, Iterable, Trigger)
+        cv.check_type('tally triggers', trigger, MutableSequence, Trigger)
         self._triggers = triggers
 
     def add_trigger(self, trigger):
@@ -466,7 +466,7 @@ class Tally(object):
 
     @filters.setter
     def filters(self, filters):
-        cv.check_type('tally filters', filters, Iterable,
+        cv.check_type('tally filters', filters, MutableSequence,
                       (Filter, CrossFilter, AggregateFilter))
 
         # If the filter is already in the Tally, raise an error
@@ -481,7 +481,7 @@ class Tally(object):
 
     @nuclides.setter
     def nuclides(self, nuclides):
-        cv.check_type('tally nuclides', nuclides, Iterable,
+        cv.check_type('tally nuclides', nuclides, MutableSequence,
                       (basestring, Nuclide, CrossNuclide, AggregateNuclide))
 
         # If the nuclide is already in the Tally, raise an error
@@ -496,7 +496,7 @@ class Tally(object):
 
     @scores.setter
     def scores(self, scores):
-        cv.check_type('tally scores', scores, Iterable,
+        cv.check_type('tally scores', scores, MutableSequence,
                       (basestring, CrossScore, AggregateScore))
 
         for i, score in enumerate(scores[:-1]):

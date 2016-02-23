@@ -131,7 +131,8 @@ contains
     integer :: i
 
     ! set defaults
-    call p % initialize_from_source(source_bank(index_source), run_CE)
+    call p % initialize_from_source(source_bank(index_source), run_CE, &
+         energy_bin_avg)
 
     ! set identifier for particle
     p % id = work_index(rank) + index_source

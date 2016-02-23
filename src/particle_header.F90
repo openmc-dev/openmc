@@ -179,10 +179,11 @@ contains
 ! fission, or simply as a secondary particle.
 !===============================================================================
 
-  subroutine initialize_from_source(this, src, run_CE)
-    class(Particle), intent(inout) :: this
-    type(Bank),      intent(in)    :: src
-    logical,         intent(in)    :: run_CE
+  subroutine initialize_from_source(this, src, run_CE, energy_bin_avg)
+    class(Particle), intent(inout)   :: this
+    type(Bank),      intent(in)      :: src
+    logical,         intent(in)      :: run_CE
+    real(8), allocatable, intent(in) :: energy_bin_avg(:)
 
     ! set defaults
     call this % initialize()
@@ -194,12 +195,14 @@ contains
     this % coord(1) % uvw = src % uvw
     this % last_xyz       = src % xyz
     this % last_uvw       = src % uvw
-    this % E              = src % E
-    this % last_E         = src % E
-    if (.not. run_CE) then
-      this % g            = src % g
-      this % last_g       = src % g
+    if (run_CE) then
+      this % E            = src % E
+    else
+      this % g            = int(src % E)
+      this % last_g       = int(src % E)
+      this % E            = energy_bin_avg(this % g)
     end if
+    this % last_E       = src % E
 
   end subroutine initialize_from_source
 
@@ -229,7 +232,7 @@ contains
     this % n_secondary = n
     this % secondary_bank(this % n_secondary) % E = this % E
     if (.not. run_CE) then
-      this % secondary_bank(this % n_secondary) % g = this % g
+      this % secondary_bank(this % n_secondary) % E = real(this % g, 8)
     end if
 
   end subroutine create_secondary

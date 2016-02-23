@@ -192,11 +192,12 @@ contains
     ! If running in MG, convert site % E to group
     if (.not. run_CE) then
       if (site % E <= energy_bins(1)) then
-        site % g = 1
+        site % E = real(1, 8)
       else if (site % E > energy_bins(energy_groups + 1)) then
-        site % g = energy_groups
+        site % E = real(energy_groups, 8)
       else
-        site % g = binary_search(energy_bins, energy_groups + 1, site % E)
+        site % E = real(binary_search(energy_bins, energy_groups + 1, &
+             site % E), 8)
       end if
     end if
 

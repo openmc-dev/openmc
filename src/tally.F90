@@ -854,17 +854,21 @@ contains
 
                     ! Check if this is the desired MT
                     if (score_bin == rxn % MT) then
-                      ! Retrieve index on nuclide energy grid and interpolation
-                      ! factor
-                      i_energy = micro_xs(i_nuclide) % index_grid
-                      f = micro_xs(i_nuclide) % interp_factor
+                      if (score_bin == ELASTIC) then
+                        score = micro_xs(i_nuclide) % elastic * &
+                             atom_density * flux
+                      else
+                        ! Retrieve index on nuclide energy grid and interpolation
+                        ! factor
+                        i_energy = micro_xs(i_nuclide) % index_grid
+                        f = micro_xs(i_nuclide) % interp_factor
 
-                      if (i_energy >= rxn % threshold) then
-                        score = ((ONE - f) * rxn % sigma(i_energy - &
-                             rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                             rxn%threshold + 2)) * atom_density * flux
+                        if (i_energy >= rxn % threshold) then
+                          score = ((ONE - f) * rxn % sigma(i_energy - &
+                               rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                               rxn%threshold + 2)) * atom_density * flux
+                        end if
                       end if
-
                       exit REACTION_LOOP
                     end if
                   end do REACTION_LOOP
@@ -990,17 +994,20 @@ contains
 
                       ! Check if this is the desired MT
                       if (score_bin == rxn % MT) then
-                        ! Retrieve index on nuclide energy grid and interpolation
-                        ! factor
-                        i_energy = micro_xs(i_nuc) % index_grid
-                        f = micro_xs(i_nuc) % interp_factor
+                        if (score_bin == ELASTIC) then
+                          score = material_xs % elastic * flux
+                        else
+                          ! Retrieve index on nuclide energy grid and interpolation
+                          ! factor
+                          i_energy = micro_xs(i_nuc) % index_grid
+                          f = micro_xs(i_nuc) % interp_factor
 
-                        if (i_energy >= rxn % threshold) then
-                          score = score + ((ONE - f) * rxn % sigma(i_energy - &
-                               rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                               rxn%threshold + 2)) * atom_density * flux
+                          if (i_energy >= rxn % threshold) then
+                            score = score + ((ONE - f) * rxn % sigma(i_energy - &
+                                 rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                                 rxn%threshold + 2)) * atom_density * flux
+                          end if
                         end if
-
                         exit
                       end if
                     end do
@@ -1193,16 +1200,19 @@ contains
 
               ! Check if this is the desired MT
               if (score_bin == rxn % MT) then
-                ! Retrieve index on nuclide energy grid and interpolation factor
-                i_energy = micro_xs(i_nuclide) % index_grid
-                f = micro_xs(i_nuclide) % interp_factor
+                if (score_bin == ELASTIC) then
+                  score = micro_xs(i_nuclide) % elastic * atom_density * flux
+                else
+                  ! Retrieve index on nuclide energy grid and interpolation factor
+                  i_energy = micro_xs(i_nuclide) % index_grid
+                  f = micro_xs(i_nuclide) % interp_factor
 
-                if (i_energy >= rxn % threshold) then
-                  score = ((ONE - f) * rxn % sigma(i_energy - &
-                       rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                       rxn%threshold + 2)) * atom_density * flux
+                  if (i_energy >= rxn % threshold) then
+                    score = ((ONE - f) * rxn % sigma(i_energy - &
+                         rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                         rxn%threshold + 2)) * atom_density * flux
+                  end if
                 end if
-
                 exit REACTION_LOOP
               end if
             end do REACTION_LOOP
@@ -1342,17 +1352,20 @@ contains
 
               ! Check if this is the desired MT
               if (score_bin == rxn % MT) then
-                ! Retrieve index on nuclide energy grid and interpolation
-                ! factor
-                i_energy = micro_xs(i_nuclide) % index_grid
-                f = micro_xs(i_nuclide) % interp_factor
+                if (score_bin == ELASTIC) then
+                  score = material_xs % elastic * flux
+                else
+                  ! Retrieve index on nuclide energy grid and interpolation
+                  ! factor
+                  i_energy = micro_xs(i_nuclide) % index_grid
+                  f = micro_xs(i_nuclide) % interp_factor
 
-                if (i_energy >= rxn % threshold) then
-                  score = score + ((ONE - f) * rxn % sigma(i_energy - &
-                       rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                       rxn%threshold + 2)) * atom_density * flux
+                  if (i_energy >= rxn % threshold) then
+                    score = score + ((ONE - f) * rxn % sigma(i_energy - &
+                         rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                         rxn%threshold + 2)) * atom_density * flux
+                  end if
                 end if
-
                 exit
               end if
             end do

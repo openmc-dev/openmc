@@ -8,12 +8,14 @@ from warnings import warn
 import numpy as np
 import h5py
 
-from .data import ATOMIC_SYMBOL, SUM_RULES, K_BOLTZMANN
 from .ace import Table, get_table
+from .data import ATOMIC_SYMBOL, K_BOLTZMANN
 from .fission_energy import FissionEnergyRelease
-from .function import Tabulated1D, Sum
+from .function import Tabulated1D, Sum, ResonancesWithBackground
+from .endf import Evaluation, SUM_RULES
 from .product import Product
-from .reaction import Reaction, _get_photon_products
+from .reaction import Reaction, _get_photon_products_ace
+from .resonance import Resonances, _RESOLVED
 from .urr import ProbabilityTables
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
@@ -137,6 +139,8 @@ class IncidentNeutron(EqualityMixin):
         Contains the cross sections, secondary angle and energy distributions,
         and other associated data for each reaction. The keys are the MT values
         and the values are Reaction objects.
+    resonances : openmc.data.Resonances or None
+        Resonance parameters
     summed_reactions : collections.OrderedDict
         Contains summed cross sections, e.g., the total cross section. The keys
         are the MT values and the values are Reaction objects.
@@ -166,6 +170,7 @@ class IncidentNeutron(EqualityMixin):
         self.reactions = OrderedDict()
         self.summed_reactions = OrderedDict()
         self._urr = {}
+        self._resonances = None
 
     def __contains__(self, mt):
         return mt in self.reactions or mt in self.summed_reactions
@@ -213,6 +218,10 @@ class IncidentNeutron(EqualityMixin):
         return self._reactions
 
     @property
+    def resonances(self):
+        return self._resonances
+
+    @property
     def summed_reactions(self):
         return self._summed_reactions
 
@@ -236,7 +245,7 @@ class IncidentNeutron(EqualityMixin):
     @atomic_number.setter
     def atomic_number(self, atomic_number):
         cv.check_type('atomic number', atomic_number, Integral)
-        cv.check_greater_than('atomic number', atomic_number, 0)
+        cv.check_greater_than('atomic number', atomic_number, 0, True)
         self._atomic_number = atomic_number
 
     @mass_number.setter
@@ -267,6 +276,11 @@ class IncidentNeutron(EqualityMixin):
     def reactions(self, reactions):
         cv.check_type('reactions', reactions, Mapping)
         self._reactions = reactions
+
+    @resonances.setter
+    def resonances(self, resonances):
+        cv.check_type('resonances', resonances, Resonances)
+        self._resonances = resonances
 
     @summed_reactions.setter
     def summed_reactions(self, summed_reactions):
@@ -587,7 +601,7 @@ class IncidentNeutron(EqualityMixin):
                                    for mt_i in mts])
 
                 # Determine summed cross section
-                rx.products += _get_photon_products(ace, rx)
+                rx.products += _get_photon_products_ace(ace, rx)
                 data.summed_reactions[mt] = rx
 
         # Read unresolved resonance probability tables
@@ -595,4 +609,80 @@ class IncidentNeutron(EqualityMixin):
         if urr is not None:
             data.urr[strT] = urr
 
+        return data
+
+    @classmethod
+    def from_endf(cls, ev_or_filename):
+        """Generate incident neutron continuous-energy data from an ENDF evaluation
+
+        Parameters
+        ----------
+        ev_or_filename : openmc.data.endf.Evaluation or str
+            ENDF evaluation to read from. If given as a string, it is assumed to
+            be the filename for the ENDF file.
+
+        Returns
+        -------
+        openmc.data.IncidentNeutron
+            Incident neutron continuous-energy data
+
+        """
+        if isinstance(ev_or_filename, Evaluation):
+            ev = ev_or_filename
+        else:
+            ev = Evaluation(ev_or_filename)
+
+        atomic_number = ev.target['atomic_number']
+        mass_number = ev.target['mass_number']
+        metastable = ev.target['isomeric_state']
+        atomic_weight_ratio = ev.target['mass']
+        temperature = ev.target['temperature']
+
+        # Determine name
+        element = ATOMIC_SYMBOL[atomic_number]
+        if metastable > 0:
+            name = '{}{}_m{}'.format(element, mass_number, metastable)
+        else:
+            name = '{}{}'.format(element, mass_number)
+
+        # Instantiate incident neutron data
+        data = cls(name, atomic_number, mass_number, metastable,
+                   atomic_weight_ratio, temperature)
+
+        if (2, 151) in ev.section:
+            data.resonances = Resonances.from_endf(ev)
+
+        # Read each reaction
+        for mf, mt, nc, mod in ev.reaction_list:
+            if mf == 3:
+                data.reactions[mt] = Reaction.from_endf(ev, mt)
+
+        # Replace cross sections for elastic, capture, fission
+        try:
+            if isinstance(data.resonances.resolved, _RESOLVED):
+                for mt in (2, 102, 18):
+                    if mt in data.reactions:
+                        rx = data.reactions[mt]
+                        rx.xs['0K'] = ResonancesWithBackground(
+                            data.resonances, rx.xs['0K'], mt)
+        except ValueError:
+            # Thrown if multiple resolved ranges (e.g. Pu239 in ENDF/B-VII.1)
+            pass
+
+        # If first-chance, second-chance, etc. fission are present, check
+        # whether energy distributions were specified in MF=5. If not, copy the
+        # energy distribution from MT=18.
+        for mt, rx in data.reactions.items():
+            if mt in (19, 20, 21, 38):
+                if (5, mt) not in ev.section:
+                    neutron = data.reactions[18].products[0]
+                    rx.products[0].applicability = neutron.applicability
+                    rx.products[0].distribution = neutron.distribution
+
+        # Read fission energy release (requires that we already know nu for
+        # fission)
+        if (1, 458) in ev.section:
+            data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
+
+        data._evaluation = ev
         return data

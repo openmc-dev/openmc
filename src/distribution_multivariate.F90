@@ -16,15 +16,15 @@ module distribution_multivariate
   type, abstract :: UnitSphereDistribution
     real(8) :: reference_uvw(3)
   contains
-    procedure(iSample), deferred :: sample
+    procedure(unitsphere_distribution_sample_), deferred :: sample
   end type UnitSphereDistribution
 
   abstract interface
-    function iSample(this) result(uvw)
+    function unitsphere_distribution_sample_(this) result(uvw)
       import UnitSphereDistribution
       class(UnitSphereDistribution), intent(in) :: this
       real(8) :: uvw(3)
-    end function iSample
+    end function unitsphere_distribution_sample_
   end interface
 
 !===============================================================================
@@ -58,15 +58,15 @@ module distribution_multivariate
 
   type, abstract :: SpatialDistribution
   contains
-    procedure(iSampleSpatial), deferred :: sample
+    procedure(spatial_distribution_sample_), deferred :: sample
   end type SpatialDistribution
 
   abstract interface
-    function iSampleSpatial(this) result(xyz)
+    function spatial_distribution_sample_(this) result(xyz)
       import SpatialDistribution
       class(SpatialDistribution), intent(in) :: this
       real(8) :: xyz(3)
-    end function iSampleSpatial
+    end function spatial_distribution_sample_
   end interface
 
   type, extends(SpatialDistribution) :: CartesianIndependent

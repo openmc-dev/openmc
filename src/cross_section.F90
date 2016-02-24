@@ -1,6 +1,5 @@
 module cross_section
 
-  use ace_header,      only: Reaction, UrrData
   use constants
   use energy_grid,     only: grid_method, log_spacing
   use error,           only: fatal_error
@@ -363,131 +362,133 @@ contains
     real(8) :: capture      ! (n,gamma) cross section
     real(8) :: fission      ! fission cross section
     real(8) :: inelastic    ! inelastic cross section
-    type(UrrData), pointer   :: urr
-    type(NuclideCE), pointer :: nuc
 
     micro_xs(i_nuclide) % use_ptable = .true.
 
-    ! get pointer to probability table
-    nuc => nuclides(i_nuclide)
-    urr => nuc % urr_data
+    associate (nuc => nuclides(i_nuclide), urr => nuclides(i_nuclide) % urr_data)
+      ! determine energy table
+      i_energy = 1
+      do
+        if (E < urr % energy(i_energy + 1)) exit
+        i_energy = i_energy + 1
+      end do
 
-    ! determine energy table
-    i_energy = 1
-    do
-      if (E < urr % energy(i_energy + 1)) exit
-      i_energy = i_energy + 1
-    end do
+      ! determine interpolation factor on table
+      f = (E - urr % energy(i_energy)) / &
+           (urr % energy(i_energy + 1) - urr % energy(i_energy))
 
-    ! determine interpolation factor on table
-    f = (E - urr % energy(i_energy)) / &
-         (urr % energy(i_energy + 1) - urr % energy(i_energy))
+      ! sample probability table using the cumulative distribution
 
-    ! sample probability table using the cumulative distribution
+      ! determine interpolation factor on table
+      f = (E - urr % energy(i_energy)) / &
+           (urr % energy(i_energy + 1) - urr % energy(i_energy))
 
-    ! Random numbers for xs calculation are sampled from a separated stream.
-    ! This guarantees the randomness and, at the same time, makes sure we reuse
-    ! random number for the same nuclide at different temperatures, therefore
-    ! preserving correlation of temperature in probability tables.
-    call prn_set_stream(STREAM_URR_PTABLE)
-    r = future_prn(int(nuc_zaid_dict % get_key(nuc % zaid), 8))
-    call prn_set_stream(STREAM_TRACKING)
+      ! sample probability table using the cumulative distribution
 
-    i_low = 1
-    do
-      if (urr % prob(i_energy, URR_CUM_PROB, i_low) > r) exit
-      i_low = i_low + 1
-    end do
-    i_up = 1
-    do
-      if (urr % prob(i_energy + 1, URR_CUM_PROB, i_up) > r) exit
-      i_up = i_up + 1
-    end do
+      ! Random numbers for xs calculation are sampled from a separated stream.
+      ! This guarantees the randomness and, at the same time, makes sure we reuse
+      ! random number for the same nuclide at different temperatures, therefore
+      ! preserving correlation of temperature in probability tables.
+      call prn_set_stream(STREAM_URR_PTABLE)
+      r = future_prn(int(nuc_zaid_dict % get_key(nuc % zaid), 8))
+      call prn_set_stream(STREAM_TRACKING)
 
-    ! determine elastic, fission, and capture cross sections from probability
-    ! table
-    if (urr % interp == LINEAR_LINEAR) then
-      elastic = (ONE - f) * urr % prob(i_energy, URR_ELASTIC, i_low) + &
-           f * urr % prob(i_energy + 1, URR_ELASTIC, i_up)
-      fission = (ONE - f) * urr % prob(i_energy, URR_FISSION, i_low) + &
-           f * urr % prob(i_energy + 1, URR_FISSION, i_up)
-      capture = (ONE - f) * urr % prob(i_energy, URR_N_GAMMA, i_low) + &
-           f * urr % prob(i_energy + 1, URR_N_GAMMA, i_up)
-    elseif (urr % interp == LOG_LOG) then
-      ! Get logarithmic interpolation factor
-      f = log(E / urr % energy(i_energy)) / &
-           log(urr % energy(i_energy + 1) / urr % energy(i_energy))
+      i_low = 1
+      do
+        if (urr % prob(i_energy, URR_CUM_PROB, i_low) > r) exit
+        i_low = i_low + 1
+      end do
+      i_up = 1
+      do
+        if (urr % prob(i_energy + 1, URR_CUM_PROB, i_up) > r) exit
+        i_up = i_up + 1
+      end do
 
-      ! Calculate elastic cross section/factor
-      elastic = ZERO
-      if (urr % prob(i_energy, URR_ELASTIC, i_low) > ZERO .and. &
-           urr % prob(i_energy + 1, URR_ELASTIC, i_up) > ZERO) then
-        elastic = exp((ONE - f) * log(urr % prob(i_energy, URR_ELASTIC, &
-             i_low)) + f * log(urr % prob(i_energy + 1, URR_ELASTIC, &
-             i_up)))
-      end if
+      ! determine elastic, fission, and capture cross sections from probability
+      ! table
+      if (urr % interp == LINEAR_LINEAR) then
+        elastic = (ONE - f) * urr % prob(i_energy, URR_ELASTIC, i_low) + &
+             f * urr % prob(i_energy + 1, URR_ELASTIC, i_up)
+        fission = (ONE - f) * urr % prob(i_energy, URR_FISSION, i_low) + &
+             f * urr % prob(i_energy + 1, URR_FISSION, i_up)
+        capture = (ONE - f) * urr % prob(i_energy, URR_N_GAMMA, i_low) + &
+             f * urr % prob(i_energy + 1, URR_N_GAMMA, i_up)
+      elseif (urr % interp == LOG_LOG) then
+        ! Get logarithmic interpolation factor
+        f = log(E / urr % energy(i_energy)) / &
+             log(urr % energy(i_energy + 1) / urr % energy(i_energy))
 
-      ! Calculate fission cross section/factor
-      fission = ZERO
-      if (urr % prob(i_energy, URR_FISSION, i_low) > ZERO .and. &
-           urr % prob(i_energy + 1, URR_FISSION, i_up) > ZERO) then
-        fission = exp((ONE - f) * log(urr % prob(i_energy, URR_FISSION, &
-             i_low)) + f * log(urr % prob(i_energy + 1, URR_FISSION, &
-             i_up)))
-      end if
-
-      ! Calculate capture cross section/factor
-      capture = ZERO
-      if (urr % prob(i_energy, URR_N_GAMMA, i_low) > ZERO .and. &
-           urr % prob(i_energy + 1, URR_N_GAMMA, i_up) > ZERO) then
-        capture = exp((ONE - f) * log(urr % prob(i_energy, URR_N_GAMMA, &
-             i_low)) + f * log(urr % prob(i_energy + 1, URR_N_GAMMA, &
-             i_up)))
-      end if
-    end if
-
-    ! Determine treatment of inelastic scattering
-    inelastic = ZERO
-    if (urr % inelastic_flag > 0) then
-      ! Get index on energy grid and interpolation factor
-      i_energy = micro_xs(i_nuclide) % index_grid
-      f = micro_xs(i_nuclide) % interp_factor
-
-      ! Determine inelastic scattering cross section
-      associate (rxn => nuc % reactions(nuc % urr_inelastic))
-        if (i_energy >= rxn % threshold) then
-          inelastic = (ONE - f) * rxn % sigma(i_energy - rxn%threshold + 1) + &
-               f * rxn % sigma(i_energy - rxn%threshold + 2)
+        ! Calculate elastic cross section/factor
+        elastic = ZERO
+        if (urr % prob(i_energy, URR_ELASTIC, i_low) > ZERO .and. &
+             urr % prob(i_energy + 1, URR_ELASTIC, i_up) > ZERO) then
+          elastic = exp((ONE - f) * log(urr % prob(i_energy, URR_ELASTIC, &
+               i_low)) + f * log(urr % prob(i_energy + 1, URR_ELASTIC, &
+               i_up)))
         end if
-      end associate
-    end if
 
-    ! Multiply by smooth cross-section if needed
-    if (urr % multiply_smooth) then
-      elastic = elastic * micro_xs(i_nuclide) % elastic
-      capture = capture * (micro_xs(i_nuclide) % absorption - &
-           micro_xs(i_nuclide) % fission)
-      fission = fission * micro_xs(i_nuclide) % fission
-    end if
+        ! Calculate fission cross section/factor
+        fission = ZERO
+        if (urr % prob(i_energy, URR_FISSION, i_low) > ZERO .and. &
+             urr % prob(i_energy + 1, URR_FISSION, i_up) > ZERO) then
+          fission = exp((ONE - f) * log(urr % prob(i_energy, URR_FISSION, &
+               i_low)) + f * log(urr % prob(i_energy + 1, URR_FISSION, &
+               i_up)))
+        end if
 
-    ! Check for negative values
-    if (elastic < ZERO) elastic = ZERO
-    if (fission < ZERO) fission = ZERO
-    if (capture < ZERO) capture = ZERO
+        ! Calculate capture cross section/factor
+        capture = ZERO
+        if (urr % prob(i_energy, URR_N_GAMMA, i_low) > ZERO .and. &
+             urr % prob(i_energy + 1, URR_N_GAMMA, i_up) > ZERO) then
+          capture = exp((ONE - f) * log(urr % prob(i_energy, URR_N_GAMMA, &
+               i_low)) + f * log(urr % prob(i_energy + 1, URR_N_GAMMA, &
+               i_up)))
+        end if
+      end if
 
-    ! Set elastic, absorption, fission, and total cross sections. Note that the
-    ! total cross section is calculated as sum of partials rather than using the
-    ! table-provided value
-    micro_xs(i_nuclide) % elastic = elastic
-    micro_xs(i_nuclide) % absorption = capture + fission
-    micro_xs(i_nuclide) % fission = fission
-    micro_xs(i_nuclide) % total = elastic + inelastic + capture + fission
+      ! Determine treatment of inelastic scattering
+      inelastic = ZERO
+      if (urr % inelastic_flag > 0) then
+        ! Get index on energy grid and interpolation factor
+        i_energy = micro_xs(i_nuclide) % index_grid
+        f = micro_xs(i_nuclide) % interp_factor
 
-    ! Determine nu-fission cross section
-    if (nuc % fissionable) then
-      micro_xs(i_nuclide) % nu_fission = nu_total(nuc, E) * &
-           micro_xs(i_nuclide) % fission
-    end if
+        ! Determine inelastic scattering cross section
+        associate (rxn => nuc % reactions(nuc % urr_inelastic))
+          if (i_energy >= rxn % threshold) then
+            inelastic = (ONE - f) * rxn % sigma(i_energy - rxn%threshold + 1) + &
+                 f * rxn % sigma(i_energy - rxn%threshold + 2)
+          end if
+        end associate
+      end if
+
+      ! Multiply by smooth cross-section if needed
+      if (urr % multiply_smooth) then
+        elastic = elastic * micro_xs(i_nuclide) % elastic
+        capture = capture * (micro_xs(i_nuclide) % absorption - &
+             micro_xs(i_nuclide) % fission)
+        fission = fission * micro_xs(i_nuclide) % fission
+      end if
+
+      ! Check for negative values
+      if (elastic < ZERO) elastic = ZERO
+      if (fission < ZERO) fission = ZERO
+      if (capture < ZERO) capture = ZERO
+
+      ! Set elastic, absorption, fission, and total cross sections. Note that the
+      ! total cross section is calculated as sum of partials rather than using the
+      ! table-provided value
+      micro_xs(i_nuclide) % elastic = elastic
+      micro_xs(i_nuclide) % absorption = capture + fission
+      micro_xs(i_nuclide) % fission = fission
+      micro_xs(i_nuclide) % total = elastic + inelastic + capture + fission
+
+      ! Determine nu-fission cross section
+      if (nuc % fissionable) then
+        micro_xs(i_nuclide) % nu_fission = nu_total(nuc, E) * &
+             micro_xs(i_nuclide) % fission
+      end if
+    end associate
 
   end subroutine calculate_urr_xs
 

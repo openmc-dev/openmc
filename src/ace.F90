@@ -1,11 +1,11 @@
 module ace
 
-  use ace_header, only: Reaction
+  use angleenergy_header, only: AngleEnergy
   use constants
   use distribution_univariate, only: Uniform, Equiprobable, Tabular
   use endf, only: is_fission, is_disappearance
   use energy_distribution, only: TabularEquiprobable, LevelInelastic, &
-       ContinuousTabular, MaxwellEnergy, Evaporation, WattEnergy, NBodyPhaseSpace
+       ContinuousTabular, MaxwellEnergy, Evaporation, WattEnergy
   use error, only: fatal_error, warning
   use fission, only: nu_total
   use global
@@ -15,9 +15,9 @@ module ace
   use output, only: write_message
   use sab_header
   use set_header, only: SetChar
-  use secondary_header, only: AngleEnergy
   use secondary_correlated, only: CorrelatedAngleEnergy
   use secondary_kalbach, only: KalbachMann
+  use secondary_nbody, only: NBodyPhaseSpace
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use string, only: to_str, to_lower
 
@@ -746,13 +746,14 @@ contains
     ! sigma array is not allocated or stored for elastic scattering since it is
     ! already stored in nuc % elastic
     associate (rxn => nuc % reactions(1))
-      rxn%MT            = 2
-      rxn%Q_value       = ZERO
-      rxn%multiplicity  = 1
-      rxn%threshold     = 1
-      rxn%scatter_in_cm = .true.
-      allocate(rxn%secondary%distribution(1))
-      allocate(UncorrelatedAngleEnergy :: rxn%secondary%distribution(1)%obj)
+      rxn % MT = 2
+      rxn % Q_value = ZERO
+      allocate(rxn % products(1))
+      rxn % products(1) % yield = 1
+      rxn % threshold = 1
+      rxn % scatter_in_cm = .true.
+      allocate(rxn % products(1) % distribution(1))
+      allocate(UncorrelatedAngleEnergy :: rxn % products(1) % distribution(1) % obj)
     end associate
 
     ! Add contribution of elastic scattering to total cross section
@@ -768,45 +769,46 @@ contains
     do i = 1, NMT
       associate (rxn => nuc % reactions(i+1))
         ! read MT number, Q-value, and neutrons produced
-        rxn % MT            = int(XSS(LMT + i - 1))
-        rxn % Q_value       = XSS(JXS4 + i - 1)
-        rxn % multiplicity  = abs(nint(XSS(JXS5 + i - 1)))
+        rxn % MT = int(XSS(LMT + i - 1))
+        rxn % Q_value = XSS(JXS4 + i - 1)
+        allocate(rxn % products(1))
+        rxn % products(1) % yield = abs(nint(XSS(JXS5 + i - 1)))
         rxn % scatter_in_cm = (nint(XSS(JXS5 + i - 1)) < 0)
 
         ! Read energy-dependent multiplicities
-        if (rxn % multiplicity > 100) then
+        if (rxn % products(1) % yield > 100) then
           ! Set flag and allocate space for Tab1 to store yield
-          rxn % multiplicity_with_E = .true.
-          allocate(rxn % multiplicity_E)
+          rxn % products(1) % yield_with_E = .true.
+          allocate(rxn % products(1) % yield_E)
 
-          XSS_index = JXS(11) + rxn % multiplicity - 101
+          XSS_index = JXS(11) + rxn % products(1) % yield - 101
           NR = nint(XSS(XSS_index))
-          rxn % multiplicity_E % n_regions = NR
+          rxn % products(1) % yield_E % n_regions = NR
 
           ! allocate space for ENDF interpolation parameters
           if (NR > 0) then
-            allocate(rxn % multiplicity_E % nbt(NR))
-            allocate(rxn % multiplicity_E % int(NR))
+            allocate(rxn % products(1) % yield_E % nbt(NR))
+            allocate(rxn % products(1) % yield_E % int(NR))
           end if
 
           ! read ENDF interpolation parameters
           XSS_index = XSS_index + 1
           if (NR > 0) then
-            rxn % multiplicity_E % nbt = get_int(NR)
-            rxn % multiplicity_E % int = get_int(NR)
+            rxn % products(1) % yield_E % nbt = get_int(NR)
+            rxn % products(1) % yield_E % int = get_int(NR)
           end if
 
           ! allocate space for yield data
           XSS_index = XSS_index + 2*NR
           NE = nint(XSS(XSS_index))
-          rxn % multiplicity_E % n_pairs = NE
-          allocate(rxn % multiplicity_E % x(NE))
-          allocate(rxn % multiplicity_E % y(NE))
+          rxn % products(1) % yield_E % n_pairs = NE
+          allocate(rxn % products(1) % yield_E % x(NE))
+          allocate(rxn % products(1) % yield_E % y(NE))
 
           ! read yield data
           XSS_index = XSS_index + 1
-          rxn % multiplicity_E % x = get_real(NE)
-          rxn % multiplicity_E % y = get_real(NE)
+          rxn % products(1) % yield_E % x = get_real(NE)
+          rxn % products(1) % yield_E % y = get_real(NE)
         end if
 
         ! read starting energy index
@@ -923,8 +925,8 @@ contains
         ! "one" angular distribution, it is repeated as many times as there are
         ! energy distributions for this reaction since the
         ! UncorrelatedAngleEnergy type holds one angle and energy distribution.
-        do k = 1, size(rxn%secondary%distribution)
-          select type (aedist => rxn%secondary%distribution(k)%obj)
+        do k = 1, size(rxn%products(1)%distribution)
+          select type (aedist => rxn%products(1)%distribution(k)%obj)
           type is (UncorrelatedAngleEnergy)
             ! allocate space for incoming energies and locations
             NE = int(XSS(JXS(9) + LOCB - 1))
@@ -1017,9 +1019,9 @@ contains
       end do
 
       ! Allocate space for distributions and probability of validity
-      associate (secondary => nuc%reactions(i + 1)%secondary)
-        allocate(secondary%applicability(n))
-        allocate(secondary%distribution(n))
+      associate (p => nuc%reactions(i + 1)%products(1))
+        allocate(p%applicability(n))
+        allocate(p%distribution(n))
 
         LNW = nint(XSS(JXS(10) + i - 1))
         n = 0
@@ -1031,10 +1033,10 @@ contains
           IDAT = nint(XSS(JXS(11) + LNW + 1))
 
           ! Read probability of law validity
-          call secondary%applicability(n)%from_ace(XSS, JXS(11) + LNW + 2)
+          call p%applicability(n)%from_ace(XSS, JXS(11) + LNW + 2)
 
           ! Read energy law data
-          call get_energy_dist(secondary%distribution(n)%obj, LAW, &
+          call get_energy_dist(p%distribution(n)%obj, LAW, &
                JXS(11), IDAT, nuc%awr, nuc%reactions(i + 1)%Q_value)
 
           ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -1046,7 +1048,7 @@ contains
           ! mark fission reactions so that we avoid the angle sampling.
           if (any(nuc%reactions(i + 1)%MT == &
                [N_FISSION, N_F, N_NF, N_2NF, N_3NF])) then
-            select type (aedist => secondary%distribution(n)%obj)
+            select type (aedist => p%distribution(n)%obj)
             type is (UncorrelatedAngleEnergy)
               aedist%fission = .true.
             end select
@@ -1089,6 +1091,8 @@ contains
       allocate(KalbachMann :: aedist)
     elseif (law == 61) then
       allocate(CorrelatedAngleEnergy :: aedist)
+    elseif (law == 66) then
+      allocate(NBodyPhaseSpace :: aedist)
     else
       allocate(UncorrelatedAngleEnergy :: aedist)
     end if
@@ -1157,38 +1161,38 @@ contains
           ! locators
           NE = nint(XSS(XSS_index))
           XSS_index = XSS_index + 1
-          allocate(edist%energy_in(NE))
+          allocate(edist%energy(NE))
           allocate(L(NE))
-          edist%energy_in(:) = get_real(NE)
+          edist%energy(:) = get_real(NE)
           L(:) = get_int(NE)
 
           ! Read outgoing energy tables
-          allocate(edist%energy_out(NE))
+          allocate(edist%distribution(NE))
           do i = 1, NE
             ! Determine interpolation and number of discrete points
             XSS_index = LDIS + L(i) - 1
             interp = nint(XSS(XSS_index))
-            edist%energy_out(i)%interpolation = mod(interp, 10)
-            edist%energy_out(i)%n_discrete = (interp - &
-                 edist%energy_out(i)%interpolation)/10
+            edist%distribution(i)%interpolation = mod(interp, 10)
+            edist%distribution(i)%n_discrete = (interp - &
+                 edist%distribution(i)%interpolation)/10
 
             ! check for discrete lines present
-            if (edist%energy_out(i)%n_discrete > 0) then
+            if (edist%distribution(i)%n_discrete > 0) then
               call fatal_error("Discrete lines in continuous tabular &
                    &distribution not yet supported")
             end if
 
             ! Determine number of points and allocate space
             NP = nint(XSS(XSS_index + 1))
-            allocate(edist%energy_out(i)%e_out(NP))
-            allocate(edist%energy_out(i)%p(NP))
-            allocate(edist%energy_out(i)%c(NP))
+            allocate(edist%distribution(i)%e_out(NP))
+            allocate(edist%distribution(i)%p(NP))
+            allocate(edist%distribution(i)%c(NP))
 
             ! Read tabular PDF for outgoing energy
             XSS_index = XSS_index + 2
-            edist%energy_out(i)%e_out(:) = get_real(NP)
-            edist%energy_out(i)%p(:) = get_real(NP)
-            edist%energy_out(i)%c(:) = get_real(NP)
+            edist%distribution(i)%e_out(:) = get_real(NP)
+            edist%distribution(i)%p(:) = get_real(NP)
+            edist%distribution(i)%c(:) = get_real(NP)
           end do
 
           deallocate(L)
@@ -1223,16 +1227,6 @@ contains
           edist%u = XSS(XSS_index)
         end select
 
-      case (66)
-        allocate(NBodyPhaseSpace :: aedist%energy)
-        select type(edist => aedist%energy)
-        type is (NBodyPhaseSpace)
-          edist%n_bodies = int(XSS(XSS_index))
-          edist%mass_ratio = XSS(XSS_index + 1)
-          edist%A = awr
-          edist%Q = Q_value
-        end select
-
       end select
 
     type is (KalbachMann)
@@ -1248,42 +1242,42 @@ contains
       aedist%n_region = NR
 
       ! Read incoming energies for which outgoing energies are tabulated and locators
-      allocate(aedist%energy_in(NE))
+      allocate(aedist%energy(NE))
       allocate(L(NE))
       XSS_index = XSS_index + 2 + 2*NR
-      aedist%energy_in(:) = get_real(NE)
+      aedist%energy(:) = get_real(NE)
       L(:) = get_int(NE)
 
       ! Read outgoing energy tables
-      allocate(aedist%table(NE))
+      allocate(aedist%distribution(NE))
       do i = 1, NE
         ! Determine interpolation and number of discrete points
         XSS_index = LDIS + L(i) - 1
         interp = nint(XSS(XSS_index))
-        aedist%table(i)%interpolation = mod(interp, 10)
-        aedist%table(i)%n_discrete = (interp - aedist%table(i)%interpolation)/10
+        aedist%distribution(i)%interpolation = mod(interp, 10)
+        aedist%distribution(i)%n_discrete = (interp - aedist%distribution(i)%interpolation)/10
 
         ! check for discrete lines present
-        if (aedist%table(i)%n_discrete > 0) then
+        if (aedist%distribution(i)%n_discrete > 0) then
           call fatal_error("Discrete lines in Kalbach-Mann distribution not &
                &yet supported")
         end if
 
         ! Determine number of points and allocate space
         NP = nint(XSS(XSS_index + 1))
-        allocate(aedist%table(i)%e_out(NP))
-        allocate(aedist%table(i)%p(NP))
-        allocate(aedist%table(i)%c(NP))
-        allocate(aedist%table(i)%r(NP))
-        allocate(aedist%table(i)%a(NP))
+        allocate(aedist%distribution(i)%e_out(NP))
+        allocate(aedist%distribution(i)%p(NP))
+        allocate(aedist%distribution(i)%c(NP))
+        allocate(aedist%distribution(i)%r(NP))
+        allocate(aedist%distribution(i)%a(NP))
 
         ! Read tabular PDF for outgoing energy
         XSS_index = XSS_index + 2
-        aedist%table(i)%e_out(:) = get_real(NP)
-        aedist%table(i)%p(:) = get_real(NP)
-        aedist%table(i)%c(:) = get_real(NP)
-        aedist%table(i)%r(:) = get_real(NP)
-        aedist%table(i)%a(:) = get_real(NP)
+        aedist%distribution(i)%e_out(:) = get_real(NP)
+        aedist%distribution(i)%p(:) = get_real(NP)
+        aedist%distribution(i)%c(:) = get_real(NP)
+        aedist%distribution(i)%r(:) = get_real(NP)
+        aedist%distribution(i)%a(:) = get_real(NP)
       end do
 
       deallocate(L)
@@ -1302,48 +1296,48 @@ contains
 
       ! Read incoming energies for which outgoing energies are tabulated and
       ! locators
-      allocate(aedist%energy_in(NE))
+      allocate(aedist%energy(NE))
       allocate(L(NE))
       XSS_index = XSS_index + 2 + 2*NR
-      aedist%energy_in(:) = get_real(NE)
+      aedist%energy(:) = get_real(NE)
       L(:) = get_int(NE)
 
       ! Read outgoing energy tables
-      allocate(aedist%table(NE))
+      allocate(aedist%distribution(NE))
       do i = 1, NE
         ! Determine interpolation and number of discrete points
         XSS_index = LDIS + L(i) - 1
         interp = nint(XSS(XSS_index))
-        aedist%table(i)%interpolation = mod(interp, 10)
-        aedist%table(i)%n_discrete = (interp - aedist%table(i)%interpolation)/10
+        aedist%distribution(i)%interpolation = mod(interp, 10)
+        aedist%distribution(i)%n_discrete = (interp - aedist%distribution(i)%interpolation)/10
 
         ! check for discrete lines present
-        if (aedist%table(i)%n_discrete > 0) then
+        if (aedist%distribution(i)%n_discrete > 0) then
           call fatal_error("Discrete lines in correlated angle-energy &
                &distribution not yet supported")
         end if
 
         ! Determine number of points and allocate space
         NP = nint(XSS(XSS_index + 1))
-        allocate(aedist%table(i)%e_out(NP))
-        allocate(aedist%table(i)%p(NP))
-        allocate(aedist%table(i)%c(NP))
+        allocate(aedist%distribution(i)%e_out(NP))
+        allocate(aedist%distribution(i)%p(NP))
+        allocate(aedist%distribution(i)%c(NP))
         allocate(LC(NP))
 
         ! Read tabular PDF for outgoing energy
         XSS_index = XSS_index + 2
-        aedist%table(i)%e_out(:) = get_real(NP)
-        aedist%table(i)%p(:) = get_real(NP)
-        aedist%table(i)%c(:) = get_real(NP)
+        aedist%distribution(i)%e_out(:) = get_real(NP)
+        aedist%distribution(i)%p(:) = get_real(NP)
+        aedist%distribution(i)%c(:) = get_real(NP)
         LC(:) = get_int(NP)
 
         ! allocate angular distributions for each incoming/outgoing energy
-        allocate(aedist%table(i)%angle(NP))
+        allocate(aedist%distribution(i)%angle(NP))
         do j = 1, NP
           if (LC(j) == 0) then
             ! isotropic
-            allocate(Uniform :: aedist%table(i)%angle(j)%obj)
-            select type (adist => aedist%table(i)%angle(j)%obj)
+            allocate(Uniform :: aedist%distribution(i)%angle(j)%obj)
+            select type (adist => aedist%distribution(i)%angle(j)%obj)
             type is (Uniform)
               adist%a = -ONE
               adist%b = ONE
@@ -1351,14 +1345,14 @@ contains
 
           elseif (LC(j) > 0) then
             ! tabular distribution
-            allocate(Tabular :: aedist%table(i)%angle(j)%obj)
+            allocate(Tabular :: aedist%distribution(i)%angle(j)%obj)
           end if
         end do
 
         ! read angular distributions
         do j = 1, NP
           XSS_index = LDIS + abs(LC(j)) - 1
-          select type(adist => aedist%table(i)%angle(j)%obj)
+          select type(adist => aedist%distribution(i)%angle(j)%obj)
           type is (Tabular)
             ! determine interpolation and number of points
             interp = nint(XSS(XSS_index))
@@ -1377,6 +1371,15 @@ contains
       end do
 
       deallocate(L)
+
+    type is (NBodyPhaseSpace)
+      ! ========================================================================
+      ! N-BODY PHASE SPACE DISTRIBUTION
+
+      aedist%n_bodies = int(XSS(XSS_index))
+      aedist%mass_ratio = XSS(XSS_index + 1)
+      aedist%A = awr
+      aedist%Q = Q_value
     end select
 
   end subroutine get_energy_dist

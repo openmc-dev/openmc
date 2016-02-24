@@ -1,6 +1,5 @@
 module physics
 
-  use ace_header,             only: Reaction
   use constants
   use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
@@ -17,6 +16,7 @@ module physics
   use particle_restart_write, only: write_particle_restart
   use physics_common
   use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
+  use reaction_header,        only: Reaction
   use search,                 only: binary_search
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use string,                 only: to_str
@@ -447,9 +447,9 @@ contains
     vel = sqrt(dot_product(v_n, v_n))
 
     ! Sample scattering angle
-    select type (dist => rxn%secondary%distribution(1)%obj)
+    select type (dist => rxn % products(1) % distribution(1) % obj)
     type is (UncorrelatedAngleEnergy)
-      mu_cm = dist%angle%sample(E)
+      mu_cm = dist % angle % sample(E)
     end select
 
     ! Determine direction cosines in CM
@@ -1276,7 +1276,7 @@ contains
       ! sample from prompt neutron energy distribution
       n_sample = 0
       do
-        call rxn%secondary%sample(p%E, E_out, prob)
+        call rxn % products(1) % sample(p % E, E_out, prob)
 
         ! resample if energy is greater than maximum neutron energy
         if (E_out < energy_max_neutron) exit
@@ -1316,7 +1316,7 @@ contains
     E_in = p % E
 
     ! sample outgoing energy and scattering cosine
-    call rxn%secondary%sample(E_in, E, mu)
+    call rxn % products(1) % sample(E_in, E, mu)
 
     ! if scattering system is in center-of-mass, transfer cosine of scattering
     ! angle and outgoing energy from CM to LAB
@@ -1345,12 +1345,12 @@ contains
     p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
 
     ! change weight of particle based on yield
-    if (rxn % multiplicity_with_E) then
-      yield = interpolate_tab1(rxn % multiplicity_E, E_in)
+    if (rxn % products(1) % yield_with_E) then
+      yield = interpolate_tab1(rxn % products(1) % yield_E, E_in)
       p % wgt = yield * p % wgt
     else
-      do i = 1, rxn % multiplicity - 1
-        call p % create_secondary(p % coord(1) % uvw, NEUTRON, run_CE=.True.)
+      do i = 1, rxn % products(1) % yield - 1
+        call p % create_secondary(p % coord(1) % uvw, NEUTRON, run_CE=.true.)
       end do
     end if
 

@@ -1,6 +1,5 @@
 module tally
 
-  use ace_header,       only: Reaction
   use constants
   use error,            only: fatal_error
   use geometry_header
@@ -245,9 +244,9 @@ contains
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-        ! For scattering production, we need to use the pre-collision
-        ! weight times the multiplicity as the estimate for the number of
-        ! neutrons exiting a reaction with neutrons in the exit channel
+        ! For scattering production, we need to use the pre-collision weight
+        ! times the yield as the estimate for the number of neutrons exiting a
+        ! reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
           ! Don't waste time on very common reactions we know have multiplicities
@@ -257,15 +256,15 @@ contains
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
 
-          ! Get multiplicity and apply to score
+          ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            if (rxn % multiplicity_with_E) then
-              ! Then the multiplicity was already incorporated in to p % wgt
+            if (rxn % products(1) % yield_with_E) then
+              ! Then the yield was already incorporated in to p % wgt
               ! per the scattering routine,
               score = p % wgt
             else
-              ! Grab the multiplicity from the rxn
-              score = p % last_wgt * rxn % multiplicity
+              ! Grab the yield from the rxn
+              score = p % last_wgt * rxn % products(1) % yield
             end if
           end associate
         end if
@@ -279,7 +278,7 @@ contains
           cycle SCORE_LOOP
         end if
         ! For scattering production, we need to use the pre-collision
-        ! weight times the multiplicity as the estimate for the number of
+        ! weight times the yield as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
@@ -290,15 +289,15 @@ contains
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
 
-          ! Get multiplicity and apply to score
+          ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            if (rxn % multiplicity_with_E) then
-              ! Then the multiplicity was already incorporated in to p % wgt
+            if (rxn % products(1) % yield_with_E) then
+              ! Then the yield was already incorporated in to p % wgt
               ! per the scattering routine,
               score = p % wgt
             else
-              ! Grab the multiplicity from the rxn
-              score = p % last_wgt * rxn % multiplicity
+              ! Grab the yield from the rxn
+              score = p % last_wgt * rxn % products(1) % yield
             end if
           end associate
         end if
@@ -312,7 +311,7 @@ contains
           cycle SCORE_LOOP
         end if
         ! For scattering production, we need to use the pre-collision
-        ! weight times the multiplicity as the estimate for the number of
+        ! weight times the yield as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
@@ -323,15 +322,15 @@ contains
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
 
-          ! Get multiplicity and apply to score
+          ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            if (rxn % multiplicity_with_E) then
-              ! Then the multiplicity was already incorporated in to p % wgt
+            if (rxn % products(1) % yield_with_E) then
+              ! Then the yield was already incorporated in to p % wgt
               ! per the scattering routine,
               score = p % wgt
             else
-              ! Grab the multiplicity from the rxn
-              score = p % last_wgt * rxn % multiplicity
+              ! Grab the yield from the rxn
+              score = p % last_wgt * rxn % products(1) % yield
             end if
           end associate
         end if

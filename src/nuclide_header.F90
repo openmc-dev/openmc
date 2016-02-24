@@ -2,13 +2,17 @@ module nuclide_header
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use ace_header
   use constants
-  use endf,        only: reaction_name
-  use error,       only: fatal_error
+  use dict_header, only: DictIntInt
+  use endf,        only: reaction_name, is_fission, is_disappearance
+  use error,       only: fatal_error, warning
   use list_header, only: ListInt
   use math,        only: evaluate_legendre, find_angle
+  use product_header, only: AngleEnergyContainer
+  use reaction_header, only: Reaction
+  use stl_vector,  only: VectorInt
   use string
+  use urr_header, only: UrrData
   use xml_interface
 
   implicit none
@@ -684,15 +688,7 @@ module nuclide_header
 
       class(NuclideCE), intent(inout) :: this ! The Nuclide object to clear
 
-      integer :: i ! Loop counter
-
       if (associated(this % urr_data)) deallocate(this % urr_data)
-
-      if (allocated(this % reactions)) then
-        do i = 1, size(this % reactions)
-          call this % reactions(i) % clear()
-        end do
-      end if
 
       call this % reaction_index % clear()
 
@@ -711,7 +707,6 @@ module nuclide_header
       integer :: unit_             ! unit to write to
       integer :: size_xs           ! memory used for cross-sections (bytes)
       integer :: size_urr          ! memory used for probability tables (bytes)
-      type(UrrData),  pointer :: urr
 
       ! set default unit for writing information
       if (present(unit)) then
@@ -754,19 +749,20 @@ module nuclide_header
       ! Write information about URR probability tables
       size_urr = 0
       if (this % urr_present) then
-        urr => this % urr_data
-        write(unit_,*) '  Unresolved resonance probability table:'
-        write(unit_,*) '    # of energies = ' // trim(to_str(urr % n_energy))
-        write(unit_,*) '    # of probabilities = ' // trim(to_str(urr % n_prob))
-        write(unit_,*) '    Interpolation =  ' // trim(to_str(urr % interp))
-        write(unit_,*) '    Inelastic flag = ' // trim(to_str(urr % inelastic_flag))
-        write(unit_,*) '    Absorption flag = ' // trim(to_str(urr % absorption_flag))
-        write(unit_,*) '    Multiply by smooth? ', urr % multiply_smooth
-        write(unit_,*) '    Min energy = ', trim(to_str(urr % energy(1)))
-        write(unit_,*) '    Max energy = ', trim(to_str(urr % energy(urr % n_energy)))
+        associate(urr => this % urr_data)
+          write(unit_,*) '  Unresolved resonance probability table:'
+          write(unit_,*) '    # of energies = ' // trim(to_str(urr % n_energy))
+          write(unit_,*) '    # of probabilities = ' // trim(to_str(urr % n_prob))
+          write(unit_,*) '    Interpolation =  ' // trim(to_str(urr % interp))
+          write(unit_,*) '    Inelastic flag = ' // trim(to_str(urr % inelastic_flag))
+          write(unit_,*) '    Absorption flag = ' // trim(to_str(urr % absorption_flag))
+          write(unit_,*) '    Multiply by smooth? ', urr % multiply_smooth
+          write(unit_,*) '    Min energy = ', trim(to_str(urr % energy(1)))
+          write(unit_,*) '    Max energy = ', trim(to_str(urr % energy(urr % n_energy)))
 
-        ! Calculate memory used by probability tables and add to total
-        size_urr = urr % n_energy * (urr % n_prob * 6 + 1) * 8
+          ! Calculate memory used by probability tables and add to total
+          size_urr = urr % n_energy * (urr % n_prob * 6 + 1) * 8
+        end associate
       end if
 
       ! Write memory used

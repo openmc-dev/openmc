@@ -487,6 +487,8 @@ class XSdata(object):
         # check we have a numpy list
         check_type("nu_fission", nu_fission, np.ndarray, expected_iter_type=Real)
         self._nu_fission = np.copy(nu_fission)
+        if np.sum(self._nu_fission) > 0.0:
+            self._fissionable = True
 
     def _get_xsdata_xml(self):
         element = ET.Element("xsdata")

@@ -24,7 +24,7 @@ class EnergyGroups(object):
     ----------
     group_edges : Iterable of Real
         The energy group boundaries [MeV]
-    num_group : Integral
+    num_groups : Integral
         The number of energy groups
 
     """
@@ -54,7 +54,7 @@ class EnergyGroups(object):
     def __eq__(self, other):
         if not isinstance(other, EnergyGroups):
             return False
-        elif self.group_edges != other.group_edges:
+        elif (self.group_edges != other.group_edges).all():
             return False
         else:
             return True

@@ -3,7 +3,6 @@ module mesh
   use constants
   use global
   use mesh_header
-  use particle_header, only: Particle
   use search,          only: binary_search
 
 #ifdef MPI
@@ -160,10 +159,10 @@ contains
        sites_outside)
 
     type(RegularMesh), pointer :: m             ! mesh to count sites
-    type(Bank), intent(in)        :: bank_array(:) ! fission or source bank
-    real(8),    intent(out)       :: cnt(:,:,:,:)  ! weight of sites in each
+    type(Bank), intent(in)     :: bank_array(:) ! fission or source bank
+    real(8),    intent(out)    :: cnt(:,:,:,:)  ! weight of sites in each
     ! cell and energy group
-    real(8), intent(in), optional :: energies(:)   ! energy grid to search
+    real(8), intent(in),    optional :: energies(:)   ! energy grid to search
     integer(8), intent(in), optional :: size_bank     ! # of bank sites (on each proc)
     logical, intent(inout), optional :: sites_outside ! were there sites outside mesh?
 

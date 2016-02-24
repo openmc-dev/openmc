@@ -664,7 +664,10 @@ contains
     file_id = file_open(path_state_point, 'r', parallel=.true.)
 
     ! Read filetype
-    call read_dataset(file_id, "filetype", int_array(1))
+    call read_dataset(file_id, "filetype", word)
+    if (word /= 'statepoint') then
+      call fatal_error("OpenMC tried to restart from a non-statepoint file.")
+    end if
 
     ! Read revision number for state point file and make sure it matches with
     ! current version
@@ -761,8 +764,13 @@ contains
            &file")
     end if
 
-    ! Read tallies to master
+    ! Read tallies to master. If we are using Parallel HDF5, all processes
+    ! need to be included in the HDF5 calls.
+#ifdef PHDF5
+    if (.true.) then
+#else
     if (master) then
+#endif
 
       ! Read number of realizations for global tallies
       call read_dataset(file_id, "n_realizations", n_realizations, indep=.true.)
@@ -772,7 +780,8 @@ contains
 
       ! Check if tally results are present
       tallies_group = open_group(file_id, "tallies")
-      call read_dataset(file_id, "tallies_present", int_array(1), indep=.true.)
+      call read_dataset(tallies_group, "tallies_present", int_array(1), &
+                        indep=.true.)
 
       ! Read in sum and sum squared
       if (int_array(1) == 1) then
@@ -780,10 +789,12 @@ contains
           ! Set pointer to tally
           tally => tallies(i)
 
-          ! Read sum and sum_sq for each bin
+          ! Read sum, sum_sq, and N for each bin
           tally_group = open_group(tallies_group, "tally " // &
-               trim(to_str(tally%id)))
-          call read_dataset(tally_group, "results", tally%results)
+               trim(to_str(tally % id)))
+          call read_dataset(tally_group, "results", tally % results)
+          call read_dataset(tally_group, "n_realizations", &
+               tally % n_realizations)
           call close_group(tally_group)
         end do TALLY_RESULTS
       end if

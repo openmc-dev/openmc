@@ -16,16 +16,16 @@ module energy_distribution
 
   type, abstract :: EnergyDistribution
   contains
-    procedure(iSampleEnergy), deferred :: sample
+    procedure(energy_distribution_sample_), deferred :: sample
   end type EnergyDistribution
 
   abstract interface
-    function iSampleEnergy(this, E_in) result(E_out)
+    function energy_distribution_sample_(this, E_in) result(E_out)
       import EnergyDistribution
       class(EnergyDistribution), intent(in) :: this
       real(8), intent(in) :: E_in
       real(8) :: E_out
-    end function iSampleEnergy
+    end function energy_distribution_sample_
   end interface
 
   type :: EnergyDistributionContainer

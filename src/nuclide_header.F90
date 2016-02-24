@@ -33,17 +33,15 @@ module nuclide_header
     logical :: fissionable         ! nuclide is fissionable?
 
   contains
-    procedure(print_nuclide_), deferred :: print ! Writes nuclide info
+    procedure(nuclide_print_), deferred :: print ! Writes nuclide info
   end type Nuclide
 
   abstract interface
-
-    subroutine print_nuclide_(this, unit)
+    subroutine nuclide_print_(this, unit)
       import Nuclide
       class(Nuclide),intent(in)     :: this
       integer, optional, intent(in) :: unit
-    end subroutine print_nuclide_
-
+    end subroutine nuclide_print_
   end interface
 
   type, extends(Nuclide) :: NuclideCE

@@ -703,8 +703,23 @@ contains
     else
       wv = -conjg(faddeeva_w(conjg(z), relerr))
     end if
-
   end function w
+
+  recursive function w_derivative(z, order) result(wv)
+    complex(C_DOUBLE_COMPLEX), intent(in) :: z ! The point to evaluate Z at
+    integer,                   intent(in) :: order
+    complex(8)     :: wv     ! The resulting w(z) value
+
+    select case(order)
+    case (0)
+      wv = w(z)
+    case (1)
+      wv = -TWO * z * w(z) + TWO * ONEI / SQRT_PI
+    case default
+      wv = -TWO * z * w_derivative(z, order-1) &
+           - TWO * (order-1) * w_derivative(z, order-2)
+    end select
+  end function w_derivative
 
 !===============================================================================
 ! BROADEN_N_POLYNOMIALS doppler broadens polynomials of the form

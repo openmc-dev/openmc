@@ -8,7 +8,7 @@ module cross_section
   use global
   use list_header,      only: ListElemInt
   use material_header,  only: Material
-  use math,             only: w, broaden_n_polynomials
+  use math,             only: w, w_derivative, broaden_n_polynomials
   use multipole_header, only: FORM_RM, FORM_MLBW, MP_EA, RM_RT, RM_RA, RM_RF, &
                               MLBW_RT, MLBW_RX, MLBW_RA, MLBW_RF, FIT_T, FIT_A, FIT_F, &
                               MultipoleArray, max_poly, max_L, max_poles
@@ -735,7 +735,8 @@ contains
 ! temperature.
 !===============================================================================
 
-  subroutine multipole_deriv_eval(multipole, Emev, sqrtkT, sigT, sigA, sigF)
+  subroutine multipole_deriv_eval_finite_difference(multipole, Emev, sqrtkT, &
+                                                    sigT, sigA, sigF)
     type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
                                                   !  object to process.
     real(8), intent(in)              :: Emev      ! The energy at which to
@@ -761,6 +762,105 @@ contains
     sigT = (sigT_hi - sigT_lo) / T_DIFF
     sigA = (sigA_hi - sigA_lo) / T_DIFF
     sigF = (sigF_hi - sigF_lo) / T_DIFF
+  end subroutine multipole_deriv_eval_finite_difference
+
+  subroutine multipole_deriv_eval(multipole, Emev, sqrtkT_, sigT, sigA, sigF)
+    type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
+                                                  !  object to process.
+    real(8), intent(in)              :: Emev      ! The energy at which to
+                                                  !  evaluate the cross section
+                                                  !  in MeV
+    real(8), intent(in)              :: sqrtkT_   ! The temperature in the form
+                                                  !  sqrt(kT (in MeV)), at which
+                                                  !  to evaluate the XS.
+    real(8), intent(out)             :: sigT      ! Total cross section
+    real(8), intent(out)             :: sigA      ! Absorption cross section
+    real(8), intent(out)             :: sigF      ! Fission cross section
+    complex(8) :: psi_ki   ! The value of the psi-ki function for the asymptotic
+                           !  form
+    complex(8) :: c_temp   ! complex temporary variable
+    complex(8) :: w_val    ! The faddeeva function evaluated at Z
+    complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
+    real(8) :: sqrtE       ! sqrt(E), eV
+    real(8) :: invE        ! 1/E, eV
+    real(8) :: dopp        ! sqrt(atomic weight ratio / kT)
+    real(8) :: dopp_ecoef  ! sqrt(atomic weight ratio * pi / kT) / E
+    real(8) :: temp        ! real temporary value
+    real(8) :: E           ! energy, eV
+    real(8) :: sqrtkT      ! sqrt(kT (in eV))
+    integer :: iP          ! index of pole
+    integer :: iC          ! index of curvefit
+    integer :: iW          ! index of window
+    integer :: startw      ! window start pointer (for poles)
+    integer :: startw_1    ! window start pointer - 1
+    integer :: startw_endw ! window start pointer - window end pointer
+    integer :: endw        ! window end pointer
+    real(8) :: T
+
+    ! Convert to eV
+    E = Emev * 1.0e6_8
+    sqrtkT = sqrtkT_ * 1.0e3_8
+
+    T = sqrtkT_**2 / K_BOLTZMANN
+
+    if (sqrtkT == ZERO) call fatal_error("Windowed multipole temperature &
+         &derivatives are not implemented for 0 Kelvin cross sections.")
+
+    sqrtE = sqrt(E)
+    invE = ONE/E
+
+    if(.not. mp_already_alloc) then
+      call multipole_eval_allocate()
+    end if
+
+    ! Locate us
+    iW = floor((sqrtE - sqrt(multipole % start_E))/multipole % spacing + ONE)
+
+    startw = multipole % w_start(iW)
+    startw_1 = startw - 1 ! This is an index shift parameter.
+    endw = multipole % w_end(iW)
+    startw_endw = endw - startw + 1
+
+    ! Fill in factors
+    if (startw <= endw) then
+      call fill_factors(multipole, sqrtE, sigT_factor, twophi, multipole % num_l)
+    end if
+
+    ! dopp_ecoef is inverse of dopp, divided by E, multiplied by sqrt(pi).
+    dopp = multipole % sqrtAWR / sqrtKT
+    dopp_ecoef = dopp * invE * SQRT_PI
+
+    sigT = ZERO
+    sigA = ZERO
+    sigF = ZERO
+
+    ! TODO Polynomials
+
+    if (endw >= startw) then
+      do iP = startw, endw
+        Z = (sqrtE - multipole % data(MP_EA, iP)) * dopp
+        w_val = -invE * SQRT_PI * HALF * w_derivative(Z, 2)
+
+        if (multipole % formalism == FORM_MLBW) then
+          sigT = sigT + real((multipole % data(MLBW_RT, iP) * &
+                        sigT_factor(multipole%l_value(iP)) + &
+                        multipole % data(MLBW_RX, iP)) * w_val)
+          sigA = sigA + real(multipole % data(MLBW_RA, iP) * w_val)
+          sigF = sigF + real(multipole % data(MLBW_RF, iP) * w_val)
+        else if (multipole % formalism == FORM_RM) then
+          sigT = sigT + real(multipole % data(RM_RT, iP) * w_val * &
+                             sigT_factor(multipole % l_value(iP)))
+          sigA = sigA + real(multipole % data(RM_RA, iP) * w_val)
+          sigF = sigF + real(multipole % data(RM_RF, iP) * w_val)
+        end if
+      end do
+      sigT = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN*1.0e6_8) * T**(-1.5)&
+           * sigT
+      sigA = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN*1.0e6_8) * T**(-1.5)&
+           * sigA
+      sigF = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN*1.0e6_8) * T**(-1.5)&
+           * sigF
+    end if
   end subroutine multipole_deriv_eval
 
 !===============================================================================

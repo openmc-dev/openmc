@@ -8,7 +8,7 @@ The physical process by which a population of particles evolves over time is
 governed by a number of `probability distributions`_. For instance, given a
 particle traveling through some material, there is a probability distribution
 for the distance it will travel until its next collision (an exponential
-distribution). Then, when it collides with a nucleus, there is associated
+distribution). Then, when it collides with a nucleus, there is an associated
 probability of undergoing each possible reaction with that nucleus. While the
 behavior of any single particle is unpredictable, the average behavior of a
 large population of particles originating from the same source is well defined.
@@ -45,10 +45,15 @@ following steps:
 
   - Initialize the pseudorandom number generator.
 
-  - Read ACE format cross sections specified in the problem.
+  - Read the contiuous-energy or multi-group cross section data specified in
+    the problem.
 
   - If using a special energy grid treatment such as a union energy grid or
-    lethargy bins, that must be initialized as well.
+    lethargy bins, that must be initialized as well in a continuous-energy
+    problem.
+
+  - In a multi-group problem, individual nuclide cross section information is
+    combined to produce material-specific cross section data.
 
   - In a fixed source problem, source sites are sampled from the specified
     source. In an eigenvalue problem, source sites are sampled from some initial
@@ -95,6 +100,10 @@ proceed. The life of a single particle will proceed as follows:
 
          P(i) = \frac{\Sigma_{t,i}}{\Sigma_t}.
 
+     Note that the above selection of collided nuclide only applies to
+     continuous-energy simulations as multi-group simulations use nuclide
+     data which has already been combined in to material-specific data.
+
   8. Once the specific nuclide is sampled, the random samples a reaction for
      that nuclide based on the microscopic cross sections. If the microscopic
      cross section for some reaction :math:`x` is :math:`\sigma_x` and the total
@@ -105,13 +114,20 @@ proceed. The life of a single particle will proceed as follows:
 
          P(x) = \frac{\sigma_x}{\sigma_t}.
 
+     Since multi-group simulations use material-specific data, the above is
+     performed with those material multi-group cross sections (i.e.,
+     macroscopic cross sections for the material) instead of microscopic
+     cross sections for the nuclide).
+
   9. If the sampled reaction is elastic or inelastic scattering, the outgoing
-     energy and angle is sampled from the appropriate distribution.  Reactions
-     of type :math:`(n,xn)` are treated as scattering and the weight of the
-     particle is increased by the multiplicity of the reaction. The particle
-     then continues from step 3. If the reaction is absorption or fission, the
-     particle dies and if necessary, fission sites are created and stored in the
-     fission bank.
+     energy and angle is sampled from the appropriate distribution.  In
+     continuous-energy simulation, reactions of type :math:`(n,xn)` are treated
+     as scattering and any additional particles which may be created are added
+     to a secondary particle bank to be tracked later. In a multi-group
+     simulation, this secondary bank is ont used but the particle weight is
+     increased accordingly.  The original particle then continues from step 3.
+     If the reaction is absorption or fission, the particle dies and if
+     necessary, fission sites are created and stored in the fission bank.
 
 After all particles have been simulated, there are a few final tasks that must
 be performed before the run is finished. This include the following:

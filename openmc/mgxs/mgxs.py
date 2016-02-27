@@ -992,13 +992,10 @@ class MGXS(object):
             return False
         elif 'distribcell' not in self.domain_type and self.domain != other.domain:
             return False
-        elif len(self.tallies) != len(other.tallies):
+        elif not self.xs_tally.can_merge(other.xs_tally):
             return False
-
-        # See if each individual tally is mergeable
-        for tally_key in self.tallies:
-            if not self.tallies[tally_key].can_merge(other.tallies[tally_key]):
-                return False
+        elif not self.rxn_rate_tally.can_merge(other.rxn_rate_tally):
+            return False
 
         # If all conditionals pass then MGXS are mergeable
         return True

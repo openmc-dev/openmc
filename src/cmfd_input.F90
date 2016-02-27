@@ -45,14 +45,14 @@ contains
   subroutine read_cmfd_xml()
 
     use constants, only: ZERO, ONE
-    use error,   only: fatal_error, warning
+    use error,     only: fatal_error, warning
     use global
-    use output,  only: write_message
-    use string,  only: to_lower
+    use output,    only: write_message
+    use string,    only: to_lower
     use xml_interface
     use, intrinsic :: ISO_FORTRAN_ENV
 
-    integer :: i
+    integer :: i, g
     integer :: ng
     integer :: n_params
     integer, allocatable :: iarray(:)
@@ -102,6 +102,23 @@ contains
       if(.not.allocated(cmfd%egrid)) allocate(cmfd%egrid(ng))
       call get_node_array(node_mesh, "energy", cmfd%egrid)
       cmfd % indices(4) = ng - 1 ! sets energy group dimension
+      ! If using MG mode, check to see if these egrid points at least match
+      ! the MG Data breakpoints
+      if (.not. run_CE) then
+        do i = 1, ng
+          found = .false.
+          do g = 1, energy_groups + 1
+            if (cmfd % egrid(i) == energy_bins(g)) then
+              found = .true.
+              exit
+            end if
+          end do
+          if (.not. found) then
+            call fatal_error("CMFD energy mesh boundaries must align with&
+                             & boundaries of multi-group data!")
+          end if
+        end do
+      end if
     else
       if(.not.allocated(cmfd % egrid)) allocate(cmfd % egrid(2))
       cmfd % egrid = [ ZERO, 20.0_8 ]

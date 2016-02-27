@@ -86,6 +86,8 @@ class Filter(object):
             else:
                 return False
         else:
+            # Compare largest/smallest energy bin edges in energy filters
+            # This logic is used when merging tallies with energy filters
             if 'energy' in self.type and 'energy' in other.type:
                 return self.bins[0] >= other.bins[-1]
             else:

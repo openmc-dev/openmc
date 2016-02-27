@@ -253,7 +253,7 @@ class Geometry(object):
 
         """
 
-        if case_sensitive:
+        if not case_sensitive:
             name = name.lower()
 
         all_materials = self.get_all_materials()
@@ -293,7 +293,7 @@ class Geometry(object):
 
         """
 
-        if case_sensitive:
+        if not case_sensitive:
             name = name.lower()
 
         all_cells = self.get_all_cells()
@@ -333,7 +333,7 @@ class Geometry(object):
 
         """
 
-        if case_sensitive:
+        if not case_sensitive:
             name = name.lower()
 
         all_cells = self.get_all_cells()
@@ -373,7 +373,7 @@ class Geometry(object):
 
         """
 
-        if case_sensitive:
+        if not case_sensitive:
             name = name.lower()
 
         all_universes = self.get_all_universes()
@@ -413,7 +413,7 @@ class Geometry(object):
 
         """
 
-        if case_sensitive:
+        if not case_sensitive:
             name = name.lower()
 
         all_lattices = self.get_all_lattices()

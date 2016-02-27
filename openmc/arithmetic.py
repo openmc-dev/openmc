@@ -927,11 +927,6 @@ class AggregateFilter(object):
             if bin in other.bins:
                 return False
 
-        # None of the bins in the other filter should match in this filter
-        for bin in other.bins:
-            if bin in self.bins:
-                return False
-
         # If all conditional checks passed then filters are mergeable
         return True
 

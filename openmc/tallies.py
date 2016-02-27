@@ -1571,23 +1571,36 @@ class Tally(object):
         # Include DataFrame column for nuclides if user requested it
         if nuclides:
             nuclides = []
+            column_name = 'nuclide'
 
             for nuclide in self.nuclides:
-                # Write Nuclide name if Summary info was linked with StatePoint
                 if isinstance(nuclide, Nuclide):
                     nuclides.append(nuclide.name)
+                elif isinstance(nuclide, AggregateNuclide):
+                    nuclides.append(nuclide.name)
+                    column_name = '{0}(nuclide)'.format(nuclide.aggregate_op)
                 else:
                     nuclides.append(nuclide)
 
             # Tile the nuclide bins into a DataFrame column
             nuclides = np.repeat(nuclides, len(self.scores))
             tile_factor = data_size / len(nuclides)
-            df['nuclide'] = np.tile(nuclides, int(tile_factor))
+            df[column_name] = np.tile(nuclides, int(tile_factor))
 
         # Include column for scores if user requested it
         if scores:
+            scores = []
+            column_name = 'score'
+
+            for score in self.scores:
+                if isinstance(score, (basestring, CrossScore)):
+                    scores.append(score)
+                elif isinstance(score, AggregateScore):
+                    scores.append(score.name)
+                    column_name = '{0}(score)'.format(score.aggregate_op)
+
             tile_factor = data_size / len(self.scores)
-            df['score'] = np.tile(self.scores, int(tile_factor))
+            df[column_name] = np.tile(scores, int(tile_factor))
 
         # Append columns with mean, std. dev. for each tally bin
         df['mean'] = self.mean.ravel()

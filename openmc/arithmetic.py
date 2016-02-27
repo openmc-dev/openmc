@@ -562,6 +562,13 @@ class AggregateScore(object):
     def aggregate_op(self):
         return self._aggregate_op
 
+    @property
+    def name(self):
+
+        # Append each score in the aggregate to the string
+        string = '(' + ', '.join(map(str, self.scores)) + ')'
+        return string
+
     @scores.setter
     def scores(self, scores):
         cv.check_iterable_type('scores', scores, basestring)
@@ -648,6 +655,15 @@ class AggregateNuclide(object):
     @property
     def aggregate_op(self):
         return self._aggregate_op
+
+    @property
+    def name(self):
+
+        # Append each nuclide in the aggregate to the string
+        names = [nuclide.name if isinstance(nuclide, Nuclide) else str(nuclide)
+                 for nuclide in self.nuclides]
+        string = '(' + ', '.join(map(str, names)) + ')'
+        return string
 
     @nuclides.setter
     def nuclides(self, nuclides):

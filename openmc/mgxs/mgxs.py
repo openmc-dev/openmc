@@ -241,8 +241,7 @@ class MGXS(object):
 
     @property
     def num_subdomains(self):
-        tally = list(self.tallies.values())[0]
-        domain_filter = tally.find_filter(self.domain_type)
+        domain_filter = self.xs_tally.find_filter(self.domain_type)
         return domain_filter.num_bins
 
     @property
@@ -877,14 +876,19 @@ class MGXS(object):
 
         # Clone this MGXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
-        avg_xs._rxn_rate_tally = None
-        avg_xs._xs_tally = None
 
-        # Average each of the tallies across subdomains
-        for tally_type, tally in avg_xs.tallies.items():
-            tally_avg = tally.average(filter_type=self.domain_type,
-                                      filter_bins=subdomains)
-            avg_xs.tallies[tally_type] = tally_avg
+        if self.derived:
+            avg_xs._rxn_rate_tally = avg_xs.rxn_rate_tally.average(
+                filter_type=self.domain_type, filter_bins=subdomains)
+        else:
+            avg_xs._rxn_rate_tally = None
+            avg_xs._xs_tally = None
+
+            # Average each of the tallies across subdomains
+            for tally_type, tally in avg_xs.tallies.items():
+                tally_avg = tally.average(filter_type=self.domain_type,
+                                          filter_bins=subdomains)
+                avg_xs.tallies[tally_type] = tally_avg
 
         avg_xs._domain_type = 'avg({0})'.format(self.domain_type)
         avg_xs.sparse = self.sparse
@@ -1002,8 +1006,10 @@ class MGXS(object):
     def merge(self, other):
         """Merge another MGXS with this one
 
-        If results have been loaded from a statepoint, then MGXS are only
-        mergeable along one and only one of energy groups or nuclides.
+        MGXS are only mergeable if their energy groups and nuclides are either
+        identical or mutually exclusive. If results have been loaded from a
+        statepoint, then MGXS are only mergeable along one and only one of
+        energy groups or nuclides.
 
         Parameters
         ----------
@@ -1510,7 +1516,7 @@ class TotalXS(MGXS):
 
     @property
     def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
+        if self._rxn_rate_tally is None :
             self._rxn_rate_tally = self.tallies['total']
             self._rxn_rate_tally.sparse = self.sparse
         return self._rxn_rate_tally

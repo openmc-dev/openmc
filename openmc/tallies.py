@@ -881,7 +881,7 @@ class Tally(object):
         # Differentiate Tally with a new auto-generated Tally ID
         merged_tally.id = None
 
-        # If the two tallies are equal, simpy return copy
+        # If the two tallies are equal, simply return copy
         if self == other:
             return merged_tally
 
@@ -936,7 +936,7 @@ class Tally(object):
         # If results have not been read, then return tally for input generation
         if self._results_read is None:
             return merged_tally
-        #Otherwise, this is a derived tally which needs merged results arrays
+        # Otherwise, this is a derived tally which needs merged results arrays
         else:
             self._derived = True
 

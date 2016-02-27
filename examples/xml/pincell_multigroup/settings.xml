@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<settings>
+
+  <energy_mode>multi-group</energy_mode>
+
+  <!--
+    Define how many particles to run and for how many batches
+    in an eigenvalue calculation mode
+  -->
+  <eigenvalue>
+    <batches>100</batches>
+    <inactive>10</inactive>
+    <particles>1000</particles>
+  </eigenvalue>
+
+  <!--
+    Start with uniformally distributed neutron source
+    with the default energy spectrum of a Maxwellian
+    and isotropic distribution.
+  -->
+  <source>
+    <space type="box">
+      <parameters>
+        -0.63 -0.63 -1E50
+         0.63  0.63  1E50
+      </parameters>
+    </space>
+  </source>
+
+  <output>
+    <cross_sections>true</cross_sections>
+    <summary>true</summary>
+    <tallies>true</tallies>
+  </output>
+
+  <survival_biasing>false</survival_biasing>
+
+  <cross_sections>./mg_cross_sections.xml</cross_sections>
+
+</settings>

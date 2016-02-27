@@ -1,9 +1,9 @@
 module distribution_multivariate
 
-  use constants, only: ONE, TWO, PI
+  use constants,               only: ONE, TWO, PI
   use distribution_univariate, only: Distribution
-  use math, only: rotate_angle
-  use random_lcg, only: prn
+  use random_lcg,              only: prn
+  use math,                    only: rotate_angle
 
   implicit none
 

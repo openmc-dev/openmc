@@ -10,7 +10,7 @@ module cross_section
   use material_header, only: Material
   use nuclide_header
   use particle_header, only: Particle
-  use random_lcg,      only: prn
+  use random_lcg,      only: prn, prn_ahead
   use sab_header,      only: SAlphaBeta
   use search,          only: binary_search
 
@@ -365,7 +365,6 @@ contains
     real(8) :: capture      ! (n,gamma) cross section
     real(8) :: fission      ! fission cross section
     real(8) :: inelastic    ! inelastic cross section
-    logical :: same_nuc     ! do we know the xs for this nuclide at this energy?
     type(UrrData),  pointer    :: urr
     type(NuclideCE),  pointer :: nuc
 
@@ -388,24 +387,15 @@ contains
 
     ! sample probability table using the cumulative distribution
 
-    ! if we're dealing with a nuclide that we've previously encountered at
-    ! this energy but a different temperature, use the original random number to
-    ! preserve correlation of temperature in probability tables
-    same_nuc = .false.
-    do i = 1, nuc % nuc_list % size()
-      if (E /= ZERO .and. E == micro_xs(nuc % nuc_list % data(i)) % last_E) then
-        same_nuc = .true.
-        same_nuc_idx = i
-        exit
-      end if
-    end do
-
-    if (same_nuc) then
-      r = micro_xs(nuc % nuc_list % data(same_nuc_idx)) % last_prn
-    else
-      r = prn()
-      micro_xs(i_nuclide) % last_prn = r
-    end if
+    ! random numbers for xs calculation are sampled in a way separate from
+    ! tracking. 'xs_seed' is a copy of normal tracking prn seed but updated
+    ! until the particle undergoes a scattering event. Random number is
+    ! calculated by skipping ahead 'ZZAAA'(zaid) times from the seed
+    ! 'xs_seed' + 'ZZAAA'.
+    ! This guarantees the randomness and, at the same time, makes sure we reuse
+    ! random number for the same nuclide at different temperatures, therefore
+    ! preserving correlation of temperature in probability tables.
+    r = prn_ahead(int(nuc % zaid, 8), xs_seed + nuc % zaid)
 
     i_low = 1
     do

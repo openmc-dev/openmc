@@ -104,6 +104,14 @@ module global
   ! What to assume for expanding natural elements
   integer :: default_expand = ENDF_BVII1
 
+  ! Random number seed for cross sections, specially for URR ptables
+  ! This number is copied from normal tracking random number sequence but
+  ! updated until the particle undergoes a scattering event. It is shared for
+  ! all nuclides.
+  integer(8) :: xs_seed = 1_8
+
+!$omp threadprivate(xs_seed)
+
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
 

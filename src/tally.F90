@@ -28,12 +28,12 @@ module tally
 
 !$omp threadprivate(position)
 
-  procedure(score_general_intfc),    pointer :: score_general => null()
-  procedure(get_scoring_bins_intfc), pointer :: get_scoring_bins => null()
+  procedure(score_general_),    pointer :: score_general => null()
+  procedure(get_scoring_bins_), pointer :: get_scoring_bins => null()
 
   abstract interface
-    subroutine score_general_intfc(p, t, start_index, filter_index, i_nuclide, &
-                                  atom_density, flux)
+    subroutine score_general_(p, t, start_index, filter_index, i_nuclide, &
+                              atom_density, flux)
       import Particle
       import TallyObject
       type(Particle),    intent(in)    :: p
@@ -43,15 +43,14 @@ module tally
       integer,            intent(in)   :: filter_index   ! for % results
       real(8),            intent(in)   :: flux           ! flux estimate
       real(8),            intent(in)   :: atom_density   ! atom/b-cm
-    end subroutine score_general_intfc
+    end subroutine score_general_
 
-    subroutine get_scoring_bins_intfc(p, i_tally, found_bin)
+    subroutine get_scoring_bins_(p, i_tally, found_bin)
       import Particle
       type(Particle), intent(in)  :: p
       integer,        intent(in)  :: i_tally
       logical,        intent(out) :: found_bin
-    end subroutine get_scoring_bins_intfc
-
+    end subroutine get_scoring_bins_
   end interface
 
 contains

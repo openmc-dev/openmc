@@ -26,9 +26,6 @@ module nuclide_header
     integer       :: listing ! index in xs_listings
     real(8)       :: kT      ! temperature in MeV (k*T)
 
-    ! Linked list of indices in nuclides array of instances of this same nuclide
-    type(VectorInt) :: nuc_list
-
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
 
@@ -257,7 +254,6 @@ module nuclide_header
 
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
-    real(8) :: last_prn
   end type NuclideMicroXS
 
 !===============================================================================

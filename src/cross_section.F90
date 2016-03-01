@@ -390,12 +390,12 @@ contains
     ! random numbers for xs calculation are sampled in a way separate from
     ! tracking. 'xs_seed' is a copy of normal tracking prn seed but updated
     ! until the particle undergoes a scattering event. Random number is
-    ! calculated by skipping ahead 'ZZAAA'(zaid) times from the seed
+    ! calculated by skipping ahead 'xs_seed + ZZAAA'(zaid) times from the seed
     ! 'xs_seed' + 'ZZAAA'.
     ! This guarantees the randomness and, at the same time, makes sure we reuse
     ! random number for the same nuclide at different temperatures, therefore
     ! preserving correlation of temperature in probability tables.
-    r = prn_ahead(int(nuc % zaid, 8), xs_seed + nuc % zaid)
+    r = prn_ahead(xs_seed + nuc % zaid, xs_seed + nuc % zaid)
 
     i_low = 1
     do

@@ -82,7 +82,7 @@ class Filter(object):
             if self.type in _FILTER_TYPES and other.type in _FILTER_TYPES:
                 delta = _FILTER_TYPES.index(self.type) - \
                         _FILTER_TYPES.index(other.type)
-                return True if delta > 0 else False
+                return delta > 0
             else:
                 return False
         else:
@@ -327,7 +327,7 @@ class Filter(object):
 
         # Count bins in the merged filter
         if 'energy' in merged_filter.type:
-            merged_filter.num_bins = len(merged_bins) -1
+            merged_filter.num_bins = len(merged_bins) - 1
         else:
             merged_filter.num_bins = len(merged_bins)
 

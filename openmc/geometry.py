@@ -99,7 +99,7 @@ class Geometry(object):
         all_cells = self._root_universe.get_all_cells()
         cells = set()
 
-        for cell_id, cell in all_cells.items():
+        for cell in all_cells.values():
             if cell._type == 'normal':
                 cells.add(cell)
 
@@ -120,7 +120,7 @@ class Geometry(object):
         all_universes = self._root_universe.get_all_universes()
         universes = set()
 
-        for universe_id, universe in all_universes.items():
+        for universe in all_universes.values():
             universes.add(universe)
 
         universes = list(universes)

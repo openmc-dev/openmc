@@ -566,7 +566,7 @@ class AggregateScore(object):
     def name(self):
 
         # Append each score in the aggregate to the string
-        string = '(' + ', '.join(map(str, self.scores)) + ')'
+        string = '(' + ', '.join(self.scores) + ')'
         return string
 
     @scores.setter
@@ -742,7 +742,7 @@ class AggregateFilter(object):
               other.aggregate_filter.type in _FILTER_TYPES:
                 delta = _FILTER_TYPES.index(self.aggregate_filter.type) - \
                         _FILTER_TYPES.index(other.aggregate_filter.type)
-                return True if delta > 0 else False
+                return delta > 0
             else:
                 return False
         else:

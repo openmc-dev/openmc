@@ -20,22 +20,22 @@ module scattdata_header
     real(8), allocatable :: data(:,:,:) ! (Order/Nmu x Gout x Gin)
 
   contains
-    procedure(init_), deferred   :: init   ! Initializes ScattData
-    procedure(calc_f_), deferred :: calc_f ! Calculates f, given mu
-    procedure(sample_), deferred :: sample ! sample the scatter event
+    procedure(scattdata_init_), deferred   :: init   ! Initializes ScattData
+    procedure(scattdata_calc_f_), deferred :: calc_f ! Calculates f, given mu
+    procedure(scattdata_sample_), deferred :: sample ! sample the scatter event
   end type ScattData
 
   abstract interface
-    subroutine init_(this, order, energy, mult, coeffs)
+    subroutine scattdata_init_(this, order, energy, mult, coeffs)
       import ScattData
       class(ScattData), intent(inout) :: this          ! Object to work on
       integer, intent(in)             :: order         ! Data Order
       real(8), intent(in)             :: energy(:,:)   ! Energy Transfer Matrix
       real(8), intent(in)             :: mult(:,:)     ! Scatter Prod'n Matrix
       real(8), intent(in)             :: coeffs(:,:,:) ! Coefficients to use
-    end subroutine init_
+    end subroutine scattdata_init_
 
-    pure function calc_f_(this, gin, gout, mu) result(f)
+    pure function scattdata_calc_f_(this, gin, gout, mu) result(f)
       import ScattData
       class(ScattData), intent(in) :: this ! The ScattData to evaluate
       integer, intent(in)          :: gin  ! Incoming Energy Group
@@ -43,16 +43,16 @@ module scattdata_header
       real(8), intent(in)          :: mu   ! Angle of interest
       real(8)                      :: f    ! Return value of f(mu)
 
-    end function calc_f_
+    end function scattdata_calc_f_
 
-    subroutine sample_(this, gin, gout, mu, wgt)
+    subroutine scattdata_sample_(this, gin, gout, mu, wgt)
       import ScattData
       class(ScattData), intent(in)    :: this ! Scattering Object to Use
       integer,          intent(in)    :: gin  ! Incoming neutron group
       integer,          intent(out)   :: gout ! Sampled outgoin group
       real(8),          intent(out)   :: mu   ! Sampled change in angle
       real(8),          intent(inout) :: wgt  ! Particle weight
-    end subroutine sample_
+    end subroutine scattdata_sample_
   end interface
 
   type, extends(ScattData) :: ScattDataLegendre

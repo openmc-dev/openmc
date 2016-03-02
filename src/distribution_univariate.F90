@@ -16,7 +16,7 @@ module distribution_univariate
 
   type, abstract :: Distribution
   contains
-    procedure(iSample), deferred :: sample
+    procedure(distribution_sample_), deferred :: sample
   end type Distribution
 
   type DistributionContainer
@@ -24,11 +24,11 @@ module distribution_univariate
   end type DistributionContainer
 
   abstract interface
-    function iSample(this) result(x)
+    function distribution_sample_(this) result(x)
       import Distribution
       class(Distribution), intent(in) :: this
       real(8) :: x
-    end function iSample
+    end function distribution_sample_
   end interface
 
 !===============================================================================

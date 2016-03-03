@@ -1,5 +1,5 @@
-                                    sum(distribcell)  group in nuclide      mean  std. dev.
-0  sum(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, ...         1   total  0.720213   1.424323                                    sum(distribcell)  group in nuclide  mean  std. dev.
-0  sum(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, ...         1   total     0          0                                    sum(distribcell)  group in  group out nuclide     mean  std. dev.
-0  sum(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, ...         1          1   total  0.70466   1.403916                                    sum(distribcell)  group out nuclide  mean  std. dev.
-0  sum(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, ...          1   total     0          0
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.720213   1.424323                                    avg(distribcell)  group in nuclide  mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total     0          0                                    avg(distribcell)  group in  group out nuclide     mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total  0.70466   1.403916                                    avg(distribcell)  group out nuclide  mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...          1   total     0          0

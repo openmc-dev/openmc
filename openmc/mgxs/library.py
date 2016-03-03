@@ -116,11 +116,11 @@ class Library(object):
             clone._by_nuclide = self.by_nuclide
             clone._mgxs_types = self.mgxs_types
             clone._domain_type = self.domain_type
-            clone._domains = self.domains
+            clone._domains = copy.deepcopy(self.domains)
             clone._correction = self.correction
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
-            clone._all_mgxs = self.all_mgxs
+            clone._all_mgxs = copy.deepcopy(self.all_mgxs)
             clone._sp_filename = self._sp_filename
             clone._keff = self._keff
             clone._sparse = self.sparse

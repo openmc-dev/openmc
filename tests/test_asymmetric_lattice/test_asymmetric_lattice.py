@@ -19,13 +19,10 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         # Build full core geometry from underlying input set
         self._input_set.build_default_materials_and_geometry()
 
-        # Extract all universes from the full core geometry
-        geometry = self._input_set.geometry.geometry
-        all_univs = geometry.get_all_universes()
-
         # Extract universes encapsulating fuel and water assemblies
-        water = all_univs[7]
-        fuel = all_univs[8]
+        geometry = self._input_set.geometry.geometry
+        water = geometry.get_universes_by_name('water assembly (hot)')[0]
+        fuel = geometry.get_universes_by_name('fuel assembly (hot)')[0]
 
         # Construct a 3x3 lattice of fuel assemblies
         core_lat = openmc.RectLattice(name='3x3 Core Lattice', lattice_id=202)
@@ -102,9 +99,10 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         outstr += ', '.join(map(str, tally.std_dev.flatten())) + '\n'
 
         # Extract fuel assembly lattices from the summary
-        all_cells = su.openmc_geometry.get_all_cells()
-        fuel = all_cells[80].fill
-        core = all_cells[1].fill
+        core = su.get_cell_by_id(1)
+        fuel = su.get_cell_by_id(80)
+        fuel = fuel.fill
+        core = core.fill
 
         # Append a string of lattice distribcell offsets to the string
         outstr += ', '.join(map(str, fuel.offsets.flatten())) + '\n'

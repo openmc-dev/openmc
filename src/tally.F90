@@ -2352,7 +2352,8 @@ contains
 
           case (SCORE_TOTAL)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id == deriv % diff_material) then
+                 materials(p % material) % id == deriv % diff_material .and. &
+                 material_xs % total /= ZERO) then
               score = score * (deriv % flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % total &
                    / material_xs % total)
@@ -2365,7 +2366,8 @@ contains
 
           case (SCORE_ABSORPTION)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id == deriv % diff_material) then
+                 materials(p % material) % id == deriv % diff_material .and. &
+                 material_xs % absorption /= ZERO) then
               score = score * (deriv % flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % absorption &
                    / material_xs % absorption )
@@ -2378,7 +2380,8 @@ contains
 
           case (SCORE_FISSION)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id == deriv % diff_material) then
+                 materials(p % material) % id == deriv % diff_material .and. &
+                 material_xs % fission /= ZERO) then
               score = score * (deriv % flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % fission &
                    / material_xs % fission)
@@ -2391,7 +2394,9 @@ contains
 
           case (SCORE_NU_FISSION)
             if (i_nuclide == -1 .and. &
-                 materials(p % material) % id == deriv % diff_material) then
+                 materials(p % material) % id == deriv % diff_material .and. &
+                 material_xs % nu_fission /= ZERO) then
+              write(*, *) micro_xs(deriv % diff_nuclide) % nu_fission
               score = score * (deriv % flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % nu_fission &
                    / material_xs % nu_fission)

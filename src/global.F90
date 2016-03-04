@@ -105,10 +105,15 @@ module global
   integer :: default_expand = ENDF_BVII1
 
   ! Random number seed for cross sections, specially for URR ptables
-  ! This number is copied from normal tracking random number sequence but
-  ! updated until the particle undergoes a scattering event. It is shared for
-  ! all nuclides.
+  ! This number is shared by all nuclides and updated after particle
+  ! changed its energy.
   integer(8) :: xs_seed = 1_8
+
+  ! Dictionary to look up the skip distance to get prn when sampling URR
+  type(DictIntInt) :: nuc_zaid_dict
+
+  ! Total amount of nuclide zaid instances
+  integer(8)       :: n_nuc_zaid_total
 
 !$omp threadprivate(xs_seed)
 

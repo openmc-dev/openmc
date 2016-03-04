@@ -24,7 +24,8 @@ module random_lcg
 !$omp threadprivate(prn_seed, stream)
 
   public :: prn
-  public :: prn_ahead
+  public :: get_prn_ahead
+  public :: prn_skip_ahead
   public :: initialize_prng
   public :: set_particle_seed
   public :: prn_skip
@@ -54,11 +55,11 @@ contains
   end function prn
 
 !===============================================================================
-! PRN_AHEAD generates a pseudo-random number which is 'n' times ahead from a
+! GET_PRN_AHEAD generates a pseudo-random number which is 'n' times ahead from a
 ! specific seed. This function does not changed current LCG status.
 !===============================================================================
 
-  function prn_ahead(n, seed) result(pseudo_rn)
+  function get_prn_ahead(n, seed) result(pseudo_rn)
 
     integer(8), intent(in) :: n        ! number of prns to skip
     integer(8), intent(in) :: seed     ! starting seed
@@ -70,7 +71,7 @@ contains
 
     pseudo_rn = prn_skip_ahead(n, seed) * prn_norm
 
-  end function prn_ahead
+  end function get_prn_ahead
 
 !===============================================================================
 ! INITIALIZE_PRNG sets up the random number generator, determining the seed and

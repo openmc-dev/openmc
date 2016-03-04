@@ -10,7 +10,7 @@ module cross_section
   use material_header, only: Material
   use nuclide_header
   use particle_header, only: Particle
-  use random_lcg,      only: prn, prn_ahead
+  use random_lcg,      only: prn, get_prn_ahead
   use sab_header,      only: SAlphaBeta
   use search,          only: binary_search
 
@@ -387,15 +387,13 @@ contains
 
     ! sample probability table using the cumulative distribution
 
-    ! random numbers for xs calculation are sampled in a way separate from
-    ! tracking. 'xs_seed' is a copy of normal tracking prn seed but updated
-    ! until the particle undergoes a scattering event. Random number is
-    ! calculated by skipping ahead 'xs_seed + ZZAAA'(zaid) times from the seed
-    ! 'xs_seed' + 'ZZAAA'.
+    ! Random numbers for xs calculation are sampled by skipping ahead
+    ! f(zaid) times from the seed 'xs_seed' + 'zaid'.
     ! This guarantees the randomness and, at the same time, makes sure we reuse
     ! random number for the same nuclide at different temperatures, therefore
     ! preserving correlation of temperature in probability tables.
-    r = prn_ahead(xs_seed + nuc % zaid, xs_seed + nuc % zaid)
+    r = get_prn_ahead(int(nuc_zaid_dict % get_key(nuc % zaid), 8), &
+                      xs_seed + nuc % zaid)
 
     i_low = 1
     do

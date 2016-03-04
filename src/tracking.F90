@@ -12,7 +12,7 @@ module tracking
   use particle_header,    only: LocalCoord, Particle
   use physics,            only: collision
   use physics_mg,         only: collision_mg
-  use random_lcg,         only: prn, prn_seed
+  use random_lcg,         only: prn, prn_seed, prn_skip_ahead
   use string,             only: to_str
   use tally,              only: score_analog_tally, score_tracklength_tally, &
                                 score_collision_tally, score_surface_current
@@ -200,8 +200,9 @@ contains
         ! re-evaluated
         p % last_material = NONE
 
-        ! Update xs_seed to be current tracking seed after a collision
-        if (p % E /= p % last_E) xs_seed = prn_seed(STREAM_TRACKING)
+        ! Advance xs_seed N times ahead to avoid re-using prn
+        if (p % E /= p % last_E) &
+          xs_seed = prn_skip_ahead(n_nuc_zaid_total, xs_seed)
 
         ! Set all uvws to base level -- right now, after a collision, only the
         ! base level uvws are changed

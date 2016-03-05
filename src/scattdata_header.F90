@@ -204,9 +204,10 @@ contains
             if (f > this % max_val(gin) % data(gout)) &
                  this % max_val(gin) % data(gout) = f
           end do
+          ! Finally, since we may not have caught the exact max, add 10% margin
+          this % max_val(gin) % data(gout) = &
+               this % max_val(gin) % data(gout) * 1.1_8
         end do
-        ! Finally, since we may not have caught the exact max, add 10% margin
-        this % max_val(gin) % data = this % max_val(gin) % data * 1.1_8
       end do
 
     end subroutine scattdatalegendre_init

@@ -21,7 +21,6 @@ module scattdata_header
     real(8), allocatable :: data(:)
   end type Jagged1D
 
-
 !===============================================================================
 ! SCATTDATA contains all the data to describe the scattering energy and
 ! angular distribution
@@ -177,8 +176,9 @@ contains
       allocate(this % max_val(groups))
       ! Set dist values from coeffs and initialize max_val
       do gin = 1, groups
-        this % dist(gin) % data(:,this % gmin(gin):this % gmax(gin)) = &
-             coeffs(:,this % gmin(gin):this % gmax(gin),gin)
+        do gout = this % gmin(gin), this % gmax(gin)
+          this % dist(gin) % data(:,gout) = coeffs(:,gout,gin)
+        end do
         allocate(this % max_val(gin) % data(this % gmin(gin):this % gmax(gin)))
         this % max_val(gin) % data = ZERO
       end do
@@ -278,7 +278,8 @@ contains
 
       allocate(this % mu(this_order))
       this % dmu = TWO / real(this_order - 1)
-      do imu = 1, this_order - 1
+      this % mu = -ONE
+      do imu = 2, this_order - 1
         this % mu(imu) = -ONE + real(imu - 1) * this % dmu
       end do
       this % mu(this_order) = ONE
@@ -286,16 +287,21 @@ contains
       ! Calculate f(mu) and integrate it so we can avoid rejection sampling
       allocate(this % fmu(groups))
       do gin = 1, groups
-        do gout = this % gmin(gin), this % gmax(gin)
-          allocate(this % fmu(gin) % data(this_order,&
+        allocate(this % fmu(gin) % data(this_order,&
                                           this % gmin(gin):this % gmax(gin)))
+        do gout = this % gmin(gin), this % gmax(gin)
           if (legendre_flag) then
             ! Coeffs are legendre coeffs.  Need to build f(mu) then integrate
             ! and store the integral in this % dist
             ! Ensure the coeffs are normalized
-            norm = ONE / coeffs(1,gout,gin)
+            if (coeffs(1,gout,gin) /= ZERO) then
+              norm = ONE / coeffs(1,gout,gin)
+            else
+              norm = ONE
+            end if
             do imu = 1, this_order
-              this % fmu(gin) % data(imu,gout) = evaluate_legendre(norm * coeffs(:,gout,gin), this % mu(imu))
+              this % fmu(gin) % data(imu,gout) = &
+                   evaluate_legendre(norm * coeffs(:,gout,gin), this % mu(imu))
               ! Force positivity
               if (this % fmu(gin) % data(imu,gout) < ZERO) then
                 this % fmu(gin) % data(imu,gout) = ZERO
@@ -422,7 +428,7 @@ contains
     ! Now we can sample mu using the legendre representation of the scattering
     ! kernel in data(1:this % order)
 
-    ! Do with rejection sampling
+    ! Do with rejection sampling from a rectangular bounding box
     ! Set maximal value
     M = this % max_val(gin) % data(gout)
     samples = 0
@@ -519,7 +525,7 @@ contains
     p0  = this % fmu(gin) % data(k,gout)
     mu0 = this % mu(k)
     ! Linear-linear interpolation to find mu value w/in bin.
-    p0  = this % fmu(gin) % data(k + 1,gout)
+    p1  = this % fmu(gin) % data(k + 1,gout)
     mu1 = this % mu(k + 1)
 
     frac = (p1 - p0)/(mu1 - mu0)

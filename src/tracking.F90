@@ -202,7 +202,7 @@ contains
 
         ! Advance xs_seed N times ahead to avoid re-using prn
         if (p % E /= p % last_E) &
-          xs_seed = prn_skip_ahead(n_nuc_zaid_total, xs_seed)
+             xs_seed = prn_skip_ahead(n_nuc_zaid_total, xs_seed)
 
         ! Set all uvws to base level -- right now, after a collision, only the
         ! base level uvws are changed

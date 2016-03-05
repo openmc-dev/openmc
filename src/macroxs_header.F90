@@ -701,9 +701,9 @@ contains
       xs = this % scattxs(g)
     case('mult')
       if (present(gout)) then
-        xs = this % scatter % mult(gout,g)
+        xs = this % scatter % mult(g) % data(gout)
       else
-        xs = sum(this % scatter % mult(:,g))
+        xs = sum(this % scatter % mult(g) % data(:))
       end if
     end select
 
@@ -736,9 +736,9 @@ contains
         xs = this % scattxs(g,iazi,ipol)
       case('mult')
         if (present(gout)) then
-          xs = this % scatter(iazi,ipol) % obj % mult(gout,g)
+          xs = this % scatter(iazi,ipol) % obj % mult(g) % data(gout)
         else
-          xs = sum(this % scatter(iazi,ipol) % obj % mult(:,g))
+          xs = sum(this % scatter(iazi,ipol) % obj % mult(g) % data(:))
         end if
       end select
     end if

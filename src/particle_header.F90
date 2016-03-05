@@ -217,7 +217,7 @@ contains
     integer,         intent(in)    :: type
     logical,         intent(in)    :: run_CE
 
-    integer :: n
+    integer(8) :: n
 
     ! Check to make sure that the hard-limit on secondary particles is not
     ! exceeded.

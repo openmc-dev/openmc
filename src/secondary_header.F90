@@ -14,17 +14,17 @@ module secondary_header
 
   type, abstract :: AngleEnergy
   contains
-    procedure(iSampleAngleEnergy), deferred :: sample
+    procedure(angleenergy_sample_), deferred :: sample
   end type AngleEnergy
 
   abstract interface
-    subroutine iSampleAngleEnergy(this, E_in, E_out, mu)
+    subroutine angleenergy_sample_(this, E_in, E_out, mu)
       import AngleEnergy
       class(AngleEnergy), intent(in) :: this
       real(8), intent(in) :: E_in
       real(8), intent(out) :: E_out
       real(8), intent(out) :: mu
-    end subroutine iSampleAngleEnergy
+    end subroutine angleenergy_sample_
   end interface
 
   type :: AngleEnergyContainer
@@ -54,6 +54,7 @@ contains
     real(8), intent(out) :: E_out ! sampled outgoing energy
     real(8), intent(out) :: mu    ! sampled scattering cosine
 
+    integer :: i       ! loop counter
     integer :: n       ! number of angle-energy distributions
     real(8) :: prob    ! cumulative probability
     real(8) :: c       ! sampled cumulative probability

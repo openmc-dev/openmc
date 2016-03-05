@@ -23,35 +23,6 @@ module scattdata_header
 
 
 !===============================================================================
-! OUTGOINGTRANSFER contains sparse outgoing scattering matrices for a single
-! incoming group
-!===============================================================================
-
-  type OutgoingTransfer
-    real(8), allocatable :: data(:,:) ! Outgoing transfer probabilities
-                                      ! Dimension of (moments, gmin:gmax)
-    integer :: gmin
-    integer :: gmax
-  contains
-    ! Initialize OutgoingTransfer given a dense (GoutxL) matrix
-    procedure:: init => outgoingtransfer_init
-  end type OutgoingTransfer
-
-
-!===============================================================================
-! GROUPTRANSFER contains sparse outgoing scattering matrices for all
-! incoming groups
-!===============================================================================
-
-  type GroupTransfer
-    type(OutgoingTransfer), allocatable :: outgoing(:) ! Outgoing transfer probabilities
-  contains
-    ! Initialize GroupTransfer given a dense (GinxGoutxL) matrix
-    procedure:: init => grouptransfer_init
-  end type GroupTransfer
-
-
-!===============================================================================
 ! SCATTDATA contains all the data to describe the scattering energy and
 ! angular distribution
 !===============================================================================
@@ -137,69 +108,6 @@ module scattdata_header
   end type ScattDataContainer
 
 contains
-
-!===============================================================================
-! GROUPTRANSFER_INIT builds the OutgoingTransfer object given a dense scattering
-! matrix of (GoutxL) dimensionality.
-!===============================================================================
-
-    subroutine grouptransfer_init(this, dense)
-      class(GroupTransfer), intent(inout) :: this         ! Object to Initialize
-      real(8), intent(in)                 :: dense(:,:,:) ! Source Dense Matrix of
-                                                          ! (GinxGoutxL) dims.
-
-      integer :: gin, groups
-
-      groups = size(dense,dim=1)
-      allocate(this % outgoing(groups))
-      do gin = 1, groups
-        call this % outgoing(gin) % init(dense(gin,:,:),gin)
-      end do
-
-    end subroutine grouptransfer_init
-
-
-!===============================================================================
-! OUTGOINGTRANSFER_INIT builds the OutgoingTransfer object given a dense scattering
-! matrix of (GoutxL) dimensionality.
-!===============================================================================
-
-    subroutine outgoingtransfer_init(this, dense, gin)
-      class(OutgoingTransfer), intent(inout) :: this       ! Object to Initialize
-      real(8), intent(in)                    :: dense(:,:) ! Source Dense Matrix of
-                                                           ! (GoutxL) dims.
-      integer, intent(in)                    :: gin        ! Incoming group
-
-      integer :: groups, order, gmin, gmax, gout, l
-
-      groups = size(dense,dim=1)
-      order  = size(dense,dim=2)
-
-      ! Find gmin by checking the P0 moment
-      do gmin = 1, groups
-        if (dense(gmin,1) > ZERO) exit
-      end do
-      ! Find gmax by checking the P0 moment
-      do gmax = groups, 1, -1
-        if (dense(gmax,1) > ZERO) exit
-      end do
-      ! Treat the case of all zeros
-      if (gmin > gmax) then
-        gmin = gin
-        gmax = gin
-      end if
-
-      ! Now we can allocate our OutgoingTransfer object and place data
-      allocate(this % data(order, gmin:gmax))
-      do gout = gmin, gmax
-        do l = 1, order
-          this % data(l,gout) = dense(gout,l)
-        end do
-      end do
-      this % gmin = gmin
-      this % gmax = gmax
-
-    end subroutine outgoingtransfer_init
 
 !===============================================================================
 ! SCATTDATA_INIT builds the scattdata object
@@ -489,14 +397,11 @@ contains
     integer :: samples
 
     xi = prn()
-    ! Assuming highest group will be closest to the highest probability of
-    ! transfer (not always true, but generally so for few to multi-group
-    ! scenarios in all but water), so start there and go down in energy
-    gout = this % gmax(gin)
+    gout = this % gmin(gin)
     prob = this % energy(gin) % data(gout)
 
     do while (prob < xi)
-      gout = gout - 1
+      gout = gout + 1
       prob = prob + this % energy(gin) % data(gout)
     end do
 
@@ -538,14 +443,11 @@ contains
     integer :: imu
 
     xi = prn()
-    ! Assuming highest group will be closest to the highest probability of
-    ! transfer (not always true, but generally so for few to multi-group
-    ! scenarios in all but water), so start there and go down in energy
-    gout = this % gmax(gin)
+    gout = this % gmin(gin)
     prob = this % energy(gin) % data(gout)
 
     do while (prob < xi)
-      gout = gout - 1
+      gout = gout + 1
       prob = prob + this % energy(gin) % data(gout)
     end do
 
@@ -578,14 +480,11 @@ contains
     integer :: k, NP
 
     xi = prn()
-    ! Assuming highest group will be closest to the highest probability of
-    ! transfer (not always true, but generally so for few to multi-group
-    ! scenarios in all but water), so start there and go down in energy
-    gout = this % gmax(gin)
+    gout = this % gmin(gin)
     prob = this % energy(gin) % data(gout)
 
     do while (prob < xi)
-      gout = gout - 1
+      gout = gout + 1
       prob = prob + this % energy(gin) % data(gout)
     end do
 

@@ -28,10 +28,12 @@ module scattdata_header
 !===============================================================================
 
   type, abstract :: ScattData
-    ! p0 matrix on its own for sampling energy
+    ! normalized p0 matrix on its own for sampling energy
     type(Jagged1D), allocatable :: energy(:) ! (Gin % data(Gout))
-    real(8), allocatable :: mult(:,:)   ! (Gout x Gin)
-    real(8), allocatable :: data(:,:,:) ! (Order/Nmu x Gout x Gin)
+    ! nu-scatter multiplication (i.e. nu-scatt/scatt)
+    type(Jagged1D), allocatable :: mult(:)   ! (Gin % data(Gout))
+    ! Angular distribution
+    type(Jagged2D), allocatable :: dist(:)   ! (Gin % data(Order/Nmu x Gout)
     integer, allocatable :: gmin(:)     ! Minimum outgoing group
     integer, allocatable :: gmax(:)     ! Maximum outgoing group
 
@@ -73,7 +75,7 @@ module scattdata_header
 
   type, extends(ScattData) :: ScattDataLegendre
     ! Maximal value for rejection sampling from rectangle
-    real(8), allocatable  :: max_val(:,:)
+    type(Jagged1D), allocatable :: max_val(:) ! (Gin % data(Gout))
   contains
     procedure :: init   => scattdatalegendre_init
     procedure :: calc_f => scattdatalegendre_calc_f
@@ -90,9 +92,10 @@ module scattdata_header
   end type ScattDataHistogram
 
   type, extends(ScattData) :: ScattDataTabular
-    real(8), allocatable   :: mu(:)      ! Mu bins
-    real(8)                :: dmu        ! Mu spacing
-    real(8), allocatable   :: fmu(:,:,:) ! PDF of f(mu)
+    real(8), allocatable   :: mu(:)       ! Mu bins
+    real(8)                :: dmu         ! Mu spacing
+    ! PDF of f(mu)
+    type(Jagged2D), allocatable :: fmu(:) ! (Gin % data(Order/Nmu x Gout)
   contains
     procedure :: init   => scattdatatabular_init
     procedure :: calc_f => scattdatatabular_calc_f
@@ -126,6 +129,8 @@ contains
       allocate(this % gmin(groups))
       allocate(this % gmax(groups))
       allocate(this % energy(groups))
+      allocate(this % mult(groups))
+      allocate(this % dist(groups))
       ! Use energy to find the gmin and gmax values
       ! Also set energy values when doing it
       do gin = 1, groups
@@ -145,14 +150,13 @@ contains
         end if
         allocate(this % energy(gin) % data(gmin:gmax))
         this % energy(gin) % data(gmin:gmax) = energy(gmin:gmax,gin)
+        allocate(this % mult(gin) % data(gmin:gmax))
+        this % mult(gin) % data(gmin:gmax) = mult(gmin:gmax,gin)
+        allocate(this % dist(gin) % data(order,gmin:gmax))
+        this % dist(gin) % data = ZERO
         this % gmin(gin) = gmin
         this % gmax(gin) = gmax
       end do
-
-      allocate(this % mult(groups, groups))
-      this % mult = mult
-      allocate(this % data(order, groups, groups))
-      this % data = ZERO
 
     end subroutine scattdata_init
 
@@ -168,36 +172,42 @@ contains
 
       call scattdata_init(this, order, energy, mult)
 
-      this % data = coeffs
-
       groups = size(this % energy,dim=1)
 
-      allocate(this % max_val(groups, groups))
-      this % max_val = ZERO
+      allocate(this % max_val(groups))
+      ! Set dist values from coeffs and initialize max_val
+      do gin = 1, groups
+        this % dist(gin) % data(:,this % gmin(gin):this % gmax(gin)) = &
+             coeffs(:,this % gmin(gin):this % gmax(gin),gin)
+        allocate(this % max_val(gin) % data(this % gmin(gin):this % gmax(gin)))
+        this % max_val(gin) % data = ZERO
+      end do
+
       ! Step through the polynomial with fixed number of points to identify
       ! the maximal value.
       Nmu = 1001
       dmu = TWO / real(Nmu,8)
-      do imu = 1, Nmu
-        ! Update mu. Do first and last seperate to avoid float errors
-        if (imu == 1) then
-          mu = -ONE
-        else if (imu == Nmu) then
-          mu = ONE
-        end if
-        mu = -ONE + real(imu - 1,8) * dmu
-        do gin = 1, groups
-          do gout = 1, groups
+      do gin = 1, groups
+        do gout = this % gmin(gin), this % gmax(gin)
+          do imu = 1, Nmu
+            ! Update mu. Do first and last seperate to avoid float errors
+            if (imu == 1) then
+              mu = -ONE
+            else if (imu == Nmu) then
+              mu = ONE
+            else
+              mu = -ONE + real(imu - 1,8) * dmu
+            end if
             ! Calculate probability
             f = this % calc_f(gin,gout,mu)
             ! If this is a new max, store it.
-            if (f > this % max_val(gout,gin)) this % max_val(gout,gin) = f
+            if (f > this % max_val(gin) % data(gout)) &
+                 this % max_val(gin) % data(gout) = f
           end do
         end do
+        ! Finally, since we may not have caught the exact max, add 10% margin
+        this % max_val(gin) % data = this % max_val(gin) % data * 1.1_8
       end do
-
-      ! Finally, since we may not have caught the exact max, add 10% margin
-      this % max_val = this % max_val * 1.1_8
 
     end subroutine scattdatalegendre_init
 
@@ -224,19 +234,18 @@ contains
 
       ! Best to integrate this histogram so we can avoid rejection sampling
       do gin = 1, groups
-        do gout = 1, groups
-          if (energy(gout,gin) > ZERO) then
-            ! Integrate the histogram
-            this % data(1,gout,gin) = this % dmu * coeffs(1,gout,gin)
-            do imu = 2, order
-              this % data(imu,gout,gin) = this % dmu * coeffs(imu,gout,gin) + &
-                   this % data(imu-1,gout,gin)
-            end do
-            ! Now make sure integral norms to zero
-            norm = this % data(order,gout,gin)
-            if (norm > ZERO) then
-              this % data(:,gout,gin) = this % data(:,gout,gin) / norm
-            end if
+        do gout = this % gmin(gin), this % gmax(gin)
+          ! Integrate the histogram
+          this % dist(gin) % data(1,gout) = this % dmu * coeffs(1,gout,gin)
+          do imu = 2, order
+            this % dist(gin) % data(imu,gout) = this % dmu * coeffs(imu,gout,gin) + &
+                 this % dist(gin) % data(imu - 1,gout)
+          end do
+          ! Now make sure integral norms to zero
+          norm = this % dist(gin) % data(order,gout)
+          if (norm > ZERO) then
+            this % dist(gin) % data(:,gout) = &
+                 this % dist(gin) % data(:,gout) / norm
           end if
         end do
       end do
@@ -274,46 +283,51 @@ contains
       end do
       this % mu(this_order) = ONE
 
-      ! Best to integrate this histogram so we can avoid rejection sampling
-      allocate(this % fmu(this_order,groups,groups))
+      ! Calculate f(mu) and integrate it so we can avoid rejection sampling
+      allocate(this % fmu(groups))
       do gin = 1, groups
-        do gout = 1, groups
-          if (energy(gout,gin) > ZERO) then
-            if (legendre_flag) then
-              ! Coeffs are legendre coeffs.  Need to build f(mu) then integrate
-              ! and store the integral in this % data
-              ! Ensure the coeffs are normalized
-              norm = ONE / coeffs(1,gout,gin)
-              do imu = 1, this_order
-                this % fmu(imu,gout,gin) = evaluate_legendre(norm * coeffs(:,gout,gin), this % mu(imu))
-                ! Force positivity
-                if (this % fmu(imu,gout,gin) < ZERO) then
-                  this % fmu(imu,gout,gin) = ZERO
-                end if
-              end do
-            else
-              ! Coeffs contain f(mu), put in f(mu) to save duplicate.
-              this % fmu(:,gout,gin) = this % data(:,gout,gin)
-            end if
-
-            ! Re-normalize fmu for numerical integration issues and in case
-            ! the negative fix-up introduced un-normalized data
-            norm = ZERO
-            do imu = 2, this_order
-              norm = norm + HALF * this % dmu * (this % fmu(imu-1,gout,gin) + this % fmu(imu,gout,gin))
+        do gout = this % gmin(gin), this % gmax(gin)
+          allocate(this % fmu(gin) % data(this_order,&
+                                          this % gmin(gin):this % gmax(gin)))
+          if (legendre_flag) then
+            ! Coeffs are legendre coeffs.  Need to build f(mu) then integrate
+            ! and store the integral in this % dist
+            ! Ensure the coeffs are normalized
+            norm = ONE / coeffs(1,gout,gin)
+            do imu = 1, this_order
+              this % fmu(gin) % data(imu,gout) = evaluate_legendre(norm * coeffs(:,gout,gin), this % mu(imu))
+              ! Force positivity
+              if (this % fmu(gin) % data(imu,gout) < ZERO) then
+                this % fmu(gin) % data(imu,gout) = ZERO
+              end if
             end do
-            if (norm > ZERO) then
-              this % fmu(:,gout,gin) = this % fmu(:,gout,gin) / norm
-            end if
-
-            ! Now create CDF from fmu with trapezoidal rule
-            this % data(1,gout,gin) = ZERO
-            do imu = 2, this_order - 1
-              this % data(imu,gout,gin) = this % data(imu-1,gout,gin) + &
-                   HALF * this % dmu * (this % fmu(imu-1,gout,gin) + this % fmu(imu,gout,gin))
-            end do
-            this % data(this_order,gout,gin) = ONE
+          else
+            ! Coeffs contain f(mu), put in f(mu) as that is where the
+            ! PDF lives
+            this % fmu(gin) % data(:,gout) = this % dist(gin) % data(:,gout)
           end if
+
+          ! Re-normalize fmu for numerical integration issues and in case
+          ! the negative fix-up introduced un-normalized data
+          norm = ZERO
+          do imu = 2, this_order
+            norm = norm + HALF * this % dmu * &
+                 (this % fmu(gin) % data(imu - 1,gout) + &
+                  this % fmu(gin) % data(imu,gout))
+          end do
+          if (norm > ZERO) then
+            this % fmu(gin) % data(:,gout) = this % fmu(gin) % data(:,gout) / norm
+          end if
+
+          ! Now create CDF from fmu with trapezoidal rule
+          this % dist(gin) % data(1,gout) = ZERO
+          do imu = 2, this_order - 1
+            this % dist(gin) % data(imu,gout) = &
+                 this % dist(gin) % data(imu - 1,gout) + &
+                 HALF * this % dmu * (this % fmu(gin) % data(imu - 1,gout) + &
+                                      this % fmu(gin) % data(imu,gout))
+          end do
+          this % dist(gin) % data(this_order,gout) = ONE
         end do
       end do
 
@@ -331,7 +345,7 @@ contains
       real(8)                              :: f    ! Return value of f(mu)
 
       ! Plug mu in to the legendre expansion and go from there
-      f = evaluate_legendre(this % data(:, gout, gin), mu)
+      f = evaluate_legendre(this % dist(gin) % data(:,gout),mu)
 
     end function scattdatalegendre_calc_f
 
@@ -347,12 +361,12 @@ contains
       ! Find mu bin
       imu = floor((mu + ONE)/ this % dmu + ONE)
       ! Adjust so interpolation works on the last bin if necessary
-      if (imu == size(this % data, dim=1)) then
+      if (imu == size(this % dist, dim=1)) then
         imu = imu - 1
       end if
 
       ! Use histogram interpolation to find f(mu)
-      f = this % data(imu, gout, gin)
+      f = this % dist(gin) % data(imu,gout)
 
     end function scattdatahistogram_calc_f
 
@@ -369,14 +383,14 @@ contains
       ! Find mu bin
       imu = floor((mu + ONE)/ this % dmu + ONE)
       ! Adjust so interpolation works on the last bin if necessary
-      if (imu == size(this % data, dim=1)) then
+      if (imu == size(this % dist, dim=1)) then
         imu = imu - 1
       end if
 
-      ! ! Now interpolate to find f(mu)
+      ! Now interpolate to find f(mu)
       r = (mu - this % mu(imu)) / (this % mu(imu + 1) - this % mu(imu))
-      f = (ONE - r) * this % data(imu, gout, gin) + &
-           r * this % data(imu + 1, gout, gin)
+      f = (ONE - r) * this % dist(gin) % data(imu,gout) + &
+           r * this % dist(gin) % data(imu + 1,gout)
 
     end function scattdatatabular_calc_f
 
@@ -405,12 +419,12 @@ contains
       prob = prob + this % energy(gin) % data(gout)
     end do
 
-    ! Now we can sample mu using the legendre representation of the thisering
+    ! Now we can sample mu using the legendre representation of the scattering
     ! kernel in data(1:this % order)
 
     ! Do with rejection sampling
     ! Set maximal value
-    M = this % max_val(gout,gin)
+    M = this % max_val(gin) % data(gout)
     samples = 0
     do
       mu = TWO * prn() - ONE
@@ -427,7 +441,7 @@ contains
       end if
     end do
 
-    wgt = wgt * this % mult(gout,gin)
+    wgt = wgt * this % mult(gin) % data(gout)
 
   end subroutine scattdatalegendre_sample
 
@@ -452,17 +466,17 @@ contains
     end do
 
     xi = prn()
-    if (xi < this % data(1,gout,gin)) then
+    if (xi < this % dist(gin) % data(1,gout)) then
       imu = 1
     else
-      imu = binary_search(this % data(:,gout,gin), &
-                          size(this % data(:,gout,gin)), xi)
+      imu = binary_search(this % dist(gin) % data(:,gout), &
+                          size(this % dist(gin) % data(:,gout)), xi)
     end if
 
     ! Randomly select a mu in this bin.
     mu = prn() * this % dmu + this % mu(imu)
 
-    wgt = wgt * this % mult(gout,gin)
+    wgt = wgt * this % mult(gin) % data(gout)
 
   end subroutine scattdatahistogram_sample
 
@@ -489,12 +503,12 @@ contains
     end do
 
     ! determine outgoing cosine bin
-    NP = size(this % data(:,gout,gin))
+    NP = size(this % dist(gin) % data(:,gout))
     xi = prn()
 
-    c_k = this % data(1,gout,gin)
+    c_k = this % dist(gin) % data(1,gout)
     do k = 1, NP - 1
-      c_k1 = this % data(k+1,gout,gin)
+      c_k1 = this % dist(gin) % data(k + 1,gout)
       if (xi < c_k1) exit
       c_k = c_k1
     end do
@@ -502,18 +516,18 @@ contains
     ! check to make sure k is <= NP - 1
     k = min(k, NP - 1)
 
-    p0  = this % fmu(k,gout,gin)
+    p0  = this % fmu(gin) % data(k,gout)
     mu0 = this % mu(k)
     ! Linear-linear interpolation to find mu value w/in bin.
-    p1  = this % fmu(k+1,gout,gin)
-    mu1 = this % mu(k+1)
+    p0  = this % fmu(gin) % data(k + 1,gout)
+    mu1 = this % mu(k + 1)
 
     frac = (p1 - p0)/(mu1 - mu0)
 
     if (frac == ZERO) then
       mu = mu0 + (xi - c_k)/p0
     else
-      mu = mu0 + (sqrt(max(ZERO, p0*p0 + TWO*frac*(xi - c_k))) - p0)/frac
+      mu = mu0 + (sqrt(max(ZERO, p0 * p0 + TWO * frac * (xi - c_k))) - p0) / frac
     end if
 
     if (mu <= -ONE) then
@@ -522,7 +536,7 @@ contains
       mu = ONE
     end if
 
-    wgt = wgt * this % mult(gout,gin)
+    wgt = wgt * this % mult(gin) % data(gout)
 
   end subroutine scattdatatabular_sample
 

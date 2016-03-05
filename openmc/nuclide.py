@@ -60,6 +60,12 @@ class Nuclide(object):
     def __ne__(self, other):
         return not self == other
 
+    def __gt__(self, other):
+        return repr(self) > repr(other)
+
+    def __lt__(self, other):
+        return not self > other
+
     def __hash__(self):
         return hash(repr(self))
 

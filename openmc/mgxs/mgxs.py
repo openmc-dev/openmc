@@ -67,6 +67,10 @@ class MGXS(object):
         The energy group structure for energy condensation
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
+    nuclides : Iterable of basestring
+        The user-specified nuclides to compute cross sections. If by_nuclide
+        is True but nuclides are not specified by the user, all nuclides in the
+        spatial domain will be used.
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
@@ -111,6 +115,8 @@ class MGXS(object):
     sparse : bool
         Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
         for compressed data storage
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
 
     """
 
@@ -123,6 +129,7 @@ class MGXS(object):
         self._name = ''
         self._rxn_type = None
         self._by_nuclide = None
+        self._nuclides = None
         self._domain = None
         self._domain_type = None
         self._energy_groups = None
@@ -131,6 +138,7 @@ class MGXS(object):
         self._rxn_rate_tally = None
         self._xs_tally = None
         self._sparse = False
+        self._derived = False
 
         self.name = name
         self.by_nuclide = by_nuclide
@@ -151,6 +159,7 @@ class MGXS(object):
             clone._name = self.name
             clone._rxn_type = self.rxn_type
             clone._by_nuclide = self.by_nuclide
+            clone._nuclides = copy.deepcopy(self._nuclides)
             clone._domain = self.domain
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
@@ -158,6 +167,7 @@ class MGXS(object):
             clone._rxn_rate_tally = copy.deepcopy(self._rxn_rate_tally, memo)
             clone._xs_tally = copy.deepcopy(self._xs_tally, memo)
             clone._sparse = self.sparse
+            clone._derived = self.derived
 
             clone._tallies = OrderedDict()
             for tally_type, tally in self.tallies.items():
@@ -232,8 +242,7 @@ class MGXS(object):
 
     @property
     def num_subdomains(self):
-        tally = list(self.tallies.values())[0]
-        domain_filter = tally.find_filter(self.domain_type)
+        domain_filter = self.xs_tally.find_filter(self.domain_type)
         return domain_filter.num_bins
 
     @property
@@ -250,6 +259,10 @@ class MGXS(object):
         else:
             return 'sum'
 
+    @property
+    def derived(self):
+        return self._derived
+
     @name.setter
     def name(self, name):
         cv.check_type('name', name, basestring)
@@ -259,6 +272,11 @@ class MGXS(object):
     def by_nuclide(self, by_nuclide):
         cv.check_type('by_nuclide', by_nuclide, bool)
         self._by_nuclide = by_nuclide
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_iterable_type('nuclides', nuclides, basestring)
+        self._nuclides = nuclides
 
     @domain.setter
     def domain(self, domain):
@@ -389,8 +407,14 @@ class MGXS(object):
         if self.domain is None:
             raise ValueError('Unable to get all nuclides without a domain')
 
-        nuclides = self.domain.get_all_nuclides()
-        return nuclides.keys()
+        # If the user defined nuclides, return them
+        if self._nuclides:
+            return self._nuclides
+
+        # Otherwise, return all nuclides in the spatial domain
+        else:
+            nuclides = self.domain.get_all_nuclides()
+            return nuclides.keys()
 
     def get_nuclide_density(self, nuclide):
         """Get the atomic number density in units of atoms/b-cm for a nuclide
@@ -553,7 +577,7 @@ class MGXS(object):
         # If computing xs for each nuclide, replace CrossNuclides with originals
         if self.by_nuclide:
             self.xs_tally._nuclides = []
-            nuclides = self.domain.get_all_nuclides()
+            nuclides = self.get_all_nuclides()
             for nuclide in nuclides:
                 self.xs_tally.add_nuclide(openmc.Nuclide(nuclide))
 
@@ -682,7 +706,7 @@ class MGXS(object):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
+            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=2)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
@@ -855,18 +879,180 @@ class MGXS(object):
 
         # Clone this MGXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
-        avg_xs._rxn_rate_tally = None
-        avg_xs._xs_tally = None
 
-        # Average each of the tallies across subdomains
-        for tally_type, tally in avg_xs.tallies.items():
-            tally_avg = tally.summation(filter_type=self.domain_type,
-                                        filter_bins=subdomains)
-            avg_xs.tallies[tally_type] = tally_avg
+        if self.derived:
+            avg_xs._rxn_rate_tally = avg_xs.rxn_rate_tally.average(
+                filter_type=self.domain_type, filter_bins=subdomains)
+        else:
+            avg_xs._rxn_rate_tally = None
+            avg_xs._xs_tally = None
 
-        avg_xs._domain_type = 'sum({0})'.format(self.domain_type)
+            # Average each of the tallies across subdomains
+            for tally_type, tally in avg_xs.tallies.items():
+                tally_avg = tally.average(filter_type=self.domain_type,
+                                          filter_bins=subdomains)
+                avg_xs.tallies[tally_type] = tally_avg
+
+        avg_xs._domain_type = 'avg({0})'.format(self.domain_type)
         avg_xs.sparse = self.sparse
         return avg_xs
+
+    def get_slice(self, nuclides=[], groups=[]):
+        """Build a sliced MGXS for the specified nuclides and energy groups.
+
+        This method constructs a new MGXS to encapsulate a subset of the data
+        represented by this MGXS. The subset of data to include in the tally
+        slice is determined by the nuclides and energy groups specified in
+        the input parameters.
+
+        Parameters
+        ----------
+        nuclides : list of str
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
+        groups : list of Integral
+            A list of energy group indices starting at 1 for the high energies
+            (e.g., [1, 2, 3]; default is [])
+
+        Returns
+        -------
+        MGXS
+            A new tally which encapsulates the subset of data requested for the
+            nuclide(s) and/or energy group(s) requested in the parameters.
+
+        """
+
+        cv.check_iterable_type('nuclides', nuclides, basestring)
+        cv.check_iterable_type('energy_groups', groups, Integral)
+
+        # Build lists of filters and filter bins to slice
+        if len(groups) == 0:
+            filters = []
+            filter_bins = []
+        else:
+            filter_bins = []
+            for group in groups:
+                group_bounds = self.energy_groups.get_group_bounds(group)
+                filter_bins.append(group_bounds)
+            filter_bins = [tuple(filter_bins)]
+            filters = ['energy']
+
+        # Clone this MGXS to initialize the sliced version
+        slice_xs = copy.deepcopy(self)
+        slice_xs._rxn_rate_tally = None
+        slice_xs._xs_tally = None
+
+        # Slice each of the tallies across nuclides and energy groups
+        for tally_type, tally in slice_xs.tallies.items():
+            slice_nuclides = [nuc for nuc in nuclides if nuc in tally.nuclides]
+            if len(groups) != 0 and tally.contains_filter('energy'):
+                tally_slice = tally.get_slice(filters=filters,
+                    filter_bins=filter_bins, nuclides=slice_nuclides)
+            else:
+                tally_slice = tally.get_slice(nuclides=slice_nuclides)
+            slice_xs.tallies[tally_type] = tally_slice
+
+        # Assign sliced energy group structure to sliced MGXS
+        if groups:
+            new_group_edges = []
+            for group in groups:
+                group_edges = self.energy_groups.get_group_bounds(group)
+                new_group_edges.extend(group_edges)
+            new_group_edges = np.unique(new_group_edges)
+            slice_xs.energy_groups.group_edges = sorted(new_group_edges)
+
+        # Assign sliced nuclides to sliced MGXS
+        if nuclides:
+            slice_xs.nuclides = nuclides
+
+        slice_xs.sparse = self.sparse
+        return slice_xs
+
+    def can_merge(self, other):
+        """Determine if another MGXS can be merged with this one
+
+        If results have been loaded from a statepoint, then MGXS are only
+        mergeable along one and only one of enegy groups or nuclides.
+
+        Parameters
+        ----------
+        other : MGXS
+            MGXS to check for merging
+
+        """
+
+        if not isinstance(other, type(self)):
+            return False
+
+        # Compare reaction type, energy groups, nuclides, domain type
+        if self.rxn_type != other.rxn_type:
+            return False
+        elif not self.energy_groups.can_merge(other.energy_groups):
+            return False
+        elif self.by_nuclide != other.by_nuclide:
+            return False
+        elif self.domain_type != other.domain_type:
+            return False
+        elif 'distribcell' not in self.domain_type and self.domain != other.domain:
+            return False
+        elif not self.xs_tally.can_merge(other.xs_tally):
+            return False
+        elif not self.rxn_rate_tally.can_merge(other.rxn_rate_tally):
+            return False
+
+        # If all conditionals pass then MGXS are mergeable
+        return True
+
+    def merge(self, other):
+        """Merge another MGXS with this one
+
+        MGXS are only mergeable if their energy groups and nuclides are either
+        identical or mutually exclusive. If results have been loaded from a
+        statepoint, then MGXS are only mergeable along one and only one of
+        energy groups or nuclides.
+
+        Parameters
+        ----------
+        other : MGXS
+            MGXS to merge with this one
+
+        Returns
+        -------
+        merged_mgxs : MGXS
+            Merged MGXS
+
+        """
+
+        if not self.can_merge(other):
+            raise ValueError('Unable to merge MGXS')
+
+        # Create deep copy of tally to return as merged tally
+        merged_mgxs = copy.deepcopy(self)
+        merged_mgxs._derived = True
+
+        # Merge energy groups
+        if self.energy_groups != other.energy_groups:
+            merged_groups = self.energy_groups.merge(other.energy_groups)
+            merged_mgxs.energy_groups = merged_groups
+
+        # Merge nuclides
+        if self.nuclides != other.nuclides:
+
+            # The nuclides must be mutually exclusive
+            for nuclide in self.nuclides:
+                if nuclide in other.nuclides:
+                    msg = 'Unable to merge MGXS with shared nuclides'
+                    raise ValueError(msg)
+
+            # Concatenate lists of nuclides for the merged MGXS
+            merged_mgxs.nuclides = self.nuclides + other.nuclides
+
+        # Null base tallies but merge reaction rate and cross section tallies
+        merged_mgxs._tallies = OrderedDict()
+        merged_mgxs._rxn_rate_tally = self.rxn_rate_tally.merge(other.rxn_rate_tally)
+        merged_mgxs._xs_tally = self.xs_tally.merge(other.xs_tally)
+
+        return merged_mgxs
 
     def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
         """Print a string representation for the multi-group cross section.
@@ -1022,6 +1208,9 @@ class MGXS(object):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
+        elif self.domain_type == 'avg(distribcell)':
+            domain_filter = self.xs_tally.find_filter('avg(distribcell)')
+            subdomains = domain_filter.bins
         else:
             subdomains = [self.domain.id]
 
@@ -1239,14 +1428,13 @@ class MGXS(object):
             df.rename(columns={'energy low [MeV]': 'group in'},
                       inplace=True)
             in_groups = np.tile(all_groups, self.num_subdomains)
-            in_groups = np.repeat(in_groups, self.num_groups)
+            in_groups = np.repeat(in_groups, df.shape[0] / in_groups.size)
             df['group in'] = in_groups
             del df['energy high [MeV]']
 
             df.rename(columns={'energyout low [MeV]': 'group out'},
                       inplace=True)
-            out_groups = \
-                np.tile(all_groups, self.num_subdomains * self.num_groups)
+            out_groups = np.tile(all_groups, df.shape[0] / all_groups.size)
             df['group out'] = out_groups
             del df['energyout high [MeV]']
             columns = ['group in', 'group out']
@@ -1285,8 +1473,7 @@ class MGXS(object):
 
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal
-        df.sort([self.domain_type] + columns, inplace=True)
-
+        df.sort_values(by=[self.domain_type] + columns, inplace=True)
         return df
 
 
@@ -1329,7 +1516,7 @@ class TotalXS(MGXS):
 
     @property
     def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
+        if self._rxn_rate_tally is None :
             self._rxn_rate_tally = self.tallies['total']
             self._rxn_rate_tally.sparse = self.sparse
         return self._rxn_rate_tally
@@ -1735,6 +1922,58 @@ class ScatterMatrixXS(MGXS):
         cv.check_value('correction', correction, ('P0', None))
         self._correction = correction
 
+    def get_slice(self, nuclides=[], in_groups=[], out_groups=[]):
+        """Build a sliced ScatterMatrix for the specified nuclides and
+        energy groups.
+
+        This method constructs a new MGXS to encapsulate a subset of the data
+        represented by this MGXS. The subset of data to include in the tally
+        slice is determined by the nuclides and energy groups specified in
+        the input parameters.
+
+        Parameters
+        ----------
+        nuclides : list of str
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
+        in_groups : list of Integral
+            A list of incoming energy group indices starting at 1 for the high
+            energies (e.g., [1, 2, 3]; default is [])
+        out_groups : list of Integral
+            A list of outgoing energy group indices starting at 1 for the high
+            energies (e.g., [1, 2, 3]; default is [])
+
+        Returns
+        -------
+        MGXS
+            A new tally which encapsulates the subset of data requested for the
+            nuclide(s) and/or energy group(s) requested in the parameters.
+
+        """
+
+        # Call super class method and null out derived tallies
+        slice_xs = super(ScatterMatrixXS, self).get_slice(nuclides, in_groups)
+        slice_xs._rxn_rate_tally = None
+        slice_xs._xs_tally = None
+
+        # Slice outgoing energy groups if needed
+        if len(out_groups) != 0:
+            filter_bins = []
+            for group in out_groups:
+                group_bounds = self.energy_groups.get_group_bounds(group)
+                filter_bins.append(group_bounds)
+            filter_bins = [tuple(filter_bins)]
+
+            # Slice each of the tallies across energyout groups
+            for tally_type, tally in slice_xs.tallies.items():
+                if tally.contains_filter('energyout'):
+                    tally_slice = tally.get_slice(filters=['energyout'],
+                                                  filter_bins=filter_bins)
+                    slice_xs.tallies[tally_type] = tally_slice
+
+        slice_xs.sparse = self.sparse
+        return slice_xs
+
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all', xs_type='macro',
                order_groups='increasing', value='mean'):
@@ -1789,7 +2028,7 @@ class ScatterMatrixXS(MGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
+            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=2)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
@@ -2078,6 +2317,113 @@ class Chi(MGXS):
 
         return self._xs_tally
 
+    def get_slice(self, nuclides=[], groups=[]):
+        """Build a sliced Chi for the specified nuclides and energy groups.
+
+        This method constructs a new MGXS to encapsulate a subset of the data
+        represented by this MGXS. The subset of data to include in the tally
+        slice is determined by the nuclides and energy groups specified in
+        the input parameters.
+
+        Parameters
+        ----------
+        nuclides : list of str
+            A list of nuclide name strings
+            (e.g., ['U-235', 'U-238']; default is [])
+        groups : list of Integral
+            A list of energy group indices starting at 1 for the high energies
+            (e.g., [1, 2, 3]; default is [])
+
+        Returns
+        -------
+        MGXS
+            A new tally which encapsulates the subset of data requested for the
+            nuclide(s) and/or energy group(s) requested in the parameters.
+
+        """
+
+        # Temporarily remove energy filter from nu-fission-in since its
+        # group structure will work in super MGXS.get_slice(...) method
+        nu_fission_in = self.tallies['nu-fission-in']
+        energy_filter = nu_fission_in.find_filter('energy')
+        nu_fission_in.remove_filter(energy_filter)
+
+        # Call super class method and null out derived tallies
+        slice_xs = super(Chi, self).get_slice(nuclides, groups)
+        slice_xs._rxn_rate_tally = None
+        slice_xs._xs_tally = None
+
+        # Slice energy groups if needed
+        if len(groups) != 0:
+            filter_bins = []
+            for group in groups:
+                group_bounds = self.energy_groups.get_group_bounds(group)
+                filter_bins.append(group_bounds)
+            filter_bins = [tuple(filter_bins)]
+
+            # Slice nu-fission-out tally along energyout filter
+            nu_fission_out = slice_xs.tallies['nu-fission-out']
+            tally_slice = nu_fission_out.get_slice(filters=['energyout'],
+                                                   filter_bins=filter_bins)
+            slice_xs._tallies['nu-fission-out'] = tally_slice
+
+        # Add energy filter back to nu-fission-in tallies
+        self.tallies['nu-fission-in'].add_filter(energy_filter)
+        slice_xs._tallies['nu-fission-in'].add_filter(energy_filter)
+
+        slice_xs.sparse = self.sparse
+        return slice_xs
+
+    def merge(self, other):
+        """Merge another Chi with this one
+
+        If results have been loaded from a statepoint, then Chi are only
+        mergeable along one and only one of energy groups or nuclides.
+
+        Parameters
+        ----------
+        other : MGXS
+            MGXS to merge with this one
+
+        Returns
+        -------
+        merged_mgxs : MGXS
+            Merged MGXS
+        """
+
+        if not self.can_merge(other):
+            raise ValueError('Unable to merge Chi')
+
+        # Create deep copy of tally to return as merged tally
+        merged_mgxs = copy.deepcopy(self)
+        merged_mgxs._derived = True
+        merged_mgxs._rxn_rate_tally = None
+        merged_mgxs._xs_tally = None
+
+        # Merge energy groups
+        if self.energy_groups != other.energy_groups:
+            merged_groups = self.energy_groups.merge(other.energy_groups)
+            merged_mgxs.energy_groups = merged_groups
+
+        # Merge nuclides
+        if self.nuclides != other.nuclides:
+
+            # The nuclides must be mutually exclusive
+            for nuclide in self.nuclides:
+                if nuclide in other.nuclides:
+                    msg = 'Unable to merge Chi with shared nuclides'
+                    raise ValueError(msg)
+
+            # Concatenate lists of nuclides for the merged MGXS
+            merged_mgxs.nuclides = self.nuclides + other.nuclides
+
+        # Merge tallies
+        for tally_key in self.tallies:
+            merged_tally = self.tallies[tally_key].merge(other.tallies[tally_key])
+            merged_mgxs.tallies[tally_key] = merged_tally
+
+        return merged_mgxs
+
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing', value='mean'):
         """Returns an array of the fission spectrum.
@@ -2129,7 +2475,7 @@ class Chi(MGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
+            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=2)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))

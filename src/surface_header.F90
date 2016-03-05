@@ -19,34 +19,34 @@ module surface_header
   contains
     procedure :: sense
     procedure :: reflect
-    procedure(iEvaluate), deferred :: evaluate
-    procedure(iDistance), deferred :: distance
-    procedure(iNormal),   deferred :: normal
+    procedure(surface_evaluate_), deferred :: evaluate
+    procedure(surface_distance_), deferred :: distance
+    procedure(surface_normal_),   deferred :: normal
   end type Surface
 
   abstract interface
-    pure function iEvaluate(this, xyz) result(f)
+    pure function surface_evaluate_(this, xyz) result(f)
       import Surface
       class(Surface), intent(in) :: this
       real(8), intent(in) :: xyz(3)
       real(8) :: f
-    end function iEvaluate
+    end function surface_evaluate_
 
-    pure function iDistance(this, xyz, uvw, coincident) result(d)
+    pure function surface_distance_(this, xyz, uvw, coincident) result(d)
       import Surface
       class(Surface), intent(in) :: this
       real(8), intent(in) :: xyz(3)
       real(8), intent(in) :: uvw(3)
       logical, intent(in) :: coincident
       real(8) :: d
-    end function iDistance
+    end function surface_distance_
 
-    pure function iNormal(this, xyz) result(uvw)
+    pure function surface_normal_(this, xyz) result(uvw)
       import Surface
       class(Surface), intent(in) :: this
       real(8), intent(in) :: xyz(3)
       real(8) :: uvw(3)
-    end function iNormal
+    end function surface_normal_
   end interface
 
 !===============================================================================

@@ -31,12 +31,10 @@ module geometry_header
     integer              :: outer            ! universe to tile outside the lat
     logical              :: is_3d            ! Lattice has cells on z axis
     integer, allocatable :: offset(:,:,:,:)  ! Distribcell offsets
-
-    contains
-
-    procedure(are_valid_indices_), deferred :: are_valid_indices
-    procedure(get_indices_),       deferred :: get_indices
-    procedure(get_local_xyz_),     deferred :: get_local_xyz
+  contains
+    procedure(lattice_are_valid_indices_), deferred :: are_valid_indices
+    procedure(lattice_get_indices_),       deferred :: get_indices
+    procedure(lattice_get_local_xyz_),     deferred :: get_local_xyz
   end type Lattice
 
   abstract interface
@@ -45,33 +43,33 @@ module geometry_header
 ! ARE_VALID_INDICES returns .true. if the given lattice indices fit within the
 ! bounds of the lattice.  Returns false otherwise.
 
-    function are_valid_indices_(this, i_xyz) result(is_valid)
+    function lattice_are_valid_indices_(this, i_xyz) result(is_valid)
       import Lattice
       class(Lattice), intent(in) :: this
       integer,        intent(in) :: i_xyz(3)
       logical                    :: is_valid
-    end function are_valid_indices_
+    end function lattice_are_valid_indices_
 
 !===============================================================================
 ! GET_INDICES returns the indices in a lattice for the given global xyz.
 
-    function get_indices_(this, global_xyz) result(i_xyz)
+    function lattice_get_indices_(this, global_xyz) result(i_xyz)
       import Lattice
       class(Lattice), intent(in) :: this
       real(8),        intent(in) :: global_xyz(3)
       integer                    :: i_xyz(3)
-    end function get_indices_
+    end function lattice_get_indices_
 
 !===============================================================================
 ! GET_LOCAL_XYZ returns the translated local version of the given global xyz.
 
-    function get_local_xyz_(this, global_xyz, i_xyz) result(local_xyz)
+    function lattice_get_local_xyz_(this, global_xyz, i_xyz) result(local_xyz)
       import Lattice
       class(Lattice), intent(in) :: this
       real(8),        intent(in) :: global_xyz(3)
       integer,        intent(in) :: i_xyz(3)
       real(8)                    :: local_xyz(3)
-    end function get_local_xyz_
+    end function lattice_get_local_xyz_
   end interface
 
 !===============================================================================

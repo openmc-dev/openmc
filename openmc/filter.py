@@ -77,6 +77,25 @@ class Filter(object):
     def __ne__(self, other):
         return not self == other
 
+    def __gt__(self, other):
+        if self.type != other.type:
+            if self.type in _FILTER_TYPES and other.type in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.type) - \
+                        _FILTER_TYPES.index(other.type)
+                return delta > 0
+            else:
+                return False
+        else:
+            # Compare largest/smallest energy bin edges in energy filters
+            # This logic is used when merging tallies with energy filters
+            if 'energy' in self.type and 'energy' in other.type:
+                return self.bins[0] >= other.bins[-1]
+            else:
+                return max(self.bins) > max(other.bins)
+
+    def __lt__(self, other):
+        return not self > other
+
     def __hash__(self):
         return hash(repr(self))
 
@@ -246,20 +265,28 @@ class Filter(object):
             return False
 
         # Filters must be of the same type
-        elif self.type != other.type:
+        if self.type != other.type:
             return False
 
         # Distribcell filters cannot have more than one bin
-        elif self.type == 'distribcell':
+        if self.type == 'distribcell':
             return False
 
         # Mesh filters cannot have more than one bin
         elif self.type == 'mesh':
             return False
 
-        # Different energy bins are not mergeable
+        # Different energy bins structures must be mutually exclusive and
+        # share only one shared bin edge at the minimum or maximum energy
         elif 'energy' in self.type:
-            return False
+            # This low energy edge coincides with other's high energy edge
+            if self.bins[0] == other.bins[-1]:
+                return True
+            # This high energy edge coincides with other's low energy edge
+            elif self.bins[-1] == other.bins[0]:
+                return True
+            else:
+                return False
 
         else:
             return True
@@ -288,9 +315,21 @@ class Filter(object):
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = list(set(np.concatenate((self.bins, other.bins))))
-        merged_filter.bins = merged_bins
-        merged_filter.num_bins = len(merged_bins)
+        merged_bins = np.concatenate((self.bins, other.bins))
+        merged_bins = np.unique(merged_bins)
+
+        # Sort energy bin edges
+        if 'energy' in self.type:
+            merged_bins = sorted(merged_bins)
+
+        # Assign merged bins to merged filter
+        merged_filter.bins = list(merged_bins)
+
+        # Count bins in the merged filter
+        if 'energy' in merged_filter.type:
+            merged_filter.num_bins = len(merged_bins) - 1
+        else:
+            merged_filter.num_bins = len(merged_bins)
 
         return merged_filter
 
@@ -521,14 +560,8 @@ class Filter(object):
 
         """
 
-        # Attempt to import Pandas
-        try:
-            import pandas as pd
-        except ImportError:
-            msg = 'The Pandas Python package must be installed on your system'
-            raise ImportError(msg)
-
         # Initialize Pandas DataFrame
+        import pandas as pd
         df = pd.DataFrame()
 
         # mesh filters
@@ -707,7 +740,6 @@ class Filter(object):
             filter_bins = np.repeat(filter_bins, self.stride)
             tile_factor = data_size / len(filter_bins)
             filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = filter_bins
             df = pd.DataFrame({self.type : filter_bins})
 
             # If OpenCG level info DataFrame was created, concatenate

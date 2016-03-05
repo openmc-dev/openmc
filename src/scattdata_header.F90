@@ -8,6 +8,49 @@ module scattdata_header
 
   implicit none
 
+
+!===============================================================================
+! JAGGED1D and JAGGED2D is a type which allows for jagged 1-D or 2-D array.
+!===============================================================================
+
+  type :: Jagged2D
+    real(8), allocatable :: data(:,:)
+  end type Jagged2D
+
+  type :: Jagged1D
+    real(8), allocatable :: data(:)
+  end type Jagged1D
+
+
+!===============================================================================
+! OUTGOINGTRANSFER contains sparse outgoing scattering matrices for a single
+! incoming group
+!===============================================================================
+
+  type OutgoingTransfer
+    real(8), allocatable :: data(:,:) ! Outgoing transfer probabilities
+                                      ! Dimension of (moments, gmin:gmax)
+    integer :: gmin
+    integer :: gmax
+  contains
+    ! Initialize OutgoingTransfer given a dense (GoutxL) matrix
+    procedure:: init => outgoingtransfer_init
+  end type OutgoingTransfer
+
+
+!===============================================================================
+! GROUPTRANSFER contains sparse outgoing scattering matrices for all
+! incoming groups
+!===============================================================================
+
+  type GroupTransfer
+    type(OutgoingTransfer), allocatable :: outgoing(:) ! Outgoing transfer probabilities
+  contains
+    ! Initialize GroupTransfer given a dense (GinxGoutxL) matrix
+    procedure:: init => grouptransfer_init
+  end type GroupTransfer
+
+
 !===============================================================================
 ! SCATTDATA contains all the data to describe the scattering energy and
 ! angular distribution
@@ -15,9 +58,11 @@ module scattdata_header
 
   type, abstract :: ScattData
     ! p0 matrix on its own for sampling energy
-    real(8), allocatable :: energy(:,:) ! (Gout x Gin)
+    type(Jagged1D), allocatable :: energy(:) ! (Gin % data(Gout))
     real(8), allocatable :: mult(:,:)   ! (Gout x Gin)
     real(8), allocatable :: data(:,:,:) ! (Order/Nmu x Gout x Gin)
+    integer, allocatable :: gmin(:)     ! Minimum outgoing group
+    integer, allocatable :: gmax(:)     ! Maximum outgoing group
 
   contains
     procedure(scattdata_init_), deferred   :: init   ! Initializes ScattData
@@ -94,21 +139,108 @@ module scattdata_header
 contains
 
 !===============================================================================
+! GROUPTRANSFER_INIT builds the OutgoingTransfer object given a dense scattering
+! matrix of (GoutxL) dimensionality.
+!===============================================================================
+
+    subroutine grouptransfer_init(this, dense)
+      class(GroupTransfer), intent(inout) :: this         ! Object to Initialize
+      real(8), intent(in)                 :: dense(:,:,:) ! Source Dense Matrix of
+                                                          ! (GinxGoutxL) dims.
+
+      integer :: gin, groups
+
+      groups = size(dense,dim=1)
+      allocate(this % outgoing(groups))
+      do gin = 1, groups
+        call this % outgoing(gin) % init(dense(gin,:,:),gin)
+      end do
+
+    end subroutine grouptransfer_init
+
+
+!===============================================================================
+! OUTGOINGTRANSFER_INIT builds the OutgoingTransfer object given a dense scattering
+! matrix of (GoutxL) dimensionality.
+!===============================================================================
+
+    subroutine outgoingtransfer_init(this, dense, gin)
+      class(OutgoingTransfer), intent(inout) :: this       ! Object to Initialize
+      real(8), intent(in)                    :: dense(:,:) ! Source Dense Matrix of
+                                                           ! (GoutxL) dims.
+      integer, intent(in)                    :: gin        ! Incoming group
+
+      integer :: groups, order, gmin, gmax, gout, l
+
+      groups = size(dense,dim=1)
+      order  = size(dense,dim=2)
+
+      ! Find gmin by checking the P0 moment
+      do gmin = 1, groups
+        if (dense(gmin,1) > ZERO) exit
+      end do
+      ! Find gmax by checking the P0 moment
+      do gmax = groups, 1, -1
+        if (dense(gmax,1) > ZERO) exit
+      end do
+      ! Treat the case of all zeros
+      if (gmin > gmax) then
+        gmin = gin
+        gmax = gin
+      end if
+
+      ! Now we can allocate our OutgoingTransfer object and place data
+      allocate(this % data(order, gmin:gmax))
+      do gout = gmin, gmax
+        do l = 1, order
+          this % data(l,gout) = dense(gout,l)
+        end do
+      end do
+      this % gmin = gmin
+      this % gmax = gmax
+
+    end subroutine outgoingtransfer_init
+
+!===============================================================================
 ! SCATTDATA_INIT builds the scattdata object
 !===============================================================================
 
     subroutine scattdata_init(this, order, energy, mult)
       class(ScattData), intent(inout) :: this        ! Object to work on
-      integer, intent(in)                  :: order       ! Data Order
-      real(8), intent(in)                  :: energy(:,:) ! Energy Transfer Matrix
-      real(8), intent(in)                  :: mult(:,:)   ! Scatter Prod'n Matrix
+      integer, intent(in)             :: order       ! Data Order
+      real(8), intent(in)             :: energy(:,:) ! Energy Transfer Matrix
+      real(8), intent(in)             :: mult(:,:)   ! Scatter Prod'n Matrix
 
-      integer :: groups
+      integer :: groups, gmin, gmax, gin
 
       groups = size(energy, dim=1)
 
-      allocate(this % energy(groups, groups))
-      this % energy = energy
+      allocate(this % gmin(groups))
+      allocate(this % gmax(groups))
+      allocate(this % energy(groups))
+      ! Use energy to find the gmin and gmax values
+      ! Also set energy values when doing it
+      do gin = 1, groups
+        ! Find gmin by checking the P0 moment
+        do gmin = 1, groups
+          if (energy(gmin,gin) > ZERO) exit
+        end do
+        ! Find gmax by checking the P0 moment
+        do gmax = groups, 1, -1
+          if (energy(gmax,gin) > ZERO) exit
+        end do
+        ! Treat the case of all zeros
+        if (gmin > gmax) then
+          gmin = gin
+          gmax = gin
+          ! By not changing energy(gin) here we are leaving it as zero
+        end if
+        allocate(this % energy(gin) % data(gmin:gmax))
+        this % energy(gin) % data(gmin:gmax) = energy(gmin:gmax,gin)
+        this % gmin(gin) = gmin
+        this % gmax(gin) = gmax
+      end do
+
       allocate(this % mult(groups, groups))
       this % mult = mult
       allocate(this % data(order, groups, groups))
@@ -117,11 +249,11 @@ contains
     end subroutine scattdata_init
 
     subroutine scattdatalegendre_init(this, order, energy, mult, coeffs)
-      class(ScattDataLegendre), intent(inout) :: this   ! Object to work on
-      integer, intent(in)                     :: order  ! Data Order
-      real(8), intent(in)              :: energy(:,:)   ! Energy Transfer Matrix
-      real(8), intent(in)              :: mult(:,:)     ! Scatter Prod'n Matrix
-      real(8), intent(in)              :: coeffs(:,:,:) ! Coefficients to use
+      class(ScattDataLegendre), intent(inout) :: this          ! Object to work on
+      integer, intent(in)                     :: order         ! Data Order
+      real(8), intent(in)                     :: energy(:,:)   ! Energy Transfer Matrix
+      real(8), intent(in)                     :: mult(:,:)     ! Scatter Prod'n Matrix
+      real(8), intent(in)                     :: coeffs(:,:,:) ! Coefficients to use
 
       real(8) :: dmu, mu, f
       integer :: imu, Nmu, gout, gin, groups
@@ -285,10 +417,10 @@ contains
 
     pure function scattdatalegendre_calc_f(this, gin, gout, mu) result(f)
       class(ScattDataLegendre), intent(in) :: this ! The ScattData to evaluate
-      integer, intent(in)                   :: gin  ! Incoming Energy Group
-      integer, intent(in)                   :: gout ! Outgoing Energy Group
-      real(8), intent(in)                   :: mu   ! Angle of interest
-      real(8)                               :: f    ! Return value of f(mu)
+      integer, intent(in)                  :: gin  ! Incoming Energy Group
+      integer, intent(in)                  :: gout ! Outgoing Energy Group
+      real(8), intent(in)                  :: mu   ! Angle of interest
+      real(8)                              :: f    ! Return value of f(mu)
 
       ! Plug mu in to the legendre expansion and go from there
       f = evaluate_legendre(this % data(:, gout, gin), mu)
@@ -297,10 +429,10 @@ contains
 
     pure function scattdatahistogram_calc_f(this, gin, gout, mu) result(f)
       class(ScattDataHistogram), intent(in) :: this ! The ScattData to evaluate
-      integer, intent(in)                    :: gin  ! Incoming Energy Group
-      integer, intent(in)                    :: gout ! Outgoing Energy Group
-      real(8), intent(in)                    :: mu   ! Angle of interest
-      real(8)                                :: f    ! Return value of f(mu)
+      integer, intent(in)                   :: gin  ! Incoming Energy Group
+      integer, intent(in)                   :: gout ! Outgoing Energy Group
+      real(8), intent(in)                   :: mu   ! Angle of interest
+      real(8)                               :: f    ! Return value of f(mu)
 
       integer :: imu
 
@@ -318,10 +450,10 @@ contains
 
     pure function scattdatatabular_calc_f(this, gin, gout, mu) result(f)
       class(ScattDataTabular), intent(in) :: this ! The ScattData to evaluate
-      integer, intent(in)                  :: gin  ! Incoming Energy Group
-      integer, intent(in)                  :: gout ! Outgoing Energy Group
-      real(8), intent(in)                  :: mu   ! Angle of interest
-      real(8)                              :: f    ! Return value of f(mu)
+      integer, intent(in)                 :: gin  ! Incoming Energy Group
+      integer, intent(in)                 :: gout ! Outgoing Energy Group
+      real(8), intent(in)                 :: mu   ! Angle of interest
+      real(8)                             :: f    ! Return value of f(mu)
 
       integer :: imu
       real(8) :: r
@@ -357,12 +489,15 @@ contains
     integer :: samples
 
     xi = prn()
-    prob = ZERO
-    gout = 0
+    ! Assuming highest group will be closest to the highest probability of
+    ! transfer (not always true, but generally so for few to multi-group
+    ! scenarios in all but water), so start there and go down in energy
+    gout = this % gmax(gin)
+    prob = this % energy(gin) % data(gout)
 
     do while (prob < xi)
-      gout = gout + 1
-      prob = prob + this % energy(gout,gin)
+      gout = gout - 1
+      prob = prob + this % energy(gin) % data(gout)
     end do
 
     ! Now we can sample mu using the legendre representation of the thisering
@@ -403,12 +538,15 @@ contains
     integer :: imu
 
     xi = prn()
-    prob = ZERO
-    gout = 0
+    ! Assuming highest group will be closest to the highest probability of
+    ! transfer (not always true, but generally so for few to multi-group
+    ! scenarios in all but water), so start there and go down in energy
+    gout = this % gmax(gin)
+    prob = this % energy(gin) % data(gout)
 
     do while (prob < xi)
-      gout = gout + 1
-      prob = prob + this % energy(gout,gin)
+      gout = gout - 1
+      prob = prob + this % energy(gin) % data(gout)
     end do
 
     xi = prn()
@@ -440,12 +578,15 @@ contains
     integer :: k, NP
 
     xi = prn()
-    prob = ZERO
-    gout = 0
+    ! Assuming highest group will be closest to the highest probability of
+    ! transfer (not always true, but generally so for few to multi-group
+    ! scenarios in all but water), so start there and go down in energy
+    gout = this % gmax(gin)
+    prob = this % energy(gin) % data(gout)
 
     do while (prob < xi)
-      gout = gout + 1
-      prob = prob + this % energy(gout,gin)
+      gout = gout - 1
+      prob = prob + this % energy(gin) % data(gout)
     end do
 
     ! determine outgoing cosine bin

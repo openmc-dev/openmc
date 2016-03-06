@@ -134,6 +134,18 @@
       </element>
     </optional>
     <optional>
+      <element name="energy_mode">
+        <choice>
+          <value>continuous-energy</value>
+          <value>ce</value>
+          <value>CE</value>
+          <value>multi-group</value>
+          <value>mg</value>
+          <value>MG</value>
+        </choice>
+      </element>
+    </optional>
+    <optional>
       <element name="entropy">
         <interleave>
           <optional>
@@ -192,6 +204,11 @@
     <optional>
       <element name="log_grid_bins">
         <data type="positiveInteger"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="max_order">
+        <data type="nonNegativeInteger"/>
       </element>
     </optional>
     <optional>

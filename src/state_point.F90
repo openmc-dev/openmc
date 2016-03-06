@@ -18,7 +18,7 @@ module state_point
   use global
   use hdf5_interface
   use output,             only: write_message, time_stamp
-  use string,             only: to_str, zero_padded, count_digits
+  use string,             only: to_str, count_digits, zero_padded
   use tally_header,       only: TallyObject
   use mesh_header,        only: RegularMesh
   use dict_header,        only: ElemKeyValueII, ElemKeyValueCI
@@ -93,6 +93,11 @@ contains
       call write_dataset(file_id, "seed", seed)
 
       ! Write run information
+      if (run_CE) then
+        call write_dataset(file_id, "run_CE", 1)
+      else
+        call write_dataset(file_id, "run_CE", 0)
+      end if
       select case(run_mode)
       case (MODE_FIXEDSOURCE)
         call write_dataset(file_id, "run_mode", "fixed source")
@@ -683,6 +688,7 @@ contains
     integer(HID_T) :: tally_group
     real(8) :: real_array(3)
     logical :: source_present
+    integer :: sp_run_CE
     character(MAX_WORD_LEN) :: word
     type(TallyObject), pointer :: tally
 
@@ -694,7 +700,10 @@ contains
     file_id = file_open(path_state_point, 'r', parallel=.true.)
 
     ! Read filetype
-    call read_dataset(file_id, "filetype", int_array(1))
+    call read_dataset(file_id, "filetype", word)
+    if (word /= 'statepoint') then
+      call fatal_error("OpenMC tried to restart from a non-statepoint file.")
+    end if
 
     ! Read revision number for state point file and make sure it matches with
     ! current version
@@ -706,6 +715,17 @@ contains
 
     ! Read and overwrite random number seed
     call read_dataset(file_id, "seed", seed)
+
+    ! It is not impossible for a state point to be generated from a CE run but
+    ! to be loaded in to an MG run (or vice versa), check to prevent that.
+    call read_dataset(file_id, "run_CE", sp_run_CE)
+    if (sp_run_CE == 0 .and. run_CE) then
+      call fatal_error("State point file is from multi-group run but &
+                       & current run is continous-energy!")
+    else if (sp_run_CE == 1 .and. .not. run_CE) then
+      call fatal_error("State point file is from continuous-energy run but &
+                       & current run is multi-group!")
+    end if
 
     ! Read and overwrite run information except number of batches
     call read_dataset(file_id, "run_mode", word)
@@ -780,8 +800,13 @@ contains
            &file")
     end if
 
-    ! Read tallies to master
+    ! Read tallies to master. If we are using Parallel HDF5, all processes
+    ! need to be included in the HDF5 calls.
+#ifdef PHDF5
+    if (.true.) then
+#else
     if (master) then
+#endif
 
       ! Read number of realizations for global tallies
       call read_dataset(file_id, "n_realizations", n_realizations, indep=.true.)
@@ -791,7 +816,8 @@ contains
 
       ! Check if tally results are present
       tallies_group = open_group(file_id, "tallies")
-      call read_dataset(file_id, "tallies_present", int_array(1), indep=.true.)
+      call read_dataset(tallies_group, "tallies_present", int_array(1), &
+                        indep=.true.)
 
       ! Read in sum and sum squared
       if (int_array(1) == 1) then
@@ -799,10 +825,12 @@ contains
           ! Set pointer to tally
           tally => tallies(i)
 
-          ! Read sum and sum_sq for each bin
+          ! Read sum, sum_sq, and N for each bin
           tally_group = open_group(tallies_group, "tally " // &
-               trim(to_str(tally%id)))
-          call read_dataset(tally_group, "results", tally%results)
+               trim(to_str(tally % id)))
+          call read_dataset(tally_group, "results", tally % results)
+          call read_dataset(tally_group, "n_realizations", &
+               tally % n_realizations)
           call close_group(tally_group)
         end do TALLY_RESULTS
       end if

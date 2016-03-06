@@ -1,11 +1,11 @@
 module energy_distribution
 
-  use constants, only: ZERO, ONE, TWO, PI, HISTOGRAM, LINEAR_LINEAR
-  use endf_header, only: Tab1
+  use constants,     only: ZERO, ONE, TWO, PI, HISTOGRAM, LINEAR_LINEAR
+  use endf_header,   only: Tab1
   use interpolation, only: interpolate_tab1
-  use math, only: maxwell_spectrum, watt_spectrum
-  use random_lcg, only: prn
-  use search, only: binary_search
+  use math,          only: maxwell_spectrum, watt_spectrum
+  use random_lcg,    only: prn
+  use search,        only: binary_search
 
 !===============================================================================
 ! ENERGYDISTRIBUTION (abstract) defines an energy distribution that is a
@@ -16,16 +16,16 @@ module energy_distribution
 
   type, abstract :: EnergyDistribution
   contains
-    procedure(iSampleEnergy), deferred :: sample
+    procedure(energy_distribution_sample_), deferred :: sample
   end type EnergyDistribution
 
   abstract interface
-    function iSampleEnergy(this, E_in) result(E_out)
+    function energy_distribution_sample_(this, E_in) result(E_out)
       import EnergyDistribution
       class(EnergyDistribution), intent(in) :: this
       real(8), intent(in) :: E_in
       real(8) :: E_out
-    end function iSampleEnergy
+    end function energy_distribution_sample_
   end interface
 
   type :: EnergyDistributionContainer

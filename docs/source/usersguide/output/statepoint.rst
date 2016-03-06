@@ -4,7 +4,7 @@
 State Point File Format
 =======================
 
-The current revision of the statepoint file format is 14.
+The current revision of the statepoint file format is 15.
 
 **/filetype** (*char[]*)
 
@@ -38,6 +38,12 @@ The current revision of the statepoint file format is 14.
 **/seed** (*int8_t*)
 
     Pseudo-random number generator seed.
+
+**/run_CE** (*int*)
+
+    Flag to denote continuous-energy or multi-group mode. A value of 1
+    indicates a continuous-energy run while a value of 0 indicates a
+    multi-group run.
 
 **/run_mode** (*char[]*)
 
@@ -267,5 +273,6 @@ if (run_mode == 'k-eigenvalue' and source_present > 0)
     **/source_bank** (Compound type)
 
         Source bank information for each particle. The compound type has fields
-        ``wgt``, ``xyz``, ``uvw``, and ``E`` which represent the weight,
-        position, direction, and energy of the source particle, respectively.
+        ``wgt``, ``xyz``, ``uvw``, ``E``, ``g``, and ``delayed_group``, which
+        represent the weight, position, direction, energy, energy group, and
+        delayed_group of the source particle, respectively.

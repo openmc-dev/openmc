@@ -1,10 +1,10 @@
 module fission
 
-  use ace_header,    only: Nuclide
+  use nuclide_header, only: NuclideCE
   use constants
-  use error,         only: fatal_error
-  use interpolation, only: interpolate_tab1
-  use search,        only: binary_search
+  use error,          only: fatal_error
+  use interpolation,  only: interpolate_tab1
+  use search,         only: binary_search
 
   implicit none
 
@@ -16,7 +16,7 @@ contains
 !===============================================================================
 
   pure function nu_total(nuc, E) result(nu)
-    type(Nuclide), intent(in) :: nuc ! nuclide from which to find nu
+    type(NuclideCE), intent(in) :: nuc ! nuclide from which to find nu
     real(8),       intent(in) :: E   ! energy of incoming neutron
     real(8)                   :: nu  ! number of total neutrons emitted per fission
 
@@ -49,7 +49,7 @@ contains
 !===============================================================================
 
   pure function nu_prompt(nuc, E) result(nu)
-    type(Nuclide), intent(in) :: nuc ! nuclide from which to find nu
+    type(NuclideCE), intent(in) :: nuc ! nuclide from which to find nu
     real(8),       intent(in) :: E   ! energy of incoming neutron
     real(8)                   :: nu  ! number of prompt neutrons emitted per fission
 
@@ -86,7 +86,7 @@ contains
 !===============================================================================
 
   pure function nu_delayed(nuc, E) result(nu)
-    type(Nuclide), intent(in) :: nuc ! nuclide from which to find nu
+    type(NuclideCE), intent(in) :: nuc ! nuclide from which to find nu
     real(8),       intent(in) :: E   ! energy of incoming neutron
     real(8)                   :: nu  ! number of delayed neutrons emitted per fission
 
@@ -109,7 +109,7 @@ contains
 !===============================================================================
 
   pure function yield_delayed(nuc, E, g) result(yield)
-    type(Nuclide), intent(in) :: nuc   ! nuclide from which to find nu
+    type(NuclideCE), intent(in) :: nuc   ! nuclide from which to find nu
     real(8), intent(in)       :: E     ! energy of incoming neutron
     real(8)                   :: yield ! delayed neutron precursor yield
     integer, intent(in)       :: g     ! the delayed neutron precursor group

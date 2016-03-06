@@ -77,6 +77,25 @@ class Filter(object):
     def __ne__(self, other):
         return not self == other
 
+    def __gt__(self, other):
+        if self.type != other.type:
+            if self.type in _FILTER_TYPES and other.type in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.type) - \
+                        _FILTER_TYPES.index(other.type)
+                return delta > 0
+            else:
+                return False
+        else:
+            # Compare largest/smallest energy bin edges in energy filters
+            # This logic is used when merging tallies with energy filters
+            if 'energy' in self.type and 'energy' in other.type:
+                return self.bins[0] >= other.bins[-1]
+            else:
+                return max(self.bins) > max(other.bins)
+
+    def __lt__(self, other):
+        return not self > other
+
     def __hash__(self):
         return hash(repr(self))
 
@@ -246,20 +265,28 @@ class Filter(object):
             return False
 
         # Filters must be of the same type
-        elif self.type != other.type:
+        if self.type != other.type:
             return False
 
         # Distribcell filters cannot have more than one bin
-        elif self.type == 'distribcell':
+        if self.type == 'distribcell':
             return False
 
         # Mesh filters cannot have more than one bin
         elif self.type == 'mesh':
             return False
 
-        # Different energy bins are not mergeable
+        # Different energy bins structures must be mutually exclusive and
+        # share only one shared bin edge at the minimum or maximum energy
         elif 'energy' in self.type:
-            return False
+            # This low energy edge coincides with other's high energy edge
+            if self.bins[0] == other.bins[-1]:
+                return True
+            # This high energy edge coincides with other's low energy edge
+            elif self.bins[-1] == other.bins[0]:
+                return True
+            else:
+                return False
 
         else:
             return True
@@ -288,9 +315,21 @@ class Filter(object):
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = list(set(np.concatenate((self.bins, other.bins))))
-        merged_filter.bins = merged_bins
-        merged_filter.num_bins = len(merged_bins)
+        merged_bins = np.concatenate((self.bins, other.bins))
+        merged_bins = np.unique(merged_bins)
+
+        # Sort energy bin edges
+        if 'energy' in self.type:
+            merged_bins = sorted(merged_bins)
+
+        # Assign merged bins to merged filter
+        merged_filter.bins = list(merged_bins)
+
+        # Count bins in the merged filter
+        if 'energy' in merged_filter.type:
+            merged_filter.num_bins = len(merged_bins) - 1
+        else:
+            merged_filter.num_bins = len(merged_bins)
 
         return merged_filter
 
@@ -502,9 +541,9 @@ class Filter(object):
             2. separate columns for the cell IDs, universe IDs, and lattice IDs
                and x,y,z cell indices corresponding to each (with summary info).
 
-            For 'energy' and 'energyout' filters, the DataFrame include a single
-            column with each element comprising a string with the lower, upper
-            energy bounds for each filter bin.
+            For 'energy' and 'energyout' filters, the DataFrame includes one
+            column for the lower energy bound and one column for the upper
+            energy bound for each filter bin.
 
             For 'mesh' filters, the DataFrame includes three columns for the
             x,y,z mesh cell indices corresponding to each filter bin.
@@ -521,14 +560,8 @@ class Filter(object):
 
         """
 
-        # Attempt to import Pandas
-        try:
-            import pandas as pd
-        except ImportError:
-            msg = 'The Pandas Python package must be installed on your system'
-            raise ImportError(msg)
-
         # Initialize Pandas DataFrame
+        import pandas as pd
         df = pd.DataFrame()
 
         # mesh filters
@@ -673,9 +706,11 @@ class Filter(object):
 
                         # Assign entry to Lattice Multi-index column
                         else:
+                            # Reverse y index per lattice ordering in OpenCG
                             level_dict[lat_id_key][offset] = coords._lattice._id
                             level_dict[lat_x_key][offset] = coords._lat_x
-                            level_dict[lat_y_key][offset] = coords._lat_y
+                            level_dict[lat_y_key][offset] = \
+                                coords._lattice.dimension[1] - coords._lat_y - 1
                             level_dict[lat_z_key][offset] = coords._lat_z
 
                         # Move to next node in LocalCoords linked list
@@ -705,7 +740,6 @@ class Filter(object):
             filter_bins = np.repeat(filter_bins, self.stride)
             tile_factor = data_size / len(filter_bins)
             filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = filter_bins
             df = pd.DataFrame({self.type : filter_bins})
 
             # If OpenCG level info DataFrame was created, concatenate
@@ -717,21 +751,30 @@ class Filter(object):
 
         # energy, energyout filters
         elif 'energy' in self.type:
-            bins = self.bins
-            num_bins = self.num_bins
+            # Extract the lower and upper energy bounds, then repeat and tile
+            # them as necessary to account for other filters.
+            lo_bins = np.repeat(self.bins[:-1], self.stride)
+            hi_bins = np.repeat(self.bins[1:], self.stride)
+            tile_factor = data_size / len(lo_bins)
+            lo_bins = np.tile(lo_bins, tile_factor)
+            hi_bins = np.tile(hi_bins, tile_factor)
 
-            # Create strings for
-            template = '({0:.1e} - {1:.1e})'
-            filter_bins = []
-            for i in range(num_bins):
-                filter_bins.append(template.format(bins[i], bins[i+1]))
+            # Add the new energy columns to the DataFrame.
+            df.loc[:, self.type + ' low [MeV]'] = lo_bins
+            df.loc[:, self.type + ' high [MeV]'] = hi_bins
 
-            # Tile the energy bins into a DataFrame column
-            filter_bins = np.repeat(filter_bins, self.stride)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = filter_bins
-            df = pd.concat([df, pd.DataFrame({self.type + ' [MeV]' : filter_bins})])
+        elif self.type in ('azimuthal', 'polar'):
+            # Extract the lower and upper angle bounds, then repeat and tile
+            # them as necessary to account for other filters.
+            lo_bins = np.repeat(self.bins[:-1], self.stride)
+            hi_bins = np.repeat(self.bins[1:], self.stride)
+            tile_factor = data_size / len(lo_bins)
+            lo_bins = np.tile(lo_bins, tile_factor)
+            hi_bins = np.tile(hi_bins, tile_factor)
+
+            # Add the new angle columns to the DataFrame.
+            df.loc[:, self.type + ' low'] = lo_bins
+            df.loc[:, self.type + ' high'] = hi_bins
 
         # universe, material, surface, cell, and cellborn filters
         else:

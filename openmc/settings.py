@@ -70,11 +70,15 @@ class SettingsFile(object):
     cross_sections : str
         Indicates the path to an XML cross section listing file (usually named
         cross_sections.xml). If it is not set, the :envvar:`CROSS_SECTIONS`
-        environment variable will be used to find the path to the XML cross
-        section listing.
-    energy_grid : str
-        Set the method used to search energy grids. Acceptable values are
-        'nuclide', 'logarithm', and 'material-union'.
+        environment variable will be used for continuous-energy calculations
+        and :envvar:`MG_CROSS_SECTIONS` will be used for multi-group
+        calculations to find the path to the XML cross section file.
+    energy_grid : {'nuclide', 'logarithm', 'material-union'}
+        Set the method used to search energy grids.
+    energy_mode : {'continuous-energy', 'multi-group'}
+        Set whether the calculation should be continuous-energy or multi-group.
+    max_order : int
+        Maximum scattering order to apply globally when in multi-group mode.
     ptables : bool
         Determine whether probability tables are used.
     run_cmfd : bool
@@ -133,6 +137,10 @@ class SettingsFile(object):
         self._inactive = None
         self._particles = None
         self._keff_trigger = None
+
+        # Energy mode subelement
+        self._energy_mode = None
+        self._max_order = None
 
         # Source subelement
         self._source = None
@@ -220,6 +228,14 @@ class SettingsFile(object):
     @property
     def keff_trigger(self):
         return self._keff_trigger
+
+    @property
+    def energy_mode(self):
+        return self._energy_mode
+
+    @property
+    def max_order(self):
+        return self._max_order
 
     @property
     def source(self):
@@ -437,6 +453,18 @@ class SettingsFile(object):
             raise ValueError(msg)
 
         self._keff_trigger = keff_trigger
+
+    @energy_mode.setter
+    def energy_mode(self, energy_mode):
+        check_value('energy mode', energy_mode,
+                    ['continuous-energy', 'multi-group'])
+        self._energy_mode = energy_mode
+
+    @max_order.setter
+    def max_order(self, max_order):
+        check_type('maximum scattering order', max_order, Integral)
+        check_greater_than('maximum scattering order', max_order, 0, True)
+        self._max_order = max_order
 
     @source.setter
     def source(self, source):
@@ -782,6 +810,16 @@ class SettingsFile(object):
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(self._keff_trigger[key]).lower()
 
+    def _create_energy_mode_subelement(self):
+        if self._energy_mode is not None:
+            element = ET.SubElement(self._settings_file, "energy_mode")
+            element.text = str(self._energy_mode)
+
+    def _create_max_order_subelement(self):
+        if self._max_order is not None:
+            element = ET.SubElement(self._settings_file, "max_order")
+            element.text = str(self._max_order)
+
     def _create_source_subelement(self):
         if self.source is not None:
             for source in self.source:
@@ -970,7 +1008,7 @@ class SettingsFile(object):
             element = ET.SubElement(self._settings_file, "uniform_fs")
 
             subelement = ET.SubElement(element, "dimension")
-            subelement.text = str(self._ufs_dimension)
+            subelement.text = ' '.join(map(str, self._ufs_dimension))
 
             subelement = ET.SubElement(element, "lower_left")
             subelement.text = ' '.join(map(str, self._ufs_lower_left))
@@ -1025,6 +1063,8 @@ class SettingsFile(object):
         self._create_confidence_intervals()
         self._create_cross_sections_subelement()
         self._create_energy_grid_subelement()
+        self._create_energy_mode_subelement()
+        self._create_max_order_subelement()
         self._create_ptables_subelement()
         self._create_run_cmfd_subelement()
         self._create_seed_subelement()

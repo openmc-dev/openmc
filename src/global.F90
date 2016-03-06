@@ -1,15 +1,16 @@
 module global
 
-  use ace_header,       only: Nuclide, SAlphaBeta, xsListing, NuclideMicroXS, &
-                              MaterialMacroXS, Nuclide0K
   use bank_header,      only: Bank
   use cmfd_header
   use constants
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
+  use macroxs_header,   only: MacroXSContainer
   use material_header,  only: Material
   use mesh_header,      only: RegularMesh
+  use nuclide_header
   use plot_header,      only: ObjectPlot
+  use sab_header,       only: SAlphaBeta
   use set_header,       only: SetInt
   use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
@@ -59,38 +60,74 @@ module global
   integer :: n_lost_particles
 
   ! ============================================================================
-  ! CROSS SECTION RELATED VARIABLES
+  ! ENERGY TREATMENT RELATED VARIABLES
+  logical :: run_CE = .true.  ! Run in CE mode?
+
+  ! ============================================================================
+  ! CROSS SECTION RELATED VARIABLES NEEDED REGARDLESS OF CE OR MG
 
   ! Cross section arrays
-  type(Nuclide),    allocatable, target :: nuclides(:)    ! Nuclide cross-sections
-  type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
   type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings
+
+  integer :: n_nuclides_total ! Number of nuclide cross section tables
+  integer :: n_listings       ! Number of listings in cross_sections.xml
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
   type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 
-  integer :: n_nuclides_total ! Number of nuclide cross section tables
+  ! Dictionaries to look up cross sections and listings
+  type(DictCharInt) :: nuclide_dict
+  type(DictCharInt) :: xs_listing_dict
+
+  ! Default xs identifier (e.g. 70c or 300K)
+  character(5):: default_xs
+
+  ! ============================================================================
+  ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
+
+  ! Cross section arrays
+  type(NuclideCE), allocatable, target :: nuclides(:)    ! Nuclide cross-sections
+  type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
+
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
-  integer :: n_listings       ! Number of listings in cross_sections.xml
 
   ! Minimum/maximum energies
   real(8) :: energy_min_neutron = ZERO
   real(8) :: energy_max_neutron = INFINITY
 
   ! Dictionaries to look up cross sections and listings
-  type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: sab_dict
-  type(DictCharInt) :: xs_listing_dict
 
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.
 
-  ! Default xs identifier (e.g. 70c)
-  character(3):: default_xs
-
   ! What to assume for expanding natural elements
   integer :: default_expand = ENDF_BVII1
+
+  ! ============================================================================
+  ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
+
+  ! Cross section arrays
+  type(NuclideMGContainer), allocatable, target :: nuclides_MG(:)
+
+  ! Cross section caches
+  type(MacroXSContainer), target, allocatable :: macro_xs(:)
+
+  ! Number of energy groups
+  integer :: energy_groups
+
+  ! Energy group structure
+  real(8), allocatable :: energy_bins(:)
+
+  ! Midpoint of the energy group structure
+  real(8), allocatable :: energy_bin_avg(:)
+
+  ! Inverse velocities of the energy groups (provided or estimated)
+  real(8), allocatable :: inverse_velocities(:)
+
+  ! Maximum Data Order
+  integer :: max_order
 
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
@@ -395,7 +432,7 @@ module global
   type(SetInt) :: sourcepoint_batch
 
   ! Various output options
-  logical :: output_summary = .false.
+  logical :: output_summary = .true.
   logical :: output_xs      = .false.
   logical :: output_tallies = .true.
 
@@ -447,6 +484,14 @@ contains
 
     if (allocated(nuclides_0K)) then
       deallocate(nuclides_0K)
+    end if
+
+    if (allocated(nuclides_MG)) then
+      deallocate(nuclides_MG)
+    end if
+
+    if (allocated(macro_xs)) then
+      deallocate(macro_xs)
     end if
 
     if (allocated(sab_tables)) deallocate(sab_tables)

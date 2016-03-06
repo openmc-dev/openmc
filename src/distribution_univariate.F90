@@ -1,11 +1,11 @@
 module distribution_univariate
 
-  use constants, only: ZERO, ONE, HALF, HISTOGRAM, LINEAR_LINEAR, &
+  use constants,  only: ZERO, ONE, HALF, HISTOGRAM, LINEAR_LINEAR, &
        MAX_LINE_LEN, MAX_WORD_LEN
-  use error, only: fatal_error
-  use math, only: maxwell_spectrum, watt_spectrum
+  use error,      only: fatal_error
   use random_lcg, only: prn
-  use string, only: to_lower
+  use math,       only: maxwell_spectrum, watt_spectrum
+  use string,     only: to_lower
   use xml_interface
 
   implicit none
@@ -16,7 +16,7 @@ module distribution_univariate
 
   type, abstract :: Distribution
   contains
-    procedure(iSample), deferred :: sample
+    procedure(distribution_sample_), deferred :: sample
   end type Distribution
 
   type DistributionContainer
@@ -24,11 +24,11 @@ module distribution_univariate
   end type DistributionContainer
 
   abstract interface
-    function iSample(this) result(x)
+    function distribution_sample_(this) result(x)
       import Distribution
       class(Distribution), intent(in) :: this
       real(8) :: x
-    end function iSample
+    end function distribution_sample_
   end interface
 
 !===============================================================================

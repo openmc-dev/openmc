@@ -1,23 +1,25 @@
 module tracking
 
-  use constants,       only: MODE_EIGENVALUE
-  use cross_section,   only: calculate_xs
-  use error,           only: fatal_error, warning
-  use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
-                             cross_lattice, check_cell_overlap
-  use geometry_header, only: Universe, BASE_UNIVERSE
+  use constants,          only: MODE_EIGENVALUE
+  use cross_section,      only: calculate_xs
+  use error,              only: fatal_error, warning
+  use geometry,           only: find_cell, distance_to_boundary, cross_surface, &
+                                cross_lattice, check_cell_overlap
+  use geometry_header,    only: Universe, BASE_UNIVERSE
   use global
-  use output,          only: write_message
-  use particle_header, only: LocalCoord, Particle
-  use physics,         only: collision
-  use random_lcg,      only: prn
-  use string,          only: to_str
-  use tally,           only: score_analog_tally, score_tracklength_tally, &
-                             score_collision_tally, score_surface_current, &
-                             score_track_derivative, &
-                             score_collision_derivative, zero_flux_derivs
-  use track_output,    only: initialize_particle_track, write_particle_track, &
-                             add_particle_track, finalize_particle_track
+  use macroxs_header,     only: MacroXS
+  use output,             only: write_message
+  use particle_header,    only: LocalCoord, Particle
+  use physics,            only: collision
+  use physics_mg,         only: collision_mg
+  use random_lcg,         only: prn
+  use string,             only: to_str
+  use tally,              only: score_analog_tally, score_tracklength_tally, &
+                                score_collision_tally, score_surface_current, &
+                                score_track_derivative, &
+                                score_collision_derivative, zero_flux_derivs
+  use track_output,       only: initialize_particle_track, write_particle_track, &
+                                add_particle_track, finalize_particle_track
 
   implicit none
 
@@ -55,7 +57,9 @@ contains
     total_weight = total_weight + p % wgt
 
     ! Force calculation of cross-sections by setting last energy to zero
-    micro_xs % last_E = ZERO
+    if (run_CE) then
+      micro_xs % last_E = ZERO
+    end if
 
     ! Prepare to write out particle track.
     if (p % write_track) then
@@ -84,11 +88,24 @@ contains
 
       if (check_overlaps) call check_cell_overlap(p)
 
-      ! Calculate microscopic and macroscopic cross sections -- note: if the
-      ! material is the same as the last material and the energy of the
-      ! particle hasn't changed, we don't need to lookup cross sections again.
-
-      if (p % material /= p % last_material) call calculate_xs(p)
+      ! Calculate microscopic and macroscopic cross sections
+      if (run_CE) then
+        ! If the material is the same as the last material and the energy of the
+        ! particle hasn't changed, we don't need to lookup cross sections again.
+        if (p % material /= p % last_material) call calculate_xs(p)
+      else
+        ! Since the MGXS can be angle dependent, this needs to be done
+        ! After every collision for the MGXS mode
+        if (p % material /= MATERIAL_VOID) then
+          call macro_xs(p % material) % obj % calculate_xs(p % g, &
+               p % coord(p % n_coord) % uvw, material_xs)
+        else
+          material_xs % total      = ZERO
+          material_xs % elastic    = ZERO
+          material_xs % absorption = ZERO
+          material_xs % nu_fission = ZERO
+        end if
+      end if
 
       ! Find the distance to the nearest boundary
       call distance_to_boundary(p, d_boundary, surface_crossed, &
@@ -110,8 +127,10 @@ contains
       end do
 
       ! Score track-length tallies
-      if (active_tracklength_tallies % size() > 0) &
-           call score_tracklength_tally(p, distance)
+      if (active_tracklength_tallies % size() > 0) then
+        call score_tracklength_tally(p, distance)
+      end if
+
 
       ! Score track-length estimate of k-eff
       if (run_mode == MODE_EIGENVALUE) then
@@ -159,12 +178,15 @@ contains
         ! Clear surface component
         p % surface = NONE
 
-        call collision(p)
+        if (run_CE) then
+          call collision(p)
+        else
+          call collision_mg(p)
+        end if
 
         ! Score collision estimator tallies -- this is done after a collision
         ! has occurred rather than before because we need information on the
         ! outgoing energy for any tallies with an outgoing energy filter
-
         if (active_collision_tallies % size() > 0) call score_collision_tally(p)
         if (active_analog_tallies % size() > 0) call score_analog_tally(p)
 
@@ -211,8 +233,10 @@ contains
       ! Check for secondary particles if this particle is dead
       if (.not. p % alive) then
         if (p % n_secondary > 0) then
-          call p % initialize_from_source(p % secondary_bank(p % n_secondary))
+          call p % initialize_from_source(p % secondary_bank(p % n_secondary), &
+                                          run_CE, energy_bin_avg)
           p % n_secondary = p % n_secondary - 1
+          n_event = 0
 
           ! Enter new particle in particle track file
           if (p % write_track) call add_particle_track()

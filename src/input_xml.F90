@@ -17,8 +17,8 @@ module input_xml
   use random_lcg,       only: prn, seed
   use surface_header
   use stl_vector,       only: VectorInt
-  use string,           only: to_lower, to_str, str_to_int, str_to_real, &
-                              starts_with, ends_with, tokenize
+  use string,           only: str_to_int, str_to_real, tokenize, &
+                              to_lower, to_str, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
   use xml_interface
@@ -39,7 +39,13 @@ contains
   subroutine read_input_xml()
 
     call read_settings_xml()
-    if (run_mode /= MODE_PLOTTING) call read_cross_sections_xml()
+    if (run_mode /= MODE_PLOTTING) then
+      if (run_CE) then
+        call read_ce_cross_sections_xml()
+      else
+        call read_mg_cross_sections_xml()
+      end if
+    end if
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
@@ -103,6 +109,17 @@ contains
     ! Parse settings.xml file
     call open_xmldoc(doc, filename)
 
+    ! Find if a multi-group or continuous-energy simulation is desired
+    if (check_for_node(doc, "energy_mode")) then
+      call get_node_value(doc, "energy_mode", temp_str)
+      temp_str = trim(to_lower(temp_str))
+      if (temp_str == "mg" .or. temp_str == "multi-group") then
+        run_CE = .false.
+      else if (temp_str == "ce" .or. temp_str == "continuous-energy") then
+        run_CE = .true.
+      end if
+    end if
+
     ! Find cross_sections.xml file -- the first place to look is the
     ! settings.xml file. If no file is found there, then we check the
     ! CROSS_SECTIONS environment variable
@@ -111,20 +128,52 @@ contains
            run_mode /= MODE_PLOTTING) then
         ! No cross_sections.xml file specified in settings.xml, check
         ! environment variable
-        call get_environment_variable("CROSS_SECTIONS", env_variable)
-        if (len_trim(env_variable) == 0) then
-          call fatal_error("No cross_sections.xml file was specified in &
-               &settings.xml or in the CROSS_SECTIONS environment variable. &
-               &OpenMC needs a cross_sections.xml file to identify where to &
-               &find ACE cross section libraries. Please consult the user's &
-               &guide at http://mit-crpg.github.io/openmc for information on &
-               &how to set up ACE cross section libraries.")
-        else
+        if (run_CE) then
+          call get_environment_variable("OPENMC_CROSS_SECTIONS", env_variable)
+          if (len_trim(env_variable) == 0) then
+            call get_environment_variable("CROSS_SECTIONS", env_variable)
+            if (len_trim(env_variable) == 0) then
+              call fatal_error("No cross_sections.xml file was specified in &
+                   &settings.xml or in the OPENMC_CROSS_SECTIONS environment &
+                   &variable. OpenMC needs such a file to identify where to &
+                   &find ACE cross section libraries. Please consult the user's &
+                   &guide at http://mit-crpg.github.io/openmc for information on &
+                   &how to set up ACE cross section libraries.")
+            else
+              call warning("The CROSS_SECTIONS environment variable is &
+                   &deprecated. Please update your environment to use &
+                   &OPENMC_CROSS_SECTIONS instead.")
+            end if
+          end if
           path_cross_sections = trim(env_variable)
+        else
+          call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", env_variable)
+          if (len_trim(env_variable) == 0) then
+            call fatal_error("No cross_sections.xml file was specified in &
+                 &settings.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
+                 &variable. OpenMC needs such a file to identify where to &
+                 &find the cross section libraries. Please consult the user's &
+                 &guide at http://mit-crpg.github.io/openmc for information on &
+                 &how to set up the cross section libraries.")
+          else
+            path_cross_sections = trim(env_variable)
+          end if
         end if
       else
         call get_node_value(doc, "cross_sections", path_cross_sections)
       end if
+    end if
+
+    if (.not. run_CE) then
+      ! Scattering Treatments
+      if (check_for_node(doc, "max_order")) then
+        call get_node_value(doc, "max_order", max_order)
+      else
+        ! Set to default of largest int, which means to use whatever is contained in library
+        max_order = huge(0)
+      end if
+    else
+      max_order = 0
     end if
 
     ! Set output directory if a path has been specified on the <output_path>
@@ -173,8 +222,8 @@ contains
     end if
 
     ! Make sure that either eigenvalue or fixed source was specified
-    if (.not.check_for_node(doc, "eigenvalue") .and. &
-         .not.check_for_node(doc, "fixed_source")) then
+    if (.not. check_for_node(doc, "eigenvalue") .and. &
+         .not. check_for_node(doc, "fixed_source")) then
       call fatal_error("<eigenvalue> or <fixed_source> not specified.")
     end if
 
@@ -187,7 +236,7 @@ contains
       call get_node_ptr(doc, "eigenvalue", node_mode)
 
       ! Check number of particles
-      if (.not.check_for_node(node_mode, "particles")) then
+      if (.not. check_for_node(node_mode, "particles")) then
         call fatal_error("Need to specify number of particles per generation.")
       end if
 
@@ -257,7 +306,7 @@ contains
       call get_node_ptr(doc, "fixed_source", node_mode)
 
       ! Check number of particles
-      if (.not.check_for_node(node_mode, "particles")) then
+      if (.not. check_for_node(node_mode, "particles")) then
         call fatal_error("Need to specify number of particles per batch.")
       end if
 
@@ -905,8 +954,8 @@ contains
       if (check_for_node(node_output, "summary")) then
         call get_node_value(node_output, "summary", temp_str)
         temp_str = to_lower(temp_str)
-        if (trim(temp_str) == 'true' .or. &
-             trim(temp_str) == '1') output_summary = .true.
+        if (trim(temp_str) == 'false' .or. &
+             trim(temp_str) == '0') output_summary = .false.
       end if
 
       ! Check for cross sections option
@@ -953,7 +1002,7 @@ contains
           ! check to make sure a nuclide is specified
           if (.not. check_for_node(node_scatterer, "nuclide")) then
             call fatal_error("No nuclide specified for scatterer " &
-                 &// trim(to_str(i)) // " in settings.xml file!")
+                 // trim(to_str(i)) // " in settings.xml file!")
           end if
           call get_node_value(node_scatterer, "nuclide", &
                nuclides_0K(i) % nuclide)
@@ -967,7 +1016,7 @@ contains
           if (.not. check_for_node(node_scatterer, "xs_label")) then
             call fatal_error("Must specify the temperature dependent name of &
                  &scatterer " // trim(to_str(i)) &
-                 &// " given in cross_sections.xml")
+                 // " given in cross_sections.xml")
           end if
           call get_node_value(node_scatterer, "xs_label", &
                nuclides_0K(i) % name)
@@ -975,7 +1024,7 @@ contains
           ! check to make sure 0K xs name for which method is applied is given
           if (.not. check_for_node(node_scatterer, "xs_label_0K")) then
             call fatal_error("Must specify the 0K name of scatterer " &
-                 &// trim(to_str(i)) // " given in cross_sections.xml")
+                 // trim(to_str(i)) // " given in cross_sections.xml")
           end if
           call get_node_value(node_scatterer, "xs_label_0K", &
                nuclides_0K(i) % name_0K)
@@ -1035,7 +1084,7 @@ contains
         default_expand = JENDL_40
       case default
         call fatal_error("Unknown natural element expansion option: " &
-             &// trim(temp_str))
+             // trim(temp_str))
       end select
     end if
 
@@ -1152,7 +1201,7 @@ contains
       ! Check to make sure 'id' hasn't been used
       if (cell_dict % has_key(c % id)) then
         call fatal_error("Two or more cells use the same unique ID: " &
-             &// to_str(c % id))
+             // to_str(c % id))
       end if
 
       ! Read material
@@ -1254,7 +1303,7 @@ contains
         n = get_arraysize_double(node_cell, "rotation")
         if (n /= 3) then
           call fatal_error("Incorrect number of rotation parameters on cell " &
-               &// to_str(c % id))
+               // to_str(c % id))
         end if
 
         ! Copy rotation angles in x,y,z directions
@@ -1282,7 +1331,7 @@ contains
         ! another universe
         if (c % fill == NONE) then
           call fatal_error("Cannot apply a translation to cell " &
-               &// trim(to_str(c % id)) // " because it is not filled with &
+               // trim(to_str(c % id)) // " because it is not filled with &
                &another universe")
         end if
 
@@ -1398,7 +1447,7 @@ contains
       ! Check to make sure 'id' hasn't been used
       if (surface_dict % has_key(s%id)) then
         call fatal_error("Two or more surfaces use the same unique ID: " &
-             &// to_str(s%id))
+             // to_str(s%id))
       end if
 
       ! Copy surface name
@@ -1413,10 +1462,10 @@ contains
       n = get_arraysize_double(node_surf, "coeffs")
       if (n < coeffs_reqd) then
         call fatal_error("Not enough coefficients specified for surface: " &
-             &// trim(to_str(s%id)))
+             // trim(to_str(s%id)))
       elseif (n > coeffs_reqd) then
         call fatal_error("Too many coefficients specified for surface: " &
-             &// trim(to_str(s%id)))
+             // trim(to_str(s%id)))
       end if
 
       allocate(coeffs(n))
@@ -1542,7 +1591,7 @@ contains
       ! Check to make sure 'id' hasn't been used
       if (lattice_dict % has_key(lat % id)) then
         call fatal_error("Two or more lattices use the same unique ID: " &
-             &// to_str(lat % id))
+             // to_str(lat % id))
       end if
 
       ! Copy lattice name
@@ -1670,7 +1719,7 @@ contains
       ! Check to make sure 'id' hasn't been used
       if (lattice_dict % has_key(lat % id)) then
         call fatal_error("Two or more lattices use the same unique ID: " &
-             &// to_str(lat % id))
+             // to_str(lat % id))
       end if
 
       ! Copy lattice name
@@ -1872,6 +1921,7 @@ contains
     type(Node), pointer :: node_sab => null()
     type(NodeList), pointer :: node_mat_list => null()
     type(NodeList), pointer :: node_nuc_list => null()
+    type(NodeList), pointer :: node_macro_list => null()
     type(NodeList), pointer :: node_ele_list => null()
     type(NodeList), pointer :: node_sab_list => null()
 
@@ -1923,12 +1973,13 @@ contains
       ! Check to make sure 'id' hasn't been used
       if (material_dict % has_key(mat % id)) then
         call fatal_error("Two or more materials use the same unique ID: " &
-             &// to_str(mat % id))
+             // to_str(mat % id))
       end if
 
       ! Copy material name
       if (check_for_node(node_mat, "name")) then
         call get_node_value(node_mat, "name", mat % name)
+        mat % name = to_lower(mat % name)
       end if
 
       if (run_mode == MODE_PLOTTING) then
@@ -1945,7 +1996,7 @@ contains
         call get_node_ptr(node_mat, "density", node_dens)
       else
         call fatal_error("Must specify density element in material " &
-             &// trim(to_str(mat % id)))
+             // trim(to_str(mat % id)))
       end if
 
       ! Initialize value to zero
@@ -1961,6 +2012,19 @@ contains
 
         sum_density = .true.
 
+      else if (units == 'macro') then
+        if (check_for_node(node_dens, "value")) then
+          ! Copy value
+          call get_node_value(node_dens, "value", val)
+        else
+          val = ONE
+        end if
+
+        ! Set density
+        mat % density = val
+
+        sum_density = .false.
+
       else
         ! Copy value
         call get_node_value(node_dens, "value", val)
@@ -1969,7 +2033,7 @@ contains
         sum_density = .false.
         if (val <= ZERO) then
           call fatal_error("Need to specify a positive density on material " &
-               &// trim(to_str(mat % id)) // ".")
+               // trim(to_str(mat % id)) // ".")
         end if
 
         ! Adjust material density based on specified units
@@ -1984,7 +2048,7 @@ contains
           mat % density = 1.0e-24_8 * val
         case default
           call fatal_error("Unkwown units '" // trim(units) &
-               &// "' specified on material " // trim(to_str(mat % id)))
+               // "' specified on material " // trim(to_str(mat % id)))
         end select
       end if
 
@@ -1993,32 +2057,41 @@ contains
 
       ! Check to ensure material has at least one nuclide
       if (.not. check_for_node(node_mat, "nuclide") .and. &
-           .not. check_for_node(node_mat, "element")) then
-        call fatal_error("No nuclides or natural elements specified on &
-             &material " // trim(to_str(mat % id)))
+           .not. check_for_node(node_mat, "element") .and. &
+           .not. check_for_node(node_mat, "macroscopic")) then
+        call fatal_error("No macroscopic data, nuclides or natural elements &
+                         &specified on material " // trim(to_str(mat % id)))
       end if
 
-      ! Get pointer list of XML <nuclide>
-      call get_node_list(node_mat, "nuclide", node_nuc_list)
+      ! Create list of macroscopic x/s based on those specified, just treat
+      ! them as nuclides. This is all really a facade so the user thinks they
+      ! are entering in macroscopic data but the code treats them the same
+      ! as nuclides internally.
+      ! Get pointer list of XML <macroscopic>
+      call get_node_list(node_mat, "macroscopic", node_macro_list)
+      if (run_CE .and. (get_list_size(node_macro_list) > 0)) then
+        call fatal_error("Macroscopic can not be used in continuous-energy&
+                         & mode!")
+      else if (get_list_size(node_macro_list) > 1) then
+        call fatal_error("Only one macroscopic object permitted per material, " &
+             // trim(to_str(mat % id)))
+      else if (get_list_size(node_macro_list) == 1) then
 
-      ! Create list of nuclides based on those specified plus natural elements
-      INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
-        ! Combine nuclide identifier and cross section and copy into names
-        call get_list_item(node_nuc_list, j, node_nuc)
+        call get_list_item(node_macro_list, 1, node_nuc)
 
         ! Check for empty name on nuclide
-        if (.not.check_for_node(node_nuc, "name")) then
-          call fatal_error("No name specified on nuclide in material " &
-               &// trim(to_str(mat % id)))
+        if (.not. check_for_node(node_nuc, "name")) then
+          call fatal_error("No name specified on macroscopic data in material " &
+               // trim(to_str(mat % id)))
         end if
 
         ! Check for cross section
-        if (.not.check_for_node(node_nuc, "xs")) then
+        if (.not. check_for_node(node_nuc, "xs")) then
           if (default_xs == '') then
-            call fatal_error("No cross section specified for nuclide in &
-                 &material " // trim(to_str(mat % id)))
+            call fatal_error("No cross section specified for macroscopic data &
+                 & in material " // trim(to_str(mat % id)))
           else
-            name = trim(default_xs)
+            name = to_lower(trim(default_xs))
           end if
         end if
 
@@ -2042,31 +2115,81 @@ contains
         if (check_for_node(node_nuc, "xs")) &
              call get_node_value(node_nuc, "xs", name)
         name = trim(temp_str) // "." // trim(name)
+        name = to_lower(name)
 
         ! save name and density to list
         call list_names % append(name)
 
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
-        if (.not.check_for_node(node_nuc, "ao") .and. &
-             .not.check_for_node(node_nuc, "wo")) then
-          call fatal_error("No atom or weight percent specified for nuclide " &
-               &// trim(name))
-        elseif (check_for_node(node_nuc, "ao") .and. &
-                check_for_node(node_nuc, "wo")) then
-          call fatal_error("Cannot specify both atom and weight percents for a &
-               &nuclide: " // trim(name))
-        end if
-
-        ! Copy atom/weight percents
-        if (check_for_node(node_nuc, "ao")) then
-          call get_node_value(node_nuc, "ao", temp_dble)
-          call list_density % append(temp_dble)
+        if (units == 'macro') then
+          call list_density % append(ONE)
         else
-          call get_node_value(node_nuc, "wo", temp_dble)
-          call list_density % append(-temp_dble)
+          call fatal_error("Units can only be macro for macroscopic data " &
+               // trim(name))
         end if
-      end do INDIVIDUAL_NUCLIDES
+      else
+
+        ! Get pointer list of XML <nuclide>
+        call get_node_list(node_mat, "nuclide", node_nuc_list)
+
+        ! Create list of nuclides based on those specified plus natural elements
+        INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
+          ! Combine nuclide identifier and cross section and copy into names
+          call get_list_item(node_nuc_list, j, node_nuc)
+
+          ! Check for empty name on nuclide
+          if (.not. check_for_node(node_nuc, "name")) then
+            call fatal_error("No name specified on nuclide in material " &
+                 // trim(to_str(mat % id)))
+          end if
+
+          ! Check for cross section
+          if (.not. check_for_node(node_nuc, "xs")) then
+            if (default_xs == '') then
+              call fatal_error("No cross section specified for nuclide in &
+                   &material " // trim(to_str(mat % id)))
+            else
+              name = to_lower(trim(default_xs))
+            end if
+          end if
+
+          ! store full name
+          call get_node_value(node_nuc, "name", temp_str)
+          if (check_for_node(node_nuc, "xs")) &
+               call get_node_value(node_nuc, "xs", name)
+          name = trim(temp_str) // "." // trim(name)
+          name = to_lower(name)
+
+          ! save name and density to list
+          call list_names % append(name)
+
+          ! Check if no atom/weight percents were specified or if both atom and
+          ! weight percents were specified
+          if (units == 'macro') then
+            call list_density % append(ONE)
+          else
+            if (.not. check_for_node(node_nuc, "ao") .and. &
+                 .not. check_for_node(node_nuc, "wo")) then
+              call fatal_error("No atom or weight percent specified for nuclide " &
+                   // trim(name))
+            elseif (check_for_node(node_nuc, "ao") .and. &
+                    check_for_node(node_nuc, "wo")) then
+              call fatal_error("Cannot specify both atom and weight percents for a &
+                   &nuclide: " // trim(name))
+            end if
+
+            ! Copy atom/weight percents
+            if (check_for_node(node_nuc, "ao")) then
+              call get_node_value(node_nuc, "ao", temp_dble)
+              call list_density % append(temp_dble)
+            else
+              call get_node_value(node_nuc, "wo", temp_dble)
+              call list_density % append(-temp_dble)
+            end if
+          end if
+        end do INDIVIDUAL_NUCLIDES
+      end if
 
       ! =======================================================================
       ! READ AND PARSE <element> TAGS
@@ -2078,9 +2201,9 @@ contains
         call get_list_item(node_ele_list, j, node_ele)
 
         ! Check for empty name on natural element
-        if (.not.check_for_node(node_ele, "name")) then
+        if (.not. check_for_node(node_ele, "name")) then
           call fatal_error("No name specified on nuclide in material " &
-               &// trim(to_str(mat % id)))
+               // trim(to_str(mat % id)))
         end if
         call get_node_value(node_ele, "name", name)
 
@@ -2092,16 +2215,16 @@ contains
             call fatal_error("No cross section specified for nuclide in &
                  &material " // trim(to_str(mat % id)))
           else
-            temp_str = trim(default_xs)
+            temp_str = to_lower(trim(default_xs))
           end if
         end if
 
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
-        if (.not.check_for_node(node_ele, "ao") .and. &
-             .not.check_for_node(node_ele, "wo")) then
+        if (.not. check_for_node(node_ele, "ao") .and. &
+             .not. check_for_node(node_ele, "wo")) then
           call fatal_error("No atom or weight percent specified for element " &
-               &// trim(name))
+               // trim(name))
         elseif (check_for_node(node_ele, "ao") .and. &
                 check_for_node(node_ele, "wo")) then
           call fatal_error("Cannot specify both atom and weight percents for &
@@ -2161,14 +2284,16 @@ contains
         name = trim(list_names % get_item(j))
         if (.not. xs_listing_dict % has_key(to_lower(name))) then
           call fatal_error("Could not find nuclide " // trim(name) &
-               &// " in cross_sections.xml file!")
+               // " in cross_sections data file!")
         end if
 
-        ! Check to make sure cross-section is continuous energy neutron table
-        n = len_trim(name)
-        if (name(n:n) /= 'c') then
-          call fatal_error("Cross-section table " // trim(name) &
-               &// " is not a continuous-energy neutron table.")
+        if (run_CE) then
+          ! Check to make sure cross-section is continuous energy neutron table
+          n = len_trim(name)
+          if (name(n:n) /= 'c') then
+            call fatal_error("Cross-section table " // trim(name) &
+                 // " is not a continuous-energy neutron table.")
+          end if
         end if
 
         ! Find xs_listing and set the name/alias according to the listing
@@ -2206,7 +2331,7 @@ contains
       if (.not. (all(mat % atom_density >= ZERO) .or. &
            all(mat % atom_density <= ZERO))) then
         call fatal_error("Cannot mix atom and weight percents in material " &
-             &// to_str(mat % id))
+             // to_str(mat % id))
       end if
 
       ! Determine density if it is a sum value
@@ -2219,59 +2344,60 @@ contains
 
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
+      if (run_CE) then
+        ! Get pointer list to XML <sab>
+        call get_node_list(node_mat, "sab", node_sab_list)
 
-      ! Get pointer list to XML <sab>
-      call get_node_list(node_mat, "sab", node_sab_list)
+        n_sab = get_list_size(node_sab_list)
+        if (n_sab > 0) then
+          ! Set number of S(a,b) tables
+          mat % n_sab = n_sab
 
-      n_sab = get_list_size(node_sab_list)
-      if (n_sab > 0) then
-        ! Set number of S(a,b) tables
-        mat % n_sab = n_sab
+          ! Allocate names and indices for nuclides and tables
+          allocate(mat % sab_names(n_sab))
+          allocate(mat % i_sab_nuclides(n_sab))
+          allocate(mat % i_sab_tables(n_sab))
 
-        ! Allocate names and indices for nuclides and tables
-        allocate(mat % sab_names(n_sab))
-        allocate(mat % i_sab_nuclides(n_sab))
-        allocate(mat % i_sab_tables(n_sab))
+          ! Initialize i_sab_nuclides
+          mat % i_sab_nuclides = NONE
 
-        ! Initialize i_sab_nuclides
-        mat % i_sab_nuclides = NONE
+          do j = 1, n_sab
+            ! Get pointer to S(a,b) table
+            call get_list_item(node_sab_list, j, node_sab)
 
-        do j = 1, n_sab
-          ! Get pointer to S(a,b) table
-          call get_list_item(node_sab_list, j, node_sab)
+            ! Determine name of S(a,b) table
+            if (.not. check_for_node(node_sab, "name") .or. &
+                 .not. check_for_node(node_sab, "xs")) then
+              call fatal_error("Need to specify <name> and <xs> for S(a,b) &
+                   &table.")
+            end if
+            call get_node_value(node_sab, "name", name)
+            call get_node_value(node_sab, "xs", temp_str)
+            name = trim(name) // "." // trim(temp_str)
+            mat % sab_names(j) = name
 
-          ! Determine name of S(a,b) table
-          if (.not.check_for_node(node_sab, "name") .or. &
-               .not.check_for_node(node_sab, "xs")) then
-            call fatal_error("Need to specify <name> and <xs> for S(a,b) &
-                 &table.")
-          end if
-          call get_node_value(node_sab, "name", name)
-          call get_node_value(node_sab, "xs", temp_str)
-          name = trim(name) // "." // trim(temp_str)
-          mat % sab_names(j) = name
+            ! Check that this nuclide is listed in the cross_sections.xml file
+            if (.not. xs_listing_dict % has_key(to_lower(name))) then
+              call fatal_error("Could not find S(a,b) table " // trim(name) &
+                   // " in cross_sections.xml file!")
+            end if
 
-          ! Check that this nuclide is listed in the cross_sections.xml file
-          if (.not. xs_listing_dict % has_key(to_lower(name))) then
-            call fatal_error("Could not find S(a,b) table " // trim(name) &
-                 &// " in cross_sections.xml file!")
-          end if
+            ! Find index in xs_listing and set the name and alias according to the
+            ! listing
+            index_list = xs_listing_dict % get_key(to_lower(name))
+            name       = xs_listings(index_list) % name
 
-          ! Find index in xs_listing and set the name and alias according to the
-          ! listing
-          index_list = xs_listing_dict % get_key(to_lower(name))
-          name       = xs_listings(index_list) % name
-
-          ! If this S(a,b) table hasn't been encountered yet, we need to add its
-          ! name and alias to the sab_dict
-          if (.not. sab_dict % has_key(to_lower(name))) then
-            index_sab = index_sab + 1
-            mat % i_sab_tables(j) = index_sab
-            call sab_dict % add_key(to_lower(name), index_sab)
-          else
-            mat % i_sab_tables(j) = sab_dict % get_key(to_lower(name))
-          end if
-        end do
+            ! If this S(a,b) table hasn't been encountered yet, we need to add its
+            ! name and alias to the sab_dict
+            if (.not. sab_dict % has_key(to_lower(name))) then
+              index_sab = index_sab + 1
+              mat % i_sab_tables(j) = index_sab
+              call sab_dict % add_key(to_lower(name), index_sab)
+            else
+              mat % i_sab_tables(j) = sab_dict % get_key(to_lower(name))
+            end if
+          end do
+        end if
       end if
 
       ! Add material to dictionary
@@ -2422,7 +2548,7 @@ contains
       ! Check to make sure 'id' hasn't been used
       if (mesh_dict % has_key(m % id)) then
         call fatal_error("Two or more meshes use the same unique ID: " &
-             &// to_str(m % id))
+             // to_str(m % id))
       end if
 
       ! Read mesh type
@@ -2478,8 +2604,8 @@ contains
       end if
 
       ! Make sure either upper-right or width was specified
-      if (.not.check_for_node(node_mesh, "upper_right") .and. &
-           .not.check_for_node(node_mesh, "width")) then
+      if (.not. check_for_node(node_mesh, "upper_right") .and. &
+           .not. check_for_node(node_mesh, "width")) then
         call fatal_error("Must specify either <upper_right> and <width> on a &
              &tally mesh.")
       end if
@@ -2642,7 +2768,7 @@ contains
       ! Check to make sure 'id' hasn't been used
       if (tally_dict % has_key(t % id)) then
         call fatal_error("Two or more tallies use the same unique ID: " &
-             &// to_str(t % id))
+             // to_str(t % id))
       end if
 
       ! Copy tally name
@@ -2683,7 +2809,7 @@ contains
             end if
           else
             call fatal_error("Bins not set in filter on tally " &
-                 &// trim(to_str(t % id)))
+                 // trim(to_str(t % id)))
           end if
 
           ! Determine type of filter
@@ -2775,7 +2901,7 @@ contains
               m => meshes(i_mesh)
             else
               call fatal_error("Could not find mesh " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t % id)))
+                   // " specified on tally " // trim(to_str(t % id)))
             end if
 
             ! Determine number of bins -- this is assuming that the tally is
@@ -2798,6 +2924,14 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
+            if (.not. run_CE) then
+              if (n_words /= energy_groups + 1) then
+                t % energy_matches_groups = .false.
+              else if (all(t % filters(j) % real_bins == energy_bins)) then
+                t % energy_matches_groups = .false.
+              end if
+            end if
+
           case ('energyout')
             ! Set type of filter
             t % filters(j) % type = FILTER_ENERGYOUT
@@ -2809,10 +2943,27 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
+            if (.not. run_CE) then
+              if (n_words /= energy_groups + 1) then
+                t % energy_matches_groups = .false.
+              else if (all(t % filters(j) % real_bins == energy_bins)) then
+                t % energy_matches_groups = .false.
+              end if
+            end if
+
             ! Set to analog estimator
             t % estimator = ESTIMATOR_ANALOG
 
           case ('delayedgroup')
+            ! Check to see if running in MG mode, because if so, the current
+            ! system isnt set up yet to support delayed group data and thus
+            ! these tallies
+            if (.not. run_CE) then
+              call fatal_error("delayedgroup filter on tally " &
+                               // trim(to_str(t % id)) // " not yet supported&
+                               & for multi-group mode.")
+            end if
+
             ! Set type of filter
             t % filters(j) % type = FILTER_DELAYEDGROUP
 
@@ -2934,8 +3085,8 @@ contains
           case default
             ! Specified tally filter is invalid, raise error
             call fatal_error("Unknown filter type '" &
-                 &// trim(temp_str) // "' on tally " &
-                 &// trim(to_str(t % id)) // ".")
+                 // trim(temp_str) // "' on tally " &
+                 // trim(to_str(t % id)) // ".")
 
           end select
 
@@ -3013,7 +3164,7 @@ contains
 
             ! Append default_xs specifier to nuclide if needed
             if ((default_xs /= '') .and. (.not. ends_with(sarray(j), 'c'))) then
-              word = trim(word) // "." // default_xs
+              word = trim(word) // "." // trim(default_xs)
             end if
 
             ! Search through nuclides
@@ -3100,12 +3251,12 @@ contains
                 ! maximum order.
                 ! The above scheme will essentially take the absolute value
                 if (master) call warning("Invalid scattering order of " &
-                     &// trim(to_str(n_order)) // " requested. Setting to the &
+                     // trim(to_str(n_order)) // " requested. Setting to the &
                      &maximum permissible value, " &
-                     &// trim(to_str(MAX_ANG_ORDER)))
+                     // trim(to_str(MAX_ANG_ORDER)))
                 n_order = MAX_ANG_ORDER
                 sarray(j) = trim(MOMENT_STRS(imomstr)) &
-                     &// trim(to_str(MAX_ANG_ORDER))
+                     // trim(to_str(MAX_ANG_ORDER))
               end if
               ! Find total number of bins for this case
               if (imomstr >= YN_LOC) then
@@ -3167,9 +3318,9 @@ contains
                   ! maximum order.
                   ! The above scheme will essentially take the absolute value
                   if (master) call warning("Invalid scattering order of " &
-                       &// trim(to_str(n_order)) // " requested. Setting to &
+                       // trim(to_str(n_order)) // " requested. Setting to &
                        &the maximum permissible value, " &
-                       &// trim(to_str(MAX_ANG_ORDER)))
+                       // trim(to_str(MAX_ANG_ORDER)))
                   n_order = MAX_ANG_ORDER
                 end if
                 score_name = trim(MOMENT_N_STRS(imomstr)) // "n"
@@ -3352,6 +3503,12 @@ contains
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
+
+            ! Disallow for MG mode since data not present
+            if (.not. run_CE) then
+              call fatal_error("Cannot tally delayed nu-fission rate in &
+                               &multi-group mode")
+            end if
           case ('kappa-fission')
             t % score_bins(j) = SCORE_KAPPA_FISSION
           case ('inverse-velocity')
@@ -3497,16 +3654,24 @@ contains
                 t % score_bins(j) = MT
               else
                 call fatal_error("Invalid MT on <scores>: " &
-                     &// trim(sarray(l)))
+                     // trim(sarray(l)))
               end if
 
             else
               ! Specified score was not an integer
               call fatal_error("Unknown scoring function: " &
-                   &// trim(sarray(l)))
+                   // trim(sarray(l)))
             end if
 
           end select
+
+          ! Do a check at the end (instead of for every case) to make sure
+          ! the tallies are compatible with MG mode where we have less detailed
+          ! nuclear data
+          if (.not. run_CE .and. t % score_bins(j) > 0) then
+            call fatal_error("Cannot tally " // trim(score_name) // &
+                             " reaction rate in multi-group mode")
+          end if
         end do
 
         t % n_score_bins = n_scores
@@ -3542,7 +3707,7 @@ contains
         end do
       else
         call fatal_error("No <scores> specified on tally " &
-             &// trim(to_str(t % id)) // ".")
+             // trim(to_str(t % id)) // ".")
       end if
 
       ! Check for a tally derivative.
@@ -3826,7 +3991,7 @@ contains
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       call fatal_error("Plots XML file '" // trim(filename) &
-           &// "' does not exist!")
+           // "' does not exist!")
     end if
 
     ! Display output message
@@ -3858,7 +4023,7 @@ contains
       ! Check to make sure 'id' hasn't been used
       if (plot_dict % has_key(pl % id)) then
         call fatal_error("Two or more plots use the same unique ID: " &
-             &// to_str(pl % id))
+             // to_str(pl % id))
       end if
 
       ! Copy plot type
@@ -3873,7 +4038,7 @@ contains
         pl % type = PLOT_TYPE_VOXEL
       case default
         call fatal_error("Unsupported plot type '" // trim(temp_str) &
-             &// "' in plot " // trim(to_str(pl % id)))
+             // "' in plot " // trim(to_str(pl % id)))
       end select
 
       ! Set output file path
@@ -3893,14 +4058,14 @@ contains
           call get_node_array(node_plot, "pixels", pl % pixels(1:2))
         else
           call fatal_error("<pixels> must be length 2 in slice plot " &
-               &// trim(to_str(pl % id)))
+               // trim(to_str(pl % id)))
         end if
       else if (pl % type == PLOT_TYPE_VOXEL) then
         if (get_arraysize_integer(node_plot, "pixels") == 3) then
           call get_node_array(node_plot, "pixels", pl % pixels(1:3))
         else
           call fatal_error("<pixels> must be length 3 in voxel plot " &
-               &// trim(to_str(pl % id)))
+               // trim(to_str(pl % id)))
         end if
       end if
 
@@ -3908,13 +4073,13 @@ contains
       if (check_for_node(node_plot, "background")) then
         if (pl % type == PLOT_TYPE_VOXEL) then
           if (master) call warning("Background color ignored in voxel plot " &
-               &// trim(to_str(pl % id)))
+               // trim(to_str(pl % id)))
         end if
         if (get_arraysize_integer(node_plot, "background") == 3) then
           call get_node_array(node_plot, "background", pl % not_found % rgb)
         else
           call fatal_error("Bad background RGB in plot " &
-               &// trim(to_str(pl % id)))
+               // trim(to_str(pl % id)))
         end if
       else
         pl % not_found % rgb = (/ 255, 255, 255 /)
@@ -3935,7 +4100,7 @@ contains
           pl % basis = PLOT_BASIS_YZ
         case default
           call fatal_error("Unsupported plot basis '" // trim(temp_str) &
-               &// "' in plot " // trim(to_str(pl % id)))
+               // "' in plot " // trim(to_str(pl % id)))
         end select
       end if
 
@@ -3944,7 +4109,7 @@ contains
         call get_node_array(node_plot, "origin", pl % origin)
       else
         call fatal_error("Origin must be length 3 in plot " &
-             &// trim(to_str(pl % id)))
+             // trim(to_str(pl % id)))
       end if
 
       ! Copy plotting width
@@ -3953,14 +4118,14 @@ contains
           call get_node_array(node_plot, "width", pl % width(1:2))
         else
           call fatal_error("<width> must be length 2 in slice plot " &
-               &// trim(to_str(pl % id)))
+               // trim(to_str(pl % id)))
         end if
       else if (pl % type == PLOT_TYPE_VOXEL) then
         if (get_arraysize_double(node_plot, "width") == 3) then
           call get_node_array(node_plot, "width", pl % width(1:3))
         else
           call fatal_error("<width> must be length 3 in voxel plot " &
-               &// trim(to_str(pl % id)))
+               // trim(to_str(pl % id)))
         end if
       end if
 
@@ -3970,7 +4135,7 @@ contains
 
         if (pl % level < 0) then
           call fatal_error("Bad universe level in plot " &
-               &// trim(to_str(pl % id)))
+               // trim(to_str(pl % id)))
         end if
       else
         pl % level = PLOT_LEVEL_LOWEST
@@ -4004,7 +4169,7 @@ contains
 
       case default
         call fatal_error("Unsupported plot color type '" // trim(temp_str) &
-             &// "' in plot " // trim(to_str(pl % id)))
+             // "' in plot " // trim(to_str(pl % id)))
       end select
 
       ! Get the number of <col_spec> nodes and get a list of them
@@ -4027,7 +4192,7 @@ contains
           ! Check and make sure 3 values are specified for RGB
           if (get_arraysize_double(node_col, "rgb") /= 3) then
             call fatal_error("Bad RGB in plot " &
-                 &// trim(to_str(pl % id)))
+                 // trim(to_str(pl % id)))
           end if
 
           ! Ensure that there is an id for this color specification
@@ -4046,7 +4211,7 @@ contains
               call get_node_array(node_col, "rgb", pl % colors(col_id) % rgb)
             else
               call fatal_error("Could not find cell " // trim(to_str(col_id)) &
-                   &// " specified in plot " // trim(to_str(pl % id)))
+                   // " specified in plot " // trim(to_str(pl % id)))
             end if
 
           else if (pl % color_by == PLOT_COLOR_MATS) then
@@ -4056,8 +4221,8 @@ contains
               call get_node_array(node_col, "rgb", pl % colors(col_id) % rgb)
             else
               call fatal_error("Could not find material " &
-                   &// trim(to_str(col_id)) // " specified in plot " &
-                   &// trim(to_str(pl % id)))
+                   // trim(to_str(col_id)) // " specified in plot " &
+                   // trim(to_str(pl % id)))
             end if
 
           end if
@@ -4071,7 +4236,7 @@ contains
 
         if (pl % type == PLOT_TYPE_VOXEL) then
           call warning("Meshlines ignored in voxel plot " &
-               &// trim(to_str(pl % id)))
+               // trim(to_str(pl % id)))
         end if
 
         select case(n_meshlines)
@@ -4105,7 +4270,7 @@ contains
               ! Check and make sure 3 values are specified for RGB
               if (get_arraysize_double(node_meshlines, "color") /= 3) then
                 call fatal_error("Bad RGB for meshlines color in plot " &
-                     &// trim(to_str(pl % id)))
+                     // trim(to_str(pl % id)))
               end if
 
               call get_node_array(node_meshlines, "color", &
@@ -4122,7 +4287,7 @@ contains
 
               if (.not. associated(ufs_mesh)) then
                 call fatal_error("No UFS mesh for meshlines on plot " &
-                     &// trim(to_str(pl % id)))
+                     // trim(to_str(pl % id)))
               end if
 
               pl % meshlines_mesh => ufs_mesh
@@ -4143,7 +4308,7 @@ contains
 
               if (.not. associated(entropy_mesh)) then
                 call fatal_error("No entropy mesh for meshlines on plot " &
-                     &// trim(to_str(pl % id)))
+                     // trim(to_str(pl % id)))
               end if
 
               if (.not. allocated(entropy_mesh % dimension)) then
@@ -4172,18 +4337,18 @@ contains
                 end if
               else
                 call fatal_error("Could not find mesh " &
-                     &// trim(to_str(meshid)) // " specified in meshlines for &
+                     // trim(to_str(meshid)) // " specified in meshlines for &
                      &plot " // trim(to_str(pl % id)))
               end if
 
             case default
               call fatal_error("Invalid type for meshlines on plot " &
-                    &// trim(to_str(pl % id)) // ": " // trim(meshtype))
+                    // trim(to_str(pl % id)) // ": " // trim(meshtype))
             end select
 
           case default
             call fatal_error("Mutliple meshlines specified in plot " &
-                 &// trim(to_str(pl % id)))
+                 // trim(to_str(pl % id)))
         end select
 
       end if
@@ -4195,13 +4360,13 @@ contains
 
         if (pl % type == PLOT_TYPE_VOXEL) then
           if (master) call warning("Mask ignored in voxel plot " &
-               &// trim(to_str(pl % id)))
+               // trim(to_str(pl % id)))
         end if
 
         select case(n_masks)
           case default
             call fatal_error("Mutliple masks specified in plot " &
-                 &// trim(to_str(pl % id)))
+                 // trim(to_str(pl % id)))
           case (1)
 
             ! Get pointer to mask
@@ -4212,7 +4377,7 @@ contains
             n_comp = get_arraysize_integer(node_mask, "components")
             if (n_comp == 0) then
               call fatal_error("Missing <components> in mask of plot " &
-                   &// trim(to_str(pl % id)))
+                   // trim(to_str(pl % id)))
             end if
             allocate(iarray(n_comp))
             call get_node_array(node_mask, "components", iarray)
@@ -4228,7 +4393,7 @@ contains
                   iarray(j) = cell_dict % get_key(col_id)
                 else
                   call fatal_error("Could not find cell " &
-                       &// trim(to_str(col_id)) // " specified in the mask in &
+                       // trim(to_str(col_id)) // " specified in the mask in &
                        &plot " // trim(to_str(pl % id)))
                 end if
 
@@ -4238,7 +4403,7 @@ contains
                   iarray(j) = material_dict % get_key(col_id)
                 else
                   call fatal_error("Could not find material " &
-                       &// trim(to_str(col_id)) // " specified in the mask in &
+                       // trim(to_str(col_id)) // " specified in the mask in &
                        &plot " // trim(to_str(pl % id)))
                 end if
 
@@ -4252,7 +4417,7 @@ contains
                   call get_node_array(node_mask, "background", pl % colors(j) % rgb)
                 else
                   call fatal_error("Missing <background> in mask of plot " &
-                       &// trim(to_str(pl % id)))
+                       // trim(to_str(pl % id)))
                 end if
               end if
             end do
@@ -4274,11 +4439,11 @@ contains
   end subroutine read_plots_xml
 
 !===============================================================================
-! READ_CROSS_SECTIONS_XML reads information from a cross_sections.xml file. This
-! file contains a listing of the ACE cross sections that may be used.
+! READ_*_CROSS_SECTIONS_XML reads information from a cross_sections.xml file. This
+! file contains a listing of the CE and MG cross sections that may be used.
 !===============================================================================
 
-  subroutine read_cross_sections_xml()
+  subroutine read_ce_cross_sections_xml()
 
     integer :: i           ! loop index
     integer :: filetype    ! default file type
@@ -4297,7 +4462,7 @@ contains
     if (.not. file_exists) then
       ! Could not find cross_sections.xml file
       call fatal_error("Cross sections XML file '" &
-           &// trim(path_cross_sections) // "' does not exist!")
+           // trim(path_cross_sections) // "' does not exist!")
     end if
 
     call write_message("Reading cross sections XML file...", 5)
@@ -4327,7 +4492,7 @@ contains
       filetype = ASCII
     else
       call fatal_error("Unknown filetype in cross_sections.xml: " &
-           &// trim(temp_str))
+           // trim(temp_str))
     end if
 
     ! copy default record length and entries for binary files
@@ -4391,7 +4556,7 @@ contains
       end if
 
       ! determine metastable state
-      if (.not.check_for_node(node_ace, "metastable")) then
+      if (.not. check_for_node(node_ace, "metastable")) then
         listing % metastable = .false.
       else
         listing % metastable = .true.
@@ -4425,15 +4590,129 @@ contains
     do i = 1, n_res_scatterers_total
       if (.not. xs_listing_dict % has_key(trim(nuclides_0K(i) % name_0K))) then
         call fatal_error("Could not find nuclide " &
-             &// trim(nuclides_0K(i) % name_0K) &
-             &// " in cross_sections.xml file!")
+             // trim(nuclides_0K(i) % name_0K) &
+             // " in cross_sections.xml file!")
       end if
     end do
 
     ! Close cross sections XML file
     call close_xmldoc(doc)
 
-  end subroutine read_cross_sections_xml
+  end subroutine read_ce_cross_sections_xml
+
+  subroutine read_mg_cross_sections_xml()
+
+    integer :: i           ! loop index
+    logical :: file_exists ! does cross_sections.xml exist?
+    type(XsListing), pointer :: listing => null()
+    type(Node), pointer :: doc => null()
+    type(Node), pointer :: node_xsdata => null()
+    type(NodeList), pointer :: node_xsdata_list => null()
+
+    ! Check if cross_sections.xml exists
+    inquire(FILE=path_cross_sections, EXIST=file_exists)
+    if (.not. file_exists) then
+      ! Could not find cross_sections.xml file
+      call fatal_error("Cross sections XML file '" &
+           // trim(path_cross_sections) // "' does not exist!")
+    end if
+
+    call write_message("Reading cross sections XML file...", 5)
+
+    ! Parse cross_sections.xml file
+    call open_xmldoc(doc, path_cross_sections)
+
+    if (check_for_node(doc, "groups")) then
+      ! Get neutron group count
+      call get_node_value(doc, "groups", energy_groups)
+    else
+      call fatal_error("groups element must exist!")
+    end if
+
+    allocate(energy_bins(energy_groups + 1))
+    if (check_for_node(doc, "group_structure")) then
+      ! Get neutron group structure
+      call get_node_array(doc, "group_structure", energy_bins)
+    else
+      call fatal_error("group_structures element must exist!")
+    end if
+
+    allocate(energy_bin_avg(energy_groups))
+    do i = 1, energy_groups
+      energy_bin_avg(i) = HALF * (energy_bins(i) + energy_bins(i + 1))
+    end do
+
+    allocate(inverse_velocities(energy_groups))
+    if (check_for_node(doc, "inverse_velocities")) then
+      ! Get inverse velocities
+      call get_node_array(doc, "inverse_velocities", inverse_velocities)
+    else
+      ! If not given, estimate them by using average energy in group which is
+      ! assumed to be the midpoint
+      do i = 1, energy_groups
+        inverse_velocities(i) = &
+             (sqrt(TWO * energy_bin_avg(i) / (MASS_NEUTRON_MEV)) * &
+              C_LIGHT * 100.0_8)
+      end do
+    end if
+
+    ! Get node list of all <xsdata>
+    call get_node_list(doc, "xsdata", node_xsdata_list)
+    n_listings = get_list_size(node_xsdata_list)
+
+    ! Allocate xs_listings array
+    if (n_listings == 0) then
+      call fatal_error("At least one <xsdata> element must be present in &
+                       &cross_sections.xml file!")
+    else
+      allocate(xs_listings(n_listings))
+    end if
+
+    do i = 1, n_listings
+      listing => xs_listings(i)
+
+      ! Get pointer to xsdata table XML node
+      call get_list_item(node_xsdata_list, i, node_xsdata)
+
+      ! copy a number of attributes
+      call get_node_value(node_xsdata, "name", listing % name)
+      listing % name = to_lower(listing % name)
+      listing % alias = listing % name
+      if (check_for_node(node_xsdata, "alias")) &
+           call get_node_value(node_xsdata, "alias", listing % alias)
+      listing % alias = to_lower(listing % alias)
+      if (check_for_node(node_xsdata, "zaid")) then
+        call get_node_value(node_xsdata, "zaid", listing % zaid)
+      else
+        listing % zaid = -1
+      end if
+      if (check_for_node(node_xsdata, "awr")) then
+        call get_node_value(node_xsdata, "awr", listing % awr)
+      else
+        ! Set to a default of 1; this allows a macroscopic library to still
+        ! be used with materials with atom/b-cm units for testing purposes
+        listing % awr = ONE
+      end if
+      if (check_for_node(node_xsdata, "kT")) then
+        call get_node_value(node_xsdata, "kT", listing % kT)
+      else
+        listing % kT = 293.6_8 * K_BOLTZMANN
+      end if
+
+      ! determine type of cross section
+      if (ends_with(listing % name, 'c')) then
+        listing % type = NEUTRON
+      end if
+
+      ! create dictionary entry for both name and alias
+      call xs_listing_dict % add_key(to_lower(listing % name), i)
+      call xs_listing_dict % add_key(to_lower(listing % alias), i)
+    end do
+
+    ! Close cross sections XML file
+    call close_xmldoc(doc)
+
+  end subroutine read_mg_cross_sections_xml
 
 !===============================================================================
 ! EXPAND_NATURAL_ELEMENT converts natural elements specified using an <element>

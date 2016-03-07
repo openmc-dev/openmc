@@ -1,6 +1,7 @@
 module macroxs_header
 
   use constants,       only: MAX_FILE_LEN, ZERO, ONE, TWO, PI
+  use error,           only: fatal_error
   use list_header,     only: ListInt
   use material_header, only: material
   use math,            only: calc_pn, calc_rn, expand_harmonic, find_angle
@@ -32,8 +33,7 @@ module macroxs_header
 
   abstract interface
     subroutine macroxs_init_(this, mat, nuclides, groups, get_kfiss, get_fiss, &
-                             max_order, scatt_type, legendre_mu_points, &
-                             error_code, error_text)
+                             max_order, scatt_type)
       import MacroXS, Material, NuclideMGContainer, MAX_LINE_LEN
       class(MacroXS), intent(inout)        :: this ! The MacroXS to initialize
       type(Material), pointer, intent(in)  :: mat  ! base material
@@ -43,9 +43,6 @@ module macroxs_header
       logical, intent(in)                  :: get_fiss ! Should we get fiss data?
       integer, intent(in)                  :: max_order ! Maximum requested order
       integer, intent(in)                  :: scatt_type ! Legendre or Tabular Scatt?
-      integer, intent(in)                  :: legendre_mu_points ! Treat as Leg or Tabular?
-      integer, intent(inout)               :: error_code  ! Code signifying error
-      character(MAX_LINE_LEN), intent(inout) :: error_text ! Error message to print
     end subroutine macroxs_init_
 
     function macroxs_get_xs_(this, g, xstype, gout, uvw) result(xs)
@@ -94,7 +91,6 @@ module macroxs_header
     real(8), allocatable :: nu_fission(:) ! nu-fission
     real(8), allocatable :: k_fission(:)  ! kappa-fission
     real(8), allocatable :: fission(:)    ! fission x/s
-    real(8), allocatable :: scattxs(:)    ! scattering xs
     real(8), allocatable :: chi(:,:)      ! fission spectra
 
   contains
@@ -114,7 +110,6 @@ module macroxs_header
     real(8), allocatable :: k_fission(:,:,:)  ! kappa-fission
     real(8), allocatable :: fission(:,:,:)    ! fission x/s
     real(8), allocatable :: chi(:,:,:,:)      ! fission spectra
-    real(8), allocatable :: scattxs(:,:,:)    ! scattering xs
     real(8), allocatable :: polar(:)          ! polar angles
     real(8), allocatable :: azimuthal(:)      ! azimuthal angles
 
@@ -141,7 +136,7 @@ contains
 !===============================================================================
 
   subroutine macroxsiso_init(this, mat, nuclides, groups, get_kfiss, get_fiss, &
-       max_order, scatt_type, legendre_mu_points, error_code, error_text)
+       max_order, scatt_type)
     class(MacroXSIso), intent(inout)     :: this ! The MacroXS to initialize
     type(Material), pointer, intent(in)  :: mat  ! base material
     type(NuclideMGContainer), intent(in) :: nuclides(:) ! List of nuclides to harvest from
@@ -150,9 +145,6 @@ contains
     logical, intent(in)                  :: get_fiss ! Should we get fiss data?
     integer, intent(in)                  :: max_order ! Maximum requested order
     integer, intent(in)                  :: scatt_type ! How is data presented
-    integer, intent(in)                  :: legendre_mu_points ! Treat as Leg or Tabular?
-    integer, intent(inout)               :: error_code  ! Code signifying error
-    character(MAX_LINE_LEN), intent(inout) :: error_text ! Error message to print
 
     integer :: i             ! loop index over nuclides
     integer :: gin, gout     ! group indices
@@ -161,12 +153,7 @@ contains
     real(8) :: norm
     integer :: mat_max_order, order, l
     real(8), allocatable :: temp_mult(:,:)
-    real(8), allocatable :: temp_energy(:,:)
     real(8), allocatable :: scatt_coeffs(:,:,:)
-
-    ! Initialize error data
-    error_code = 0
-    error_text = ''
 
     ! If we have tabular only data, then make sure all datasets have same size
     if (scatt_type == ANGLE_HISTOGRAM) then
@@ -174,9 +161,7 @@ contains
       order = nuclides(mat % nuclide(1)) % obj % order
       do i = 2, mat % n_nuclides
         if (order /= nuclides(mat % nuclide(i)) % obj % order) then
-          error_code = 1
-          error_text = "All Histogram Scattering Entries Must Be Same Length!"
-          return
+          call fatal_error("All Histogram Scattering Entries Must Be Same Length!")
         end if
       end do
       ! Ok, got our order, store it
@@ -192,8 +177,7 @@ contains
       order = nuclides(mat % nuclide(1)) % obj % order
       do i = 2, mat % n_nuclides
         if (order /= nuclides(mat % nuclide(i)) % obj % order) then
-          error_code = 1
-          error_text = "All Tabular Scattering Entries Must Be Same Length!"
+          call fatal_error("All Tabular Scattering Entries Must Be Same Length!")
           return
         end if
       end do
@@ -201,7 +185,7 @@ contains
       this % order = order
 
       ! Allocate stuff for later
-      allocate(scatt_coeffs(order, groups, groups))
+      allocate(scatt_coeffs(this % order, groups, groups))
       scatt_coeffs = ZERO
       allocate(ScattDataTabular :: this % scatter)
 
@@ -217,17 +201,13 @@ contains
 
       ! Now need to compare this material maximum scattering order with
       ! the problem wide max scatt order and use whichever is lower
-      order = min(mat_max_order, max_order)
-      this % order = order + 1
+      order = min(mat_max_order, max_order) + 1
+      this % order = order
 
       ! Now we can allocate our scatt_coeffs object accordingly
-      allocate(scatt_coeffs(order + 1, groups, groups))
+      allocate(scatt_coeffs(this % order, groups, groups))
       scatt_coeffs = ZERO
-      if (legendre_mu_points == 1) then
-        allocate(ScattDataLegendre :: this % scatter)
-      else
-        allocate(ScattDataTabular :: this % scatter)
-      end if
+      allocate(ScattDataLegendre :: this % scatter)
     end if
 
     ! Allocate and initialize data within macro_xs(i_mat) object
@@ -247,11 +227,8 @@ contains
     this % nu_fission = ZERO
     allocate(this % chi(groups, groups))
     this % chi = ZERO
-    allocate(temp_energy(groups, groups))
-    temp_energy = ZERO
     allocate(temp_mult(groups, groups))
     temp_mult = ZERO
-    allocate(this % scattxs(groups))
 
     ! Add contribution from each nuclide in material
     do i = 1, mat % n_nuclides
@@ -261,7 +238,6 @@ contains
       ! Perform our operations which depend upon the type
       select type(nuc => nuclides(mat % nuclide(i)) % obj)
       type is (NuclideIso)
-
         ! Add contributions to total, absorption, and fission data (if necessary)
         this % total = this % total + atom_density * nuc % total
         this % absorption = this % absorption + &
@@ -291,81 +267,25 @@ contains
           end if
         end if
 
-        ! Now time to do the scattering
+        ! Get the multiplication matrix
         do gin = 1, groups
-          do gout = 1, groups
-            if (scatt_type == ANGLE_HISTOGRAM .or. scatt_type == ANGLE_TABULAR) then
-              ! Transfer matrix
-              temp_energy(gout,gin) = temp_energy(gout,gin) + atom_density * &
-                   sum(nuc % scatter(gout,gin,:))
-
-              ! Determine the angular distribution
-              do imu = 1, order
-                scatt_coeffs(imu, gout, gin) = scatt_coeffs(imu, gout, gin) + &
-                     nuc % scatter(gout,gin,imu) * &
-                     atom_density
-              end do
-
-            else if (scatt_type == ANGLE_LEGENDRE) then
-              ! Transfer matrix
-              temp_energy(gout,gin) = temp_energy(gout,gin) + atom_density * &
-                   nuc % scatter(gout,gin,1)
-
-              ! Determine the angular distribution coefficients so we can later
-              ! expand do the complete distribution
-              do l = 1, min(nuc % order, order) + 1
-                scatt_coeffs(l, gout, gin) = scatt_coeffs(l, gout, gin) + &
-                     nuc % scatter(gout,gin,l) * &
-                     atom_density
-              end do
-
-            end if
-
-            ! Multiplicity matrix
+          do gout = nuc % scatter % gmin(gin), nuc % scatter % gmax(gin)
             temp_mult(gout,gin) = temp_mult(gout,gin) + atom_density * &
-                 nuc % mult(gout,gin)
+                 nuc % scatter % mult(gin) % data(gout)
           end do
         end do
+
+        ! Get the complete scattering matrix
+        scatt_coeffs(1:min(nuc % order, order),:,:) = scatt_coeffs + &
+             atom_density * &
+             nuc % scatter % get_matrix(min(nuc % order, order))
+
       type is (NuclideAngle)
-        error_code = 1
-        error_text = "Invalid Passing of NuclideAngle to MacroXSIso Object"
-        return
+        call fatal_error("Invalid Passing of NuclideAngle to MacroXSIso Object")
       end select
     end do
 
-    ! Store the scattering xs
-    if (scatt_type == ANGLE_HISTOGRAM .or. scatt_type == ANGLE_TABULAR) then
-      this % scattxs(:) = sum(sum(scatt_coeffs(:,:,:),dim=1),dim=1)
-    else if (scatt_type == ANGLE_LEGENDRE) then
-      this % scattxs(:) = sum(scatt_coeffs(1,:,:),dim=1)
-    end if
-
-    ! Normalize the scatt_coeffs
-    do gin = 1, groups
-      do gout = 1, groups
-        if (scatt_type == ANGLE_HISTOGRAM .or. scatt_type == ANGLE_TABULAR) then
-          norm = sum(scatt_coeffs(:,gout,gin))
-        else if (scatt_type == ANGLE_LEGENDRE) then
-          norm = scatt_coeffs(1,gout,gin)
-        end if
-        if (norm /= ZERO) then
-          scatt_coeffs(:, gout, gin) = scatt_coeffs(:, gout,gin) / norm
-        end if
-      end do
-      ! Now normalize temp_energy (outgoing scattering energy probabilities)
-      norm = sum(temp_energy(:,gin))
-      if (norm > ZERO) then
-        temp_energy(:,gin) = temp_energy(:,gin) / norm
-      end if
-    end do
-
-    if (scatt_type == ANGLE_LEGENDRE .and. legendre_mu_points /= 1) then
-      call this % scatter % init(legendre_mu_points, temp_energy, temp_mult, &
-                               scatt_coeffs)
-    else
-      call this % scatter % init(this % order, temp_energy, temp_mult, &
-                               scatt_coeffs)
-    end if
+    call this % scatter % init(temp_mult,scatt_coeffs)
 
     ! Now normalize chi
     if (mat % fissionable) then
@@ -379,12 +299,12 @@ contains
     end if
 
     ! Deallocate temporaries for the next material
-    deallocate(scatt_coeffs, temp_energy, temp_mult)
+    deallocate(scatt_coeffs, temp_mult)
 
   end subroutine macroxsiso_init
 
   subroutine macroxsangle_init(this, mat, nuclides, groups, get_kfiss, get_fiss, &
-       max_order, scatt_type, legendre_mu_points, error_code, error_text)
+       max_order, scatt_type)
     class(MacroXSAngle), intent(inout)   :: this ! The MacroXS to initialize
     type(Material), pointer, intent(in)  :: mat  ! base material
     type(NuclideMGContainer), intent(in) :: nuclides(:) ! List of nuclides to harvest from
@@ -393,43 +313,34 @@ contains
     logical, intent(in)                  :: get_fiss ! Should we get fiss data?
     integer, intent(in)                  :: max_order ! Maximum requested order
     integer, intent(in)                  :: scatt_type ! Legendre or Tabular Scatt?
-    integer, intent(in)                  :: legendre_mu_points ! Treat as Leg or Tabular?
-    integer, intent(inout)               :: error_code  ! Code signifying error
-    character(MAX_LINE_LEN), intent(inout) :: error_text ! Error message to print
 
     integer :: i             ! loop index over nuclides
     integer :: gin, gout     ! group indices
     real(8) :: atom_density  ! atom density of a nuclide
-    integer :: ipol, iazi, npol, nazi
+    integer :: ipol, iazi, n_pol, n_azi
     integer :: imu
     real(8) :: norm
     integer :: mat_max_order, order, l
     real(8), allocatable :: temp_mult(:,:,:,:)
-    real(8), allocatable :: temp_energy(:,:,:,:)
     real(8), allocatable :: scatt_coeffs(:,:,:,:,:)
-
-    ! Initialize error data
-    error_code = 0
-    error_text = ''
 
     ! Get the number of each polar and azi angles and make sure all the
     ! NuclideAngle types have the same number of these angles
-    npol = -1
-    nazi = -1
+    n_pol = -1
+    n_azi = -1
     do i = 1, mat % n_nuclides
       select type(nuc => nuclides(mat % nuclide(i)) % obj)
       type is (NuclideAngle)
-        if (npol == -1) then
-          npol = nuc % n_pol
-          nazi = nuc % n_azi
-          allocate(this % polar(npol))
+        if (n_pol == -1) then
+          n_pol = nuc % n_pol
+          n_azi = nuc % n_azi
+          allocate(this % polar(n_pol))
           this % polar = nuc % polar
-          allocate(this % azimuthal(nazi))
+          allocate(this % azimuthal(n_azi))
           this % azimuthal = nuc % azimuthal
         else
-          if ((npol /= nuc % n_pol) .or. (nazi /= nuc % n_azi)) then
-            error_code = 1
-            error_text = "All Angular Data Must Be Same Length!"
+          if ((n_pol /= nuc % n_pol) .or. (n_azi /= nuc % n_azi)) then
+            call fatal_error("All Angular Data Must Be Same Length!")
           end if
         end if
       end select
@@ -441,20 +352,18 @@ contains
       order = nuclides(mat % nuclide(1)) % obj % order
       do i = 2, mat % n_nuclides
         if (order /= nuclides(mat % nuclide(i)) % obj % order) then
-          error_code = 1
-          error_text = "All Histogram Scattering Entries Must Be Same Length!"
-          return
+          call fatal_error("All Histogram Scattering Entries Must Be Same Length!")
         end if
       end do
       ! Ok, got our order, store it
       this % order = order
 
       ! Allocate stuff for later
-      allocate(scatt_coeffs(order, groups, groups, nazi, npol))
+      allocate(scatt_coeffs(this % order,groups,groups,n_azi,n_pol))
       scatt_coeffs = ZERO
-      allocate(this % scatter(nazi, npol))
-      do ipol = 1, npol
-        do iazi = 1, nazi
+      allocate(this % scatter(n_azi, n_pol))
+      do ipol = 1, n_pol
+        do iazi = 1, n_azi
           allocate(ScattDataHistogram :: this % scatter(iazi, ipol) % obj)
         end do
       end do
@@ -464,20 +373,18 @@ contains
       order = nuclides(mat % nuclide(1)) % obj % order
       do i = 2, mat % n_nuclides
         if (order /= nuclides(mat % nuclide(i)) % obj % order) then
-          error_code = 1
-          error_text = "All Tabular Scattering Entries Must Be Same Length!"
-          return
+          call fatal_error("All Tabular Scattering Entries Must Be Same Length!")
         end if
       end do
       ! Ok, got our order, store it
       this % order = order
 
       ! Allocate stuff for later
-      allocate(scatt_coeffs(order, groups, groups, nazi, npol))
+      allocate(scatt_coeffs(this % order, groups, groups, n_azi, n_pol))
       scatt_coeffs = ZERO
-      allocate(this % scatter(nazi, npol))
-      do ipol = 1, npol
-        do iazi = 1, nazi
+      allocate(this % scatter(n_azi, n_pol))
+      do ipol = 1, n_pol
+        do iazi = 1, n_azi
           allocate(ScattDataTabular :: this % scatter(iazi, ipol) % obj)
         end do
       end do
@@ -498,42 +405,35 @@ contains
       this % order = order + 1
 
       ! Now we can allocate our scatt_coeffs object accordingly
-      allocate(scatt_coeffs(order + 1, groups, groups, nazi, npol))
+      allocate(scatt_coeffs(this % order, groups, groups, n_azi, n_pol))
       scatt_coeffs = ZERO
-      allocate(this % scatter(nazi, npol))
-      do ipol = 1, npol
-        do iazi = 1, nazi
-          if (legendre_mu_points == 1) then
-            allocate(ScattDataLegendre :: this % scatter(iazi, ipol) % obj)
-          else
-            allocate(ScattDataTabular :: this % scatter(iazi, ipol) % obj)
-          end if
+      allocate(this % scatter(n_azi, n_pol))
+      do ipol = 1, n_pol
+        do iazi = 1, n_azi
+          allocate(ScattDataLegendre :: this % scatter(iazi, ipol) % obj)
         end do
       end do
     end if
 
     ! Allocate and initialize data within macro_xs(i_mat) object
-    allocate(this % total(groups,nazi,npol))
+    allocate(this % total(groups,n_azi,n_pol))
     this % total = ZERO
-    allocate(this % absorption(groups,nazi,npol))
+    allocate(this % absorption(groups,n_azi,n_pol))
     this % absorption = ZERO
     if (get_fiss) then
-      allocate(this % fission(groups,nazi,npol))
+      allocate(this % fission(groups,n_azi,n_pol))
       this % fission = ZERO
     end if
     if (get_kfiss) then
-      allocate(this % k_fission(groups,nazi,npol))
+      allocate(this % k_fission(groups,n_azi,n_pol))
       this % k_fission = ZERO
     end if
-    allocate(this % nu_fission(groups,nazi,npol))
+    allocate(this % nu_fission(groups,n_azi,n_pol))
     this % nu_fission = ZERO
-    allocate(this % chi(groups, groups, nazi, npol))
+    allocate(this % chi(groups, groups, n_azi, n_pol))
     this % chi = ZERO
-    allocate(temp_energy(groups,groups,nazi,npol))
-    temp_energy = ZERO
-    allocate(temp_mult(groups,groups,nazi,npol))
+    allocate(temp_mult(groups,groups,n_azi,n_pol))
     temp_mult = ZERO
-    allocate(this % scattxs(groups,nazi,npol))
 
     ! Add contribution from each nuclide in material
     do i = 1, mat % n_nuclides
@@ -543,9 +443,7 @@ contains
       ! Perform our operations which depend upon the type
       select type(nuc => nuclides(mat % nuclide(i)) % obj)
       type is (NuclideIso)
-        error_code = 1
-        error_text = "Invalid Passing of NuclideIso to MacroXSAngle Object"
-        return
+        call fatal_error("Invalid Passing of NuclideIso to MacroXSAngle Object")
       type is (NuclideAngle)
         ! Add contributions to total, absorption, and fission data (if necessary)
         this % total = this % total + atom_density * nuc % total
@@ -577,87 +475,70 @@ contains
         end if
 
         ! Now time to do the scattering
-        do gin = 1, groups
-          do gout = 1, groups
-            if (scatt_type == ANGLE_HISTOGRAM .or. scatt_type == ANGLE_TABULAR) then
-              ! Transfer matrix
-              temp_energy(gout,gin,:,:) = temp_energy(gout,gin,:,:) + atom_density * &
-                   sum(nuc % scatter(gout,gin,:,:,:),dim=1)
+        do ipol = 1, n_pol
+          do iazi = 1, n_azi
+            do gin = 1, groups
+!!! Needs to be updated to match iso!!!
+! this % scattxs(gin,iazi,ipol) = this % scattxs(gin,iazi,ipol) + &
+!      atom_density * nuc % scattxs(gin,iazi,ipol)
+              do gout = nuc % scatter(iazi,ipol) % obj % gmin(gin), &
+                   nuc % scatter(iazi,ipol) % obj  % gmax(gin)
 
-              ! Determine the angular distribution
-              do imu = 1, order
-                scatt_coeffs(imu,gout,gin,:,:) = scatt_coeffs(imu,gout,gin,:,:) + &
-                     nuc % scatter(gout,gin,imu,:,:) * &
-                     atom_density
+                ! Multiplicity matrix
+                temp_mult(gout,gin,iazi,ipol) = &
+                     temp_mult(gout,gin,iazi,ipol) + atom_density * &
+                     nuc % scatter(iazi,ipol) % obj  % mult(gin) % data(gout)
+
+                if (scatt_type == ANGLE_HISTOGRAM) then
+                  ! Determine the angular distribution
+                  do imu = 1, order
+                    scatt_coeffs(imu,gout,gin,iazi,ipol) = &
+                         scatt_coeffs(imu,gout,gin,iazi,ipol) + &
+                         atom_density * &
+                         nuc % scatter(iazi,ipol) % obj % dist(gin) % data(imu,gout)
+                  end do
+                else if (scatt_type == ANGLE_TABULAR) then
+                  select type(scatt =>nuc % scatter(iazi,ipol) % obj)
+                  type is (ScattDataTabular)
+                    do imu = 1, order
+                      scatt_coeffs(imu,gout,gin,iazi,ipol) = &
+                           scatt_coeffs(imu,gout,gin,iazi,ipol) + &
+                           atom_density * scatt % fmu(gin) % data(imu,gout)
+                    end do
+                  end select
+                else if (scatt_type == ANGLE_LEGENDRE) then
+                  ! Determine the angular distribution coefficients so we can later
+                  ! expand do the complete distribution
+                  do l = 1, min(nuc % order, order) + 1
+                    scatt_coeffs(l,gout,gin,iazi,ipol) = &
+                         scatt_coeffs(l,gout,gin,iazi,ipol) + &
+                         atom_density * &
+                         nuc % scatter(iazi,ipol) % obj % dist(gin) % data(l,gout)
+                  end do
+                end if
+                ! Incorporate outgoing energy PDF information
+                scatt_coeffs(:,gout,gin,iazi,ipol) = &
+                     scatt_coeffs(:,gout,gin,iazi,ipol) * &
+                     nuc % scatter(iazi,ipol) % obj % energy(gin) % data(gout)
               end do
-            else if (scatt_type == ANGLE_LEGENDRE) then
-              ! Transfer matrix
-              temp_energy(gout,gin,:,:) = temp_energy(gout,gin,:,:) + atom_density * &
-                   nuc % scatter(gout,gin,1,:,:)
-
-              ! Determine the angular distribution coefficients so we can later
-              ! expand do the complete distribution
-              do l = 1, min(nuc % order, order) + 1
-                scatt_coeffs(l, gout, gin,:,:) = scatt_coeffs(l, gout, gin,:,:) + &
-                     nuc % scatter(gout,gin,l,:,:) * &
-                     atom_density
-              end do
-            end if
-
-            ! Multiplicity matrix
-            temp_mult(gout,gin,:,:) = temp_mult(gout,gin,:,:) + atom_density * &
-                 nuc % mult(gout,gin,:,:)
+            end do
           end do
         end do
       end select
     end do
 
-    ! Store the scattering xs
-    if (scatt_type == ANGLE_HISTOGRAM .or. scatt_type == ANGLE_TABULAR) then
-      this % scattxs(:,:,:) = sum(sum(scatt_coeffs(:,:,:,:,:),dim=1),dim=1)
-    else if (scatt_type == ANGLE_LEGENDRE) then
-      this % scattxs(:,:,:) = sum(scatt_coeffs(1,:,:,:,:),dim=1)
-    end if
-
-    ! Normalize the scatt_coeffs
-    do ipol = 1, npol
-      do iazi = 1, nazi
-        do gin = 1, groups
-          do gout = 1, groups
-            if (scatt_type == ANGLE_HISTOGRAM .or. scatt_type == ANGLE_TABULAR) then
-              norm = sum(scatt_coeffs(:,gout,gin,iazi,ipol))
-            else if (scatt_type == ANGLE_LEGENDRE) then
-              norm = scatt_coeffs(1,gout,gin,iazi,ipol)
-            end if
-            if (norm /= ZERO) then
-              scatt_coeffs(:,gout,gin,iazi,ipol) = &
-                   scatt_coeffs(:,gout,gin,iazi,ipol) / norm
-            end if
-          end do
-          ! Now normalize temp_energy (outgoing scattering energy probabilities)
-          norm = sum(temp_energy(:,gin,iazi,ipol))
-          if (norm > ZERO) then
-            temp_energy(:,gin,iazi,ipol) = temp_energy(:,gin,iazi,ipol) / norm
-          end if
-        end do
-
-        if (scatt_type == ANGLE_LEGENDRE .and. legendre_mu_points /= 1) then
-          call this % scatter(iazi, ipol) % obj % init(legendre_mu_points, &
-                 temp_energy(:,:,iazi,ipol), temp_mult(:,:,iazi,ipol), &
-                 scatt_coeffs(:,:,:,iazi,ipol))
-        else
-          call this % scatter(iazi, ipol) % obj % init(this % order, &
-                 temp_energy(:,:,iazi,ipol), temp_mult(:,:,iazi,ipol), &
-                 scatt_coeffs(:,:,:,iazi,ipol))
-        end if
-
+    ! Initialize the scattering data
+    do ipol = 1, n_pol
+      do iazi = 1, n_azi
+        call this % scatter(iazi, ipol) % obj % init( &
+             temp_mult(:,:,iazi,ipol), scatt_coeffs(:,:,:,iazi,ipol))
       end do
     end do
 
     ! Now go through and normalize chi
     if (mat % fissionable) then
-      do ipol = 1, npol
-        do iazi = 1, nazi
+      do ipol = 1, n_pol
+        do iazi = 1, n_azi
           do gin = 1, groups
             ! Normalize Chi
             norm =  sum(this % chi(:,gin,iazi,ipol))
@@ -670,7 +551,7 @@ contains
     end if
 
     ! Deallocate temporaries for the next material
-    deallocate(scatt_coeffs, temp_energy, temp_mult)
+    deallocate(scatt_coeffs, temp_mult)
 
   end subroutine macroxsangle_init
 
@@ -698,7 +579,7 @@ contains
     case('nu_fission')
       xs = this % nu_fission(g)
     case('scatter')
-      xs = this % scattxs(g)
+      xs = this % scatter % scattxs(g)
     case('mult')
       if (present(gout)) then
         xs = this % scatter % mult(g) % data(gout)
@@ -733,7 +614,7 @@ contains
       case('nu_fission')
         xs = this % nu_fission(g,iazi,ipol)
       case('scatter')
-        xs = this % scattxs(g,iazi,ipol)
+        xs = this % scatter(iazi,ipol) % obj % scattxs(g)
       case('mult')
         if (present(gout)) then
           xs = this % scatter(iazi,ipol) % obj % mult(g) % data(gout)
@@ -835,7 +716,7 @@ contains
     type(MaterialMacroXS), intent(inout) :: xs     ! Resultant MacroXS Data
 
     xs % total         = this % total(gin)
-    xs % elastic       = this % scattxs(gin)
+    xs % elastic       = this % scatter % scattxs(gin)
     xs % absorption    = this % absorption(gin)
     xs % nu_fission    = this % nu_fission(gin)
 
@@ -850,10 +731,10 @@ contains
     integer :: iazi, ipol
 
     call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
-    xs % total         = this % total(gin, iazi, ipol)
-    xs % elastic       = this % scattxs(gin, iazi, ipol)
-    xs % absorption    = this % absorption(gin, iazi, ipol)
-    xs % nu_fission    = this % nu_fission(gin, iazi, ipol)
+    xs % total         = this % total(gin,iazi,ipol)
+    xs % elastic       = this % scatter(iazi,ipol) % obj % scattxs(gin)
+    xs % absorption    = this % absorption(gin,iazi,ipol)
+    xs % nu_fission    = this % nu_fission(gin,iazi,ipol)
 
   end subroutine macroxsangle_calculate_xs
 

@@ -17,18 +17,19 @@ contains
 !===============================================================================
 
   subroutine multipole_read(filename, multipole, i_table)
-    character(len=*), intent(in)              :: filename  ! Filename of the multipole library to load
+    character(len=*), intent(in)              :: filename  ! Filename of the
+                                                           !  multipole library
+                                                           !  to load
     type(MultipoleArray), intent(out), target :: multipole ! The object to fill
-    integer, intent(in)                       :: i_table   ! index in nuclides/sab_tables
-
-    type(Nuclide),   pointer :: nuc => null()
+    integer, intent(in)                       :: i_table   ! index in nuclides/
+                                                           !  sab_tables
 
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
 
     ! Intermediate loading components
     integer :: NMT
-    integer :: i, j, k
+    integer :: i, j
     integer, allocatable :: MT(:)
     logical :: accumulated_fission
     character(len=3) :: MT_string

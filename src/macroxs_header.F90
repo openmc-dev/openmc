@@ -17,9 +17,6 @@ module macroxs_header
 !===============================================================================
 
   type, abstract :: MacroXS
-    ! Data Order
-    integer :: order
-
   contains
     procedure(macroxs_init_),   deferred :: init   ! initializes object
     procedure(macroxs_get_xs_), deferred :: get_xs ! Return xs
@@ -149,68 +146,73 @@ contains
     integer :: i             ! loop index over nuclides
     integer :: gin, gout     ! group indices
     real(8) :: atom_density  ! atom density of a nuclide
-    integer :: imu
     real(8) :: norm
-    integer :: mat_max_order, order, l
+    integer :: mat_max_order, order, order_dim, nuc_order_dim
     real(8), allocatable :: temp_mult(:,:)
     real(8), allocatable :: scatt_coeffs(:,:,:)
 
+    ! Determine the scattering type of our data and ensure all scattering orders
+    ! are the same.
+    select type(nuc => nuclides(mat % nuclide(1)) % obj)
+    type is (NuclideIso)
+      order = size(nuc % scatter % dist(1) % data, dim=1)
+    end select
     ! If we have tabular only data, then make sure all datasets have same size
     if (scatt_type == ANGLE_HISTOGRAM) then
-      ! Check all scattering data of same size
-      order = nuclides(mat % nuclide(1)) % obj % order
+      ! Check all scattering data to ensure it is the same size
+      ! order = size(nuclides(mat % nuclide(1)) % obj % scatter % data,dim=1)
       do i = 2, mat % n_nuclides
-        if (order /= nuclides(mat % nuclide(i)) % obj % order) then
-          call fatal_error("All Histogram Scattering Entries Must Be Same Length!")
-        end if
+        select type(nuc => nuclides(mat % nuclide(i)) % obj)
+        type is (NuclideIso)
+          if (order /= size(nuc % scatter % dist(1) % data,dim=1)) &
+               call fatal_error("All Histogram Scattering Entries Must Be&
+                                & Same Length!")
+        end select
       end do
-      ! Ok, got our order, store it
-      this % order = order
+      ! Ok, got our order, store the dimensionality
+      order_dim = order
 
-      ! Allocate stuff for later
-      allocate(scatt_coeffs(order, groups, groups))
-      scatt_coeffs = ZERO
+      ! Set our Scatter Object Type
       allocate(ScattDataHistogram :: this % scatter)
 
     else if (scatt_type == ANGLE_TABULAR) then
-      ! Check all scattering data of same size
-      order = nuclides(mat % nuclide(1)) % obj % order
+      ! Check all scattering data to ensure it is the same size
       do i = 2, mat % n_nuclides
-        if (order /= nuclides(mat % nuclide(i)) % obj % order) then
-          call fatal_error("All Tabular Scattering Entries Must Be Same Length!")
-          return
-        end if
+        select type(nuc => nuclides(mat % nuclide(i)) % obj)
+        type is (NuclideIso)
+          if (order /= size(nuc % scatter % dist(1) % data,dim=1)) &
+               call fatal_error("All Tabular Scattering Entries Must Be&
+                                & Same Length!")
+        end select
       end do
-      ! Ok, got our order, store it
-      this % order = order
+      ! Ok, got our order, store the dimensionality
+      order_dim = order
 
-      ! Allocate stuff for later
-      allocate(scatt_coeffs(this % order, groups, groups))
-      scatt_coeffs = ZERO
+      ! Set our Scatter Object Type
       allocate(ScattDataTabular :: this % scatter)
 
     else if (scatt_type == ANGLE_LEGENDRE) then
-      ! Otherwise find the maximum scattering order
       ! Need to determine the maximum scattering order of all data in this material
       mat_max_order = 0
       do i = 1, mat % n_nuclides
-        if (nuclides(mat % nuclide(i)) % obj % order > mat_max_order) then
-          mat_max_order = nuclides(mat % nuclide(i)) % obj % order
-        end if
+        select type(nuc => nuclides(mat % nuclide(i)) % obj)
+        type is (NuclideIso)
+          if (size(nuc % scatter % dist(1) % data,dim=1) > mat_max_order) &
+               mat_max_order = size(nuc % scatter % dist(1) % data,dim=1)
+        end select
       end do
 
       ! Now need to compare this material maximum scattering order with
       ! the problem wide max scatt order and use whichever is lower
-      order = min(mat_max_order, max_order) + 1
-      this % order = order
+      order = min(mat_max_order, max_order)
+      ! Ok, got our order, store the dimensionality
+      order_dim = order + 1
 
-      ! Now we can allocate our scatt_coeffs object accordingly
-      allocate(scatt_coeffs(this % order, groups, groups))
-      scatt_coeffs = ZERO
+      ! Set our Scatter Object Type
       allocate(ScattDataLegendre :: this % scatter)
     end if
 
-    ! Allocate and initialize data within macro_xs(i_mat) object
+    ! Allocate and initialize data needed for macro_xs(i_mat) object
     allocate(this % total(groups))
     this % total = ZERO
     allocate(this % absorption(groups))
@@ -225,10 +227,12 @@ contains
     end if
     allocate(this % nu_fission(groups))
     this % nu_fission = ZERO
-    allocate(this % chi(groups, groups))
+    allocate(this % chi(groups,groups))
     this % chi = ZERO
-    allocate(temp_mult(groups, groups))
+    allocate(temp_mult(groups,groups))
     temp_mult = ZERO
+    allocate(scatt_coeffs(order_dim,groups,groups))
+    scatt_coeffs = ZERO
 
     ! Add contribution from each nuclide in material
     do i = 1, mat % n_nuclides
@@ -276,21 +280,23 @@ contains
         end do
 
         ! Get the complete scattering matrix
-        scatt_coeffs(1:min(nuc % order, order),:,:) = scatt_coeffs + &
+        nuc_order_dim = size(nuc % scatter % dist(1) % data,dim=1)
+        scatt_coeffs(1:min(nuc_order_dim, order_dim),:,:) = &
+             scatt_coeffs(1:min(nuc_order_dim, order_dim),:,:) + &
              atom_density * &
-             nuc % scatter % get_matrix(min(nuc % order, order))
+             nuc % scatter % get_matrix(min(nuc_order_dim,order_dim))
 
       type is (NuclideAngle)
         call fatal_error("Invalid Passing of NuclideAngle to MacroXSIso Object")
       end select
     end do
 
+    ! Initialize the ScattData Object
     call this % scatter % init(temp_mult,scatt_coeffs)
 
     ! Now normalize chi
     if (mat % fissionable) then
       do gin = 1, groups
-        ! Normalize Chi
         norm =  sum(this % chi(:,gin))
         if (norm > ZERO) then
           this % chi(:,gin) = this % chi(:,gin) / norm
@@ -298,7 +304,7 @@ contains
       end do
     end if
 
-    ! Deallocate temporaries for the next material
+    ! Deallocate temporaries
     deallocate(scatt_coeffs, temp_mult)
 
   end subroutine macroxsiso_init
@@ -318,9 +324,8 @@ contains
     integer :: gin, gout     ! group indices
     real(8) :: atom_density  ! atom density of a nuclide
     integer :: ipol, iazi, n_pol, n_azi
-    integer :: imu
     real(8) :: norm
-    integer :: mat_max_order, order, l
+    integer :: mat_max_order, order, order_dim, nuc_order_dim
     real(8), allocatable :: temp_mult(:,:,:,:)
     real(8), allocatable :: scatt_coeffs(:,:,:,:,:)
 
@@ -346,21 +351,28 @@ contains
       end select
     end do
 
+    ! Determine the scattering type of our data and ensure all scattering orders
+    ! are the same.
+    select type(nuc => nuclides(mat % nuclide(1)) % obj)
+    type is (NuclideAngle)
+      order = size(nuc % scatter(1,1) % obj % dist(1) % data, dim=1)
+    end select
     ! If we have tabular only data, then make sure all datasets have same size
     if (scatt_type == ANGLE_HISTOGRAM) then
-      ! Check all scattering data of same size
-      order = nuclides(mat % nuclide(1)) % obj % order
+      ! Check all scattering data to ensure it is the same size
+      ! order = size(nuclides(mat % nuclide(1)) % obj % scatter % data,dim=1)
       do i = 2, mat % n_nuclides
-        if (order /= nuclides(mat % nuclide(i)) % obj % order) then
-          call fatal_error("All Histogram Scattering Entries Must Be Same Length!")
-        end if
+        select type(nuc => nuclides(mat % nuclide(i)) % obj)
+        type is (NuclideAngle)
+          if (order /= size(nuc % scatter(1,1) % obj % dist(1) % data,dim=1)) &
+               call fatal_error("All Histogram Scattering Entries Must Be&
+                                & Same Length!")
+        end select
       end do
-      ! Ok, got our order, store it
-      this % order = order
+      ! Ok, got our order, store the dimensionality
+      order_dim = order
 
-      ! Allocate stuff for later
-      allocate(scatt_coeffs(this % order,groups,groups,n_azi,n_pol))
-      scatt_coeffs = ZERO
+      ! Set our Scatter Object Type
       allocate(this % scatter(n_azi, n_pol))
       do ipol = 1, n_pol
         do iazi = 1, n_azi
@@ -369,19 +381,19 @@ contains
       end do
 
     else if (scatt_type == ANGLE_TABULAR) then
-      ! Check all scattering data of same size
-      order = nuclides(mat % nuclide(1)) % obj % order
+      ! Check all scattering data to ensure it is the same size
       do i = 2, mat % n_nuclides
-        if (order /= nuclides(mat % nuclide(i)) % obj % order) then
-          call fatal_error("All Tabular Scattering Entries Must Be Same Length!")
-        end if
+        select type(nuc => nuclides(mat % nuclide(i)) % obj)
+        type is (NuclideAngle)
+          if (order /= size(nuc % scatter(1,1) % obj % dist(1) % data,dim=1)) &
+               call fatal_error("All Tabular Scattering Entries Must Be&
+                                & Same Length!")
+        end select
       end do
-      ! Ok, got our order, store it
-      this % order = order
+      ! Ok, got our order, store the dimensionality
+      order_dim = order
 
-      ! Allocate stuff for later
-      allocate(scatt_coeffs(this % order, groups, groups, n_azi, n_pol))
-      scatt_coeffs = ZERO
+      ! Set our Scatter Object Type
       allocate(this % scatter(n_azi, n_pol))
       do ipol = 1, n_pol
         do iazi = 1, n_azi
@@ -390,23 +402,23 @@ contains
       end do
 
     else if (scatt_type == ANGLE_LEGENDRE) then
-      ! Otherwise find the maximum scattering order
       ! Need to determine the maximum scattering order of all data in this material
       mat_max_order = 0
       do i = 1, mat % n_nuclides
-        if (nuclides(mat % nuclide(i)) % obj % order > mat_max_order) then
-          mat_max_order = nuclides(mat % nuclide(i)) % obj % order
-        end if
+        select type(nuc => nuclides(mat % nuclide(i)) % obj)
+        type is (NuclideAngle)
+          if (size(nuc % scatter(1,1) % obj % dist(1) % data,dim=1) > mat_max_order) &
+               mat_max_order = size(nuc % scatter(1,1) % obj% dist(1) % data,dim=1)
+        end select
       end do
 
       ! Now need to compare this material maximum scattering order with
       ! the problem wide max scatt order and use whichever is lower
       order = min(mat_max_order, max_order)
-      this % order = order + 1
+      ! Ok, got our order, store the dimensionality
+      order_dim = order + 1
 
-      ! Now we can allocate our scatt_coeffs object accordingly
-      allocate(scatt_coeffs(this % order, groups, groups, n_azi, n_pol))
-      scatt_coeffs = ZERO
+      ! Set our Scatter Object Type
       allocate(this % scatter(n_azi, n_pol))
       do ipol = 1, n_pol
         do iazi = 1, n_azi
@@ -430,10 +442,12 @@ contains
     end if
     allocate(this % nu_fission(groups,n_azi,n_pol))
     this % nu_fission = ZERO
-    allocate(this % chi(groups, groups, n_azi, n_pol))
+    allocate(this % chi(groups, groups,n_azi,n_pol))
     this % chi = ZERO
     allocate(temp_mult(groups,groups,n_azi,n_pol))
     temp_mult = ZERO
+    allocate(scatt_coeffs(order_dim,groups,groups,n_azi,n_pol))
+    scatt_coeffs = ZERO
 
     ! Add contribution from each nuclide in material
     do i = 1, mat % n_nuclides
@@ -474,60 +488,35 @@ contains
           end if
         end if
 
-        ! Now time to do the scattering
+        ! Get the multiplication matrix
         do ipol = 1, n_pol
           do iazi = 1, n_azi
             do gin = 1, groups
-!!! Needs to be updated to match iso!!!
-! this % scattxs(gin,iazi,ipol) = this % scattxs(gin,iazi,ipol) + &
-!      atom_density * nuc % scattxs(gin,iazi,ipol)
               do gout = nuc % scatter(iazi,ipol) % obj % gmin(gin), &
-                   nuc % scatter(iazi,ipol) % obj  % gmax(gin)
-
-                ! Multiplicity matrix
-                temp_mult(gout,gin,iazi,ipol) = &
-                     temp_mult(gout,gin,iazi,ipol) + atom_density * &
-                     nuc % scatter(iazi,ipol) % obj  % mult(gin) % data(gout)
-
-                if (scatt_type == ANGLE_HISTOGRAM) then
-                  ! Determine the angular distribution
-                  do imu = 1, order
-                    scatt_coeffs(imu,gout,gin,iazi,ipol) = &
-                         scatt_coeffs(imu,gout,gin,iazi,ipol) + &
-                         atom_density * &
-                         nuc % scatter(iazi,ipol) % obj % dist(gin) % data(imu,gout)
-                  end do
-                else if (scatt_type == ANGLE_TABULAR) then
-                  select type(scatt =>nuc % scatter(iazi,ipol) % obj)
-                  type is (ScattDataTabular)
-                    do imu = 1, order
-                      scatt_coeffs(imu,gout,gin,iazi,ipol) = &
-                           scatt_coeffs(imu,gout,gin,iazi,ipol) + &
-                           atom_density * scatt % fmu(gin) % data(imu,gout)
-                    end do
-                  end select
-                else if (scatt_type == ANGLE_LEGENDRE) then
-                  ! Determine the angular distribution coefficients so we can later
-                  ! expand do the complete distribution
-                  do l = 1, min(nuc % order, order) + 1
-                    scatt_coeffs(l,gout,gin,iazi,ipol) = &
-                         scatt_coeffs(l,gout,gin,iazi,ipol) + &
-                         atom_density * &
-                         nuc % scatter(iazi,ipol) % obj % dist(gin) % data(l,gout)
-                  end do
-                end if
-                ! Incorporate outgoing energy PDF information
-                scatt_coeffs(:,gout,gin,iazi,ipol) = &
-                     scatt_coeffs(:,gout,gin,iazi,ipol) * &
-                     nuc % scatter(iazi,ipol) % obj % energy(gin) % data(gout)
+                   nuc % scatter(iazi,ipol) % obj % gmax(gin)
+                temp_mult(gout,gin,iazi,ipol) = temp_mult(gout,gin,iazi,ipol) + &
+                     atom_density * &
+                     nuc % scatter(iazi,ipol) % obj % mult(gin) % data(gout)
               end do
             end do
+          end do
+        end do
+
+        ! Get the complete scattering matrix
+        nuc_order_dim = size(nuc % scatter(1,1) % obj % dist(1) % data,dim=1)
+        do ipol = 1, n_pol
+          do iazi = 1, n_azi
+            scatt_coeffs(1:min(nuc_order_dim, order_dim),:,:,iazi,ipol) = &
+                 scatt_coeffs(1:min(nuc_order_dim, order_dim),:,:,iazi,ipol) + &
+                 atom_density * &
+                 nuc % scatter(iazi,ipol) % obj % get_matrix(&
+                 min(nuc_order_dim,order_dim,iazi,ipol))
           end do
         end do
       end select
     end do
 
-    ! Initialize the scattering data
+    ! Initialize the ScattData Object
     do ipol = 1, n_pol
       do iazi = 1, n_azi
         call this % scatter(iazi, ipol) % obj % init( &
@@ -535,12 +524,11 @@ contains
       end do
     end do
 
-    ! Now go through and normalize chi
+    ! Now normalize chi
     if (mat % fissionable) then
       do ipol = 1, n_pol
         do iazi = 1, n_azi
           do gin = 1, groups
-            ! Normalize Chi
             norm =  sum(this % chi(:,gin,iazi,ipol))
             if (norm > ZERO) then
               this % chi(:,gin,iazi,ipol) = this % chi(:,gin,iazi,ipol) / norm

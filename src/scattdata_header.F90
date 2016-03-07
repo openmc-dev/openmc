@@ -41,8 +41,7 @@ module scattdata_header
     procedure(scattdata_init_), deferred   :: init   ! Initializes ScattData
     procedure(scattdata_calc_f_), deferred :: calc_f ! Calculates f, given mu
     procedure(scattdata_sample_), deferred :: sample ! sample the scatter event
-    ! Reproduces an unnormalized scattering matrix
-    procedure :: get_matrix => scattdata_get_matrix
+    procedure :: get_matrix => scattdata_get_matrix  ! Rebuild scattering matrix
   end type ScattData
 
   abstract interface
@@ -55,7 +54,7 @@ module scattdata_header
 
     pure function scattdata_calc_f_(this, gin, gout, mu) result(f)
       import ScattData
-      class(ScattData), intent(in) :: this !! Scattering Object to work with
+      class(ScattData), intent(in) :: this ! Scattering Object to work with
       integer, intent(in)          :: gin  ! Incoming Energy Group
       integer, intent(in)          :: gout ! Outgoing Energy Group
       real(8), intent(in)          :: mu   ! Angle of interest
@@ -65,7 +64,7 @@ module scattdata_header
 
     subroutine scattdata_sample_(this, gin, gout, mu, wgt)
       import ScattData
-      class(ScattData), intent(in)    :: this !! Scattering Object to work with
+      class(ScattData), intent(in)    :: this ! Scattering Object to work with
       integer,          intent(in)    :: gin  ! Incoming neutron group
       integer,          intent(out)   :: gout ! Sampled outgoin group
       real(8),          intent(out)   :: mu   ! Sampled change in angle
@@ -80,7 +79,6 @@ module scattdata_header
     procedure :: init       => scattdatalegendre_init
     procedure :: calc_f     => scattdatalegendre_calc_f
     procedure :: sample     => scattdatalegendre_sample
-    ! procedure :: get_matrix => scattdatalegendre_get_matrix
   end type ScattDataLegendre
 
   type, extends(ScattData) :: ScattDataHistogram
@@ -90,7 +88,6 @@ module scattdata_header
     procedure :: init       => scattdatahistogram_init
     procedure :: calc_f     => scattdatahistogram_calc_f
     procedure :: sample     => scattdatahistogram_sample
-    ! procedure :: get_matrix => scattdatahistogram_get_matrix
   end type ScattDataHistogram
 
   type, extends(ScattData) :: ScattDataTabular

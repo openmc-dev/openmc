@@ -170,7 +170,7 @@ contains
         call get_node_value(doc, "max_order", max_order)
       else
         ! Set to default of largest int, which means to use whatever is contained in library
-        max_order = huge(0)
+        max_order = huge(0) - 1
       end if
     else
       max_order = 0

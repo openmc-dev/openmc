@@ -114,7 +114,7 @@ contains
           end if
 
           ! Read multipole file into the appropriate entry on the nuclides array
-          call read_multipole_data(i_nuclide)
+          if (multipole_active) call read_multipole_data(i_nuclide)
 
           ! Add name and alias to dictionary
           call already_read % add(name)
@@ -431,15 +431,14 @@ contains
     logical       :: file_exists   ! does multipole library exist?
     character(7)  :: readable      ! is multipole library readable?
     character(6)  :: zaid_string   ! String of the ZAID
-    character(9)  :: filename      ! path to multipole cross section library
-    type(Nuclide),   pointer :: nuc => null()
+    character(MAX_FILE_LEN+9)  :: filename  ! path to multipole xs library
 
     ! For the time being, and I know this is a bit hacky, we just assume
     ! that the file will be zaid.h5.
     associate (nuc => nuclides(i_table))
 
-      write(zaid_string,'(I6.6)') nuc % zaid
-      filename = zaid_string // ".h5"
+      write(zaid_string, '(I6.6)') nuc % zaid
+      filename = trim(path_multipole) // zaid_string // ".h5"
 
       ! Check if Multipole library exists and is readable
       inquire(FILE=filename, EXIST=file_exists, READ=readable)
@@ -447,11 +446,11 @@ contains
         nuc % mp_present = .false.
         return
       elseif (readable(1:3) == 'NO') then
-        call fatal_error("Multipole library '" // trim(filename) // "' is not readable! &
-             &Change file permissions with chmod command.")
+        call fatal_error("Multipole library '" // trim(filename) // "' is not &
+             &readable! Change file permissions with chmod command.")
       end if
 
-      ! display message
+      ! Display message
       call write_message("Loading Multipole XS table: " // filename, 6)
 
       allocate(nuc % multipole)

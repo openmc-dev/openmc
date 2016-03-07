@@ -2396,7 +2396,6 @@ contains
             if (i_nuclide == -1 .and. &
                  materials(p % material) % id == deriv % diff_material .and. &
                  material_xs % nu_fission /= ZERO) then
-              write(*, *) micro_xs(deriv % diff_nuclide) % nu_fission
               score = score * (deriv % flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % nu_fission &
                    / material_xs % nu_fission)

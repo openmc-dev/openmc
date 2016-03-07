@@ -107,9 +107,6 @@ module nuclide_header
   end type NuclideCE
 
   type, abstract, extends(Nuclide) :: NuclideMG
-    ! Scattering Order Information
-    integer :: order      ! Order of data (Scattering for NuclideIso,
-                          ! Number of angles for all in NuclideAngle)
     integer :: scatt_type ! either legendre, histogram, or tabular.
   contains
     procedure(nuclidemg_init_),   deferred :: init   ! Initialize the data
@@ -301,7 +298,7 @@ module nuclide_header
 
       character(MAX_LINE_LEN) :: temp_str
 
-      ! Load the data
+      ! Load the nuclide metadata
       call get_node_value(node_xsdata, "name", this % name)
       this % name = to_lower(this % name)
       if (check_for_node(node_xsdata, "kT")) then
@@ -328,12 +325,6 @@ module nuclide_header
         end if
       else
         this % scatt_type = ANGLE_LEGENDRE
-      end if
-
-      if (check_for_node(node_xsdata, "order")) then
-        call get_node_value(node_xsdata, "order", this % order)
-      else
-        call fatal_error("Order Must Be Provided!")
       end if
 
       if (check_for_node(node_xsdata, "fissionable")) then
@@ -368,26 +359,26 @@ module nuclide_header
       real(8), allocatable    :: input_scatt(:,:,:)
       real(8), allocatable    :: temp_scatt(:,:,:)
       real(8)                 :: dmu, mu, norm
-      integer                 :: order_dim, gin, gout, l, arr_len
+      integer                 :: order, order_dim, gin, gout, l, arr_len
       integer                 :: legendre_mu_points, imu
 
-      ! Call generic data gathering routine
+      ! Call generic data gathering routine (will populate the metadata)
       call nuclidemg_init(this, node_xsdata)
 
       ! Load the more specific data
       if (this % fissionable) then
 
-        if (check_for_node(node_xsdata, "chi")) then
+        if (check_for_node(node_xsdata,"chi")) then
           ! Get chi
           allocate(this % chi(groups))
-          call get_node_array(node_xsdata, "chi", this % chi)
+          call get_node_array(node_xsdata,"chi",this % chi)
 
           ! Get nu_fission (as a vector)
-          if (check_for_node(node_xsdata, "nu_fission")) then
+          if (check_for_node(node_xsdata,"nu_fission")) then
             allocate(temp_arr(groups * 1))
-            call get_node_array(node_xsdata, "nu_fission", temp_arr)
-            allocate(this % nu_fission(groups, 1))
-            this % nu_fission = reshape(temp_arr, (/groups, 1/))
+            call get_node_array(node_xsdata,"nu_fission",temp_arr)
+            allocate(this % nu_fission(groups,1))
+            this % nu_fission = reshape(temp_arr,(/groups,1/))
             deallocate(temp_arr)
           else
             call fatal_error("If fissionable, must provide nu_fission!")
@@ -395,21 +386,23 @@ module nuclide_header
 
         else
           ! Get nu_fission (as a matrix)
-          if (check_for_node(node_xsdata, "nu_fission")) then
+          if (check_for_node(node_xsdata,"nu_fission")) then
 
             allocate(temp_arr(groups*groups))
-            call get_node_array(node_xsdata, "nu_fission", temp_arr)
+            call get_node_array(node_xsdata,"nu_fission",temp_arr)
             allocate(this % nu_fission(groups, groups))
-            this % nu_fission = reshape(temp_arr, (/groups, groups/))
+            this % nu_fission = reshape(temp_arr,(/groups,groups/))
             deallocate(temp_arr)
           else
             call fatal_error("If fissionable, must provide nu_fission!")
           end if
         end if
+        ! If we have a need* for the fission and kappa-fission x/s, get them
+        ! (*Need is defined as will be using it to tally)
         if (get_fiss) then
           allocate(this % fission(groups))
-          if (check_for_node(node_xsdata, "fission")) then
-            call get_node_array(node_xsdata, "fission", this % fission)
+          if (check_for_node(node_xsdata,"fission")) then
+            call get_node_array(node_xsdata,"fission",this % fission)
           else
             call fatal_error("Fission data missing, required due to fission&
                              & tallies in tallies.xml file!")
@@ -417,8 +410,8 @@ module nuclide_header
         end if
         if (get_kfiss) then
           allocate(this % k_fission(groups))
-          if (check_for_node(node_xsdata, "kappa_fission")) then
-            call get_node_array(node_xsdata, "kappa_fission", this % k_fission)
+          if (check_for_node(node_xsdata,"kappa_fission")) then
+            call get_node_array(node_xsdata,"kappa_fission",this % k_fission)
           else
             call fatal_error("kappa_fission data missing, required due to &
                              &kappa-fission tallies in tallies.xml file!")
@@ -427,17 +420,37 @@ module nuclide_header
       end if
 
       allocate(this % absorption(groups))
-      if (check_for_node(node_xsdata, "absorption")) then
-        call get_node_array(node_xsdata, "absorption", this % absorption)
+      if (check_for_node(node_xsdata,"absorption")) then
+        call get_node_array(node_xsdata,"absorption",this % absorption)
       else
         call fatal_error("Must provide absorption!")
       end if
 
-      ! Get scattering treatment
-      if (check_for_node(node_xsdata, "tabular_legendre")) then
-        call get_node_ptr(node_xsdata, "tabular_legendre", node_legendre_mu)
+      ! Get multiplication data if present
+      allocate(temp_mult(groups, groups))
+      if (check_for_node(node_xsdata,"multiplicity")) then
+        arr_len = get_arraysize_double(node_xsdata,"multiplicity")
+        if (arr_len == groups * groups) then
+          allocate(temp_arr(arr_len))
+          call get_node_array(node_xsdata,"multiplicity",temp_arr)
+          temp_mult = reshape(temp_arr, (/groups, groups/))
+          deallocate(temp_arr)
+        else
+          call fatal_error("Multiplicity length not same as number of groups&
+                           & squared!")
+        end if
+      else
+        temp_mult = ONE
+      end if
+
+      ! Get scattering treatment information
+      ! Tabular_legendre tells us if we are to treat the provided
+      ! Legendre polynomials as tabular data (if enable is true) or leaving
+      ! them as Legendres (if enable is false, or the default)
+      if (check_for_node(node_xsdata,"tabular_legendre")) then
+        call get_node_ptr(node_xsdata,"tabular_legendre",node_legendre_mu)
         if (check_for_node(node_legendre_mu, "enable")) then
-          call get_node_value(node_legendre_mu, "enable", temp_str)
+          call get_node_value(node_legendre_mu,"enable",temp_str)
           temp_str = trim(to_lower(temp_str))
           if (temp_str == 'true' .or. temp_str == '1') then
             enable_leg_mu = .true.
@@ -447,48 +460,62 @@ module nuclide_header
             call fatal_error("Unrecognized tabular_legendre/enable: " // temp_str)
           end if
         else
-          enable_leg_mu = .true.
-          legendre_mu_points = 33
+          ! Set the default (leave as Legendre polynomials)
+          enable_leg_mu = .false.
         end if
-        if (enable_leg_mu .and. &
-             check_for_node(node_legendre_mu, "num_points")) then
-          call get_node_value(node_legendre_mu, "num_points", &
-                              legendre_mu_points)
-          if (legendre_mu_points <= 0) then
-            call fatal_error("num_points element must be positive and non-zero!")
+        ! Ok, so if we need to convert to a tabular form, get the user provided
+        ! number of points
+        if (enable_leg_mu) then
+          if (check_for_node(node_legendre_mu,"num_points")) then
+            call get_node_value(node_legendre_mu,"num_points", &
+                 legendre_mu_points)
+            if (legendre_mu_points <= 0) &
+                 call fatal_error("num_points element must be positive&
+                                  & and non-zero!")
+          else
+            ! Set the default number of points (0.0625 spacing)
+            legendre_mu_points = 33
           end if
         end if
       end if
 
-      if (this % scatt_type == ANGLE_LEGENDRE) then
-        order_dim = this % order + 1
-      else if (this % scatt_type == ANGLE_HISTOGRAM) then
-        order_dim = this % order
-      else if (this % scatt_type == ANGLE_TABULAR) then
-        order_dim = this % order
+      ! Get the library's value for the order
+      if (check_for_node(node_xsdata,"order")) then
+        call get_node_value(node_xsdata,"order",order)
+      else
+        call fatal_error("Order Must Be Provided!")
       end if
 
+      ! Before retrieving the data, store the dimensionality of the data in
+      ! order_dim.  For Legendre data, we usually refer to it as Pn where
+      ! n is the order.  However Pn has n+1 sets of points (since you need to
+      ! the count the P0 moment).  Adjust for that.  Histogram and Tabular
+      ! formats dont need this adjustment.
+      if (this % scatt_type == ANGLE_LEGENDRE) then
+        order_dim = order + 1
+      else
+        order_dim = order
+      end if
+
+      ! The input is gathered in the more user-friendly facing format of
+      ! Gout x Gin x Order.  We will get it in that format in input_scatt,
+      ! but then need to convert it to a more useful ordering for processing
+      ! (Order x Gout x Gin).
       allocate(input_scatt(groups, groups, order_dim))
-      if (check_for_node(node_xsdata, "scatter")) then
+      if (check_for_node(node_xsdata,"scatter")) then
         allocate(temp_arr(groups * groups * order_dim))
-        call get_node_array(node_xsdata, "scatter", temp_arr)
-        input_scatt = reshape(temp_arr, (/groups, groups, order_dim/))
+        call get_node_array(node_xsdata,"scatter",temp_arr)
+        input_scatt = reshape(temp_arr,(/groups,groups,order_dim/))
         deallocate(temp_arr)
 
         ! Compare the number of orders given with the maximum order of the
         ! problem.  Strip off the supefluous orders if needed.
         if (this % scatt_type == ANGLE_LEGENDRE) then
-          order_dim = min(order_dim, max_order + 1)
-          this % order = order_dim
+          order = min(order_dim - 1, max_order)
+          order_dim = order + 1
         end if
-        allocate(temp_scatt(groups, groups, order_dim))
-        do gin = 1, groups
-          do gout = 1, groups
-            do l = 1, order_dim
-              temp_scatt(gout,gin,l) = input_scatt(gout,gin,l)
-            end do
-          end do
-        end do
+        allocate(temp_scatt(groups,groups,order_dim))
+        temp_scatt(:,:,:) = input_scatt(:,:,1:order_dim)
 
         ! Take input format (groups, groups, order) and convert to
         ! the more useful format needed for scattdata: (order, groups, groups)
@@ -500,10 +527,10 @@ module nuclide_header
           ! Convert input parameters to what we need for the rest.
           this % scatt_type = ANGLE_TABULAR
           order_dim = legendre_mu_points
-          this % order = order_dim
-          dmu = TWO / real(this % order - 1,8)
+          order = order_dim
+          dmu = TWO / real(order - 1,8)
 
-          allocate(scatt_coeffs(order_dim, groups, groups))
+          allocate(scatt_coeffs(order_dim,groups,groups))
           do gin = 1, groups
             do gout = 1, groups
               norm = ZERO
@@ -517,13 +544,17 @@ module nuclide_header
                 end if
                 scatt_coeffs(imu,gout,gin) = &
                      evaluate_legendre(temp_scatt(gout,gin,:),mu)
+                ! Ensure positivity of distribution
                 if (scatt_coeffs(imu,gout,gin) < ZERO) &
                      scatt_coeffs(imu,gout,gin) = ZERO
+                ! And accrue the integral
                 if (imu > 1) then
                   norm = norm + HALF * dmu * (scatt_coeffs(imu-1,gout,gin) + &
                                               scatt_coeffs(imu,gout,gin))
                 end if
               end do
+              ! Now that we have the integral, lets ensure that the distribution
+              ! is normalized such that it preserves the original scattering xs
               if (norm > ZERO) then
                 scatt_coeffs(:,gout,gin) = scatt_coeffs(:,gout,gin) * &
                      temp_scatt(gout,gin,1) / norm
@@ -533,7 +564,7 @@ module nuclide_header
         else
           ! Sticking with current representation, carry forward but change
           ! the array ordering
-          allocate(scatt_coeffs(order_dim, groups, groups))
+          allocate(scatt_coeffs(order_dim,groups,groups))
           do gin = 1, groups
             do gout = 1, groups
               do l = 1, order_dim
@@ -545,28 +576,9 @@ module nuclide_header
         deallocate(temp_scatt)
       else
         call fatal_error("Must provide scatter!")
-        return
       end if
 
-      ! Get Mult Data
-      allocate(temp_mult(groups, groups))
-      if (check_for_node(node_xsdata, "multiplicity")) then
-        arr_len = get_arraysize_double(node_xsdata, "multiplicity")
-        if (arr_len == groups * groups) then
-          allocate(temp_arr(arr_len))
-          call get_node_array(node_xsdata, "multiplicity", temp_arr)
-          temp_mult = reshape(temp_arr, (/groups, groups/))
-          deallocate(temp_arr)
-        else
-          call fatal_error("Multiplicity length not same as number of groups&
-                           & squared!")
-          return
-        end if
-      else
-        temp_mult = ONE
-      end if
-
-      ! Allocate and initialize our ScattData Object..
+      ! Allocate and initialize our ScattData Object.
       if (this % scatt_type == ANGLE_HISTOGRAM) then
         allocate(ScattDataHistogram :: this % scatter)
       else if (this % scatt_type == ANGLE_TABULAR) then
@@ -576,18 +588,18 @@ module nuclide_header
       end if
 
       ! Initialize the ScattData Object
-      call this % scatter % init(temp_mult, scatt_coeffs(:,:,:))
+      call this % scatter % init(temp_mult, scatt_coeffs)
 
       ! Get, or infer, total xs data.
       allocate(this % total(groups))
-      if (check_for_node(node_xsdata, "total")) then
-        call get_node_array(node_xsdata, "total", this % total)
+      if (check_for_node(node_xsdata,"total")) then
+        call get_node_array(node_xsdata,"total",this % total)
       else
         this % total = this % absorption + this % scatter % scattxs
       end if
 
       ! Deallocate temporaries for the next material
-      deallocate(scatt_coeffs, temp_mult)
+      deallocate(input_scatt,scatt_coeffs,temp_mult)
 
     end subroutine nuclideiso_init
 
@@ -600,168 +612,331 @@ module nuclide_header
       logical, intent(in)                :: get_fiss    ! Should we get fiss data?
       integer, intent(in)                :: max_order   ! Maximum requested order
 
-      real(8), allocatable :: temp_arr(:)
-      integer :: arr_len
-      real(8) :: dangle
-      integer :: iangle
-      integer :: order_dim
+      type(Node), pointer     :: node_legendre_mu
+      character(MAX_LINE_LEN) :: temp_str
+      logical                 :: enable_leg_mu
+      real(8), allocatable    :: temp_arr(:)
+      real(8), allocatable    :: temp_mult(:,:,:,:)
+      real(8), allocatable    :: scatt_coeffs(:,:,:,:,:)
+      real(8), allocatable    :: input_scatt(:,:,:,:,:)
+      real(8), allocatable    :: temp_scatt(:,:,:,:,:)
+      real(8)                 :: dmu, mu, norm, dangle
+      integer                 :: order, order_dim, gin, gout, l, arr_len
+      integer                 :: legendre_mu_points, imu, i_pol, i_azi
 
-      ! Call generic data gathering routine
+      ! Call generic data gathering routine (will populate the metadata)
       call nuclidemg_init(this, node_xsdata)
 
-      if (this % scatt_type == ANGLE_LEGENDRE) then
-        order_dim = this % order + 1
-      else if (this % scatt_type == ANGLE_HISTOGRAM) then
-        order_dim = this % order
-      else if (this % scatt_type == ANGLE_TABULAR) then
-        order_dim = this % order
+      if (check_for_node(node_xsdata, "num_polar")) then
+        call get_node_value(node_xsdata, "num_polar", this % n_pol)
+      else
+        call fatal_error("num_polar Must Be Provided!")
       end if
 
-      ! if (check_for_node(node_xsdata, "num_polar")) then
-      !   call get_node_value(node_xsdata, "num_polar", this % n_pol)
-      ! else
-      !   call fatal_error("num_polar Must Be Provided!")
-      ! end if
+      if (check_for_node(node_xsdata, "num_azimuthal")) then
+        call get_node_value(node_xsdata, "num_azimuthal", this % n_azi)
+      else
+        call fatal_error("num_azimuthal Must Be Provided!")
+      end if
 
-      ! if (check_for_node(node_xsdata, "num_azimuthal")) then
-      !   call get_node_value(node_xsdata, "num_azimuthal", this % n_azi)
-      ! else
-      !   call fatal_error("num_azimuthal Must Be Provided!")
-      ! end if
+      ! Load angle data, if present (else equally spaced)
+      allocate(this % polar(this % n_pol))
+      allocate(this % azimuthal(this % n_azi))
+      if (check_for_node(node_xsdata, "polar")) then
+        call fatal_error("User-Specified polar angle bins not yet supported!")
+        ! When this feature is supported, this line will be activated
+        call get_node_array(node_xsdata, "polar", this % polar)
+      else
+        dangle = PI / real(this % n_pol,8)
+        do i_pol = 1, this % n_pol
+          this % polar(i_pol) = (real(i_pol,8) - HALF) * dangle
+        end do
+      end if
+      if (check_for_node(node_xsdata, "azimuthal")) then
+        call fatal_error("User-Specified azimuthal angle bins not yet supported!")
+        ! When this feature is supported, this line will be activated
+        call get_node_array(node_xsdata, "azimuthal", this % azimuthal)
+      else
+        dangle = TWO * PI / real(this % n_azi,8)
+        do i_azi = 1, this % n_azi
+          this % azimuthal(i_azi) = -PI + (real(i_azi,8) - HALF) * dangle
+        end do
+      end if
 
-      ! ! Load angle data, if present (else equally spaced)
-      ! allocate(this % polar(this % n_pol))
-      ! allocate(this % azimuthal(this % n_azi))
-      ! if (check_for_node(node_xsdata, "polar")) then
-      !   call fatal_error("User-Specified polar angle bins not yet supported!")
-      !   ! When this feature is supported, this line will be activated
-      !   call get_node_array(node_xsdata, "polar", this % polar)
-      ! else
-      !   dangle = PI / real(this % n_pol,8)
-      !   do iangle = 1, this % n_pol
-      !     this % polar(iangle) = (real(iangle,8) - HALF) * dangle
-      !   end do
-      ! end if
-      ! if (check_for_node(node_xsdata, "azimuthal")) then
-      !   call fatal_error("User-Specified azimuthal angle bins not yet supported!")
-      !   ! When this feature is supported, this line will be activated
-      !   call get_node_array(node_xsdata, "azimuthal", this % azimuthal)
-      ! else
-      !   dangle = TWO * PI / real(this % n_azi,8)
-      !   do iangle = 1, this % n_azi
-      !     this % azimuthal(iangle) = -PI + (real(iangle,8) - HALF) * dangle
-      !   end do
-      ! end if
+      ! Load the more specific data
+      if (this % fissionable) then
 
-      ! ! Load the more specific data
-      ! if (this % fissionable) then
+        if (check_for_node(node_xsdata,"chi")) then
+          ! Get chi
+          allocate(temp_arr(groups * this % n_azi * this % n_pol))
+          call get_node_array(node_xsdata,"chi",temp_arr)
+          allocate(this % chi(groups,this % n_azi,this % n_pol))
+          this % chi = reshape(temp_arr,(/groups,this % n_azi,this % n_pol/))
+          deallocate(temp_arr)
 
-      !   if (check_for_node(node_xsdata, "chi")) then
-      !     ! Get chi
-      !     allocate(temp_arr(groups * this % n_azi * this % n_pol))
-      !     call get_node_array(node_xsdata, "chi", temp_arr)
-      !     allocate(this % chi(groups, this % n_azi, this % n_pol))
-      !     this % chi = reshape(temp_arr, (/groups, this % n_azi, this % n_pol/))
-      !     deallocate(temp_arr)
+          ! Get nu_fission (as a vector)
+          if (check_for_node(node_xsdata,"nu_fission")) then
+            allocate(temp_arr(groups * this % n_azi * this % n_pol))
+            call get_node_array(node_xsdata,"nu_fission", temp_arr)
+            allocate(this % nu_fission(groups,1,this % n_azi,this % n_pol))
+            this % nu_fission = reshape(temp_arr, (/groups,1,this % n_azi, &
+                                                    this % n_pol/))
+            deallocate(temp_arr)
+          else
+            call fatal_error("If fissionable, must provide nu_fission!")
+          end if
 
-      !     ! Get nu_fission (as a vector)
-      !     if (check_for_node(node_xsdata, "nu_fission")) then
-      !       allocate(temp_arr(groups * this % n_azi * this % n_pol))
-      !       call get_node_array(node_xsdata, "nu_fission", temp_arr)
-      !       allocate(this % nu_fission(groups, 1, this % n_azi, this % n_pol))
-      !       this % nu_fission = reshape(temp_arr, (/groups, 1, this % n_azi, &
-      !                                               this % n_pol/))
-      !       deallocate(temp_arr)
-      !     else
-      !       call fatal_error("If fissionable, must provide nu_fission!")
-      !     end if
+        else
+          ! Get nu_fission (as a matrix)
+          if (check_for_node(node_xsdata,"nu_fission")) then
 
-      !   else
-      !     ! Get nu_fission (as a matrix)
-      !     if (check_for_node(node_xsdata, "nu_fission")) then
+            allocate(temp_arr(groups * this % n_azi * this % n_pol))
+            call get_node_array(node_xsdata,"nu_fission",temp_arr)
+            allocate(this % nu_fission(groups,groups,this % n_azi,this % n_pol))
+            this % nu_fission = reshape(temp_arr,(/groups,groups, &
+                                                    this % n_azi,this % n_pol/))
+            deallocate(temp_arr)
+          else
+            call fatal_error("If fissionable, must provide nu_fission!")
+          end if
+        end if
+        ! If we have a need* for the fission and kappa-fission x/s, get them
+        ! (*Need is defined as will be using it to tally)
+        if (get_fiss) then
+          if (check_for_node(node_xsdata,"fission")) then
+            allocate(temp_arr(groups * this % n_azi * this % n_pol))
+            call get_node_array(node_xsdata,"fission",temp_arr)
+            allocate(this % fission(groups,this % n_azi,this % n_pol))
+            this % fission = reshape(temp_arr,(/groups,this % n_azi,this % n_pol/))
+            deallocate(temp_arr)
+          else
+            call fatal_error("Fission data missing, required due to fission&
+                             & tallies in tallies.xml file!")
+          end if
+        end if
+        if (get_kfiss) then
+          if (check_for_node(node_xsdata,"kappa_fission")) then
+            allocate(temp_arr(groups * this % n_azi * this % n_pol))
+            call get_node_array(node_xsdata,"kappa_fission",temp_arr)
+            allocate(this % k_fission(groups,this % n_azi,this % n_pol))
+            this % k_fission = reshape(temp_arr,(/groups, this % n_azi,this % n_pol/))
+            deallocate(temp_arr)
+          else
+            call fatal_error("kappa_fission data missing, required due to &
+                             &kappa-fission tallies in tallies.xml file!")
+          end if
+        end if
+      end if
 
-      !       allocate(temp_arr(groups * this % n_azi * this % n_pol))
-      !       call get_node_array(node_xsdata, "nu_fission", temp_arr)
-      !       allocate(this % nu_fission(groups, groups, this % n_azi, this % n_pol))
-      !       this % nu_fission = reshape(temp_arr, (/groups, groups, &
-      !                                               this % n_azi, this % n_pol/))
-      !       deallocate(temp_arr)
-      !     else
-      !       call fatal_error("If fissionable, must provide nu_fission!")
-      !     end if
-      !   end if
-      !   if (get_fiss) then
-      !     if (check_for_node(node_xsdata, "fission")) then
-      !       allocate(temp_arr(groups * this % n_azi * this % n_pol))
-      !       call get_node_array(node_xsdata, "fission", temp_arr)
-      !       allocate(this % fission(groups, this % n_azi, this % n_pol))
-      !       this % fission = reshape(temp_arr, (/groups, this % n_azi, this % n_pol/))
-      !       deallocate(temp_arr)
-      !     else
-      !       call fatal_error("Fission data missing, required due to fission&
-      !                        & tallies in tallies.xml file!")
-      !     end if
-      !   end if
-      !   if (get_kfiss) then
-      !     if (check_for_node(node_xsdata, "kappa_fission")) then
-      !       allocate(temp_arr(groups * this % n_azi * this % n_pol))
-      !       call get_node_array(node_xsdata, "kappa_fission", temp_arr)
-      !       allocate(this % k_fission(groups, this % n_azi, this % n_pol))
-      !       this % k_fission = reshape(temp_arr, (/groups, this % n_azi, this % n_pol/))
-      !       deallocate(temp_arr)
-      !     else
-      !       call fatal_error("kappa_fission data missing, required due to &
-      !                        &kappa-fission tallies in tallies.xml file!")
-      !     end if
-      !   end if
-      ! end if
+      if (check_for_node(node_xsdata,"absorption")) then
+        allocate(temp_arr(groups * this % n_azi * this % n_pol))
+        call get_node_array(node_xsdata,"absorption",temp_arr)
+        allocate(this % absorption(groups,this % n_azi,this % n_pol))
+        this % absorption = reshape(temp_arr,(/groups,this % n_azi,this % n_pol/))
+        deallocate(temp_arr)
+      else
+        call fatal_error("Must provide absorption!")
+      end if
 
-      ! if (check_for_node(node_xsdata, "absorption")) then
-      !   allocate(temp_arr(groups * this % n_azi * this % n_pol))
-      !   call get_node_array(node_xsdata, "absorption", temp_arr)
-      !   allocate(this % absorption(groups, this % n_azi, this % n_pol))
-      !   this % absorption = reshape(temp_arr, (/groups, this % n_azi, this % n_pol/))
-      !   deallocate(temp_arr)
-      ! else
-      !   call fatal_error("Must provide absorption!")
-      ! end if
+      ! Get multiplication data if present
+      allocate(temp_mult(groups,groups,this % n_azi,this % n_pol))
+      if (check_for_node(node_xsdata,"multiplicity")) then
+        arr_len = get_arraysize_double(node_xsdata,"multiplicity")
+        if (arr_len == groups * groups * this % n_azi * this % n_pol) then
+          allocate(temp_arr(arr_len))
+          call get_node_array(node_xsdata,"multiplicity",temp_arr)
+          temp_mult = reshape(temp_arr,(/groups,groups,this % n_azi,this % n_pol/))
+          deallocate(temp_arr)
+        else
+          call fatal_error("Multiplicity length not same as number of groups&
+                           & squared!")
+        end if
+      else
+        temp_mult = ONE
+      end if
 
-      ! allocate(this % scatter(groups, groups, order_dim, this % n_azi, this % n_pol))
-      ! if (check_for_node(node_xsdata, "scatter")) then
-      !   allocate(temp_arr(groups * groups * order_dim * this % n_azi * this%n_pol))
-      !   call get_node_array(node_xsdata, "scatter", temp_arr)
-      !   this % scatter = reshape(temp_arr, (/groups, groups, order_dim, &
-      !                                        this%n_azi,this%n_pol/))
-      !   deallocate(temp_arr)
-      ! else
-      !   call fatal_error("Must provide scatter!")
-      ! end if
+      ! Get scattering treatment information
+      ! Tabular_legendre tells us if we are to treat the provided
+      ! Legendre polynomials as tabular data (if enable is true) or leaving
+      ! them as Legendres (if enable is false, or the default)
+      if (check_for_node(node_xsdata,"tabular_legendre")) then
+        call get_node_ptr(node_xsdata,"tabular_legendre",node_legendre_mu)
+        if (check_for_node(node_legendre_mu, "enable")) then
+          call get_node_value(node_legendre_mu,"enable",temp_str)
+          temp_str = trim(to_lower(temp_str))
+          if (temp_str == 'true' .or. temp_str == '1') then
+            enable_leg_mu = .true.
+          elseif (temp_str == 'false' .or. temp_str == '0') then
+            enable_leg_mu = .false.
+          else
+            call fatal_error("Unrecognized tabular_legendre/enable: " // temp_str)
+          end if
+        else
+          ! Set the default (leave as Legendre polynomials)
+          enable_leg_mu = .false.
+        end if
+        ! Ok, so if we need to convert to a tabular form, get the user provided
+        ! number of points
+        if (enable_leg_mu) then
+          if (check_for_node(node_legendre_mu,"num_points")) then
+            call get_node_value(node_legendre_mu,"num_points", &
+                 legendre_mu_points)
+            if (legendre_mu_points <= 0) &
+                 call fatal_error("num_points element must be positive&
+                                  & and non-zero!")
+          else
+            ! Set the default number of points (0.0625 spacing)
+            legendre_mu_points = 33
+          end if
+        end if
+      end if
 
-      ! if (check_for_node(node_xsdata, "total")) then
-      !   allocate(temp_arr(groups * this % n_azi * this % n_pol))
-      !   call get_node_array(node_xsdata, "total", temp_arr)
-      !   allocate(this % total(groups, this % n_azi, this % n_pol))
-      !   this % total = reshape(temp_arr, (/groups, this % n_azi, this % n_pol/))
-      !   deallocate(temp_arr)
-      ! else
-      !   this % total = this % absorption + sum(this%scatter(:,:,1,:,:),dim=1)
-      ! end if
+      ! Get the library's value for the order
+      if (check_for_node(node_xsdata,"order")) then
+        call get_node_value(node_xsdata,"order",order)
+      else
+        call fatal_error("Order Must Be Provided!")
+      end if
 
-      ! ! Get Mult Data
-      ! allocate(this % mult(groups, groups, this % n_azi, this % n_pol))
-      ! if (check_for_node(node_xsdata, "multiplicity")) then
-      !   arr_len = get_arraysize_double(node_xsdata, "multiplicity")
-      !   if (arr_len == groups * groups * this % n_azi * this % n_pol) then
-      !     allocate(temp_arr(arr_len))
-      !     call get_node_array(node_xsdata, "multiplicity", temp_arr)
-      !     this % mult = reshape(temp_arr, (/groups, groups, this % n_azi, this % n_pol/))
-      !     deallocate(temp_arr)
-      !   else
-      !     call fatal_error("Multiplicity Length Does Not Match!")
-      !   end if
-      ! else
-      !   this % mult = ONE
-      ! end if
+      ! Before retrieving the data, store the dimensionality of the data in
+      ! order_dim.  For Legendre data, we usually refer to it as Pn where
+      ! n is the order.  However Pn has n+1 sets of points (since you need to
+      ! the count the P0 moment).  Adjust for that.  Histogram and Tabular
+      ! formats dont need this adjustment.
+      if (this % scatt_type == ANGLE_LEGENDRE) then
+        order_dim = order + 1
+      else
+        order_dim = order
+      end if
+
+      ! The input is gathered in the more user-friendly facing format of
+      ! Gout x Gin x Order x Azi x Pol.  We will get it in that format in
+      ! input_scatt, but then need to convert it to a more useful ordering
+      ! for processing (Order x Gout x Gin x Azi x Pol).
+      allocate(input_scatt(groups,groups,order_dim,this % n_azi,this % n_pol))
+      if (check_for_node(node_xsdata,"scatter")) then
+        allocate(temp_arr(groups * groups * order_dim * this % n_azi * &
+                          this % n_pol))
+        call get_node_array(node_xsdata,"scatter",temp_arr)
+        input_scatt = reshape(temp_arr,(/groups,groups,order_dim,this % n_azi, &
+                                        this % n_pol/))
+        deallocate(temp_arr)
+
+        ! Compare the number of orders given with the maximum order of the
+        ! problem.  Strip off the supefluous orders if needed.
+        if (this % scatt_type == ANGLE_LEGENDRE) then
+          order = min(order_dim - 1, max_order)
+          order_dim = order + 1
+        end if
+        allocate(temp_scatt(groups,groups,order_dim,this % n_azi,this % n_pol))
+        temp_scatt(:,:,:,:,:) = input_scatt(:,:,1:order_dim,:,:)
+
+        ! Take input format (groups, groups, order) and convert to
+        ! the more useful format needed for scattdata: (order, groups, groups)
+        ! However, if scatt_type was ANGLE_LEGENDRE (i.e., the data was
+        ! provided as Legendre coefficients), and the user requested that
+        ! these legendres be converted to tabular form (note this is also
+        ! the default behavior), convert that now.
+        if (this % scatt_type == ANGLE_LEGENDRE .and. enable_leg_mu) then
+          ! Convert input parameters to what we need for the rest.
+          this % scatt_type = ANGLE_TABULAR
+          order_dim = legendre_mu_points
+          order = order_dim
+          dmu = TWO / real(order - 1,8)
+
+          allocate(scatt_coeffs(order_dim,groups,groups,this % n_azi,this % n_pol))
+          do i_pol = 1, this % n_pol
+            do i_azi = 1, this % n_azi
+              do gin = 1, groups
+                do gout = 1, groups
+                  norm = ZERO
+                  do imu = 1, order_dim
+                    if (imu == 1) then
+                      mu = -ONE
+                    else if (imu == order_dim) then
+                      mu = ONE
+                    else
+                      mu = -ONE + real(imu - 1,8) * dmu
+                    end if
+                    scatt_coeffs(imu,gout,gin,i_azi,i_pol) = &
+                         evaluate_legendre(temp_scatt(gout,gin,:,i_azi,i_pol),mu)
+                    ! Ensure positivity of distribution
+                    if (scatt_coeffs(imu,gout,gin,i_azi,i_pol) < ZERO) &
+                         scatt_coeffs(imu,gout,gin,i_azi,i_pol) = ZERO
+                    ! And accrue the integral
+                    if (imu > 1) then
+                      norm = norm + HALF * dmu * &
+                           (scatt_coeffs(imu-1,gout,gin,i_azi,i_pol) + &
+                            scatt_coeffs(imu,gout,gin,i_azi,i_pol))
+                    end if
+                  end do
+                  ! Now that we have the integral, lets ensure that the distribution
+                  ! is normalized such that it preserves the original scattering xs
+                  if (norm > ZERO) then
+                    scatt_coeffs(:,gout,gin,i_azi,i_pol) = &
+                         scatt_coeffs(:,gout,gin,i_azi,i_pol) * &
+                         temp_scatt(gout,gin,1,i_azi,i_pol) / norm
+                  end if
+                end do
+              end do
+            end do
+          end do
+        else
+          ! Sticking with current representation, carry forward but change
+          ! the array ordering
+          allocate(scatt_coeffs(order_dim,groups,groups,i_azi,i_pol))
+          do i_pol = 1, this % n_pol
+            do i_azi = 1, this % n_azi
+              do gin = 1, groups
+                do gout = 1, groups
+                  do l = 1, order_dim
+                    scatt_coeffs(l,gout,gin,i_azi,i_pol) = &
+                         temp_scatt(gout,gin,l,i_azi,i_pol)
+                  end do
+                end do
+              end do
+            end do
+          end do
+        end if
+        deallocate(temp_scatt)
+      else
+        call fatal_error("Must provide scatter!")
+      end if
+
+      allocate(this % scatter(this % n_azi, this % n_pol))
+      do i_pol = 1, this % n_pol
+        do i_azi = 1, this % n_azi
+          ! Allocate and initialize our ScattData Object.
+          if (this % scatt_type == ANGLE_HISTOGRAM) then
+            allocate(ScattDataHistogram :: this % scatter(i_azi,i_pol) % obj)
+          else if (this % scatt_type == ANGLE_TABULAR) then
+            allocate(ScattDataTabular :: this % scatter(i_azi,i_pol) % obj)
+          else if (this % scatt_type == ANGLE_LEGENDRE) then
+            allocate(ScattDataLegendre :: this % scatter(i_azi,i_pol) % obj)
+          end if
+
+          ! Initialize the ScattData Object
+          call this % scatter(i_azi,i_pol) % obj % init(&
+               temp_mult(:,:,i_azi,i_pol), scatt_coeffs(:,:,:,i_azi,i_pol))
+        end do
+      end do
+      ! Deallocate temporaries for the next material
+      deallocate(input_scatt,scatt_coeffs,temp_mult)
+
+      allocate(this % total(groups,this % n_azi,this % n_pol))
+      if (check_for_node(node_xsdata,"total")) then
+        allocate(temp_arr(groups * this % n_azi * this % n_pol))
+        call get_node_array(node_xsdata,"total",temp_arr)
+        this % total = reshape(temp_arr,(/groups,this % n_azi,this % n_pol/))
+        deallocate(temp_arr)
+      else
+        do i_pol = 1, this % n_pol
+          do i_azi = 1, this % n_azi
+            this % total(:,i_azi,i_pol) = this % absorption(:,i_azi,i_pol) + &
+                 this % scatter(i_azi,i_pol) % obj % scattxs(:)
+          end do
+        end do
+      end if
 
     end subroutine nuclideangle_init
 
@@ -886,17 +1061,27 @@ module nuclide_header
       if (this % scatt_type == ANGLE_LEGENDRE) then
         temp_str = "Legendre"
         write(unit_,*) '  Scattering Type = ' // trim(temp_str)
-        write(unit_,*) '  # of Scatter Moments = ' // &
-             trim(to_str(this % order))
+        select type(this)
+        type is (NuclideIso)
+          temp_str = to_str(size(this % scatter % dist(1) % data,dim=1) - 1)
+        end select
+        write(unit_,*) '  Scattering Order = ' // trim(temp_str)
       else if (this % scatt_type == ANGLE_HISTOGRAM) then
         temp_str = "Histogram"
         write(unit_,*) '  Scattering Type = ' // trim(temp_str)
-        write(unit_,*) '  # of Scatter Bins = ' // &
-             trim(to_str(this % order))
+        select type(this)
+        type is (NuclideIso)
+          temp_str = to_str(size(this % scatter % dist(1) % data,dim=1))
+        end select
+        write(unit_,*) '  Num. Distribution Bins = ' // trim(temp_str)
       else if (this % scatt_type == ANGLE_TABULAR) then
         temp_str = "Tabular"
         write(unit_,*) '  Scattering Type = ' // trim(temp_str)
-        write(unit_,*) '  # of Scatter Points = ' // trim(to_str(this % order))
+        select type(this)
+        type is (NuclideIso)
+          temp_str = to_str(size(this % scatter % dist(1) % data,dim=1))
+        end select
+        write(unit_,*) '  Num. Distribution Points = ' // trim(temp_str)
       end if
       write(unit_,*) '  Fissionable = ', this % fissionable
 
@@ -926,9 +1111,9 @@ module nuclide_header
       do gin = 1, size(this % scatter % energy)
         size_scattmat = size_scattmat + &
              2 * size(this % scatter % energy(gin) % data) + &
-             size(this % scatter % dist(gin) % data) + &
-             size(this % scatter % scattxs)
+             size(this % scatter % dist(gin) % data)
       end do
+      size_scattmat = size_scattmat + size(this % scatter % scattxs)
       size_scattmat = size_scattmat * 8
 
       size_mgxs = size(this % total) + size(this % absorption) + &
@@ -981,6 +1166,8 @@ module nuclide_header
                  2 * size(this % scatter(i_azi,i_pol) % obj % energy(gin) % data) + &
                  size(this % scatter(i_azi,i_pol) % obj % dist(gin) % data)
           end do
+          size_scattmat = size_scattmat + &
+               size(this % scatter(i_azi,i_pol) % obj % scattxs)
         end do
       end do
       size_scattmat = size_scattmat * 8

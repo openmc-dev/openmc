@@ -104,18 +104,9 @@ module global
   ! What to assume for expanding natural elements
   integer :: default_expand = ENDF_BVII1
 
-  ! Random number seed for cross sections, specially for URR ptables
-  ! This number is shared by all nuclides and updated after particle
-  ! changed its energy.
-  integer(8) :: xs_seed = 1_8
-
-  ! Dictionary to look up the skip distance to get prn when sampling URR
-  type(DictIntInt) :: nuc_zaid_dict
-
-  ! Total amount of nuclide zaid instances
+  ! Total amount of nuclide ZAID and dictionary of nuclide ZAID and index
   integer(8)       :: n_nuc_zaid_total
-
-!$omp threadprivate(xs_seed)
+  type(DictIntInt) :: nuc_zaid_dict
 
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES

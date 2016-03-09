@@ -1891,21 +1891,23 @@ contains
 
   subroutine read_materials_xml()
 
-    integer :: i             ! loop index for materials
-    integer :: j             ! loop index for nuclides
-    integer :: k             ! loop index for elements
-    integer :: n             ! number of nuclides
-    integer :: n_sab         ! number of sab tables for a material
-    integer :: n_nuc_ele     ! number of nuclides in an element
-    integer :: index_list    ! index in xs_listings array
-    integer :: index_nuclide ! index in nuclides
-    integer :: index_sab     ! index in sab_tables
-    real(8) :: val           ! value entered for density
-    real(8) :: temp_dble     ! temporary double prec. real
-    logical :: file_exists   ! does materials.xml exist?
-    logical :: sum_density   ! density is taken to be sum of nuclide densities
-    character(12) :: name    ! name of isotope, e.g. 92235.03c
-    character(12) :: alias   ! alias of nuclide, e.g. U-235.03c
+    integer :: i              ! loop index for materials
+    integer :: j              ! loop index for nuclides
+    integer :: k              ! loop index for elements
+    integer :: n              ! number of nuclides
+    integer :: n_sab          ! number of sab tables for a material
+    integer :: n_nuc_ele      ! number of nuclides in an element
+    integer :: index_list     ! index in xs_listings array
+    integer :: index_nuclide  ! index in nuclides
+    integer :: index_nuc_zaid ! index in nuclide ZAID
+    integer :: index_sab      ! index in sab_tables
+    real(8) :: val            ! value entered for density
+    real(8) :: temp_dble      ! temporary double prec. real
+    logical :: file_exists    ! does materials.xml exist?
+    logical :: sum_density    ! density is taken to be sum of nuclide densities
+    integer :: zaid           ! ZAID of nuclide
+    character(12) :: name     ! name of isotope, e.g. 92235.03c
+    character(12) :: alias    ! alias of nuclide, e.g. U-235.03c
     character(MAX_WORD_LEN) :: units    ! units on density
     character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
@@ -1955,6 +1957,7 @@ contains
 
     ! Initialize count for number of nuclides/S(a,b) tables
     index_nuclide = 0
+    index_nuc_zaid = 0
     index_sab = 0
 
     do i = 1, n_materials
@@ -2300,6 +2303,7 @@ contains
         index_list = xs_listing_dict % get_key(to_lower(name))
         name       = xs_listings(index_list) % name
         alias      = xs_listings(index_list) % alias
+        zaid       = xs_listings(index_list) % zaid
 
         ! If this nuclide hasn't been encountered yet, we need to add its name
         ! and alias to the nuclide_dict
@@ -2311,6 +2315,12 @@ contains
           call nuclide_dict % add_key(to_lower(alias), index_nuclide)
         else
           mat % nuclide(j) = nuclide_dict % get_key(to_lower(name))
+        end if
+
+        ! Construct dict of nuclide zaid
+        if (.not. nuc_zaid_dict % has_key(zaid)) then
+          index_nuc_zaid  = index_nuc_zaid + 1
+          call nuc_zaid_dict % add_key(zaid, index_nuc_zaid)
         end if
 
         ! Copy name and atom/weight percent
@@ -2407,6 +2417,7 @@ contains
     ! Set total number of nuclides and S(a,b) tables
     n_nuclides_total = index_nuclide
     n_sab_tables     = index_sab
+    n_nuc_zaid_total = index_nuc_zaid
 
     ! Close materials XML file
     call close_xmldoc(doc)

@@ -1667,26 +1667,4 @@ contains
 
   end function get_real
 
-!===============================================================================
-! SAME_NUCLIDE_LIST creates a linked list for each nuclide containing the
-! indices in the nuclides array of all other instances of that nuclide.  For
-! example, the same nuclide may exist at multiple temperatures resulting
-! in multiple entries in the nuclides array for a single zaid number.
-!===============================================================================
-
-  subroutine same_nuclide_list()
-
-    integer :: i ! index in nuclides array
-    integer :: j ! index in nuclides array
-
-    do i = 1, n_nuclides_total
-      do j = 1, n_nuclides_total
-        if (nuclides(i) % zaid == nuclides(j) % zaid) then
-          call nuclides(i) % nuc_list % push_back(j)
-        end if
-      end do
-    end do
-
-  end subroutine same_nuclide_list
-
 end module ace

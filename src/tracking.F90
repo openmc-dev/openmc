@@ -119,49 +119,6 @@ contains
 
       if (p % material /= p % last_material) call calculate_xs(p)
 
-      ! Determine whether the particle is now transferred to correct domain.
-      ! Move particle forward the previous domain distance and calculating new
-      ! distance to domain boundary. If the total dd distance is still less than
-      ! stored tracking distance, let the particle cross domain once more.
-      ! Note the particle coordinates are recovered back.
-      if (dd_run .and. p % stored_distance > ZERO) then
-        xyz_temp = p % coord(1) % xyz
-        p % coord(1) % xyz = xyz_temp + p % fly_dd_distance * p % coord(1) % uvw
-        call distance_to_mesh_surface(p, domain_decomp % mesh, &
-             distance, d_dd_mesh, meshbin=domain_decomp % meshbin)
-        p % coord(1) % xyz = xyz_temp
-        p % fly_dd_distance = p % fly_dd_distance + d_dd_mesh
-        if (p % stored_distance - p % fly_dd_distance > FP_COINCIDENT) then
-          ! Prepare particle for communication and stop tracking it
-          call cross_domain_boundary(p, domain_decomp, p % stored_distance, &
-               p % fly_dd_distance)
-
-          ! Keep on tracking secondary particles
-          if (p % n_secondary > 0) then
-            call p % initialize_from_source(p % secondary_bank(p % n_secondary))
-            p % n_secondary = p % n_secondary - 1
-            n_event = 0
-
-            ! Set the random number seed and clear crossing data for dd
-            if (dd_run) then
-              prn_seed = p % prn_seed
-              micro_xs % last_E = ZERO
-              micro_xs % last_index_sab = NONE
-              p % sec_particle = .true.
-              n_stage_secondary = n_stage_secondary + 1
-            end if
-
-            ! Enter new particle in particle track file
-            if (p % write_track) call add_particle_track()
-
-            cycle
-          else
-            exit
-          end if
-
-        end if
-      end if
-
       ! Find the distance to the nearest boundary
       call distance_to_boundary(p, d_boundary, surface_crossed, &
            lattice_translation, next_level)
@@ -174,8 +131,6 @@ contains
         else
           d_collision = p % stored_distance
         end if
-          p % stored_distance = ZERO
-          p % fly_dd_distance = ZERO
       else
         if (material_xs % total == ZERO) then
           d_collision = INFINITY
@@ -233,6 +188,9 @@ contains
         end if
 
       end if
+
+      p % stored_distance = ZERO
+      p % fly_dd_distance = ZERO
 
       ! Advance particle
       do j = 1, p % n_coord

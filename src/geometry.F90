@@ -980,11 +980,15 @@ contains
 
     integer :: bin        ! bin in mesh of particle
     integer :: ijk(3)     ! indices in mesh
+    real(8) :: xyz(3)     ! copy of starting point
     real(8) :: xyz1(3)    ! point for testing mesh intersection
     real(8) :: x, y, z    ! copy of particle position
     real(8) :: u, v, w    ! copy of particle direction
     real(8) :: x0, y0, z0 ! oncoming edges of the mesh cell
     real(8) :: d          ! temporary distance
+
+    ! Starting point should be moved 'fly_dd_distance' forward for dd case
+    xyz = p % coord(1) % xyz + p % fly_dd_distance * p % coord(1) % uvw
 
     dist = INFINITY
 
@@ -994,7 +998,7 @@ contains
 
     else
 
-      call get_mesh_bin(m, p % coord(1) % xyz, bin)
+      call get_mesh_bin(m, xyz, bin)
       if (bin /= NO_BIN_FOUND .and. &
            (bin < 1 .or. bin > product(m % dimension))) then
         call fatal_error("Invalid meshbin: " // trim(to_str(bin)))
@@ -1006,11 +1010,11 @@ contains
 
       ! If we're not in the mesh, we test for intersection
 
-      xyz1 = p % coord(1) % xyz + testdist * p % coord(1) % uvw
+      xyz1 = xyz + testdist * p % coord(1) % uvw
       if (m % n_dimension == 3) then
-        dist = distance_to_mesh_intersection_3d(m, p % coord(1) % xyz, xyz1)
+        dist = distance_to_mesh_intersection_3d(m, xyz, xyz1)
       else
-        dist = distance_to_mesh_intersection_2d(m, p % coord(1) % xyz, xyz1)
+        dist = distance_to_mesh_intersection_2d(m, xyz, xyz1)
       end if
 
     else
@@ -1020,9 +1024,9 @@ contains
       call bin_to_mesh_indices(m, bin, ijk)
 
       ! Copy particle position and direction
-      x = p % coord(1) % xyz(1)
-      y = p % coord(1) % xyz(2)
-      z = p % coord(1) % xyz(3)
+      x = xyz(1)
+      y = xyz(2)
+      z = xyz(3)
       u = p % coord(1) % uvw(1)
       v = p % coord(1) % uvw(2)
       w = p % coord(1) % uvw(3)
@@ -1067,6 +1071,9 @@ contains
       end if
 
     end if
+
+    ! Add 'fly_dd_distance' as accumulative distance
+    dist = dist + p % fly_dd_distance
 
   end subroutine distance_to_mesh_surface
 

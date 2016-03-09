@@ -510,14 +510,14 @@ class MGXS(object):
         # Create each Tally needed to compute the multi group cross section
         for score, key, filters in zip(scores, keys, all_filters):
             self.tallies[key] = openmc.Tally(name=self.name)
-            self.tallies[key].scores.append(score)
+            self.tallies[key].scores = [score]
             self.tallies[key].estimator = estimator
-            self.tallies[key].filters.append(domain_filter)
+            self.tallies[key].filters = [domain_filter]
 
             # If a tally trigger was specified, add it to each tally
             if self.tally_trigger:
                 trigger_clone = copy.deepcopy(self.tally_trigger)
-                trigger_clone.scores.append(score)
+                trigger_clone.scores = [score]
                 self.tallies[key].triggers.append(trigger_clone)
 
             # Add all non-domain specific Filters (e.g., 'energy') to the Tally

@@ -449,9 +449,9 @@ class Tally(object):
 
         """
 
-        warnings.warn("Tally.add_trigger(...) has been deprecated and may be "
-                      "removed in a future version. Tally triggers should be "
-                      "defined using the triggers property directly.",
+        warnings.warn('Tally.add_trigger(...) has been deprecated and may be '
+                      'removed in a future version. Tally triggers should be '
+                      'defined using the triggers property directly.',
                       DeprecationWarning)
         self.triggers.append(trigger)
 
@@ -540,9 +540,9 @@ class Tally(object):
 
         """
 
-        warnings.warn("Tally.add_filter(...) has been deprecated and may be "
-                      "removed in a future version. Tally filters should be "
-                      "defined using the filters property directly.",
+        warnings.warn('Tally.add_filter(...) has been deprecated and may be '
+                      'removed in a future version. Tally filters should be '
+                      'defined using the filters property directly.',
                       DeprecationWarning)
         self.filters.append(new_filter)
 
@@ -565,9 +565,9 @@ class Tally(object):
 
         """
 
-        warnings.warn("Tally.add_nuclide(...) has been deprecated and may be "
-                      "removed in a future version. Tally nuclides should be "
-                      "defined using the nuclides property directly.",
+        warnings.warn('Tally.add_nuclide(...) has been deprecated and may be '
+                      'removed in a future version. Tally nuclides should be '
+                      'defined using the nuclides property directly.',
                       DeprecationWarning)
         self.nuclides.append(nuclide)
 
@@ -589,9 +589,9 @@ class Tally(object):
 
         """
 
-        warnings.warn("Tally.add_score(...) has been deprecated and may be "
-                      "removed in a future version. Tally scores should be "
-                      "defined using the scores property directly.",
+        warnings.warn('Tally.add_score(...) has been deprecated and may be '
+                      'removed in a future version. Tally scores should be '
+                      'defined using the scores property directly.',
                       DeprecationWarning)
         self.scores.append(score)
 
@@ -2324,9 +2324,9 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            new_tally.filters = self.filters
-            new_tally.nuclides = self.nuclides
-            new_tally.scores = self.scores
+            new_tally.filters = copy.deepcopy(self.filters)
+            new_tally.nuclides = copy.deepcopy(self.nuclides)
+            new_tally.scores = copy.deepcopy(self.scores)
 
             # If this tally operand is sparse, sparsify the new tally
             new_tally.sparse = self.sparse
@@ -2396,9 +2396,9 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            new_tally.filters = self.filters
-            new_tally.nuclides = self.nuclides
-            new_tally.scores = self.scores
+            new_tally.filters = copy.deepcopy(self.filters)
+            new_tally.nuclides = copy.deepcopy(self.nuclides)
+            new_tally.scores = copy.deepcopy(self.scores)
 
             # If this tally operand is sparse, sparsify the new tally
             new_tally.sparse = self.sparse
@@ -2468,9 +2468,9 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            new_tally.filters = self.filters
-            new_tally.nuclides = self.nuclides
-            new_tally.scores = self.scores
+            new_tally.filters = copy.deepcopy(self.filters)
+            new_tally.nuclides = copy.deepcopy(self.nuclides)
+            new_tally.scores = copy.deepcopy(self.scores)
 
             # If this tally operand is sparse, sparsify the new tally
             new_tally.sparse = self.sparse
@@ -2544,9 +2544,9 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            new_tally.filters = self.filters
-            new_tally.nuclides = self.nuclides
-            new_tally.scores = self.scores
+            new_tally.filters = copy.deepcopy(self.filters)
+            new_tally.nuclides = copy.deepcopy(self.nuclides)
+            new_tally.scores = copy.deepcopy(self.scores)
 
             # If original tally was sparse, sparsify the exponentiated tally
             new_tally.sparse = self.sparse

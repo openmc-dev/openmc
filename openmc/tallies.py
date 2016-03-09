@@ -33,6 +33,12 @@ AUTO_TALLY_ID = 10000
 # specified axis.
 _PRODUCT_TYPES = ['tensor', 'entrywise']
 
+# The following indicate acceptable types when setting Tally.scores,
+# Tally.nuclides, and Tally.filters
+_SCORE_CLASSES = (basestring, CrossScore, AggregateScore)
+_NUCLIDE_CLASSES = (basestring, Nuclide, CrossNuclide, AggregateNuclide)
+_FILTER_CLASSES = (Filter, CrossFilter, AggregateFilter)
+
 
 def reset_auto_tally_id():
     global AUTO_TALLY_ID
@@ -103,11 +109,11 @@ class Tally(object):
         # Initialize Tally class attributes
         self.id = tally_id
         self.name = name
-        self._filters = []
-        self._nuclides = []
-        self._scores = []
+        self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters')
+        self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides')
+        self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores')
         self._estimator = None
-        self._triggers = []
+        self._triggers = cv.CheckedList(Trigger, 'tally triggers')
 
         self._num_realizations = 0
         self._with_summary = False
@@ -426,8 +432,8 @@ class Tally(object):
 
     @triggers.setter
     def triggers(self, triggers):
-        cv.check_type('tally triggers', trigger, MutableSequence, Trigger)
-        self._triggers = triggers
+        cv.check_type('tally triggers', triggers, MutableSequence)
+        self._triggers = cv.CheckedList(Trigger, 'tally triggers', triggers)
 
     def add_trigger(self, trigger):
         """Add a tally trigger to the tally
@@ -470,8 +476,7 @@ class Tally(object):
 
     @filters.setter
     def filters(self, filters):
-        cv.check_type('tally filters', filters, MutableSequence,
-                      (Filter, CrossFilter, AggregateFilter))
+        cv.check_type('tally filters', filters, MutableSequence)
 
         # If the filter is already in the Tally, raise an error
         for i, f in enumerate(filters[:-1]):
@@ -481,12 +486,11 @@ class Tally(object):
                       'Python API'.format(f, self.id)
                 raise ValueError(msg)
 
-        self._filters = filters
+        self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters', filters)
 
     @nuclides.setter
     def nuclides(self, nuclides):
-        cv.check_type('tally nuclides', nuclides, MutableSequence,
-                      (basestring, Nuclide, CrossNuclide, AggregateNuclide))
+        cv.check_type('tally nuclides', nuclides, MutableSequence)
 
         # If the nuclide is already in the Tally, raise an error
         for i, nuclide in enumerate(nuclides[:-1]):
@@ -496,12 +500,12 @@ class Tally(object):
                       'Python API'.format(nuclide, self.id)
                 raise ValueError(msg)
 
-        self._nuclides = nuclides
+        self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides',
+                                        nuclides)
 
     @scores.setter
     def scores(self, scores):
-        cv.check_type('tally scores', scores, MutableSequence,
-                      (basestring, CrossScore, AggregateScore))
+        cv.check_type('tally scores', scores, MutableSequence)
 
         for i, score in enumerate(scores[:-1]):
             # If the score is already in the Tally, raise an error
@@ -515,7 +519,7 @@ class Tally(object):
             if isinstance(score, basestring):
                 scores[i] = score.strip()
 
-        self._scores = scores
+        self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores', scores)
 
     def add_filter(self, new_filter):
         """Add a filter to the tally

@@ -16,7 +16,7 @@ module physics
   use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart
   use physics_common
-  use random_lcg,             only: prn
+  use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
   use search,                 only: binary_search
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use string,                 only: to_str
@@ -57,6 +57,13 @@ contains
       p % alive = .false.
       if (master) call warning("Killing neutron with extremely low energy")
     end if
+
+    ! Advance URR seed stream 'N' times after energy changes
+    if (p % E /= p % last_E) then
+      call prn_set_stream(STREAM_URR_PTABLE)
+      call advance_prn_seed(n_nuc_zaid_total)
+      call prn_set_stream(STREAM_TRACKING)
+    endif
 
   end subroutine collision
 

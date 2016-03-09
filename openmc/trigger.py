@@ -117,9 +117,9 @@ class Trigger(object):
 
         """
 
-        warnings.warn("Trigger.add_score(...) has been deprecated and may be "
-                      "removed in a future version. Tally trigger scores should "
-                      "be defined using the scores property directly.",
+        warnings.warn('Trigger.add_score(...) has been deprecated and may be '
+                      'removed in a future version. Tally trigger scores should '
+                      'be defined using the scores property directly.',
                       DeprecationWarning)
         self.scores.append(score)
 

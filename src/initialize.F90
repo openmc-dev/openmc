@@ -22,7 +22,6 @@ module initialize
                               print_usage, write_xs_summary, print_plot
   use particle_header,  only: ParticleBuffer
   use random_lcg,       only: initialize_prng
-  use random_lcg_header,only: N_STREAMS
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use summary,          only: write_summary

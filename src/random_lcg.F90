@@ -1,6 +1,6 @@
 module random_lcg
 
-  use random_lcg_header
+  use constants
 
   implicit none
 

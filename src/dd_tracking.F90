@@ -10,7 +10,6 @@ module dd_tracking
   use mesh,              only: get_mesh_bin
   use output,            only: write_message
   use random_lcg,        only: prn_seed
-  use random_lcg_header, only: N_STREAMS
   use string,            only: to_str
   use extend_arr,        only: extend_array
 

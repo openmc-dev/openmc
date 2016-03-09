@@ -16,7 +16,6 @@ module source
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream, prn_seed
   use state_point,      only: read_source_bank, write_source_bank
   use string,           only: to_str
-  use random_lcg_header,  only: STREAM_TRACKING, STREAM_SOURCE
 
 #ifdef MPI
   use message_passing

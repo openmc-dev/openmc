@@ -1,7 +1,7 @@
 module bank_header
 
   use, intrinsic :: ISO_C_BINDING
-  use random_lcg_header, only: N_STREAMS
+  use constants, only: N_STREAMS
 
   implicit none
 

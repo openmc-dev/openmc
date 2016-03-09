@@ -2,10 +2,9 @@ module particle_header
 
   use bank_header,     only: Bank
   use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
-                             MAX_DELAYED_GROUPS, NO_OUTSCATTER
+                             MAX_DELAYED_GROUPS, NO_OUTSCATTER, N_STREAMS
   use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
-  use random_lcg_header, only: N_STREAMS
 
   implicit none
 

@@ -50,8 +50,13 @@ def check_type(name, value, expected_type, expected_iter_type=None):
     """
 
     if not _isinstance(value, expected_type):
-        msg = 'Unable to set "{0}" to "{1}" which is not of type "{2}"'.format(
-            name, value, expected_type.__name__)
+        if isinstance(expected_type, Iterable):
+            msg = 'Unable to set "{0}" to "{1}" which is not one of the ' \
+                  'following types: "{2}"'.format(name, value, ', '.join(
+                      [t.__name__ for t in expected_type]))
+        else:
+            msg = 'Unable to set "{0}" to "{1}" which is not of type "{2}"'.format(
+                name, value, expected_type.__name__)
         raise ValueError(msg)
 
     if expected_iter_type:
@@ -251,3 +256,50 @@ def check_greater_than(name, value, minimum, equality=False):
             msg = 'Unable to set "{0}" to "{1}" since it is less than ' \
                   'or equal to "{2}"'.format(name, value, minimum)
             raise ValueError(msg)
+
+
+class CheckedList(list):
+    """A list for which each element is type-checked as it's added
+
+    Parameters
+    ----------
+    expected_type : type or Iterable of type
+        Type(s) which each element should be
+    name : str
+        Name of data being checked
+    items : Iterable, optional
+        Items to initialize the list with
+
+    """
+
+    def __init__(self, expected_type, name, items=[]):
+        self.expected_type = expected_type
+        self.name = name
+        for item in items:
+            self.append(item)
+
+    def append(self, item):
+        """Append item to list
+
+        Parameters
+        ----------
+        item : object
+            Item to append
+
+        """
+        check_type(self.name, item, self.expected_type)
+        super(CheckedList, self).append(item)
+
+    def insert(self, index, item):
+        """Insert item before index
+
+        Parameters
+        ----------
+        index : int
+            Index in list
+        item : object
+            Item to insert
+
+        """
+        check_type(self.name, item, self.expected_type)
+        super(CheckedList, self).insert(index, item)

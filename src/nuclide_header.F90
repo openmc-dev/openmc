@@ -126,7 +126,7 @@ module nuclide_header
       integer, intent(in)             :: max_order ! Maximum requested order
     end subroutine nuclidemg_init_
 
-    function nuclidemg_get_xs_(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
+    function nuclidemg_get_xs_(this, g, xstype, gout, uvw, mu, iazi, ipol) &
          result(xs)
       import NuclideMG
       class(NuclideMG), intent(in) :: this
@@ -135,20 +135,20 @@ module nuclide_header
       integer, optional, intent(in) :: gout   ! Outgoing Group
       real(8), optional, intent(in) :: uvw(3) ! Requested Angle
       real(8), optional, intent(in) :: mu     ! Change in angle
-      integer, optional, intent(in) :: i_azi  ! Azimuthal Index
-      integer, optional, intent(in) :: i_pol  ! Polar Index
+      integer, optional, intent(in) :: iazi  ! Azimuthal Index
+      integer, optional, intent(in) :: ipol  ! Polar Index
       real(8)                       :: xs     ! Resultant xs
     end function nuclidemg_get_xs_
 
-    pure function nuclidemg_calc_f_(this, gin, gout, mu, uvw, i_azi, i_pol) result(f)
+    pure function nuclidemg_calc_f_(this, gin, gout, mu, uvw, iazi, ipol) result(f)
       import NuclideMG
       class(NuclideMG), intent(in) :: this
       integer, intent(in)           :: gin   ! Incoming Energy Group
       integer, intent(in)           :: gout  ! Outgoing Energy Group
       real(8), intent(in)           :: mu    ! Angle of interest
       real(8), intent(in), optional :: uvw(3) ! Direction vector
-      integer, intent(in), optional :: i_azi ! Incoming Energy Group
-      integer, intent(in), optional :: i_pol ! Outgoing Energy Group
+      integer, intent(in), optional :: iazi ! Incoming Energy Group
+      integer, intent(in), optional :: ipol ! Outgoing Energy Group
       real(8)                       :: f     ! Return value of f(mu)
 
     end function nuclidemg_calc_f_
@@ -447,6 +447,9 @@ module nuclide_header
       ! Tabular_legendre tells us if we are to treat the provided
       ! Legendre polynomials as tabular data (if enable is true) or leaving
       ! them as Legendres (if enable is false, or the default)
+
+      ! Set the default (leave as Legendre polynomials)
+      enable_leg_mu = .false.
       if (check_for_node(node_xsdata,"tabular_legendre")) then
         call get_node_ptr(node_xsdata,"tabular_legendre",node_legendre_mu)
         if (check_for_node(node_legendre_mu, "enable")) then
@@ -459,9 +462,6 @@ module nuclide_header
           else
             call fatal_error("Unrecognized tabular_legendre/enable: " // temp_str)
           end if
-        else
-          ! Set the default (leave as Legendre polynomials)
-          enable_leg_mu = .false.
         end if
         ! Ok, so if we need to convert to a tabular form, get the user provided
         ! number of points
@@ -622,7 +622,7 @@ module nuclide_header
       real(8), allocatable    :: temp_scatt(:,:,:,:,:)
       real(8)                 :: dmu, mu, norm, dangle
       integer                 :: order, order_dim, gin, gout, l, arr_len
-      integer                 :: legendre_mu_points, imu, i_pol, i_azi
+      integer                 :: legendre_mu_points, imu, ipol, iazi
 
       ! Call generic data gathering routine (will populate the metadata)
       call nuclidemg_init(this, node_xsdata)
@@ -648,8 +648,8 @@ module nuclide_header
         call get_node_array(node_xsdata, "polar", this % polar)
       else
         dangle = PI / real(this % n_pol,8)
-        do i_pol = 1, this % n_pol
-          this % polar(i_pol) = (real(i_pol,8) - HALF) * dangle
+        do ipol = 1, this % n_pol
+          this % polar(ipol) = (real(ipol,8) - HALF) * dangle
         end do
       end if
       if (check_for_node(node_xsdata, "azimuthal")) then
@@ -658,8 +658,8 @@ module nuclide_header
         call get_node_array(node_xsdata, "azimuthal", this % azimuthal)
       else
         dangle = TWO * PI / real(this % n_azi,8)
-        do i_azi = 1, this % n_azi
-          this % azimuthal(i_azi) = -PI + (real(i_azi,8) - HALF) * dangle
+        do iazi = 1, this % n_azi
+          this % azimuthal(iazi) = -PI + (real(iazi,8) - HALF) * dangle
         end do
       end if
 
@@ -759,6 +759,9 @@ module nuclide_header
       ! Tabular_legendre tells us if we are to treat the provided
       ! Legendre polynomials as tabular data (if enable is true) or leaving
       ! them as Legendres (if enable is false, or the default)
+
+      ! Set the default (leave as Legendre polynomials)
+      enable_leg_mu = .false.
       if (check_for_node(node_xsdata,"tabular_legendre")) then
         call get_node_ptr(node_xsdata,"tabular_legendre",node_legendre_mu)
         if (check_for_node(node_legendre_mu, "enable")) then
@@ -771,9 +774,6 @@ module nuclide_header
           else
             call fatal_error("Unrecognized tabular_legendre/enable: " // temp_str)
           end if
-        else
-          ! Set the default (leave as Legendre polynomials)
-          enable_leg_mu = .false.
         end if
         ! Ok, so if we need to convert to a tabular form, get the user provided
         ! number of points
@@ -828,6 +828,7 @@ module nuclide_header
           order = min(order_dim - 1, max_order)
           order_dim = order + 1
         end if
+
         allocate(temp_scatt(groups,groups,order_dim,this % n_azi,this % n_pol))
         temp_scatt(:,:,:,:,:) = input_scatt(:,:,1:order_dim,:,:)
 
@@ -838,6 +839,7 @@ module nuclide_header
         ! these legendres be converted to tabular form (note this is also
         ! the default behavior), convert that now.
         if (this % scatt_type == ANGLE_LEGENDRE .and. enable_leg_mu) then
+
           ! Convert input parameters to what we need for the rest.
           this % scatt_type = ANGLE_TABULAR
           order_dim = legendre_mu_points
@@ -845,8 +847,8 @@ module nuclide_header
           dmu = TWO / real(order - 1,8)
 
           allocate(scatt_coeffs(order_dim,groups,groups,this % n_azi,this % n_pol))
-          do i_pol = 1, this % n_pol
-            do i_azi = 1, this % n_azi
+          do ipol = 1, this % n_pol
+            do iazi = 1, this % n_azi
               do gin = 1, groups
                 do gout = 1, groups
                   norm = ZERO
@@ -858,24 +860,24 @@ module nuclide_header
                     else
                       mu = -ONE + real(imu - 1,8) * dmu
                     end if
-                    scatt_coeffs(imu,gout,gin,i_azi,i_pol) = &
-                         evaluate_legendre(temp_scatt(gout,gin,:,i_azi,i_pol),mu)
+                    scatt_coeffs(imu,gout,gin,iazi,ipol) = &
+                         evaluate_legendre(temp_scatt(gout,gin,:,iazi,ipol),mu)
                     ! Ensure positivity of distribution
-                    if (scatt_coeffs(imu,gout,gin,i_azi,i_pol) < ZERO) &
-                         scatt_coeffs(imu,gout,gin,i_azi,i_pol) = ZERO
+                    if (scatt_coeffs(imu,gout,gin,iazi,ipol) < ZERO) &
+                         scatt_coeffs(imu,gout,gin,iazi,ipol) = ZERO
                     ! And accrue the integral
                     if (imu > 1) then
                       norm = norm + HALF * dmu * &
-                           (scatt_coeffs(imu-1,gout,gin,i_azi,i_pol) + &
-                            scatt_coeffs(imu,gout,gin,i_azi,i_pol))
+                           (scatt_coeffs(imu-1,gout,gin,iazi,ipol) + &
+                            scatt_coeffs(imu,gout,gin,iazi,ipol))
                     end if
                   end do
                   ! Now that we have the integral, lets ensure that the distribution
                   ! is normalized such that it preserves the original scattering xs
                   if (norm > ZERO) then
-                    scatt_coeffs(:,gout,gin,i_azi,i_pol) = &
-                         scatt_coeffs(:,gout,gin,i_azi,i_pol) * &
-                         temp_scatt(gout,gin,1,i_azi,i_pol) / norm
+                    scatt_coeffs(:,gout,gin,iazi,ipol) = &
+                         scatt_coeffs(:,gout,gin,iazi,ipol) * &
+                         temp_scatt(gout,gin,1,iazi,ipol) / norm
                   end if
                 end do
               end do
@@ -884,14 +886,14 @@ module nuclide_header
         else
           ! Sticking with current representation, carry forward but change
           ! the array ordering
-          allocate(scatt_coeffs(order_dim,groups,groups,i_azi,i_pol))
-          do i_pol = 1, this % n_pol
-            do i_azi = 1, this % n_azi
+          allocate(scatt_coeffs(order_dim,groups,groups,this % n_azi,this % n_pol))
+          do ipol = 1, this % n_pol
+            do iazi = 1, this % n_azi
               do gin = 1, groups
                 do gout = 1, groups
                   do l = 1, order_dim
-                    scatt_coeffs(l,gout,gin,i_azi,i_pol) = &
-                         temp_scatt(gout,gin,l,i_azi,i_pol)
+                    scatt_coeffs(l,gout,gin,iazi,ipol) = &
+                         temp_scatt(gout,gin,l,iazi,ipol)
                   end do
                 end do
               end do
@@ -904,20 +906,20 @@ module nuclide_header
       end if
 
       allocate(this % scatter(this % n_azi, this % n_pol))
-      do i_pol = 1, this % n_pol
-        do i_azi = 1, this % n_azi
+      do ipol = 1, this % n_pol
+        do iazi = 1, this % n_azi
           ! Allocate and initialize our ScattData Object.
           if (this % scatt_type == ANGLE_HISTOGRAM) then
-            allocate(ScattDataHistogram :: this % scatter(i_azi,i_pol) % obj)
+            allocate(ScattDataHistogram :: this % scatter(iazi,ipol) % obj)
           else if (this % scatt_type == ANGLE_TABULAR) then
-            allocate(ScattDataTabular :: this % scatter(i_azi,i_pol) % obj)
+            allocate(ScattDataTabular :: this % scatter(iazi,ipol) % obj)
           else if (this % scatt_type == ANGLE_LEGENDRE) then
-            allocate(ScattDataLegendre :: this % scatter(i_azi,i_pol) % obj)
+            allocate(ScattDataLegendre :: this % scatter(iazi,ipol) % obj)
           end if
 
           ! Initialize the ScattData Object
-          call this % scatter(i_azi,i_pol) % obj % init(&
-               temp_mult(:,:,i_azi,i_pol), scatt_coeffs(:,:,:,i_azi,i_pol))
+          call this % scatter(iazi,ipol) % obj % init(&
+               temp_mult(:,:,iazi,ipol), scatt_coeffs(:,:,:,iazi,ipol))
         end do
       end do
       ! Deallocate temporaries for the next material
@@ -930,10 +932,10 @@ module nuclide_header
         this % total = reshape(temp_arr,(/groups,this % n_azi,this % n_pol/))
         deallocate(temp_arr)
       else
-        do i_pol = 1, this % n_pol
-          do i_azi = 1, this % n_azi
-            this % total(:,i_azi,i_pol) = this % absorption(:,i_azi,i_pol) + &
-                 this % scatter(i_azi,i_pol) % obj % scattxs(:)
+        do ipol = 1, this % n_pol
+          do iazi = 1, this % n_azi
+            this % total(:,iazi,ipol) = this % absorption(:,iazi,ipol) + &
+                 this % scatter(iazi,ipol) % obj % scattxs(:)
           end do
         end do
       end if
@@ -1143,7 +1145,7 @@ module nuclide_header
 
       integer :: unit_             ! unit to write to
       integer :: size_total, size_scattmat, size_mgxs
-      integer :: i_pol, i_azi, gin
+      integer :: ipol, iazi, gin
 
       ! set default unit for writing information
       if (present(unit)) then
@@ -1159,15 +1161,15 @@ module nuclide_header
 
       ! Determine size of mgxs and scattering matrices
       size_scattmat = 0
-      do i_pol = 1, this % n_pol
-        do i_azi = 1, this % n_azi
-          do gin = 1, size(this % scatter(i_azi,i_pol) % obj % energy)
+      do ipol = 1, this % n_pol
+        do iazi = 1, this % n_azi
+          do gin = 1, size(this % scatter(iazi,ipol) % obj % energy)
             size_scattmat = size_scattmat + &
-                 2 * size(this % scatter(i_azi,i_pol) % obj % energy(gin) % data) + &
-                 size(this % scatter(i_azi,i_pol) % obj % dist(gin) % data)
+                 2 * size(this % scatter(iazi,ipol) % obj % energy(gin) % data) + &
+                 size(this % scatter(iazi,ipol) % obj % dist(gin) % data)
           end do
           size_scattmat = size_scattmat + &
-               size(this % scatter(i_azi,i_pol) % obj % scattxs)
+               size(this % scatter(iazi,ipol) % obj % scattxs)
         end do
       end do
       size_scattmat = size_scattmat * 8
@@ -1198,7 +1200,7 @@ module nuclide_header
 ! NUCLIDE*_GET_XS Returns the requested data type
 !===============================================================================
 
-    function nuclideiso_get_xs(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
+    function nuclideiso_get_xs(this, g, xstype, gout, uvw, mu, iazi, ipol) &
          result(xs)
       class(NuclideIso), intent(in) :: this
       integer, intent(in)            :: g      ! Incoming Energy group
@@ -1206,8 +1208,8 @@ module nuclide_header
       integer, optional, intent(in)  :: gout   ! Outgoing Group
       real(8), optional, intent(in)  :: uvw(3) ! Requested Angle
       real(8), optional, intent(in)  :: mu     ! Change in angle
-      integer, optional, intent(in)  :: i_azi  ! Azimuthal Index
-      integer, optional, intent(in)  :: i_pol  ! Polar Index
+      integer, optional, intent(in)  :: iazi  ! Azimuthal Index
+      integer, optional, intent(in)  :: ipol  ! Polar Index
       real(8)                        :: xs     ! Resultant xs
 
       xs = ZERO
@@ -1249,7 +1251,7 @@ module nuclide_header
       end if
     end function nuclideiso_get_xs
 
-    function nuclideangle_get_xs(this, g, xstype, gout, uvw, mu, i_azi, i_pol) &
+    function nuclideangle_get_xs(this, g, xstype, gout, uvw, mu, iazi, ipol) &
          result(xs)
       class(NuclideAngle), intent(in) :: this
       integer, intent(in)              :: g      ! Incoming Energy group
@@ -1257,11 +1259,11 @@ module nuclide_header
       integer, optional, intent(in)    :: gout   ! Outgoing Group
       real(8), optional, intent(in)    :: mu     ! Change in angle
       real(8), optional, intent(in)    :: uvw(3) ! Requested Angle
-      integer, optional, intent(in)    :: i_azi  ! Azimuthal Index
-      integer, optional, intent(in)    :: i_pol  ! Polar Index
+      integer, optional, intent(in)    :: iazi  ! Azimuthal Index
+      integer, optional, intent(in)    :: ipol  ! Polar Index
       real(8)                          :: xs     ! Resultant xs
 
-      integer :: i_azi_, i_pol_
+      integer :: iazi_, ipol_
 
       xs = ZERO
 
@@ -1270,43 +1272,43 @@ module nuclide_header
         return
       end if
 
-      if (present(i_azi) .and. present(i_pol)) then
-        i_azi_ = i_azi
-        i_pol_ = i_pol
+      if (present(iazi) .and. present(ipol)) then
+        iazi_ = iazi
+        ipol_ = ipol
       else
-        call find_angle(this % polar, this % azimuthal, uvw, i_azi_, i_pol_)
+        call find_angle(this % polar, this % azimuthal, uvw, iazi_, ipol_)
       end if
 
       if (present(gout)) then
         select case(xstype)
         case('mult')
-          xs = this % scatter(i_azi_,i_pol_) % obj % mult(g) % data(gout)
+          xs = this % scatter(iazi_,ipol_) % obj % mult(g) % data(gout)
         case('nu_fission')
-          xs = this % nu_fission(gout,g,i_azi_,i_pol_)
+          xs = this % nu_fission(gout,g,iazi_,ipol_)
         case('chi')
-          xs = this % chi(gout,i_azi_,i_pol_)
+          xs = this % chi(gout,iazi_,ipol_)
         case('f_mu', 'f_mu/mult')
-          xs = this % scatter(i_azi_,i_pol_) % obj % calc_f(g,gout,mu)
+          xs = this % scatter(iazi_,ipol_) % obj % calc_f(g,gout,mu)
           if (xstype == 'f_mu/mult') then
-            xs = xs / this % scatter(i_azi_,i_pol_) % obj % mult(g) % data(gout)
+            xs = xs / this % scatter(iazi_,ipol_) % obj % mult(g) % data(gout)
           end if
         end select
       else
         select case(xstype)
         case('total')
-          xs = this % total(g,i_azi_,i_pol_)
+          xs = this % total(g,iazi_,ipol_)
         case('absorption')
-          xs = this % absorption(g,i_azi_,i_pol_)
+          xs = this % absorption(g,iazi_,ipol_)
         case('fission')
-          xs = this % fission(g,i_azi_,i_pol_)
+          xs = this % fission(g,iazi_,ipol_)
         case('k_fission')
           if (allocated(this % k_fission)) then
-            xs = this % k_fission(g,i_azi_,i_pol_)
+            xs = this % k_fission(g,iazi_,ipol_)
           end if
         case('chi')
-          xs = this % chi(g,i_azi_,i_pol_)
+          xs = this % chi(g,iazi_,ipol_)
         case('scatter')
-          xs = this % scatter(i_azi_,i_pol_) % obj % scattxs(g)
+          xs = this % scatter(iazi_,ipol_) % obj % scattxs(g)
         end select
       end if
 

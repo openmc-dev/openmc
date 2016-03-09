@@ -81,19 +81,22 @@ module scattdata_header
     procedure :: sample     => scattdatalegendre_sample
   end type ScattDataLegendre
 
-  type, extends(ScattData) :: ScattDataHistogram
-    real(8), allocatable   :: mu(:) ! Mu bins
-    real(8)                :: dmu   ! Mu spacing
+  type, extends(ScattData)      :: ScattDataHistogram
+    real(8), allocatable        :: mu(:) ! Mu bins
+    real(8)                     :: dmu   ! Mu spacing
+    ! Histogram of f(mu) (dist has CDF)
+    type(Jagged2D), allocatable :: fmu(:) ! (Gin % data(Order/Nmu x Gout)
   contains
     procedure :: init       => scattdatahistogram_init
     procedure :: calc_f     => scattdatahistogram_calc_f
     procedure :: sample     => scattdatahistogram_sample
+    procedure :: get_matrix => scattdatahistogram_get_matrix
   end type ScattDataHistogram
 
-  type, extends(ScattData) :: ScattDataTabular
-    real(8), allocatable   :: mu(:)       ! Mu bins
-    real(8)                :: dmu         ! Mu spacing
-    ! PDF of f(mu)
+  type, extends(ScattData)      :: ScattDataTabular
+    real(8), allocatable        :: mu(:)       ! Mu bins
+    real(8)                     :: dmu         ! Mu spacing
+    ! PDF of f(mu) (dist has CDF)
     type(Jagged2D), allocatable :: fmu(:) ! (Gin % data(Order/Nmu x Gout)
   contains
     procedure :: init       => scattdatatabular_init
@@ -276,15 +279,22 @@ contains
         this % mu(imu) = -ONE + real(imu - 1,8) * this % dmu
       end do
 
-      ! Best to integrate this histogram so we can avoid rejection sampling
+      ! Integrate this histogram so we can avoid rejection sampling while
+      ! also saving the original histogram in fmu
+      allocate(this % fmu(groups))
       do gin = 1, groups
+        allocate(this % fmu(gin) % data(order, &
+                                        this % gmin(gin):this % gmax(gin)))
         do gout = this % gmin(gin), this % gmax(gin)
+          ! Store the histogram
+          this % fmu(gin) % data(:,gout) = coeffs(:,gout,gin)
           ! Integrate the histogram
           this % dist(gin) % data(1,gout) = this % dmu * coeffs(1,gout,gin)
           do imu = 2, order
             this % dist(gin) % data(imu,gout) = this % dmu * coeffs(imu,gout,gin) + &
                  this % dist(gin) % data(imu - 1,gout)
           end do
+
           ! Now make sure integral norms to zero
           norm = this % dist(gin) % data(order,gout)
           if (norm > ZERO) then
@@ -423,14 +433,13 @@ contains
       integer :: imu
 
       ! Find mu bin
-      imu = floor((mu + ONE)/ this % dmu + ONE)
-      ! Adjust so interpolation works on the last bin if necessary
-      if (imu == size(this % dist, dim=1)) then
-        imu = imu - 1
+      if (mu == ONE) then
+        imu = size(this % fmu(gin) % data,dim=1)
+      else
+        imu = floor((mu + ONE)/ this % dmu + ONE)
       end if
 
-      ! Use histogram interpolation to find f(mu)
-      f = this % dist(gin) % data(imu,gout)
+      f = this % fmu(gin) % data(imu,gout)
 
     end function scattdatahistogram_calc_f
 
@@ -445,16 +454,16 @@ contains
       real(8) :: r
 
       ! Find mu bin
-      imu = floor((mu + ONE)/ this % dmu + ONE)
-      ! Adjust so interpolation works on the last bin if necessary
-      if (imu == size(this % dist, dim=1)) then
-        imu = imu - 1
+      if (mu == ONE) then
+        imu = size(this % fmu(gin) % data,dim=1) - 1
+      else
+        imu = floor((mu + ONE)/ this % dmu + ONE)
       end if
 
       ! Now interpolate to find f(mu)
       r = (mu - this % mu(imu)) / (this % mu(imu + 1) - this % mu(imu))
-      f = (ONE - r) * this % dist(gin) % data(imu,gout) + &
-           r * this % dist(gin) % data(imu + 1,gout)
+      f = (ONE - r) * this % fmu(gin) % data(imu,gout) + &
+           r * this % fmu(gin) % data(imu + 1,gout)
 
     end function scattdatatabular_calc_f
 
@@ -609,7 +618,7 @@ contains
 ! using ScattData's information of fmu/dist, energy, and scattxs
 !===============================================================================
 
-    function scattdata_get_matrix(this, req_order) result(matrix)
+    pure function scattdata_get_matrix(this, req_order) result(matrix)
       class(ScattData), intent(in) :: this          ! Scattering Object to work with
       integer, intent(in)          :: req_order     ! Requested order of matrix
       real(8), allocatable         :: matrix(:,:,:) ! Resultant matrix just built
@@ -633,7 +642,31 @@ contains
       end do
     end function scattdata_get_matrix
 
-    function scattdatatabular_get_matrix(this, req_order) result(matrix)
+    pure function scattdatahistogram_get_matrix(this, req_order) result(matrix)
+      class(ScattDataHistogram), intent(in) :: this          ! Scattering Object to work with
+      integer, intent(in)                 :: req_order     ! Requested order of matrix
+      real(8), allocatable                :: matrix(:,:,:) ! Resultant matrix just built
+
+      integer :: order, groups, gin, gout
+
+      groups = size(this % energy)
+      order = min(req_order,size(this % dist(1) % data(:,1)))
+
+      allocate(matrix(order,groups,groups))
+      ! Initialize to 0; this way the zero entries in the dense matrix dont
+      ! need to be explicitly set, requiring a significant increase in the
+      ! lines of code.
+      matrix = ZERO
+      do gin = 1, groups
+        do gout = this % gmin(gin), this % gmax(gin)
+          matrix(:,gout,gin) = this % scattxs(gin) * &
+               this % energy(gin) % data(gout) * &
+               this % fmu(gin) % data(1:order,gout)
+        end do
+      end do
+    end function scattdatahistogram_get_matrix
+
+    pure function scattdatatabular_get_matrix(this, req_order) result(matrix)
       class(ScattDataTabular), intent(in) :: this          ! Scattering Object to work with
       integer, intent(in)                 :: req_order     ! Requested order of matrix
       real(8), allocatable                :: matrix(:,:,:) ! Resultant matrix just built

@@ -506,11 +506,11 @@ contains
         nuc_order_dim = size(nuc % scatter(1,1) % obj % dist(1) % data,dim=1)
         do ipol = 1, n_pol
           do iazi = 1, n_azi
-            scatt_coeffs(1:min(nuc_order_dim, order_dim),:,:,iazi,ipol) = &
+            scatt_coeffs(1:min(nuc_order_dim,order_dim),:,:,iazi,ipol) = &
                  scatt_coeffs(1:min(nuc_order_dim, order_dim),:,:,iazi,ipol) + &
                  atom_density * &
                  nuc % scatter(iazi,ipol) % obj % get_matrix(&
-                 min(nuc_order_dim,order_dim,iazi,ipol))
+                 min(nuc_order_dim,order_dim))
           end do
         end do
       end select
@@ -519,7 +519,7 @@ contains
     ! Initialize the ScattData Object
     do ipol = 1, n_pol
       do iazi = 1, n_azi
-        call this % scatter(iazi, ipol) % obj % init( &
+        call this % scatter(iazi,ipol) % obj % init( &
              temp_mult(:,:,iazi,ipol), scatt_coeffs(:,:,:,iazi,ipol))
       end do
     end do

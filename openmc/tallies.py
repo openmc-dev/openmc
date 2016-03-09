@@ -2504,9 +2504,9 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            new_tally.filters = self.filters
-            new_tally.nuclides = self.nuclides
-            new_tally.scores = self.scores
+            new_tally.filters = copy.deepcopy(self.filters)
+            new_tally.nuclides = copy.deepcopy(self.nuclides)
+            new_tally.scores = copy.deepcopy(self.scores)
 
             # If this tally operand is sparse, sparsify the new tally
             new_tally.sparse = self.sparse

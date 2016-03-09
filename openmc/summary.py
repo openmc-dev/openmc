@@ -60,6 +60,9 @@ class Summary(object):
         # Read date and time
         self.date_and_time = self._f['date_and_time'][...]
 
+        # Read if continuous-energy or multi-group
+        self.run_CE = (self._f['run_CE'].value == 1)
+
         self.n_batches = self._f['n_batches'].value
         self.n_particles = self._f['n_particles'].value
         self.n_active = self._f['n_active'].value

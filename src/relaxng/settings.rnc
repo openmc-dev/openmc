@@ -34,6 +34,8 @@ element settings {
 
   element energy_grid { ( "nuclide" | "log" | "logarithm" | "logarithmic" | "material-union" | "union" ) }? &
 
+  element energy_mode { ( "continuous-energy" | "ce" | "CE" | "multi-group" | "mg" | "MG" ) }? &
+
   element entropy {
     (element dimension { list { xsd:int+ } } |
       attribute dimension { list { xsd:int+ } })? &
@@ -44,6 +46,8 @@ element settings {
   }? &
 
   element log_grid_bins { xsd:positiveInteger }? &
+
+  element max_order { xsd:nonNegativeInteger }? &
 
   element natural_elements { xsd:string { maxLength = "20" } }? &
 

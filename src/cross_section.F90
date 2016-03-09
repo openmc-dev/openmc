@@ -354,19 +354,17 @@ contains
     integer, intent(in) :: i_nuclide ! index into nuclides array
     real(8), intent(in) :: E         ! energy
 
-    integer :: i            ! loop index
     integer :: i_energy     ! index for energy
     integer :: i_low        ! band index at lower bounding energy
     integer :: i_up         ! band index at upper bounding energy
-    integer :: same_nuc_idx ! index of same nuclide
     real(8) :: f            ! interpolation factor
     real(8) :: r            ! pseudo-random number
     real(8) :: elastic      ! elastic cross section
     real(8) :: capture      ! (n,gamma) cross section
     real(8) :: fission      ! fission cross section
     real(8) :: inelastic    ! inelastic cross section
-    type(UrrData),  pointer    :: urr
-    type(NuclideCE),  pointer :: nuc
+    type(UrrData), pointer   :: urr
+    type(NuclideCE), pointer :: nuc
 
     micro_xs(i_nuclide) % use_ptable = .true.
 

@@ -16,7 +16,7 @@ module physics
   use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart
   use physics_common
-  use random_lcg,             only: prn, prn_skip, prn_set_stream
+  use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
   use search,                 only: binary_search
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use string,                 only: to_str
@@ -61,7 +61,7 @@ contains
     ! Advance URR seed stream 'N' times after energy changes
     if (p % E /= p % last_E) then
       call prn_set_stream(STREAM_URR_PTABLE)
-      call prn_skip(n_nuc_zaid_total)
+      call advance_prn_seed(n_nuc_zaid_total)
       call prn_set_stream(STREAM_TRACKING)
     endif
 

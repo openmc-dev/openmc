@@ -10,7 +10,7 @@ module cross_section
   use material_header, only: Material
   use nuclide_header
   use particle_header, only: Particle
-  use random_lcg,      only: prn, get_prn_ahead, prn_set_stream
+  use random_lcg,      only: prn, future_prn, prn_set_stream
   use sab_header,      only: SAlphaBeta
   use search,          only: binary_search
 
@@ -392,7 +392,7 @@ contains
     ! random number for the same nuclide at different temperatures, therefore
     ! preserving correlation of temperature in probability tables.
     call prn_set_stream(STREAM_URR_PTABLE)
-    r = get_prn_ahead(int(nuc_zaid_dict % get_key(nuc % zaid), 8))
+    r = future_prn(int(nuc_zaid_dict % get_key(nuc % zaid), 8))
     call prn_set_stream(STREAM_TRACKING)
 
     i_low = 1

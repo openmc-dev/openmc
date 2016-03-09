@@ -175,8 +175,8 @@ mesh_filter.mesh = mesh
 
 # Instantiate the Tally
 tally = openmc.Tally(tally_id=1)
-tally.add_filter(mesh_filter)
-tally.add_score('total')
+tally.filters = [mesh_filter]
+tally.scores = ['total']
 
 # Instantiate a TalliesFile, register Tally/Mesh, and export to XML
 tallies_file = openmc.TalliesFile()

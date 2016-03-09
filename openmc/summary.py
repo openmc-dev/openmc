@@ -542,7 +542,7 @@ class Summary(object):
                 # If this is a moment, use generic moment order
                 pattern = r'-n$|-pn$|-yn$'
                 score = re.sub(pattern, '-' + moments[j].decode(), score)
-                tally.add_score(score)
+                tally.scores.append(score)
 
             # Read filter metadata
             num_filters = self._f['{0}/n_filters'.format(subbase)].value
@@ -563,7 +563,7 @@ class Summary(object):
                 new_filter.num_bins = num_bins
 
                 # Add Filter to the Tally
-                tally.add_filter(new_filter)
+                tally.filters.append(new_filter)
 
             # Add Tally to the global dictionary of all Tallies
             self.tallies[tally_id] = tally

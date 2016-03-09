@@ -2,7 +2,7 @@ module output
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use ace_header,      only: Nuclide, Reaction, UrrData
+  use ace_header,      only: Reaction, UrrData
   use constants
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
@@ -12,8 +12,10 @@ module output
   use math,            only: t_percentile
   use mesh_header,     only: RegularMesh
   use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
+  use nuclide_header
   use particle_header, only: LocalCoord, Particle
   use plot_header
+  use sab_header,      only: SAlphaBeta
   use string,          only: to_upper, to_str
   use tally_header,    only: TallyObject
 
@@ -100,9 +102,9 @@ contains
 !===============================================================================
 
   subroutine header(msg, unit, level)
-    character(*), intent(in) :: msg ! header message
-    integer, intent(in), optional :: unit       ! unit to write to
-    integer, intent(in), optional :: level      ! specified header level
+    character(*), intent(in)      :: msg   ! header message
+    integer, intent(in), optional :: unit  ! unit to write to
+    integer, intent(in), optional :: level ! specified header level
 
     integer :: n            ! number of = signs on left
     integer :: m            ! number of = signs on right
@@ -305,174 +307,15 @@ contains
 
     ! Display weight, energy, grid index, and interpolation factor
     write(ou,*) '  Weight = ' // to_str(p % wgt)
-    write(ou,*) '  Energy = ' // to_str(p % E)
+    if (run_CE) then
+      write(ou,*) '  Energy = ' // to_str(p % E)
+    else
+      write(ou,*) '  Energy Group = ' // to_str(p % g)
+    end if
     write(ou,*) '  Delayed Group = ' // to_str(p % delayed_group)
     write(ou,*)
 
   end subroutine print_particle
-
-!===============================================================================
-! PRINT_NUCLIDE displays information about a continuous-energy neutron
-! cross_section table and its reactions and secondary angle/energy distributions
-!===============================================================================
-
-  subroutine print_nuclide(nuc, unit)
-    type(Nuclide), intent(in) :: nuc
-    integer, intent(in), optional :: unit
-
-    integer :: i                 ! loop index over nuclides
-    integer :: unit_             ! unit to write to
-    integer :: size_xs           ! memory used for cross-sections (bytes)
-    integer :: size_urr          ! memory used for probability tables (bytes)
-    type(UrrData),  pointer :: urr
-
-    ! set default unit for writing information
-    if (present(unit)) then
-      unit_ = unit
-    else
-      unit_ = OUTPUT_UNIT
-    end if
-
-    ! Initialize totals
-    size_urr = 0
-    size_xs = 0
-
-    ! Basic nuclide information
-    write(unit_,*) 'Nuclide ' // trim(nuc % name)
-    write(unit_,*) '  zaid = ' // trim(to_str(nuc % zaid))
-    write(unit_,*) '  awr = ' // trim(to_str(nuc % awr))
-    write(unit_,*) '  kT = ' // trim(to_str(nuc % kT))
-    write(unit_,*) '  # of grid points = ' // trim(to_str(nuc % n_grid))
-    write(unit_,*) '  Fissionable = ', nuc % fissionable
-    write(unit_,*) '  # of fission reactions = ' // trim(to_str(nuc % n_fission))
-    write(unit_,*) '  # of reactions = ' // trim(to_str(nuc % n_reaction))
-
-    ! Information on each reaction
-    write(unit_,*) '  Reaction     Q-value  COM    IE'
-    do i = 1, nuc % n_reaction
-      associate (rxn => nuc % reactions(i))
-        write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,I6)') &
-             reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
-             rxn % threshold
-
-        ! Accumulate data size
-        size_xs = size_xs + (nuc % n_grid - rxn%threshold + 1) * 8
-      end associate
-    end do
-
-    ! Add memory required for summary reactions (total, absorption, fission,
-    ! nu-fission)
-    size_xs = 8 * nuc % n_grid * 4
-
-    ! Write information about URR probability tables
-    size_urr = 0
-    if (nuc % urr_present) then
-      urr => nuc % urr_data
-      write(unit_,*) '  Unresolved resonance probability table:'
-      write(unit_,*) '    # of energies = ' // trim(to_str(urr % n_energy))
-      write(unit_,*) '    # of probabilities = ' // trim(to_str(urr % n_prob))
-      write(unit_,*) '    Interpolation =  ' // trim(to_str(urr % interp))
-      write(unit_,*) '    Inelastic flag = ' // trim(to_str(urr % inelastic_flag))
-      write(unit_,*) '    Absorption flag = ' // trim(to_str(urr % absorption_flag))
-      write(unit_,*) '    Multiply by smooth? ', urr % multiply_smooth
-      write(unit_,*) '    Min energy = ', trim(to_str(urr % energy(1)))
-      write(unit_,*) '    Max energy = ', trim(to_str(urr % energy(urr % n_energy)))
-
-      ! Calculate memory used by probability tables and add to total
-      size_urr = urr % n_energy * (urr % n_prob * 6 + 1) * 8
-    end if
-
-    ! Write memory used
-    write(unit_,*) '  Memory Requirements'
-    write(unit_,*) '    Cross sections = ' // trim(to_str(size_xs)) // ' bytes'
-    write(unit_,*) '    Probability Tables = ' // &
-         trim(to_str(size_urr)) // ' bytes'
-
-    ! Blank line at end of nuclide
-    write(unit_,*)
-
-  end subroutine print_nuclide
-
-!===============================================================================
-! PRINT_SAB_TABLE displays information about a S(a,b) table containing data
-! describing thermal scattering from bound materials such as hydrogen in water.
-!===============================================================================
-
-  subroutine print_sab_table(sab, unit)
-    type(SAlphaBeta), intent(in) :: sab
-    integer, intent(in), optional :: unit
-
-    integer :: size_sab   ! memory used by S(a,b) table
-    integer :: unit_      ! unit to write to
-    integer :: i          ! Loop counter for parsing through sab % zaid
-    integer :: char_count ! Counter for the number of characters on a line
-
-    ! set default unit for writing information
-    if (present(unit)) then
-      unit_ = unit
-    else
-      unit_ = OUTPUT_UNIT
-    end if
-
-    ! Basic S(a,b) table information
-    write(unit_,*) 'S(a,b) Table ' // trim(sab % name)
-    write(unit_,'(A)',advance="no") '   zaids = '
-    ! Initialize the counter based on the above string
-    char_count = 11
-    do i = 1, sab % n_zaid
-      ! Deal with a line thats too long
-      if (char_count >= 73) then  ! 73 = 80 - (5 ZAID chars + 1 space + 1 comma)
-        ! End the line
-        write(unit_,*) ""
-        ! Add 11 leading blanks
-        write(unit_,'(A)', advance="no") "           "
-        ! reset the counter to 11
-        char_count = 11
-      end if
-      if (i < sab % n_zaid) then
-        ! Include a comma
-        write(unit_,'(A)',advance="no") trim(to_str(sab % zaid(i))) // ", "
-        char_count = char_count + len(trim(to_str(sab % zaid(i)))) + 2
-      else
-        ! Don't include a comma, since we are all done
-        write(unit_,'(A)',advance="no") trim(to_str(sab % zaid(i)))
-      end if
-
-    end do
-    write(unit_,*) "" ! Move to next line
-    write(unit_,*) '  awr = ' // trim(to_str(sab % awr))
-    write(unit_,*) '  kT = ' // trim(to_str(sab % kT))
-
-    ! Inelastic data
-    write(unit_,*) '  # of Incoming Energies (Inelastic) = ' // &
-         trim(to_str(sab % n_inelastic_e_in))
-    write(unit_,*) '  # of Outgoing Energies (Inelastic) = ' // &
-         trim(to_str(sab % n_inelastic_e_out))
-    write(unit_,*) '  # of Outgoing Angles (Inelastic) = ' // &
-         trim(to_str(sab % n_inelastic_mu))
-    write(unit_,*) '  Threshold for Inelastic = ' // &
-         trim(to_str(sab % threshold_inelastic))
-
-    ! Elastic data
-    if (sab % n_elastic_e_in > 0) then
-      write(unit_,*) '  # of Incoming Energies (Elastic) = ' // &
-           trim(to_str(sab % n_elastic_e_in))
-      write(unit_,*) '  # of Outgoing Angles (Elastic) = ' // &
-           trim(to_str(sab % n_elastic_mu))
-      write(unit_,*) '  Threshold for Elastic = ' // &
-           trim(to_str(sab % threshold_elastic))
-    end if
-
-    ! Determine memory used by S(a,b) table and write out
-    size_sab = 8 * (sab % n_inelastic_e_in * (2 + sab % n_inelastic_e_out * &
-         (1 + sab % n_inelastic_mu)) + sab % n_elastic_e_in * &
-         (2 + sab % n_elastic_mu))
-    write(unit_,*) '  Memory Used = ' // trim(to_str(size_sab)) // ' bytes'
-
-    ! Blank line at end
-    write(unit_,*)
-
-  end subroutine print_sab_table
 
 !===============================================================================
 ! WRITE_XS_SUMMARY writes information about each nuclide and S(a,b) table to a
@@ -486,8 +329,6 @@ contains
     integer :: i       ! loop index
     integer :: unit_xs ! cross_sections.out file unit
     character(MAX_FILE_LEN)  :: path ! path of summary file
-    type(Nuclide),    pointer :: nuc
-    type(SAlphaBeta), pointer :: sab
 
     ! Create filename for log file
     path = trim(path_output) // "cross_sections.out"
@@ -498,21 +339,22 @@ contains
     ! Write header
     call header("CROSS SECTION TABLES", unit=unit_xs)
 
-    NUCLIDE_LOOP: do i = 1, n_nuclides_total
-      ! Get pointer to nuclide
-      nuc => nuclides(i)
+    if (run_CE) then
+      NUCLIDE_LOOP: do i = 1, n_nuclides_total
+        ! Print information about nuclide
+        call nuclides(i) % print(unit=unit_xs)
+      end do NUCLIDE_LOOP
 
-      ! Print information about nuclide
-      call print_nuclide(nuc, unit=unit_xs)
-    end do NUCLIDE_LOOP
-
-    SAB_TABLES_LOOP: do i = 1, n_sab_tables
-      ! Get pointer to S(a,b) table
-      sab => sab_tables(i)
-
-      ! Print information about S(a,b) table
-      call print_sab_table(sab, unit=unit_xs)
-    end do SAB_TABLES_LOOP
+      SAB_TABLES_LOOP: do i = 1, n_sab_tables
+        ! Print information about S(a,b) table
+        call sab_tables(i) % print(unit=unit_xs)
+      end do SAB_TABLES_LOOP
+    else
+      NuclideMG_LOOP: do i = 1, n_nuclides_total
+        ! Print information about nuclide
+        call nuclides_mg(i) % obj % print(unit=unit_xs)
+      end do NuclideMG_LOOP
+    end if
 
     ! Close cross section summary file
     close(unit_xs)

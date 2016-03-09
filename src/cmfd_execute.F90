@@ -89,9 +89,9 @@ contains
 
   subroutine calc_fission_source()
 
-    use constants,  only: CMFD_NOACCEL, ZERO, TWO
-    use global,     only: cmfd, cmfd_coremap, master, entropy_on, current_batch
-    use string,     only: to_str
+    use constants, only: CMFD_NOACCEL, ZERO, TWO
+    use global,    only: cmfd, cmfd_coremap, master, entropy_on, current_batch
+    use string,    only: to_str
 
 #ifdef MPI
     use global,     only: mpi_err

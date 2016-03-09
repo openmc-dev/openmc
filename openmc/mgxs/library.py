@@ -116,11 +116,11 @@ class Library(object):
             clone._by_nuclide = self.by_nuclide
             clone._mgxs_types = self.mgxs_types
             clone._domain_type = self.domain_type
-            clone._domains = self.domains
+            clone._domains = copy.deepcopy(self.domains)
             clone._correction = self.correction
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
-            clone._all_mgxs = self.all_mgxs
+            clone._all_mgxs = copy.deepcopy(self.all_mgxs)
             clone._sp_filename = self._sp_filename
             clone._keff = self._keff
             clone._sparse = self.sparse
@@ -426,7 +426,7 @@ class Library(object):
         ----------
         domain : Material or Cell or Universe or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
+        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
             The type of multi-group cross section object to return
 
         Returns
@@ -457,7 +457,7 @@ class Library(object):
                     break
             else:
                 msg = 'Unable to find MGXS for {0} "{1}" in ' \
-                      'library'.format(self.domain_type, domain)
+                      'library'.format(self.domain_type, domain_id)
                 raise ValueError(msg)
         else:
             domain_id = domain.id

@@ -356,7 +356,7 @@ Testing Build
 -------------
 
 If you have ENDF/B-VII.1 cross sections from NNDC_ you can test your build.
-Make sure the **CROSS_SECTIONS** environmental variable is set to the
+Make sure the **OPENMC_CROSS_SECTIONS** environmental variable is set to the
 *cross_sections.xml* file in the *data/nndc* directory.
 There are two ways to run tests. The first is to use the Makefile present in
 the source directory and run the following:
@@ -381,11 +381,17 @@ Cross Section Configuration
 ---------------------------
 
 In order to run a simulation with OpenMC, you will need cross section data for
-each nuclide in your problem. Since OpenMC uses ACE format cross sections, you
-can use nuclear data that was processed with NJOY_, such as that distributed
-with MCNP_ or Serpent_. Several sources provide free processed ACE data as
-described below. The TALYS-based evaluated nuclear data library, TENDL_, is also
-openly available in ACE format.
+each nuclide or material in your problem. OpenMC can be run in
+continuous-energy or multi-group mode.
+
+In continuous-energy mode OpenMC uses ACE format cross sections; in this case
+you can use nuclear data that was processed with NJOY_, such as that
+distributed with MCNP_ or Serpent_.  Several sources provide free processed
+ACE data as described below. The TALYS-based evaluated nuclear data library,
+TENDL_, is also openly available in ACE format.
+
+In multi-group mode, OpenMC utilizes an XML-based library format which can be
+used to describe nuclide- or material-specific quantities.
 
 Using ENDF/B-VII.1 Cross Sections from NNDC
 -------------------------------------------
@@ -400,9 +406,10 @@ extract, and set up a confiuration file:
     cd openmc/data
     python get_nndc_data.py
 
-At this point, you should set the :envvar:`CROSS_SECTIONS` environment variable
-to the absolute path of the file ``openmc/data/nndc/cross_sections.xml``. This
-cross section set is used by the test suite.
+At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
+variable to the absolute path of the file
+``openmc/data/nndc/cross_sections.xml``. This cross section set is used by the
+test suite.
 
 Using JEFF Cross Sections from OECD/NEA
 ---------------------------------------
@@ -428,8 +435,8 @@ the following steps must be taken:
 4. Additionally, you may need to change any occurrences of upper-case "ACE"
    within the ``cross_sections.xml`` file to lower-case.
 5. Either set the :ref:`cross_sections` in a settings.xml file or the
-   :envvar:`CROSS_SECTIONS` environment variable to the absolute path of the
-   ``cross_sections.xml`` file.
+   :envvar:`OPENMC_CROSS_SECTIONS` environment variable to the absolute path of
+   the ``cross_sections.xml`` file.
 
 Using Cross Sections from MCNP
 ------------------------------
@@ -437,8 +444,9 @@ Using Cross Sections from MCNP
 To use cross sections distributed with MCNP, change the <directory> element in
 the ``cross_sections.xml`` file in the root directory of the OpenMC distribution
 to the location of the MCNP cross sections. Then, either set the
-:ref:`cross_sections` in a settings.xml file or the :envvar:`CROSS_SECTIONS`
-environment variable to the absolute path of the ``cross_sections.xml`` file.
+:ref:`cross_sections` in a settings.xml file or the
+:envvar:`OPENMC_CROSS_SECTIONS` environment variable to the absolute path of
+the ``cross_sections.xml`` file.
 
 Using Cross Sections from Serpent
 ---------------------------------
@@ -446,9 +454,20 @@ Using Cross Sections from Serpent
 To use cross sections distributed with Serpent, change the <directory> element
 in the ``cross_sections_serpent.xml`` file in the root directory of the OpenMC
 distribution to the location of the Serpent cross sections. Then, either set the
-:ref:`cross_sections` in a settings.xml file or the :envvar:`CROSS_SECTIONS`
-environment variable to the absolute path of the ``cross_sections_serpent.xml``
+:ref:`cross_sections` in a settings.xml file or the
+:envvar:`OPENMC_CROSS_SECTIONS` environment variable to the absolute path of
+the ``cross_sections_serpent.xml``
 file.
+
+Using Multi-Group Cross Sections
+--------------------------------
+
+Multi-group cross section libraries are generally tailored to the specific
+calculation to be performed.  Therefore, at this point in time, OpenMC is not
+distributed with any pre-existing multi-group cross section libraries.
+However, if the user has obtained or generated their own library, the user
+should set the :envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable
+to the absolute path of the file library expected to used most frequently.
 
 .. _NJOY: http://t2.lanl.gov/nis/codes.shtml
 .. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html

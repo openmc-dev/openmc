@@ -1,6 +1,6 @@
 module cross_section
 
-  use ace_header,      only: Nuclide, SAlphaBeta, Reaction, UrrData
+  use ace_header,      only: Reaction, UrrData
   use constants
   use energy_grid,     only: grid_method, log_spacing
   use error,           only: fatal_error
@@ -8,8 +8,10 @@ module cross_section
   use global
   use list_header,     only: ListElemInt
   use material_header, only: Material
+  use nuclide_header
   use particle_header, only: Particle
   use random_lcg,      only: prn
+  use sab_header,      only: SAlphaBeta
   use search,          only: binary_search
 
   implicit none
@@ -146,8 +148,8 @@ contains
     integer :: i_low  ! lower logarithmic mapping index
     integer :: i_high ! upper logarithmic mapping index
     real(8) :: f      ! interp factor on nuclide energy grid
-    type(Nuclide),  pointer :: nuc
-    type(Material), pointer :: mat
+    type(NuclideCE), pointer :: nuc
+    type(Material),   pointer :: mat
 
     ! Set pointer to nuclide and material
     nuc => nuclides(i_nuclide)
@@ -364,8 +366,8 @@ contains
     real(8) :: fission      ! fission cross section
     real(8) :: inelastic    ! inelastic cross section
     logical :: same_nuc     ! do we know the xs for this nuclide at this energy?
-    type(UrrData),  pointer :: urr
-    type(Nuclide),  pointer :: nuc
+    type(UrrData),  pointer    :: urr
+    type(NuclideCE),  pointer :: nuc
 
     micro_xs(i_nuclide) % use_ptable = .true.
 
@@ -531,9 +533,9 @@ contains
 !===============================================================================
 
   pure function elastic_xs_0K(E, nuc) result(xs_out)
-    real(8),       intent(in) :: E      ! trial energy
-    type(Nuclide), intent(in) :: nuc    ! target nuclide at temperature
-    real(8)                   :: xs_out ! 0K xs at trial energy
+    real(8),       intent(in)    :: E      ! trial energy
+    type(NuclideCE), intent(in) :: nuc    ! target nuclide at temperature
+    real(8)                      :: xs_out ! 0K xs at trial energy
 
     integer :: i_grid ! index on nuclide energy grid
     real(8) :: f      ! interp factor on nuclide energy grid

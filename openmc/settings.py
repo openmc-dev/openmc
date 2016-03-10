@@ -9,7 +9,7 @@ import numpy as np
 from openmc.clean_xml import *
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
-from openmc.nuclide import Nuclide
+from openmc import Nuclide
 from openmc.source import Source
 
 if sys.version_info[0] >= 3:
@@ -778,9 +778,10 @@ class SettingsFile(object):
         if isinstance(res, Iterable):
             check_type('resonance_scattering', res, Iterable,
                        ResonanceScattering)
+            self._resonance_scattering = res
         else:
             check_type('resonance_scattering', res, ResonanceScattering)
-        self._resonance_scattering = res
+            self._resonance_scattering = [res]
 
     def _create_run_mode_subelement(self):
 
@@ -1066,30 +1067,11 @@ class SettingsFile(object):
 
         element = ET.SubElement(self._settings_file, "resonance_scattering")
 
-        # Create an iterable version of resonance_scattering
-        if isinstance(self.resonance_scattering, Iterable):
-            res = self.resonance_scattering
-        else:
-            res = [self.resonance_scattering]
-
-        for r in res:
+        for r in self.resonance_scattering:
             if r.nuclide.name != r.nuclide_0K.name:
-                raise ValueError("The `nuclide` and `nuclide_0K` attributes of "
+                raise ValueError("The nuclide and nuclide_0K attributes of "
                      "a ResonantScattering object must have identical names.")
-            scatterer = ET.SubElement(element, "scatterer")
-            subelement = ET.SubElement(scatterer, 'nuclide')
-            subelement.text = r.nuclide.name
-            subelement = ET.SubElement(scatterer, 'method')
-            subelement.text = r.method
-            subelement = ET.SubElement(scatterer, 'xs_label')
-            subelement.text = str(r.nuclide.zaid) + '.' + str(r.nuclide.xs)
-            subelement = ET.SubElement(scatterer, 'xs_label_0K')
-            subelement.text = str(r.nuclide_0K.zaid) + '.' \
-                 + str(r.nuclide_0K.xs)
-            subelement = ET.SubElement(scatterer, 'E_min')
-            subelement.text = str(r.E_min)
-            subelement = ET.SubElement(scatterer, 'E_max')
-            subelement.text = str(r.E_max)
+            r.create_xml_subelement(element)
 
     def export_to_xml(self):
         """Create a settings.xml file that can be used for a simulation.
@@ -1146,18 +1128,18 @@ class ResonanceScattering(object):
     nuclide : openmc.nuclide.Nuclide
         The nuclide affected by this resonance scattering treatment.
     nuclide_0K : openmc.nuclide.Nuclide
-        This should be the same isotope as `nuclide`, but it should have an
-        `xs` attribute that identifies 0 Kelvin data.
+        This should be the same isotope as the nuclide attribute above, but it
+        should have an xs attribute that identifies 0 Kelvin data.
     method : str
         The method used to sample outgoing scattering energies.  Valid options
         are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
         rejection correction), and 'WCM' (weight correction method).
-    E_min : float
+    E_min : Real
         The minimum energy above which the specified method is applied.  By
-        default, CXS will be used below `E_min`.
-    E_max : float
+        default, CXS will be used below E_min.
+    E_max : Real
         The maximum energy below which the specified method is applied.  By
-        default, the asymptotic target-at-rest model is applied  above `E_max`.
+        default, the asymptotic target-at-rest model is applied  above E_max.
 
     """
 
@@ -1191,23 +1173,20 @@ class ResonanceScattering(object):
     @nuclide.setter
     def nuclide(self, nuc):
         check_type('nuclide', nuc, Nuclide)
-        if nuc.zaid == None: raise ValueError("The `nuclide` must have an "
-             "explicitly defined `zaid` attribute.")
+        if nuc.zaid == None: raise ValueError("The nuclide must have an "
+             "explicitly defined zaid attribute.")
         self._nuclide = nuc
 
     @nuclide_0K.setter
     def nuclide_0K(self, nuc):
         check_type('nuclide_0K', nuc, Nuclide)
-        if nuc.zaid == None: raise ValueError("The `nuclide_0K` must have an "
-             "explicitly defined `zaid` attribute.")
+        if nuc.zaid == None: raise ValueError("The nuclide_0K must have an "
+             "explicitly defined zaid attribute.")
         self._nuclide_0K = nuc
 
     @method.setter
     def method(self, m):
-        check_type('method', m, basestring)
-        if m not in ('ARES', 'CXS', 'DBRC', 'WCM'):
-            raise ValueError("Invalid resonance scattering method specified. "
-                "Valid methods are 'ARES', 'CXS', 'DBRC', and 'WCM'.")
+        check_value('method', m, ('ARES', 'CXS', 'DBRC', 'WCM'))
         self._method = m
 
     @E_min.setter
@@ -1221,3 +1200,19 @@ class ResonanceScattering(object):
         check_type('E_max', E, Real)
         check_greater_than('E_max', E, 0, True)
         self._E_max = E
+
+    def create_xml_subelement(self, xml_element):
+        scatterer = ET.SubElement(xml_element, "scatterer")
+        subelement = ET.SubElement(scatterer, 'nuclide')
+        subelement.text = self.nuclide.name
+        subelement = ET.SubElement(scatterer, 'method')
+        subelement.text = self.method
+        subelement = ET.SubElement(scatterer, 'xs_label')
+        subelement.text = str(self.nuclide.zaid) + '.' + str(self.nuclide.xs)
+        subelement = ET.SubElement(scatterer, 'xs_label_0K')
+        subelement.text = str(self.nuclide_0K.zaid) + '.' \
+             + str(self.nuclide_0K.xs)
+        subelement = ET.SubElement(scatterer, 'E_min')
+        subelement.text = str(self.E_min)
+        subelement = ET.SubElement(scatterer, 'E_max')
+        subelement.text = str(self.E_max)

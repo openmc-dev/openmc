@@ -46,7 +46,8 @@ The current revision of the particle restart file format is 1.
 
 **/energy** (*double*)
 
-    Energy of the particle in MeV.
+    Energy of the particle in MeV for continuous-energy mode, or the energy
+    group of the particle for multi-group mode.
 
 **/xyz** (*double[3]*)
 

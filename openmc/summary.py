@@ -60,6 +60,9 @@ class Summary(object):
         # Read date and time
         self.date_and_time = self._f['date_and_time'][...]
 
+        # Read if continuous-energy or multi-group
+        self.run_CE = (self._f['run_CE'].value == 1)
+
         self.n_batches = self._f['n_batches'].value
         self.n_particles = self._f['n_particles'].value
         self.n_active = self._f['n_active'].value
@@ -276,7 +279,7 @@ class Summary(object):
             # Get the distribcell index
             ind = self._f['geometry/cells'][key]['distribcell_index'].value
             if ind != 0:
-               cell.distribcell_index = ind 
+               cell.distribcell_index = ind
 
             # Add the Cell to the global dictionary of all Cells
             self.cells[index] = cell
@@ -369,7 +372,7 @@ class Summary(object):
 
                 # Set the distribcell offsets for the lattice
                 if offsets is not None:
-                    lattice.offsets = offsets
+                    lattice.offsets = offsets[:, ::-1, :]
 
                 # Add the Lattice to the global dictionary of all Lattices
                 self.lattices[index] = lattice
@@ -539,7 +542,7 @@ class Summary(object):
                 # If this is a moment, use generic moment order
                 pattern = r'-n$|-pn$|-yn$'
                 score = re.sub(pattern, '-' + moments[j].decode(), score)
-                tally.add_score(score)
+                tally.scores.append(score)
 
             # Read filter metadata
             num_filters = self._f['{0}/n_filters'.format(subbase)].value
@@ -560,7 +563,7 @@ class Summary(object):
                 new_filter.num_bins = num_bins
 
                 # Add Filter to the Tally
-                tally.add_filter(new_filter)
+                tally.filters.append(new_filter)
 
             # Add Tally to the global dictionary of all Tallies
             self.tallies[tally_id] = tally

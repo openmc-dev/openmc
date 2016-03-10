@@ -27,7 +27,8 @@ class Executor(object):
         # Launch a subprocess to run OpenMC
         p = subprocess.Popen(command, shell=True,
                              cwd=self._working_directory,
-                             stdout=subprocess.PIPE)
+                             stdout=subprocess.PIPE,
+                             universal_newlines=True)
 
         # Capture and re-print OpenMC output in real-time
         while True:

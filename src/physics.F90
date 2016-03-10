@@ -1,6 +1,6 @@
 module physics
 
-  use ace_header,             only: Nuclide, Reaction
+  use ace_header,             only: Reaction
   use constants
   use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
@@ -9,15 +9,17 @@ module physics
   use global
   use interpolation,          only: interpolate_tab1
   use material_header,        only: Material
-  use math,                   only: rotate_angle, maxwell_spectrum, watt_spectrum
+  use math
   use mesh,                   only: get_mesh_indices
+  use nuclide_header
   use output,                 only: write_message
   use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart
-  use random_lcg,             only: prn, prn_seed
+  use physics_common
+  use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
   use search,                 only: binary_search
-  use string,                 only: to_str
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
+  use string,                 only: to_str
 
   implicit none
 
@@ -56,6 +58,13 @@ contains
       if (master) call warning("Killing neutron with extremely low energy")
     end if
 
+    ! Advance URR seed stream 'N' times after energy changes
+    if (p % E /= p % last_E) then
+      call prn_set_stream(STREAM_URR_PTABLE)
+      call advance_prn_seed(n_nuc_zaid_total)
+      call prn_set_stream(STREAM_TRACKING)
+    endif
+
   end subroutine collision
 
 !===============================================================================
@@ -73,7 +82,7 @@ contains
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_nuc_mat    ! index in material's nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
-    type(Nuclide), pointer :: nuc
+    type(NuclideCE), pointer :: nuc
 
     call sample_nuclide(p, 'total  ', i_nuclide, i_nuc_mat)
 
@@ -196,7 +205,7 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide),  pointer :: nuc
+    type(NuclideCE),  pointer :: nuc
 
     ! Get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -242,7 +251,6 @@ contains
 !===============================================================================
 
   subroutine absorption(p, i_nuclide)
-
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
 
@@ -279,32 +287,10 @@ contains
   end subroutine absorption
 
 !===============================================================================
-! RUSSIAN_ROULETTE
-!===============================================================================
-
-  subroutine russian_roulette(p)
-
-    type(Particle), intent(inout) :: p
-
-    if (p % wgt < weight_cutoff) then
-      if (prn() < p % wgt / weight_survive) then
-        p % wgt = weight_survive
-        p % last_wgt = p % wgt
-      else
-        p % wgt = ZERO
-        p % last_wgt = ZERO
-        p % alive = .false.
-      end if
-    end if
-
-  end subroutine russian_roulette
-
-!===============================================================================
 ! SCATTER
 !===============================================================================
 
   subroutine scatter(p, i_nuclide, i_nuc_mat)
-
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
     integer,        intent(in)    :: i_nuc_mat
@@ -317,7 +303,7 @@ contains
     real(8) :: uvw_new(3) ! outgoing uvw for iso-in-lab scattering
     real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
     real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
-    type(Nuclide),  pointer :: nuc
+    type(NuclideCE),  pointer :: nuc
 
     ! copy incoming direction
     uvw_old(:) = p % coord(1) % uvw
@@ -432,7 +418,7 @@ contains
     real(8) :: v_cm(3)   ! velocity of center-of-mass
     real(8) :: v_t(3)    ! velocity of target nucleus
     real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
-    type(Nuclide), pointer :: nuc
+    type(NuclideCE), pointer :: nuc
 
     ! get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -501,7 +487,6 @@ contains
 !===============================================================================
 
   subroutine sab_scatter(i_nuclide, i_sab, E, uvw, mu)
-
     integer, intent(in)     :: i_nuclide ! index in micro_xs
     integer, intent(in)     :: i_sab     ! index in sab_tables
     real(8), intent(inout)  :: E         ! incoming/outgoing energy
@@ -759,7 +744,7 @@ contains
 !===============================================================================
 
   subroutine sample_target_velocity(nuc, v_target, E, uvw, v_neut, wgt, xs_eff)
-    type(Nuclide), intent(in) :: nuc ! target nuclide at temperature T
+    type(NuclideCE), intent(in) :: nuc ! target nuclide at temperature T
     real(8), intent(out)   :: v_target(3) ! target velocity
     real(8), intent(in)    :: v_neut(3)   ! neutron velocity
     real(8), intent(in)    :: E           ! particle energy
@@ -1004,10 +989,10 @@ contains
 !===============================================================================
 
   subroutine sample_cxs_target_velocity(nuc, v_target, E, uvw)
-    type(Nuclide), intent(in) :: nuc ! target nuclide at temperature
-    real(8), intent(out)    :: v_target(3)
-    real(8), intent(in)     :: E
-    real(8), intent(in)     :: uvw(3)
+    type(NuclideCE), intent(in) :: nuc ! target nuclide at temperature
+    real(8), intent(out)         :: v_target(3)
+    real(8), intent(in)          :: E
+    real(8), intent(in)          :: uvw(3)
 
     real(8) :: kT          ! equilibrium temperature of target in MeV
     real(8) :: awr         ! target/neutron mass ratio
@@ -1092,7 +1077,7 @@ contains
     real(8) :: phi                      ! fission neutron azimuthal angle
     real(8) :: weight                   ! weight adjustment for ufs method
     logical :: in_mesh                  ! source site in ufs mesh?
-    type(Nuclide),  pointer :: nuc
+    type(NuclideCE),  pointer :: nuc
 
     ! Get pointers
     nuc => nuclides(i_nuclide)
@@ -1206,8 +1191,8 @@ contains
 
   function sample_fission_energy(nuc, rxn, p) result(E_out)
 
-    type(Nuclide),  intent(in) :: nuc
-    type(Reaction), intent(in) :: rxn
+    type(NuclideCE), intent(in) :: nuc
+    type(Reaction),   intent(in) :: rxn
     type(Particle), intent(inout) :: p     ! Particle causing fission
     real(8)                       :: E_out ! outgoing energy of fission neutron
 
@@ -1319,9 +1304,9 @@ contains
 !===============================================================================
 
   subroutine inelastic_scatter(nuc, rxn, p)
-    type(Nuclide),  intent(in)    :: nuc
-    type(Reaction), intent(in)    :: rxn
-    type(Particle), intent(inout) :: p
+    type(NuclideCE), intent(in)    :: nuc
+    type(Reaction),   intent(in)    :: rxn
+    type(Particle),   intent(inout) :: p
 
     integer :: i      ! loop index
     real(8) :: E      ! energy in lab (incoming/outgoing)
@@ -1369,7 +1354,7 @@ contains
       p % wgt = yield * p % wgt
     else
       do i = 1, rxn % multiplicity - 1
-        call p % create_secondary(p % coord(1) % uvw, NEUTRON)
+        call p % create_secondary(p % coord(1) % uvw, NEUTRON, run_CE=.True.)
 
         ! Store a new random number seed for dd runs
         if (dd_run) then

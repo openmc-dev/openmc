@@ -1,30 +1,28 @@
 module tracking
 
-  use constants,       only: MODE_EIGENVALUE
-  use cross_section,   only: calculate_xs
-  use dd_header,       only: DomainDecomType
-  use dd_tracking,     only: recalc_initial_xs, &
-                             check_domain_boundary_crossing, &
-                             cross_domain_boundary
-  use error,           only: fatal_error, warning
-  use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
-                             cross_lattice, check_cell_overlap, &
-                             distance_to_mesh_surface, calibrate_coord
-  use geometry_header, only: Universe, BASE_UNIVERSE
+  use constants,          only: MODE_EIGENVALUE
+  use cross_section,      only: calculate_xs
+  use error,              only: fatal_error, warning
+  use geometry,           only: find_cell, distance_to_boundary, cross_surface, &
+                                cross_lattice, check_cell_overlap, &
+                                distance_to_mesh_surface, calibrate_coord
+  use geometry_header,    only: Universe, BASE_UNIVERSE
   use global
-  use macroxs_header,  only: MacroXS
-  use mesh,            only: get_mesh_bin
-  use output,          only: write_message
-  use particle_header, only: LocalCoord, Particle
-  use physics,         only: collision
-  use physics_mg,      only: collision_mg
-  use random_lcg,      only: prn, prn_seed
-  use string,          only: to_str
-  use tally,           only: score_analog_tally, score_tracklength_tally, &
-                             score_collision_tally, score_surface_current
-  use track_output,    only: initialize_particle_track, write_particle_track, &
-                             add_particle_track, finalize_particle_track
-
+  use macroxs_header,     only: MacroXS
+  use output,             only: write_message
+  use particle_header,    only: LocalCoord, Particle
+  use physics,            only: collision
+  use physics_mg,         only: collision_mg
+  use random_lcg,         only: prn, prn_seed
+  use string,             only: to_str
+  use tally,              only: score_analog_tally, score_tracklength_tally, &
+                                score_collision_tally, score_surface_current
+  use track_output,       only: initialize_particle_track, write_particle_track, &
+                                add_particle_track, finalize_particle_track
+  use dd_header,          only: DomainDecomType
+  use dd_tracking,        only: check_domain_boundary_crossing, &
+                                cross_domain_boundary
+  use mesh,               only: get_mesh_bin
   implicit none
 
 contains
@@ -76,12 +74,10 @@ contains
       call initialize_particle_track()
     endif
 
-    ! Make sure we start with the proper XS and coordinates for DD runs
+    ! Make sure we start with the proper coordinates for DD runs
     if (dd_run .and. current_stage > 1) then
-      call recalc_initial_xs(p)
-
-      ! Move particle slightly forward to recover particle coordinates
-      ! (The lower coordinates will be recalculted by calibrate_coord function)
+      ! Move particle slightly forward to recover particle coordinates.
+      ! The lower coordinates will be calibrated.
       xyz_temp = p % coord(1) % xyz
       p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
       call find_cell(p, found_cell)
@@ -106,7 +102,7 @@ contains
 
       else
         ! calibrate coordinates to guarantee numerical precision
-        ! especially for domain decom
+        ! especially for domain decomposition
         if (dd_run) call calibrate_coord(p)
 
       end if
@@ -183,16 +179,21 @@ contains
             call p % initialize_from_source(p % secondary_bank(p % n_secondary), &
                                           run_CE, energy_bin_avg)
             p % n_secondary = p % n_secondary - 1
-            n_event = 0
 
             ! Set the random number seed and clear crossing data for dd
             if (dd_run) then
+              ! Add number of events to DD object
+              if (domain_decomp % count_interactions) &
+                   domain_decomp % interaction_count = &
+                        domain_decomp % interaction_count + n_event
               prn_seed = p % prn_seed
               micro_xs % last_E = ZERO
               micro_xs % last_index_sab = NONE
               p % sec_particle = .true.
               n_stage_secondary = n_stage_secondary + 1
             end if
+
+            n_event = 0
 
             ! Enter new particle in particle track file
             if (p % write_track) call add_particle_track()
@@ -319,16 +320,21 @@ contains
           call p % initialize_from_source(p % secondary_bank(p % n_secondary), &
                                           run_CE, energy_bin_avg)
           p % n_secondary = p % n_secondary - 1
-          n_event = 0
 
           ! Set the random number seed and clear crossing data for dd
           if (dd_run) then
+            ! Add number of events to DD object
+            if (domain_decomp % count_interactions) &
+                 domain_decomp % interaction_count = &
+                      domain_decomp % interaction_count + n_event
             prn_seed = p % prn_seed
             micro_xs % last_E = ZERO
             micro_xs % last_index_sab = NONE
             p % sec_particle = .true.
             n_stage_secondary = n_stage_secondary + 1
           end if
+
+          n_event = 0
 
           ! Enter new particle in particle track file
           if (p % write_track) call add_particle_track()

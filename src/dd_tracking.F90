@@ -159,23 +159,4 @@ contains
 
   end subroutine cross_domain_boundary
 
-!===============================================================================
-! RECALC_INITIAL_XS recalculates the inital cross sections for a particle using
-! a stored random number seed. For DD runs, if we normally wouldn't have to
-! recalculate the cross section after a scatter then we need to make sure that
-! we recalculate it before starting transport with the same random number seed
-! so we get the same thing as we would have gotten if we tracked the particle to
-! completion without transporting it across domains.
-!===============================================================================
-
-  subroutine recalc_initial_xs(p)
-
-    type(Particle), intent(inout) :: p
-
-    if (p % material /= NONE) then
-      call calculate_xs(p)
-    end if
-
-  end subroutine recalc_initial_xs
-
 end module dd_tracking

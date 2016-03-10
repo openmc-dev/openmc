@@ -3,7 +3,7 @@ module dd_init
   use constants
   use dd_header,  only: DomainDecomType
   use error,      only: fatal_error, warning
-  use global,     only: n_procs, n_particles, rank, mpi_err
+  use global,     only: master, n_procs, n_particles, rank, mpi_err
   use mesh,       only: bin_to_mesh_indices, mesh_indices_to_bin
   use output,     only: write_message
   use search,     only: binary_search
@@ -168,9 +168,9 @@ contains
     if (.not. allocated(dd % domain_load_dist)) then
 
       if (.not. mod(n_procs, dd % n_domains) == 0) then
-        call warning("Number of processes not evenly divisible by number of &
-                  &domains. No <nodemap> was specified, so processes will be &
-                  &distributed un-evenly")
+        if (master) call warning("Number of processes not evenly divisible by &
+                  &number of domains. No <nodemap> was specified, so processes &
+                  &will be distributed un-evenly")
       end if
 
       ! Evenly distribute processes across domains

@@ -179,7 +179,7 @@ contains
 
         ! set defaults
         call p % initialize_from_source(source_bank(index_source), run_CE, &
-           energy_bin_avg)
+             energy_bin_avg)
 
       else
 

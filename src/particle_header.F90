@@ -128,26 +128,15 @@ module particle_header
     integer(8) :: prn_seed(N_STREAMS)
     real(8)    :: wgt
     real(8)    :: E
-    real(8)    :: mu
-    real(8)    :: last_wgt
-    real(8)    :: last_E
-    real(8)    :: absorb_wgt
-    real(8)    :: wgt_bank
     real(8)    :: stored_distance
     real(8)    :: fly_dd_distance
     real(8)    :: last_xyz(3)
     real(8)    :: stored_xyz(3)
     real(8)    :: stored_uvw(3)
     integer    :: type
-    integer    :: event
-    integer    :: event_nuclide
-    integer    :: event_MT
-    integer    :: n_bank
     integer    :: surface
     integer    :: cell_born
     integer    :: n_collision
-    integer    :: material
-    integer    :: last_material
 
   end type ParticleBuffer
 
@@ -210,23 +199,12 @@ contains
     buf % type            = part % type
     buf % wgt             = part % wgt
     buf % E               = part % E
-    buf % mu              = part % mu
     buf % last_xyz        = part % last_xyz
-    buf % last_wgt        = part % last_wgt
-    buf % last_E          = part % last_E
-    buf % absorb_wgt      = part % absorb_wgt
-    buf % event           = part % event
-    buf % event_nuclide   = part % event_nuclide
-    buf % event_MT        = part % event_MT
-    buf % n_bank          = part % n_bank
-    buf % wgt_bank        = part % wgt_bank
     buf % surface         = part % surface
     buf % cell_born       = part % cell_born
     buf % n_collision     = part % n_collision
     buf % stored_xyz      = part % stored_xyz
     buf % stored_uvw      = part % stored_uvw
-    buf % material        = part % material
-    buf % last_material   = part % last_material
     buf % prn_seed        = part % prn_seed
     buf % stored_distance = part % stored_distance
     buf % fly_dd_distance = part % fly_dd_distance
@@ -247,25 +225,14 @@ contains
     part % type            = buf % type
     part % wgt             = buf % wgt
     part % E               = buf % E
-    part % mu              = buf % mu
     part % alive           = .true.
     part % last_xyz        = buf % last_xyz
-    part % last_wgt        = buf % last_wgt
-    part % last_E          = buf % last_E
-    part % absorb_wgt      = buf % absorb_wgt
-    part % event           = buf % event
-    part % event_nuclide   = buf % event_nuclide
-    part % event_MT        = buf % event_MT
-    part % n_bank          = buf % n_bank
-    part % wgt_bank        = buf % wgt_bank
     part % surface         = buf % surface
     part % cell_born       = buf % cell_born
     part % n_collision     = buf % n_collision
     part % new_particle    = .false.
     part % stored_xyz      = buf % stored_xyz
     part % stored_uvw      = buf % stored_uvw
-    part % material        = buf % material
-    part % last_material   = buf % last_material
     part % prn_seed        = buf % prn_seed
     part % stored_distance = buf % stored_distance
     part % fly_dd_distance = buf % fly_dd_distance

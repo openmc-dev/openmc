@@ -628,8 +628,8 @@ contains
     real(8) :: prob             ! Running probability
 
     xi = prn()
-    prob = ZERO
-    gout = 0
+    gout = 1
+    prob = this % chi(gout,gin)
 
     do while (prob < xi)
       gout = gout + 1
@@ -650,8 +650,8 @@ contains
     call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
 
     xi = prn()
-    prob = ZERO
-    gout = 0
+    gout = 1
+    prob = this % chi(gout,gin,iazi,ipol)
 
     do while (prob < xi)
       gout = gout + 1

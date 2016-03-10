@@ -308,6 +308,8 @@ contains
           ! Now make sure integral norms to zero
           norm = this % dist(gin) % data(order,gout)
           if (norm > ZERO) then
+            this % fmu(gin) % data(:,gout) = &
+                 this % fmu(gin) % data(:,gout) / norm
             this % dist(gin) % data(:,gout) = &
                  this % dist(gin) % data(:,gout) / norm
           end if

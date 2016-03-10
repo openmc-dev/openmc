@@ -169,7 +169,11 @@ contains
       if (check_for_node(doc, "max_order")) then
         call get_node_value(doc, "max_order", max_order)
       else
-        ! Set to default of largest int, which means to use whatever is contained in library
+        ! Set to default of largest int - 1, which means to use whatever is
+        ! contained in library.
+        ! This is largest int - 1 because for legendre scattering, a value of
+        ! 1 is added to the order; adding 1 to huge(0) gets you the largest
+        ! negative integer, which is not what we want.
         max_order = huge(0) - 1
       end if
     else

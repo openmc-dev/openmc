@@ -126,8 +126,8 @@ class SettingsFile(object):
         Coordinates of the lower-left point of the UFS mesh
     ufs_upper_right : tuple or list
         Coordinates of the upper-right point of the UFS mesh
-    resonance_scattering : ResonanceScattering or iterable thereof
-        The elastic scattering model to use for resonant isotopes.
+    resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
+        The elastic scattering model to use for resonant isotopes
 
     """
 
@@ -1121,7 +1121,7 @@ class SettingsFile(object):
 
 
 class ResonanceScattering(object):
-    """Specification of the elastic scattering model for resonant isotopes.
+    """Specification of the elastic scattering model for resonant isotopes
 
     Attributes
     ----------
@@ -1205,14 +1205,17 @@ class ResonanceScattering(object):
         scatterer = ET.SubElement(xml_element, "scatterer")
         subelement = ET.SubElement(scatterer, 'nuclide')
         subelement.text = self.nuclide.name
-        subelement = ET.SubElement(scatterer, 'method')
-        subelement.text = self.method
+        if self.method is not None:
+            subelement = ET.SubElement(scatterer, 'method')
+            subelement.text = self.method
         subelement = ET.SubElement(scatterer, 'xs_label')
         subelement.text = str(self.nuclide.zaid) + '.' + str(self.nuclide.xs)
         subelement = ET.SubElement(scatterer, 'xs_label_0K')
         subelement.text = str(self.nuclide_0K.zaid) + '.' \
              + str(self.nuclide_0K.xs)
-        subelement = ET.SubElement(scatterer, 'E_min')
-        subelement.text = str(self.E_min)
-        subelement = ET.SubElement(scatterer, 'E_max')
-        subelement.text = str(self.E_max)
+        if self.E_min is not None:
+            subelement = ET.SubElement(scatterer, 'E_min')
+            subelement.text = str(self.E_min)
+        if self.E_max is not None:
+            subelement = ET.SubElement(scatterer, 'E_max')
+            subelement.text = str(self.E_max)

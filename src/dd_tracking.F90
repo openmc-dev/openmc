@@ -165,21 +165,15 @@ contains
 ! recalculate the cross section after a scatter then we need to make sure that
 ! we recalculate it before starting transport with the same random number seed
 ! so we get the same thing as we would have gotten if we tracked the particle to
-! completion without transporting it across domains.  This is needed entirely
-! because URR ptables use a random number from the stream.
+! completion without transporting it across domains.
 !===============================================================================
 
   subroutine recalc_initial_xs(p)
 
     type(Particle), intent(inout) :: p
 
-    integer(8) :: tmp_seed(N_STREAMS) ! Temporary variable to hold prn_seed
-
-    if (p % material /= NONE) then  ! .and. p % material == p % last_material
-      tmp_seed = prn_seed
-      prn_seed = p % xs_seed
+    if (p % material /= NONE) then
       call calculate_xs(p)
-      prn_seed = tmp_seed
     end if
 
   end subroutine recalc_initial_xs

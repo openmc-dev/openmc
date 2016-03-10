@@ -25,7 +25,7 @@ module simulation
   use trigger,         only: check_triggers
   use tracking,        only: transport
   use geometry_header, only: BASE_UNIVERSE
-  use dd_comm,      only: synchronize_bank_dd, synchronize_particles
+  use dd_comm,         only: synchronize_bank_dd, synchronize_particles
 
   implicit none
   private
@@ -91,6 +91,7 @@ contains
 !$omp parallel do schedule(static) firstprivate(p)
           PARTICLE_LOOP: do i_work = 1, work
             current_work = i_work
+
             if (dd_run) then
 
               ! Grab particle from particle_buffer
@@ -161,7 +162,6 @@ contains
       ! set defaults
       call p % initialize_from_source(source_bank(index_source), run_CE, &
            energy_bin_avg)
-
 
       ! set identifier for particle
       p % id = work_index(rank) + index_source

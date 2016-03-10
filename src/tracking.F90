@@ -17,6 +17,7 @@ module tracking
   use output,          only: write_message
   use particle_header, only: LocalCoord, Particle
   use physics,         only: collision
+  use physics_mg,      only: collision_mg
   use random_lcg,      only: prn, prn_seed
   use string,          only: to_str
   use tally,           only: score_analog_tally, score_tracklength_tally, &
@@ -179,7 +180,8 @@ contains
 
           ! Keep on tracking secondary particles
           if (p % n_secondary > 0) then
-            call p % initialize_from_source(p % secondary_bank(p % n_secondary))
+            call p % initialize_from_source(p % secondary_bank(p % n_secondary), &
+                                          run_CE, energy_bin_avg)
             p % n_secondary = p % n_secondary - 1
             n_event = 0
 

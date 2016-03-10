@@ -102,7 +102,6 @@ module particle_header
     real(8)    :: stored_distance ! sampled distance to go after changing domain
     real(8)    :: fly_dd_distance ! accumulated distance to domain boundary
     integer(8) :: prn_seed(N_STREAMS) ! the  next random number seed
-    integer(8) :: xs_seed(N_STREAMS)  ! the previously seed used for xs gen
 
     ! Domain information
     integer    :: dd_meshbin    ! DD meshbin the particle is to be run in next
@@ -127,7 +126,6 @@ module particle_header
 
     integer(8) :: id
     integer(8) :: prn_seed(N_STREAMS)
-    integer(8) :: xs_seed(N_STREAMS)
     real(8)    :: wgt
     real(8)    :: E
     real(8)    :: mu
@@ -230,7 +228,6 @@ contains
     buf % material        = part % material
     buf % last_material   = part % last_material
     buf % prn_seed        = part % prn_seed
-    buf % xs_seed         = part % xs_seed
     buf % stored_distance = part % stored_distance
     buf % fly_dd_distance = part % fly_dd_distance
 
@@ -270,7 +267,6 @@ contains
     part % material        = buf % material
     part % last_material   = buf % last_material
     part % prn_seed        = buf % prn_seed
-    part % xs_seed         = buf % xs_seed
     part % stored_distance = buf % stored_distance
     part % fly_dd_distance = buf % fly_dd_distance
 
@@ -338,9 +334,8 @@ contains
       this % last_g       = int(src % E)
       this % E            = energy_bin_avg(this % g)
     end if
-    this % last_E       = src % E
+    this % last_E         = src % E
     this % prn_seed       = src % prn_seed
-    this % xs_seed        = src % prn_seed
 
   end subroutine initialize_from_source
 

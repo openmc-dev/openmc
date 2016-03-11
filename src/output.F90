@@ -740,7 +740,7 @@ contains
     ijk = trim(to_str(domain_decomp % ijk(1))) // "-" // &
           trim(to_str(domain_decomp % ijk(2))) // "-" // &
           trim(to_str(domain_decomp % ijk(3)))
-    write(ou, "(1X,A,T30,I12)") trim(ijk), domain_decomp % interaction_count
+    write(ou, "(1X,A,T30,I12)") trim(ijk), domain_decomp % n_interaction
 
   end subroutine print_domain_interactions
 

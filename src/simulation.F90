@@ -191,6 +191,13 @@ contains
         p % coord(1) % xyz =  p % stored_xyz
         p % coord(1) % uvw =  p % stored_uvw
 
+        ! Multi-gruop case
+        if (.not. run_CE) then
+          p % g      = int(p % E)
+          p % last_g = int(p % E)
+          p % E      = energy_bin_avg(p % g)
+        end if
+
         ! Re-initialize the stored outscatter_destination
         p % outscatter_destination = NO_OUTSCATTER
 

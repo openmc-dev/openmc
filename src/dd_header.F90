@@ -71,7 +71,7 @@ module dd_header
     ! particle interactions in a domain(a counter in the while(alive) particle
     ! loop.  This will be printed as output for the domain masters only
     logical    :: count_interactions = .false.
-    integer(8) :: interaction_count = 0_8
+    integer(8) :: n_interaction = 0_8
 
   contains
     procedure :: deallocate => deallocate_dd

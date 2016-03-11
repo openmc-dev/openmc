@@ -248,7 +248,7 @@ contains
       mu = TWO * prn() - ONE
 
       ! Sample azimuthal angle uniformly in [0,2*pi)
-      phi = TWO*PI*prn()
+      phi = TWO * PI * prn()
       bank_array(i) % uvw(1) = mu
       bank_array(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
       bank_array(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)

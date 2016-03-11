@@ -375,10 +375,10 @@ module nuclide_header
 
           ! Get nu_fission (as a vector)
           if (check_for_node(node_xsdata,"nu_fission")) then
-            allocate(temp_arr(groups * 1))
+            allocate(temp_arr(1 * groups))
             call get_node_array(node_xsdata,"nu_fission",temp_arr)
-            allocate(this % nu_fission(groups,1))
-            this % nu_fission = reshape(temp_arr,(/groups,1/))
+            allocate(this % nu_fission(1,groups))
+            this % nu_fission = reshape(temp_arr,(/1,groups/))
             deallocate(temp_arr)
           else
             call fatal_error("If fissionable, must provide nu_fission!")
@@ -676,10 +676,10 @@ module nuclide_header
 
           ! Get nu_fission (as a vector)
           if (check_for_node(node_xsdata,"nu_fission")) then
-            allocate(temp_arr(groups * this % n_azi * this % n_pol))
+            allocate(temp_arr(1 * groups * this % n_azi * this % n_pol))
             call get_node_array(node_xsdata,"nu_fission", temp_arr)
-            allocate(this % nu_fission(groups,1,this % n_azi,this % n_pol))
-            this % nu_fission = reshape(temp_arr, (/groups,1,this % n_azi, &
+            allocate(this % nu_fission(1,groups,this % n_azi,this % n_pol))
+            this % nu_fission = reshape(temp_arr, (/1,groups,this % n_azi, &
                                                     this % n_pol/))
             deallocate(temp_arr)
           else
@@ -1242,6 +1242,8 @@ module nuclide_header
           xs = this % total(gin)
         case('absorption')
           xs = this % absorption(gin)
+        case('nu_fission')
+          xs = sum(this % nu_fission(:,gin))
         case('fission')
           xs = this % fission(gin)
         case('k_fission')
@@ -1293,8 +1295,8 @@ module nuclide_header
         case('chi')
           xs = this % chi(gout,iazi_,ipol_)
         case('f_mu', 'f_mu/mult')
-          if (gout < this % scatter(iazi_,ipol) % obj % gmin(gin) .or. &
-              gout > this % scatter(iazi_,ipol) % obj % gmax(gin)) then
+          if (gout < this % scatter(iazi_,ipol_) % obj % gmin(gin) .or. &
+              gout > this % scatter(iazi_,ipol_) % obj % gmax(gin)) then
             xs = ZERO
           else
             xs = this % scatter(iazi_,ipol_) % obj % calc_f(gin,gout,mu)
@@ -1309,6 +1311,8 @@ module nuclide_header
           xs = this % total(gin,iazi_,ipol_)
         case('absorption')
           xs = this % absorption(gin,iazi_,ipol_)
+        case('nu_fission')
+          xs = sum(this % nu_fission(:,gin,iazi_,ipol_))
         case('fission')
           xs = this % fission(gin,iazi_,ipol_)
         case('k_fission')

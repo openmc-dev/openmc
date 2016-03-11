@@ -2842,11 +2842,15 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
+            ! We can save tallying time if we know that the tally bins
+            ! match the energy group structure.  In that case, the matching bin
+            ! index is simply the group (after flipping for the different
+            ! ordering of the library and tallying systems).
             if (.not. run_CE) then
-              if (n_words /= energy_groups + 1) then
-                t % energy_matches_groups = .false.
-              else if (all(t % filters(j) % real_bins == energy_bins)) then
-                t % energy_matches_groups = .false.
+              if (n_words == energy_groups + 1) then
+                if (all(t % filters(j) % real_bins == &
+                        energy_bins(energy_groups + 1:1:-1))) &
+                     t % energy_matches_groups = .true.
               end if
             end if
 
@@ -2861,11 +2865,15 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
+            ! We can save tallying time if we know that the tally bins
+            ! match the energy group structure.  In that case, the matching bin
+            ! index is simply the group (after flipping for the different
+            ! ordering of the library and tallying systems).
             if (.not. run_CE) then
-              if (n_words /= energy_groups + 1) then
-                t % energy_matches_groups = .false.
-              else if (all(t % filters(j) % real_bins == energy_bins)) then
-                t % energy_matches_groups = .false.
+              if (n_words == energy_groups + 1) then
+                if (all(t % filters(j) % real_bins == &
+                        energy_bins(energy_groups + 1:1:-1))) &
+                     t % energyout_matches_groups = .true.
               end if
             end if
 
@@ -4502,6 +4510,7 @@ contains
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_xsdata => null()
     type(NodeList), pointer :: node_xsdata_list => null()
+    real(8), allocatable :: rev_energy_bins(:)
 
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
@@ -4523,6 +4532,7 @@ contains
       call fatal_error("groups element must exist!")
     end if
 
+    allocate(rev_energy_bins(energy_groups + 1))
     allocate(energy_bins(energy_groups + 1))
     if (check_for_node(doc, "group_structure")) then
       ! Get neutron group structure
@@ -4530,6 +4540,9 @@ contains
     else
       call fatal_error("group_structures element must exist!")
     end if
+
+    ! First reverse the order of energy_groups
+    energy_bins = energy_bins(energy_groups + 1:1:-1)
 
     allocate(energy_bin_avg(energy_groups))
     do i = 1, energy_groups

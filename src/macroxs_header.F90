@@ -251,11 +251,11 @@ contains
             do gin = 1, groups
               do gout = 1, groups
                 this % chi(gout,gin) = this % chi(gout,gin) + atom_density * &
-                     nuc % chi(gout) * nuc % nu_fission(gin,1)
+                     nuc % chi(gout) * nuc % nu_fission(1,gin)
               end do
             end do
             this % nu_fission = this % nu_fission + atom_density * &
-                 nuc % nu_fission(:,1)
+                 nuc % nu_fission(1,:)
           else
             this % chi = this % chi + atom_density * nuc % nu_fission
             do gin = 1, groups
@@ -468,11 +468,11 @@ contains
             do gin = 1, groups
               do gout = 1, groups
                 this % chi(gout,gin,:,:) = this % chi(gout,gin,:,:) + atom_density * &
-                     nuc % chi(gout,:,:) * nuc % nu_fission(gin,1,:,:)
+                     nuc % chi(gout,:,:) * nuc % nu_fission(1,gin,:,:)
               end do
             end do
             this % nu_fission = this % nu_fission + atom_density * &
-                 nuc % nu_fission(:,1,:,:)
+                 nuc % nu_fission(1,:,:,:)
           else
             this % chi = this % chi + atom_density * nuc % nu_fission
             do gin = 1, groups

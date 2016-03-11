@@ -126,12 +126,12 @@ module nuclide_header
       integer, intent(in)             :: max_order ! Maximum requested order
     end subroutine nuclidemg_init_
 
-    function nuclidemg_get_xs_(this, g, xstype, gout, uvw, mu, iazi, ipol) &
+    function nuclidemg_get_xs_(this, xstype, gin, gout, uvw, mu, iazi, ipol) &
          result(xs)
       import NuclideMG
       class(NuclideMG), intent(in) :: this
-      integer, intent(in)           :: g      ! Incoming Energy group
       character(*), intent(in)      :: xstype ! Cross Section Type
+      integer, intent(in)           :: gin    ! Incoming Energy group
       integer, optional, intent(in) :: gout   ! Outgoing Group
       real(8), optional, intent(in) :: uvw(3) ! Requested Angle
       real(8), optional, intent(in) :: mu     ! Change in angle
@@ -1200,17 +1200,17 @@ module nuclide_header
 ! NUCLIDE*_GET_XS Returns the requested data type
 !===============================================================================
 
-    function nuclideiso_get_xs(this, g, xstype, gout, uvw, mu, iazi, ipol) &
+    function nuclideiso_get_xs(this, xstype, gin, gout, uvw, mu, iazi, ipol) &
          result(xs)
       class(NuclideIso), intent(in) :: this
-      integer, intent(in)            :: g      ! Incoming Energy group
-      character(*), intent(in)       :: xstype ! Cross Section Type
-      integer, optional, intent(in)  :: gout   ! Outgoing Group
-      real(8), optional, intent(in)  :: uvw(3) ! Requested Angle
-      real(8), optional, intent(in)  :: mu     ! Change in angle
-      integer, optional, intent(in)  :: iazi  ! Azimuthal Index
-      integer, optional, intent(in)  :: ipol  ! Polar Index
-      real(8)                        :: xs     ! Resultant xs
+      character(*), intent(in)      :: xstype ! Cross Section Type
+      integer, intent(in)           :: gin    ! Incoming Energy group
+      integer, optional, intent(in) :: gout   ! Outgoing Group
+      real(8), optional, intent(in) :: uvw(3) ! Requested Angle
+      real(8), optional, intent(in) :: mu     ! Change in angle
+      integer, optional, intent(in) :: iazi  ! Azimuthal Index
+      integer, optional, intent(in) :: ipol  ! Polar Index
+      real(8)                       :: xs     ! Resultant xs
 
       xs = ZERO
 
@@ -1222,46 +1222,51 @@ module nuclide_header
       if (present(gout)) then
         select case(xstype)
         case('mult')
-          xs = this % scatter % mult(g) % data(gout)
+          xs = this % scatter % mult(gin) % data(gout)
         case('nu_fission')
-          xs = this % nu_fission(gout,g)
+          xs = this % nu_fission(gout,gin)
         case('f_mu', 'f_mu/mult')
-          xs = this % scatter % calc_f(g, gout, mu)
-          if (xstype == 'f_mu/mult') then
-            xs = xs / this % scatter % mult(g) % data(gout)
+          if (gout < this % scatter % gmin(gin) .or. &
+              gout > this % scatter % gmax(gin)) then
+            xs = ZERO
+          else
+            xs = this % scatter % calc_f(gin, gout, mu)
+            if (xstype == 'f_mu/mult') then
+              xs = xs / this % scatter % mult(gin) % data(gout)
+            end if
           end if
         end select
       else
         select case(xstype)
         case('total')
-          xs = this % total(g)
+          xs = this % total(gin)
         case('absorption')
-          xs = this % absorption(g)
+          xs = this % absorption(gin)
         case('fission')
-          xs = this % fission(g)
+          xs = this % fission(gin)
         case('k_fission')
           if (allocated(this % k_fission)) then
-            xs = this % k_fission(g)
+            xs = this % k_fission(gin)
           end if
         case('chi')
-          xs = this % chi(g)
+          xs = this % chi(gin)
         case('scatter')
-          xs = this % scatter % scattxs(g)
+          xs = this % scatter % scattxs(gin)
         end select
       end if
     end function nuclideiso_get_xs
 
-    function nuclideangle_get_xs(this, g, xstype, gout, uvw, mu, iazi, ipol) &
+    function nuclideangle_get_xs(this, xstype, gin, gout, uvw, mu, iazi, ipol) &
          result(xs)
       class(NuclideAngle), intent(in) :: this
-      integer, intent(in)              :: g      ! Incoming Energy group
-      character(*), intent(in)         :: xstype ! Cross Section Type
-      integer, optional, intent(in)    :: gout   ! Outgoing Group
-      real(8), optional, intent(in)    :: mu     ! Change in angle
-      real(8), optional, intent(in)    :: uvw(3) ! Requested Angle
-      integer, optional, intent(in)    :: iazi  ! Azimuthal Index
-      integer, optional, intent(in)    :: ipol  ! Polar Index
-      real(8)                          :: xs     ! Resultant xs
+      character(*), intent(in)        :: xstype ! Cross Section Type
+      integer, intent(in)             :: gin    ! Incoming Energy group
+      integer, optional, intent(in)   :: gout   ! Outgoing Group
+      real(8), optional, intent(in)   :: mu     ! Change in angle
+      real(8), optional, intent(in)   :: uvw(3) ! Requested Angle
+      integer, optional, intent(in)   :: iazi  ! Azimuthal Index
+      integer, optional, intent(in)   :: ipol  ! Polar Index
+      real(8)                         :: xs     ! Resultant xs
 
       integer :: iazi_, ipol_
 
@@ -1282,33 +1287,38 @@ module nuclide_header
       if (present(gout)) then
         select case(xstype)
         case('mult')
-          xs = this % scatter(iazi_,ipol_) % obj % mult(g) % data(gout)
+          xs = this % scatter(iazi_,ipol_) % obj % mult(gin) % data(gout)
         case('nu_fission')
-          xs = this % nu_fission(gout,g,iazi_,ipol_)
+          xs = this % nu_fission(gout,gin,iazi_,ipol_)
         case('chi')
           xs = this % chi(gout,iazi_,ipol_)
         case('f_mu', 'f_mu/mult')
-          xs = this % scatter(iazi_,ipol_) % obj % calc_f(g,gout,mu)
-          if (xstype == 'f_mu/mult') then
-            xs = xs / this % scatter(iazi_,ipol_) % obj % mult(g) % data(gout)
+          if (gout < this % scatter(iazi_,ipol) % obj % gmin(gin) .or. &
+              gout > this % scatter(iazi_,ipol) % obj % gmax(gin)) then
+            xs = ZERO
+          else
+            xs = this % scatter(iazi_,ipol_) % obj % calc_f(gin,gout,mu)
+            if (xstype == 'f_mu/mult') then
+              xs = xs / this % scatter(iazi_,ipol_) % obj % mult(gin) % data(gout)
+            end if
           end if
         end select
       else
         select case(xstype)
         case('total')
-          xs = this % total(g,iazi_,ipol_)
+          xs = this % total(gin,iazi_,ipol_)
         case('absorption')
-          xs = this % absorption(g,iazi_,ipol_)
+          xs = this % absorption(gin,iazi_,ipol_)
         case('fission')
-          xs = this % fission(g,iazi_,ipol_)
+          xs = this % fission(gin,iazi_,ipol_)
         case('k_fission')
           if (allocated(this % k_fission)) then
-            xs = this % k_fission(g,iazi_,ipol_)
+            xs = this % k_fission(gin,iazi_,ipol_)
           end if
         case('chi')
-          xs = this % chi(g,iazi_,ipol_)
+          xs = this % chi(gin,iazi_,ipol_)
         case('scatter')
-          xs = this % scatter(iazi_,ipol_) % obj % scattxs(g)
+          xs = this % scatter(iazi_,ipol_) % obj % scattxs(gin)
         end select
       end if
 

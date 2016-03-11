@@ -2098,21 +2098,6 @@ contains
           end if
         end if
 
-        ! Check enforced isotropic lab scattering
-        if (check_for_node(node_nuc, "scattering")) then
-          call get_node_value(node_nuc, "scattering", temp_str)
-          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-            call list_iso_lab % append(1)
-          else if (adjustl(to_lower(temp_str)) == "data") then
-            call list_iso_lab % append(0)
-          else
-            call fatal_error("Scattering must be isotropic in lab or follow&
-                 & the ACE file data")
-          end if
-        else
-          call list_iso_lab % append(0)
-        end if
-
         ! store full name
         call get_node_value(node_nuc, "name", temp_str)
         if (check_for_node(node_nuc, "xs")) &
@@ -2154,6 +2139,23 @@ contains
                    &material " // trim(to_str(mat % id)))
             else
               name = to_lower(trim(default_xs))
+            end if
+          end if
+
+          ! Check enforced isotropic lab scattering
+          if (run_CE) then
+            if (check_for_node(node_nuc, "scattering")) then
+              call get_node_value(node_nuc, "scattering", temp_str)
+              if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+                call list_iso_lab % append(1)
+              else if (adjustl(to_lower(temp_str)) == "data") then
+                call list_iso_lab % append(0)
+              else
+                call fatal_error("Scattering must be isotropic in lab or follow&
+                     & the ACE file data")
+              end if
+            else
+              call list_iso_lab % append(0)
             end if
           end if
 
@@ -2251,23 +2253,25 @@ contains
         n_nuc_ele = list_names % size() - n_nuc_ele
 
         ! Check enforced isotropic lab scattering
-        if (check_for_node(node_ele, "scattering")) then
-          call get_node_value(node_ele, "scattering", temp_str)
-        else
-          temp_str = "data"
-        end if
-
-        ! Set ace or iso-in-lab scattering for each nuclide in element
-        do k = 1, n_nuc_ele
-          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-            call list_iso_lab % append(1)
-          else if (adjustl(to_lower(temp_str)) == "data") then
-            call list_iso_lab % append(0)
+        if (run_CE) then
+          if (check_for_node(node_ele, "scattering")) then
+            call get_node_value(node_ele, "scattering", temp_str)
           else
-            call fatal_error("Scattering must be isotropic in lab or follow&
-                 & the ACE file data")
+            temp_str = "data"
           end if
-        end do
+
+          ! Set ace or iso-in-lab scattering for each nuclide in element
+          do k = 1, n_nuc_ele
+            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+              call list_iso_lab % append(1)
+            else if (adjustl(to_lower(temp_str)) == "data") then
+              call list_iso_lab % append(0)
+            else
+              call fatal_error("Scattering must be isotropic in lab or follow&
+                   & the ACE file data")
+            end if
+          end do
+        end if
 
       end do NATURAL_ELEMENTS
 

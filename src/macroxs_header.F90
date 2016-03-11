@@ -42,11 +42,11 @@ module macroxs_header
       integer, intent(in)                  :: scatt_type ! Legendre or Tabular Scatt?
     end subroutine macroxs_init_
 
-    function macroxs_get_xs_(this, g, xstype, gout, uvw) result(xs)
+    function macroxs_get_xs_(this, xstype, gin, gout, uvw) result(xs)
       import MacroXS
       class(MacroXS), intent(in)      :: this   ! The MacroXS to initialize
-      integer, intent(in)             :: g      ! Incoming Energy group
       character(*) , intent(in)       :: xstype ! Cross Section Type
+      integer, intent(in)             :: gin    ! Incoming Energy group
       integer, optional, intent(in)   :: gout   ! Outgoing Energy group
       real(8), optional, intent(in)   :: uvw(3) ! Requested Angle
       real(8)                         :: xs     ! Resultant xs
@@ -547,41 +547,46 @@ contains
 ! MACROXS_*_GET_XS returns the requested data type
 !===============================================================================
 
-  function macroxsiso_get_xs(this, g, xstype, gout, uvw) result(xs)
+  function macroxsiso_get_xs(this, xstype, gin, gout, uvw) result(xs)
     class(MacroXSIso), intent(in)  :: this   ! The MacroXS to initialize
-    integer, intent(in)            :: g      ! Incoming Energy group
     character(*) , intent(in)      :: xstype ! Type of xs requested
+    integer, intent(in)            :: gin    ! Incoming Energy group
     integer, optional, intent(in)  :: gout   ! Outgoing Energy group
     real(8), optional, intent(in)  :: uvw(3) ! Requested Angle
     real(8)                        :: xs     ! Requested x/s
 
     select case(xstype)
     case('total')
-      xs = this % total(g)
+      xs = this % total(gin)
     case('absorption')
-      xs = this % absorption(g)
+      xs = this % absorption(gin)
     case('fission')
-      xs = this % fission(g)
+      xs = this % fission(gin)
     case('k_fission')
-      xs = this % k_fission(g)
+      xs = this % k_fission(gin)
     case('nu_fission')
-      xs = this % nu_fission(g)
+      xs = this % nu_fission(gin)
     case('scatter')
-      xs = this % scatter % scattxs(g)
+      xs = this % scatter % scattxs(gin)
     case('mult')
       if (present(gout)) then
-        xs = this % scatter % mult(g) % data(gout)
+        if (gout < this % scatter % gmin(gin) .or. &
+            gout > this % scatter % gmax(gin)) then
+          xs = ZERO
+        else
+          xs = this % scatter % mult(gin) % data(gout)
+        end if
       else
-        xs = sum(this % scatter % mult(g) % data(:))
+        xs = sum(this % scatter % mult(gin) % data(:))
       end if
     end select
 
   end function macroxsiso_get_xs
 
-  function macroxsangle_get_xs(this, g, xstype, gout,uvw) result(xs)
+  function macroxsangle_get_xs(this, xstype, gin, gout, uvw) result(xs)
     class(MacroXSAngle), intent(in)  :: this   ! The MacroXS to initialize
-    integer, intent(in)              :: g      ! Incoming Energy group
     character(*) , intent(in)        :: xstype ! Type of xs requested
+    integer, intent(in)              :: gin    ! Incoming Energy group
     integer, optional, intent(in)    :: gout   ! Outgoing Energy group
     real(8), optional, intent(in)    :: uvw(3) ! Requested Angle
     real(8)                          :: xs     ! Requested x/s
@@ -592,22 +597,27 @@ contains
       call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
       select case(xstype)
       case('total')
-        xs = this % total(g,iazi,ipol)
+        xs = this % total(gin,iazi,ipol)
       case('absorption')
-        xs = this % absorption(g,iazi,ipol)
+        xs = this % absorption(gin,iazi,ipol)
       case('fission')
-        xs = this % fission(g,iazi,ipol)
+        xs = this % fission(gin,iazi,ipol)
       case('k_fission')
-        xs = this % k_fission(g,iazi,ipol)
+        xs = this % k_fission(gin,iazi,ipol)
       case('nu_fission')
-        xs = this % nu_fission(g,iazi,ipol)
+        xs = this % nu_fission(gin,iazi,ipol)
       case('scatter')
-        xs = this % scatter(iazi,ipol) % obj % scattxs(g)
+        xs = this % scatter(iazi,ipol) % obj % scattxs(gin)
       case('mult')
         if (present(gout)) then
-          xs = this % scatter(iazi,ipol) % obj % mult(g) % data(gout)
+          if (gout < this % scatter(iazi,ipol) % obj % gmin(gin) .or. &
+              gout > this % scatter(iazi,ipol) % obj % gmax(gin)) then
+            xs = ZERO
+          else
+            xs = this % scatter(iazi,ipol) % obj % mult(gin) % data(gout)
+          end if
         else
-          xs = sum(this % scatter(iazi,ipol) % obj % mult(g) % data(:))
+          xs = sum(this % scatter(iazi,ipol) % obj % mult(gin) % data(:))
         end if
       end select
     end if

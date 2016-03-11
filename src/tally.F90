@@ -806,6 +806,7 @@ contains
     real(8) :: macro_scatt          ! material macro scatt xs
     real(8) :: micro_abs            ! nuclidic microscopic abs
     real(8) :: p_uvw(3)             ! Particle's current uvw
+    real(8) :: mult                 ! Weight multiplier
 
     ! Set the direction, if needed for nuclidic data, so that nuc % get_xs
     ! knows wihch direction it should be using for direction-dependent
@@ -866,7 +867,7 @@ contains
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'total', UVW=p_uvw) * &
+              score = nuc % get_xs('total',p % g,UVW=p_uvw) * &
                    atom_density * flux
             end associate
           else
@@ -908,7 +909,7 @@ contains
           ! Note SCORE_SCATTER_N not available for tracklength/collision.
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'scatter', UVW=p_uvw) * &
+              score = nuc % get_xs('scatter',p % g,UVW=p_uvw) * &
                    atom_density * flux
             end associate
           else
@@ -917,16 +918,28 @@ contains
           end if
         end if
 
+!!! CURRENT PROBLEMS:
+!!! 1) See comment jus below
+!!! 2) groups and energy filters are in reverse order (i.e., low E filter is bin 1)
+!!! 3) nuclide sigt/macro sigt weight change
+!!! 4) do i have right p % g vs p % last_g everywhere throughout??
+
+!!! This next if/else block (and equivalent in nu scatter & PN/YN)
+!!! is incorrect. There is no outgoing energy group if using tracklength
+!!! scoring.
         if (i_nuclide > 0) then
           associate (nuc => nuclides_MG(i_nuclide) % obj)
-            score = score * nuc % get_xs(p % g, 'f_mu/mult', p % last_g, &
-                                         p % last_uvw, p % mu)
+            score = score * nuc % get_xs('f_mu/mult',p % last_g,p % g, &
+                                         p % last_uvw,p % mu)
           end associate
         else
-          score = score / &
-               macro_xs(p % material) % obj % get_xs(p % g, 'mult', &
-                                                     p % last_g, &
-                                                     p % last_uvw)
+          mult = macro_xs(p % material) % obj % get_xs('mult',p % last_g,p % g, &
+                                                       p % last_uvw)
+          if (mult > ZERO) then
+            score = score / mult
+          else
+            score = ZERO
+          end if
         end if
 
 
@@ -944,14 +957,17 @@ contains
 
         if (i_nuclide > 0) then
           associate (nuc => nuclides_MG(i_nuclide) % obj)
-            score = score * nuc % get_xs(p % g, 'f_mu/mult', p % last_g, &
-                                         p % last_uvw, p % mu)
+            score = score * nuc % get_xs('f_mu/mult',p % last_g,p % g, &
+                                         p % last_uvw,p % mu)
           end associate
         else
-          score = score / &
-               macro_xs(p % material) % obj % get_xs(p % g, 'mult', &
-                                                     p % last_g, &
-                                                     p % last_uvw)
+          mult = macro_xs(p % material) % obj % get_xs('mult',p % last_g,p % g, &
+                                                       p % last_uvw)
+          if (mult > ZERO) then
+            score = score / mult
+          else
+            score = ZERO
+          end if
         end if
 
 
@@ -969,14 +985,17 @@ contains
 
         if (i_nuclide > 0) then
           associate (nuc => nuclides_MG(i_nuclide) % obj)
-            score = score * nuc % get_xs(p % g, 'f_mu/mult', p % last_g, &
-                                         p % last_uvw, p % mu)
+            score = score * nuc % get_xs('f_mu/mult',p % last_g,p % g, &
+                                         p % last_uvw,p % mu)
           end associate
         else
-          score = score / &
-               macro_xs(p % material) % obj % get_xs(p % g, 'mult', &
-                                                     p % last_g, &
-                                                     p % last_uvw)
+          mult = macro_xs(p % material) % obj % get_xs('mult',p % last_g,p % g, &
+                                                       p % last_uvw)
+          if (mult > ZERO) then
+            score = score / mult
+          else
+            score = ZERO
+          end if
         end if
 
 
@@ -990,7 +1009,7 @@ contains
         score = p % wgt
         if (i_nuclide > 0) then
           associate (nuc => nuclides_MG(i_nuclide) % obj)
-            score = score * nuc % get_xs(p % g, 'f_mu', p % last_g, &
+            score = score * nuc % get_xs('f_mu',p % last_g,p % g, &
                                          p % last_uvw, p % mu)
           end associate
         end if
@@ -1009,7 +1028,7 @@ contains
         score = p % wgt
         if (i_nuclide > 0) then
           associate (nuc => nuclides_MG(i_nuclide) % obj)
-            score = score * nuc % get_xs(p % g, 'f_mu', p % last_g, &
+            score = score * nuc % get_xs('f_mu',p % last_g,p % g, &
                                          p % last_uvw, p % mu)
           end associate
         end if
@@ -1028,7 +1047,7 @@ contains
         score = p % wgt
         if (i_nuclide > 0) then
           associate (nuc => nuclides_MG(i_nuclide) % obj)
-            score = score * nuc % get_xs(p % g, 'f_mu', p % last_g, &
+            score = score * nuc % get_xs('f_mu',p % last_g,p % g, &
                                          p % last_uvw, p % mu)
           end associate
         end if
@@ -1075,7 +1094,7 @@ contains
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'absorption', UVW=p_uvw) &
+              score = nuc % get_xs('absorption',p % g,UVW=p_uvw) &
                    * atom_density * flux
             end associate
           else
@@ -1091,11 +1110,10 @@ contains
             ! calculate fraction of absorptions that would have resulted in
             ! fission
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p_uvw)
+              micro_abs = nuc % get_xs('absorption',p % g,UVW=p_uvw)
               if (micro_abs > ZERO) then
                 score = p % absorb_wgt * &
-                     nuc % get_xs(p % g, 'fission', UVW=p_uvw) &
-                     / micro_abs
+                     nuc % get_xs('fission',p % g,UVW=p_uvw)  / micro_abs
               else
                 score = ZERO
               end if
@@ -1108,20 +1126,20 @@ contains
             ! fission reaction rate
             associate (nuc => nuclides_MG(i_nuclide) % obj)
               score = p % last_wgt &
-                   * nuc % get_xs(p % g, 'fission', UVW=p_uvw) &
-                   / nuc % get_xs(p % g, 'absorption', UVW=p_uvw)
+                   * nuc % get_xs('fission',p % g,UVW=p_uvw) &
+                   / nuc % get_xs('absorption',p % g,UVW=p_uvw)
             end associate
           end if
 
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'fission', UVW=p_uvw) * &
+              score = nuc % get_xs('fission',p % g,UVW=p_uvw) * &
                    atom_density * flux
             end associate
           else
-            score = flux * macro_xs(p % material) % obj % get_xs(p % g, &
-                 'fission', UVW=p_uvw)
+            score = flux * macro_xs(p % material) % obj % get_xs('fission',&
+                 p % g,UVW=p_uvw)
 
           end if
         end if
@@ -1145,11 +1163,10 @@ contains
             ! calculate fraction of absorptions that would have resulted in
             ! nu-fission
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p_uvw)
+              micro_abs = nuc % get_xs('absorption',p % g,UVW=p_uvw)
               if (micro_abs > ZERO) then
                 score = p % absorb_wgt * &
-                     nuc % get_xs(p % g, 'fission', UVW=p_uvw) / &
-                     micro_abs
+                     nuc % get_xs('fission',p % g,UVW=p_uvw) / micro_abs
               else
                 score = ZERO
               end if
@@ -1168,7 +1185,7 @@ contains
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'nu_fission', UVW=p_uvw) &
+              score = nuc % get_xs('nu_fission',p % g,UVW=p_uvw) &
                    * atom_density * flux
           end associate
           else
@@ -1186,10 +1203,10 @@ contains
             ! calculate fraction of absorptions that would have resulted in
             ! fission scale by kappa-fission
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              micro_abs = nuc % get_xs(p % g, 'absorption', UVW=p_uvw)
+              micro_abs = nuc % get_xs('absorption',p % g,UVW=p_uvw)
               if (micro_abs > ZERO) then
                 score = p % absorb_wgt * &
-                     nuc % get_xs(p % g, 'k_fission', UVW=p_uvw) / &
+                     nuc % get_xs('k_fission',p % g,UVW=p_uvw) / &
                      micro_abs
               end if
             end associate
@@ -1201,20 +1218,20 @@ contains
             ! the fission energy production rate
             associate (nuc => nuclides_MG(i_nuclide) % obj)
               score = p % last_wgt * &
-                   nuc % get_xs(p % g, 'k_fission', UVW=p_uvw) / &
-                   nuc % get_xs(p % g, 'absorption', UVW=p_uvw)
+                   nuc % get_xs('k_fission',p % g,UVW=p_uvw) / &
+                   nuc % get_xs('absorption',p % g,UVW=p_uvw)
             end associate
           end if
 
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides_MG(i_nuclide) % obj)
-              score = nuc % get_xs(p % g, 'k_fission', UVW=p_uvw) &
+              score = nuc % get_xs('k_fission',p % g,UVW=p_uvw) &
                    * atom_density * flux
             end associate
           else
-            score = flux * macro_xs(p % material) % obj % get_xs(p % g, &
-                 'k_fission', UVW=p_uvw)
+            score = flux * macro_xs(p % material) % obj % get_xs('k_fission', &
+                 p % g,UVW=p_uvw)
           end if
         end if
 

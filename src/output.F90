@@ -904,7 +904,11 @@ contains
             write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                  "Total Material"
           else
-            i_listing = nuclides(i_nuclide) % listing
+            if (run_CE) then
+              i_listing = nuclides(i_nuclide) % listing
+            else
+              i_listing = nuclides_MG(i_nuclide) % obj % listing
+            end if
             write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                  trim(xs_listings(i_listing) % alias)
           end if

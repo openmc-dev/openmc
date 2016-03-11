@@ -435,7 +435,11 @@ contains
       real(8)                              :: f    ! Return value of f(mu)
 
       ! Plug mu in to the legendre expansion and go from there
-      f = evaluate_legendre(this % dist(gin) % data(:,gout),mu)
+      if (gout < this % gmin(gin) .or. gout > this % gmax(gin)) then
+        f = ZERO
+      else
+        f = evaluate_legendre(this % dist(gin) % data(:,gout),mu)
+      end if
 
     end function scattdatalegendre_calc_f
 
@@ -448,14 +452,18 @@ contains
 
       integer :: imu
 
-      ! Find mu bin
-      if (mu == ONE) then
-        imu = size(this % fmu(gin) % data,dim=1)
+      if (gout < this % gmin(gin) .or. gout > this % gmax(gin)) then
+        f = ZERO
       else
-        imu = floor((mu + ONE)/ this % dmu + ONE)
-      end if
+        ! Find mu bin
+        if (mu == ONE) then
+          imu = size(this % fmu(gin) % data,dim=1)
+        else
+          imu = floor((mu + ONE)/ this % dmu + ONE)
+        end if
 
-      f = this % fmu(gin) % data(imu,gout)
+        f = this % fmu(gin) % data(imu,gout)
+      end if
 
     end function scattdatahistogram_calc_f
 
@@ -469,17 +477,21 @@ contains
       integer :: imu
       real(8) :: r
 
-      ! Find mu bin
-      if (mu == ONE) then
-        imu = size(this % fmu(gin) % data,dim=1) - 1
+      if (gout < this % gmin(gin) .or. gout > this % gmax(gin)) then
+        f = ZERO
       else
-        imu = floor((mu + ONE)/ this % dmu + ONE)
-      end if
+        ! Find mu bin
+        if (mu == ONE) then
+          imu = size(this % fmu(gin) % data,dim=1) - 1
+        else
+          imu = floor((mu + ONE)/ this % dmu + ONE)
+        end if
 
-      ! Now interpolate to find f(mu)
-      r = (mu - this % mu(imu)) / (this % mu(imu + 1) - this % mu(imu))
-      f = (ONE - r) * this % fmu(gin) % data(imu,gout) + &
-           r * this % fmu(gin) % data(imu + 1,gout)
+        ! Now interpolate to find f(mu)
+        r = (mu - this % mu(imu)) / (this % mu(imu + 1) - this % mu(imu))
+        f = (ONE - r) * this % fmu(gin) % data(imu,gout) + &
+             r * this % fmu(gin) % data(imu + 1,gout)
+      end if
 
     end function scattdatatabular_calc_f
 

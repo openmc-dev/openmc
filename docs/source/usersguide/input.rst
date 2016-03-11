@@ -1258,6 +1258,9 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+    .. note:: The ``scattering`` attribute/sub-element is not used in the
+              multi-group :ref:`energy_mode`.
+
   :element:
 
     Specifies that a natural element is present in the material. The natural
@@ -1293,6 +1296,9 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+    .. note:: The ``scattering`` attribute/sub-element is not used in the
+              multi-group :ref:`energy_mode`.
+
   :sab:
     Associates an S(a,b) table with the material. This element has
     attributes/sub-elements called ``name`` and ``xs``. The ``name`` attribute
@@ -1300,6 +1306,8 @@ Each ``material`` element can have the following attributes or sub-elements:
     and ``xs`` is the cross-section identifier for the table.
 
     *Default*: None
+
+    .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
   :macroscopic:
     The ``macroscopic`` element is similar to the ``nuclide`` element, but,

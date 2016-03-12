@@ -162,28 +162,6 @@ contains
   end subroutine read_mgxs
 
 !===============================================================================
-! SAME_NUCLIDEMG_LIST creates a linked list for each nuclide containing the
-! indices in the nuclides array of all other instances of that nuclide.  For
-! example, the same nuclide may exist at multiple temperatures resulting
-! in multiple entries in the nuclides array for a single zaid number.
-!===============================================================================
-
-  subroutine same_nuclidemg_list()
-
-    integer :: i ! index in nuclides array
-    integer :: j ! index in nuclides array
-
-    do i = 1, n_nuclides_total
-      do j = 1, n_nuclides_total
-        if (nuclides_MG(i) % obj % zaid == nuclides_MG(j) % obj % zaid) then
-          call nuclides_MG(i) % obj % nuc_list % push_back(j)
-        end if
-      end do
-    end do
-
-  end subroutine same_nuclidemg_list
-
-!===============================================================================
 ! CREATE_MACRO_XS generates the macroscopic x/s from the microscopic input data
 !===============================================================================
 

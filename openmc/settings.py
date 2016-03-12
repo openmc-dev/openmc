@@ -9,6 +9,7 @@ import numpy as np
 from openmc.clean_xml import *
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
+from openmc import Nuclide
 from openmc.source import Source
 
 if sys.version_info[0] >= 3:
@@ -125,6 +126,8 @@ class SettingsFile(object):
         Coordinates of the lower-left point of the UFS mesh
     ufs_upper_right : tuple or list
         Coordinates of the upper-right point of the UFS mesh
+    resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
+        The elastic scattering model to use for resonant isotopes
 
     """
 
@@ -204,6 +207,8 @@ class SettingsFile(object):
         self._settings_file = ET.Element("settings")
         self._run_mode_subelement = None
         self._source_element = None
+
+        self._resonance_scattering = None
 
     @property
     def run_mode(self):
@@ -393,9 +398,13 @@ class SettingsFile(object):
     def dd_count_interactions(self):
         return self._dd_count_interactions
 
+    @property
+    def resonance_scattering(self):
+        return self._resonance_scattering
+
     @run_mode.setter
     def run_mode(self, run_mode):
-        if 'run_mode' not in ['eigenvalue', 'fixed source']:
+        if run_mode not in ['eigenvalue', 'fixed source']:
             msg = 'Unable to set run mode to "{0}". Only "eigenvalue" ' \
                   'and "fixed source" are supported."'.format(run_mode)
             raise ValueError(msg)
@@ -764,6 +773,16 @@ class SettingsFile(object):
 
         self._dd_count_interactions = interactions
 
+    @resonance_scattering.setter
+    def resonance_scattering(self, res):
+        if isinstance(res, Iterable):
+            check_type('resonance_scattering', res, Iterable,
+                       ResonanceScattering)
+            self._resonance_scattering = res
+        else:
+            check_type('resonance_scattering', res, ResonanceScattering)
+            self._resonance_scattering = [res]
+
     def _create_run_mode_subelement(self):
 
         if self.run_mode == 'eigenvalue':
@@ -1043,6 +1062,17 @@ class SettingsFile(object):
             subelement = ET.SubElement(element, "count_interactions")
             subelement.text = str(self._dd_count_interactions).lower()
 
+    def _create_resonance_scattering_element(self):
+        if self.resonance_scattering is None: return
+
+        element = ET.SubElement(self._settings_file, "resonance_scattering")
+
+        for r in self.resonance_scattering:
+            if r.nuclide.name != r.nuclide_0K.name:
+                raise ValueError("The nuclide and nuclide_0K attributes of "
+                     "a ResonantScattering object must have identical names.")
+            r.create_xml_subelement(element)
+
     def export_to_xml(self):
         """Create a settings.xml file that can be used for a simulation.
 
@@ -1079,6 +1109,7 @@ class SettingsFile(object):
         self._create_track_subelement()
         self._create_ufs_subelement()
         self._create_dd_subelement()
+        self._create_resonance_scattering_element()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._settings_file)
@@ -1087,3 +1118,104 @@ class SettingsFile(object):
         tree = ET.ElementTree(self._settings_file)
         tree.write("settings.xml", xml_declaration=True,
                              encoding='utf-8', method="xml")
+
+
+class ResonanceScattering(object):
+    """Specification of the elastic scattering model for resonant isotopes
+
+    Attributes
+    ----------
+    nuclide : openmc.nuclide.Nuclide
+        The nuclide affected by this resonance scattering treatment.
+    nuclide_0K : openmc.nuclide.Nuclide
+        This should be the same isotope as the nuclide attribute above, but it
+        should have an xs attribute that identifies 0 Kelvin data.
+    method : str
+        The method used to sample outgoing scattering energies.  Valid options
+        are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
+        rejection correction), and 'WCM' (weight correction method).
+    E_min : Real
+        The minimum energy above which the specified method is applied.  By
+        default, CXS will be used below E_min.
+    E_max : Real
+        The maximum energy below which the specified method is applied.  By
+        default, the asymptotic target-at-rest model is applied  above E_max.
+
+    """
+
+    def __init__(self):
+        self._nuclide = None
+        self._nuclide_0K = None
+        self._method = None
+        self._E_min = None
+        self._E_max = None
+
+    @property
+    def nuclide(self):
+        return self._nuclide
+
+    @property
+    def nuclide_0K(self):
+        return self._nuclide_0K
+
+    @property
+    def method(self):
+        return self._method
+
+    @property
+    def E_min(self):
+        return self._E_min
+
+    @property
+    def E_max(self):
+        return self._E_max
+
+    @nuclide.setter
+    def nuclide(self, nuc):
+        check_type('nuclide', nuc, Nuclide)
+        if nuc.zaid == None: raise ValueError("The nuclide must have an "
+             "explicitly defined zaid attribute.")
+        self._nuclide = nuc
+
+    @nuclide_0K.setter
+    def nuclide_0K(self, nuc):
+        check_type('nuclide_0K', nuc, Nuclide)
+        if nuc.zaid == None: raise ValueError("The nuclide_0K must have an "
+             "explicitly defined zaid attribute.")
+        self._nuclide_0K = nuc
+
+    @method.setter
+    def method(self, m):
+        check_value('method', m, ('ARES', 'CXS', 'DBRC', 'WCM'))
+        self._method = m
+
+    @E_min.setter
+    def E_min(self, E):
+        check_type('E_min', E, Real)
+        check_greater_than('E_min', E, 0, True)
+        self._E_min = E
+
+    @E_max.setter
+    def E_max(self, E):
+        check_type('E_max', E, Real)
+        check_greater_than('E_max', E, 0, True)
+        self._E_max = E
+
+    def create_xml_subelement(self, xml_element):
+        scatterer = ET.SubElement(xml_element, "scatterer")
+        subelement = ET.SubElement(scatterer, 'nuclide')
+        subelement.text = self.nuclide.name
+        if self.method is not None:
+            subelement = ET.SubElement(scatterer, 'method')
+            subelement.text = self.method
+        subelement = ET.SubElement(scatterer, 'xs_label')
+        subelement.text = str(self.nuclide.zaid) + '.' + str(self.nuclide.xs)
+        subelement = ET.SubElement(scatterer, 'xs_label_0K')
+        subelement.text = str(self.nuclide_0K.zaid) + '.' \
+             + str(self.nuclide_0K.xs)
+        if self.E_min is not None:
+            subelement = ET.SubElement(scatterer, 'E_min')
+            subelement.text = str(self.E_min)
+        if self.E_max is not None:
+            subelement = ET.SubElement(scatterer, 'E_max')
+            subelement.text = str(self.E_max)

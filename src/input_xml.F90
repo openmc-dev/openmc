@@ -1895,21 +1895,23 @@ contains
 
   subroutine read_materials_xml()
 
-    integer :: i             ! loop index for materials
-    integer :: j             ! loop index for nuclides
-    integer :: k             ! loop index for elements
-    integer :: n             ! number of nuclides
-    integer :: n_sab         ! number of sab tables for a material
-    integer :: n_nuc_ele     ! number of nuclides in an element
-    integer :: index_list    ! index in xs_listings array
-    integer :: index_nuclide ! index in nuclides
-    integer :: index_sab     ! index in sab_tables
-    real(8) :: val           ! value entered for density
-    real(8) :: temp_dble     ! temporary double prec. real
-    logical :: file_exists   ! does materials.xml exist?
-    logical :: sum_density   ! density is taken to be sum of nuclide densities
-    character(12) :: name    ! name of isotope, e.g. 92235.03c
-    character(12) :: alias   ! alias of nuclide, e.g. U-235.03c
+    integer :: i              ! loop index for materials
+    integer :: j              ! loop index for nuclides
+    integer :: k              ! loop index for elements
+    integer :: n              ! number of nuclides
+    integer :: n_sab          ! number of sab tables for a material
+    integer :: n_nuc_ele      ! number of nuclides in an element
+    integer :: index_list     ! index in xs_listings array
+    integer :: index_nuclide  ! index in nuclides
+    integer :: index_nuc_zaid ! index in nuclide ZAID
+    integer :: index_sab      ! index in sab_tables
+    real(8) :: val            ! value entered for density
+    real(8) :: temp_dble      ! temporary double prec. real
+    logical :: file_exists    ! does materials.xml exist?
+    logical :: sum_density    ! density is taken to be sum of nuclide densities
+    integer :: zaid           ! ZAID of nuclide
+    character(12) :: name     ! name of isotope, e.g. 92235.03c
+    character(12) :: alias    ! alias of nuclide, e.g. U-235.03c
     character(MAX_WORD_LEN) :: units    ! units on density
     character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
@@ -1959,6 +1961,7 @@ contains
 
     ! Initialize count for number of nuclides/S(a,b) tables
     index_nuclide = 0
+    index_nuc_zaid = 0
     index_sab = 0
 
     do i = 1, n_materials
@@ -2099,21 +2102,6 @@ contains
           end if
         end if
 
-        ! Check enforced isotropic lab scattering
-        if (check_for_node(node_nuc, "scattering")) then
-          call get_node_value(node_nuc, "scattering", temp_str)
-          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-            call list_iso_lab % append(1)
-          else if (adjustl(to_lower(temp_str)) == "data") then
-            call list_iso_lab % append(0)
-          else
-            call fatal_error("Scattering must be isotropic in lab or follow&
-                 & the ACE file data")
-          end if
-        else
-          call list_iso_lab % append(0)
-        end if
-
         ! store full name
         call get_node_value(node_nuc, "name", temp_str)
         if (check_for_node(node_nuc, "xs")) &
@@ -2155,6 +2143,23 @@ contains
                    &material " // trim(to_str(mat % id)))
             else
               name = to_lower(trim(default_xs))
+            end if
+          end if
+
+          ! Check enforced isotropic lab scattering
+          if (run_CE) then
+            if (check_for_node(node_nuc, "scattering")) then
+              call get_node_value(node_nuc, "scattering", temp_str)
+              if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+                call list_iso_lab % append(1)
+              else if (adjustl(to_lower(temp_str)) == "data") then
+                call list_iso_lab % append(0)
+              else
+                call fatal_error("Scattering must be isotropic in lab or follow&
+                     & the ACE file data")
+              end if
+            else
+              call list_iso_lab % append(0)
             end if
           end if
 
@@ -2252,23 +2257,25 @@ contains
         n_nuc_ele = list_names % size() - n_nuc_ele
 
         ! Check enforced isotropic lab scattering
-        if (check_for_node(node_ele, "scattering")) then
-          call get_node_value(node_ele, "scattering", temp_str)
-        else
-          temp_str = "data"
-        end if
-
-        ! Set ace or iso-in-lab scattering for each nuclide in element
-        do k = 1, n_nuc_ele
-          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-            call list_iso_lab % append(1)
-          else if (adjustl(to_lower(temp_str)) == "data") then
-            call list_iso_lab % append(0)
+        if (run_CE) then
+          if (check_for_node(node_ele, "scattering")) then
+            call get_node_value(node_ele, "scattering", temp_str)
           else
-            call fatal_error("Scattering must be isotropic in lab or follow&
-                 & the ACE file data")
+            temp_str = "data"
           end if
-        end do
+
+          ! Set ace or iso-in-lab scattering for each nuclide in element
+          do k = 1, n_nuc_ele
+            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+              call list_iso_lab % append(1)
+            else if (adjustl(to_lower(temp_str)) == "data") then
+              call list_iso_lab % append(0)
+            else
+              call fatal_error("Scattering must be isotropic in lab or follow&
+                   & the ACE file data")
+            end if
+          end do
+        end if
 
       end do NATURAL_ELEMENTS
 
@@ -2304,6 +2311,7 @@ contains
         index_list = xs_listing_dict % get_key(to_lower(name))
         name       = xs_listings(index_list) % name
         alias      = xs_listings(index_list) % alias
+        zaid       = xs_listings(index_list) % zaid
 
         ! If this nuclide hasn't been encountered yet, we need to add its name
         ! and alias to the nuclide_dict
@@ -2315,6 +2323,12 @@ contains
           call nuclide_dict % add_key(to_lower(alias), index_nuclide)
         else
           mat % nuclide(j) = nuclide_dict % get_key(to_lower(name))
+        end if
+
+        ! Construct dict of nuclide zaid
+        if (.not. nuc_zaid_dict % has_key(zaid)) then
+          index_nuc_zaid  = index_nuc_zaid + 1
+          call nuc_zaid_dict % add_key(zaid, index_nuc_zaid)
         end if
 
         ! Copy name and atom/weight percent
@@ -2411,6 +2425,7 @@ contains
     ! Set total number of nuclides and S(a,b) tables
     n_nuclides_total = index_nuclide
     n_sab_tables     = index_sab
+    n_nuc_zaid_total = index_nuc_zaid
 
     ! Close materials XML file
     call close_xmldoc(doc)

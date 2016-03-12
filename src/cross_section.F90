@@ -10,7 +10,7 @@ module cross_section
   use material_header, only: Material
   use nuclide_header
   use particle_header, only: Particle
-  use random_lcg,      only: prn
+  use random_lcg,      only: prn, future_prn, prn_set_stream
   use sab_header,      only: SAlphaBeta
   use search,          only: binary_search
 
@@ -354,20 +354,17 @@ contains
     integer, intent(in) :: i_nuclide ! index into nuclides array
     real(8), intent(in) :: E         ! energy
 
-    integer :: i            ! loop index
     integer :: i_energy     ! index for energy
     integer :: i_low        ! band index at lower bounding energy
     integer :: i_up         ! band index at upper bounding energy
-    integer :: same_nuc_idx ! index of same nuclide
     real(8) :: f            ! interpolation factor
     real(8) :: r            ! pseudo-random number
     real(8) :: elastic      ! elastic cross section
     real(8) :: capture      ! (n,gamma) cross section
     real(8) :: fission      ! fission cross section
     real(8) :: inelastic    ! inelastic cross section
-    logical :: same_nuc     ! do we know the xs for this nuclide at this energy?
-    type(UrrData),  pointer    :: urr
-    type(NuclideCE),  pointer :: nuc
+    type(UrrData), pointer   :: urr
+    type(NuclideCE), pointer :: nuc
 
     micro_xs(i_nuclide) % use_ptable = .true.
 
@@ -388,24 +385,13 @@ contains
 
     ! sample probability table using the cumulative distribution
 
-    ! if we're dealing with a nuclide that we've previously encountered at
-    ! this energy but a different temperature, use the original random number to
-    ! preserve correlation of temperature in probability tables
-    same_nuc = .false.
-    do i = 1, nuc % nuc_list % size()
-      if (E /= ZERO .and. E == micro_xs(nuc % nuc_list % data(i)) % last_E) then
-        same_nuc = .true.
-        same_nuc_idx = i
-        exit
-      end if
-    end do
-
-    if (same_nuc) then
-      r = micro_xs(nuc % nuc_list % data(same_nuc_idx)) % last_prn
-    else
-      r = prn()
-      micro_xs(i_nuclide) % last_prn = r
-    end if
+    ! Random numbers for xs calculation are sampled from a separated stream.
+    ! This guarantees the randomness and, at the same time, makes sure we reuse
+    ! random number for the same nuclide at different temperatures, therefore
+    ! preserving correlation of temperature in probability tables.
+    call prn_set_stream(STREAM_URR_PTABLE)
+    r = future_prn(int(nuc_zaid_dict % get_key(nuc % zaid), 8))
+    call prn_set_stream(STREAM_TRACKING)
 
     i_low = 1
     do

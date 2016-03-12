@@ -537,27 +537,27 @@ class MGXS(object):
         # Create each Tally needed to compute the multi group cross section
         for score, key, filters in zip(scores, keys, all_filters):
             self.tallies[key] = openmc.Tally(name=self.name)
-            self.tallies[key].add_score(score)
+            self.tallies[key].scores = [score]
             self.tallies[key].estimator = estimator
-            self.tallies[key].add_filter(domain_filter)
+            self.tallies[key].filters = [domain_filter]
 
             # If a tally trigger was specified, add it to each tally
             if self.tally_trigger:
                 trigger_clone = copy.deepcopy(self.tally_trigger)
-                trigger_clone.add_score(score)
-                self.tallies[key].add_trigger(trigger_clone)
+                trigger_clone.scores = [score]
+                self.tallies[key].triggers.append(trigger_clone)
 
             # Add all non-domain specific Filters (e.g., 'energy') to the Tally
             for add_filter in filters:
-                self.tallies[key].add_filter(add_filter)
+                self.tallies[key].filters.append(add_filter)
 
             # If this is a by-nuclide cross-section, add all nuclides to Tally
             if self.by_nuclide and score != 'flux':
                 all_nuclides = self.domain.get_all_nuclides()
                 for nuclide in all_nuclides:
-                    self.tallies[key].add_nuclide(nuclide)
+                    self.tallies[key].nuclides.append(nuclide)
             else:
-                self.tallies[key].add_nuclide('total')
+                self.tallies[key].nuclides.append('total')
 
     def _compute_xs(self):
         """Performs generic cleanup after a subclass' uses tally arithmetic to
@@ -579,7 +579,7 @@ class MGXS(object):
             self.xs_tally._nuclides = []
             nuclides = self.get_all_nuclides()
             for nuclide in nuclides:
-                self.xs_tally.add_nuclide(openmc.Nuclide(nuclide))
+                self.xs_tally.nuclides.append(openmc.Nuclide(nuclide))
 
         # Remove NaNs which may have resulted from divide-by-zero operations
         self.xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
@@ -2313,7 +2313,7 @@ class Chi(MGXS):
             super(Chi, self)._compute_xs()
 
             # Add the coarse energy filter back to the nu-fission tally
-            nu_fission_in.add_filter(energy_filter)
+            nu_fission_in.filters.append(energy_filter)
 
         return self._xs_tally
 
@@ -2512,7 +2512,7 @@ class Chi(MGXS):
                 xs_tally = nu_fission_out / nu_fission_in
 
                 # Add the coarse energy filter back to the nu-fission tally
-                nu_fission_in.add_filter(energy_filter)
+                nu_fission_in.filters.append(energy_filter)
 
                 xs = xs_tally.get_values(filters=filters,
                                          filter_bins=filter_bins, value=value)

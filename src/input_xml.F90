@@ -3332,8 +3332,13 @@ contains
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
 
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
+            ! Set tally estimator to analog for CE mode
+            ! (MG mode has all data available without a collision being
+            ! necessary)
+            if (run_CE) then
+              t % estimator = ESTIMATOR_ANALOG
+            end if
+
           case ('scatter-n')
             if (n_order == 0) then
               t % score_bins(j) = SCORE_SCATTER
@@ -3345,12 +3350,16 @@ contains
             t % moment_order(j) = n_order
 
           case ('nu-scatter-n')
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
             if (n_order == 0) then
               t % score_bins(j) = SCORE_NU_SCATTER
             else
               t % score_bins(j) = SCORE_NU_SCATTER_N
+              ! Set tally estimator to analog for CE mode
+              ! (MG mode has all data available without a collision being
+              ! necessary)
+              if (run_CE) then
+                t % estimator = ESTIMATOR_ANALOG
+              end if
             end if
             t % moment_order(j) = n_order
 
@@ -3391,10 +3400,14 @@ contains
             call fatal_error("Diffusion score no longer supported for tallies, &
                  &please remove")
           case ('n1n')
-            t % score_bins(j) = SCORE_N_1N
+            if (run_CE) then
+              t % score_bins(j) = SCORE_N_1N
 
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
+              ! Set tally estimator to analog
+              t % estimator = ESTIMATOR_ANALOG
+            else
+              call fatal_error("Cannot tally n1n rate in multi-group mode!")
+            end if
           case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
 

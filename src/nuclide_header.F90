@@ -1215,7 +1215,7 @@ module nuclide_header
       xs = ZERO
 
       if ((xstype == 'nu_fission' .or. xstype == 'fission' .or. xstype =='chi' &
-           .or. xstype =='k_fission') .and. (.not. this % fissionable)) then
+           .or. xstype =='kappa_fission') .and. (.not. this % fissionable)) then
         return
       end if
 
@@ -1246,7 +1246,7 @@ module nuclide_header
           xs = sum(this % nu_fission(:,gin))
         case('fission')
           xs = this % fission(gin)
-        case('k_fission')
+        case('kappa_fission')
           if (allocated(this % k_fission)) then
             xs = this % k_fission(gin)
           end if
@@ -1254,6 +1254,11 @@ module nuclide_header
           xs = this % chi(gin)
         case('scatter')
           xs = this % scatter % scattxs(gin)
+        case('mult')
+          xs = dot_product(this % scatter % mult(gin) % data, &
+                           this % scatter % scattxs(gin) * &
+                           this % scatter % energy(gin) % data)
+          xs = xs / this % scatter % scattxs(gin)
         end select
       end if
     end function nuclideiso_get_xs
@@ -1264,8 +1269,8 @@ module nuclide_header
       character(*), intent(in)        :: xstype ! Cross Section Type
       integer, intent(in)             :: gin    ! Incoming Energy group
       integer, optional, intent(in)   :: gout   ! Outgoing Group
-      real(8), optional, intent(in)   :: mu     ! Change in angle
       real(8), optional, intent(in)   :: uvw(3) ! Requested Angle
+      real(8), optional, intent(in)   :: mu     ! Change in angle
       integer, optional, intent(in)   :: iazi  ! Azimuthal Index
       integer, optional, intent(in)   :: ipol  ! Polar Index
       real(8)                         :: xs     ! Resultant xs
@@ -1275,7 +1280,7 @@ module nuclide_header
       xs = ZERO
 
       if ((xstype == 'nu_fission' .or. xstype == 'fission' .or. xstype =='chi' &
-           .or. xstype =='k_fission') .and. (.not. this % fissionable)) then
+           .or. xstype =='kappa_fission') .and. (.not. this % fissionable)) then
         return
       end if
 
@@ -1315,7 +1320,7 @@ module nuclide_header
           xs = sum(this % nu_fission(:,gin,iazi_,ipol_))
         case('fission')
           xs = this % fission(gin,iazi_,ipol_)
-        case('k_fission')
+        case('kappa_fission')
           if (allocated(this % k_fission)) then
             xs = this % k_fission(gin,iazi_,ipol_)
           end if
@@ -1323,6 +1328,11 @@ module nuclide_header
           xs = this % chi(gin,iazi_,ipol_)
         case('scatter')
           xs = this % scatter(iazi_,ipol_) % obj % scattxs(gin)
+        case('mult')
+          xs = dot_product(this % scatter(iazi_,ipol_) % obj % mult(gin) % data, &
+               this % scatter(iazi_,ipol_) % obj % scattxs(gin) * &
+               this % scatter(iazi_,ipol_) % obj % energy(gin) % data)
+          xs = xs / this % scatter(iazi_,ipol_) % obj % scattxs(gin)
         end select
       end if
 

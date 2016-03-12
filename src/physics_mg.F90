@@ -77,6 +77,7 @@ contains
         call create_fission_sites(p, p % secondary_bank, p % n_secondary)
       end if
     end if
+
     ! If survival biasing is being used, the following subroutine adjusts the
     ! weight of the particle. Otherwise, it checks to see if absorption occurs
 
@@ -256,7 +257,7 @@ contains
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
       bank_array(i) % E = &
-           real(xs % sample_fission_energy(p % g, fission_bank(i) % uvw), 8)
+           real(xs % sample_fission_energy(p % g, bank_array(i) % uvw), 8)
     end do
 
     ! increment number of bank sites

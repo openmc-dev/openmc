@@ -28,7 +28,7 @@ module nuclide_header
     real(8)       :: kT      ! temperature in MeV (k*T)
 
     ! Fission information
-    logical :: fissionable         ! nuclide is fissionable?
+    logical :: fissionable   ! nuclide is fissionable?
 
   contains
     procedure(nuclide_print_), deferred :: print ! Writes nuclide info

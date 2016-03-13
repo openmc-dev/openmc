@@ -3,9 +3,8 @@ module mgxs_data
 use constants
   use error,           only: fatal_error
   use global
-  use macroxs_header
   use material_header, only: Material
-  use nuclide_header
+  use mgxs_header
   use output,          only: write_message
   use set_header,      only: SetChar
   use string,          only: to_lower
@@ -118,17 +117,14 @@ contains
           ! Now allocate accordingly
           select case(representation)
           case(MGXS_ISOTROPIC)
-            allocate(NuclideIso :: nuclides_MG(i_nuclide) % obj)
+            allocate(MgxsIso :: nuclides_MG(i_nuclide) % obj)
           case(MGXS_ANGLE)
-            allocate(NuclideAngle :: nuclides_MG(i_nuclide) % obj)
+            allocate(MgxsAngle :: nuclides_MG(i_nuclide) % obj)
           end select
 
           ! Now read in the data specific to the type we just declared
-          call nuclides_MG(i_nuclide) % obj % init(node_xsdata, energy_groups, &
-                                                   get_kfiss, get_fiss, max_order)
-
-          ! Keep track of what listing is associated with this nuclide
-          nuclides_MG(i_nuclide) % obj % listing = i_listing
+          call nuclides_MG(i_nuclide) % obj % init_file(node_xsdata, &
+               energy_groups,get_kfiss,get_fiss,max_order,i_listing)
 
           ! Add name and alias to dictionary
           call already_read % add(name)
@@ -202,14 +198,13 @@ contains
       ! how we allocate the scatter object within macroxs
       scatt_type = nuclides_MG(mat % nuclide(1)) % obj % scatt_type
       select type(nuc => nuclides_MG(mat % nuclide(1)) % obj)
-      type is (NuclideIso)
-        allocate(MacroXSIso :: macro_xs(i_mat) % obj)
-      type is (NuclideAngle)
-        allocate(MacroXSAngle :: macro_xs(i_mat) % obj)
+      type is (MgxsIso)
+        allocate(MgxsIso :: macro_xs(i_mat) % obj)
+      type is (MgxsAngle)
+        allocate(MgxsAngle :: macro_xs(i_mat) % obj)
       end select
-      call macro_xs(i_mat) % obj % init(mat, nuclides_MG, energy_groups, &
-                                        get_kfiss, get_fiss, max_order, &
-                                        scatt_type)
+      call macro_xs(i_mat) % obj % combine(mat,nuclides_MG,energy_groups, &
+           get_kfiss,get_fiss,max_order,scatt_type,i_mat)
     end do
   end subroutine create_macro_xs
 

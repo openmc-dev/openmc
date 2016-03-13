@@ -148,7 +148,7 @@ contains
     integer :: i_low  ! lower logarithmic mapping index
     integer :: i_high ! upper logarithmic mapping index
     real(8) :: f      ! interp factor on nuclide energy grid
-    type(NuclideCE), pointer :: nuc
+    type(Nuclide), pointer :: nuc
     type(Material),   pointer :: mat
 
     ! Set pointer to nuclide and material
@@ -364,7 +364,7 @@ contains
     real(8) :: fission      ! fission cross section
     real(8) :: inelastic    ! inelastic cross section
     type(UrrData), pointer   :: urr
-    type(NuclideCE), pointer :: nuc
+    type(Nuclide), pointer :: nuc
 
     micro_xs(i_nuclide) % use_ptable = .true.
 
@@ -520,7 +520,7 @@ contains
 
   pure function elastic_xs_0K(E, nuc) result(xs_out)
     real(8),       intent(in)    :: E      ! trial energy
-    type(NuclideCE), intent(in) :: nuc    ! target nuclide at temperature
+    type(Nuclide), intent(in) :: nuc    ! target nuclide at temperature
     real(8)                      :: xs_out ! 0K xs at trial energy
 
     integer :: i_grid ! index on nuclide energy grid

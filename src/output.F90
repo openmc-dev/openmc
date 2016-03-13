@@ -336,10 +336,10 @@ contains
     ! Open log file for writing
     open(NEWUNIT=unit_xs, FILE=path, STATUS='replace', ACTION='write')
 
-    ! Write header
-    call header("CROSS SECTION TABLES", unit=unit_xs)
-
     if (run_CE) then
+      ! Write header
+      call header("CROSS SECTION TABLES", unit=unit_xs)
+
       NUCLIDE_LOOP: do i = 1, n_nuclides_total
         ! Print information about nuclide
         call nuclides(i) % print(unit=unit_xs)
@@ -350,10 +350,17 @@ contains
         call sab_tables(i) % print(unit=unit_xs)
       end do SAB_TABLES_LOOP
     else
+      ! Write header
+      call header("MGXS LIBRARY TABLES", unit=unit_xs)
       NuclideMG_LOOP: do i = 1, n_nuclides_total
         ! Print information about nuclide
         call nuclides_mg(i) % obj % print(unit=unit_xs)
       end do NuclideMG_LOOP
+      call header("MATERIAL MGXS TABLES", unit=unit_xs)
+      MATERIAL_LOOP: do i = 1, n_materials
+        ! Print information about Materials
+        call macro_xs(i) % obj % print(unit=unit_xs)
+      end do MATERIAL_LOOP
     end if
 
     ! Close cross section summary file

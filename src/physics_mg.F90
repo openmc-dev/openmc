@@ -5,9 +5,9 @@ module physics_mg
   use constants
   use error,                  only: fatal_error, warning
   use global
-  use macroxs_header,         only: MacroXS, MacroXSContainer
   use material_header,        only: Material
   use math,                   only: rotate_angle
+  use mgxs_header,            only: Mgxs, MgxsContainer
   use mesh,                   only: get_mesh_indices
   use output,                 only: write_message
   use particle_header,        only: Particle
@@ -179,7 +179,7 @@ contains
     real(8) :: phi                      ! fission neutron azimuthal angle
     real(8) :: weight                   ! weight adjustment for ufs method
     logical :: in_mesh                  ! source site in ufs mesh?
-    class(MacroXS), pointer :: xs
+    class(Mgxs), pointer :: xs
 
     ! Get Pointers
     xs => macro_xs(p % material) % obj

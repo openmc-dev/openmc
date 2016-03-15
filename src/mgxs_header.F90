@@ -96,15 +96,13 @@ module mgxs_header
 
     end function mgxs_calc_f_
 
-    subroutine mgxs_combine_(this,mat,nuclides,groups,get_kfiss,get_fiss, &
-                             max_order,scatt_type,i_listing)
+    subroutine mgxs_combine_(this,mat,nuclides,groups,max_order,scatt_type, &
+                             i_listing)
       import Mgxs, Material, MgxsContainer
       class(Mgxs),           intent(inout) :: this ! The Mgxs to initialize
       type(Material), pointer,  intent(in) :: mat  ! base material
       type(MgxsContainer), intent(in)      :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                  :: groups     ! Number of E groups
-      logical, intent(in)                  :: get_kfiss  ! Should we get kfiss data?
-      logical, intent(in)                  :: get_fiss   ! Should we get fiss data?
       integer, intent(in)                  :: max_order  ! Maximum requested order
       integer, intent(in)                  :: scatt_type ! Legendre or Tabular Scatt?
       integer, intent(in)                  :: i_listing  ! Index in listings
@@ -529,6 +527,13 @@ module mgxs_header
       ! Initialize the ScattData Object
       call this % scatter % init(temp_mult, scatt_coeffs)
 
+      ! Check sigA to ensure it is not 0 since it is
+      ! often divided by in the tally routines
+      ! (This may happen with Helium data)
+      do gin = 1, groups
+        if (this % absorption(gin) == ZERO) this % absorption(gin) = 1E-10_8
+      end do
+
       ! Get, or infer, total xs data.
       allocate(this % total(groups))
       if (check_for_node(node_xsdata,"total")) then
@@ -539,6 +544,13 @@ module mgxs_header
 
       ! Deallocate temporaries for the next material
       deallocate(input_scatt,scatt_coeffs,temp_mult)
+
+      ! Finally, check sigT to ensure it is not 0 since it is
+      ! often divided by in the tally routines
+      do gin = 1, groups
+        if (this % total(gin) == ZERO) this % total(gin) = 1E-10_8
+      end do
+
 
     end subroutine mgxsiso_init_file
 
@@ -1288,14 +1300,12 @@ module mgxs_header
 
     end subroutine mgxs_combine
 
-    subroutine mgxsiso_combine(this,mat,nuclides,groups,get_kfiss,get_fiss, &
-         max_order,scatt_type,i_listing)
+    subroutine mgxsiso_combine(this,mat,nuclides,groups,max_order,scatt_type, &
+                               i_listing)
       class(MgxsIso), intent(inout)       :: this ! The Mgxs to initialize
       type(Material), pointer, intent(in) :: mat  ! base material
       type(MgxsContainer), intent(in)     :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                 :: groups     ! Number of E groups
-      logical, intent(in)                 :: get_kfiss  ! Should we get kfiss data?
-      logical, intent(in)                 :: get_fiss   ! Should we get fiss data?
       integer, intent(in)                 :: max_order  ! Maximum requested order
       integer, intent(in)                 :: scatt_type ! How is data presented
       integer, intent(in)                 :: i_listing  ! Index in listings
@@ -1377,14 +1387,10 @@ module mgxs_header
       this % total = ZERO
       allocate(this % absorption(groups))
       this % absorption = ZERO
-      if (get_fiss) then
-        allocate(this % fission(groups))
-        this % fission = ZERO
-      end if
-      if (get_kfiss) then
-        allocate(this % k_fission(groups))
-        this % k_fission = ZERO
-      end if
+      allocate(this % fission(groups))
+      this % fission = ZERO
+      allocate(this % k_fission(groups))
+      this % k_fission = ZERO
       allocate(this % nu_fission(groups))
       this % nu_fission = ZERO
       allocate(this % chi(groups,groups))
@@ -1410,10 +1416,10 @@ module mgxs_header
             this % chi = this % chi + atom_density * nuc % chi
             this % nu_fission = this % nu_fission + atom_density * &
                  nuc % nu_fission
-            if (get_fiss) then
+            if (allocated(nuc % fission)) then
               this % fission = this % fission + atom_density * nuc % fission
             end if
-            if (get_kfiss) then
+            if (allocated(nuc % k_fission)) then
               this % k_fission = this % k_fission + atom_density * nuc % k_fission
             end if
           end if
@@ -1456,14 +1462,12 @@ module mgxs_header
 
     end subroutine mgxsiso_combine
 
-    subroutine mgxsang_combine(this,mat,nuclides,groups,get_kfiss,get_fiss, &
-         max_order,scatt_type,i_listing)
+    subroutine mgxsang_combine(this,mat,nuclides,groups,max_order,scatt_type,&
+                               i_listing)
       class(MgxsAngle), intent(inout)     :: this ! The Mgxs to initialize
       type(Material), pointer, intent(in) :: mat  ! base material
       type(MgxsContainer), intent(in)     :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                 :: groups     ! Number of E groups
-      logical, intent(in)                 :: get_kfiss  ! Should we get kfiss data?
-      logical, intent(in)                 :: get_fiss   ! Should we get fiss data?
       integer, intent(in)                 :: max_order  ! Maximum requested order
       integer, intent(in)                 :: scatt_type ! Legendre or Tabular Scatt?
       integer, intent(in)                 :: i_listing  ! Index in listings
@@ -1583,14 +1587,10 @@ module mgxs_header
       this % total = ZERO
       allocate(this % absorption(groups,n_azi,n_pol))
       this % absorption = ZERO
-      if (get_fiss) then
-        allocate(this % fission(groups,n_azi,n_pol))
-        this % fission = ZERO
-      end if
-      if (get_kfiss) then
-        allocate(this % k_fission(groups,n_azi,n_pol))
-        this % k_fission = ZERO
-      end if
+      allocate(this % fission(groups,n_azi,n_pol))
+      this % fission = ZERO
+      allocate(this % k_fission(groups,n_azi,n_pol))
+      this % k_fission = ZERO
       allocate(this % nu_fission(groups,n_azi,n_pol))
       this % nu_fission = ZERO
       allocate(this % chi(groups,groups,n_azi,n_pol))
@@ -1618,10 +1618,10 @@ module mgxs_header
             this % chi = this % chi + atom_density * nuc % chi
             this % nu_fission = this % nu_fission + atom_density * &
                  nuc % nu_fission
-            if (get_fiss) then
+            if (allocated(nuc % fission)) then
               this % fission = this % fission + atom_density * nuc % fission
             end if
-            if (get_kfiss) then
+            if (allocated(nuc % k_fission)) then
               this % k_fission = this % k_fission + atom_density * nuc % k_fission
             end if
           end if
@@ -1771,6 +1771,7 @@ module mgxs_header
       xs % total         = this % total(gin)
       xs % elastic       = this % scatter % scattxs(gin)
       xs % absorption    = this % absorption(gin)
+      xs % fission       = this % fission(gin)
       xs % nu_fission    = this % nu_fission(gin)
 
     end subroutine mgxsiso_calculate_xs
@@ -1787,6 +1788,7 @@ module mgxs_header
       xs % total         = this % total(gin,iazi,ipol)
       xs % elastic       = this % scatter(iazi,ipol) % obj % scattxs(gin)
       xs % absorption    = this % absorption(gin,iazi,ipol)
+      xs % fission       = this % fission(gin,iazi,ipol)
       xs % nu_fission    = this % nu_fission(gin,iazi,ipol)
 
     end subroutine mgxsang_calculate_xs

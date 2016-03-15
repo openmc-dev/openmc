@@ -97,6 +97,7 @@ contains
           material_xs % total      = ZERO
           material_xs % elastic    = ZERO
           material_xs % absorption = ZERO
+          material_xs % fission    = ZERO
           material_xs % nu_fission = ZERO
         end if
       end if

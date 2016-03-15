@@ -74,18 +74,6 @@ contains
       call initialize_particle_track()
     endif
 
-    ! Recover particle coordinates for dd runs
-    if (dd_run .and. current_stage > 1) then
-      ! Move particle slightly forward in case particle is on a surface
-      xyz_temp = p % coord(1) % xyz
-      p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
-      call find_cell(p, found_cell)
-      if (.not. found_cell) then
-        call fatal_error("Could not locate particle after crossing domain.")
-      end if
-      p % coord(1) % xyz = xyz_temp
-    end if
-
     EVENT_LOOP: do
       ! If the cell hasn't been determined based on the particle's location,
       ! initiate a search for the current cell. This generally happens at the

@@ -221,6 +221,8 @@ contains
     type(ParticleBuffer), intent(in)  :: buf
     type(Particle),       intent(out) :: part
 
+    call part % initialize()
+
     part % id              = buf % id
     part % type            = buf % type
     part % wgt             = buf % wgt

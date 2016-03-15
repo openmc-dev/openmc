@@ -70,7 +70,8 @@ contains
         if (tallies(i) % score_bins(l) == SCORE_KAPPA_FISSION) then
           get_kfiss = .true.
         end if
-        if (tallies(i) % score_bins(l) == SCORE_FISSION) then
+        if (tallies(i) % score_bins(l) == SCORE_FISSION .or. &
+            tallies(i) % score_bins(l) == SCORE_NU_FISSION) then
           get_fiss = .true.
         end if
       end do
@@ -166,25 +167,7 @@ contains
     integer :: i             ! loop index over nuclides
     integer :: l             ! Loop over score bins
     type(Material), pointer :: mat ! current material
-    logical :: get_kfiss, get_fiss
     integer :: scatt_type
-
-    ! Find out if we need fission & kappa fission
-    ! (i.e., are there any SCORE_FISSION or SCORE_KAPPA_FISSION tallies?)
-    get_kfiss = .false.
-    get_fiss  = .false.
-    do i = 1, n_tallies
-      do l = 1, tallies(i) % n_score_bins
-        if (tallies(i) % score_bins(l) == SCORE_KAPPA_FISSION) then
-          get_kfiss = .true.
-        end if
-        if (tallies(i) % score_bins(l) == SCORE_FISSION) then
-          get_fiss = .true.
-        end if
-      end do
-      if (get_kfiss .and. get_fiss) &
-           exit
-    end do
 
     allocate(macro_xs(n_materials))
 
@@ -204,7 +187,7 @@ contains
         allocate(MgxsAngle :: macro_xs(i_mat) % obj)
       end select
       call macro_xs(i_mat) % obj % combine(mat,nuclides_MG,energy_groups, &
-           get_kfiss,get_fiss,max_order,scatt_type,i_mat)
+                                           max_order,scatt_type,i_mat)
     end do
   end subroutine create_macro_xs
 

@@ -4585,7 +4585,7 @@ contains
       ! If not given, estimate them by using average energy in group which is
       ! assumed to be the midpoint
       do i = 1, energy_groups
-        inverse_velocities(i) = &
+        inverse_velocities(i) = ONE / &
              (sqrt(TWO * energy_bin_avg(i) / (MASS_NEUTRON_MEV)) * &
               C_LIGHT * 100.0_8)
       end do

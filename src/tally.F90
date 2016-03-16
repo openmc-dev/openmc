@@ -898,7 +898,8 @@ contains
 
 
       case (SCORE_INVERSE_VELOCITY)
-        if (t % estimator == ESTIMATOR_ANALOG) then
+        if (t % estimator == ESTIMATOR_ANALOG .or. &
+            t % estimator == ESTIMATOR_COLLISION) then
           ! All events score to an inverse velocity bin. We actually use a
           ! collision estimator in place of an analog one since there is no way
           ! to count 'events' exactly for the inverse velocity
@@ -909,11 +910,11 @@ contains
           else
             score = p % last_wgt
           end if
-          score = score * inverse_velocities(p % last_g)
+          score = score * inverse_velocities(p % last_g) / material_xs % total
 
         else
           ! For inverse velocity, we need no cross section
-          score = score * inverse_velocities(p % g)
+          score = flux * inverse_velocities(p % g)
         end if
 
 

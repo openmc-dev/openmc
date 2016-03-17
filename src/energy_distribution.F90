@@ -1,8 +1,7 @@
 module energy_distribution
 
   use constants,     only: ZERO, ONE, TWO, PI, HISTOGRAM, LINEAR_LINEAR
-  use endf_header,   only: Tab1
-  use interpolation, only: interpolate_tab1
+  use endf_header,   only: Tabulated1D
   use math,          only: maxwell_spectrum, watt_spectrum
   use random_lcg,    only: prn
   use search,        only: binary_search
@@ -95,7 +94,7 @@ module energy_distribution
 !===============================================================================
 
   type, extends(EnergyDistribution) :: MaxwellEnergy
-    type(Tab1) :: theta ! incoming-energy-dependent parameter
+    type(Tabulated1D) :: theta ! incoming-energy-dependent parameter
     real(8) :: u        ! restriction energy
   contains
     procedure :: sample => maxwellenergy_sample
@@ -107,7 +106,7 @@ module energy_distribution
 !===============================================================================
 
   type, extends(EnergyDistribution) :: Evaporation
-    type(Tab1) :: theta
+    type(Tabulated1D) :: theta
     real(8) :: u
   contains
     procedure :: sample => evaporation_sample
@@ -119,8 +118,8 @@ module energy_distribution
 !===============================================================================
 
   type, extends(EnergyDistribution) :: WattEnergy
-    type(Tab1) :: a
-    type(Tab1) :: b
+    type(Tabulated1D) :: a
+    type(Tabulated1D) :: b
     real(8) :: u
   contains
     procedure :: sample => watt_sample
@@ -317,7 +316,7 @@ contains
     real(8) :: theta ! Maxwell distribution parameter
 
     ! Get temperature corresponding to incoming energy
-    theta = interpolate_tab1(this%theta, E_in)
+    theta = this % theta % evaluate(E_in)
 
     do
       ! Sample maxwell fission spectrum
@@ -337,7 +336,7 @@ contains
     real(8) :: x, y, v
 
     ! Get temperature corresponding to incoming energy
-    theta = interpolate_tab1(this%theta, E_in)
+    theta = this % theta % evaluate(E_in)
 
     y = (E_in - this%u)/theta
     v = 1 - exp(-y)
@@ -360,10 +359,10 @@ contains
     real(8) :: a, b ! Watt spectrum parameters
 
     ! Determine Watt parameter 'a' from tabulated function
-    a = interpolate_tab1(this%a, E_in)
+    a = this % a % evaluate(E_in)
 
     ! Determine Watt parameter 'b' from tabulated function
-    b = interpolate_tab1(this%b, E_in)
+    b = this % b % evaluate(E_in)
 
     do
       ! Sample energy-dependent Watt fission spectrum

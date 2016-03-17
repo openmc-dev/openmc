@@ -3,7 +3,6 @@ module cross_section
   use constants
   use energy_grid,     only: grid_method, log_spacing
   use error,           only: fatal_error
-  use fission,         only: nu_total
   use global
   use list_header,     only: ListElemInt
   use material_header, only: Material
@@ -485,7 +484,7 @@ contains
 
       ! Determine nu-fission cross section
       if (nuc % fissionable) then
-        micro_xs(i_nuclide) % nu_fission = nu_total(nuc, E) * &
+        micro_xs(i_nuclide) % nu_fission = nuc % nu(E, EMISSION_TOTAL) * &
              micro_xs(i_nuclide) % fission
       end if
     end associate

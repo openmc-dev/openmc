@@ -1,9 +1,9 @@
 module product_header
 
   use angleenergy_header, only: AngleEnergyContainer
-  use constants, only: ZERO
-  use endf_header, only: Tab1
-  use interpolation, only: interpolate_tab1
+  use constants, only: ZERO, MAX_WORD_LEN, EMISSION_PROMPT, EMISSION_DELAYED, &
+       EMISSION_TOTAL, NEUTRON, PHOTON
+  use endf_header, only: Tabulated1D, Function1D, Constant1D, Polynomial
   use random_lcg, only: prn
 
 !===============================================================================
@@ -15,10 +15,11 @@ module product_header
 !===============================================================================
 
   type :: ReactionProduct
-    integer :: yield                    ! Number of secondary particles released
-    logical :: yield_with_E = .false.   ! Flag to indicate E-dependent yield
-    type(Tab1), pointer :: yield_E => null()  ! Energy-dependent neutron yield
-    type(Tab1), allocatable :: applicability(:)
+    integer :: particle
+    integer :: emission_mode            ! prompt, delayed, or total emission
+    real(8) :: decay_rate               ! Decay rate for delayed neutron precursors
+    class(Function1D), pointer :: yield => null()  ! Energy-dependent neutron yield
+    type(Tabulated1D), allocatable :: applicability(:)
     type(AngleEnergyContainer), allocatable :: distribution(:)
   contains
     procedure :: sample => reactionproduct_sample
@@ -43,7 +44,7 @@ contains
       c = prn()
       do i = 1, n
         ! Determine probability that i-th energy distribution is sampled
-        prob = prob + interpolate_tab1(this%applicability(i), E_in)
+        prob = prob + this % applicability(i) % evaluate(E_in)
 
         ! If i-th distribution is sampled, sample energy from the distribution
         if (c <= prob) then

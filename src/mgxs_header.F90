@@ -1103,7 +1103,7 @@ module mgxs_header
 ! MGXS*_GET_XS returns the requested data cross section data
 !===============================================================================
 
-    function mgxsiso_get_xs(this, xstype, gin, gout, uvw, mu) result(xs)
+    pure function mgxsiso_get_xs(this, xstype, gin, gout, uvw, mu) result(xs)
       class(MgxsIso), intent(in)    :: this   ! The Mgxs to initialize
       character(*) , intent(in)     :: xstype ! Type of xs requested
       integer, intent(in)           :: gin    ! Incoming Energy group
@@ -1191,7 +1191,7 @@ module mgxs_header
 
     end function mgxsiso_get_xs
 
-    function mgxsang_get_xs(this, xstype, gin, gout, uvw, mu) result(xs)
+    pure function mgxsang_get_xs(this, xstype, gin, gout, uvw, mu) result(xs)
       class(MgxsAngle), intent(in)  :: this   ! The Mgxs to initialize
       character(*) , intent(in)     :: xstype ! Type of xs requested
       integer, intent(in)           :: gin    ! Incoming Energy group

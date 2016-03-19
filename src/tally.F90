@@ -949,7 +949,7 @@ contains
           if (p % event /= EVENT_SCATTER) then
             if (score_bin == SCORE_SCATTER_PN) then
               i = i + t % moment_order(i)
-            else
+            else if (score_bin == SCORE_SCATTER_YN) then
               i = i + (t % moment_order(i) + 1)**2 - 1
             end if
             cycle SCORE_LOOP
@@ -967,15 +967,16 @@ contains
           end if
 
         else
-          ! Note SCORE_SCATTER_N not available for tracklength/collision.
+          ! Note SCORE_SCATTER_*N not available for tracklength/collision.
           if (i_nuclide > 0) then
-            score = nucxs % get_xs('scatter',p_g,UVW=p_uvw) * &
-                 atom_density * flux / &
+            score = atom_density * flux * &
+                 nucxs % get_xs('scatter',p_g,UVW=p_uvw) / &
                  nucxs % get_xs('mult',p_g,UVW=p_uvw)
           else
-            ! Get the scattering x/s (stored in % elastic) and take away
+            ! Get the scattering x/s and take away
             ! the multiplication baked in to sigS
-            score = material_xs % elastic * flux / &
+            score = flux * &
+                 matxs % get_xs('scatter',p_g,UVW=p_uvw) / &
                  matxs % get_xs('mult',p_g,UVW=p_uvw)
           end if
         end if
@@ -1006,14 +1007,13 @@ contains
           end if
 
         else
-          ! Note SCORE_NU_SCATTER_* not available for tracklength/collision.
+          ! Note SCORE_NU_SCATTER_*N not available for tracklength/collision.
           if (i_nuclide > 0) then
               score = nucxs % get_xs('scatter',p_g,UVW=p_uvw) * &
                    atom_density * flux
           else
-            ! Get the scattering x/s (stored in % elastic) and take away
-            ! the multiplication baked in to sigS
-            score = material_xs % elastic * flux
+            ! Get the scattering x/s, which includes multiplication
+            score = matxs % get_xs('scatter',p_g,UVW=p_uvw) * flux
           end if
         end if
 

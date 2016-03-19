@@ -899,18 +899,13 @@ contains
             ! We need to account for the fact that some weight was already
             ! absorbed
             score = p % last_wgt + p % absorb_wgt
-            if (i_nuclide > 0) then
-              score = score * atom_density * &
-                   nucxs % get_xs('total',p_g,UVW=p_uvw) / &
-                   matxs % get_xs('total',p_g,UVW=p_uvw)
-            end if
           else
             score = p % last_wgt
-            if (i_nuclide > 0) then
-              score = score * atom_density * &
-                   nucxs % get_xs('total',p_g,UVW=p_uvw) / &
-                   matxs % get_xs('total',p_g,UVW=p_uvw)
-            end if
+          end if
+          if (i_nuclide > 0) then
+            score = score * atom_density * &
+                 nucxs % get_xs('total',p_g,UVW=p_uvw) / &
+                 matxs % get_xs('total',p_g,UVW=p_uvw)
           end if
 
         else
@@ -960,24 +955,25 @@ contains
           ! reaction rate
           score = p % last_wgt
 
+          ! Since we transport based on material data, the angle selected
+          ! was not selected from the f(mu) for the nuclide.  Therefore
+          ! adjust the score by the actual probability for that nuclide.
           if (i_nuclide > 0) then
             score = score * atom_density * &
-                 nucxs % get_xs('f_mu',p % last_g,p % g,UVW=p_uvw,MU=p % mu) / &
-                 matxs % get_xs('f_mu',p % last_g,p % g,UVW=p_uvw,MU=p % mu)
+                 nucxs % get_xs('scatter*f_mu/mult',p % last_g,p % g,UVW=p_uvw,MU=p % mu) / &
+                 matxs % get_xs('scatter*f_mu/mult',p % last_g,p % g,UVW=p_uvw,MU=p % mu)
           end if
 
         else
           ! Note SCORE_SCATTER_*N not available for tracklength/collision.
           if (i_nuclide > 0) then
             score = atom_density * flux * &
-                 nucxs % get_xs('scatter',p_g,UVW=p_uvw) / &
-                 nucxs % get_xs('mult',p_g,UVW=p_uvw)
+                 nucxs % get_xs('scatter/mult',p_g,UVW=p_uvw)
           else
             ! Get the scattering x/s and take away
             ! the multiplication baked in to sigS
             score = flux * &
-                 matxs % get_xs('scatter',p_g,UVW=p_uvw) / &
-                 matxs % get_xs('mult',p_g,UVW=p_uvw)
+                 matxs % get_xs('scatter/mult',p_g,UVW=p_uvw)
           end if
         end if
 
@@ -1000,10 +996,13 @@ contains
           ! neutrons exiting a reaction with neutrons in the exit channel
           score = p % wgt
 
+          ! Since we transport based on material data, the angle selected
+          ! was not selected from the f(mu) for the nuclide.  Therefore
+          ! adjust the score by the actual probability for that nuclide.
           if (i_nuclide > 0) then
             score = score * atom_density * &
-                 nucxs % get_xs('f_mu',p % last_g,p % g,UVW=p_uvw,MU=p % mu) / &
-                 matxs % get_xs('f_mu',p % last_g,p % g,UVW=p_uvw,MU=p % mu)
+                 nucxs % get_xs('scatter*f_mu',p % last_g,p % g,UVW=p_uvw,MU=p % mu) / &
+                 matxs % get_xs('scatter*f_mu',p % last_g,p % g,UVW=p_uvw,MU=p % mu)
           end if
 
         else
@@ -1038,24 +1037,18 @@ contains
             ! No absorption events actually occur if survival biasing is on --
             ! just use weight absorbed in survival biasing
             score = p % absorb_wgt
-            if (i_nuclide > 0) then
-              score = score * atom_density * &
-                   nucxs % get_xs('absorption',p_g,UVW=p_uvw) / &
-                   matxs % get_xs('absorption',p_g,UVW=p_uvw)
-            end if
           else
             ! Skip any event where the particle wasn't absorbed
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission and absorption events will contribute here, so we
             ! can just use the particle's weight entering the collision
             score = p % last_wgt
-            if (i_nuclide > 0) then
-              score = score * atom_density * &
-                   nucxs % get_xs('absorption',p_g,UVW=p_uvw) / &
-                   material_xs % absorption
-            end if
           end if
-
+          if (i_nuclide > 0) then
+            score = score * atom_density * &
+                 nucxs % get_xs('absorption',p_g,UVW=p_uvw) / &
+                 matxs % get_xs('absorption',p_g,UVW=p_uvw)
+          end if
         else
           if (i_nuclide > 0) then
             score = nucxs % get_xs('absorption',p_g,UVW=p_uvw) * &
@@ -1072,32 +1065,24 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! fission
-            if (i_nuclide > 0) then
-              score = p % absorb_wgt * atom_density * &
-                   nucxs % get_xs('fission',   p_g,UVW=p_uvw) / &
-                   matxs % get_xs('absorption',p_g,UVW=p_uvw)
-            else
-              score = p % absorb_wgt * &
-                   matxs % get_xs('fission',   p_g,UVW=p_uvw) / &
-                   matxs % get_xs('absorption',p_g,UVW=p_uvw)
-            end if
+            score = p % absorb_wgt
           else
             ! Skip any non-absorption events
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission events will contribute, so again we can use
             ! particle's weight entering the collision as the estimate for the
             ! fission reaction rate
-            if (i_nuclide > 0) then
-              score = p % last_wgt * atom_density * &
+            score = p % last_wgt
+          end if
+          if (i_nuclide > 0) then
+              score = score * atom_density * &
                    nucxs % get_xs('fission',   p_g,UVW=p_uvw) / &
                    matxs % get_xs('absorption',p_g,UVW=p_uvw)
             else
-              score = p % last_wgt * &
+              score = score * &
                    matxs % get_xs('fission',   p_g,UVW=p_uvw) / &
                    matxs % get_xs('absorption',p_g,UVW=p_uvw)
             end if
-          end if
-
         else
           if (i_nuclide > 0) then
             score = nucxs % get_xs('fission',p_g,UVW=p_uvw) * &
@@ -1126,12 +1111,13 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! nu-fission
+            score = p % absorb_wgt
             if (i_nuclide > 0) then
-              score = p % absorb_wgt * atom_density * &
+              score = score * atom_density * &
                    nucxs % get_xs('nu_fission',p_g,UVW=p_uvw) / &
                    matxs % get_xs('absorption',p_g,UVW=p_uvw)
             else
-              score = p % absorb_wgt * &
+              score = score * &
                    matxs % get_xs('nu_fission',p_g,UVW=p_uvw) / &
                    matxs % get_xs('absorption',p_g,UVW=p_uvw)
             end if
@@ -1167,32 +1153,24 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! fission
-            if (i_nuclide > 0) then
-              score = p % absorb_wgt * atom_density * &
-                   nucxs % get_xs('kappa_fission',p_g,UVW=p_uvw) / &
-                   matxs % get_xs('absorption',   p_g,UVW=p_uvw)
-            else
-              score = p % absorb_wgt * &
-                   matxs % get_xs('kappa_fission',p_g,UVW=p_uvw) / &
-                   matxs % get_xs('absorption',   p_g,UVW=p_uvw)
-            end if
+            score = p % absorb_wgt
           else
             ! Skip any non-absorption events
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission events will contribute, so again we can use
             ! particle's weight entering the collision as the estimate for the
             ! fission reaction rate
-            if (i_nuclide > 0) then
-              score = p % last_wgt * &
-                   nucxs % get_xs('kappa_fission',p_g,UVW=p_uvw) * &
-                   atom_density / material_xs % absorption
-            else
-              score = p % last_wgt * &
-                   matxs % get_xs('kappa_fission',p_g,UVW=p_uvw) / &
-                   material_xs % absorption
-            end if
+            score = p % last_wgt
           end if
-
+          if (i_nuclide > 0) then
+            score = score * atom_density * &
+                 nucxs % get_xs('kappa_fission',p_g,UVW=p_uvw) / &
+                 matxs % get_xs('absorption',   p_g,UVW=p_uvw)
+          else
+            score = score * &
+                 matxs % get_xs('kappa_fission',p_g,UVW=p_uvw) / &
+                 matxs % get_xs('absorption',   p_g,UVW=p_uvw)
+          end if
         else
           if (i_nuclide > 0) then
             score = flux * nucxs % get_xs('kappa_fission',p_g,UVW=p_uvw) * &

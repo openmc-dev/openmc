@@ -71,7 +71,7 @@ contains
           get_kfiss = .true.
         end if
         if (tallies(i) % score_bins(l) == SCORE_FISSION .or. &
-            tallies(i) % score_bins(l) == SCORE_NU_FISSION) then
+             tallies(i) % score_bins(l) == SCORE_NU_FISSION) then
           get_fiss = .true.
         end if
       end do

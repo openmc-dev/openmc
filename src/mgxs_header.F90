@@ -72,7 +72,7 @@ module mgxs_header
       integer, optional, intent(in) :: unit
     end subroutine mgxs_print_
 
-    function mgxs_get_xs_(this,xstype,gin,gout,uvw,mu) result(xs)
+    pure function mgxs_get_xs_(this,xstype,gin,gout,uvw,mu) result(xs)
       import Mgxs
       class(Mgxs), intent(in)       :: this
       character(*), intent(in)      :: xstype ! Cross Section Type
@@ -1150,20 +1150,6 @@ module mgxs_header
         else
           xs = this % scatter % scattxs(gin)
         end if
-      case('mult')
-        if (present(gout)) then
-          if (gout < this % scatter % gmin(gin) .or. &
-               gout > this % scatter % gmax(gin)) then
-            xs = ZERO
-          else
-            xs = this % scatter % mult(gin) % data(gout)
-          end if
-        else
-          xs = dot_product(this % scatter % mult(gin) % data, &
-                           this % scatter % scattxs(gin) * &
-                           this % scatter % energy(gin) % data)
-          xs = xs / this % scatter % scattxs(gin)
-        end if
       case('scatter/mult')
         if (present(gout)) then
           if (gout < this % scatter % gmin(gin) .or. &
@@ -1175,28 +1161,9 @@ module mgxs_header
                  this % scatter % mult(gin) % data(gout)
           end if
         else
-          xs = this % scatter % scattxs(gin) * this % scatter % scattxs(gin) / &
+          xs = this % scatter % scattxs(gin) / &
                (dot_product(this % scatter % mult(gin) % data, &
-                this % scatter % scattxs(gin) * &
                 this % scatter % energy(gin) % data))
-        end if
-      case('f_mu', 'f_mu/mult')
-        if (present(gout) .and. present(mu)) then
-          if (gout < this % scatter % gmin(gin) .or. &
-               gout > this % scatter % gmax(gin)) then
-            xs = ZERO
-          else
-            xs = this % scatter % calc_f(gin, gout, mu)
-            if (xstype == 'f_mu/mult') then
-              xs = xs / this % scatter % mult(gin) % data(gout)
-            end if
-          end if
-        else
-          xs = ZERO
-          ! TODO (Not likely needed)
-          ! (asking for f_mu without asking for a group or mu would mean the
-          ! user of this code wants the complete 1-outgoing group distribution
-          ! which Im not sure what they would do with that.
         end if
       case('scatter*f_mu/mult','scatter*f_mu')
         if (present(gout)) then
@@ -1275,20 +1242,6 @@ module mgxs_header
           else
             xs = this % scatter(iazi,ipol) % obj % scattxs(gin)
           end if
-        case('mult')
-          if (present(gout)) then
-            if (gout < this % scatter(iazi,ipol) % obj % gmin(gin) .or. &
-                 gout > this % scatter(iazi,ipol) % obj % gmax(gin)) then
-              xs = ZERO
-            else
-              xs = this % scatter(iazi,ipol) % obj % mult(gin) % data(gout)
-            end if
-          else
-            xs = dot_product(this % scatter(iazi,ipol) % obj % mult(gin) % data, &
-                 this % scatter(iazi,ipol) % obj % scattxs(gin) * &
-                 this % scatter(iazi,ipol) % obj % energy(gin) % data)
-            xs = xs / this % scatter(iazi,ipol) % obj % scattxs(gin)
-          end if
         case('scatter/mult')
           if (present(gout)) then
             if (gout < this % scatter(iazi,ipol) % obj % gmin(gin) .or. &
@@ -1300,30 +1253,9 @@ module mgxs_header
                    this % scatter(iazi,ipol) % obj % mult(gin) % data(gout)
             end if
           else
-            xs = this % scatter(iazi,ipol) % obj % scattxs(gin) * &
-                 this % scatter(iazi,ipol) % obj % scattxs(gin) / &
+            xs = this % scatter(iazi,ipol) % obj % scattxs(gin) / &
                  (dot_product(this % scatter(iazi,ipol) % obj % mult(gin) % data, &
-                  this % scatter(iazi,ipol) % obj % scattxs(gin) * &
                   this % scatter(iazi,ipol) % obj % energy(gin) % data))
-          end if
-        case('f_mu', 'f_mu/mult')
-          if (present(gout) .and. present(mu)) then
-            if (gout < this % scatter(iazi,ipol) % obj % gmin(gin) .or. &
-                 gout > this % scatter(iazi,ipol) % obj % gmax(gin)) then
-              xs = ZERO
-            else
-              xs = this % scatter(iazi,ipol) % obj % calc_f(gin, gout, mu)
-              if (xstype == 'f_mu/mult') then
-                xs = xs / &
-                     this % scatter(iazi,ipol) % obj % mult(gin) % data(gout)
-              end if
-            end if
-          else
-            xs = ZERO
-            ! TODO (Not likely needed)
-            ! (asking for f_mu without asking for a group or mu would mean the
-            ! user of this code wants the complete 1-outgoing group distribution
-            ! which Im not sure what they would do with that.
           end if
         case('scatter*f_mu/mult','scatter*f_mu')
           if (present(gout)) then

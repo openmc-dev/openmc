@@ -819,7 +819,7 @@ contains
     ! Set the direction and group to use with get_xs
     ! this only depends on if we
     if (t % estimator == ESTIMATOR_ANALOG .or. &
-        t % estimator == ESTIMATOR_COLLISION) then
+         t % estimator == ESTIMATOR_COLLISION) then
       if (survival_biasing) then
         ! Then we either are alive and had a scatter (and so g changed),
         ! or are dead and g did not change
@@ -919,7 +919,7 @@ contains
 
       case (SCORE_INVERSE_VELOCITY)
         if (t % estimator == ESTIMATOR_ANALOG .or. &
-            t % estimator == ESTIMATOR_COLLISION) then
+             t % estimator == ESTIMATOR_COLLISION) then
           ! All events score to an inverse velocity bin. We actually use a
           ! collision estimator in place of an analog one since there is no way
           ! to count 'events' exactly for the inverse velocity

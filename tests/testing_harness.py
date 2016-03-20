@@ -117,6 +117,7 @@ class TestHarness(object):
             sha512.update(outstr.encode('utf-8'))
             outstr = sha512.hexdigest()
 
+        print(outstr)
         return outstr
 
     def _write_results(self, results_string):

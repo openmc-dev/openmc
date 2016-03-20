@@ -9,7 +9,6 @@ import re
 import glob
 import socket
 from subprocess import call, check_output
-import subprocess
 from collections import OrderedDict
 from optparse import OptionParser
 
@@ -197,8 +196,8 @@ class Test(object):
         else:
             os.environ['HDF5_ROOT'] = HDF5_DIR
         # rc = call(['ctest', '-S', 'ctestscript.run','-V'])
-        rc = check_output(['ctest', '-S', 'ctestscript.run','-V'])
-        print(rc)
+        rc = call(['ctest', '-S', 'ctestscript.run','-VV',
+                  '--output-on-failure'])
         if rc != 0:
             self.success = False
             self.msg = 'Failed on ctest script.'
@@ -233,8 +232,7 @@ class Test(object):
             make_list.append(options.n_procs)
 
         # Run make
-        rc = check_output(make_list)
-        print(rc)
+        rc = call(make_list)
         if rc != 0:
             self.success = False
             self.msg = 'Failed on make.'
@@ -259,8 +257,6 @@ class Test(object):
 
         # Run ctests
         rc = call(ctest_list)
-        rc = check_output(ctest_list)
-        print(rc)
         if rc != 0:
             self.success = False
             self.msg = 'Failed on testing.'

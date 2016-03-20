@@ -230,7 +230,10 @@ class Test(object):
             make_list.append(options.n_procs)
 
         # Run make
-        rc = call(make_list)
+        # rc = call(make_list)
+        rc = check_output(make_list, stderr=subprocess.STDOUT)
+        print(rc)
+        rc = 0
         if rc != 0:
             self.success = False
             self.msg = 'Failed on make.'

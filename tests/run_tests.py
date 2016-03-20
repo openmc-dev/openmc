@@ -9,6 +9,7 @@ import re
 import glob
 import socket
 from subprocess import call, check_output
+import subprocess
 from collections import OrderedDict
 from optparse import OptionParser
 
@@ -230,7 +231,8 @@ class Test(object):
             make_list.append(options.n_procs)
 
         # Run make
-        rc = call(make_list)
+        rc = check_output(make_list)
+        print(rc)
         if rc != 0:
             self.success = False
             self.msg = 'Failed on make.'
@@ -467,9 +469,6 @@ for key in iter(tests):
         logfilename = os.path.splitext(logfilename)[0]
         logfilename = logfilename + '_{0}.log'.format(test.name)
         shutil.copy(logfile[0], logfilename)
-        f = open(logfilename, 'r')
-        for line in f:
-            print(line)
 
     # For coverage builds, use lcov to generate HTML output
     if test.coverage:

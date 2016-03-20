@@ -195,9 +195,7 @@ class Test(object):
             os.environ['HDF5_ROOT'] = PHDF5_DIR
         else:
             os.environ['HDF5_ROOT'] = HDF5_DIR
-        # rc = call(['ctest', '-S', 'ctestscript.run','-V'])
-        rc = call(['ctest', '-S', 'ctestscript.run','-VV',
-                  '--output-on-failure'])
+        rc = call(['ctest', '-S', 'ctestscript.run','-V'])
         if rc != 0:
             self.success = False
             self.msg = 'Failed on ctest script.'

@@ -378,12 +378,6 @@ contains
 
       ! sample probability table using the cumulative distribution
 
-      ! determine interpolation factor on table
-      f = (E - urr % energy(i_energy)) / &
-           (urr % energy(i_energy + 1) - urr % energy(i_energy))
-
-      ! sample probability table using the cumulative distribution
-
       ! Random numbers for xs calculation are sampled from a separated stream.
       ! This guarantees the randomness and, at the same time, makes sure we reuse
       ! random number for the same nuclide at different temperatures, therefore

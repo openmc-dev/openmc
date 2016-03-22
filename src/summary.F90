@@ -4,7 +4,7 @@ module summary
   use constants
   use endf,            only: reaction_name
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
-                             &HexLattice
+                             &HexLattice, BASE_UNIVERSE
   use global
   use hdf5_interface
   use material_header, only: Material
@@ -14,6 +14,8 @@ module summary
   use surface_header
   use string,          only: to_str
   use tally_header,    only: TallyObject
+  use output,          only: find_offset, write_message
+  use string,          only: to_str
 
   use hdf5
 
@@ -534,6 +536,10 @@ contains
     type(RegularMesh), pointer :: m
     type(TallyObject), pointer :: t
 
+    integer                     :: offset   ! distibcell offset
+    character(100), allocatable :: paths(:) ! array of distribcell paths
+    character(100)              :: path    ! temporary distribcell path
+
     tallies_group = create_group(file_id, "tallies")
 
     ! Write total number of meshes
@@ -589,6 +595,21 @@ contains
              t%filters(j)%type == FILTER_POLAR .or. &
              t%filters(j)%type == FILTER_AZIMUTHAL) then
           call write_dataset(filter_group, "bins", t%filters(j)%real_bins)
+
+        ! Write paths to reach each distribcell instance
+        else if (t%filters(j)%type == FILTER_DISTRIBCELL) then
+           ! Allocate array of strings for each distribcell path
+           allocate(paths(t % filters(j) % n_bins))
+           ! Store path for each distribcell instance
+           do k = 1, t % filters(j) % n_bins
+              path = ''
+              offset = 0
+              call find_offset(t % filters(j) % int_bins(1), &
+                   universes(BASE_UNIVERSE), k, offset, path)
+              paths(k) = path
+           end do
+           call write_dataset(filter_group, "paths", paths)
+           deallocate(paths)
         else
           call write_dataset(filter_group, "bins", t%filters(j)%int_bins)
         end if

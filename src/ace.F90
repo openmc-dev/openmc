@@ -1,23 +1,24 @@
 module ace
 
-  use ace_header, only: Reaction
+  use angleenergy_header, only: AngleEnergy
   use constants
   use distribution_univariate, only: Uniform, Equiprobable, Tabular
   use endf, only: is_fission, is_disappearance
+  use endf_header, only: Constant1D, Tabulated1D, Polynomial
   use energy_distribution, only: TabularEquiprobable, LevelInelastic, &
-       ContinuousTabular, MaxwellEnergy, Evaporation, WattEnergy, NBodyPhaseSpace
+       ContinuousTabular, MaxwellEnergy, Evaporation, WattEnergy
   use error, only: fatal_error, warning
-  use fission, only: nu_total
   use global
   use list_header, only: ListInt
   use material_header, only: Material
   use nuclide_header
   use output, only: write_message
+  use product_header, only: ReactionProduct
   use sab_header
   use set_header, only: SetChar
-  use secondary_header, only: AngleEnergy
   use secondary_correlated, only: CorrelatedAngleEnergy
   use secondary_kalbach, only: KalbachMann
+  use secondary_nbody, only: NBodyPhaseSpace
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use string, only: to_str, to_lower
 
@@ -225,10 +226,10 @@ contains
 
     ! Show which nuclide results in lowest energy for neutron transport
     do i = 1, n_nuclides_total
-      if (nuclides(i)%energy(nuclides(i)%n_grid) == energy_max_neutron) then
+      if (nuclides(i) % energy(nuclides(i) % n_grid) == energy_max_neutron) then
         call write_message("Maximum neutron transport energy: " // &
              trim(to_str(energy_max_neutron)) // " MeV for " // &
-             trim(adjustl(nuclides(i)%name)), 6)
+             trim(adjustl(nuclides(i) % name)), 6)
         exit
       end if
     end do
@@ -378,8 +379,8 @@ contains
       if (data_0K) then
         continue
       else
-        call read_nu_data(nuc)
         call read_reactions(nuc)
+        call read_nu_data(nuc)
         call read_energy_dist(nuc)
         call read_angular_dist(nuc)
         call read_unr_res(nuc)
@@ -512,198 +513,209 @@ contains
   subroutine read_nu_data(nuc)
     type(NuclideCE), intent(inout) :: nuc
 
-    integer :: i      ! loop index
-    integer :: JXS2   ! location for fission nu data
-    integer :: JXS24  ! location for delayed neutron data
+    integer :: i, j   ! loop index
+    integer :: idx    ! index in XSS
     integer :: KNU    ! location for nu data
     integer :: LNU    ! type of nu data (polynomial or tabular)
-    integer :: NC     ! number of polynomial coefficients
     integer :: NR     ! number of interpolation regions
     integer :: NE     ! number of energies
     integer :: NPCR   ! number of delayed neutron precursor groups
-    integer :: LED    ! location of energy distribution locators
-    integer :: LDIS   ! location of all energy distributions
     integer :: LOCC   ! location of energy distributions for given MT
     integer :: LAW
     integer :: IDAT
-    integer :: lc     ! locator
-    integer :: length ! length of data to allocate
+    real(8) :: total_group_probability
+    type(Tabulated1D) :: yield_delayed
+    type(Tabulated1D) :: group_probability
 
-    JXS2  = JXS(2)
-    JXS24 = JXS(24)
-
-    if (JXS2 == 0) then
-      ! =======================================================================
-      ! NO PROMPT/TOTAL NU DATA
-      nuc % nu_t_type = NU_NONE
-      nuc % nu_p_type = NU_NONE
-
-    elseif (XSS(JXS2) > 0) then
-      ! =======================================================================
-      ! PROMPT OR TOTAL NU DATA
-      KNU = JXS2
-      LNU = int(XSS(KNU))
-      if (LNU == 1) then
-        ! Polynomial data
-        nuc % nu_t_type = NU_POLYNOMIAL
-        nuc % nu_p_type = NU_NONE
-
-        ! allocate determine how many coefficients for polynomial
-        NC = int(XSS(KNU+1))
-        length = NC + 1
-      elseif (LNU == 2) then
-        ! Tabular data
-        nuc % nu_t_type = NU_TABULAR
-        nuc % nu_p_type = NU_NONE
-
-        ! determine number of interpolation regions and number of energies
-        NR = int(XSS(KNU+1))
-        NE = int(XSS(KNU+2+2*NR))
-        length = 2 + 2*NR + 2*NE
-      end if
-
-      ! allocate space for nu data storage
-      allocate(nuc % nu_t_data(length))
-
-      ! read data -- for polynomial, this is the number of coefficients and the
-      ! coefficients themselves, and for tabular, this is interpolation data
-      ! and tabular E/nu
-      XSS_index = KNU + 1
-      nuc % nu_t_data = get_real(length)
-
-    elseif (XSS(JXS2) < 0) then
-      ! =======================================================================
-      ! PROMPT AND TOTAL NU DATA -- read prompt data first
-      KNU = JXS2 + 1
-      LNU = int(XSS(KNU))
-      if (LNU == 1) then
-        ! Polynomial data
-        nuc % nu_p_type = NU_POLYNOMIAL
-
-        ! allocate determine how many coefficients for polynomial
-        NC = int(XSS(KNU+1))
-        length = NC + 1
-      elseif (LNU == 2) then
-        ! Tabular data
-        nuc % nu_p_type = NU_TABULAR
-
-        ! determine number of interpolation regions and number of energies
-        NR = int(XSS(KNU+1))
-        NE = int(XSS(KNU+2+2*NR))
-        length = 2 + 2*NR + 2*NE
-      end if
-
-      ! allocate space for nu data storage
-      allocate(nuc % nu_p_data(length))
-
-      ! read data
-      XSS_index = KNU + 1
-      nuc % nu_p_data = get_real(length)
-
-      ! Now read total nu data
-      KNU = JXS2 + int(abs(XSS(JXS2))) + 1
-      LNU = int(XSS(KNU))
-      if (LNU == 1) then
-        ! Polynomial data
-        nuc % nu_t_type = NU_POLYNOMIAL
-
-        ! allocate determine how many coefficients for polynomial
-        NC = int(XSS(KNU+1))
-        length = NC + 1
-      elseif (LNU == 2) then
-        ! Tabular data
-        nuc % nu_t_type = NU_TABULAR
-
-        ! determine number of interpolation regions and number of energies
-        NR = int(XSS(KNU+1))
-        NE = int(XSS(KNU+2+2*NR))
-        length = 2 + 2*NR + 2*NE
-      end if
-
-      ! allocate space for nu data storage
-      allocate(nuc % nu_t_data(length))
-
-      ! read data
-      XSS_index = KNU + 1
-      nuc % nu_t_data = get_real(length)
+    if (JXS(2) == 0) then
+      ! Nuclide is not fissionable
+      return
     end if
 
-    if (JXS24 > 0) then
-      ! =======================================================================
-      ! DELAYED NU DATA
-
-      nuc % nu_d_type = NU_TABULAR
-      KNU = JXS24
-
-      ! determine size of tabular delayed nu data
-      NR = int(XSS(KNU+1))
-      NE = int(XSS(KNU+2+2*NR))
-      length = 2 + 2*NR + 2*NE
-
-      ! allocate space for delayed nu data
-      allocate(nuc % nu_d_data(length))
-
-      ! read delayed nu data
-      XSS_index = KNU + 1
-      nuc % nu_d_data = get_real(length)
-
-      ! =======================================================================
-      ! DELAYED NEUTRON ENERGY DISTRIBUTION
-
-      ! Allocate space for secondary energy distribution
+    ! Determine number of delayed neutron precursors
+    if (JXS(24) > 0) then
       NPCR = NXS(8)
+    else
+      NPCR = 0
+    end if
+    nuc % n_precursor = NPCR
 
-      ! Check to make sure nuclide does not have more than the maximum number
-      ! of delayed groups
-      if (NPCR > MAX_DELAYED_GROUPS) then
-        call fatal_error("Encountered nuclide with " // trim(to_str(NPCR)) &
-             // " delayed groups while the maximum number of delayed groups &
-             &set in constants.F90 is " // trim(to_str(MAX_DELAYED_GROUPS)))
+    ! Check to make sure nuclide does not have more than the maximum number
+    ! of delayed groups
+    if (NPCR > MAX_DELAYED_GROUPS) then
+      call fatal_error("Encountered nuclide with " // trim(to_str(NPCR)) &
+           // " delayed groups while the maximum number of delayed groups is " &
+           // trim(to_str(MAX_DELAYED_GROUPS)))
+    end if
+
+    associate (rx => nuc % reactions(nuc % index_fission(1)))
+      ! Allocate space for prompt/delayed neutron products
+      allocate(rx % products(1 + NPCR))
+      rx % products(:) % particle = NEUTRON
+
+      if (XSS(JXS(2)) > 0) then
+        ! =======================================================================
+        ! PROMPT OR TOTAL NU DATA
+
+        ! If delayed data is present, then prompt data must be present. Otherwise
+        ! the product represents 'total' neutron emission
+        if (JXS(24) > 0) then
+          rx % products(1) % emission_mode = EMISSION_PROMPT
+        else
+          rx % products(1) % emission_mode = EMISSION_TOTAL
+        end if
+
+        KNU = JXS(2)
+        LNU = nint(XSS(KNU))
+        if (LNU == 1) then
+          ! Polynomial data
+          allocate(Polynomial :: rx % products(1) % yield)
+
+          ! determine order of polynomial and read coefficients
+          select type (yield => rx % products(1) % yield)
+          type is (Polynomial)
+            call yield % from_ace(XSS, KNU + 1)
+          end select
+
+        elseif (LNU == 2) then
+          ! Tabulated data
+          allocate(Tabulated1D :: rx % products(1) % yield)
+
+          select type(yield => rx % products(1) % yield)
+          type is (Tabulated1D)
+            call yield % from_ace(XSS, KNU + 1)
+          end select
+
+        end if
+
+      elseif (XSS(JXS(2)) < 0) then
+        ! =======================================================================
+        ! PROMPT AND TOTAL NU DATA
+
+        rx % products(1) % emission_mode = EMISSION_PROMPT
+
+        KNU = JXS(2) + 1
+        LNU = nint(XSS(KNU))
+        if (LNU == 1) then
+          ! Polynomial data
+          allocate(Polynomial :: rx % products(1) % yield)
+
+          ! determine order of polynomial and read coefficients
+          select type (yield => rx % products(1) % yield)
+          type is (Polynomial)
+            call yield % from_ace(XSS, KNU + 1)
+          end select
+
+        elseif (LNU == 2) then
+          ! Tabulated data
+          allocate(Tabulated1D :: rx % products(1) % yield)
+
+          select type(yield => rx % products(1) % yield)
+          type is (Tabulated1D)
+            call yield % from_ace(XSS, KNU + 1)
+          end select
+        end if
+
+        KNU = JXS(2) + nint(abs(XSS(JXS(2)))) + 1
+        LNU = nint(XSS(KNU))
+        if (LNU == 1) then
+          ! Polynomial data
+          allocate(Polynomial :: nuc % total_nu)
+
+          ! determine order of polynomial and read coefficients
+          select type (yield => nuc % total_nu)
+          type is (Polynomial)
+            call yield % from_ace(XSS, KNU + 1)
+          end select
+
+        elseif (LNU == 2) then
+          ! Tabulated data
+          allocate(Tabulated1D :: nuc % total_nu)
+
+          select type(yield => nuc % total_nu)
+          type is (Tabulated1D)
+            call yield % from_ace(XSS, KNU + 1)
+          end select
+        end if
       end if
 
-      nuc % n_precursor = NPCR
-      allocate(nuc % nu_d_edist(NPCR))
+      if (JXS(24) > 0) then
+        ! =======================================================================
+        ! DELAYED NU DATA
 
-      LED  = JXS(26)
-      LDIS = JXS(27)
+        ! Read total yield of delayed neutrons
+        call yield_delayed % from_ace(XSS, JXS(24) + 1)
 
-      ! Loop over all delayed neutron precursor groups
-      do i = 1, NPCR
-        ! find location of energy distribution data
-        LOCC = nint(XSS(LED + i - 1))
+        idx = JXS(25)
+        total_group_probability = ZERO
+        do i = 1, NPCR
+          ! Set emission mode and decay rate
+          rx % products(1 + i) % emission_mode = EMISSION_DELAYED
+          rx % products(1 + i) % decay_rate = XSS(idx)
 
-        ! Determine law and location of data
-        LAW = nint(XSS(LDIS + LOCC))
-        IDAT = nint(XSS(LDIS + LOCC + 1))
+          ! Read probability for this precursor group
+          call group_probability % from_ace(XSS, idx + 1)
 
-        ! read energy distribution data
-        call get_energy_dist(nuc%nu_d_edist(i)%obj, LAW, LDIS, IDAT, &
-             ZERO, ZERO)
+          ! Set yield based on product of group probability and delayed yield
+          if (all(group_probability % y == group_probability % y(1))) then
+            allocate(Tabulated1D :: rx % products(1 + i) % yield)
+            select type (yield => rx % products(1 + i) % yield)
+            type is (Tabulated1D)
+              yield = yield_delayed
+              yield % y(:) = yield % y(:) * group_probability % y(1)
+              total_group_probability = total_group_probability + group_probability % y(1)
+            end select
+          else
+            call fatal_error("Delayed neutron with energy-dependent group &
+                 &probability not implemented")
+          end if
+
+          ! Advance position
+          NR = nint(XSS(idx + 1))
+          NE = nint(XSS(idx + 2 + 2*NR))
+          idx = idx + 3 + 2*(NR + NE)
+
+          ! =======================================================================
+          ! DELAYED NEUTRON ENERGY DISTRIBUTION
+
+          ! Read energy distribution
+          LOCC = nint(XSS(JXS(26) + i - 1))
+
+          ! Determine law and location of data
+          LAW = nint(XSS(JXS(27) + LOCC))
+          IDAT = nint(XSS(JXS(27) + LOCC + 1))
+
+          ! read energy distribution data
+          associate(p => rx % products(1 + i))
+            allocate(p % applicability(1))
+            allocate(p % distribution(1))
+            call get_energy_dist(p % distribution(1) % obj, LAW, JXS(27), IDAT, &
+                 ZERO, ZERO)
+
+            select type (aedist => p % distribution(1) % obj)
+            type is (UncorrelatedAngleEnergy)
+              aedist % fission = .true.
+            end select
+          end associate
+        end do
+
+        ! Renormalize delayed neutron yields to reflect fact that in ACE file, the
+        ! sum of the group probabilities is not exactly one
+        do i = 1, NPCR
+          select type (yield => rx % products(1 + i) % yield)
+          type is (Tabulated1D)
+            yield % y(:) = yield % y(:) / total_group_probability
+          end select
+        end do
+      end if
+
+      ! Assign products to other fission reactions
+      do i = 2, nuc % n_fission
+        j = nuc % index_fission(i)
+        allocate(nuc % reactions(j) % products(1 + NPCR))
+        nuc % reactions(j) % products(:) = rx % products(:)
       end do
-
-      ! =======================================================================
-      ! DELAYED NEUTRON PRECUSOR YIELDS AND CONSTANTS
-
-      ! determine length of all precursor constants/yields/interp data
-      length = 0
-      lc = JXS(25)
-      do i = 1, NPCR
-        NR = int(XSS(lc + length + 1))
-        NE = int(XSS(lc + length + 2 + 2*NR))
-        length = length + 3 + 2*NR + 2*NE
-      end do
-
-      ! allocate space for precusor data
-      allocate(nuc % nu_d_precursor_data(length))
-
-      ! read delayed neutron precursor data
-      XSS_index = lc
-      nuc % nu_d_precursor_data = get_real(length)
-
-    else
-      nuc % nu_d_type = NU_NONE
-      nuc % n_precursor = 0
-    end if
+    end associate
 
   end subroutine read_nu_data
 
@@ -727,7 +739,7 @@ contains
     integer :: LOCA      ! location of cross-section for given MT
     integer :: IE        ! reaction's starting index on energy grid
     integer :: NE        ! number of energies
-    integer :: NR        ! number of interpolation regions
+    real(8) :: y
     type(ListInt) :: MTs
 
     LMT  = JXS(3)
@@ -746,13 +758,19 @@ contains
     ! sigma array is not allocated or stored for elastic scattering since it is
     ! already stored in nuc % elastic
     associate (rxn => nuc % reactions(1))
-      rxn%MT            = 2
-      rxn%Q_value       = ZERO
-      rxn%multiplicity  = 1
-      rxn%threshold     = 1
-      rxn%scatter_in_cm = .true.
-      allocate(rxn%secondary%distribution(1))
-      allocate(UncorrelatedAngleEnergy :: rxn%secondary%distribution(1)%obj)
+      rxn % MT = 2
+      rxn % Q_value = ZERO
+      allocate(rxn % products(1))
+      rxn % products(1) % particle = NEUTRON
+      allocate(Constant1D :: rxn % products(1) % yield)
+      select type(yield => rxn % products(1) % yield)
+      type is (Constant1D)
+        yield % y = 1
+      end select
+      rxn % threshold = 1
+      rxn % scatter_in_cm = .true.
+      allocate(rxn % products(1) % distribution(1))
+      allocate(UncorrelatedAngleEnergy :: rxn % products(1) % distribution(1) % obj)
     end associate
 
     ! Add contribution of elastic scattering to total cross section
@@ -768,45 +786,35 @@ contains
     do i = 1, NMT
       associate (rxn => nuc % reactions(i+1))
         ! read MT number, Q-value, and neutrons produced
-        rxn % MT            = int(XSS(LMT + i - 1))
-        rxn % Q_value       = XSS(JXS4 + i - 1)
-        rxn % multiplicity  = abs(nint(XSS(JXS5 + i - 1)))
+        rxn % MT = int(XSS(LMT + i - 1))
+        rxn % Q_value = XSS(JXS4 + i - 1)
         rxn % scatter_in_cm = (nint(XSS(JXS5 + i - 1)) < 0)
 
-        ! Read energy-dependent multiplicities
-        if (rxn % multiplicity > 100) then
-          ! Set flag and allocate space for Tab1 to store yield
-          rxn % multiplicity_with_E = .true.
-          allocate(rxn % multiplicity_E)
+        if (.not. is_fission(rxn % MT)) then
+          allocate(rxn % products(1))
+          rxn % products(1) % particle = NEUTRON
 
-          XSS_index = JXS(11) + rxn % multiplicity - 101
-          NR = nint(XSS(XSS_index))
-          rxn % multiplicity_E % n_regions = NR
+          y = abs(nint(XSS(JXS5 + i - 1)))
+          if (y > 100) then
+            ! Read energy-dependent multiplicities
 
-          ! allocate space for ENDF interpolation parameters
-          if (NR > 0) then
-            allocate(rxn % multiplicity_E % nbt(NR))
-            allocate(rxn % multiplicity_E % int(NR))
+            ! Set flag and allocate space for Tabulated1D to store yield
+            allocate(Tabulated1D :: rxn % products(1) % yield)
+
+            ! Read yield function
+            select type (yield => rxn % products(1) % yield)
+            type is (Tabulated1D)
+              XSS_index = JXS(11) + int(y) - 101
+              call yield % from_ace(XSS, XSS_index)
+            end select
+          else
+            ! Integral yield
+            allocate(Constant1D :: rxn % products(1) % yield)
+            select type (yield => rxn % products(1) % yield)
+            type is (Constant1D)
+              yield % y = y
+            end select
           end if
-
-          ! read ENDF interpolation parameters
-          XSS_index = XSS_index + 1
-          if (NR > 0) then
-            rxn % multiplicity_E % nbt = get_int(NR)
-            rxn % multiplicity_E % int = get_int(NR)
-          end if
-
-          ! allocate space for yield data
-          XSS_index = XSS_index + 2*NR
-          NE = nint(XSS(XSS_index))
-          rxn % multiplicity_E % n_pairs = NE
-          allocate(rxn % multiplicity_E % x(NE))
-          allocate(rxn % multiplicity_E % y(NE))
-
-          ! read yield data
-          XSS_index = XSS_index + 1
-          rxn % multiplicity_E % x = get_real(NE)
-          rxn % multiplicity_E % y = get_real(NE)
         end if
 
         ! read starting energy index
@@ -923,42 +931,42 @@ contains
         ! "one" angular distribution, it is repeated as many times as there are
         ! energy distributions for this reaction since the
         ! UncorrelatedAngleEnergy type holds one angle and energy distribution.
-        do k = 1, size(rxn%secondary%distribution)
-          select type (aedist => rxn%secondary%distribution(k)%obj)
+        do k = 1, size(rxn % products(1) % distribution)
+          select type (aedist => rxn % products(1) % distribution(k) % obj)
           type is (UncorrelatedAngleEnergy)
             ! allocate space for incoming energies and locations
             NE = int(XSS(JXS(9) + LOCB - 1))
-            allocate(aedist%angle%energy(NE))
-            allocate(aedist%angle%distribution(NE))
+            allocate(aedist % angle % energy(NE))
+            allocate(aedist % angle % distribution(NE))
             allocate(LC(NE))
 
             ! read incoming energy grid and location of nucs
             XSS_index = JXS(9) + LOCB
-            aedist%angle%energy(:) = get_real(NE)
+            aedist % angle % energy(:) = get_real(NE)
             LC(:) = get_int(NE)
 
             ! determine dize of data block
             do j = 1, NE
               if (LC(j) == 0) then
                 ! isotropic
-                allocate(Uniform :: aedist%angle%distribution(j)%obj)
-                select type (adist => aedist%angle%distribution(j)%obj)
+                allocate(Uniform :: aedist % angle % distribution(j) % obj)
+                select type (adist => aedist % angle % distribution(j) % obj)
                 type is (Uniform)
-                  adist%a = -ONE
-                  adist%b = ONE
+                  adist % a = -ONE
+                  adist % b = ONE
                 end select
 
               elseif (LC(j) > 0) then
                 ! 32 equiprobable bins
-                allocate(Equiprobable :: aedist%angle%distribution(j)%obj)
-                select type (adist => aedist%angle%distribution(j)%obj)
+                allocate(Equiprobable :: aedist % angle % distribution(j) % obj)
+                select type (adist => aedist % angle % distribution(j) % obj)
                 type is (Equiprobable)
-                  allocate(adist%x(33))
+                  allocate(adist % x(33))
                 end select
 
               elseif (LC(j) < 0) then
                 ! tabular distribution
-                allocate(Tabular :: aedist%angle%distribution(j)%obj)
+                allocate(Tabular :: aedist % angle % distribution(j) % obj)
               end if
             end do
 
@@ -967,9 +975,9 @@ contains
             ! on-the-fly
             do j = 1, NE
               XSS_index = JXS(9) + abs(LC(j)) - 1
-              select type(adist => aedist%angle%distribution(j)%obj)
+              select type(adist => aedist % angle % distribution(j) % obj)
               type is (Equiprobable)
-                adist%x(:) = get_real(33)
+                adist % x(:) = get_real(33)
               type is (Tabular)
                 ! determine interpolation and number of points
                 interp = nint(XSS(XSS_index))
@@ -977,10 +985,10 @@ contains
 
                 ! Get probability density data
                 XSS_index = XSS_index + 2
-                allocate(adist%x(NP), adist%p(NP), adist%c(NP))
-                adist%x(:) = get_real(NP)
-                adist%p(:) = get_real(NP)
-                adist%c(:) = get_real(NP)
+                allocate(adist % x(NP), adist % p(NP), adist % c(NP))
+                adist % x(:) = get_real(NP)
+                adist % p(:) = get_real(NP)
+                adist % c(:) = get_real(NP)
               end select
             end do
             deallocate(LC)
@@ -1017,9 +1025,9 @@ contains
       end do
 
       ! Allocate space for distributions and probability of validity
-      associate (secondary => nuc%reactions(i + 1)%secondary)
-        allocate(secondary%applicability(n))
-        allocate(secondary%distribution(n))
+      associate (p => nuc % reactions(i + 1) % products(1))
+        allocate(p % applicability(n))
+        allocate(p % distribution(n))
 
         LNW = nint(XSS(JXS(10) + i - 1))
         n = 0
@@ -1031,11 +1039,11 @@ contains
           IDAT = nint(XSS(JXS(11) + LNW + 1))
 
           ! Read probability of law validity
-          call secondary%applicability(n)%from_ace(XSS, JXS(11) + LNW + 2)
+          call p % applicability(n) % from_ace(XSS, JXS(11) + LNW + 2)
 
           ! Read energy law data
-          call get_energy_dist(secondary%distribution(n)%obj, LAW, &
-               JXS(11), IDAT, nuc%awr, nuc%reactions(i + 1)%Q_value)
+          call get_energy_dist(p % distribution(n) % obj, LAW, &
+               JXS(11), IDAT, nuc % awr, nuc % reactions(i + 1) % Q_value)
 
           ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<
           ! Before the secondary distribution refactor, when the angle/energy
@@ -1044,11 +1052,11 @@ contains
           ! distribution even when no angle distribution exists in the ACE file
           ! (isotropic is assumed). To preserve the RNG stream, we explicitly
           ! mark fission reactions so that we avoid the angle sampling.
-          if (any(nuc%reactions(i + 1)%MT == &
+          if (any(nuc % reactions(i + 1) % MT == &
                [N_FISSION, N_F, N_NF, N_2NF, N_3NF])) then
-            select type (aedist => secondary%distribution(n)%obj)
+            select type (aedist => p % distribution(n) % obj)
             type is (UncorrelatedAngleEnergy)
-              aedist%fission = .true.
+              aedist % fission = .true.
             end select
           end if
           ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -1089,6 +1097,8 @@ contains
       allocate(KalbachMann :: aedist)
     elseif (law == 61) then
       allocate(CorrelatedAngleEnergy :: aedist)
+    elseif (law == 66) then
+      allocate(NBodyPhaseSpace :: aedist)
     else
       allocate(UncorrelatedAngleEnergy :: aedist)
     end if
@@ -1100,8 +1110,8 @@ contains
 
       select case (law)
       case (1)
-        allocate(TabularEquiprobable :: aedist%energy)
-        select type (edist => aedist%energy)
+        allocate(TabularEquiprobable :: aedist % energy)
+        select type (edist => aedist % energy)
         type is (TabularEquiprobable)
           NR = nint(XSS(XSS_index))
           NE = nint(XSS(XSS_index + 1 + 2*NR))
@@ -1109,33 +1119,33 @@ contains
             call fatal_error("Multiple interpolation regions not yet supported &
                  &for tabular equiprobable energy distributions.")
           end if
-          edist%n_region = NR
+          edist % n_region = NR
 
           ! Read incoming energies for which outgoing energies are tabulated
-          allocate(edist%energy_in(NE))
+          allocate(edist % energy_in(NE))
           XSS_index = XSS_index + 2 + 2*NR
-          edist%energy_in(:) = get_real(NE)
+          edist % energy_in(:) = get_real(NE)
 
           ! Read outgoing energy tables
           NP = nint(XSS(XSS_index))
-          allocate(edist%energy_out(NP, NE))
+          allocate(edist % energy_out(NP, NE))
           XSS_index = XSS_index + 1
           do i = 1, NE
-            edist%energy_out(:, i) = get_real(NP)
+            edist % energy_out(:, i) = get_real(NP)
           end do
         end select
 
       case (3)
-        allocate(LevelInelastic :: aedist%energy)
-        select type (edist => aedist%energy)
+        allocate(LevelInelastic :: aedist % energy)
+        select type (edist => aedist % energy)
         type is (LevelInelastic)
-          edist%threshold = XSS(XSS_index)
-          edist%mass_ratio = XSS(XSS_index + 1)
+          edist % threshold = XSS(XSS_index)
+          edist % mass_ratio = XSS(XSS_index + 1)
         end select
 
       case (4)
-        allocate(ContinuousTabular :: aedist%energy)
-        select type (edist => aedist%energy)
+        allocate(ContinuousTabular :: aedist % energy)
+        select type (edist => aedist % energy)
         type is (ContinuousTabular)
           NR = nint(XSS(XSS_index))
           XSS_index = XSS_index + 1
@@ -1143,94 +1153,84 @@ contains
             call fatal_error("Multiple interpolation regions not yet supported &
                  &for continuous tabular energy distributions.")
           end if
-          edist%n_region = NR
+          edist % n_region = NR
 
           ! Read breakpoints and interpolation parameters
           if (NR > 0) then
-            allocate(edist%breakpoints(NR))
-            allocate(edist%interpolation(NR))
-            edist%breakpoints(:) = get_int(NR)
-            edist%interpolation(:) = get_int(NR)
+            allocate(edist % breakpoints(NR))
+            allocate(edist % interpolation(NR))
+            edist % breakpoints(:) = get_int(NR)
+            edist % interpolation(:) = get_int(NR)
           end if
 
           ! Read incoming energies for which outgoing energies are tabulated and
           ! locators
           NE = nint(XSS(XSS_index))
           XSS_index = XSS_index + 1
-          allocate(edist%energy_in(NE))
+          allocate(edist % energy(NE))
           allocate(L(NE))
-          edist%energy_in(:) = get_real(NE)
+          edist % energy(:) = get_real(NE)
           L(:) = get_int(NE)
 
           ! Read outgoing energy tables
-          allocate(edist%energy_out(NE))
+          allocate(edist % distribution(NE))
           do i = 1, NE
             ! Determine interpolation and number of discrete points
             XSS_index = LDIS + L(i) - 1
             interp = nint(XSS(XSS_index))
-            edist%energy_out(i)%interpolation = mod(interp, 10)
-            edist%energy_out(i)%n_discrete = (interp - &
-                 edist%energy_out(i)%interpolation)/10
+            edist % distribution(i) % interpolation = mod(interp, 10)
+            edist % distribution(i) % n_discrete = (interp - &
+                 edist % distribution(i) % interpolation)/10
 
             ! check for discrete lines present
-            if (edist%energy_out(i)%n_discrete > 0) then
+            if (edist % distribution(i) % n_discrete > 0) then
               call fatal_error("Discrete lines in continuous tabular &
                    &distribution not yet supported")
             end if
 
             ! Determine number of points and allocate space
             NP = nint(XSS(XSS_index + 1))
-            allocate(edist%energy_out(i)%e_out(NP))
-            allocate(edist%energy_out(i)%p(NP))
-            allocate(edist%energy_out(i)%c(NP))
+            allocate(edist % distribution(i) % e_out(NP))
+            allocate(edist % distribution(i) % p(NP))
+            allocate(edist % distribution(i) % c(NP))
 
             ! Read tabular PDF for outgoing energy
             XSS_index = XSS_index + 2
-            edist%energy_out(i)%e_out(:) = get_real(NP)
-            edist%energy_out(i)%p(:) = get_real(NP)
-            edist%energy_out(i)%c(:) = get_real(NP)
+            edist % distribution(i) % e_out(:) = get_real(NP)
+            edist % distribution(i) % p(:) = get_real(NP)
+            edist % distribution(i) % c(:) = get_real(NP)
           end do
 
           deallocate(L)
         end select
 
       case (7)
-        allocate(MaxwellEnergy :: aedist%energy)
-        select type (edist => aedist%energy)
+        allocate(MaxwellEnergy :: aedist % energy)
+        select type (edist => aedist % energy)
         type is (MaxwellEnergy)
-          call edist%theta%from_ace(XSS, XSS_index)
-          edist%u = XSS(XSS_index + 2 + 2*edist%theta%n_regions + &
-               2*edist%theta%n_pairs)
+          call edist % theta % from_ace(XSS, XSS_index)
+          edist % u = XSS(XSS_index + 2 + 2*edist % theta % n_regions + &
+               2*edist % theta % n_pairs)
         end select
 
       case (9)
-        allocate(Evaporation :: aedist%energy)
-        select type(edist => aedist%energy)
+        allocate(Evaporation :: aedist % energy)
+        select type(edist => aedist % energy)
         type is (Evaporation)
-          call edist%theta%from_ace(XSS, XSS_index)
-          edist%u = XSS(XSS_index + 2 + 2*edist%theta%n_regions + &
-               2*edist%theta%n_pairs)
+          call edist % theta % from_ace(XSS, XSS_index)
+          edist % u = XSS(XSS_index + 2 + 2*edist % theta % n_regions + &
+               2*edist % theta % n_pairs)
         end select
 
       case (11)
-        allocate(WattEnergy :: aedist%energy)
-        select type(edist => aedist%energy)
+        allocate(WattEnergy :: aedist % energy)
+        select type(edist => aedist % energy)
         type is (WattEnergy)
-          call edist%a%from_ace(XSS, XSS_index)
-          XSS_index = XSS_index + 2 + 2*edist%a%n_regions + 2*edist%a%n_pairs
-          call edist%b%from_ace(XSS, XSS_index)
-          XSS_index = XSS_index + 2 + 2*edist%b%n_regions + 2*edist%b%n_pairs
-          edist%u = XSS(XSS_index)
-        end select
-
-      case (66)
-        allocate(NBodyPhaseSpace :: aedist%energy)
-        select type(edist => aedist%energy)
-        type is (NBodyPhaseSpace)
-          edist%n_bodies = int(XSS(XSS_index))
-          edist%mass_ratio = XSS(XSS_index + 1)
-          edist%A = awr
-          edist%Q = Q_value
+          call edist % a % from_ace(XSS, XSS_index)
+          XSS_index = XSS_index + 2 + 2*edist % a % n_regions + 2*edist % a % n_pairs
+          call edist % b % from_ace(XSS, XSS_index)
+          XSS_index = XSS_index + 2 + 2*edist % b % n_regions + 2*edist % b % n_pairs
+          edist % u = XSS(XSS_index)
         end select
 
       end select
@@ -1245,45 +1245,45 @@ contains
         call fatal_error("Multiple interpolation regions not yet supported &
              &for Kalbach-Mann energy distributions.")
       end if
-      aedist%n_region = NR
+      aedist % n_region = NR
 
       ! Read incoming energies for which outgoing energies are tabulated and locators
-      allocate(aedist%energy_in(NE))
+      allocate(aedist % energy(NE))
       allocate(L(NE))
       XSS_index = XSS_index + 2 + 2*NR
-      aedist%energy_in(:) = get_real(NE)
+      aedist % energy(:) = get_real(NE)
       L(:) = get_int(NE)
 
       ! Read outgoing energy tables
-      allocate(aedist%table(NE))
+      allocate(aedist % distribution(NE))
       do i = 1, NE
         ! Determine interpolation and number of discrete points
         XSS_index = LDIS + L(i) - 1
         interp = nint(XSS(XSS_index))
-        aedist%table(i)%interpolation = mod(interp, 10)
-        aedist%table(i)%n_discrete = (interp - aedist%table(i)%interpolation)/10
+        aedist % distribution(i) % interpolation = mod(interp, 10)
+        aedist % distribution(i) % n_discrete = (interp - aedist % distribution(i) % interpolation)/10
 
         ! check for discrete lines present
-        if (aedist%table(i)%n_discrete > 0) then
+        if (aedist % distribution(i) % n_discrete > 0) then
           call fatal_error("Discrete lines in Kalbach-Mann distribution not &
                &yet supported")
         end if
 
         ! Determine number of points and allocate space
         NP = nint(XSS(XSS_index + 1))
-        allocate(aedist%table(i)%e_out(NP))
-        allocate(aedist%table(i)%p(NP))
-        allocate(aedist%table(i)%c(NP))
-        allocate(aedist%table(i)%r(NP))
-        allocate(aedist%table(i)%a(NP))
+        allocate(aedist % distribution(i) % e_out(NP))
+        allocate(aedist % distribution(i) % p(NP))
+        allocate(aedist % distribution(i) % c(NP))
+        allocate(aedist % distribution(i) % r(NP))
+        allocate(aedist % distribution(i) % a(NP))
 
         ! Read tabular PDF for outgoing energy
         XSS_index = XSS_index + 2
-        aedist%table(i)%e_out(:) = get_real(NP)
-        aedist%table(i)%p(:) = get_real(NP)
-        aedist%table(i)%c(:) = get_real(NP)
-        aedist%table(i)%r(:) = get_real(NP)
-        aedist%table(i)%a(:) = get_real(NP)
+        aedist % distribution(i) % e_out(:) = get_real(NP)
+        aedist % distribution(i) % p(:) = get_real(NP)
+        aedist % distribution(i) % c(:) = get_real(NP)
+        aedist % distribution(i) % r(:) = get_real(NP)
+        aedist % distribution(i) % a(:) = get_real(NP)
       end do
 
       deallocate(L)
@@ -1298,67 +1298,67 @@ contains
         call fatal_error("Multiple interpolation regions not yet supported &
              &for correlated angle-energy distributions.")
       end if
-      aedist%n_region = NR
+      aedist % n_region = NR
 
       ! Read incoming energies for which outgoing energies are tabulated and
       ! locators
-      allocate(aedist%energy_in(NE))
+      allocate(aedist % energy(NE))
       allocate(L(NE))
       XSS_index = XSS_index + 2 + 2*NR
-      aedist%energy_in(:) = get_real(NE)
+      aedist % energy(:) = get_real(NE)
       L(:) = get_int(NE)
 
       ! Read outgoing energy tables
-      allocate(aedist%table(NE))
+      allocate(aedist % distribution(NE))
       do i = 1, NE
         ! Determine interpolation and number of discrete points
         XSS_index = LDIS + L(i) - 1
         interp = nint(XSS(XSS_index))
-        aedist%table(i)%interpolation = mod(interp, 10)
-        aedist%table(i)%n_discrete = (interp - aedist%table(i)%interpolation)/10
+        aedist % distribution(i) % interpolation = mod(interp, 10)
+        aedist % distribution(i) % n_discrete = (interp - aedist % distribution(i) % interpolation)/10
 
         ! check for discrete lines present
-        if (aedist%table(i)%n_discrete > 0) then
+        if (aedist % distribution(i) % n_discrete > 0) then
           call fatal_error("Discrete lines in correlated angle-energy &
                &distribution not yet supported")
         end if
 
         ! Determine number of points and allocate space
         NP = nint(XSS(XSS_index + 1))
-        allocate(aedist%table(i)%e_out(NP))
-        allocate(aedist%table(i)%p(NP))
-        allocate(aedist%table(i)%c(NP))
+        allocate(aedist % distribution(i) % e_out(NP))
+        allocate(aedist % distribution(i) % p(NP))
+        allocate(aedist % distribution(i) % c(NP))
         allocate(LC(NP))
 
         ! Read tabular PDF for outgoing energy
         XSS_index = XSS_index + 2
-        aedist%table(i)%e_out(:) = get_real(NP)
-        aedist%table(i)%p(:) = get_real(NP)
-        aedist%table(i)%c(:) = get_real(NP)
+        aedist % distribution(i) % e_out(:) = get_real(NP)
+        aedist % distribution(i) % p(:) = get_real(NP)
+        aedist % distribution(i) % c(:) = get_real(NP)
         LC(:) = get_int(NP)
 
         ! allocate angular distributions for each incoming/outgoing energy
-        allocate(aedist%table(i)%angle(NP))
+        allocate(aedist % distribution(i) % angle(NP))
         do j = 1, NP
           if (LC(j) == 0) then
             ! isotropic
-            allocate(Uniform :: aedist%table(i)%angle(j)%obj)
-            select type (adist => aedist%table(i)%angle(j)%obj)
+            allocate(Uniform :: aedist % distribution(i) % angle(j) % obj)
+            select type (adist => aedist % distribution(i) % angle(j) % obj)
             type is (Uniform)
-              adist%a = -ONE
-              adist%b = ONE
+              adist % a = -ONE
+              adist % b = ONE
             end select
 
           elseif (LC(j) > 0) then
             ! tabular distribution
-            allocate(Tabular :: aedist%table(i)%angle(j)%obj)
+            allocate(Tabular :: aedist % distribution(i) % angle(j) % obj)
           end if
         end do
 
         ! read angular distributions
         do j = 1, NP
           XSS_index = LDIS + abs(LC(j)) - 1
-          select type(adist => aedist%table(i)%angle(j)%obj)
+          select type(adist => aedist % distribution(i) % angle(j) % obj)
           type is (Tabular)
             ! determine interpolation and number of points
             interp = nint(XSS(XSS_index))
@@ -1366,10 +1366,10 @@ contains
 
             ! Get probability density data
             XSS_index = XSS_index + 2
-            allocate(adist%x(NP), adist%p(NP), adist%c(NP))
-            adist%x(:) = get_real(NP)
-            adist%p(:) = get_real(NP)
-            adist%c(:) = get_real(NP)
+            allocate(adist % x(NP), adist % p(NP), adist % c(NP))
+            adist % x(:) = get_real(NP)
+            adist % p(:) = get_real(NP)
+            adist % c(:) = get_real(NP)
           end select
         end do
         deallocate(LC)
@@ -1377,6 +1377,15 @@ contains
       end do
 
       deallocate(L)
+
+    type is (NBodyPhaseSpace)
+      ! ========================================================================
+      ! N-BODY PHASE SPACE DISTRIBUTION
+
+      aedist % n_bodies = int(XSS(XSS_index))
+      aedist % mass_ratio = XSS(XSS_index + 1)
+      aedist % A = awr
+      aedist % Q = Q_value
     end select
 
   end subroutine get_energy_dist
@@ -1466,7 +1475,6 @@ contains
     end if
 
   end subroutine read_unr_res
-
 !===============================================================================
 ! GENERATE_NU_FISSION precalculates the microscopic nu-fission cross section for
 ! a given nuclide. This is done so that the nu_total function does not need to
@@ -1477,20 +1485,11 @@ contains
     type(NuclideCE), intent(inout) :: nuc
 
     integer :: i  ! index on nuclide energy grid
-    real(8) :: E  ! energy
-    real(8) :: nu ! # of neutrons per fission
 
-    do i = 1, nuc % n_grid
-      ! determine energy
-      E = nuc % energy(i)
-
-      ! determine total nu at given energy
-      nu = nu_total(nuc, E)
-
-      ! determine nu-fission microscopic cross section
-      nuc % nu_fission(i) = nu * nuc % fission(i)
+    do i = 1, size(nuc % energy)
+      nuc % nu_fission(i) = nuc % nu(nuc % energy(i), EMISSION_TOTAL) * &
+           nuc % fission(i)
     end do
-
   end subroutine generate_nu_fission
 
 !===============================================================================

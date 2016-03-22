@@ -601,21 +601,21 @@ contains
 
         ! Write paths to reach each distribcell instance
         if (t%filters(j)%type == FILTER_DISTRIBCELL) then
-           ! Allocate array of strings for each distribcell path
-           allocate(paths(t % filters(j) % n_bins))
+          ! Allocate array of strings for each distribcell path
+          allocate(paths(t % filters(j) % n_bins))
 
-           ! Store path for each distribcell instance
-           do k = 1, t % filters(j) % n_bins
-              path = ''
-              offset = 0
-              call find_offset(t % filters(j) % int_bins(1), &
-                   universes(BASE_UNIVERSE), k, offset, path)
-              paths(k) = path
-           end do
+          ! Store path for each distribcell instance
+          do k = 1, t % filters(j) % n_bins
+            path = ''
+            offset = 1
+            call find_offset(t % filters(j) % int_bins(1), &
+                 universes(BASE_UNIVERSE), k, offset, path)
+            paths(k) = path
+          end do
 
-           ! Write array of distribcell paths to summary file
-           call write_dataset(filter_group, "paths", paths)
-           deallocate(paths)
+          ! Write array of distribcell paths to summary file
+          call write_dataset(filter_group, "paths", paths)
+          deallocate(paths)
         end if
 
         ! Write name of type

@@ -114,6 +114,7 @@ class Filter(object):
             clone._num_bins = self.num_bins
             clone._mesh = copy.deepcopy(self.mesh, memo)
             clone._stride = self.stride
+            clone._distribcell_paths = copy.deepcopy(self.distribcell_paths)
 
             memo[id(self)] = clone
 

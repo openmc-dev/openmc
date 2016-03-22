@@ -1,6 +1,5 @@
 module summary
 
-  use ace_header,      only: Reaction, UrrData
   use constants
   use endf,            only: reaction_name
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, &

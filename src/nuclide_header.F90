@@ -2,13 +2,18 @@ module nuclide_header
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use ace_header
   use constants
-  use endf,        only: reaction_name
-  use error,       only: fatal_error
+  use dict_header, only: DictIntInt
+  use endf,        only: reaction_name, is_fission, is_disappearance
+  use endf_header, only: Function1D
+  use error,       only: fatal_error, warning
   use list_header, only: ListInt
-  use scattdata_header
+  use math,        only: evaluate_legendre, find_angle
+  use product_header, only: AngleEnergyContainer
+  use reaction_header, only: Reaction
+  use stl_vector,  only: VectorInt
   use string
+  use urr_header, only: UrrData
   use xml_interface
 
   implicit none
@@ -54,24 +59,11 @@ module nuclide_header
     real(8)              :: E_max ! upper cutoff energy for res scattering
 
     ! Fission information
-    logical :: has_partial_fission ! nuclide has partial fission reactions?
-    integer :: n_fission           ! # of fission reactions
+    logical :: has_partial_fission = .false. ! nuclide has partial fission reactions?
+    integer :: n_fission                     ! # of fission reactions
+    integer :: n_precursor = 0               ! # of delayed neutron precursors
     integer, allocatable :: index_fission(:) ! indices in reactions
-
-    ! Total fission neutron emission
-    integer :: nu_t_type
-    real(8), allocatable :: nu_t_data(:)
-
-    ! Prompt fission neutron emission
-    integer :: nu_p_type
-    real(8), allocatable :: nu_p_data(:)
-
-    ! Delayed fission neutron emission
-    integer :: nu_d_type
-    integer :: n_precursor ! # of delayed neutron precursors
-    real(8), allocatable :: nu_d_data(:)
-    real(8), allocatable :: nu_d_precursor_data(:)
-    type(AngleEnergyContainer), allocatable :: nu_d_edist(:)
+    class(Function1D), allocatable :: total_nu
 
     ! Unresolved resonance data
     logical                :: urr_present
@@ -87,6 +79,7 @@ module nuclide_header
   contains
     procedure :: clear => nuclide_clear
     procedure :: print => nuclide_print
+    procedure :: nu    => nuclide_nu
   end type Nuclide
 
 !===============================================================================
@@ -164,8 +157,7 @@ module nuclide_header
   contains
 
 !===============================================================================
-! NUCLIDE_CLEAR resets and deallocates data in Nuclide, NuclideIso
-! or NuclideAngle
+! NUCLIDE_CLEAR resets and deallocates data in Nuclide
 !===============================================================================
 
     subroutine nuclide_clear(this)
@@ -176,73 +168,132 @@ module nuclide_header
 
       if (associated(this % urr_data)) deallocate(this % urr_data)
 
-      if (allocated(this % reactions)) then
-        do i = 1, size(this % reactions)
-          call this % reactions(i) % clear()
-        end do
-      end if
-
       call this % reaction_index % clear()
 
     end subroutine nuclide_clear
 
 !===============================================================================
-! NUCLIDE_PRINT displays information about a continuous-energy neutron
+! NUCLIDE_NU is an interface to the number of fission neutrons produced
+!===============================================================================
+
+  function nuclide_nu(this, E, emission_mode, group) result(nu)
+    class(Nuclide),    intent(in) :: this
+    real(8),           intent(in) :: E
+    integer,           intent(in) :: emission_mode
+    integer, optional, intent(in) :: group
+    real(8)                       :: nu
+
+    integer :: i
+
+    if (.not. this % fissionable) then
+      nu = ZERO
+      return
+    end if
+
+    select case (emission_mode)
+    case (EMISSION_PROMPT)
+      associate (product => this % reactions(this % index_fission(1)) % products(1))
+        nu = product % yield % evaluate(E)
+      end associate
+
+    case (EMISSION_DELAYED)
+      if (this % n_precursor > 0) then
+        if (present(group)) then
+          ! If delayed group specified, determine yield immediately
+          associate(p => this % reactions(this % index_fission(1)) % products(1 + group))
+            nu = p % yield % evaluate(E)
+          end associate
+
+        else
+          nu = ZERO
+
+          associate (rx => this % reactions(this % index_fission(1)))
+            do i = 2, size(rx % products)
+              associate (product => rx % products(i))
+                ! Skip any non-neutron products
+                if (product % particle /= NEUTRON) exit
+
+                ! Evaluate yield
+                if (product % emission_mode == EMISSION_DELAYED) then
+                  nu = nu + product % yield % evaluate(E)
+                end if
+              end associate
+            end do
+          end associate
+        end if
+      else
+        nu = ZERO
+      end if
+
+    case (EMISSION_TOTAL)
+      if (allocated(this % total_nu)) then
+        nu = this % total_nu % evaluate(E)
+      else
+        associate (rx => this % reactions(this % index_fission(1)))
+          nu = rx % products(1) % yield % evaluate(E)
+        end associate
+      end if
+    end select
+
+  end function nuclide_nu
+
+
+!===============================================================================
+! NUCLIDE*_PRINT displays information about a continuous-energy neutron
 ! cross_section table and its reactions and secondary angle/energy distributions
 !===============================================================================
 
-    subroutine nuclide_print(this, unit)
-      class(Nuclide), intent(in) :: this
-      integer, intent(in), optional :: unit
+  subroutine nuclide_print(this, unit)
+    class(Nuclide), intent(in) :: this
+    integer, intent(in), optional :: unit
 
-      integer :: i                 ! loop index over nuclides
-      integer :: unit_             ! unit to write to
-      integer :: size_xs           ! memory used for cross-sections (bytes)
-      integer :: size_urr          ! memory used for probability tables (bytes)
-      type(UrrData),  pointer :: urr
+    integer :: i                 ! loop index over nuclides
+    integer :: unit_             ! unit to write to
+    integer :: size_xs           ! memory used for cross-sections (bytes)
+    integer :: size_urr          ! memory used for probability tables (bytes)
 
-      ! set default unit for writing information
-      if (present(unit)) then
-        unit_ = unit
-      else
-        unit_ = OUTPUT_UNIT
-      end if
+    ! set default unit for writing information
+    if (present(unit)) then
+      unit_ = unit
+    else
+      unit_ = OUTPUT_UNIT
+    end if
 
-      ! Initialize totals
-      size_urr = 0
-      size_xs = 0
+    ! Initialize totals
+    size_urr = 0
+    size_xs = 0
 
-      ! Basic nuclide information
-      write(unit_,*) 'Nuclide ' // trim(this % name)
-      write(unit_,*) '  zaid = ' // trim(to_str(this % zaid))
-      write(unit_,*) '  awr = ' // trim(to_str(this % awr))
-      write(unit_,*) '  kT = ' // trim(to_str(this % kT))
-      write(unit_,*) '  # of grid points = ' // trim(to_str(this % n_grid))
-      write(unit_,*) '  Fissionable = ', this % fissionable
-      write(unit_,*) '  # of fission reactions = ' // trim(to_str(this % n_fission))
-      write(unit_,*) '  # of reactions = ' // trim(to_str(this % n_reaction))
+    ! Basic nuclide information
+    write(unit_,*) 'Nuclide ' // trim(this % name)
+    write(unit_,*) '  zaid = ' // trim(to_str(this % zaid))
+    write(unit_,*) '  awr = ' // trim(to_str(this % awr))
+    write(unit_,*) '  kT = ' // trim(to_str(this % kT))
+    write(unit_,*) '  # of grid points = ' // trim(to_str(this % n_grid))
+    write(unit_,*) '  Fissionable = ', this % fissionable
+    write(unit_,*) '  # of fission reactions = ' // trim(to_str(this % n_fission))
+    write(unit_,*) '  # of reactions = ' // trim(to_str(this % n_reaction))
 
-      ! Information on each reaction
-      write(unit_,*) '  Reaction     Q-value  COM    IE'
-      do i = 1, this % n_reaction
-        associate (rxn => this % reactions(i))
-          write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,I6)') &
-               reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
-               rxn % threshold
+    ! Information on each reaction
+    write(unit_,*) '  Reaction     Q-value  COM    IE'
+    do i = 1, this % n_reaction
+      associate (rxn => this % reactions(i))
+        write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,I6)') &
+             reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
+             rxn % threshold
 
-          ! Accumulate data size
-          size_xs = size_xs + (this % n_grid - rxn%threshold + 1) * 8
-        end associate
-      end do
+        ! Accumulate data size
+        size_xs = size_xs + (this % n_grid - rxn%threshold + 1) * 8
+      end associate
+    end do
 
-      ! Add memory required for summary reactions (total, absorption, fission,
-      ! nu-fission)
-      size_xs = 8 * this % n_grid * 4
+    ! Add memory required for summary reactions (total, absorption, fission,
+    ! nu-fission)
+    size_xs = 8 * this % n_grid * 4
 
-      ! Write information about URR probability tables
-      size_urr = 0
-      if (this % urr_present) then
-        urr => this % urr_data
+    ! Write information about URR probability tables
+    size_urr = 0
+    if (this % urr_present) then
+      associate(urr => this % urr_data)
         write(unit_,*) '  Unresolved resonance probability table:'
         write(unit_,*) '    # of energies = ' // trim(to_str(urr % n_energy))
         write(unit_,*) '    # of probabilities = ' // trim(to_str(urr % n_prob))
@@ -255,16 +306,17 @@ module nuclide_header
 
         ! Calculate memory used by probability tables and add to total
         size_urr = urr % n_energy * (urr % n_prob * 6 + 1) * 8
-      end if
+      end associate
+    end if
 
-      ! Write memory used
-      write(unit_,*) '  Memory Requirements'
-      write(unit_,*) '    Cross sections = ' // trim(to_str(size_xs)) // ' bytes'
-      write(unit_,*) '    Probability Tables = ' // &
-           trim(to_str(size_urr)) // ' bytes'
+    ! Write memory used
+    write(unit_,*) '  Memory Requirements'
+    write(unit_,*) '    Cross sections = ' // trim(to_str(size_xs)) // ' bytes'
+    write(unit_,*) '    Probability Tables = ' // &
+         trim(to_str(size_urr)) // ' bytes'
 
-      ! Blank line at end of nuclide
-      write(unit_,*)
-    end subroutine nuclide_print
+    ! Blank line at end of nuclide
+    write(unit_,*)
+  end subroutine nuclide_print
 
 end module nuclide_header

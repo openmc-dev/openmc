@@ -172,7 +172,7 @@ module mgxs_header
     ! Microscopic cross sections
     real(8), allocatable :: total(:,:,:)        ! total cross section
     real(8), allocatable :: absorption(:,:,:)   ! absorption cross section
-    class(ScattDataContainer), allocatable :: scatter(:,:) ! scattering information
+    type(ScattDataContainer), allocatable :: scatter(:,:) ! scattering information
     real(8), allocatable :: nu_fission(:,:,:)   ! fission matrix (Gout x Gin)
     real(8), allocatable :: k_fission(:,:,:)    ! kappa-fission
     real(8), allocatable :: fission(:,:,:)      ! neutron production

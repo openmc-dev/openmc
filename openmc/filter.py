@@ -45,6 +45,9 @@ class Filter(object):
     stride : Integral
         The number of filter, nuclide and score bins within each of this
         filter's bins.
+    distribcell_paths : list of str
+        The paths traversed through the CSG tree to reach each distribcell
+         instance (for 'distribcell' filters only)
 
     """
 
@@ -56,6 +59,7 @@ class Filter(object):
         self._bins = None
         self._mesh = None
         self._stride = None
+        self._distribcell_paths = None
 
         if type is not None:
             self.type = type
@@ -152,6 +156,10 @@ class Filter(object):
     def stride(self):
         return self._stride
 
+    @property
+    def distribcell_paths(self):
+        return self._distribcell_paths
+
     @type.setter
     def type(self, type):
         if type is None:
@@ -245,6 +253,11 @@ class Filter(object):
             raise ValueError(msg)
 
         self._stride = stride
+
+    @distribcell_paths.setter
+    def distribcell_paths(self, distribcell_paths):
+        cv.check_iterable_type('distribcell_paths', distribcell_paths, str)
+        self._distribcell_paths = distribcell_paths
 
     def can_merge(self, other):
         """Determine if filter can be merged with another.

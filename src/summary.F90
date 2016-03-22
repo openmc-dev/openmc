@@ -595,11 +595,15 @@ contains
              t%filters(j)%type == FILTER_POLAR .or. &
              t%filters(j)%type == FILTER_AZIMUTHAL) then
           call write_dataset(filter_group, "bins", t%filters(j)%real_bins)
+        else
+          call write_dataset(filter_group, "bins", t%filters(j)%int_bins)
+        end if
 
         ! Write paths to reach each distribcell instance
-        else if (t%filters(j)%type == FILTER_DISTRIBCELL) then
+        if (t%filters(j)%type == FILTER_DISTRIBCELL) then
            ! Allocate array of strings for each distribcell path
            allocate(paths(t % filters(j) % n_bins))
+
            ! Store path for each distribcell instance
            do k = 1, t % filters(j) % n_bins
               path = ''
@@ -608,10 +612,10 @@ contains
                    universes(BASE_UNIVERSE), k, offset, path)
               paths(k) = path
            end do
+
+           ! Write array of distribcell paths to summary file
            call write_dataset(filter_group, "paths", paths)
            deallocate(paths)
-        else
-          call write_dataset(filter_group, "bins", t%filters(j)%int_bins)
         end if
 
         ! Write name of type

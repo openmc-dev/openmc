@@ -223,6 +223,12 @@ module constants
        NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
        NU_TABULAR    = 2    ! Nu values given by tabular distribution
 
+  ! Secondary particle emission type
+  integer, parameter :: &
+       EMISSION_PROMPT = 1,  & ! Prompt emission of secondary particle
+       EMISSION_DELAYED = 2, & ! Delayed emission of secondary particle
+       EMISSION_TOTAL = 3      ! Yield represents total emission (prompt + delayed)
+
   ! Cross section filetypes
   integer, parameter :: &
        ASCII  = 1, & ! ASCII cross section file

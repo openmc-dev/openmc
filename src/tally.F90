@@ -1,7 +1,7 @@
 module tally
 
-  use ace_header,       only: Reaction
   use constants
+  use endf_header,      only: Constant1D
   use error,            only: fatal_error
   use geometry_header
   use global
@@ -15,8 +15,6 @@ module tally
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
-  use fission,          only: nu_total, nu_delayed, yield_delayed
-  use interpolation,    only: interpolate_tab1
 
 #ifdef MPI
   use message_passing
@@ -253,9 +251,9 @@ contains
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-        ! For scattering production, we need to use the pre-collision
-        ! weight times the multiplicity as the estimate for the number of
-        ! neutrons exiting a reaction with neutrons in the exit channel
+        ! For scattering production, we need to use the pre-collision weight
+        ! times the yield as the estimate for the number of neutrons exiting a
+        ! reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
           ! Don't waste time on very common reactions we know have multiplicities
@@ -265,16 +263,17 @@ contains
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
 
-          ! Get multiplicity and apply to score
+          ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            if (rxn % multiplicity_with_E) then
-              ! Then the multiplicity was already incorporated in to p % wgt
-              ! per the scattering routine,
+            select type (yield => rxn % products(1) % yield)
+            type is (Constant1D)
+              ! Grab the yield from the reaction
+              score = p % last_wgt * yield % y
+            class default
+              ! the yield was already incorporated in to p % wgt per the
+              ! scattering routine
               score = p % wgt
-            else
-              ! Grab the multiplicity from the rxn
-              score = p % last_wgt * rxn % multiplicity
-            end if
+            end select
           end associate
         end if
 
@@ -287,7 +286,7 @@ contains
           cycle SCORE_LOOP
         end if
         ! For scattering production, we need to use the pre-collision
-        ! weight times the multiplicity as the estimate for the number of
+        ! weight times the yield as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
@@ -298,16 +297,17 @@ contains
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
 
-          ! Get multiplicity and apply to score
+          ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            if (rxn % multiplicity_with_E) then
-              ! Then the multiplicity was already incorporated in to p % wgt
-              ! per the scattering routine,
+            select type (yield => rxn % products(1) % yield)
+            type is (Constant1D)
+              ! Grab the yield from the reaction
+              score = p % last_wgt * yield % y
+            class default
+              ! the yield was already incorporated in to p % wgt per the
+              ! scattering routine
               score = p % wgt
-            else
-              ! Grab the multiplicity from the rxn
-              score = p % last_wgt * rxn % multiplicity
-            end if
+            end select
           end associate
         end if
 
@@ -320,7 +320,7 @@ contains
           cycle SCORE_LOOP
         end if
         ! For scattering production, we need to use the pre-collision
-        ! weight times the multiplicity as the estimate for the number of
+        ! weight times the yield as the estimate for the number of
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
@@ -331,16 +331,17 @@ contains
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
 
-          ! Get multiplicity and apply to score
+          ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            if (rxn % multiplicity_with_E) then
-              ! Then the multiplicity was already incorporated in to p % wgt
-              ! per the scattering routine,
+            select type (yield => rxn % products(1) % yield)
+            type is (Constant1D)
+              ! Grab the yield from the reaction
+              score = p % last_wgt * yield % y
+            class default
+              ! the yield was already incorporated in to p % wgt per the
+              ! scattering routine
               score = p % wgt
-            else
-              ! Grab the multiplicity from the rxn
-              score = p % last_wgt * rxn % multiplicity
-            end if
+            end select
           end associate
         end if
 
@@ -507,12 +508,11 @@ contains
                   d = t % filters(dg_filter) % int_bins(d_bin)
 
                   ! Compute the yield for this delayed group
-                  yield = yield_delayed(nuclides(p % event_nuclide), E, d)
+                  yield = nuclides(p % event_nuclide) % nu(E, EMISSION_DELAYED, d)
 
                   ! Compute the score and tally to bin
                   score = p % absorb_wgt * yield * micro_xs(p % event_nuclide) &
-                       % fission * nu_delayed(nuclides(p % event_nuclide), E) / &
-                       micro_xs(p % event_nuclide) % absorption
+                       % fission / micro_xs(p % event_nuclide) % absorption
                   call score_fission_delayed_dg(t, d_bin, score, score_index)
                 end do
                 cycle SCORE_LOOP
@@ -520,9 +520,9 @@ contains
                 ! If the delayed group filter is not present, compute the score
                 ! by multiplying the absorbed weight by the fraction of the
                 ! delayed-nu-fission xs to the absorption xs
-                score = p % absorb_wgt * micro_xs(p % event_nuclide) &
-                     % fission * nu_delayed(nuclides(p % event_nuclide), E) / &
-                     micro_xs(p % event_nuclide) % absorption
+                score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission &
+                     * nuclides(p % event_nuclide) % nu(E, EMISSION_DELAYED) &
+                     / micro_xs(p % event_nuclide) % absorption
               end if
             end if
           else
@@ -572,11 +572,11 @@ contains
                 d = t % filters(dg_filter) % int_bins(d_bin)
 
                 ! Compute the yield for this delayed group
-                yield = yield_delayed(nuclides(i_nuclide), E, d)
+                yield = nuclides(i_nuclide) % nu(E, EMISSION_DELAYED, d)
 
                 ! Compute the score and tally to bin
-                score = micro_xs(i_nuclide) % fission * yield &
-                     * nu_delayed(nuclides(i_nuclide), E) * atom_density * flux
+                score = micro_xs(i_nuclide) % fission * yield * &
+                     atom_density * flux
                 call score_fission_delayed_dg(t, d_bin, score, score_index)
               end do
               cycle SCORE_LOOP
@@ -584,8 +584,8 @@ contains
 
               ! If the delayed group filter is not present, compute the score
               ! by multiplying the delayed-nu-fission macro xs by the flux
-              score = micro_xs(i_nuclide) % fission * &
-                   nu_delayed(nuclides(i_nuclide), E) * atom_density * flux
+              score = micro_xs(i_nuclide) % fission * nuclides(i_nuclide) % &
+                   nu(E, EMISSION_DELAYED) * atom_density * flux
             end if
 
           ! Tally is on total nuclides
@@ -610,11 +610,10 @@ contains
                   d = t % filters(dg_filter) % int_bins(d_bin)
 
                   ! Get the yield for the desired nuclide and delayed group
-                  yield = yield_delayed(nuclides(i_nuc), E, d)
+                  yield = nuclides(i_nuc) % nu(E, EMISSION_DELAYED, d)
 
                   ! Compute the score and tally to bin
-                  score = micro_xs(i_nuc) % fission * yield &
-                       * nu_delayed(nuclides(i_nuc), E) * atom_density_ * flux
+                  score = micro_xs(i_nuc) % fission * yield * atom_density_ * flux
                   call score_fission_delayed_dg(t, d_bin, score, score_index)
                 end do
               end do
@@ -633,8 +632,8 @@ contains
                 i_nuc = materials(p % material) % nuclide(l)
 
                 ! Accumulate the contribution from each nuclide
-                score = score + micro_xs(i_nuc) % fission &
-                     * nu_delayed(nuclides(i_nuc), E) * atom_density_ * flux
+                score = score + micro_xs(i_nuc) % fission * nuclides(i_nuc) % &
+                     nu(E, EMISSION_DELAYED) * atom_density_ * flux
               end do
             end if
           end if

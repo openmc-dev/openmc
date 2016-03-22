@@ -63,15 +63,19 @@ class Geometry(object):
 
         """
 
+        # Extract the cell id from the path
+        last_index = path.rfind('>')
+        cell_id = int(path[last_index+1:])
+
         # Find the distribcell index of the cell.
         cells = self.get_all_cells()
         for cell in cells:
-            if cell.id == path[-1]:
+            if cell.id == cell_id:
                 distribcell_index = cell.distribcell_index
                 break
         else:
             raise RuntimeError('Could not find cell {} specified in a \
-                                distribcell filter'.format(path[-1]))
+                                distribcell filter'.format(cell_id))
 
         # Return memoize'd offset if possible
         if (path, distribcell_index) in self._offsets:

@@ -646,18 +646,10 @@ class Filter(object):
                 # offsets to OpenCG LocalCoords linked lists
                 offsets_to_coords = {}
 
-                # Use OpenCG to compute LocalCoords linked list for
-                # each region and store in dictionary
-                for region in range(num_regions):
+                for offset, path in enumerate(self.distribcell_paths):
+                    region = opencg_geometry.get_region_from_path(path)
                     coords = opencg_geometry.find_region(region)
-                    path = opencg.get_path(coords)
-                    cell_id = path[-1]
-
-                    # If this region is in Cell corresponding to the
-                    # distribcell filter bin, store it in dictionary
-                    if cell_id == self.bins[0]:
-                        offset = openmc_geometry.get_cell_instance(path)
-                        offsets_to_coords[offset] = coords
+                    offsets_to_coords[offset] = coords
 
                 # Each distribcell offset is a DataFrame bin
                 # Unravel the paths into DataFrame columns

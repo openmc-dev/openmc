@@ -15,6 +15,7 @@ module surface_header
          neighbor_pos(:), &           ! List of cells on positive side
          neighbor_neg(:)              ! List of cells on negative side
     integer :: bc                     ! Boundary condition
+    integer :: opposite               ! Opposite surface for periodic boundary
     character(len=104) :: name = ""    ! User-defined name
   contains
     procedure :: sense

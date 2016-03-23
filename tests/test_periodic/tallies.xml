@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<tallies>
+  <mesh id="1">
+    <type>regular</type>
+    <lower_left>-200. -1e50</lower_left>
+    <upper_right>200. 1e50</upper_right>
+    <dimension>50 1</dimension>
+  </mesh>
+  <tally id="1">
+    <estimator>collision</estimator>
+    <filter type="mesh" bins="1" />
+    <scores>fission</scores>
+  </tally>
+</tallies>

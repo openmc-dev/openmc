@@ -1109,6 +1109,8 @@ contains
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
+    integer :: i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax
+    real(8) :: xmin, xmax, ymin, ymax, zmin, zmax
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
     real(8), allocatable :: coeffs(:)
@@ -1387,6 +1389,13 @@ contains
       call fatal_error("No surfaces found in geometry.xml!")
     end if
 
+    xmin = INFINITY
+    xmax = -INFINITY
+    ymin = INFINITY
+    ymax = -INFINITY
+    zmin = INFINITY
+    zmax = -INFINITY
+
     ! Allocate cells array
     allocate(surfaces(n_surfaces))
 
@@ -1478,10 +1487,28 @@ contains
       select type(s)
       type is (SurfaceXPlane)
         s%x0 = coeffs(1)
+
+        ! Determine outer surfaces
+        xmin = min(xmin, s % x0)
+        xmax = max(xmax, s % x0)
+        if (xmin == s % x0) i_xmin = i
+        if (xmax == s % x0) i_xmax = i
       type is (SurfaceYPlane)
         s%y0 = coeffs(1)
+
+        ! Determine outer surfaces
+        ymin = min(ymin, s % y0)
+        ymax = max(ymax, s % y0)
+        if (ymin == s % y0) i_ymin = i
+        if (ymax == s % y0) i_ymax = i
       type is (SurfaceZPlane)
         s%z0 = coeffs(1)
+
+        ! Determine outer surfaces
+        zmin = min(zmin, s % z0)
+        zmax = max(zmax, s % z0)
+        if (zmin == s % z0) i_zmin = i
+        if (zmax == s % z0) i_zmax = i
       type is (SurfacePlane)
         s%A = coeffs(1)
         s%B = coeffs(2)
@@ -1548,11 +1575,13 @@ contains
       case ('reflective', 'reflect', 'reflecting')
         s%bc = BC_REFLECT
         boundary_exists = .true.
+      case ('periodic')
+        s%bc = BC_PERIODIC
+        boundary_exists = .true.
       case default
         call fatal_error("Unknown boundary condition '" // trim(word) // &
              &"' specified on surface " // trim(to_str(s%id)))
       end select
-
       ! Add surface to dictionary
       call surface_dict % add_key(s%id, i)
     end do
@@ -1562,6 +1591,47 @@ contains
     if (.not. boundary_exists) then
       call fatal_error("No boundary conditions were applied to any surfaces!")
     end if
+
+    ! Determine opposite side for periodic boundaries
+    do i = 1, size(surfaces)
+      if (surfaces(i) % obj % bc == BC_PERIODIC) then
+        select type (surf => surfaces(i) % obj)
+        type is (SurfaceXPlane)
+          if (i == i_xmin) then
+            surf % opposite = i_xmax
+          elseif (i == i_xmax) then
+            surf % opposite = i_xmin
+          else
+            call fatal_error("Periodic boundary condition applied to &
+                 &interior surface.")
+          end if
+
+        type is (SurfaceYPlane)
+          if (i == i_ymin) then
+            surf % opposite = i_ymax
+          elseif (i == i_ymax) then
+            surf % opposite = i_ymin
+          else
+            call fatal_error("Periodic boundary condition applied to &
+                 &interior surface.")
+          end if
+
+        type is (SurfaceZPlane)
+          if (i == i_zmin) then
+            surf % opposite = i_zmax
+          elseif (i == i_zmax) then
+            surf % opposite = i_zmin
+          else
+            call fatal_error("Periodic boundary condition applied to &
+                 &interior surface.")
+          end if
+
+        class default
+          call fatal_error("Periodic boundary condition applied to &
+               &non-planar surface.")
+        end select
+      end if
+    end do
 
     ! ==========================================================================
     ! READ LATTICES FROM GEOMETRY.XML

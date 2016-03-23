@@ -565,7 +565,7 @@ class Summary(object):
                 # Read in distribcell paths
                 if filter_type == 'distribcell':
                     paths = self._f['{0}/paths'.format(subsubbase)][...]
-                    paths = [path.decode() for path in paths]
+                    paths = [str(path.decode()) for path in paths]
                     new_filter.distribcell_paths = paths
 
                 # Add Filter to the Tally

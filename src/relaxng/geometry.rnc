@@ -21,8 +21,9 @@ element geometry {
     (element type { xsd:string { maxLength = "15" } } |
      attribute type { xsd:string { maxLength = "15" } }) &
     (element coeffs { list { xsd:double+ } } | attribute coeffs { list { xsd:double+ } }) &
-    (element boundary { ( "transmit" | "reflective" | "vacuum" ) } |
-     attribute boundary { ( "transmit" | "reflective" | "vacuum" ) })?
+    (element boundary { ( "transmit" | "reflective" | "vacuum" | "periodic" ) } |
+     attribute boundary { ( "transmit" | "reflective" | "vacuum" | "periodic" ) })? &
+    (element opposite { xsd:int } | attribute opposite { xsd:int })?
   }*
 
   & element lattice {

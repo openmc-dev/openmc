@@ -898,7 +898,7 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
   :boundary:
     The boundary condition for the surface. This can be "transmission",
-    "vacuum", or "reflective".
+    "vacuum", "reflective", or "periodic".
 
     *Default*: "transmission"
 

@@ -14,8 +14,7 @@ module summary
   use surface_header
   use string,          only: to_str
   use tally_header,    only: TallyObject
-  use output,          only: find_offset, write_message
-  use string,          only: to_str
+  use output,          only: find_offset
 
   use hdf5
 

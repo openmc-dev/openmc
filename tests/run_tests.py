@@ -363,10 +363,14 @@ sourcepoint_batch|statepoint_interval|survival_biasing|\
 tally_assumesep|translation|uniform_fs|universe|void"
 
 # Delete items of dictionary if valgrind or coverage and not in script mode
+to_delete = []
 if not script_mode:
     for key in tests:
         if re.search('valgrind|coverage', key):
-            del tests[key]
+            to_delete.append(key)
+
+for key in to_delete:
+    del tests[key]
 
 # Check if tests empty
 if len(list(tests.keys())) == 0:

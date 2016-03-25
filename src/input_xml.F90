@@ -1380,7 +1380,11 @@ contains
       ! Read cell temperatures.  If the temperature is not specified, set it to
       ! ERROR_REAL for now.  During initialization we'll replace ERROR_REAL with
       ! the temperature from the material data.
-      if (check_for_node(node_cell, "temperature")) then
+      if (.not. run_CE) then
+        ! Cell temperatures are not used for MG mode.
+        allocate(c % sqrtkT(1))
+        c % sqrtkT(1) = ZERO
+      else if (check_for_node(node_cell, "temperature")) then
         n = get_arraysize_double(node_cell, "temperature")
         if (n > 0) then
           ! Make sure this is a "normal" cell.

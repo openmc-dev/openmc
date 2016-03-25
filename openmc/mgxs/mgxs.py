@@ -441,7 +441,7 @@ class MGXS(object):
         cv.check_type('nuclide', nuclide, basestring)
 
         # Get list of all nuclides in the spatial domain
-        nuclides = self.domain.get_all_nuclides()
+        nuclides = self.get_all_nuclides()
 
         if nuclide not in nuclides:
             msg = 'Unable to get density for nuclide "{0}" which is not in ' \
@@ -553,7 +553,7 @@ class MGXS(object):
 
             # If this is a by-nuclide cross-section, add all nuclides to Tally
             if self.by_nuclide and score != 'flux':
-                all_nuclides = self.domain.get_all_nuclides()
+                all_nuclides = self.get_all_nuclides()
                 for nuclide in all_nuclides:
                     self.tallies[key].nuclides.append(nuclide)
             else:

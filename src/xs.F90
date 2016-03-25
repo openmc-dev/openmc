@@ -1843,7 +1843,13 @@ contains
       ! multipy the self-shielding factors by the infinite-dilute xs
 
       ! tabulated unresolved resonance parameters interpolation factor
-      iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
+      if (tope % E < tope % Eavg(1)) then
+        iavg = 1
+      else if (tope % E > tope % Eavg(tope % nEavg - 1)) then
+        iavg = tope % nEavg - 1
+      else
+        iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
+      end if
 
       favg = interp_factor(tope % E, &
            tope % Eavg(iavg), tope % Eavg(iavg + 1), tope % INT)
@@ -2769,7 +2775,13 @@ contains
     elseif (tope % LSSF == 1) then
 
       ! determine energy index
-      iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
+      if (tope % E < tope % Eavg(1)) then
+        iavg = 1
+      else if (tope % E > tope % Eavg(tope % nEavg - 1)) then
+        iavg = tope % nEavg - 1
+      else
+        iavg = binary_search(tope % Eavg, tope % nEavg, tope % E)
+      end if
 
       ! tabulated unresolved resonance parameters interpolation factor
       favg = interp_factor(E, tope % Eavg(iavg), tope % Eavg(iavg + 1), &
@@ -4699,7 +4711,7 @@ contains
     ! compute interpolation factor
     if (E_res < tope % ES(1)) then
       i_E = 1
-    else if (E_res > tope % ES(tope % NE)) then
+    else if (E_res > tope % ES(tope % NE - 1)) then
       i_E = tope % NE - 1
     else
       i_E = binary_search(tope % ES, tope % NE, E_res)
@@ -4928,12 +4940,12 @@ contains
 
     else if (tope % LSSF == 1) then
 
-      if (tope % E > tope % Eavg(tope % nEavg)) then
+      if (tope % E < tope % Eavg(1)) then
+        i_avg = 1
+      else if (tope % E > tope % Eavg(tope % nEavg - 1)) then
         i_avg = tope % nEavg - 1
-
       else
         i_avg = binary_search(tope % Eavg, tope % nEavg, tope % E)
-
       end if
 
       f_avg = interp_factor(tope % E,&

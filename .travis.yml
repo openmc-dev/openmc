@@ -47,7 +47,7 @@ before_script:
   - export OPENMC_CROSS_SECTIONS=$PWD/nndc/cross_sections.xml
   - wget http://web.mit.edu/smharper/Public/multipole_lib.tar.gz
   - tar -xzf multipole_lib.tar.gz
-  - export MULTIPOLE_LIBRARY=$PWD/multipole_lib
+  - export OPENMC_MULTIPOLE_LIBRARY=$PWD/multipole_lib
   - cd ..
 
 script:

@@ -76,8 +76,9 @@ class SettingsFile(object):
         calculations to find the path to the XML cross section file.
     multipole_library : str
         Indicates the path to a directory containing a windowed multipole
-        cross section library. If it is not set, the :envvar:`MULTIPOLE_LIBRARY'
-        environment variable will be used. A multipole library is optional.
+        cross section library. If it is not set, the
+        :envvar:`OPENMC_MULTIPOLE_LIBRARY' environment variable will be used. A
+        multipole library is optional.
     energy_grid : {'nuclide', 'logarithm', 'material-union'}
         Set the method used to search energy grids.
     energy_mode : {'continuous-energy', 'multi-group'}

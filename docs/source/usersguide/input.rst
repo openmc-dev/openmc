@@ -288,7 +288,7 @@ The ``<multipole_library>`` element indicates the directory containing a
 windowed multipole library. If a windowed multipole library is available,
 OpenMC can use it for on-the-fly Doppler-broadening of resolved resonance range
 cross sections. If this element is absent from the settings.xml file, the
-:envvar:`MULTIPOLE_LIBRARY` environment variable will be used.
+:envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used.
 
   .. note:: The <use_windowed_multipole> element must also be set to "True"
     for windowed multipole functionality.

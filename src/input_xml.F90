@@ -136,9 +136,9 @@ contains
               call fatal_error("No cross_sections.xml file was specified in &
                    &settings.xml or in the OPENMC_CROSS_SECTIONS environment &
                    &variable. OpenMC needs such a file to identify where to &
-                   &find ACE cross section libraries. Please consult the user's &
-                   &guide at http://mit-crpg.github.io/openmc for information on &
-                   &how to set up ACE cross section libraries.")
+                   &find ACE cross section libraries. Please consult the &
+                   &user's guide at http://mit-crpg.github.io/openmc for &
+                   &information on how to set up ACE cross section libraries.")
             else
               call warning("The CROSS_SECTIONS environment variable is &
                    &deprecated. Please update your environment to use &
@@ -147,7 +147,8 @@ contains
           end if
           path_cross_sections = trim(env_variable)
         else
-          call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", env_variable)
+          call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", &
+                                        env_variable)
           if (len_trim(env_variable) == 0) then
             call fatal_error("No cross_sections.xml file was specified in &
                  &settings.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
@@ -170,7 +171,7 @@ contains
            run_mode /= MODE_PLOTTING) then
         ! No library location specified in settings.xml, check
         ! environment variable
-        call get_environment_variable("MULTIPOLE_LIBRARY", env_variable)
+        call get_environment_variable("OPENMC_MULTIPOLE_LIBRARY", env_variable)
         path_multipole = trim(env_variable)
       else
         call get_node_value(doc, "multipole_library", path_multipole)

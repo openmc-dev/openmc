@@ -36,7 +36,7 @@ if have_setuptools:
 
         # Optional dependencies
         'extras_require': {
-            'pandas': ['pandas'],
+            'pandas': ['pandas>=0.17.0'],
             'sparse' : ['scipy'],
             'vtk': ['vtk', 'silomesh'],
             'validate': ['lxml']

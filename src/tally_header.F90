@@ -124,6 +124,10 @@ module tally_header
     ! Tally precision triggers
     integer                           :: n_triggers = 0  ! # of triggers
     type(TriggerObject),  allocatable :: triggers(:)     ! Array of triggers
+
+    ! Multi-Group Specific Information To Enable Rapid Tallying
+    logical :: energy_matches_groups    = .false.
+    logical :: energyout_matches_groups = .false.
   end type TallyObject
 
 end module tally_header

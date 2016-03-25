@@ -1,6 +1,5 @@
 module summary
 
-  use ace_header,      only: Reaction, UrrData, Nuclide
   use constants
   use endf,            only: reaction_name
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
@@ -9,6 +8,7 @@ module summary
   use hdf5_interface
   use material_header, only: Material
   use mesh_header,     only: RegularMesh
+  use nuclide_header
   use output,          only: time_stamp
   use surface_header
   use string,          only: to_str
@@ -36,6 +36,12 @@ contains
 
     ! Write header information
     call write_header(file_id)
+
+    if (run_CE) then
+      call write_dataset(file_id, "run_CE", 1)
+    else
+      call write_dataset(file_id, "run_CE", 0)
+    end if
 
     ! Write number of particles
     call write_dataset(file_id, "n_particles", n_particles)
@@ -488,7 +494,11 @@ contains
       ! Copy ZAID for each nuclide to temporary array
       allocate(nucnames(m%n_nuclides))
       do j = 1, m%n_nuclides
-        i_list = nuclides(m%nuclide(j))%listing
+        if (run_CE) then
+          i_list = nuclides(m%nuclide(j))%listing
+        else
+          i_list = nuclides_MG(m%nuclide(j))%obj%listing
+        end if
         nucnames(j) = xs_listings(i_list)%alias
       end do
 

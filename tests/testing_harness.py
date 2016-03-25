@@ -12,7 +12,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from input_set import InputSet
+from input_set import InputSet, MGInputSet
 from openmc.statepoint import StatePoint
 from openmc.executor import Executor
 import openmc.particle_restart as pr
@@ -243,12 +243,14 @@ class ParticleRestartTestHarness(TestHarness):
 
 
 class PyAPITestHarness(TestHarness):
-    def __init__(self, statepoint_name, tallies_present=False):
+    def __init__(self, statepoint_name, tallies_present=False, mg=False):
         super(PyAPITestHarness, self).__init__(statepoint_name, tallies_present)
         self.parser.add_option('--build-inputs', dest='build_only',
                                action='store_true', default=False)
-        self._input_set = InputSet()
-
+        if mg:
+            self._input_set = MGInputSet()
+        else:
+            self._input_set = InputSet()
     def main(self):
         """Accept commandline arguments and either run or update tests."""
         (self._opts, self._args) = self.parser.parse_args()

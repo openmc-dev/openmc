@@ -9,7 +9,7 @@ module plot
   use mesh,            only: get_mesh_indices
   use mesh_header,     only: RegularMesh
   use output,          only: write_message
-  use particle_header, only: Particle, LocalCoord
+  use particle_header, only: LocalCoord, Particle
   use plot_header
   use ppmlib,          only: Image, init_image, allocate_image, &
                              deallocate_image, set_pixel
@@ -56,7 +56,7 @@ contains
 
   subroutine position_rgb(p, pl, rgb, id)
 
-    type(Particle), intent(inout)         :: p
+    type(Particle), intent(inout)   :: p
     type(ObjectPlot), pointer, intent(in) :: pl
     integer, intent(out)                  :: rgb(3)
     integer, intent(out)                  :: id
@@ -364,7 +364,7 @@ contains
     real(8) :: ll(3)        ! lower left starting point for each sweep direction
     type(Particle)    :: p
     type(ProgressBar) :: progress
-    type(c_ptr) :: f_ptr
+    type(c_ptr)       :: f_ptr
 
     ! compute voxel widths in each direction
     vox = pl % width/dble(pl % pixels)

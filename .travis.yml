@@ -44,7 +44,7 @@ before_script:
   - git clone --branch=master git://github.com/bhermanmit/nndc_xs nndc_xs
   - cat nndc_xs/nndc.tar.gza* | tar xzvf -
   - rm -rf nndc_xs
-  - export CROSS_SECTIONS=$PWD/nndc/cross_sections.xml
+  - export OPENMC_CROSS_SECTIONS=$PWD/nndc/cross_sections.xml
   - wget http://web.mit.edu/smharper/Public/multipole_lib.tar.gz
   - tar -xzf multipole_lib.tar.gz
   - export MULTIPOLE_LIBRARY=$PWD/multipole_lib

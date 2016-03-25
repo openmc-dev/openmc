@@ -574,6 +574,49 @@ contains
   end function calc_rn
 
 !===============================================================================
+! EXPAND_HARMONIC expands a given series of real spherical harmonics
+!===============================================================================
+
+  pure function expand_harmonic(data, order, uvw) result(val)
+    real(8), intent(in) :: data(:)
+    integer, intent(in) :: order
+    real(8), intent(in) :: uvw(3)
+    real(8)             :: val
+
+    integer :: l, lm_lo, lm_hi
+
+    val = data(1)
+    lm_lo = 2
+    lm_hi = 4
+    do l = 1, order - 1
+      val = val + sqrt(TWO * real(l,8) + ONE) * &
+           dot_product(calc_rn(l,uvw), data(lm_lo:lm_hi))
+      lm_lo = lm_hi + 1
+      lm_hi = lm_lo + 2 * (l + 1)
+    end do
+
+  end function expand_harmonic
+
+!===============================================================================
+! EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
+! and the value of x
+!===============================================================================
+
+  pure function evaluate_legendre(data, x) result(val)
+    real(8), intent(in) :: data(:)
+    real(8), intent(in) :: x
+    real(8)             :: val
+
+    integer :: l
+
+    val =  HALF * data(1)
+    do l = 1, size(data) - 1
+      val = val + (real(l,8) +  HALF) * data(l + 1) * calc_pn(l,x)
+    end do
+
+  end function evaluate_legendre
+
+!===============================================================================
 ! ROTATE_ANGLE rotates direction cosines through a polar angle whose cosine is
 ! mu and through an azimuthal angle sampled uniformly. Note that this is done
 ! with direct sampling rather than rejection as is done in MCNP and SERPENT.
@@ -761,5 +804,31 @@ contains
       end if
     end do
   end subroutine broaden_n_polynomials
+
+!===============================================================================
+! find_angle finds the closest angle on the data grid and returns that index
+!===============================================================================
+
+    pure subroutine find_angle(polar, azimuthal, uvw, i_azi, i_pol)
+      real(8), intent(in) :: polar(:)     ! Polar angles [0,pi]
+      real(8), intent(in) :: azimuthal(:) ! Azi. angles [-pi,pi]
+      real(8), intent(in) :: uvw(3)       ! Direction of motion
+      integer, intent(inout) :: i_pol     ! Closest polar bin
+      integer, intent(inout) :: i_azi     ! Closest azi bin
+
+      real(8) :: my_pol, my_azi, dangle
+
+      ! Convert uvw to polar and azi
+
+      my_pol = acos(uvw(3))
+      my_azi = atan2(uvw(2), uvw(1))
+
+      ! Search for equi-binned angles
+      dangle = PI / real(size(polar),8)
+      i_pol  = floor(my_pol / dangle + ONE)
+      dangle = TWO * PI / real(size(azimuthal),8)
+      i_azi  = floor((my_azi + PI) / dangle + ONE)
+
+    end subroutine find_angle
 
 end module math

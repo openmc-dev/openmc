@@ -103,11 +103,11 @@ class StatePoint(object):
             raise IOError('Could not read statepoint file. This most likely '
                           'means the statepoint file was produced by a different '
                           'version of OpenMC than the one you are using.')
-        if self._f['revision'].value != 14:
+        if self._f['revision'].value != 15:
             raise IOError('Statepoint file has a file revision of {} '
                           'which is not consistent with the revision this '
                           'version of OpenMC expects ({}).'.format(
-                              self._f['revision'].value, 14))
+                              self._f['revision'].value, 15))
 
         # Set flags for what data has been read
         self._meshes_read = False
@@ -389,7 +389,7 @@ class StatePoint(object):
                         new_filter.mesh = self.meshes[key]
 
                     # Add Filter to the Tally
-                    tally.add_filter(new_filter)
+                    tally.filters.append(new_filter)
 
                 # Read Nuclide bins
                 nuclide_names = \
@@ -398,7 +398,7 @@ class StatePoint(object):
                 # Add all Nuclides to the Tally
                 for name in nuclide_names:
                     nuclide = openmc.Nuclide(name.decode().strip())
-                    tally.add_nuclide(nuclide)
+                    tally.nuclides.append(nuclide)
 
                 scores = self._f['{0}{1}/score_bins'.format(
                     base, tally_key)].value
@@ -425,7 +425,7 @@ class StatePoint(object):
                     pattern = r'-n$|-pn$|-yn$'
                     score = re.sub(pattern, '-' + moments[j].decode(), score)
 
-                    tally.add_score(score)
+                    tally.scores.append(score)
 
                 # Add Tally to the global dictionary of all Tallies
                 tally.sparse = self.sparse

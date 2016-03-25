@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<element name="cross_sections" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <interleave>
+    <element name="groups">
+      <data type="int"/>
+    </element>
+    <element name="group_structure">
+      <list>
+        <oneOrMore>
+          <data type="double"/>
+        </oneOrMore>
+      </list>
+    </element>
+    <optional>
+      <element name="inverse_velocities">
+        <list>
+          <oneOrMore>
+            <data type="double"/>
+          </oneOrMore>
+        </list>
+      </element>
+    </optional>
+    <zeroOrMore>
+      <element name="xsdata">
+        <interleave>
+          <choice>
+            <element name="name">
+              <data type="string">
+                <param name="maxLength">15</param>
+              </data>
+            </element>
+            <attribute name="name">
+              <data type="string">
+                <param name="maxLength">15</param>
+              </data>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="alias">
+                <data type="string">
+                  <param name="maxLength">15</param>
+                </data>
+              </element>
+              <attribute name="alias">
+                <data type="string">
+                  <param name="maxLength">15</param>
+                </data>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="kT">
+                <data type="double"/>
+              </element>
+              <attribute name="kT">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="fissionable">
+              <choice>
+                <value>true</value>
+                <value>false</value>
+              </choice>
+            </element>
+            <attribute name="fissionable">
+              <choice>
+                <value>true</value>
+                <value>false</value>
+              </choice>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="representation">
+                <choice>
+                  <value>isotropic</value>
+                  <value>angle</value>
+                </choice>
+              </element>
+              <attribute name="representation">
+                <choice>
+                  <value>isotropic</value>
+                  <value>angle</value>
+                </choice>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="num_azimuthal">
+                <data type="positiveInteger"/>
+              </element>
+              <attribute name="num_azimuthal">
+                <data type="positiveInteger"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="num_polar">
+                <data type="positiveInteger"/>
+              </element>
+              <attribute name="num_polar">
+                <data type="positiveInteger"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="scatt_type">
+                <choice>
+                  <value>legendre</value>
+                  <value>histogram</value>
+                  <value>tabular</value>
+                </choice>
+              </element>
+              <attribute name="scatt_type">
+                <choice>
+                  <value>legendre</value>
+                  <value>histogram</value>
+                  <value>tabular</value>
+                </choice>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="order">
+              <data type="positiveInteger"/>
+            </element>
+            <attribute name="order">
+              <data type="positiveInteger"/>
+            </attribute>
+          </choice>
+          <optional>
+            <element name="tabular_legendre">
+              <interleave>
+                <optional>
+                  <choice>
+                    <element name="enable">
+                      <choice>
+                        <value>true</value>
+                        <value>false</value>
+                      </choice>
+                    </element>
+                    <attribute name="enable">
+                      <choice>
+                        <value>true</value>
+                        <value>false</value>
+                      </choice>
+                    </attribute>
+                  </choice>
+                </optional>
+                <optional>
+                  <choice>
+                    <element name="num_points">
+                      <data type="positiveInteger"/>
+                    </element>
+                    <attribute name="num_points">
+                      <data type="positiveInteger"/>
+                    </attribute>
+                  </choice>
+                </optional>
+              </interleave>
+            </element>
+          </optional>
+          <optional>
+            <choice>
+              <element name="total">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="total">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="absorption">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="absorption">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="scatter">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="scatter">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="fission">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="fission">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="fission">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="fission">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="k_fission">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="k_fission">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="chi">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="chi">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="nu_fission">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="nu_fission">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
+      </element>
+    </zeroOrMore>
+  </interleave>
+</element>

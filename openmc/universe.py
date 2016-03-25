@@ -16,9 +16,6 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-# DeprecationWarning filter for the Cell.add_surface(...) method
-warnings.simplefilter('always', DeprecationWarning)
-
 # A static variable for auto-generated Cell IDs
 AUTO_CELL_ID = 10000
 
@@ -285,6 +282,10 @@ class Cell(object):
     def add_surface(self, surface, halfspace):
         """Add a half-space to the list of half-spaces whose intersection defines the
         cell.
+
+        .. deprecated:: 0.7.1
+            Use the Cell.region property to directly specify a Region
+            expression.
 
         Parameters
         ----------

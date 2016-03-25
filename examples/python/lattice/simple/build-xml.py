@@ -167,13 +167,13 @@ mesh_filter.mesh = mesh
 
 # Instantiate tally Trigger
 trigger = openmc.Trigger(trigger_type='rel_err', threshold=1E-2)
-trigger.add_score('all')
+trigger.scores = ['all']
 
 # Instantiate the Tally
 tally = openmc.Tally(tally_id=1)
-tally.add_filter(mesh_filter)
-tally.add_score('total')
-tally.add_trigger(trigger)
+tally.filters = [mesh_filter]
+tally.scores = ['total']
+tally.triggers = [trigger]
 
 # Instantiate a TalliesFile, register Tally/Mesh, and export to XML
 tallies_file = openmc.TalliesFile()

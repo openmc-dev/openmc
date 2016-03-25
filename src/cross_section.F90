@@ -6,7 +6,7 @@ module cross_section
   use global
   use list_header,      only: ListElemInt
   use material_header,  only: Material
-  use math,             only: w, broaden_n_polynomials
+  use math,             only: faddeeva, broaden_wmp_polynomials
   use multipole_header, only: FORM_RM, FORM_MLBW, MP_EA, RM_RT, RM_RA, RM_RF, &
                               MLBW_RT, MLBW_RX, MLBW_RA, MLBW_RF, FIT_T, FIT_A,&
                               FIT_F, MultipoleArray, max_poly, max_L, max_poles
@@ -588,123 +588,119 @@ contains
     real(8), intent(out)             :: sigT      ! Total cross section
     real(8), intent(out)             :: sigA      ! Absorption cross section
     real(8), intent(out)             :: sigF      ! Fission cross section
-    complex(8) :: psi_ki   ! The value of the psi-ki function for the asymptotic
-                           !  form
+    complex(8) :: psi_chi  ! The value of the psi-chi function for the
+                           !  asymptotic form
     complex(8) :: c_temp   ! complex temporary variable
     complex(8) :: w_val    ! The faddeeva function evaluated at Z
     complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
     real(8) :: sqrtE       ! sqrt(E), eV
     real(8) :: invE        ! 1/E, eV
-    real(8) :: dopp        ! sqrt(atomic weight ratio / kT)
-    real(8) :: dopp_ecoef  ! sqrt(atomic weight ratio * pi / kT) / E
+    real(8) :: dopp        ! sqrt(atomic weight ratio / kT) = 1 / (2 sqrt(xi))
     real(8) :: temp        ! real temporary value
     real(8) :: E           ! energy, eV
     real(8) :: sqrtkT      ! sqrt(kT (in eV))
-    integer :: iP          ! index of pole
-    integer :: iC          ! index of curvefit
-    integer :: iW          ! index of window
+    integer :: i_pole      ! index of pole
+    integer :: i_poly      ! index of curvefit
+    integer :: i_window    ! index of window
     integer :: startw      ! window start pointer (for poles)
-    integer :: startw_1    ! window start pointer - 1
-    integer :: startw_endw ! window start pointer - window end pointer
     integer :: endw        ! window end pointer
 
-    ! Convert to eV
+    ! ==========================================================================
+    ! Bookkeeping
+
+    ! Convert to eV.
     E = Emev * 1.0e6_8
     sqrtkT = sqrtkT_ * 1.0e3_8
 
+    ! Define some frequently used variables.
     sqrtE = sqrt(E)
-    invE = ONE/E
+    invE = ONE / E
+    dopp = multipole % sqrtAWR / sqrtkT
 
-    if(.not. mp_already_alloc) then
+    if (.not. mp_already_alloc) then
       call multipole_eval_allocate()
     end if
 
-    ! Locate us
-    iW = floor((sqrtE - sqrt(multipole % start_E))/multipole % spacing + ONE)
+    ! Locate us.
+    i_window = floor((sqrtE - sqrt(multipole % start_E)) / multipole % spacing &
+         + ONE)
+    startw = multipole % w_start(i_window)
+    endw = multipole % w_end(i_window)
 
-    startw = multipole % w_start(iW)
-    startw_1 = startw - 1 ! This is an index shift parameter.
-    endw = multipole % w_end(iW)
-    startw_endw = endw - startw + 1
-
-    ! Fill in factors
+    ! Fill in factors.
     if (startw <= endw) then
-      call fill_factors(multipole, sqrtE, sigT_factor, twophi, multipole % num_l)
+      call fill_factors(multipole, sqrtE, sigT_factor, twophi, &
+           multipole % num_l)
     end if
 
-    ! Generate some doppler broadening parameters
-
-    ! dopp_ecoef is inverse of dopp, divided by E, multiplied by sqrt(pi).
-    dopp = multipole % sqrtAWR / sqrtKT
-    dopp_ecoef = dopp * invE * SQRT_PI
-
+    ! Initialize the ouptut cross sections.
     sigT = ZERO
     sigA = ZERO
     sigF = ZERO
-    ! Evaluate linefit first
 
-    if(sqrtkT /= 0 .and. multipole % broaden_poly(iW) == 1) then ! Broaden the curvefit.
-      call broaden_n_polynomials(E, dopp, multipole % fit_order + 1, broadened_polynomials)
+    ! ==========================================================================
+    ! Add the contribution from the curvefit polynomial.
 
-      do iC = 1, multipole % fit_order+1
-        sigT = sigT + multipole % curvefit(FIT_T, iC, iW)*broadened_polynomials(iC)
-        sigA = sigA + multipole % curvefit(FIT_A, iC, iW)*broadened_polynomials(iC)
-        if (multipole % fissionable) then
-          sigF = sigF + multipole % curvefit(FIT_F, iC, iW)*broadened_polynomials(iC)
-        end if
+    if (sqrtkT /= ZERO .and. multipole % broaden_poly(i_window) == 1) then
+      ! Broaden the curvefit.
+      call broaden_wmp_polynomials(E, dopp, multipole % fit_order + 1, &
+           broadened_polynomials)
+      do i_poly = 1, multipole % fit_order+1
+        sigT = sigT + multipole % curvefit(FIT_T, i_poly, i_window) &
+             * broadened_polynomials(i_poly)
+        sigA = sigA + multipole % curvefit(FIT_A, i_poly, i_window) &
+             * broadened_polynomials(i_poly)
+        sigF = sigF + multipole % curvefit(FIT_F, i_poly, i_window) &
+             * broadened_polynomials(i_poly)
       end do
     else ! Evaluate as if it were a polynomial
       temp = invE
-      do iC = 1, multipole % fit_order+1
-
-        sigT = sigT + multipole % curvefit(FIT_T, iC, iW)*temp
-        sigA = sigA + multipole % curvefit(FIT_A, iC, iW)*temp
-        if (multipole % fissionable) then
-          sigF = sigF + multipole % curvefit(FIT_F, iC, iW)*temp
-        end if
-
+      do i_poly = 1, multipole % fit_order+1
+        sigT = sigT + multipole % curvefit(FIT_T, i_poly, i_window) * temp
+        sigA = sigA + multipole % curvefit(FIT_A, i_poly, i_window) * temp
+        sigF = sigF + multipole % curvefit(FIT_F, i_poly, i_window) * temp
         temp = temp * sqrtE
       end do
     end if
 
-    ! Then get the poles we want and broaden them.
+    ! ==========================================================================
+    ! Add the contribution from the poles in this window.
 
     if (sqrtkT == ZERO) then
       ! If at 0K, use asymptotic form.
-      do iP = startw, endw
-        psi_ki = -ONEI/(multipole % data(MP_EA, iP) - sqrtE)
-        c_temp = psi_ki/E
+      do i_pole = startw, endw
+        psi_chi = -ONEI / (multipole % data(MP_EA, i_pole) - sqrtE)
+        c_temp = psi_chi / E
         if (multipole % formalism == FORM_MLBW) then
-          sigT = sigT + real(multipole % data(MLBW_RT, iP) * c_temp * &
-                             sigT_factor(multipole % l_value(iP))) &
-                      + real(multipole % data(MLBW_RX, iP) * c_temp)
-          sigA = sigA + real(multipole % data(MLBW_RA, iP) * c_temp)
-          sigF = sigF + real(multipole % data(MLBW_RF, iP) * c_temp)
+          sigT = sigT + real(multipole % data(MLBW_RT, i_pole) * c_temp * &
+                             sigT_factor(multipole % l_value(i_pole))) &
+                      + real(multipole % data(MLBW_RX, i_pole) * c_temp)
+          sigA = sigA + real(multipole % data(MLBW_RA, i_pole) * c_temp)
+          sigF = sigF + real(multipole % data(MLBW_RF, i_pole) * c_temp)
         else if (multipole % formalism == FORM_RM) then
-          sigT = sigT + real(multipole % data(RM_RT, iP) * c_temp* &
-                             sigT_factor(multipole % l_value(iP)))
-          sigA = sigA + real(multipole % data(RM_RA, iP) * c_temp)
-          sigF = sigF + real(multipole % data(RM_RF, iP) * c_temp)
+          sigT = sigT + real(multipole % data(RM_RT, i_pole) * c_temp * &
+                             sigT_factor(multipole % l_value(i_pole)))
+          sigA = sigA + real(multipole % data(RM_RA, i_pole) * c_temp)
+          sigF = sigF + real(multipole % data(RM_RF, i_pole) * c_temp)
         end if
       end do
     else
       ! At temperature, use Faddeeva function-based form.
-      if(endw >= startw) then
-        do iP = startw, endw
-          Z = (sqrtE - multipole % data(MP_EA, iP)) * dopp
-          w_val = w(Z) * dopp_ecoef
-
+      if (endw >= startw) then
+        do i_pole = startw, endw
+          Z = (sqrtE - multipole % data(MP_EA, i_pole)) * dopp
+          w_val = faddeeva(Z) * dopp * invE * SQRT_PI
           if (multipole % formalism == FORM_MLBW) then
-            sigT = sigT + real((multipole % data(MLBW_RT, iP) * &
-                          sigT_factor(multipole%l_value(iP)) + &
-                          multipole % data(MLBW_RX, iP)) * w_val)
-            sigA = sigA + real(multipole % data(MLBW_RA, iP) * w_val)
-            sigF = sigF + real(multipole % data(MLBW_RF, iP) * w_val)
+            sigT = sigT + real((multipole % data(MLBW_RT, i_pole) * &
+                          sigT_factor(multipole % l_value(i_pole)) + &
+                          multipole % data(MLBW_RX, i_pole)) * w_val)
+            sigA = sigA + real(multipole % data(MLBW_RA, i_pole) * w_val)
+            sigF = sigF + real(multipole % data(MLBW_RF, i_pole) * w_val)
           else if (multipole % formalism == FORM_RM) then
-            sigT = sigT + real(multipole % data(RM_RT, iP) * w_val * &
-                               sigT_factor(multipole % l_value(iP)))
-            sigA = sigA + real(multipole % data(RM_RA, iP) * w_val)
-            sigF = sigF + real(multipole % data(RM_RF, iP) * w_val)
+            sigT = sigT + real(multipole % data(RM_RT, i_pole) * w_val * &
+                               sigT_factor(multipole % l_value(i_pole)))
+            sigA = sigA + real(multipole % data(RM_RA, i_pole) * w_val)
+            sigF = sigF + real(multipole % data(RM_RF, i_pole) * w_val)
           end if
         end do
       end if
@@ -735,13 +731,14 @@ contains
         arg = 3.0_8 * twophi(iL) / (3.0_8 - twophi(iL)**2)
         twophi(iL) = twophi(iL) - atan(arg)
       else if (iL == 4) then
-        arg = twophi(iL) * (15.0_8 - twophi(iL)**2) / (15.0_8 - 6.0_8 * twophi(iL)**2)
+        arg = twophi(iL) * (15.0_8 - twophi(iL)**2) &
+             / (15.0_8 - 6.0_8 * twophi(iL)**2)
         twophi(iL) = twophi(iL) - atan(arg)
       end if
     end do
 
     twophi = 2.0_8 * twophi
-    sigT_factor = cmplx(cos(twophi),-sin(twophi), KIND=8)
+    sigT_factor = cmplx(cos(twophi), -sin(twophi), KIND=8)
   end subroutine
 
 !===============================================================================

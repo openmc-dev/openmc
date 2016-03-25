@@ -4,30 +4,56 @@
 Multi-Group Cross Sections
 ==========================
 
-.. currentmodule:: openmc.mgxs.mgxs
-
 ----------------------------
 Summary of Available Classes
 ----------------------------
 
+Energy Groups
+-------------
+
+.. currentmodule:: openmc.mgxs.groups
+
 .. autosummary::
 
-   MGXS
-   AbsorptionXS
-   CaptureXS
-   Chi
-   FissionXS
-   NuFissionXS
-   NuScatterXS
-   NuScatterMatrixXS
-   ScatterXS
-   ScatterMatrixXS
-   TotalXS
-   TransportXS
+    EnergyGroups
+
+Multi-group Cross Sections
+--------------------------
+
+.. currentmodule:: openmc.mgxs.mgxs
+
+.. autosummary::
+
+    MGXS
+    AbsorptionXS
+    CaptureXS
+    Chi
+    FissionXS
+    NuFissionXS
+    NuScatterXS
+    NuScatterMatrixXS
+    ScatterXS
+    ScatterMatrixXS
+    TotalXS
+    TransportXS
+
+Multi-group Cross Section Libraries
+-----------------------------------
+
+.. currentmodule:: openmc.mgxs.library
+
+.. autosummary::
+
+    Library
 
 -------------------
 Class Documentation
 -------------------
+
+.. automodule:: openmc.mgxs.groups
+    :members:
+
+.. currentmodule:: openmc.mgxs.mgxs
 
 .. autoclass:: MGXS
     :members:
@@ -63,4 +89,7 @@ Class Documentation
     :members:
 
 .. autoclass:: TransportXS
+    :members:
+
+.. automodule:: openmc.mgxs.library
     :members:

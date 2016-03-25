@@ -1178,7 +1178,7 @@ contains
           do k = 2, mat % n_nuclides
             ! Warn the user if the nuclides don't have identical temperatues.
             if (nuclides(mat % nuclide(k)) % kT /= min_temp &
-                 .and. .not. warning_given) then
+                 .and. .not. warning_given .and. multipole_active) then
               call warning("OpenMC cannot &
                    &identify the temperature of at least one cell. For the &
                    &purposes of multipole cross section evaluations, all cells &

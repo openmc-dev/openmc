@@ -2,8 +2,9 @@ from numbers import Real
 from xml.etree import ElementTree as ET
 import sys
 import warnings
+from collections import Iterable
 
-from openmc.checkvalue import check_type, check_value
+import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -87,13 +88,13 @@ class Trigger(object):
 
     @trigger_type.setter
     def trigger_type(self, trigger_type):
-        check_value('tally trigger type', trigger_type,
+        cv.check_value('tally trigger type', trigger_type,
                     ['variance', 'std_dev', 'rel_err'])
         self._trigger_type = trigger_type
 
     @threshold.setter
     def threshold(self, threshold):
-        check_type('tally trigger threshold', threshold, Real)
+        cv.check_type('tally trigger threshold', threshold, Real)
         self._threshold = threshold
 
     @scores.setter

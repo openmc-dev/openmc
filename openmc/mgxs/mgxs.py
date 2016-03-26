@@ -761,10 +761,9 @@ class MGXS(object):
             # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, :]
 
-            # Eliminate trivial dimensions
-            xs = np.squeeze(xs)
-            xs = np.atleast_1d(xs)
-
+        # Eliminate trivial dimensions
+        xs = np.squeeze(xs)
+        xs = np.atleast_1d(xs)
         return xs
 
     def get_condensed_xs(self, coarse_groups):

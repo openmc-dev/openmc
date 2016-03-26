@@ -1002,6 +1002,7 @@ def get_opencg_geometry(openmc_geometry):
     opencg_geometry = opencg.Geometry()
     opencg_geometry.root_universe = opencg_root_universe
     opencg_geometry.initialize_cell_offsets()
+    opencg_geometry.assign_auto_ids()
 
     return opencg_geometry
 

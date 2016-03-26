@@ -4,7 +4,7 @@
 State Point File Format
 =======================
 
-The current revision of the statepoint file format is 15.
+The current revision of the statepoint file format is 16.
 
 **/filetype** (*char[]*)
 
@@ -248,7 +248,7 @@ if run_mode == 'k-eigenvalue':
     Accumulated sum and sum-of-squares for each global tally. The compound type
     has fields named ``sum`` and ``sum_sq``.
 
-**tallies_present** (*int*)
+**/tallies_present** (*int*)
 
     Flag indicated if tallies are present in the file.
 
@@ -260,3 +260,69 @@ if (run_mode == 'k-eigenvalue' and source_present > 0)
         ``wgt``, ``xyz``, ``uvw``, ``E``, ``g``, and ``delayed_group``, which
         represent the weight, position, direction, energy, energy group, and
         delayed_group of the source particle, respectively.
+
+**/runtime/total initialization** (*double*)
+
+    Time (in seconds on the master processor) spent reading inputs, allocating
+    arrays, etc.
+
+**/runtime/reading cross sections** (*double*)
+
+    Time (in seconds on the master processor) spent loading cross section
+    libraries (this is a subset of initialization).
+
+**/runtime/simulation** (*double*)
+
+    Time (in seconds on the master processor) spent between initialization and
+    finalization.
+
+**/runtime/transport** (*double*)
+
+    Time (in seconds on the master processor) spent transporting particles.
+
+**/runtime/inactive batches** (*double*)
+
+    Time (in seconds on the master processor) spent in the inactive batches
+    (including non-transport activities like communcating sites).
+
+**/runtime/active batches** (*double*)
+
+    Time (in seconds on the master processor) spent in the active batches
+    (including non-transport activities like communcating sites).
+
+**/runtime/synchronizing fission bank** (*double*)
+
+    Time (in seconds on the master processor) spent sampling source particles
+    from fission sites and communicating them to other processes for load
+    balancing.
+
+**/runtime/sampling source sites** (*double*)
+
+    Time (in seconds on the master processor) spent sampling source particles
+    from fission sites.
+
+**/runtime/SEND-RECV source sites** (*double*)
+
+    Time (in seconds on the master processor) spent communicating source sites
+    between processes for load balancing.
+
+**/runtime/accumulating tallies** (*double*)
+
+    Time (in seconds on the master processor) spent communicating tally results
+    and evaluating their statistics.
+
+**/runtime/CMFD** (*double*)
+
+    Time (in seconds on the master processor) spent evaluating CMFD.
+
+**/runtime/CMFD building matrices** (*double*)
+
+    Time (in seconds on the master processor) spent buliding CMFD matrices.
+
+**/runtime/CMFD solving matrices** (*double*)
+
+    Time (in seconds on the master processor) spent solving CMFD matrices.
+
+**/runtime/total** (*double*)
+
+    Total time spent (in seconds on the master processor) in the program.

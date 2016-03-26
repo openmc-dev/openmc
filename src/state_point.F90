@@ -49,10 +49,8 @@ contains
     integer, allocatable :: id_array(:)
     integer, allocatable :: key_array(:)
     integer(HID_T) :: file_id
-    integer(HID_T) :: cmfd_group
-    integer(HID_T) :: tallies_group, tally_group
-    integer(HID_T) :: meshes_group, mesh_group
-    integer(HID_T) :: filter_group
+    integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
+                      mesh_group, filter_group, runtime_group
     character(20), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
     type(RegularMesh), pointer :: meshp
@@ -405,13 +403,45 @@ contains
       end if
 
       call close_group(tallies_group)
+
+      ! Write out the runtime metrics.
+      runtime_group = create_group(file_id, "runtime")
+      call write_dataset(runtime_group, "total initialization", &
+           time_initialize % get_value())
+      call write_dataset(runtime_group, "reading cross sections", &
+           time_read_xs % get_value())
+      call write_dataset(runtime_group, "simulation", &
+           time_inactive % get_value() + time_active % get_value())
+      call write_dataset(runtime_group, "transport", &
+           time_transport % get_value())
+      if (run_mode == MODE_EIGENVALUE) then
+        call write_dataset(runtime_group, "inactive batches", &
+             time_inactive % get_value())
+      end if
+      call write_dataset(runtime_group, "active batches", &
+           time_active % get_value())
+      if (run_mode == MODE_EIGENVALUE) then
+        call write_dataset(runtime_group, "synchronizing fission bank", &
+             time_bank % get_value())
+        call write_dataset(runtime_group, "sampling source sites", &
+             time_bank_sample % get_value())
+        call write_dataset(runtime_group, "SEND-RECV source sites", &
+             time_bank_sendrecv % get_value())
+      end if
+      call write_dataset(runtime_group, "accumulating tallies", &
+           time_tallies % get_value())
+      if (cmfd_run) then
+        call write_dataset(runtime_group, "CMFD", time_cmfd % get_value())
+        call write_dataset(runtime_group, "CMFD building matrices", &
+             time_cmfdbuild % get_value())
+        call write_dataset(runtime_group, "CMFD solving matrices", &
+             time_cmfdsolve % get_value())
+      end if
+      call write_dataset(runtime_group, "total", time_total % get_value())
+      call close_group(runtime_group)
+
       call file_close(file_id)
     end if
-
-    if (master .and. n_tallies > 0) then
-      deallocate(id_array)
-    end if
-
   end subroutine write_state_point
 
 !===============================================================================

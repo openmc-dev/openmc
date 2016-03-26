@@ -47,7 +47,7 @@ class Filter(object):
         filter's bins.
     distribcell_paths : list of str
         The paths traversed through the CSG tree to reach each distribcell
-         instance (for 'distribcell' filters only)
+        instance (for 'distribcell' filters only)
 
     """
 

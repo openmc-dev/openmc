@@ -1159,7 +1159,7 @@ contains
   function get_label(t, i_filter) result(label)
     type(TallyObject), intent(in) :: t        ! tally object
     integer,           intent(in) :: i_filter ! index in filters array
-    character(100)                :: label    ! user-specified identifier
+    character(MAX_LINE_LEN)       :: label    ! user-specified identifier
 
     integer :: i      ! index in cells/surfaces/etc array
     integer :: bin

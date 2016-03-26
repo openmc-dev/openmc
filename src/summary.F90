@@ -535,9 +535,9 @@ contains
     type(RegularMesh), pointer :: m
     type(TallyObject), pointer :: t
 
-    integer                     :: offset   ! distibcell offset
-    character(100), allocatable :: paths(:) ! array of distribcell paths
-    character(100)              :: path    ! temporary distribcell path
+    integer                              :: offset   ! distibcell offset
+    character(MAX_LINE_LEN), allocatable :: paths(:) ! distribcell paths array
+    character(MAX_LINE_LEN)              :: path     ! distribcell path
 
     tallies_group = create_group(file_id, "tallies")
 
@@ -581,25 +581,25 @@ contains
       ! Write number of filters
       call write_dataset(tally_group, "n_filters", t%n_filters)
 
-      FILTER_LOOP: do j = 1, t%n_filters
+      FILTER_LOOP: do j = 1, t % n_filters
         filter_group = create_group(tally_group, "filter " // trim(to_str(j)))
 
         ! Write number of bins for this filter
-        call write_dataset(filter_group, "n_bins", t%filters(j)%n_bins)
+        call write_dataset(filter_group, "n_bins", t % filters(j) % n_bins)
 
         ! Write filter bins
-        if (t%filters(j)%type == FILTER_ENERGYIN .or. &
-             t%filters(j)%type == FILTER_ENERGYOUT .or. &
-             t%filters(j)%type == FILTER_MU .or. &
-             t%filters(j)%type == FILTER_POLAR .or. &
-             t%filters(j)%type == FILTER_AZIMUTHAL) then
-          call write_dataset(filter_group, "bins", t%filters(j)%real_bins)
+        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
+             t % filters(j)% type == FILTER_ENERGYOUT .or. &
+             t % filters(j) % type == FILTER_MU .or. &
+             t % filters(j) % type == FILTER_POLAR .or. &
+             t % filters(j) % type == FILTER_AZIMUTHAL) then
+          call write_dataset(filter_group, "bins", t % filters(j) % real_bins)
         else
-          call write_dataset(filter_group, "bins", t%filters(j)%int_bins)
+          call write_dataset(filter_group, "bins", t % filters(j) % int_bins)
         end if
 
         ! Write paths to reach each distribcell instance
-        if (t%filters(j)%type == FILTER_DISTRIBCELL) then
+        if (t % filters(j) % type == FILTER_DISTRIBCELL) then
           ! Allocate array of strings for each distribcell path
           allocate(paths(t % filters(j) % n_bins))
 

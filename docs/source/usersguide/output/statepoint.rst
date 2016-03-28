@@ -4,7 +4,7 @@
 State Point File Format
 =======================
 
-The current revision of the statepoint file format is 16.
+The current revision of the statepoint file format is 15.
 
 **/filetype** (*char[]*)
 
@@ -263,66 +263,66 @@ if (run_mode == 'k-eigenvalue' and source_present > 0)
 
 **/runtime/total initialization** (*double*)
 
-    Time (in seconds on the master processor) spent reading inputs, allocating
+    Time (in seconds on the master process) spent reading inputs, allocating
     arrays, etc.
 
 **/runtime/reading cross sections** (*double*)
 
-    Time (in seconds on the master processor) spent loading cross section
+    Time (in seconds on the master process) spent loading cross section
     libraries (this is a subset of initialization).
 
 **/runtime/simulation** (*double*)
 
-    Time (in seconds on the master processor) spent between initialization and
+    Time (in seconds on the master process) spent between initialization and
     finalization.
 
 **/runtime/transport** (*double*)
 
-    Time (in seconds on the master processor) spent transporting particles.
+    Time (in seconds on the master process) spent transporting particles.
 
 **/runtime/inactive batches** (*double*)
 
-    Time (in seconds on the master processor) spent in the inactive batches
+    Time (in seconds on the master process) spent in the inactive batches
     (including non-transport activities like communcating sites).
 
 **/runtime/active batches** (*double*)
 
-    Time (in seconds on the master processor) spent in the active batches
-    (including non-transport activities like communcating sites).
+    Time (in seconds on the master process) spent in the active batches
+    (including non-transport activities like communicating sites).
 
 **/runtime/synchronizing fission bank** (*double*)
 
-    Time (in seconds on the master processor) spent sampling source particles
+    Time (in seconds on the master process) spent sampling source particles
     from fission sites and communicating them to other processes for load
     balancing.
 
 **/runtime/sampling source sites** (*double*)
 
-    Time (in seconds on the master processor) spent sampling source particles
+    Time (in seconds on the master process) spent sampling source particles
     from fission sites.
 
 **/runtime/SEND-RECV source sites** (*double*)
 
-    Time (in seconds on the master processor) spent communicating source sites
+    Time (in seconds on the master process) spent communicating source sites
     between processes for load balancing.
 
 **/runtime/accumulating tallies** (*double*)
 
-    Time (in seconds on the master processor) spent communicating tally results
+    Time (in seconds on the master process) spent communicating tally results
     and evaluating their statistics.
 
 **/runtime/CMFD** (*double*)
 
-    Time (in seconds on the master processor) spent evaluating CMFD.
+    Time (in seconds on the master process) spent evaluating CMFD.
 
 **/runtime/CMFD building matrices** (*double*)
 
-    Time (in seconds on the master processor) spent buliding CMFD matrices.
+    Time (in seconds on the master process) spent buliding CMFD matrices.
 
 **/runtime/CMFD solving matrices** (*double*)
 
-    Time (in seconds on the master processor) spent solving CMFD matrices.
+    Time (in seconds on the master process) spent solving CMFD matrices.
 
 **/runtime/total** (*double*)
 
-    Total time spent (in seconds on the master processor) in the program.
+    Total time spent (in seconds on the master process) in the program.

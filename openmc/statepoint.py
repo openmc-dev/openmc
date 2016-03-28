@@ -107,11 +107,11 @@ class StatePoint(object):
                           'means the statepoint file was produced by a '
                           'different version of OpenMC than the one you are '
                           'using.')
-        if self._f['revision'].value != 16:
+        if self._f['revision'].value != 15:
             raise IOError('Statepoint file has a file revision of {} '
                           'which is not consistent with the revision this '
                           'version of OpenMC expects ({}).'.format(
-                              self._f['revision'].value, 16))
+                              self._f['revision'].value, 15))
 
         # Set flags for what data has been read
         self._meshes_read = False
@@ -317,10 +317,8 @@ class StatePoint(object):
 
     @property
     def runtime(self):
-        out = dict()
-        for key in self._f['runtime'].keys():
-            out[key] = self._f['runtime/' + key].value
-        return out
+        return {name: dataset.value
+                for name, dataset in self._f['runtime'].items()}
 
     @property
     def seed(self):

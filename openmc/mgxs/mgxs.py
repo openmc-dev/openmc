@@ -67,10 +67,6 @@ class MGXS(object):
         The energy group structure for energy condensation
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    nuclides : Iterable of basestring
-        The user-specified nuclides to compute cross sections. If by_nuclide
-        is True but nuclides are not specified by the user, all nuclides in the
-        spatial domain will be used.
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
@@ -109,9 +105,11 @@ class MGXS(object):
     num_nuclides : Integral
         The number of nuclides for which the multi-group cross section is
         being tracked. This is unity if the by_nuclide attribute is False.
-    nuclides : list of str or 'sum'
-        A list of nuclide string names (e.g., 'U-238', 'O-16') when by_nuclide
-        is True and 'sum' when by_nuclide is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
         Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
         for compressed data storage

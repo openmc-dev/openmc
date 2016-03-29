@@ -68,6 +68,9 @@ class StatePoint(object):
         Working directory for simulation
     run_mode : str
         Simulation run mode, e.g. 'k-eigenvalue'
+    runtime : dict
+        Dictionary whose keys are strings describing various runtime metrics
+        and whose values are time values in seconds.
     seed : Integral
         Pseudorandom number generator seed
     source : ndarray of compound datatype
@@ -101,8 +104,9 @@ class StatePoint(object):
                 raise IOError('{} is not a statepoint file.'.format(filename))
         except AttributeError:
             raise IOError('Could not read statepoint file. This most likely '
-                          'means the statepoint file was produced by a different '
-                          'version of OpenMC than the one you are using.')
+                          'means the statepoint file was produced by a '
+                          'different version of OpenMC than the one you are '
+                          'using.')
         if self._f['revision'].value != 15:
             raise IOError('Statepoint file has a file revision of {} '
                           'which is not consistent with the revision this '
@@ -310,6 +314,11 @@ class StatePoint(object):
     @property
     def run_mode(self):
         return self._f['run_mode'].value.decode()
+
+    @property
+    def runtime(self):
+        return {name: dataset.value
+                for name, dataset in self._f['runtime'].items()}
 
     @property
     def seed(self):

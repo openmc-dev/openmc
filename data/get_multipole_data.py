@@ -23,13 +23,13 @@ except ImportError:
 cwd = os.getcwd()
 sys.path.insert(0, os.path.join(cwd, '..'))
 
-baseUrl = 'http://web.mit.edu/smharper/Public/'
-files = ['multipole_lib.tar.gz']
+baseUrl = 'https://github.com/smharper/windowed_multipole_library/blob/master/'
+files = ['multipole_lib.tar.gz?raw=true']
 checksums = ['9f0307132fe5beca78b8fc7a01fb401c']
 block_size = 16384
 
 # ==============================================================================
-# DOWNLOAD FILES FROM ATHENA LOCKER
+# DOWNLOAD FILES FROM GITHUB REPO
 
 filesComplete = []
 for f in files:
@@ -44,23 +44,26 @@ for f in files:
         file_size = req.length
     downloaded = 0
 
+    # Remove GitHub junk from the file name.
+    fname = f[:-9] if f.endswith('?raw=true') else f
+
     # Check if file already downloaded
-    if os.path.exists(f):
-        if os.path.getsize(f) == file_size:
-            print('Skipping ' + f)
-            filesComplete.append(f)
+    if os.path.exists(fname):
+        if os.path.getsize(fname) == file_size:
+            print('Skipping ' + fname)
+            filesComplete.append(fname)
             continue
         else:
             if sys.version_info[0] < 3:
-                overwrite = raw_input('Overwrite {0}? ([y]/n) '.format(f))
+                overwrite = raw_input('Overwrite {0}? ([y]/n) '.format(fname))
             else:
-                overwrite = input('Overwrite {0}? ([y]/n) '.format(f))
+                overwrite = input('Overwrite {0}? ([y]/n) '.format(fname))
             if overwrite.lower().startswith('n'):
                 continue
 
     # Copy file to disk
     print('Downloading {0}... '.format(f), end='')
-    with open(f, 'wb') as fh:
+    with open(fname, 'wb') as fh:
         while True:
             chunk = req.read(block_size)
             if not chunk: break
@@ -69,14 +72,15 @@ for f in files:
             status = '{0:10}  [{1:3.2f}%]'.format(downloaded, downloaded * 100. / file_size)
             print(status + chr(8)*len(status), end='')
         print('')
-        filesComplete.append(f)
+        filesComplete.append(fname)
 
 # ==============================================================================
 # VERIFY MD5 CHECKSUMS
 
 print('Verifying MD5 checksums...')
 for f, checksum in zip(files, checksums):
-    downloadsum = hashlib.md5(open(f, 'rb').read()).hexdigest()
+    fname = f[:-9] if f.endswith('?raw=true') else f
+    downloadsum = hashlib.md5(open(fname, 'rb').read()).hexdigest()
     if downloadsum != checksum:
         raise IOError("MD5 checksum for {} does not match. If this is your first "
                       "time receiving this message, please re-run the script. "
@@ -87,12 +91,13 @@ for f, checksum in zip(files, checksums):
 # EXTRACT FILES FROM TGZ
 
 for f in files:
-    if not f in filesComplete:
+    fname = f[:-9] if f.endswith('?raw=true') else f
+    if not fname in filesComplete:
         continue
 
     # Extract files
-    with tarfile.open(f, 'r') as tgz:
-        print('Extracting {0}...'.format(f))
+    with tarfile.open(fname, 'r') as tgz:
+        print('Extracting {0}...'.format(fname))
         tgz.extractall(path='wmp/')
 
 # Move data files down one level

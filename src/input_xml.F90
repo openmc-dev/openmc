@@ -167,8 +167,7 @@ contains
 
     ! Find the windowed multipole library
     if (run_mode /= MODE_PLOTTING) then
-      if (.not. check_for_node(doc, "multipole_library") .and. &
-           run_mode /= MODE_PLOTTING) then
+      if (.not. check_for_node(doc, "multipole_library")) then
         ! No library location specified in settings.xml, check
         ! environment variable
         call get_environment_variable("OPENMC_MULTIPOLE_LIBRARY", env_variable)
@@ -1109,9 +1108,9 @@ contains
     if (check_for_node(doc, "use_windowed_multipole")) then
       call get_node_value(doc, "use_windowed_multipole", temp_str)
       select case (to_lower(temp_str))
-      case ('true', 't', '1', 'y')
+      case ('true', '1')
         multipole_active = .true.
-      case ('false', 'f', '0', 'n')
+      case ('false', '0')
         multipole_active = .false.
       case default
         call fatal_error("Unrecognized value for <use_windowed_multipole> in &

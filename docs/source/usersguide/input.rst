@@ -290,7 +290,7 @@ OpenMC can use it for on-the-fly Doppler-broadening of resolved resonance range
 cross sections. If this element is absent from the settings.xml file, the
 :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used.
 
-  .. note:: The <use_windowed_multipole> element must also be set to "True"
+  .. note:: The <use_windowed_multipole> element must also be set to "true"
     for windowed multipole functionality.
 
 ``<max_order>`` Element

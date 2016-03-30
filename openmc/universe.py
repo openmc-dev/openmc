@@ -475,7 +475,7 @@ class Cell(object):
         if self.temperature is not None:
             if isinstance(self.temperature, Iterable):
                 element.set("temperature", ' '.join(
-                            [str(t) for t in self.temperature]))
+                            str(t) for t in self.temperature))
             else:
                 element.set("temperature", str(self.temperature))
 

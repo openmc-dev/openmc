@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import os
 import sys
 sys.path.insert(0, os.pardir)
@@ -9,7 +8,7 @@ from openmc.stats import Box
 from openmc.source import Source
 
 
-class DistribmatTestHarness(PyAPITestHarness):
+class MultipoleTestHarness(PyAPITestHarness):
     def _build_inputs(self):
         ####################
         # Materials
@@ -116,8 +115,15 @@ class DistribmatTestHarness(PyAPITestHarness):
 
         plots_file.export_to_xml()
 
+    def execute_test(self):
+        if not 'OPENMC_MULTIPOLE_LIBRARY' in os.environ:
+            raise RuntimeError("The 'OPENMC_MULTIPOLE_LIBRARY' environment "
+                 "variable must be specified for this test.")
+        else:
+            super(MultipoleTestHarness, self).execute_test()
+
     def _get_results(self):
-        outstr = super(DistribmatTestHarness, self)._get_results()
+        outstr = super(MultipoleTestHarness, self)._get_results()
         su = openmc.Summary('summary.h5')
         outstr += str(su.get_cell_by_id(11))
         return outstr
@@ -126,9 +132,9 @@ class DistribmatTestHarness(PyAPITestHarness):
         f = os.path.join(os.getcwd(), 'plots.xml')
         if os.path.exists(f):
             os.remove(f)
-        super(DistribmatTestHarness, self)._cleanup()
+        super(MultipoleTestHarness, self)._cleanup()
 
 
 if __name__ == '__main__':
-    harness = DistribmatTestHarness('statepoint.5.*')
+    harness = MultipoleTestHarness('statepoint.5.*')
     harness.main()

@@ -56,6 +56,7 @@ contains
     integer :: temp_table   ! temporary value for sorting
     character(12)  :: name  ! name of isotope, e.g. 92235.03c
     character(12)  :: alias ! alias of nuclide, e.g. U-235.03c
+    logical :: mp_found     ! if windowed multipole libraries were found
     type(Material),   pointer :: mat
     type(NuclideCE), pointer :: nuc
     type(SAlphaBeta), pointer :: sab
@@ -238,6 +239,21 @@ contains
         exit
       end if
     end do
+
+    ! If the user wants multipole, make sure we found a multipole library.
+    if (multipole_active) then
+      mp_found = .false.
+      do i = 1, n_nuclides_total
+        if (nuclides(i) % mp_present) then
+          mp_found = .true.
+          exit
+        end if
+      end do
+      if (.not. mp_found) call warning("Windowed multipole functionality is &
+           &turned on, but no multipole libraries were found.  Set the &
+           &<multipole_library> element in settings.xml or the &
+           &OPENMC_MULTIPOLE_LIBRARY environment variable.")
+    end if
 
   end subroutine read_ace_xs
 
@@ -429,12 +445,12 @@ contains
 
   subroutine read_multipole_data(i_table)
 
-    integer, intent(in) :: i_table   ! index in nuclides/sab_tables
+    integer, intent(in) :: i_table  ! index in nuclides/sab_tables
 
-    logical       :: file_exists   ! does multipole library exist?
-    character(7)  :: readable      ! is multipole library readable?
-    character(6)  :: zaid_string   ! String of the ZAID
-    character(MAX_FILE_LEN+9)  :: filename  ! path to multipole xs library
+    logical :: file_exists                 ! Does multipole library exist?
+    character(7) :: readable               ! Is multipole library readable?
+    character(6) :: zaid_string            ! String of the ZAID
+    character(MAX_FILE_LEN+9) :: filename  ! Path to multipole xs library
 
     ! For the time being, and I know this is a bit hacky, we just assume
     ! that the file will be zaid.h5.

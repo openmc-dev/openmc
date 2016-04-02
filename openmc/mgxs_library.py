@@ -87,8 +87,9 @@ class XSdata(object):
     ----------
     name : str, optional
         Name of the mgxs data set.
-
-    representation : {'isotropic', 'angle'}
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energygroup structure
+    representation : {'isotropic', 'angle'}, optional
         Method used in generating the MGXS (isotropic or angle-dependent flux
         weighting). Defaults to 'isotropic'
 
@@ -99,10 +100,10 @@ class XSdata(object):
     alias : str
         Separate unique identifier for the xsdata object
     kT : float
-        Temperature (in units of MeV) of this data set.
-    energy_groups : EnergyGroups
+        Temperature (in units of MeV).
+    energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure
-    fissionable : boolean
+    fissionable : bool
         Whether or not this is a fissionable data set.
     scatt_type : {'legendre', 'histogram', or 'tabular'}
         Angular distribution representation (legendre, histogram, or tabular)
@@ -115,6 +116,85 @@ class XSdata(object):
         Legendre polynomial form). Dict contains two keys: 'enable' and
         'num_points'.  'enable' is a boolean and 'num_points' is the
         number of points to use, if 'enable' is True.
+    num_azimuthal : int
+        Number of equal width angular bins that the azimuthal angular domain is
+        subdivided into. This only applies when ``representation`` is "angle".
+    num_polar : int
+        Number of equal width angular bins that the polar angular domain is
+        subdivided into. This only applies when ``representation`` is "angle".
+    total : numpy.ndarray
+        Group-wise total cross section ordered by increasing group index (i.e.,
+        fast to thermal). If ``representation`` is "isotropic", then the length
+        of this list should equal the number of groups described in the
+        ``groups`` element.  If ``representation`` is "angle", then the length
+        of this list should equal the number of groups times the number of
+        azimuthal angles times the number of polar angles, with the
+        inner-dimension being groups, intermediate-dimension being azimuthal
+        angles and outer-dimension being the polar angles.
+    absorption : numpy.ndarray
+        Group-wise absorption cross section ordered by increasing group index
+        (i.e., fast to thermal).  If ``representation`` is "isotropic", then the
+        length of this list should equal the number of groups described in the
+        ``groups`` attribute.  If ``representation`` is "angle", then the length
+        of this list should equal the number of groups times the number of
+        azimuthal angles times the number of polar angles, with the
+        inner-dimension being groups, intermediate-dimension being azimuthal
+        angles and outer-dimension being the polar angles.
+    scatter : numpy.ndarray
+        Scattering moment matrices presented with the columns representing
+        incoming group and rows representing the outgoing group.  That is,
+        down-scatter will be above the diagonal of the resultant matrix.  This
+        matrix is repeated for every Legendre order (in order of increasing
+        orders) if ``scatt_type`` is "legendre"; otherwise, this matrix is
+        repeated for every bin of the histogram or tabular representation.
+        Finally, if ``representation`` is "angle", the above is repeated for
+        every azimuthal angle and every polar angle, in that order.
+    multiplicity : numpy.ndarray
+        Ratio of neutrons produced in scattering collisions to the neutrons
+        which undergo scattering collisions; that is, the multiplicity provides
+        the code with a scaling factor to account for neutrons being produced in
+        (n,xn) reactions.  This information is assumed isotropic and therefore
+        does not need to be repeated for every Legendre moment or
+        histogram/tabular bin.  This matrix follows the same arrangement as
+        described for the ``scatter`` attribute, with the exception of the data
+        needed to provide the scattering type information.
+    fission : numpy.ndarray
+        Group-wise fission cross section ordered by increasing group index
+        (i.e., fast to thermal).  If ``representation`` is "isotropic", then the
+        length of this list should equal the number of groups described in the
+        ``groups`` attribute.  If ``representation`` is "angle", then the length
+        of this list should equal the number of groups times the number of
+        azimuthal angles times the number of polar angles, with the
+        inner-dimension being groups, intermediate-dimension being azimuthal
+        angles and outer-dimension being the polar angles.
+    k_fission : numpy.ndarray
+        Group-wise kappa-fission cross section ordered by increasing group index
+        (i.e., fast to thermal).  If ``representation`` is "isotropic", then the
+        length of this list should equal the number of groups described in the
+        ``groups`` attribute.  If ``representation`` is "angle", then the length
+        of this list should equal the number of groups times the number of
+        azimuthal angles times the number of polar angles, with the
+        inner-dimension being groups, intermediate-dimension being azimuthal
+        angles and outer-dimension being the polar angles.
+    chi : numpy.ndarray
+        Group-wise fission spectra ordered by increasing group index (i.e., fast
+        to thermal).  This attribute should be used if making the common
+        approximation that the fission spectra does not depend on incoming
+        energy.  If the user does not wish to make this approximation, then this
+        should not be provided and this information included in the
+        ``nu_fission`` element instead.  If ``representation`` is "isotropic",
+        then the length of this list should equal the number of groups described
+        in the ``groups`` element.  If ``representation`` is "angle", then the
+        length of this list should equal the number of groups times the number
+        of azimuthal angles times the number of polar angles, with the
+        inner-dimension being groups, intermediate-dimension being azimuthal
+        angles and outer-dimension being the polar angles.
+    nu_fission : numpy.ndarray
+        Group-wise fission production cross section vector (i.e., if ``chi`` is
+        provided), or is the group-wise fission production matrix.  If providing
+        the vector, it should be ordered the same as the ``fission`` data.  If
+        providing the matrix, it should be ordered the same as the
+        ``multiplicity`` matrix.
 
     """
     def __init__(self, name, energy_groups, representation="isotropic"):
@@ -577,8 +657,6 @@ class MGXSLibraryFile(object):
         Energy group structure.
     inverse_velocities : Iterable of Real
         Inverse of velocities, units of sec/cm
-    filename : str
-        XML file to write to.
     xsdatas : Iterable of XSdata
         Iterable of multi-Group cross section data objects
     """
@@ -717,6 +795,3 @@ class MGXSLibraryFile(object):
         tree = ET.ElementTree(self._cross_sections_file)
         tree.write(filename, xml_declaration=True,
                              encoding='utf-8', method="xml")
-
-
-

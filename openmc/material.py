@@ -723,9 +723,8 @@ class MaterialsFile(object):
             material.make_isotropic_in_lab()
 
     def _create_material_subelements(self):
-        subelement = ET.SubElement(self._materials_file, "default_xs")
-
         if self._default_xs is not None:
+            subelement = ET.SubElement(self._materials_file, "default_xs")
             subelement.text = self._default_xs
 
         for material in self._materials:

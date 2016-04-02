@@ -1,8 +1,8 @@
 .. _pythonapi_mgxs_library:
 
-============
-MGXS Library
-============
+==============================
+Multi-group Cross Section Data
+==============================
 
-.. automodule:: openmc.mgxs.library
+.. automodule:: openmc.mgxs_library
     :members:

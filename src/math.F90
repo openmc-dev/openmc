@@ -741,6 +741,8 @@ contains
     ! For imag(z) > 0, w_int(z) = w_fun(z)
     ! For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
 
+    ! Note that faddeeva_w will interpret zero as machine epsilon
+
     relerr = ZERO
     if (aimag(z) > ZERO) then
       wv = faddeeva_w(z, relerr)

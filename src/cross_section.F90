@@ -9,7 +9,7 @@ module cross_section
   use math,             only: faddeeva, broaden_wmp_polynomials
   use multipole_header, only: FORM_RM, FORM_MLBW, MP_EA, RM_RT, RM_RA, RM_RF, &
                               MLBW_RT, MLBW_RX, MLBW_RA, MLBW_RF, FIT_T, FIT_A,&
-                              FIT_F, MultipoleArray, max_poly, max_L, max_poles
+                              FIT_F, MultipoleArray
   use nuclide_header
   use particle_header,  only: Particle
   use random_lcg,       only: prn, future_prn, prn_set_stream
@@ -17,14 +17,6 @@ module cross_section
   use search,           only: binary_search
 
   implicit none
-
-  ! Allocatable arrays for multipole that are allocated once for speed purposes
-  complex(8), allocatable :: sigT_factor(:)
-  real(8), allocatable :: twophi(:)
-  real(8), allocatable :: broadened_polynomials(:)
-  logical :: mp_already_alloc = .false.
-
-!$omp threadprivate(sigT_factor, twophi, broadened_polynomials, mp_already_alloc)
 
 contains
 
@@ -559,19 +551,6 @@ contains
   end function find_energy_index
 
 !===============================================================================
-! MULTIPOLE_EVAL_ALLOCATE allocates fixed-length arrays that vary based on
-! what nuclides are loaded into the problem
-!===============================================================================
-
-  subroutine multipole_eval_allocate()
-    allocate(sigT_factor(max_L))
-    allocate(twophi(max_L))
-    allocate(broadened_polynomials(max_poly))
-
-    mp_already_alloc = .true.
-  end subroutine
-
-!===============================================================================
 ! MULTIPOLE_EVAL evaluates the windowed multipole equations for cross
 ! sections in the resolved resonance regions
 !===============================================================================
@@ -593,6 +572,8 @@ contains
     complex(8) :: c_temp   ! complex temporary variable
     complex(8) :: w_val    ! The faddeeva function evaluated at Z
     complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
+    complex(8) :: sigT_factor(multipole % num_l)
+    real(8) :: broadened_polynomials(multipole % fit_order + 1)
     real(8) :: sqrtE       ! sqrt(E), eV
     real(8) :: invE        ! 1/E, eV
     real(8) :: dopp        ! sqrt(atomic weight ratio / kT) = 1 / (2 sqrt(xi))
@@ -617,10 +598,6 @@ contains
     invE = ONE / E
     dopp = multipole % sqrtAWR / sqrtkT
 
-    if (.not. mp_already_alloc) then
-      call multipole_eval_allocate()
-    end if
-
     ! Locate us.
     i_window = floor((sqrtE - sqrt(multipole % start_E)) / multipole % spacing &
          + ONE)
@@ -629,8 +606,7 @@ contains
 
     ! Fill in factors.
     if (startw <= endw) then
-      call fill_factors(multipole, sqrtE, sigT_factor, twophi, &
-           multipole % num_l)
+      call compute_sigT_factor(multipole, sqrtE, sigT_factor)
     end if
 
     ! Initialize the ouptut cross sections.
@@ -705,25 +681,23 @@ contains
         end do
       end if
     end if
-  end subroutine
+  end subroutine multipole_eval
 
 !===============================================================================
-! FILL_FACTORS calculates the value of phi, the hardsphere phase shift factor,
-! and sigT_factor, a factor inside of the sigT equation not present in the
-! sigA and sigF equations.
+! COMPUTE_SIGT_FACTOR calculates the sigT_factor, a factor inside of the sigT
+! equation not present in the sigA and sigF equations.
 !===============================================================================
 
-  subroutine fill_factors(multipole, sqrtE, sigT_factor, twophi, max_L)
-    type(MultipoleArray), intent(in)   :: multipole
-    real(8), intent(in)                  :: sqrtE
-    integer, intent(in)                  :: max_L
-    complex(8), intent(out)              :: sigT_factor(max_L)
-    real(8), intent(out)                 :: twophi(max_L)
+  subroutine compute_sigT_factor(multipole, sqrtE, sigT_factor)
+    type(MultipoleArray), intent(in)  :: multipole
+    real(8),              intent(in)  :: sqrtE
+    complex(8),           intent(out) :: sigT_factor(multipole % num_l)
 
     integer :: iL
+    real(8) :: twophi(multipole % num_l)
     real(8) :: arg
 
-    do iL = 1, max_L
+    do iL = 1, multipole % num_l
       twophi(iL) = multipole % pseudo_k0RS(iL) * sqrtE
       if (iL == 2) then
         twophi(iL) = twophi(iL) - atan(twophi(iL))
@@ -739,7 +713,7 @@ contains
 
     twophi = 2.0_8 * twophi
     sigT_factor = cmplx(cos(twophi), -sin(twophi), KIND=8)
-  end subroutine
+  end subroutine compute_sigT_factor
 
 !===============================================================================
 ! 0K_ELASTIC_XS determines the microscopic 0K elastic cross section

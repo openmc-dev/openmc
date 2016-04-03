@@ -12,7 +12,6 @@ module ace
   use list_header, only: ListInt
   use material_header, only: Material
   use multipole,        only: multipole_read
-  use multipole_header, only: max_L, max_poles, max_poly
   use nuclide_header
   use output, only: write_message
   use product_header, only: ReactionProduct
@@ -477,19 +476,6 @@ contains
       ! Call the read routine
       call multipole_read(filename, nuc % multipole, i_table)
       nuc % mp_present = .true.
-
-      ! Update the maximum number of poles, l indices, and polynomial order
-      if (nuc % multipole % max_w > max_poles) then
-        max_poles = nuc % multipole % max_w
-      end if
-
-      if (nuc % multipole % num_l > max_L) then
-        max_L = nuc % multipole % num_l
-      end if
-
-      if (nuc % multipole % fit_order + 1 > max_poly) then
-        max_poly = nuc % multipole % fit_order + 1
-      end if
 
       ! Recreate nu-fission tables
       if (nuc % fissionable) then

@@ -4,8 +4,8 @@ module multipole
   use global
   use hdf5
   use hdf5_interface
-  use multipole_header, only: MultipoleArray, FIT_T, FIT_A, FIT_F, max_L, &
-                              max_poles, max_poly, MP_FISS, FORM_MLBW, FORM_RM
+  use multipole_header, only: MultipoleArray, FIT_T, FIT_A, FIT_F, &
+                              MP_FISS, FORM_MLBW, FORM_RM
 
   implicit none
 

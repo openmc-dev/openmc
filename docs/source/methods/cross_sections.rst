@@ -63,12 +63,67 @@ Other Methods
 A good survey of other energy grid techniques, including unionized energy grids,
 can be found in a paper by Leppanen_.
 
+---------------------------------
+Windowed Multipole Representation
+---------------------------------
+
+In addition to the usual pointwise representation of cross sections, OpenMC
+offers support for an experimental data format called windowed multipole (WMP).
+This data format requires less memory than pointwise cross sections, and it
+allows on-the-fly Doppler broadening to arbitrary temperature.
+
+The multipole method was introduced by [Hwang]_ and the faster windowed
+multipole method by [Josey]_.  In the multipole format, cross section resonances
+are represented by poles, `p_j`, and residues, `r_j`, in the complex plane.  The
+0 K cross sections in the resolved resonance region can be computed by summing
+up a contribution from each pole:
+
+.. math::
+   \sigma(E, T=0\text{K}) = \frac{1}{E} \sum_j \text{Re} \left[
+   \frac{i r_j}{\sqrt{E} - p_j} \right]
+
+Assuming free-gas thermal motion, cross sections in the multipole form can be
+analytically Doppler broadened to give (after some approximation) the form:
+
+.. math::
+   \sigma(E, T) = \frac{1}{2 E \sqrt{\xi}} \sum_j \text{Re} \left[i r_j
+   \sqrt{\pi} W(z) \right]
+.. math::
+   z = \frac{\sqrt{E} - p_j}{2 \sqrt{\xi}}
+.. math::
+   \xi = \frac{k_B T}{4 A}
+
+where `T` is the temperature of the resonant scatterer, `k_B` is the Boltzmann
+constant, `A` is the mass of the target nucleus, and `W` is the Faddeeva
+function.
+
+.. math::
+   W(z) = e^{-z^2} \text{erfc}(-iz)
+
+It is prohibitively expensive to evaluate a Faddeeva function for all of the
+poles every time a cross section lookup is performed in Monte Carlo.  To
+mitigate that computational cost, the WMP method only evaluates poles within a
+certain energy "window" around the incident neutron energy and accounts for the
+effect of resonances outside that window with a polynomial fit.
+
+Note that the implementation of WMP in OpenMC assumes that inelastic scattering
+does not occur in the resolved resonance region.
+
+
 .. only:: html
 
    .. rubric:: References
 
 .. [Brown] Forrest B. Brown, "New Hash-based Energy Lookup Algorithm for Monte
            Carlo codes," LA-UR-14-24530, Los Alamos National Laboratory (2014).
+
+.. [Hwang] R. N. Hwag, "A Rigorous Pole Representation of Multilevel Cross
+           Sections and Its Practical Application,"  *Nucl. Sci. Eng.*, **96**,
+           192-209 (1987).
+
+.. [Josey] Colin Josey, Pablo Ducru, Benoit Forget, and Kord Smith, "Windowed
+           Multipole for Cross Section Doppler Broadening," *J. Comp. Phys*,
+           **307**, 715-727 (2016). http://dx.doi.org/10.1016/j.jcp.2015.08.013
 
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi

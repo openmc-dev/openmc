@@ -17,7 +17,6 @@ module cross_section
                              calc_urr_xs_otf,&
                              Isotope,&
                              isotopes,&
-                             max_E_urr,&
                              real_freq
 
   implicit none
@@ -443,7 +442,7 @@ contains
     ! if the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
 
-    if (associated(tope) .and. E * 1.0E6_8 <= max_E_urr) then
+    if (associated(tope)) then
       if (E * 1.0E6_8 >= tope % EL(tope % i_urr)&
            .and. E * 1.0E6_8 <= tope % EH(tope % i_urr)) then
         micro_xs(i_nuclide) % in_urr = .true.

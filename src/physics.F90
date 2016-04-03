@@ -1981,7 +1981,9 @@ contains
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
-          call fatal_error("Too many rejections on evaporation spectrum.")
+          E_out = E_in - U
+          call warning("Too many rejections on evaporation spectrum.")
+          exit
         end if
       end do
 

@@ -28,7 +28,6 @@ module input_xml
                               load_urr_tables,&
                               l_waves,&
                               max_batches_avg_urr,&
-                              max_E_urr,&
                               min_batches_avg_urr,&
                               min_dE_point_urr,&
                               n_bands,&
@@ -3333,12 +3332,6 @@ contains
       call fatal_error('Must specify number of f-wave resonances in urr.xml')
     end if
 
-    if (check_for_node(doc, 'max_energy')) then
-      call get_node_value(doc, 'max_energy', max_E_urr)
-    else
-      max_E_urr = INF
-    end if
-
     ! Check for pointwise cross section calculation
     if (check_for_node(doc, "pointwise")) then
       if (represent_urr == ON_THE_FLY .or. represent_urr == PROB_BANDS) &
@@ -3409,6 +3402,13 @@ contains
         else          
           call fatal_error('No ENDF-6 data file specified for nuclide ' &
                // trim(to_str(i)) // ' in urr.xml file')
+        end if
+
+        ! Check if a max energy is given
+        if (check_for_node(nuc_node, 'max_energy')) then
+          call get_node_value(nuc_node, 'max_energy', isotopes(i) % max_E_urr)
+        else
+          isotopes(i) % max_E_urr = INF
         end if
       end do
 

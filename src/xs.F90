@@ -33,7 +33,6 @@ module xs
             load_urr_tables,&
             l_waves,&
             max_batches_avg_urr,&
-            max_E_urr,&
             min_batches_avg_urr,&
             min_dE_point_urr,&
             n_bands,&
@@ -83,7 +82,6 @@ module xs
   integer :: represent_params    ! representation of URR parameters
   integer :: represent_urr       ! representation of URR cross sections
   integer :: w_eval              ! W function evaluation method
-  real(8) :: max_E_urr     ! max energy for pointwise xs recon [eV]
   real(8) :: min_dE_point_urr    ! min diff between reconstructed energies [eV]
   real(8) :: tol_avg_urr         ! max rel err for inf dil xs calc termination
   real(8) :: tol_point_urr       ! max pointwise xs reconstruction rel err
@@ -326,6 +324,7 @@ module xs
     logical :: prob_bands   = .false. ! calculate probability tables?
     logical :: point_urr_xs = .false. ! calculate pointwise URR cross sections?
     integer :: i_urr ! index of URR energy range
+    real(8) :: max_E_urr ! max energy for URR treatment [eV]
 
     ! probability tables for given (energy, temperature) pairs
     integer :: nE_tabs ! number of probability table energies
@@ -1132,7 +1131,7 @@ contains
 
     ! clean energy grid of duplicates, values outside URR
     i_list = 1
-    E_last = min(tope % EH(tope % i_urr), max_E_urr)
+    E_last = min(tope % EH(tope % i_urr), tope % max_E_urr)
     do
       if (i_list == tope % E_tmp % size()) exit
       E_0 = tope % E_tmp % get_item(i_list)

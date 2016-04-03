@@ -32,7 +32,6 @@ module initialize
                               isotopes,&
                               load_prob_tables,&
                               load_urr_tables,&
-                              max_E_urr,&
                               n_isotopes,&
                               pointwise_urr,&
                               real_freq,&
@@ -140,7 +139,7 @@ contains
         do i = 1, n_isotopes
           call isotopes(i) % alloc_local_realization()
           isotopes(i) % EH(isotopes(i) % i_urr)&
-               = min(isotopes(i) % EH(isotopes(i)%i_urr), max_E_urr)
+               = min(isotopes(i) % EH(isotopes(i)%i_urr), isotopes(i) % max_E_urr)
         end do
 
         select case (represent_urr)

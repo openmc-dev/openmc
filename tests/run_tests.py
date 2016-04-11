@@ -300,9 +300,12 @@ if options.list_build_configs:
 
 # Delete items of dictionary that don't match regular expression
 if options.build_config is not None:
+    to_delete = []
     for key in tests:
         if not re.search(options.build_config, key):
-            del tests[key]
+            to_delete.append(key)
+    for key in to_delete:
+        del tests[key]
 
 # Check for dashboard and determine whether to push results to server
 # Note that there are only 3 basic dashboards:

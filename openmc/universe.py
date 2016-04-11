@@ -324,9 +324,6 @@ class Cell(object):
                 self.region = Intersection(self.region, region)
 
     def get_cell_instance(self, path, distribcell_index):
-        # Get the current element and remove it from the list
-        cell_id = path[0]
-        path = path[1:]
 
         # If the Cell is filled by a Material
         if self._type == 'normal' or self._type == 'void':
@@ -655,11 +652,19 @@ class Universe(object):
         self._cells.clear()
 
     def get_cell_instance(self, path, distribcell_index):
-        # Get the current element and remove it from the list
-        path = path[1:]
 
-        # Get the Cell ID
-        cell_id = path[0]
+        # Pop off the root Universe ID from the path
+        next_index = path.index('-')
+        path = path[next_index+2:]
+
+        # Extract the Cell ID from the path
+        if '-' in path:
+            next_index = path.index('-')
+            cell_id = int(path[:next_index])
+            path = path[next_index+2:]
+        else:
+            cell_id = int(path)
+            path = ''
 
         # Make a recursive call to the Cell within this Universe
         offset = self.cells[cell_id].get_cell_instance(path, distribcell_index)
@@ -1123,20 +1128,30 @@ class RectLattice(Lattice):
         self._pitch = pitch
 
     def get_cell_instance(self, path, distribcell_index):
-        # Get the current element and remove it from the list
-        i = path[0]
-        path = path[1:]
+
+        # Extract the lattice element from the path
+        next_index = path.index('-')
+        lat_id_indices = path[:next_index]
+        path = path[next_index+2:]
+
+        # Extract the lattice cell indices from the path
+        i1 = lat_id_indices.index('(')
+        i2 = lat_id_indices.index(')')
+        i = lat_id_indices[i1+1:i2]
+        lat_x = int(i.split(',')[0]) - 1
+        lat_y = int(i.split(',')[1]) - 1
+        lat_z = int(i.split(',')[2]) - 1
 
         # For 2D Lattices
         if len(self._dimension) == 2:
-            offset = self._offsets[i[3]-1, i[2]-1, i[1]-1, distribcell_index-1]
-            offset += self._universes[i[1]-1][i[2]-1].get_cell_instance(path,
+            offset = self._offsets[lat_z, lat_y, lat_x, distribcell_index-1]
+            offset += self._universes[lat_x][lat_y].get_cell_instance(path,
                                                               distribcell_index)
 
         # For 3D Lattices
         else:
-            offset = self._offsets[i[3]-1, i[2]-1, i[1]-1, distribcell_index-1]
-            offset += self._universes[i[3]-1][i[2]-1][i[1]-1].get_cell_instance(
+            offset = self._offsets[lat_z, lat_y, lat_x, distribcell_index-1]
+            offset += self._universes[lat_z][lat_y][lat_x].get_cell_instance(
                                                         path, distribcell_index)
 
         return offset

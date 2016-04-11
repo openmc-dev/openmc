@@ -19,6 +19,7 @@ on a given module or class.
     :maxdepth: 1
 
     ace
+    mgxs_library
 
 **Creating input files:**
 
@@ -65,8 +66,6 @@ on a given module or class.
     :maxdepth: 1
 
     mgxs
-    energy_groups
-    mgxs_library
 
 **Example Jupyter Notebooks:**
 

@@ -565,6 +565,12 @@ class Summary(object):
                 new_filter = openmc.Filter(filter_type, bins)
                 new_filter.num_bins = num_bins
 
+                # Read in distribcell paths
+                if filter_type == 'distribcell':
+                    paths = self._f['{0}/paths'.format(subsubbase)][...]
+                    paths = [str(path.decode()) for path in paths]
+                    new_filter.distribcell_paths = paths
+
                 # Add Filter to the Tally
                 tally.filters.append(new_filter)
 

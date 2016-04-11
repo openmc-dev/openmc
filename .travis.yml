@@ -27,7 +27,7 @@ before_install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy h5py pandas
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy h5py=2.5 pandas
   - source activate test-environment
 
   # Install GCC, MPICH, HDF5, PHDF5

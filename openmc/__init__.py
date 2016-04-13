@@ -1,3 +1,5 @@
+from openmc.cell import *
+from openmc.lattice import *
 from openmc.element import *
 from openmc.geometry import *
 from openmc.nuclide import *
@@ -16,6 +18,8 @@ from openmc.cmfd import *
 from openmc.executor import *
 from openmc.statepoint import *
 from openmc.summary import *
+from openmc.region import *
+from openmc.source import *
 
 try:
     from openmc.opencg_compatible import *

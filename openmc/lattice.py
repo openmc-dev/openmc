@@ -33,7 +33,7 @@ class Lattice(object):
     outer : int
         The unique identifier of a universe to fill all space outside the
         lattice
-    universes : ndarray of Universe
+    universes : numpy.ndarray of openmc.Universe
         An array of universes filling each element of the lattice
 
     """
@@ -123,7 +123,7 @@ class Lattice(object):
 
         Returns
         -------
-        universes : dict
+        universes : collections.OrderedDict
             Dictionary whose keys are universe IDs and values are Universe
             instances
 
@@ -151,7 +151,7 @@ class Lattice(object):
 
         Returns
         -------
-        nuclides : dict
+        nuclides : collections.OrderedDict
             Dictionary whose keys are nuclide names and values are 2-tuples of
             (nuclide, density)
 
@@ -173,7 +173,7 @@ class Lattice(object):
 
         Returns
         -------
-        cells : dict
+        cells : collections.OrderedDict
             Dictionary whose keys are cell IDs and values are Cell instances
 
         """
@@ -191,7 +191,7 @@ class Lattice(object):
 
         Returns
         -------
-        materials : dict
+        materials : collections.OrderedDict
             Dictionary whose keys are material IDs and values are Material instances
 
         """
@@ -210,7 +210,7 @@ class Lattice(object):
 
         Returns
         -------
-        universes : dict
+        universes : collections.OrderedDict
             Dictionary whose keys are universe IDs and values are Universe
             instances
 

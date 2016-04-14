@@ -51,7 +51,7 @@ class Tally(object):
 
     Parameters
     ----------
-    tally_id : Integral, optional
+    tally_id : int, optional
         Unique identifier for the tally. If none is specified, an identifier
         will automatically be assigned
     name : str, optional
@@ -59,43 +59,43 @@ class Tally(object):
 
     Attributes
     ----------
-    id : Integral
+    id : int
         Unique identifier for the tally
     name : str
         Name of the tally
-    filters : list of openmc.filter.Filter
+    filters : list of openmc.Filter
         List of specified filters for the tally
-    nuclides : list of openmc.nuclide.Nuclide
+    nuclides : list of openmc.Nuclide
         List of nuclides to score results for
     scores : list of str
         List of defined scores, e.g. 'flux', 'fission', etc.
     estimator : {'analog', 'tracklength', 'collision'}
         Type of estimator for the tally
-    triggers : list of openmc.trigger.Trigger
+    triggers : list of openmc.Trigger
         List of tally triggers
-    num_scores : Integral
+    num_scores : int
         Total number of scores, accounting for the fact that a single
         user-specified score, e.g. scatter-P3 or flux-Y2,2, might have multiple
         bins
-    num_filter_bins : Integral
+    num_filter_bins : int
         Total number of filter bins accounting for all filters
-    num_bins : Integral
+    num_bins : int
         Total number of bins for the tally
-    shape : 3-tuple of Integral
+    shape : 3-tuple of int
         The shape of the tally data array ordered as the number of filter bins,
         nuclide bins and score bins
-    num_realizations : Integral
+    num_realizations : int
         Total number of realizations
     with_summary : bool
         Whether or not a Summary has been linked
-    sum : ndarray
+    sum : numpy.ndarray
         An array containing the sum of each independent realization for each bin
-    sum_sq : ndarray
+    sum_sq : numpy.ndarray
         An array containing the sum of each independent realization squared for
         each bin
-    mean : ndarray
+    mean : numpy.ndarray
         An array containing the sample mean for each bin
-    std_dev : ndarray
+    std_dev : numpy.ndarray
         An array containing the sample standard deviation for each bin
     derived : bool
         Whether or not the tally is derived from one or more other tallies
@@ -444,7 +444,7 @@ class Tally(object):
 
         Parameters
         ----------
-        trigger : openmc.trigger.Trigger
+        trigger : openmc.Trigger
             Trigger to add
 
         """
@@ -688,7 +688,7 @@ class Tally(object):
 
         Parameters
         ----------
-        old_filter : openmc.filter.Filter
+        old_filter : openmc.Filter
             Filter to remove
 
         """
@@ -705,7 +705,7 @@ class Tally(object):
 
         Parameters
         ----------
-        nuclide : openmc.nuclide.Nuclide
+        nuclide : openmc.Nuclide
             Nuclide to remove
 
         """
@@ -727,7 +727,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally
+        other : openmc.Tally
             Tally to check for mergeable filters
 
         """
@@ -780,7 +780,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally
+        other : openmc.Tally
             Tally to check for mergeable nuclides
 
         """
@@ -817,7 +817,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally
+        other : openmc.Tally
             Tally to check for mergeable scores
 
         """
@@ -858,7 +858,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally
+        other : openmc.Tally
             Tally to check for merging
 
         """
@@ -903,12 +903,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally
+        other : openmc.Tally
             Tally to merge with this one
 
         Returns
         -------
-        merged_tally : Tally
+        merged_tally : openmc.Tally
             Merged tallies
 
         """
@@ -1151,7 +1151,7 @@ class Tally(object):
 
         Returns
         -------
-        filter_found : openmc.filter.Filter
+        filter_found : openmc.Filter
             Filter from this tally with matching type, or None if no matching
             Filter is found
 
@@ -1185,7 +1185,7 @@ class Tally(object):
         ----------
         filter_type : str
             The type of Filter (e.g., 'cell', 'energy', etc.)
-        filter_bin : Integral or tuple
+        filter_bin : int or tuple
             The bin is an integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. The bin is an integer for the
             cell instance ID for 'distribcell' Filters. The bin is a 2-tuple of
@@ -1311,7 +1311,7 @@ class Tally(object):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             A NumPy array of the filter indices
 
         """
@@ -1393,7 +1393,7 @@ class Tally(object):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             A NumPy array of the nuclide indices
 
         """
@@ -1427,7 +1427,7 @@ class Tally(object):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             A NumPy array of the score indices
 
         """
@@ -1489,7 +1489,7 @@ class Tally(object):
 
         Returns
         -------
-        float or ndarray
+        float or numpy.ndarray
             A scalar or NumPy array of the Tally data indexed in the order
             each filter, nuclide and score is listed in the parameters.
 
@@ -1557,13 +1557,13 @@ class Tally(object):
             Include columns with nuclide bin information (default is True).
         scores : bool
             Include columns with score bin information (default is True).
-        summary : None or Summary
+        summary : None or openmc.Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
             information in the Summary object is embedded into a Multi-index
             column with a geometric "path" to each distribcell intance.
             NOTE: This option requires the OpenCG Python package.
-        float_format : string
+        float_format : str
             All floats in the DataFrame will be formatted using the given
             format string before printing.
 
@@ -1683,8 +1683,8 @@ class Tally(object):
 
         The tally data in OpenMC is stored as a 3D array with the dimensions
         corresponding to filters, nuclides and scores. As a result, tally data
-        can be opaque for a user to directly index (i.e., without use of the
-        Tally.get_values(...) method) since one must know how to properly use
+        can be opaque for a user to directly index (i.e., without use of
+        :meth:`openmc.Tally.get_values`) since one must know how to properly use
         the number of bins and strides for each filter to index into the first
         (filter) dimension.
 
@@ -1704,7 +1704,7 @@ class Tally(object):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             The tally data array indexed by filters, nuclides and scores.
 
         """
@@ -1882,7 +1882,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally
+        other : openmc.Tally
             The tally on the right hand side of the hybrid product
         binary_op : {'+', '-', '*', '/', '^'}
             The binary operation in the hybrid product
@@ -1904,7 +1904,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new Tally that is the hybrid product with this one.
 
         Raises
@@ -2082,7 +2082,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally
+        other : openmc.Tally
             The tally to outer product with this tally
         filter_product : {'entrywise'}
             The type of product to be performed between filter data. Currently,
@@ -2464,12 +2464,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Real
+        other : openmc.Tally or float
             The tally or scalar value to add to this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the sum of this tally and the other
             tally or scalar value in the addition.
 
@@ -2536,12 +2536,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Real
+        other : openmc.Tally or float
             The tally or scalar value to subtract from this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the difference of this tally and the
             other tally or scalar value in the subtraction.
 
@@ -2608,12 +2608,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Real
+        other : openmc.Tally or float
             The tally or scalar value to multiply with this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the product of this tally and the
             other tally or scalar value in the multiplication.
 
@@ -2680,12 +2680,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Real
+        other : openmc.Tally or float
             The tally or scalar value to divide this tally by
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the dividend of this tally and the
             other tally or scalar value in the division.
 
@@ -2755,12 +2755,12 @@ class Tally(object):
 
         Parameters
         ----------
-        power : Tally or Real
+        power : openmc.Tally or float
             The tally or scalar value exponent
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is this tally raised to the power of the
             other tally or scalar value in the exponentiation.
 
@@ -2816,12 +2816,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Real
+        other : float
             The scalar value to add to this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally of this tally added with the scalar value.
 
         """
@@ -2835,12 +2835,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Real
+        other : float
             The scalar value to subtract this tally from
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally of this tally subtracted from the scalar value.
 
         """
@@ -2854,12 +2854,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Real
+        other : float
             The scalar value to multiply with this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally of this tally multiplied by the scalar value.
 
         """
@@ -2873,12 +2873,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Real
+        other : float
             The scalar value to divide by this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally of the scalar value divided by this tally.
 
         """
@@ -2890,7 +2890,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the absolute value of this tally.
 
         """
@@ -2904,7 +2904,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the negated value of this tally.
 
         """
@@ -2946,7 +2946,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new tally which encapsulates the subset of data requested in the
             order each filter, nuclide and score is listed in the parameters.
 
@@ -3069,7 +3069,7 @@ class Tally(object):
         filter_type : str
             A filter type string (e.g., 'cell', 'energy') corresponding to the
             filter bins to sum across
-        filter_bins : Iterable of Integral or tuple
+        filter_bins : Iterable of int or tuple
             A list of the filter bins corresponding to the filter_type parameter
             Each bin in the list is the integer ID for 'material', 'surface',
             'cell', 'cellborn', and 'universe' Filters. Each bin is an integer
@@ -3087,7 +3087,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new tally which encapsulates the sum of data requested.
         """
 
@@ -3217,7 +3217,7 @@ class Tally(object):
         filter_type : str
             A filter type string (e.g., 'cell', 'energy') corresponding to the
             filter bins to average across
-        filter_bins : Iterable of Integral or tuple
+        filter_bins : Iterable of int or tuple
             A list of the filter bins corresponding to the filter_type parameter
             Each bin in the list is the integer ID for 'material', 'surface',
             'cell', 'cellborn', and 'universe' Filters. Each bin is an integer
@@ -3235,7 +3235,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new tally which encapsulates the average of data requested.
         """
 
@@ -3368,7 +3368,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived Tally with data diagaonalized along the new filter.
 
         """
@@ -3444,9 +3444,8 @@ class TalliesFile(object):
 
         Parameters
         ----------
-        tally : Tally
+        tally : openmc.Tally
             Tally to add to file
-
         merge : bool
             Indicate whether the tally should be merged with an existing tally,
             if possible. Defaults to False.
@@ -3483,7 +3482,7 @@ class TalliesFile(object):
 
         Parameters
         ----------
-        tally : Tally
+        tally : openmc.Tally
             Tally to remove
 
         """
@@ -3519,7 +3518,7 @@ class TalliesFile(object):
 
         Parameters
         ----------
-        mesh : openmc.mesh.Mesh
+        mesh : openmc.Mesh
             Mesh to add to the file
 
         """
@@ -3535,7 +3534,7 @@ class TalliesFile(object):
 
         Parameters
         ----------
-        mesh : openmc.mesh.Mesh
+        mesh : openmc.Mesh
             Mesh to remove from the file
 
         """

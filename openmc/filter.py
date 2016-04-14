@@ -40,7 +40,7 @@ class Filter(object):
         The bins for the filter
     num_bins : Integral
         The number of filter bins
-    mesh : Mesh or None
+    mesh : openmc.Mesh or None
         A Mesh object for 'mesh' type filters.
     stride : Integral
         The number of filter, nuclide and score bins within each of this
@@ -265,7 +265,7 @@ class Filter(object):
 
         Parameters
         ----------
-        other : Filter
+        other : openmc.Filter
             Filter to compare with
 
         Returns
@@ -310,12 +310,12 @@ class Filter(object):
 
         Parameters
         ----------
-        other : Filter
+        other : openmc.Filter
             Filter to merge with
 
         Returns
         -------
-        merged_filter : Filter
+        merged_filter : openmc.Filter
             Filter resulting from the merge
 
         """
@@ -355,7 +355,7 @@ class Filter(object):
 
         Parameters
         ----------
-        other : Filter
+        other : openmc.Filter
             The filter to query as a subset of this filter
 
         Returns
@@ -519,8 +519,8 @@ class Filter(object):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method
-        for the Tally.get_pandas_dataframe(...) method.
+        columns annotated by filter bin information. This is a helper method for
+        :math:`Tally.get_pandas_dataframe`.
 
         This capability has been tested for Pandas >=0.13.1. However, it is
         recommended to use v0.16 or newer versions of Pandas since this method
@@ -530,7 +530,7 @@ class Filter(object):
         ----------
         data_size : Integral
             The total number of bins in the tally corresponding to this filter
-        summary : None or Summary
+        summary : None or openmc.Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
             information in the Summary object is embedded into a Multi-index

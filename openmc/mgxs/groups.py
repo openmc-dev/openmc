@@ -24,7 +24,7 @@ class EnergyGroups(object):
     ----------
     group_edges : Iterable of Real
         The energy group boundaries [MeV]
-    num_groups : Integral
+    num_groups : int
         The number of energy groups
 
     """
@@ -86,7 +86,7 @@ class EnergyGroups(object):
 
         Parameters
         ----------
-        energy : Real
+        energy : float
             The energy of interest in MeV
 
         Returns
@@ -115,7 +115,7 @@ class EnergyGroups(object):
 
         Parameters
         ----------
-        group : Integral
+        group : int
             The energy group index, starting at 1 for the highest energies
 
         Returns
@@ -153,7 +153,7 @@ class EnergyGroups(object):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             The ndarray array indices for each energy group of interest
 
         Raises
@@ -200,7 +200,7 @@ class EnergyGroups(object):
 
         Returns
         -------
-        EnergyGroups
+        openmc.mgxs.EnergyGroups
             A coarsened version of this EnergyGroups object.
 
         Raises
@@ -244,7 +244,7 @@ class EnergyGroups(object):
 
         Parameters
         ----------
-        other : EnergyGroups
+        other : openmc.mgxs.EnergyGroups
             EnergyGroups to compare with
 
         Returns
@@ -275,12 +275,12 @@ class EnergyGroups(object):
 
         Parameters
         ----------
-        other : EnergyGroups
+        other : openmc.mgxs.EnergyGroups
             EnergyGroups to merge with
 
         Returns
         -------
-        merged_groups : EnergyGroups
+        merged_groups : openmc.mgxs.EnergyGroups
             EnergyGroups resulting from the merge
 
         """

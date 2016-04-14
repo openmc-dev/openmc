@@ -584,7 +584,7 @@ class Summary(object):
 
         Returns
         -------
-        material : openmc.material.Material
+        material : openmc.Material
             Material with given id
 
         """
@@ -605,7 +605,7 @@ class Summary(object):
 
         Returns
         -------
-        surface : openmc.surface.Surface
+        surface : openmc.Surface
             Surface with given id
 
         """
@@ -626,7 +626,7 @@ class Summary(object):
 
         Returns
         -------
-        cell : openmc.universe.Cell
+        cell : openmc.Cell
             Cell with given id
 
         """
@@ -647,7 +647,7 @@ class Summary(object):
 
         Returns
         -------
-        universe : openmc.universe.Universe
+        universe : openmc.Universe
             Universe with given id
 
         """
@@ -668,7 +668,7 @@ class Summary(object):
 
         Returns
         -------
-        lattice : openmc.universe.Lattice
+        lattice : openmc.Lattice
             Lattice with given id
 
         """

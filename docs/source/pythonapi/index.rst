@@ -74,6 +74,7 @@ Building geometry
    :nosignatures:
    :template: myclass.rst
 
+   openmc.Plane
    openmc.XPlane
    openmc.YPlane
    openmc.ZPlane
@@ -81,6 +82,11 @@ Building geometry
    openmc.YCylinder
    openmc.ZCylinder
    openmc.Sphere
+   openmc.Cone
+   openmc.XCone
+   openmc.YCone
+   openmc.ZCone
+   openmc.Quadric
    openmc.Halfspace
    openmc.Intersection
    openmc.Union
@@ -168,12 +174,12 @@ Various classes may be created when performing tally slicing and/or arithmetic:
    :nosignatures:
    :template: myclass.rst
 
-   openmc.CrossScore
-   openmc.CrossNuclide
-   openmc.CrossFilter
-   openmc.AggregateScore
-   openmc.AggregateNuclide
-   openmc.AggregateFilter
+   openmc.arithmetic.CrossScore
+   openmc.arithmetic.CrossNuclide
+   openmc.arithmetic.CrossFilter
+   openmc.arithmetic.AggregateScore
+   openmc.arithmetic.AggregateNuclide
+   openmc.arithmetic.AggregateFilter
 
 ---------------------------------
 :mod:`openmc.stats` -- Statistics

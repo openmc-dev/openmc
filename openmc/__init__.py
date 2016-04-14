@@ -21,7 +21,6 @@ from openmc.summary import *
 from openmc.region import *
 from openmc.source import *
 from openmc.particle_restart import *
-from openmc.arithmetic import *
 
 try:
     from openmc.opencg_compatible import *

@@ -278,8 +278,7 @@ class Plane(Surface):
 
 
 class XPlane(Plane):
-    """A plane perpendicular to the x axis, i.e. a surface of the form :math:`x -
-    x_0 = 0`
+    """A plane perpendicular to the x axis of the form :math:`x - x_0 = 0`
 
     Parameters
     ----------
@@ -356,8 +355,7 @@ class XPlane(Plane):
 
 
 class YPlane(Plane):
-    """A plane perpendicular to the y axis, i.e. a surface of the form :math:`y -
-    y_0 = 0`
+    """A plane perpendicular to the y axis of the form :math:`y - y_0 = 0`
 
     Parameters
     ----------
@@ -434,8 +432,7 @@ class YPlane(Plane):
 
 
 class ZPlane(Plane):
-    """A plane perpendicular to the z axis, i.e. a surface of the form :math:`z -
-    z_0 = 0`
+    """A plane perpendicular to the z axis of the form :math:`z - z_0 = 0`
 
     Parameters
     ----------

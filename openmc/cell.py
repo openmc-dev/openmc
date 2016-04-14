@@ -13,7 +13,6 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-
 # A static variable for auto-generated Cell IDs
 AUTO_CELL_ID = 10000
 
@@ -21,8 +20,6 @@ AUTO_CELL_ID = 10000
 def reset_auto_cell_id():
     global AUTO_CELL_ID
     AUTO_CELL_ID = 10000
-
-
 
 
 class Cell(object):
@@ -81,7 +78,7 @@ class Cell(object):
         elif self.name != other.name:
             return False
         elif self.fill != other.fill:
-             return False
+            return False
         elif self.region != other.region:
             return False
         elif self.rotation != other.rotation:
@@ -335,7 +332,8 @@ class Cell(object):
         Returns
         -------
         cells : dict
-            Dictionary whose keys are cell IDs and values are Cell instances
+            Dictionary whose keys are cell IDs and values are :class:`Cell`
+            instances
 
         """
 
@@ -352,7 +350,8 @@ class Cell(object):
         Returns
         -------
         materials : dict
-            Dictionary whose keys are material IDs and values are Material instances
+            Dictionary whose keys are material IDs and values are
+            :class:`Material` instances
 
         """
 
@@ -374,8 +373,8 @@ class Cell(object):
         Returns
         -------
         universes : dict
-            Dictionary whose keys are universe IDs and values are Universe
-            instances
+            Dictionary whose keys are universe IDs and values are
+            :class:`Universe` instances
 
         """
 

@@ -1349,7 +1349,7 @@ class MGXS(object):
                              xs_type='macro', summary=None):
         """Build a Pandas DataFrame for the MGXS data.
 
-        This method leverages :math:`openmc.Tally.get_pandas_dataframe`, but
+        This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
         renames the columns with terminology appropriate for cross section data.
 
         Parameters
@@ -2560,7 +2560,7 @@ class Chi(MGXS):
                              xs_type='macro', summary=None):
         """Build a Pandas DataFrame for the MGXS data.
 
-        This method leverages :math:`openmc.Tally.get_pandas_dataframe`, but
+        This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
         renames the columns with terminology appropriate for cross section data.
 
         Parameters

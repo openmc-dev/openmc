@@ -520,7 +520,7 @@ class Filter(object):
 
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
-        :math:`Tally.get_pandas_dataframe`.
+        :meth:`Tally.get_pandas_dataframe`.
 
         This capability has been tested for Pandas >=0.13.1. However, it is
         recommended to use v0.16 or newer versions of Pandas since this method

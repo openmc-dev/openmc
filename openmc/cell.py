@@ -9,7 +9,6 @@ import openmc.checkvalue as cv
 from openmc.surface import Halfspace
 from openmc.region import Region, Intersection, Complement
 
-
 if sys.version_info[0] >= 3:
     basestring = str
 
@@ -112,7 +111,7 @@ class Cell(object):
             string += ', '.join(['void' if m == 'void' else str(m.id)
                                  for m in self.fill])
             string += ']\n'
-        elif isinstance(self._fill, (Universe, Lattice)):
+        elif isinstance(self._fill, (openmc.Universe, openmc.Lattice)):
             string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t',
                                                 self._fill._id)
         else:
@@ -210,10 +209,10 @@ class Cell(object):
                           (openmc.Material, basestring))
             self._type = 'normal'
 
-        elif isinstance(fill, Universe):
+        elif isinstance(fill, openmc.Universe):
             self._type = 'fill'
 
-        elif isinstance(fill, Lattice):
+        elif isinstance(fill, openmc.Lattice):
             self._type = 'lattice'
 
         else:
@@ -407,7 +406,7 @@ class Cell(object):
             element.set("material", ' '.join([m if m == 'void' else str(m.id)
                                               for m in self.fill]))
 
-        elif isinstance(self.fill, (Universe, Lattice)):
+        elif isinstance(self.fill, (openmc.Universe, openmc.Lattice)):
             element.set("fill", str(self.fill.id))
             self.fill.create_xml_subelement(xml_element)
 

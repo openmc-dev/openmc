@@ -1,10 +1,12 @@
 import abc
 from collections import OrderedDict, Iterable
 from numbers import Real, Integral
+from xml.etree import ElementTree as ET
 import sys
 
 import numpy as np
 
+import openmc.checkvalue as cv
 from openmc.universe import Universe, AUTO_UNIVERSE_ID
 
 if sys.version_info[0] >= 3:

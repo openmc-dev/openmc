@@ -126,8 +126,8 @@ class Lattice(object):
         Returns
         -------
         universes : collections.OrderedDict
-            Dictionary whose keys are universe IDs and values are Universe
-            instances
+            Dictionary whose keys are universe IDs and values are
+            :class:`Universe` instances
 
         """
 
@@ -176,7 +176,8 @@ class Lattice(object):
         Returns
         -------
         cells : collections.OrderedDict
-            Dictionary whose keys are cell IDs and values are Cell instances
+            Dictionary whose keys are cell IDs and values are :class:`Cell`
+            instances
 
         """
 
@@ -194,7 +195,8 @@ class Lattice(object):
         Returns
         -------
         materials : collections.OrderedDict
-            Dictionary whose keys are material IDs and values are Material instances
+            Dictionary whose keys are material IDs and values are
+            :class:`Material` instances
 
         """
 
@@ -213,8 +215,8 @@ class Lattice(object):
         Returns
         -------
         universes : collections.OrderedDict
-            Dictionary whose keys are universe IDs and values are Universe
-            instances
+            Dictionary whose keys are universe IDs and values are
+            :class:`Universe` instances
 
         """
 
@@ -252,10 +254,10 @@ class RectLattice(Lattice):
         Unique identifier for the lattice
     name : str
         Name of the lattice
-    dimension : array-like of int
+    dimension : Iterable of int
         An array of two or three integers representing the number of lattice
         cells in the x- and y- (and z-) directions, respectively.
-    lower_left : array-like of float
+    lower_left : Iterable of float
         The coordinates of the lower-left corner of the lattice. If the lattice
         is two-dimensional, only the x- and y-coordinates are specified.
 
@@ -501,7 +503,7 @@ class HexLattice(Lattice):
         Number of radial ring positions in the xy-plane
     num_axial : int
         Number of positions along the z-axis.
-    center : array-like of float
+    center : Iterable of float
         Coordinates of the center of the lattice. If the lattice does not have
         axial sections then only the x- and y-coordinates are specified
 
@@ -777,7 +779,7 @@ class HexLattice(Lattice):
         id_form = '{: ^' + str(n_digits) + 'd}'
 
         # Initialize the list for each row.
-        rows = [ [] for i in range(1 + 4 * (self._num_rings-1)) ]
+        rows = [[] for i in range(1 + 4 * (self._num_rings-1))]
         middle = 2 * (self._num_rings - 1)
 
         # Start with the degenerate first ring.

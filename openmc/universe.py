@@ -44,7 +44,8 @@ class Universe(object):
     name : str
         Name of the universe
     cells : collections.OrderedDict
-        Dictionary whose keys are cell IDs and values are Cell instances
+        Dictionary whose keys are cell IDs and values are :class:`Cell`
+        instances
 
     """
 
@@ -229,7 +230,8 @@ class Universe(object):
         Returns
         -------
         cells : collections.OrderedDict
-            Dictionary whose keys are cell IDs and values are Cell instances
+            Dictionary whose keys are cell IDs and values are :class:`Cell`
+            instances
 
         """
 
@@ -250,7 +252,8 @@ class Universe(object):
         Returns
         -------
         materials : Collections.OrderedDict
-            Dictionary whose keys are material IDs and values are Material instances
+            Dictionary whose keys are material IDs and values are
+            :class:`Material` instances
 
         """
 
@@ -269,8 +272,8 @@ class Universe(object):
         Returns
         -------
         universes : collections.OrderedDict
-            Dictionary whose keys are universe IDs and values are Universe
-            instances
+            Dictionary whose keys are universe IDs and values are
+            :class:`Universe` instances
 
         """
 

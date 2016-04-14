@@ -43,7 +43,7 @@ class Universe(object):
         Unique identifier of the universe
     name : str
         Name of the universe
-    cells : dict
+    cells : collections.OrderedDict
         Dictionary whose keys are cell IDs and values are Cell instances
 
     """
@@ -126,7 +126,7 @@ class Universe(object):
 
         Parameters
         ----------
-        cell : Cell
+        cell : openmc.Cell
             Cell to add
 
         """
@@ -146,7 +146,7 @@ class Universe(object):
 
         Parameters
         ----------
-        cells : array-like of Cell
+        cells : Iterable of openmc.Cell
             Cells to add
 
         """
@@ -164,7 +164,7 @@ class Universe(object):
 
         Parameters
         ----------
-        cell : Cell
+        cell : openmc.Cell
             Cell to remove
 
         """
@@ -209,7 +209,7 @@ class Universe(object):
 
         Returns
         -------
-        nuclides : dict
+        nuclides : collections.OrderedDict
             Dictionary whose keys are nuclide names and values are 2-tuples of
             (nuclide, density)
 
@@ -228,7 +228,7 @@ class Universe(object):
 
         Returns
         -------
-        cells : dict
+        cells : collections.OrderedDict
             Dictionary whose keys are cell IDs and values are Cell instances
 
         """
@@ -249,7 +249,7 @@ class Universe(object):
 
         Returns
         -------
-        materials : dict
+        materials : Collections.OrderedDict
             Dictionary whose keys are material IDs and values are Material instances
 
         """
@@ -268,7 +268,7 @@ class Universe(object):
 
         Returns
         -------
-        universes : dict
+        universes : collections.OrderedDict
             Dictionary whose keys are universe IDs and values are Universe
             instances
 

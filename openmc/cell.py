@@ -44,15 +44,15 @@ class Cell(object):
         Unique identifier for the cell
     name : str
         Name of the cell
-    fill : Material or Universe or Lattice or 'void' or iterable of Material
+    fill : openmc.Material or openmc.Universe or openmc.Lattice or 'void' or iterable of openmc.Material
         Indicates what the region of space is filled with
-    region : openmc.region.Region
+    region : openmc.Region
         Region of space that is assigned to the cell.
-    rotation : ndarray
+    rotation : numpy.ndarray
         If the cell is filled with a universe, this array specifies the angles
         in degrees about the x, y, and z axes that the filled universe should be
         rotated.
-    translation : ndarray
+    translation : numpy.ndarray
         If the cell is filled with a universe, this array specifies a vector
         that is used to translate (shift) the universe.
     offsets : ndarray
@@ -255,12 +255,12 @@ class Cell(object):
         cell.
 
         .. deprecated:: 0.7.1
-            Use the Cell.region property to directly specify a Region
+            Use the :attr:`Cell.region` property to directly specify a Region
             expression.
 
         Parameters
         ----------
-        surface : openmc.surface.Surface
+        surface : openmc.Surface
             Quadric surface dividing space
         halfspace : {-1, 1}
             Indicate whether the negative or positive half-space is to be used

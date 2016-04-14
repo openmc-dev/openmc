@@ -153,10 +153,10 @@ class Surface(object):
 
         Returns
         -------
-        numpy.array
+        numpy.ndarray
             Lower-left coordinates of the axis-aligned bounding box for the
             desired half-space
-        numpy.array
+        numpy.ndarray
             Upper-right coordinates of the axis-aligned bounding box for the
             desired half-space
 
@@ -338,10 +338,10 @@ class XPlane(Plane):
 
         Returns
         -------
-        numpy.array
+        numpy.ndarray
             Lower-left coordinates of the axis-aligned bounding box for the
             desired half-space
-        numpy.array
+        numpy.ndarray
             Upper-right coordinates of the axis-aligned bounding box for the
             desired half-space
 
@@ -416,10 +416,10 @@ class YPlane(Plane):
 
         Returns
         -------
-        numpy.array
+        numpy.ndarray
             Lower-left coordinates of the axis-aligned bounding box for the
             desired half-space
-        numpy.array
+        numpy.ndarray
             Upper-right coordinates of the axis-aligned bounding box for the
             desired half-space
 
@@ -494,10 +494,10 @@ class ZPlane(Plane):
 
         Returns
         -------
-        numpy.array
+        numpy.ndarray
             Lower-left coordinates of the axis-aligned bounding box for the
             desired half-space
-        numpy.array
+        numpy.ndarray
             Upper-right coordinates of the axis-aligned bounding box for the
             desired half-space
 
@@ -641,10 +641,10 @@ class XCylinder(Cylinder):
 
         Returns
         -------
-        numpy.array
+        numpy.ndarray
             Lower-left coordinates of the axis-aligned bounding box for the
             desired half-space
-        numpy.array
+        numpy.ndarray
             Upper-right coordinates of the axis-aligned bounding box for the
             desired half-space
 
@@ -740,10 +740,10 @@ class YCylinder(Cylinder):
 
         Returns
         -------
-        numpy.array
+        numpy.ndarray
             Lower-left coordinates of the axis-aligned bounding box for the
             desired half-space
-        numpy.array
+        numpy.ndarray
             Upper-right coordinates of the axis-aligned bounding box for the
             desired half-space
 
@@ -839,10 +839,10 @@ class ZCylinder(Cylinder):
 
         Returns
         -------
-        numpy.array
+        numpy.ndarray
             Lower-left coordinates of the axis-aligned bounding box for the
             desired half-space
-        numpy.array
+        numpy.ndarray
             Upper-right coordinates of the axis-aligned bounding box for the
             desired half-space
 
@@ -967,10 +967,10 @@ class Sphere(Surface):
 
         Returns
         -------
-        numpy.array
+        numpy.ndarray
             Lower-left coordinates of the axis-aligned bounding box for the
             desired half-space
-        numpy.array
+        numpy.ndarray
             Upper-right coordinates of the axis-aligned bounding box for the
             desired half-space
 
@@ -1383,7 +1383,7 @@ class Halfspace(Region):
     can be created from an existing Surface through the __neg__ and __pos__
     operators, as the following example demonstrates:
 
-    >>> sphere = openmc.surface.Sphere(surface_id=1, R=10.0)
+    >>> sphere = openmc.Sphere(surface_id=1, R=10.0)
     >>> inside_sphere = -sphere
     >>> outside_sphere = +sphere
     >>> type(inside_sphere)
@@ -1391,18 +1391,18 @@ class Halfspace(Region):
 
     Parameters
     ----------
-    surface : Surface
+    surface : openmc.Surface
         Surface which divides Euclidean space.
     side : {'+', '-'}
         Indicates whether the positive or negative half-space is used.
 
     Attributes
     ----------
-    surface : Surface
+    surface : openmc.Surface
         Surface which divides Euclidean space.
     side : {'+', '-'}
         Indicates whether the positive or negative half-space is used.
-    bounding_box : tuple of numpy.array
+    bounding_box : tuple of numpy.ndarray
         Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """

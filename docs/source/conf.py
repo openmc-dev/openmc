@@ -44,6 +44,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.mathjax',
               'sphinx.ext.autosummary',
               'sphinx.ext.intersphinx',
+              'sphinx.ext.viewcode',
               'sphinx_numfig',
               'notebook_sphinxext']
 

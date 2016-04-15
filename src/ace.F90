@@ -369,7 +369,7 @@ contains
         nuc % name = name
         nuc % awr  = awr
         nuc % kT   = kT
-        nuc % zaid = NXS(2)
+        nuc % zaid = listing % zaid
       end if
 
       ! read all blocks

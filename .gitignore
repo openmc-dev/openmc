@@ -26,6 +26,7 @@ examples/python/**/*.xml
 docs/build
 docs/source/_images/*.pdf
 docs/source/_images/*.aux
+docs/source/pythonapi/generated/
 
 # Source build
 build

@@ -105,6 +105,10 @@ module global
   ! What to assume for expanding natural elements
   integer :: default_expand = ENDF_BVII1
 
+  ! Total amount of nuclide ZAID and dictionary of nuclide ZAID and index
+  integer(8)       :: n_nuc_zaid_total
+  type(DictIntInt) :: nuc_zaid_dict
+
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
 

@@ -13,62 +13,267 @@ online. We recommend going through the modules from Codecademy_ and/or the
 `Scipy lectures`_. The full API documentation serves to provide more information
 on a given module or class.
 
-**Handling nuclear data:**
+------------------------------------
+:mod:`openmc` -- Basic Functionality
+------------------------------------
 
-.. toctree::
-    :maxdepth: 1
+Handling nuclear data
+---------------------
 
-    ace
+Classes
++++++++
 
-**Creating input files:**
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
 
-.. toctree::
-    :maxdepth: 1
+   openmc.XSdata
+   openmc.MGXSLibraryFile
 
-    cmfd
-    element
-    filter
-    geometry
-    material
-    mesh
-    nuclide
-    opencg_compatible
-    plots
-    settings
-    source
-    stats
-    surface
-    tallies
-    trigger
-    universe
+Functions
++++++++++
 
-**Running OpenMC:**
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
 
-.. toctree::
-    :maxdepth: 1
+   openmc.ace.ascii_to_binary
 
-    executor
+Simulation Settings
+-------------------
 
-**Post-processing:**
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
 
-.. toctree::
-    :maxdepth: 1
+   openmc.Source
+   openmc.ResonanceScattering
+   openmc.SettingsFile
 
-    particle_restart
-    statepoint
-    summary
-    tallies
+Material Specification
+----------------------
 
-**Multi-Group Cross Section Generation**
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
 
-.. toctree::
-    :maxdepth: 1
+   openmc.Nuclide
+   openmc.Element
+   openmc.Macroscopic
+   openmc.Material
+   openmc.MaterialsFile
 
-    mgxs
-    energy_groups
-    mgxs_library
+Building geometry
+-----------------
 
-**Example Jupyter Notebooks:**
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.Plane
+   openmc.XPlane
+   openmc.YPlane
+   openmc.ZPlane
+   openmc.XCylinder
+   openmc.YCylinder
+   openmc.ZCylinder
+   openmc.Sphere
+   openmc.Cone
+   openmc.XCone
+   openmc.YCone
+   openmc.ZCone
+   openmc.Quadric
+   openmc.Halfspace
+   openmc.Intersection
+   openmc.Union
+   openmc.Complement
+   openmc.Cell
+   openmc.Universe
+   openmc.RectLattice
+   openmc.HexLattice
+   openmc.Geometry
+   openmc.GeometryFile
+
+Many of the above classes are derived from several abstract classes:
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.Surface
+   openmc.Region
+   openmc.Lattice
+
+Constructing Tallies
+--------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.Filter
+   openmc.Mesh
+   openmc.Trigger
+   openmc.Tally
+   openmc.TalliesFile
+
+Coarse Mesh Finite Difference Acceleration
+------------------------------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.CMFDMesh
+   openmc.CMFDFile
+
+Plotting
+--------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.Plot
+   openmc.PlotsFile
+
+Running OpenMC
+--------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.Executor
+
+Post-processing
+---------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.Particle
+   openmc.StatePoint
+   openmc.Summary
+
+Various classes may be created when performing tally slicing and/or arithmetic:
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.arithmetic.CrossScore
+   openmc.arithmetic.CrossNuclide
+   openmc.arithmetic.CrossFilter
+   openmc.arithmetic.AggregateScore
+   openmc.arithmetic.AggregateNuclide
+   openmc.arithmetic.AggregateFilter
+
+---------------------------------
+:mod:`openmc.stats` -- Statistics
+---------------------------------
+
+Univariate Probability Distributions
+------------------------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.stats.Univariate
+   openmc.stats.Discrete
+   openmc.stats.Uniform
+   openmc.stats.Maxwell
+   openmc.stats.Watt
+   openmc.stats.Tabular
+
+Angular Distributions
+---------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.stats.UnitSphere
+   openmc.stats.PolarAzimuthal
+   openmc.stats.Isotropic
+   openmc.stats.Monodirectional
+
+Spatial Distributions
+---------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.stats.Spatial
+   openmc.stats.CartesianIndependent
+   openmc.stats.Box
+   openmc.stats.Point
+
+----------------------------------------------------------
+:mod:`openmc.mgxs` -- Multi-Group Cross Section Generation
+----------------------------------------------------------
+
+Energy Groups
+-------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.mgxs.EnergyGroups
+
+Multi-group Cross Sections
+--------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.mgxs.MGXS
+    openmc.mgxs.AbsorptionXS
+    openmc.mgxs.CaptureXS
+    openmc.mgxs.Chi
+    openmc.mgxs.FissionXS
+    openmc.mgxs.NuFissionXS
+    openmc.mgxs.NuScatterXS
+    openmc.mgxs.NuScatterMatrixXS
+    openmc.mgxs.ScatterXS
+    openmc.mgxs.ScatterMatrixXS
+    openmc.mgxs.TotalXS
+    openmc.mgxs.TransportXS
+
+Multi-group Cross Section Libraries
+-----------------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.mgxs.Library
+
+-------------------------
+Example Jupyter Notebooks
+-------------------------
 
 .. toctree::
     :maxdepth: 1

@@ -1,8 +1,7 @@
 module energy_distribution
 
   use constants,     only: ZERO, ONE, TWO, PI, HISTOGRAM, LINEAR_LINEAR
-  use endf_header,   only: Tab1
-  use interpolation, only: interpolate_tab1
+  use endf_header,   only: Tabulated1D
   use math,          only: maxwell_spectrum, watt_spectrum
   use random_lcg,    only: prn
   use search,        only: binary_search
@@ -83,8 +82,8 @@ module energy_distribution
     integer :: n_region
     integer, allocatable :: breakpoints(:)
     integer, allocatable :: interpolation(:)
-    real(8), allocatable :: energy_in(:)
-    type(CTTable), allocatable :: energy_out(:)
+    real(8), allocatable :: energy(:)
+    type(CTTable), allocatable :: distribution(:)
   contains
     procedure :: sample => continuous_sample
   end type ContinuousTabular
@@ -95,7 +94,7 @@ module energy_distribution
 !===============================================================================
 
   type, extends(EnergyDistribution) :: MaxwellEnergy
-    type(Tab1) :: theta ! incoming-energy-dependent parameter
+    type(Tabulated1D) :: theta ! incoming-energy-dependent parameter
     real(8) :: u        ! restriction energy
   contains
     procedure :: sample => maxwellenergy_sample
@@ -107,7 +106,7 @@ module energy_distribution
 !===============================================================================
 
   type, extends(EnergyDistribution) :: Evaporation
-    type(Tab1) :: theta
+    type(Tabulated1D) :: theta
     real(8) :: u
   contains
     procedure :: sample => evaporation_sample
@@ -119,27 +118,12 @@ module energy_distribution
 !===============================================================================
 
   type, extends(EnergyDistribution) :: WattEnergy
-    type(Tab1) :: a
-    type(Tab1) :: b
+    type(Tabulated1D) :: a
+    type(Tabulated1D) :: b
     real(8) :: u
   contains
     procedure :: sample => watt_sample
   end type WattEnergy
-
-!===============================================================================
-! NBODYPHASESPACE gives the energy distribution for particles emitted from
-! neutron and charged-particle reactions. This corresponds to ACE law 66 and
-! ENDF File 6, LAW=6.
-!===============================================================================
-
-  type, extends(EnergyDistribution) :: NBodyPhaseSpace
-    integer :: n_bodies
-    real(8) :: mass_ratio
-    real(8) :: A
-    real(8) :: Q
-  contains
-    procedure :: sample => nbody_sample
-  end type NBodyPhaseSpace
 
 contains
 
@@ -202,6 +186,7 @@ contains
     end if
   end function equiprobable_sample
 
+
   function level_inelastic_sample(this, E_in) result(E_out)
     class(LevelInelastic), intent(in) :: this
     real(8), intent(in) :: E_in
@@ -209,6 +194,7 @@ contains
 
     E_out = this%mass_ratio*(E_in - this%threshold)
   end function level_inelastic_sample
+
 
   function continuous_sample(this, E_in) result(E_out)
     class(ContinuousTabular), intent(in) :: this
@@ -238,17 +224,17 @@ contains
 
     ! Find energy bin and calculate interpolation factor -- if the energy is
     ! outside the range of the tabulated energies, choose the first or last bins
-    n_energy_in = size(this%energy_in)
-    if (E_in < this%energy_in(1)) then
+    n_energy_in = size(this%energy)
+    if (E_in < this%energy(1)) then
       i = 1
       r = ZERO
-    elseif (E_in > this%energy_in(n_energy_in)) then
+    elseif (E_in > this%energy(n_energy_in)) then
       i = n_energy_in - 1
       r = ONE
     else
-      i = binary_search(this%energy_in, n_energy_in, E_in)
-      r = (E_in - this%energy_in(i)) / &
-           (this%energy_in(i+1) - this%energy_in(i))
+      i = binary_search(this%energy, n_energy_in, E_in)
+      r = (E_in - this%energy(i)) / &
+           (this%energy(i+1) - this%energy(i))
     end if
 
     ! Sample between the ith and (i+1)th bin
@@ -263,23 +249,23 @@ contains
     end if
 
     ! Interpolation for energy E1 and EK
-    n_energy_out = size(this%energy_out(i)%e_out)
-    E_i_1 = this%energy_out(i)%e_out(1)
-    E_i_K = this%energy_out(i)%e_out(n_energy_out)
+    n_energy_out = size(this%distribution(i)%e_out)
+    E_i_1 = this%distribution(i)%e_out(1)
+    E_i_K = this%distribution(i)%e_out(n_energy_out)
 
-    n_energy_out = size(this%energy_out(i+1)%e_out)
-    E_i1_1 = this%energy_out(i+1)%e_out(1)
-    E_i1_K = this%energy_out(i+1)%e_out(n_energy_out)
+    n_energy_out = size(this%distribution(i+1)%e_out)
+    E_i1_1 = this%distribution(i+1)%e_out(1)
+    E_i1_K = this%distribution(i+1)%e_out(n_energy_out)
 
     E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
     E_K = E_i_K + r*(E_i1_K - E_i_K)
 
     ! Determine outgoing energy bin
-    n_energy_out = size(this%energy_out(l)%e_out)
+    n_energy_out = size(this%distribution(l)%e_out)
     r1 = prn()
-    c_k = this%energy_out(l)%c(1)
+    c_k = this%distribution(l)%c(1)
     do k = 1, n_energy_out - 1
-      c_k1 = this%energy_out(l)%c(k+1)
+      c_k1 = this%distribution(l)%c(k+1)
       if (r1 < c_k1) exit
       c_k = c_k1
     end do
@@ -287,9 +273,9 @@ contains
     ! Check to make sure k is <= NP - 1
     k = min(k, n_energy_out - 1)
 
-    E_l_k = this%energy_out(l)%e_out(k)
-    p_l_k = this%energy_out(l)%p(k)
-    if (this%energy_out(l)%interpolation == HISTOGRAM) then
+    E_l_k = this%distribution(l)%e_out(k)
+    p_l_k = this%distribution(l)%p(k)
+    if (this%distribution(l)%interpolation == HISTOGRAM) then
       ! Histogram interpolation
       if (p_l_k > ZERO) then
         E_out = E_l_k + (r1 - c_k)/p_l_k
@@ -297,10 +283,10 @@ contains
         E_out = E_l_k
       end if
 
-    elseif (this%energy_out(l)%interpolation == LINEAR_LINEAR) then
+    elseif (this%distribution(l)%interpolation == LINEAR_LINEAR) then
       ! Linear-linear interpolation
-      E_l_k1 = this%energy_out(l)%e_out(k+1)
-      p_l_k1 = this%energy_out(l)%p(k+1)
+      E_l_k1 = this%distribution(l)%e_out(k+1)
+      p_l_k1 = this%distribution(l)%p(k+1)
 
       frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
       if (frac == ZERO) then
@@ -321,6 +307,7 @@ contains
     end if
   end function continuous_sample
 
+
   function maxwellenergy_sample(this, E_in) result(E_out)
     class(MaxwellEnergy), intent(in) :: this
     real(8), intent(in) :: E_in  ! incoming energy
@@ -329,7 +316,7 @@ contains
     real(8) :: theta ! Maxwell distribution parameter
 
     ! Get temperature corresponding to incoming energy
-    theta = interpolate_tab1(this%theta, E_in)
+    theta = this % theta % evaluate(E_in)
 
     do
       ! Sample maxwell fission spectrum
@@ -349,9 +336,9 @@ contains
     real(8) :: x, y, v
 
     ! Get temperature corresponding to incoming energy
-    theta = interpolate_tab1(this%theta, E_in)
+    theta = this % theta % evaluate(E_in)
 
-    y = (E_in - this%U)/theta
+    y = (E_in - this%u)/theta
     v = 1 - exp(-y)
 
     ! Sample outgoing energy based on evaporation spectrum probability
@@ -372,10 +359,10 @@ contains
     real(8) :: a, b ! Watt spectrum parameters
 
     ! Determine Watt parameter 'a' from tabulated function
-    a = interpolate_tab1(this%a, E_in)
+    a = this % a % evaluate(E_in)
 
     ! Determine Watt parameter 'b' from tabulated function
-    b = interpolate_tab1(this%b, E_in)
+    b = this % b % evaluate(E_in)
 
     do
       ! Sample energy-dependent Watt fission spectrum
@@ -385,45 +372,5 @@ contains
       if (E_out <= E_in - this%u) exit
     end do
   end function watt_sample
-
-  function nbody_sample(this, E_in) result(E_out)
-    class(NBodyPhaseSpace), intent(in) :: this
-    real(8), intent(in) :: E_in  ! incoming energy
-    real(8)             :: E_out ! sampled outgoing energy
-
-    real(8) :: Ap      ! total mass of particles in neutron masses
-    real(8) :: E_max   ! maximum possible COM energy
-    real(8) :: x, y, v
-    real(8) :: r1, r2, r3, r4, r5, r6
-
-    ! Determine E_max parameter
-    Ap = this%mass_ratio
-    E_max = (Ap - ONE)/Ap * (this%A/(this%A + ONE)*E_in + this%Q)
-
-    ! x is essentially a Maxwellian distribution
-    x = maxwell_spectrum(ONE)
-
-    select case (this%n_bodies)
-    case (3)
-      y = maxwell_spectrum(ONE)
-    case (4)
-      r1 = prn()
-      r2 = prn()
-      r3 = prn()
-      y = -log(r1*r2*r3)
-    case (5)
-      r1 = prn()
-      r2 = prn()
-      r3 = prn()
-      r4 = prn()
-      r5 = prn()
-      r6 = prn()
-      y = -log(r1*r2*r3*r4) - log(r5) * cos(PI/TWO*r6)**2
-    end select
-
-    ! Now determine v and E_out
-    v = x/(x+y)
-    E_out = E_max * v
-  end function nbody_sample
 
 end module energy_distribution

@@ -30,13 +30,9 @@ class TallyAggregationTestHarness(PyAPITestHarness):
 
         # Initialized the tallies
         tally = openmc.Tally(name='distribcell tally')
-        tally.add_filter(energy_filter)
-        tally.add_filter(distrib_filter)
-        tally.add_score('nu-fission')
-        tally.add_score('total')
-        tally.add_nuclide(u235)
-        tally.add_nuclide(u238)
-        tally.add_nuclide(pu239)
+        tally.filters = [energy_filter, distrib_filter]
+        tally.scores = ['nu-fission', 'total']
+        tally.nuclides = [u235, u238, pu239]
         tallies_file.add_tally(tally)
 
         # Export tallies to file

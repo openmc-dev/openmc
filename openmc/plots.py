@@ -275,7 +275,7 @@ class Plot(object):
             The random number seed used to generate the color scheme
 
         """
-        
+
         cv.check_type('geometry', geometry, openmc.Geometry)
         cv.check_type('seed', seed, Integral)
         cv.check_greater_than('seed', seed, 1, equality=True)
@@ -417,7 +417,7 @@ class PlotsFile(object):
 
         Parameters
         ----------
-        plot : Plot
+        plot : openmc.Plot
             Plot to add
 
         """
@@ -433,7 +433,7 @@ class PlotsFile(object):
 
         Parameters
         ----------
-        plot : Plot
+        plot : openmc.Plot
             Plot to remove
 
         """

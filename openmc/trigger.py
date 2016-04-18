@@ -1,8 +1,10 @@
 from numbers import Real
 from xml.etree import ElementTree as ET
 import sys
+import warnings
+from collections import Iterable
 
-from openmc.checkvalue import check_type, check_value
+import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -46,9 +48,7 @@ class Trigger(object):
             clone._trigger_type = self._trigger_type
             clone._threshold = self._threshold
 
-            clone._scores = []
-            for score in self._scores:
-                clone.add_score(score)
+            clone.scores = self.scores
 
             memo[id(self)] = clone
 
@@ -88,14 +88,25 @@ class Trigger(object):
 
     @trigger_type.setter
     def trigger_type(self, trigger_type):
-        check_value('tally trigger type', trigger_type,
+        cv.check_value('tally trigger type', trigger_type,
                     ['variance', 'std_dev', 'rel_err'])
         self._trigger_type = trigger_type
 
     @threshold.setter
     def threshold(self, threshold):
-        check_type('tally trigger threshold', threshold, Real)
+        cv.check_type('tally trigger threshold', threshold, Real)
         self._threshold = threshold
+
+    @scores.setter
+    def scores(self, scores):
+        cv.check_type('trigger scores', scores, Iterable, basestring)
+
+        # Set scores making sure not to have duplicates
+        self._scores = []
+        for score in scores:
+            if score not in self._scores:
+                self._scores.append(score)
+
 
     def add_score(self, score):
         """Add a score to the list of scores to be checked against the trigger.
@@ -107,16 +118,11 @@ class Trigger(object):
 
         """
 
-        if not isinstance(score, basestring):
-            msg = 'Unable to add score "{0}" to tally trigger since ' \
-                  'it is not a string'.format(score)
-            raise ValueError(msg)
-
-        # If the score is already in the Tally, don't add it again
-        if score in self._scores:
-            return
-        else:
-            self._scores.append(score)
+        warnings.warn('Trigger.add_score(...) has been deprecated and may be '
+                      'removed in a future version. Tally trigger scores should '
+                      'be defined using the scores property directly.',
+                      DeprecationWarning)
+        self.scores.append(score)
 
     def get_trigger_xml(self, element):
         """Return XML representation of the trigger

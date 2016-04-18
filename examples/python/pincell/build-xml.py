@@ -1,6 +1,4 @@
 import openmc
-from openmc.source import Source
-from openmc.stats import Box
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -170,8 +168,12 @@ settings_file = openmc.SettingsFile()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
-settings_file.source = Source(space=Box(
-    [-0.62992, -0.62992, -1], [0.62992, 0.62992, 1]))
+
+# Create an initial uniform spatial source distribution over fissionable zones
+bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
+uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
+settings_file.source = openmc.source.Source(space=uniform_dist)
+
 settings_file.entropy_lower_left = [-0.39218, -0.39218, -1.e50]
 settings_file.entropy_upper_right = [0.39218, 0.39218, 1.e50]
 settings_file.entropy_dimension = [10, 10, 1]
@@ -196,11 +198,8 @@ mesh_filter.mesh = mesh
 
 # Instantiate the Tally
 tally = openmc.Tally(tally_id=1, name='tally 1')
-tally.add_filter(energy_filter)
-tally.add_filter(mesh_filter)
-tally.add_score('flux')
-tally.add_score('fission')
-tally.add_score('nu-fission')
+tally.filters = [energy_filter, mesh_filter]
+tally.scores = ['flux', 'fission', 'nu-fission']
 
 # Instantiate a TalliesFile, register all Tallies, and export to XML
 tallies_file = openmc.TalliesFile()

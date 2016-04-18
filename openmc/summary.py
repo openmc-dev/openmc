@@ -542,7 +542,7 @@ class Summary(object):
                 # If this is a moment, use generic moment order
                 pattern = r'-n$|-pn$|-yn$'
                 score = re.sub(pattern, '-' + moments[j].decode(), score)
-                tally.add_score(score)
+                tally.scores.append(score)
 
             # Read filter metadata
             num_filters = self._f['{0}/n_filters'.format(subbase)].value
@@ -562,8 +562,14 @@ class Summary(object):
                 new_filter = openmc.Filter(filter_type, bins)
                 new_filter.num_bins = num_bins
 
+                # Read in distribcell paths
+                if filter_type == 'distribcell':
+                    paths = self._f['{0}/paths'.format(subsubbase)][...]
+                    paths = [str(path.decode()) for path in paths]
+                    new_filter.distribcell_paths = paths
+
                 # Add Filter to the Tally
-                tally.add_filter(new_filter)
+                tally.filters.append(new_filter)
 
             # Add Tally to the global dictionary of all Tallies
             self.tallies[tally_id] = tally
@@ -578,7 +584,7 @@ class Summary(object):
 
         Returns
         -------
-        material : openmc.material.Material
+        material : openmc.Material
             Material with given id
 
         """
@@ -599,7 +605,7 @@ class Summary(object):
 
         Returns
         -------
-        surface : openmc.surface.Surface
+        surface : openmc.Surface
             Surface with given id
 
         """
@@ -620,7 +626,7 @@ class Summary(object):
 
         Returns
         -------
-        cell : openmc.universe.Cell
+        cell : openmc.Cell
             Cell with given id
 
         """
@@ -641,7 +647,7 @@ class Summary(object):
 
         Returns
         -------
-        universe : openmc.universe.Universe
+        universe : openmc.Universe
             Universe with given id
 
         """
@@ -662,7 +668,7 @@ class Summary(object):
 
         Returns
         -------
-        lattice : openmc.universe.Lattice
+        lattice : openmc.Lattice
             Lattice with given id
 
         """

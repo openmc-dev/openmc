@@ -40,11 +40,14 @@ class Filter(object):
         The bins for the filter
     num_bins : Integral
         The number of filter bins
-    mesh : Mesh or None
+    mesh : openmc.Mesh or None
         A Mesh object for 'mesh' type filters.
     stride : Integral
         The number of filter, nuclide and score bins within each of this
         filter's bins.
+    distribcell_paths : list of str
+        The paths traversed through the CSG tree to reach each distribcell
+        instance (for 'distribcell' filters only)
 
     """
 
@@ -56,6 +59,7 @@ class Filter(object):
         self._bins = None
         self._mesh = None
         self._stride = None
+        self._distribcell_paths = None
 
         if type is not None:
             self.type = type
@@ -110,6 +114,7 @@ class Filter(object):
             clone._num_bins = self.num_bins
             clone._mesh = copy.deepcopy(self.mesh, memo)
             clone._stride = self.stride
+            clone._distribcell_paths = copy.deepcopy(self.distribcell_paths)
 
             memo[id(self)] = clone
 
@@ -151,6 +156,10 @@ class Filter(object):
     @property
     def stride(self):
         return self._stride
+
+    @property
+    def distribcell_paths(self):
+        return self._distribcell_paths
 
     @type.setter
     def type(self, type):
@@ -246,12 +255,17 @@ class Filter(object):
 
         self._stride = stride
 
+    @distribcell_paths.setter
+    def distribcell_paths(self, distribcell_paths):
+        cv.check_iterable_type('distribcell_paths', distribcell_paths, str)
+        self._distribcell_paths = distribcell_paths
+
     def can_merge(self, other):
         """Determine if filter can be merged with another.
 
         Parameters
         ----------
-        other : Filter
+        other : openmc.Filter
             Filter to compare with
 
         Returns
@@ -296,12 +310,12 @@ class Filter(object):
 
         Parameters
         ----------
-        other : Filter
+        other : openmc.Filter
             Filter to merge with
 
         Returns
         -------
-        merged_filter : Filter
+        merged_filter : openmc.Filter
             Filter resulting from the merge
 
         """
@@ -341,7 +355,7 @@ class Filter(object):
 
         Parameters
         ----------
-        other : Filter
+        other : openmc.Filter
             The filter to query as a subset of this filter
 
         Returns
@@ -505,8 +519,8 @@ class Filter(object):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method
-        for the Tally.get_pandas_dataframe(...) method.
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
 
         This capability has been tested for Pandas >=0.13.1. However, it is
         recommended to use v0.16 or newer versions of Pandas since this method
@@ -516,7 +530,7 @@ class Filter(object):
         ----------
         data_size : Integral
             The total number of bins in the tally corresponding to this filter
-        summary : None or Summary
+        summary : None or openmc.Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
             information in the Summary object is embedded into a Multi-index
@@ -632,18 +646,10 @@ class Filter(object):
                 # offsets to OpenCG LocalCoords linked lists
                 offsets_to_coords = {}
 
-                # Use OpenCG to compute LocalCoords linked list for
-                # each region and store in dictionary
-                for region in range(num_regions):
+                for offset, path in enumerate(self.distribcell_paths):
+                    region = opencg_geometry.get_region_from_path(path)
                     coords = opencg_geometry.find_region(region)
-                    path = opencg.get_path(coords)
-                    cell_id = path[-1]
-
-                    # If this region is in Cell corresponding to the
-                    # distribcell filter bin, store it in dictionary
-                    if cell_id == self.bins[0]:
-                        offset = openmc_geometry.get_cell_instance(path)
-                        offsets_to_coords[offset] = coords
+                    offsets_to_coords[offset] = coords
 
                 # Each distribcell offset is a DataFrame bin
                 # Unravel the paths into DataFrame columns

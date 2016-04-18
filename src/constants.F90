@@ -223,6 +223,12 @@ module constants
        NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
        NU_TABULAR    = 2    ! Nu values given by tabular distribution
 
+  ! Secondary particle emission type
+  integer, parameter :: &
+       EMISSION_PROMPT = 1,  & ! Prompt emission of secondary particle
+       EMISSION_DELAYED = 2, & ! Delayed emission of secondary particle
+       EMISSION_TOTAL = 3      ! Yield represents total emission (prompt + delayed)
+
   ! Cross section filetypes
   integer, parameter :: &
        ASCII  = 1, & ! ASCII cross section file
@@ -370,10 +376,11 @@ module constants
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS
 
-  integer, parameter :: N_STREAMS = 3
-  integer, parameter :: STREAM_TRACKING = 1
-  integer, parameter :: STREAM_TALLIES  = 2
-  integer, parameter :: STREAM_SOURCE   = 3
+  integer, parameter :: N_STREAMS = 4
+  integer, parameter :: STREAM_TRACKING   = 1
+  integer, parameter :: STREAM_TALLIES    = 2
+  integer, parameter :: STREAM_SOURCE     = 3
+  integer, parameter :: STREAM_URR_PTABLE = 4
 
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS

@@ -293,6 +293,13 @@ The current revision of the summary file format is 1.
 
     Filter offset (used for distribcell filter).
 
+**/tallies/tally <uid>/filter <j>/paths** (*char[][]*)
+
+    The paths traversed through the CSG tree to reach each distribcell
+    instance (for 'distribcell' filters only). This consists of the integer
+    IDs for each universe, cell and lattice delimited by '->'. Each lattice
+    cell is specified by its (x,y) or (x,y,z) indices.
+
 **/tallies/tally <uid>/filter <j>/n_bins** (*int*)
 
     Number of bins for the j-th filter.

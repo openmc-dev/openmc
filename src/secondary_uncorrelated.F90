@@ -1,9 +1,9 @@
 module secondary_uncorrelated
 
   use angle_distribution, only: AngleDistribution
+  use angleenergy_header, only: AngleEnergy
   use constants, only: ONE, TWO
   use energy_distribution, only: EnergyDistribution
-  use secondary_header, only: AngleEnergy
   use random_lcg, only: prn
 
 !===============================================================================

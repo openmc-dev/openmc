@@ -17,7 +17,7 @@ class Geometry(object):
 
     Attributes
     ----------
-    root_universe : openmc.universe.Universe
+    root_universe : openmc.Universe
         Root universe which contains all others
 
     """
@@ -63,15 +63,19 @@ class Geometry(object):
 
         """
 
+        # Extract the cell id from the path
+        last_index = path.rfind('>')
+        cell_id = int(path[last_index+1:])
+
         # Find the distribcell index of the cell.
         cells = self.get_all_cells()
         for cell in cells:
-            if cell.id == path[-1]:
+            if cell.id == cell_id:
                 distribcell_index = cell.distribcell_index
                 break
         else:
             raise RuntimeError('Could not find cell {} specified in a \
-                                distribcell filter'.format(path[-1]))
+                                distribcell filter'.format(cell_id))
 
         # Return memoize'd offset if possible
         if (path, distribcell_index) in self._offsets:
@@ -91,7 +95,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.universe.Cell
+        list of openmc.Cell
             Cells in the geometry
 
         """
@@ -112,7 +116,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.universe.Universe
+        list of openmc.Universe
             Universes in the geometry
 
         """
@@ -132,7 +136,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.nuclide.Nuclide
+        list of openmc.Nuclide
             Nuclides in the geometry
 
         """
@@ -150,7 +154,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.material.Material
+        list of openmc.Material
             Materials in the geometry
 
         """
@@ -173,7 +177,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.universe.Cell
+        list of openmc.Cell
             Cells filled by Materials in the geometry
 
         """
@@ -194,7 +198,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.universe.Universe
+        list of openmc.Universe
             Universes with non-fill cells
 
         """
@@ -217,7 +221,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.universe.Lattice
+        list of openmc.Lattice
             Lattices in the geometry
 
         """
@@ -248,7 +252,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.material.Material
+        list of openmc.Material
             Materials matching the queried name
 
         """
@@ -288,7 +292,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.universe.Cell
+        list of openmc.Cell
             Cells matching the queried name
 
         """
@@ -328,7 +332,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.universe.Cell
+        list of openmc.Cell
             Cells with fills matching the queried name
 
         """
@@ -368,7 +372,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.universe.Universe
+        list of openmc.Universe
             Universes matching the queried name
 
         """
@@ -408,7 +412,7 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.universe.Lattice
+        list of openmc.Lattice
             Lattices matching the queried name
 
         """
@@ -440,7 +444,7 @@ class GeometryFile(object):
 
     Attributes
     ----------
-    geometry : Geometry
+    geometry : openmc.Geometry
         The geometry to be used
 
     """

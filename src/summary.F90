@@ -1,10 +1,9 @@
 module summary
 
-  use ace_header,      only: Reaction, UrrData
   use constants
   use endf,            only: reaction_name
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
-                             &HexLattice
+                             &HexLattice, BASE_UNIVERSE
   use global
   use hdf5_interface
   use material_header, only: Material
@@ -14,6 +13,7 @@ module summary
   use surface_header
   use string,          only: to_str
   use tally_header,    only: TallyObject
+  use output,          only: find_offset
 
   use hdf5
 
@@ -534,6 +534,10 @@ contains
     type(RegularMesh), pointer :: m
     type(TallyObject), pointer :: t
 
+    integer                              :: offset   ! distibcell offset
+    character(MAX_LINE_LEN), allocatable :: paths(:) ! distribcell paths array
+    character(MAX_LINE_LEN)              :: path     ! distribcell path
+
     tallies_group = create_group(file_id, "tallies")
 
     ! Write total number of meshes
@@ -576,21 +580,40 @@ contains
       ! Write number of filters
       call write_dataset(tally_group, "n_filters", t%n_filters)
 
-      FILTER_LOOP: do j = 1, t%n_filters
+      FILTER_LOOP: do j = 1, t % n_filters
         filter_group = create_group(tally_group, "filter " // trim(to_str(j)))
 
         ! Write number of bins for this filter
-        call write_dataset(filter_group, "n_bins", t%filters(j)%n_bins)
+        call write_dataset(filter_group, "n_bins", t % filters(j) % n_bins)
 
         ! Write filter bins
-        if (t%filters(j)%type == FILTER_ENERGYIN .or. &
-             t%filters(j)%type == FILTER_ENERGYOUT .or. &
-             t%filters(j)%type == FILTER_MU .or. &
-             t%filters(j)%type == FILTER_POLAR .or. &
-             t%filters(j)%type == FILTER_AZIMUTHAL) then
-          call write_dataset(filter_group, "bins", t%filters(j)%real_bins)
+        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
+             t % filters(j)% type == FILTER_ENERGYOUT .or. &
+             t % filters(j) % type == FILTER_MU .or. &
+             t % filters(j) % type == FILTER_POLAR .or. &
+             t % filters(j) % type == FILTER_AZIMUTHAL) then
+          call write_dataset(filter_group, "bins", t % filters(j) % real_bins)
         else
-          call write_dataset(filter_group, "bins", t%filters(j)%int_bins)
+          call write_dataset(filter_group, "bins", t % filters(j) % int_bins)
+        end if
+
+        ! Write paths to reach each distribcell instance
+        if (t % filters(j) % type == FILTER_DISTRIBCELL) then
+          ! Allocate array of strings for each distribcell path
+          allocate(paths(t % filters(j) % n_bins))
+
+          ! Store path for each distribcell instance
+          do k = 1, t % filters(j) % n_bins
+            path = ''
+            offset = 1
+            call find_offset(t % filters(j) % int_bins(1), &
+                 universes(BASE_UNIVERSE), k, offset, path)
+            paths(k) = path
+          end do
+
+          ! Write array of distribcell paths to summary file
+          call write_dataset(filter_group, "paths", paths)
+          deallocate(paths)
         end if
 
         ! Write name of type
@@ -693,64 +716,5 @@ contains
     call close_group(tallies_group)
 
   end subroutine write_tallies
-
-!===============================================================================
-! WRITE_TIMING
-!===============================================================================
-
-  subroutine write_timing(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer(8)     :: total_particles
-    integer(HID_T) :: time_group
-    real(8)        :: speed
-
-    time_group = create_group(file_id, "timing")
-
-    ! Write timing data
-    call write_dataset(time_group, "time_initialize", time_initialize%elapsed)
-    call write_dataset(time_group, "time_read_xs", time_read_xs%elapsed)
-    call write_dataset(time_group, "time_transport", time_transport%elapsed)
-    call write_dataset(time_group, "time_bank", time_bank%elapsed)
-    call write_dataset(time_group, "time_bank_sample", time_bank_sample%elapsed)
-    call write_dataset(time_group, "time_bank_sendrecv", time_bank_sendrecv%elapsed)
-    call write_dataset(time_group, "time_tallies", time_tallies%elapsed)
-    call write_dataset(time_group, "time_inactive", time_inactive%elapsed)
-    call write_dataset(time_group, "time_active", time_active%elapsed)
-    call write_dataset(time_group, "time_finalize", time_finalize%elapsed)
-    call write_dataset(time_group, "time_total", time_total%elapsed)
-
-    ! Add descriptions to timing data
-    call write_attribute_string(time_group, "time_initialize", "description", &
-         "Total time elapsed for initialization (s)")
-    call write_attribute_string(time_group, "time_read_xs", "description", &
-         "Time reading cross-section libraries (s)")
-    call write_attribute_string(time_group, "time_transport", "description", &
-         "Time in transport only (s)")
-    call write_attribute_string(time_group, "time_bank", "description", &
-         "Total time synchronizing fission bank (s)")
-    call write_attribute_string(time_group, "time_bank_sample", "description", &
-         "Time between generations sampling source sites (s)")
-    call write_attribute_string(time_group, "time_bank_sendrecv", "description", &
-         "Time between generations SEND/RECVing source sites (s)")
-    call write_attribute_string(time_group, "time_tallies", "description", &
-         "Time between batches accumulating tallies (s)")
-    call write_attribute_string(time_group, "time_inactive", "description", &
-         "Total time in inactive batches (s)")
-    call write_attribute_string(time_group, "time_active", "description", &
-         "Total time in active batches (s)")
-    call write_attribute_string(time_group, "time_finalize", "description", &
-         "Total time for finalization (s)")
-    call write_attribute_string(time_group, "time_total", "description", &
-         "Total time elapsed (s)")
-
-    ! Write calculation rate
-    total_particles = n_particles * n_batches * gen_per_batch
-    speed = real(total_particles) / (time_inactive%elapsed + &
-         time_active%elapsed)
-    call write_dataset(time_group, "neutrons_per_second", speed)
-
-    call close_group(time_group)
-  end subroutine write_timing
 
 end module summary

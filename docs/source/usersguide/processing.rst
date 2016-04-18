@@ -196,10 +196,10 @@ Data Extraction
 
 A great deal of information is available in statepoint files (See
 :ref:`usersguide_statepoint`), all of which is accessible through the Python
-API. The ``openmc.statepoint`` module (see :ref:`pythonapi_statepoint`) provides
-a class to load statepoints and access data as requested; it is used in many of
-the provided plotting utilities, OpenMC's regression test suite, and can be used
-in user-created scripts to carry out manipulations of the data.
+API. The :class:`openmc.StatePoint` class can load statepoints and access data
+as requested; it is used in many of the provided plotting utilities, OpenMC's
+regression test suite, and can be used in user-created scripts to carry out
+manipulations of the data.
 
 An :ref:`example IPython notebook <notebook_post_processing>` demonstrates how
 to extract data from a statepoint using the Python API.

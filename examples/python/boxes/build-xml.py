@@ -1,8 +1,5 @@
 import numpy as np
-
 import openmc
-from openmc.source import Source
-from openmc.stats import Box
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -119,7 +116,11 @@ settings_file = openmc.SettingsFile()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
-settings_file.source = Source(space=Box(*outer_cube.bounding_box))
+
+# Create an initial uniform spatial source distribution over fissionable zones
+uniform_dist = openmc.stats.Box(*outer_cube.bounding_box, only_fissionable=True)
+settings_file.source = openmc.source.Source(space=uniform_dist)
+
 settings_file.export_to_xml()
 
 ###############################################################################

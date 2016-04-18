@@ -1,30 +1,31 @@
 module initialize
 
-  use ace,              only: read_xs, same_nuclide_list
-  use bank_header,      only: Bank
+  use ace,             only: read_ace_xs
+  use bank_header,     only: Bank
   use constants
-  use dict_header,      only: DictIntInt, ElemKeyValueII
-  use set_header,       only: SetInt
-  use energy_grid,      only: logarithmic_grid, grid_method, unionized_grid
-  use error,            only: fatal_error, warning
-  use geometry,         only: neighbor_lists, count_instance, calc_offsets,    &
-                              maximum_levels
-  use geometry_header,  only: Cell, Universe, Lattice, RectLattice, HexLattice,&
-                              &BASE_UNIVERSE
+  use dict_header,     only: DictIntInt, ElemKeyValueII
+  use set_header,      only: SetInt
+  use energy_grid,     only: logarithmic_grid, grid_method, unionized_grid
+  use error,           only: fatal_error, warning
+  use geometry,        only: neighbor_lists, count_instance, calc_offsets,    &
+                             maximum_levels
+  use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
+                             &BASE_UNIVERSE
   use global
-  use hdf5_interface,   only: file_open, read_dataset, file_close, hdf5_bank_t,&
-                              hdf5_tallyresult_t, hdf5_integer8_t
-  use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
-                              cells_in_univ_dict, read_plots_xml
-  use material_header,  only: Material
-  use output,           only: title, header, print_version, write_message,     &
-                              print_usage, write_xs_summary, print_plot
-  use random_lcg,       only: initialize_prng
-  use state_point,      only: load_state_point
-  use string,           only: to_str, str_to_int, starts_with, ends_with
-  use summary,          only: write_summary
-  use tally_header,     only: TallyObject, TallyResult, TallyFilter
-  use tally_initialize, only: configure_tallies
+  use hdf5_interface,  only: file_open, read_dataset, file_close, hdf5_bank_t,&
+                             hdf5_tallyresult_t, hdf5_integer8_t
+  use input_xml,       only: read_input_xml, cells_in_univ_dict, read_plots_xml
+  use material_header, only: Material
+  use mgxs_data,       only: read_mgxs, create_macro_xs
+  use output,          only: title, header, print_version, write_message,     &
+                             print_usage, write_xs_summary, print_plot
+  use random_lcg,      only: initialize_prng
+  use state_point,     only: load_state_point
+  use string,          only: to_str, starts_with, ends_with, str_to_int
+  use summary,         only: write_summary
+  use tally_header,    only: TallyObject, TallyResult, TallyFilter
+  use tally_initialize,only: configure_tallies
+  use tally,           only: init_tally_routines
 
 #ifdef MPI
   use message_passing
@@ -114,29 +115,39 @@ contains
 
       ! Read ACE-format cross sections
       call time_read_xs%start()
-      call read_xs()
+      if (run_CE) then
+        call read_ace_xs()
+      else
+        call read_mgxs()
+      end if
       call time_read_xs%stop()
 
-      ! Create linked lists for multiple instances of the same nuclide
-      call same_nuclide_list()
+      ! Construct information needed for nuclear data
+      if (run_CE) then
+        ! Set undefined cell temperatures to match the material data.
+        call lookup_material_temperatures()
 
-      ! Set undefined cell temperatures to match the material data.
-      call lookup_material_temperatures()
-
-      ! Construct unionized or log energy grid for cross-sections
-      select case (grid_method)
-      case (GRID_NUCLIDE)
-        continue
-      case (GRID_MAT_UNION)
-        call time_unionize%start()
-        call unionized_grid()
-        call time_unionize%stop()
-      case (GRID_LOGARITHM)
-        call logarithmic_grid()
-      end select
+        ! Construct unionized or log energy grid for cross-sections
+        select case (grid_method)
+        case (GRID_NUCLIDE)
+          continue
+        case (GRID_MAT_UNION)
+          call time_unionize%start()
+          call unionized_grid()
+          call time_unionize%stop()
+        case (GRID_LOGARITHM)
+          call logarithmic_grid()
+        end select
+      else
+        ! Create material macroscopic data for MGXS
+        call create_macro_xs()
+      end if
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()
+
+      ! Set up tally procedure pointers
+      call init_tally_routines()
 
       ! Determine how much work each processor should do
       call calculate_work()
@@ -1176,7 +1187,7 @@ contains
           do k = 2, mat % n_nuclides
             ! Warn the user if the nuclides don't have identical temperatues.
             if (nuclides(mat % nuclide(k)) % kT /= min_temp &
-                 .and. .not. warning_given) then
+                 .and. .not. warning_given .and. multipole_active) then
               call warning("OpenMC cannot &
                    &identify the temperature of at least one cell. For the &
                    &purposes of multipole cross section evaluations, all cells &

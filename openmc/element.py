@@ -24,7 +24,7 @@ class Element(object):
         Chemical symbol of the element, e.g. Pu
     xs : str
         Cross section identifier, e.g. 71c
-    scattering : 'data' or 'iso-in-lab' or None
+    scattering : {'data', 'iso-in-lab', None}
         The type of angular scattering distribution to use
 
     """
@@ -56,6 +56,15 @@ class Element(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __gt__(self, other):
+        return repr(self) > repr(other)
+
+    def __lt__(self, other):
+        return not self > other
+
+    def __hash__(self):
+        return hash(repr(self))
 
     def __hash__(self):
         return hash(repr(self))

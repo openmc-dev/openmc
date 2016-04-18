@@ -53,22 +53,22 @@ class Library(object):
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     domain_type : {'material', 'cell', 'distribcell', 'universe'}
         Domain type for spatial homogenization
-    domains : Iterable of Material, Cell or Universe
+    domains : Iterable of openmc.Material, openmc.Cell or openmc.Universe
         The spatial domain(s) for which MGXS in the Library are computed
-    correction : 'P0' or None
+    correction : {'P0', None}
         Apply the P0 correction to scattering matrices if set to 'P0'
-    energy_groups : EnergyGroups
+    energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    tally_trigger : Trigger
+    tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
-    all_mgxs : OrderedDict
+    all_mgxs : collections.OrderedDict
         MGXS objects keyed by domain ID and cross section type
     sp_filename : str
         The filename of the statepoint with tally data used to the
         compute cross sections
     keff : Real or None
-        The combined keff from the statepoint file with tally data used to 
+        The combined keff from the statepoint file with tally data used to
         compute cross sections (for eigenvalue calculations only)
     name : str, optional
         Name of the multi-group cross section library. Used as a label to
@@ -116,11 +116,11 @@ class Library(object):
             clone._by_nuclide = self.by_nuclide
             clone._mgxs_types = self.mgxs_types
             clone._domain_type = self.domain_type
-            clone._domains = self.domains
+            clone._domains = copy.deepcopy(self.domains)
             clone._correction = self.correction
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
-            clone._all_mgxs = self.all_mgxs
+            clone._all_mgxs = copy.deepcopy(self.all_mgxs)
             clone._sp_filename = self._sp_filename
             clone._keff = self._keff
             clone._sparse = self.sparse
@@ -308,7 +308,7 @@ class Library(object):
         """
 
         cv.check_type('sparse', sparse, bool)
-        
+
         # Sparsify or densify each MGXS in the Library
         for domain in self.domains:
             for mgxs_type in self.mgxs_types:
@@ -350,7 +350,7 @@ class Library(object):
     def add_to_tallies_file(self, tallies_file, merge=True):
         """Add all tallies from all MGXS objects to a tallies file.
 
-        NOTE: This assumes that build_library() has been called
+        NOTE: This assumes that :meth:`Library.build_library` has been called
 
         Parameters
         ----------
@@ -426,7 +426,7 @@ class Library(object):
         ----------
         domain : Material or Cell or Universe or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
+        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
             The type of multi-group cross section object to return
 
         Returns
@@ -457,7 +457,7 @@ class Library(object):
                     break
             else:
                 msg = 'Unable to find MGXS for {0} "{1}" in ' \
-                      'library'.format(self.domain_type, domain)
+                      'library'.format(self.domain_type, domain_id)
                 raise ValueError(msg)
         else:
             domain_id = domain.id
@@ -537,7 +537,7 @@ class Library(object):
 
         Returns
         -------
-        Library
+        openmc.mgxs.Library
             A new multi-group cross section library averaged across subdomains
 
         Raises

@@ -32,12 +32,6 @@ module multipole_header
   ! Value of 'true' when checking if nuclide is fissionable
   integer, parameter :: MP_FISS = 1
 
-  ! These variables store the maximum value from every nuclide in order
-  ! to preallocate some arrays to improve performance.
-  integer :: max_poly  ! Maximum number of polynomials we expect
-  integer :: max_poles ! Maximum number of poles in the problem for allocation
-  integer :: max_L     ! Maximum L value for allocation
-
 !===============================================================================
 ! MULTIPOLE contains all the components needed for the windowed multipole
 ! temperature dependent cross section libraries for the resolved resonance

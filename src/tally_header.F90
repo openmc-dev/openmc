@@ -141,6 +141,10 @@ module tally_header
 
     ! Index for the TallyDerivative for differential tallies.
     integer :: deriv = NONE
+
+    ! Multi-Group Specific Information To Enable Rapid Tallying
+    logical :: energy_matches_groups    = .false.
+    logical :: energyout_matches_groups = .false.
   end type TallyObject
 
 end module tally_header

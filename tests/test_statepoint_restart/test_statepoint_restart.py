@@ -10,6 +10,11 @@ from openmc.executor import Executor
 
 
 class StatepointRestartTestHarness(TestHarness):
+    def __init__(self, final_sp, restart_sp, tallies_present=False):
+        super(StatepointRestartTestHarness, self).__init__(final_sp,
+                                                           tallies_present)
+        self._restart_sp = restart_sp
+
     def execute_test(self):
         """Run OpenMC with the appropriate arguments and check the outputs."""
         try:
@@ -40,7 +45,9 @@ class StatepointRestartTestHarness(TestHarness):
 
     def _run_openmc_restart(self):
         # Get the name of the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
+        statepoint = glob.glob(os.path.join(os.getcwd(), self._restart_sp))
+        assert len(statepoint) == 1
+        statepoint = statepoint[0]
 
         # Run OpenMC
         executor = Executor()
@@ -52,11 +59,13 @@ class StatepointRestartTestHarness(TestHarness):
                                                  mpi_exec=self._opts.mpi_exec)
 
         else:
-            returncode = executor.run_simulation(openmc_exec=self._opts.exe)
+            returncode = executor.run_simulation(openmc_exec=self._opts.exe,
+                                                 restart_file=statepoint)
 
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
 
 if __name__ == '__main__':
-    harness = StatepointRestartTestHarness('statepoint.07.*', True)
+    harness = StatepointRestartTestHarness('statepoint.10.h5',
+         'statepoint.07.h5', True)
     harness.main()

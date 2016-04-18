@@ -1,13 +1,15 @@
 from __future__ import division
 
-from collections import Iterable, defaultdict
+from collections import Iterable, MutableSequence, defaultdict
 import copy
+from functools import partial
 import os
 import pickle
 import itertools
 from numbers import Integral, Real
-from xml.etree import ElementTree as ET
 import sys
+import warnings
+from xml.etree import ElementTree as ET
 
 import numpy as np
 
@@ -17,9 +19,9 @@ from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
 from openmc.clean_xml import *
 
-
 if sys.version_info[0] >= 3:
     basestring = str
+
 
 # "Static" variable for auto-generated Tally IDs
 AUTO_TALLY_ID = 10000
@@ -30,6 +32,12 @@ AUTO_TALLY_ID = 10000
 # operation entrywise across the entries in two tallies with respect to a
 # specified axis.
 _PRODUCT_TYPES = ['tensor', 'entrywise']
+
+# The following indicate acceptable types when setting Tally.scores,
+# Tally.nuclides, and Tally.filters
+_SCORE_CLASSES = (basestring, CrossScore, AggregateScore)
+_NUCLIDE_CLASSES = (basestring, Nuclide, CrossNuclide, AggregateNuclide)
+_FILTER_CLASSES = (Filter, CrossFilter, AggregateFilter)
 
 
 def reset_auto_tally_id():
@@ -43,7 +51,7 @@ class Tally(object):
 
     Parameters
     ----------
-    tally_id : Integral, optional
+    tally_id : int, optional
         Unique identifier for the tally. If none is specified, an identifier
         will automatically be assigned
     name : str, optional
@@ -51,43 +59,43 @@ class Tally(object):
 
     Attributes
     ----------
-    id : Integral
+    id : int
         Unique identifier for the tally
     name : str
         Name of the tally
-    filters : list of openmc.filter.Filter
+    filters : list of openmc.Filter
         List of specified filters for the tally
-    nuclides : list of openmc.nuclide.Nuclide
+    nuclides : list of openmc.Nuclide
         List of nuclides to score results for
     scores : list of str
         List of defined scores, e.g. 'flux', 'fission', etc.
     estimator : {'analog', 'tracklength', 'collision'}
         Type of estimator for the tally
-    triggers : list of openmc.trigger.Trigger
+    triggers : list of openmc.Trigger
         List of tally triggers
-    num_scores : Integral
+    num_scores : int
         Total number of scores, accounting for the fact that a single
         user-specified score, e.g. scatter-P3 or flux-Y2,2, might have multiple
         bins
-    num_filter_bins : Integral
+    num_filter_bins : int
         Total number of filter bins accounting for all filters
-    num_bins : Integral
+    num_bins : int
         Total number of bins for the tally
-    shape : 3-tuple of Integral
-        The shape of the tally data array ordered as the number of filter bins, 
+    shape : 3-tuple of int
+        The shape of the tally data array ordered as the number of filter bins,
         nuclide bins and score bins
-    num_realizations : Integral
+    num_realizations : int
         Total number of realizations
     with_summary : bool
         Whether or not a Summary has been linked
-    sum : ndarray
+    sum : numpy.ndarray
         An array containing the sum of each independent realization for each bin
-    sum_sq : ndarray
+    sum_sq : numpy.ndarray
         An array containing the sum of each independent realization squared for
         each bin
-    mean : ndarray
+    mean : numpy.ndarray
         An array containing the sample mean for each bin
-    std_dev : ndarray
+    std_dev : numpy.ndarray
         An array containing the sample standard deviation for each bin
     derived : bool
         Whether or not the tally is derived from one or more other tallies
@@ -103,11 +111,11 @@ class Tally(object):
         # Initialize Tally class attributes
         self.id = tally_id
         self.name = name
-        self._filters = []
-        self._nuclides = []
-        self._scores = []
+        self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters')
+        self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides')
+        self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores')
         self._estimator = None
-        self._triggers = []
+        self._triggers = cv.CheckedList(Trigger, 'tally triggers')
         self._derivative = None
 
         self._num_realizations = 0
@@ -148,19 +156,19 @@ class Tally(object):
 
             clone._filters = []
             for self_filter in self.filters:
-                clone.add_filter(copy.deepcopy(self_filter, memo))
+                clone.filters.append(copy.deepcopy(self_filter, memo))
 
             clone._nuclides = []
             for nuclide in self.nuclides:
-                clone.add_nuclide(copy.deepcopy(nuclide, memo))
+                clone.nuclides.append(copy.deepcopy(nuclide, memo))
 
             clone._scores = []
             for score in self.scores:
-                clone.add_score(score)
+                clone.scores.append(score)
 
             clone._triggers = []
             for trigger in self.triggers:
-                clone.add_trigger(trigger)
+                clone.triggers.append(trigger)
 
             memo[id(self)] = clone
 
@@ -313,7 +321,7 @@ class Tally(object):
 
     @property
     def sum(self):
-        if not self._sp_filename:
+        if not self._sp_filename or self.derived:
             return None
 
         if not self._results_read:
@@ -438,23 +446,30 @@ class Tally(object):
                     ['analog', 'tracklength', 'collision'])
         self._estimator = estimator
 
+    @triggers.setter
+    def triggers(self, triggers):
+        cv.check_type('tally triggers', triggers, MutableSequence)
+        self._triggers = cv.CheckedList(Trigger, 'tally triggers', triggers)
+
     def add_trigger(self, trigger):
         """Add a tally trigger to the tally
 
+        .. deprecated:: 0.8
+            Use the Tally.triggers property directly, i.e.,
+            Tally.triggers.append(...)
+
         Parameters
         ----------
-        trigger : openmc.trigger.Trigger
+        trigger : openmc.Trigger
             Trigger to add
 
         """
 
-        if not isinstance(trigger, Trigger):
-            msg = 'Unable to add a tally trigger for Tally ID="{0}" to ' \
-                  'since "{1}" is not a Trigger'.format(self.id, trigger)
-            raise ValueError(msg)
-
-        if trigger not in self.triggers:
-            self.triggers.append(trigger)
+        warnings.warn('Tally.add_trigger(...) has been deprecated and may be '
+                      'removed in a future version. Tally triggers should be '
+                      'defined using the triggers property directly.',
+                      DeprecationWarning)
+        self.triggers.append(trigger)
 
     @id.setter
     def id(self, tally_id):
@@ -481,8 +496,59 @@ class Tally(object):
             cv.check_type('tally derivative', deriv, TallyDerivative)
             self._derivative = deriv
 
+    @filters.setter
+    def filters(self, filters):
+        cv.check_type('tally filters', filters, MutableSequence)
+
+        # If the filter is already in the Tally, raise an error
+        for i, f in enumerate(filters[:-1]):
+            if f in filters[i+1:]:
+                msg = 'Unable to add a duplicate filter "{0}" to Tally ID="{1}" ' \
+                      'since duplicate filters are not supported in the OpenMC ' \
+                      'Python API'.format(f, self.id)
+                raise ValueError(msg)
+
+        self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters', filters)
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_type('tally nuclides', nuclides, MutableSequence)
+
+        # If the nuclide is already in the Tally, raise an error
+        for i, nuclide in enumerate(nuclides[:-1]):
+            if nuclide in nuclides[i+1:]:
+                msg = 'Unable to add a duplicate nuclide "{0}" to Tally ID="{1}" ' \
+                      'since duplicate nuclides are not supported in the OpenMC ' \
+                      'Python API'.format(nuclide, self.id)
+                raise ValueError(msg)
+
+        self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides',
+                                        nuclides)
+
+    @scores.setter
+    def scores(self, scores):
+        cv.check_type('tally scores', scores, MutableSequence)
+
+        for i, score in enumerate(scores[:-1]):
+            # If the score is already in the Tally, raise an error
+            if score in scores[i+1:]:
+                msg = 'Unable to add a duplicate score "{0}" to Tally ID="{1}" ' \
+                      'since duplicate scores are not supported in the OpenMC ' \
+                      'Python API'.format(score, self.id)
+                raise ValueError(msg)
+
+            # If score is a string, strip whitespace
+            if isinstance(score, basestring):
+                scores[i] = score.strip()
+
+        self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores', scores)
+
     def add_filter(self, new_filter):
         """Add a filter to the tally
+
+        .. deprecated:: 0.8
+            Use the Tally.filters property directly, i.e.,
+            Tally.filters.append(...)
 
         Parameters
         ----------
@@ -496,22 +562,18 @@ class Tally(object):
 
         """
 
-        if not isinstance(new_filter, (Filter, CrossFilter, AggregateFilter)):
-            msg = 'Unable to add Filter "{0}" to Tally ID="{1}" since it is ' \
-                  'not a Filter object'.format(new_filter, self.id)
-            raise ValueError(msg)
-
-        # If the filter is already in the Tally, raise an error
-        if new_filter in self.filters:
-            msg = 'Unable to add a duplicate filter "{0}" to Tally ID="{1}" ' \
-                  'since duplicate filters are not supported in the OpenMC ' \
-                  'Python API'.format(new_filter, self.id)
-            raise ValueError(msg)
-
-        self._filters.append(new_filter)
+        warnings.warn('Tally.add_filter(...) has been deprecated and may be '
+                      'removed in a future version. Tally filters should be '
+                      'defined using the filters property directly.',
+                      DeprecationWarning)
+        self.filters.append(new_filter)
 
     def add_nuclide(self, nuclide):
         """Specify that scores for a particular nuclide should be accumulated
+
+        .. deprecated:: 0.8
+            Use the Tally.nuclides property directly, i.e.,
+            Tally.nuclides.append(...)
 
         Parameters
         ----------
@@ -525,23 +587,18 @@ class Tally(object):
 
         """
 
-        if not isinstance(nuclide, (basestring, Nuclide,
-                                    CrossNuclide, AggregateNuclide)):
-            msg = 'Unable to add nuclide "{0}" to Tally ID="{1}" since it is ' \
-                  'not a Nuclide object'.format(nuclide)
-            raise ValueError(msg)
-
-        # If the nuclide is already in the Tally, raise an error
-        if nuclide in self.nuclides:
-            msg = 'Unable to add a duplicate nuclide "{0}" to Tally ID="{1}" ' \
-                  'since duplicate nuclides are not supported in the OpenMC ' \
-                  'Python API'.format(nuclide, self.id)
-            raise ValueError(msg)
-
-        self._nuclides.append(nuclide)
+        warnings.warn('Tally.add_nuclide(...) has been deprecated and may be '
+                      'removed in a future version. Tally nuclides should be '
+                      'defined using the nuclides property directly.',
+                      DeprecationWarning)
+        self.nuclides.append(nuclide)
 
     def add_score(self, score):
         """Specify a quantity to be scored
+
+        .. deprecated:: 0.8
+            Use the Tally.scores property directly, i.e.,
+            Tally.scores.append(...)
 
         Parameters
         ----------
@@ -554,24 +611,11 @@ class Tally(object):
 
         """
 
-        if not isinstance(score, (basestring, CrossScore, AggregateScore)):
-            msg = 'Unable to add score "{0}" to Tally ID="{1}" since it is ' \
-                  'not a string'.format(score, self.id)
-            raise ValueError(msg)
-
-        # If the score is already in the Tally, raise an error
-        if score in self.scores:
-            msg = 'Unable to add a duplicate score "{0}" to Tally ID="{1}" ' \
-                  'since duplicate scores are not supported in the OpenMC ' \
-                  'Python API'.format(score, self.id)
-            raise ValueError(msg)
-
-        # Normal score strings
-        if isinstance(score, basestring):
-            self._scores.append(score.strip())
-        # CrossScores and AggrgateScore
-        else:
-            self._scores.append(score)
+        warnings.warn('Tally.add_score(...) has been deprecated and may be '
+                      'removed in a future version. Tally scores should be '
+                      'defined using the scores property directly.',
+                      DeprecationWarning)
+        self.scores.append(score)
 
     @num_realizations.setter
     def num_realizations(self, num_realizations):
@@ -666,7 +710,7 @@ class Tally(object):
 
         Parameters
         ----------
-        old_filter : openmc.filter.Filter
+        old_filter : openmc.Filter
             Filter to remove
 
         """
@@ -683,7 +727,7 @@ class Tally(object):
 
         Parameters
         ----------
-        nuclide : openmc.nuclide.Nuclide
+        nuclide : openmc.Nuclide
             Nuclide to remove
 
         """
@@ -695,84 +739,205 @@ class Tally(object):
 
         self._nuclides.remove(nuclide)
 
-    def can_merge(self, tally):
-        """Determine if another tally can be merged with this one
+    def _can_merge_filters(self, other):
+        """Determine if another tally's filters can be merged with this one's
+
+        The types of filters between the two tallies must match identically.
+        The bins in all of the filters must match identically, or be mergeable
+        in only one filter. This is a helper method for the can_merge(...)
+        and merge(...) methods.
 
         Parameters
         ----------
-        tally : Tally
-            Tally to check for merging
+        other : openmc.Tally
+            Tally to check for mergeable filters
 
         """
 
-        if not isinstance(tally, Tally):
+        # Two tallys must have the same number of filters
+        if len(self.filters) != len(other.filters):
             return False
-
-        # Must have same estimator
-        if self.estimator != tally.estimator:
-            return False
-
-        # Must have same nuclides
-        if len(self.nuclides) != len(tally.nuclides):
-            return False
-
-        for nuclide in self.nuclides:
-            if nuclide not in tally.nuclides:
-                return False
-
-        # Must have same or mergeable filters
-        if len(self.filters) != len(tally.filters):
-            return False
-
-        # Check if only one tally contains a delayed group filter
-        tally1_dg = False
-        for filter1 in self.filters:
-            if filter1.type == 'delayedgroup':
-                tally1_dg = True
-
-        tally2_dg = False
-        for filter2 in tally.filters:
-            if filter2.type == 'delayedgroup':
-                tally2_dg = True
 
         # Return False if only one tally has a delayed group filter
-        if (tally1_dg or tally2_dg) and not (tally1_dg and tally2_dg):
+        tally1_dg = self.contains_filter('delayedgroup')
+        tally2_dg = other.contains_filter('delayedgroup')
+        if sum([tally1_dg, tally2_dg]) == 1:
             return False
 
         # Look to see if all filters are the same, or one or more can be merged
         for filter1 in self.filters:
+            merge_filters = False
             mergeable_filter = False
 
-            for filter2 in tally.filters:
-                if filter1 == filter2 or filter1.can_merge(filter2):
+            for filter2 in other.filters:
+
+                # If filters match, they are mergeable
+                if filter1 == filter2:
                     mergeable_filter = True
                     break
+
+                # If filters are first mergeable filters encountered
+                elif filter1.can_merge(filter2) and not merge_filters:
+                    merge_filters = True
+                    mergeable_filter = True
+                    break
+
+                # If filters are the second mergeable filters encountered
+                elif filter1.can_merge(filter2) and merge_filters:
+                    return False
 
             # If no mergeable filter was found, the tallies are not mergeable
             if not mergeable_filter:
                 return False
 
-        # Tallies are mergeable if all conditional checks passed
+        # Tally filters are mergeable if all conditional checks passed
         return True
 
-    def merge(self, tally):
-        """Merge another tally with this one
+    def _can_merge_nuclides(self, other):
+        """Determine if another tally's nuclides can be merged with this one's
+
+        The nuclides between the two tallies must be mutually exclusive or
+        identically matching. This is a helper method for the can_merge(...)
+        and merge(...) methods.
 
         Parameters
         ----------
-        tally : Tally
+        other : openmc.Tally
+            Tally to check for mergeable nuclides
+
+        """
+
+        no_nuclides_match = True
+        all_nuclides_match = True
+
+        # Search for each of this tally's nuclides in the other tally
+        for nuclide in self.nuclides:
+            if nuclide not in other.nuclides:
+                all_nuclides_match = False
+            else:
+                no_nuclides_match = False
+
+        # Search for each of the other tally's nuclides in this tally
+        for nuclide in other.nuclides:
+            if nuclide not in self.nuclides:
+                all_nuclides_match = False
+            else:
+                no_nuclides_match = False
+
+        # Either all nuclides should match, or none should
+        if no_nuclides_match or all_nuclides_match:
+            return True
+        else:
+            return False
+
+    def _can_merge_scores(self, other):
+        """Determine if another tally's scores can be merged with this one's
+
+        The scores between the two tallies must be mutually exclusive or
+        identically matching. This is a helper method for the can_merge(...)
+        and merge(...) methods.
+
+        Parameters
+        ----------
+        other : openmc.Tally
+            Tally to check for mergeable scores
+
+        """
+
+        no_scores_match = True
+        all_scores_match = True
+
+        # Search for each of this tally's scores in the other tally
+        for score in self.scores:
+            if score not in other.scores:
+                all_scores_match = False
+            else:
+                no_scores_match = False
+
+        # Search for each of the other tally's scores in this tally
+        for score in other.scores:
+            if score not in self.scores:
+                all_scores_match = False
+            else:
+                no_scores_match = False
+
+        # Nuclides cannot be specified on 'flux' scores
+        if 'flux' in self.scores or 'flux' in other.scores:
+            if self.nuclides != other.nuclides:
+                return False
+
+        # Either all scores should match, or none should
+        if no_scores_match or all_scores_match:
+            return True
+        else:
+            return False
+
+    def can_merge(self, other):
+        """Determine if another tally can be merged with this one
+
+        If results have been loaded from a statepoint, then tallies are only
+        mergeable along one and only one of filter bins, nuclides or scores.
+
+        Parameters
+        ----------
+        other : openmc.Tally
+            Tally to check for merging
+
+        """
+
+        if not isinstance(other, Tally):
+            return False
+
+        # Must have same estimator
+        if self.estimator != other.estimator:
+            return False
+
+        equal_filters = sorted(self.filters) == sorted(other.filters)
+        equal_nuclides = sorted(self.nuclides) == sorted(other.nuclides)
+        equal_scores = sorted(self.scores) == sorted(other.scores)
+        equality = [equal_filters, equal_nuclides, equal_scores]
+
+        # If all filters, nuclides and scores match then tallies are mergeable
+        if equal_filters and equal_nuclides and equal_scores:
+            return True
+
+        # Variables to indicate matching filter bins, nuclides and scores
+        merge_filters = self._can_merge_filters(other)
+        merge_nuclides = self._can_merge_nuclides(other)
+        merge_scores = self._can_merge_scores(other)
+        mergeability = [merge_filters, merge_nuclides, merge_scores]
+
+        if not all(mergeability):
+            return False
+
+        # If the tally results have been read from the statepoint, we can only
+        # at least two of filters, nuclides and scores must match
+        elif self._results_read and sum(equality) < 2:
+            return False
+        else:
+            return True
+
+    def merge(self, other):
+        """Merge another tally with this one
+
+        If results have been loaded from a statepoint, then tallies are only
+        mergeable along one and only one of filter bins, nuclides or scores.
+
+        Parameters
+        ----------
+        other : openmc.Tally
             Tally to merge with this one
 
         Returns
         -------
-        merged_tally : Tally
+        merged_tally : openmc.Tally
             Merged tallies
 
         """
 
-        if not self.can_merge(tally):
-            msg = 'Unable to merge tally ID="{0}" with ' + \
-                   '"{1}"'.format(tally.id, self.id)
+        if not self.can_merge(other):
+            msg = 'Unable to merge tally ID="{0}" with ' \
+                   '"{1}"'.format(other.id, self.id)
             raise ValueError(msg)
 
         # Create deep copy of tally to return as merged tally
@@ -781,22 +946,126 @@ class Tally(object):
         # Differentiate Tally with a new auto-generated Tally ID
         merged_tally.id = None
 
-        # Merge filters
-        for i, filter1 in enumerate(merged_tally.filters):
-            for filter2 in tally.filters:
-                if filter1 != filter2 and filter1.can_merge(filter2):
-                    merged_filter = filter1.merge(filter2)
-                    merged_tally.filters[i] = merged_filter
-                    break
+        # If the two tallies are equal, simply return copy
+        if self == other:
+            return merged_tally
 
-        # Add unique scores from second tally to merged tally
-        for score in tally.scores:
-            if score not in merged_tally.scores:
-                merged_tally.add_score(score)
+        # Create deep copy of other tally to use for array concatenation
+        other_copy = copy.deepcopy(other)
 
-        # Add triggers from second tally to merged tally
-        for trigger in tally.triggers:
-            merged_tally.add_trigger(trigger)
+        # Identify if filters, nuclides and scores are mergeable and/or equal
+        merge_filters = self._can_merge_filters(other)
+        merge_nuclides = self._can_merge_nuclides(other)
+        merge_scores = self._can_merge_scores(other)
+        equal_filters = sorted(self.filters) == sorted(other.filters)
+        equal_nuclides = sorted(self.nuclides) == sorted(other.nuclides)
+        equal_scores = sorted(self.scores) == sorted(other.scores)
+
+        # If two tallies can be merged along a filter's bins
+        if merge_filters and not equal_filters:
+
+            # Search for mergeable filters
+            for i, filter1 in enumerate(self.filters):
+                for j, filter2 in enumerate(other.filters):
+                    if filter1 != filter2 and filter1.can_merge(filter2):
+                        other_copy._swap_filters(other_copy.filters[i], filter2)
+                        merged_tally.filters[i] = filter1.merge(filter2)
+                        join_right = filter1 < filter2
+                        merge_axis = i
+                        break
+
+        # If two tallies can be merged along nuclide bins
+        if merge_nuclides and not equal_nuclides:
+            merge_axis = self.num_filters
+            join_right = True
+
+            # Add unique nuclides from other tally to merged tally
+            for nuclide in other.nuclides:
+                if nuclide not in merged_tally.nuclides:
+                    merged_tally.nuclides.append(nuclide)
+
+        # If two tallies can be merged along score bins
+        if merge_scores and not equal_scores:
+            merge_axis = self.num_filters + 1
+            join_right = True
+
+            # Add unique scores from other tally to merged tally
+            for score in other.scores:
+                if score not in merged_tally.scores:
+                    merged_tally.scores.append(score)
+
+        # Add triggers from other tally to merged tally
+        for trigger in other.triggers:
+            merged_tally.triggers.append(trigger)
+
+        # If results have not been read, then return tally for input generation
+        if self._results_read is None:
+            return merged_tally
+        # Otherwise, this is a derived tally which needs merged results arrays
+        else:
+            self._derived = True
+
+        # Update filter strides in merged tally
+        merged_tally._update_filter_strides()
+
+        # Concatenate sum arrays if present in both tallies
+        if self.sum is not None and other_copy.sum is not None:
+            self_sum = self.get_reshaped_data(value='sum')
+            other_sum = other_copy.get_reshaped_data(value='sum')
+
+            if join_right:
+                merged_sum = \
+                    np.concatenate((self_sum, other_sum), axis=merge_axis)
+            else:
+                merged_sum = \
+                    np.concatenate((other_sum, self_sum), axis=merge_axis)
+
+            merged_tally._sum = np.reshape(merged_sum, merged_tally.shape)
+
+        # Concatenate sum_sq arrays if present in both tallies
+        if self.sum_sq is not None and other.sum_sq is not None:
+            self_sum_sq = self.get_reshaped_data(value='sum_sq')
+            other_sum_sq = other_copy.get_reshaped_data(value='sum_sq')
+
+            if join_right:
+                merged_sum_sq = \
+                    np.concatenate((self_sum_sq, other_sum_sq), axis=merge_axis)
+            else:
+                merged_sum_sq = \
+                    np.concatenate((other_sum_sq, self_sum_sq), axis=merge_axis)
+
+            merged_tally._sum_sq = np.reshape(merged_sum_sq, merged_tally.shape)
+
+        # Concatenate mean arrays if present in both tallies
+        if self.mean is not None and other.mean is not None:
+            self_mean = self.get_reshaped_data(value='mean')
+            other_mean = other_copy.get_reshaped_data(value='mean')
+
+            if join_right:
+                merged_mean = \
+                    np.concatenate((self_mean, other_mean), axis=merge_axis)
+            else:
+                merged_mean = \
+                    np.concatenate((other_mean, self_mean), axis=merge_axis)
+
+            merged_tally._mean = np.reshape(merged_mean, merged_tally.shape)
+
+        # Concatenate std. dev. arrays if present in both tallies
+        if self.std_dev is not None and other.std_dev is not None:
+            self_std_dev = self.get_reshaped_data(value='std_dev')
+            other_std_dev = other_copy.get_reshaped_data(value='std_dev')
+
+            if join_right:
+                merged_std_dev = \
+                    np.concatenate((self_std_dev, other_std_dev), axis=merge_axis)
+            else:
+                merged_std_dev = \
+                    np.concatenate((other_std_dev, self_std_dev), axis=merge_axis)
+
+            merged_tally._std_dev = np.reshape(merged_std_dev, merged_tally.shape)
+
+        # Sparsify merged tally if both tallies are sparse
+        merged_tally.sparse = self.sparse and other.sparse
 
         return merged_tally
 
@@ -873,6 +1142,32 @@ class Tally(object):
 
         return element
 
+    def contains_filter(self, filter_type):
+        """Looks for a filter in the tally that matches a specified type
+
+        Parameters
+        ----------
+        filter_type : str
+            Type of the filter, e.g. 'mesh'
+
+        Returns
+        -------
+        filter_found : bool
+            True if the tally contains a filter of the requested type;
+            otherwise false
+
+        """
+
+        filter_found = False
+
+        # Look through all of this Tally's Filters for the type requested
+        for test_filter in self.filters:
+            if test_filter.type == filter_type:
+                filter_found = True
+                break
+
+        return filter_found
+
     def find_filter(self, filter_type):
         """Return a filter in the tally that matches a specified type
 
@@ -883,7 +1178,7 @@ class Tally(object):
 
         Returns
         -------
-        filter_found : openmc.filter.Filter
+        filter_found : openmc.Filter
             Filter from this tally with matching type, or None if no matching
             Filter is found
 
@@ -917,7 +1212,7 @@ class Tally(object):
         ----------
         filter_type : str
             The type of Filter (e.g., 'cell', 'energy', etc.)
-        filter_bin : Integral or tuple
+        filter_bin : int or tuple
             The bin is an integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. The bin is an integer for the
             cell instance ID for 'distribcell' Filters. The bin is a 2-tuple of
@@ -1043,7 +1338,7 @@ class Tally(object):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             A NumPy array of the filter indices
 
         """
@@ -1125,7 +1420,7 @@ class Tally(object):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             A NumPy array of the nuclide indices
 
         """
@@ -1159,7 +1454,7 @@ class Tally(object):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             A NumPy array of the score indices
 
         """
@@ -1221,7 +1516,7 @@ class Tally(object):
 
         Returns
         -------
-        float or ndarray
+        float or numpy.ndarray
             A scalar or NumPy array of the Tally data indexed in the order
             each filter, nuclide and score is listed in the parameters.
 
@@ -1271,7 +1566,8 @@ class Tally(object):
         return data
 
     def get_pandas_dataframe(self, filters=True, nuclides=True,
-                             scores=True, derivative=True, summary=None):
+                             scores=True, derivative=True, summary=None,
+                             float_format='{:.2e}'):
         """Build a Pandas DataFrame for the Tally data.
 
         This method constructs a Pandas DataFrame object for the Tally data
@@ -1291,12 +1587,15 @@ class Tally(object):
             Include columns with score bin information (default is True).
         derivative : bool
             Include columns with differential tally info (default is True).
-        summary : None or Summary
+        summary : None or openmc.Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
             information in the Summary object is embedded into a Multi-index
             column with a geometric "path" to each distribcell intance.
             NOTE: This option requires the OpenCG Python package.
+        float_format : str
+            All floats in the DataFrame will be formatted using the given
+            format string before printing.
 
         Returns
         -------
@@ -1327,14 +1626,8 @@ class Tally(object):
                   'Summary info'.format(self.id)
             raise KeyError(msg)
 
-        # Attempt to import Pandas
-        try:
-            import pandas as pd
-        except ImportError:
-            msg = 'The Pandas Python package must be installed on your system'
-            raise ImportError(msg)
-
         # Initialize a pandas dataframe for the tally data
+        import pandas as pd
         df = pd.DataFrame()
 
         # Find the total length of the tally data array
@@ -1351,23 +1644,36 @@ class Tally(object):
         # Include DataFrame column for nuclides if user requested it
         if nuclides:
             nuclides = []
+            column_name = 'nuclide'
 
             for nuclide in self.nuclides:
-                # Write Nuclide name if Summary info was linked with StatePoint
                 if isinstance(nuclide, Nuclide):
                     nuclides.append(nuclide.name)
+                elif isinstance(nuclide, AggregateNuclide):
+                    nuclides.append(nuclide.name)
+                    column_name = '{0}(nuclide)'.format(nuclide.aggregate_op)
                 else:
                     nuclides.append(nuclide)
 
             # Tile the nuclide bins into a DataFrame column
             nuclides = np.repeat(nuclides, len(self.scores))
             tile_factor = data_size / len(nuclides)
-            df['nuclide'] = np.tile(nuclides, int(tile_factor))
+            df[column_name] = np.tile(nuclides, int(tile_factor))
 
         # Include column for scores if user requested it
         if scores:
+            scores = []
+            column_name = 'score'
+
+            for score in self.scores:
+                if isinstance(score, (basestring, CrossScore)):
+                    scores.append(score)
+                elif isinstance(score, AggregateScore):
+                    scores.append(score.name)
+                    column_name = '{0}(score)'.format(score.aggregate_op)
+
             tile_factor = data_size / len(self.scores)
-            df['score'] = np.tile(self.scores, int(tile_factor))
+            df[column_name] = np.tile(scores, int(tile_factor))
 
         # Include columns for derivatives if user requested it
         if derivative and (self.derivative is not None):
@@ -1404,6 +1710,10 @@ class Tally(object):
             # Create and set a MultiIndex for the DataFrame's columns
             df.columns = pd.MultiIndex.from_tuples(columns)
 
+        # Modify the df.to_string method so that it prints formatted strings.
+        # Credit to http://stackoverflow.com/users/3657742/chrisb for this trick
+        df.to_string = partial(df.to_string, float_format=float_format.format)
+
         return df
 
     def get_reshaped_data(self, value='mean'):
@@ -1411,8 +1721,8 @@ class Tally(object):
 
         The tally data in OpenMC is stored as a 3D array with the dimensions
         corresponding to filters, nuclides and scores. As a result, tally data
-        can be opaque for a user to directly index (i.e., without use of the
-        Tally.get_values(...) method) since one must know how to properly use
+        can be opaque for a user to directly index (i.e., without use of
+        :meth:`openmc.Tally.get_values`) since one must know how to properly use
         the number of bins and strides for each filter to index into the first
         (filter) dimension.
 
@@ -1432,7 +1742,7 @@ class Tally(object):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             The tally data array indexed by filters, nuclides and scores.
 
         """
@@ -1610,7 +1920,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally
+        other : openmc.Tally
             The tally on the right hand side of the hybrid product
         binary_op : {'+', '-', '*', '/', '^'}
             The binary operation in the hybrid product
@@ -1632,7 +1942,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new Tally that is the hybrid product with this one.
 
         Raises
@@ -1752,33 +2062,33 @@ class Tally(object):
         # Add filters to the new tally
         if filter_product == 'entrywise':
             for self_filter in self_copy.filters:
-                new_tally.add_filter(self_filter)
+                new_tally.filters.append(self_filter)
         else:
             all_filters = [self_copy.filters, other_copy.filters]
             for self_filter, other_filter in itertools.product(*all_filters):
                 new_filter = CrossFilter(self_filter, other_filter, binary_op)
-                new_tally.add_filter(new_filter)
+                new_tally.filters.append(new_filter)
 
         # Add nuclides to the new tally
         if nuclide_product == 'entrywise':
             for self_nuclide in self_copy.nuclides:
-                new_tally.add_nuclide(self_nuclide)
+                new_tally.nuclides.append(self_nuclide)
         else:
             all_nuclides = [self_copy.nuclides, other_copy.nuclides]
             for self_nuclide, other_nuclide in itertools.product(*all_nuclides):
                 new_nuclide = \
                     CrossNuclide(self_nuclide, other_nuclide, binary_op)
-                new_tally.add_nuclide(new_nuclide)
+                new_tally.nuclides.append(new_nuclide)
 
         # Add scores to the new tally
         if score_product == 'entrywise':
             for self_score in self_copy.scores:
-                new_tally.add_score(self_score)
+                new_tally.scores.append(self_score)
         else:
             all_scores = [self_copy.scores, other_copy.scores]
             for self_score, other_score in itertools.product(*all_scores):
                 new_score = CrossScore(self_score, other_score, binary_op)
-                new_tally.add_score(new_score)
+                new_tally.scores.append(new_score)
 
         # Update the new tally's filter strides
         new_tally._update_filter_strides()
@@ -1810,7 +2120,7 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally
+        other : openmc.Tally
             The tally to outer product with this tally
         filter_product : {'entrywise'}
             The type of product to be performed between filter data. Currently,
@@ -1841,14 +2151,14 @@ class Tally(object):
             filter_copy = copy.deepcopy(other_filter)
             other._mean = np.repeat(other.mean, filter_copy.num_bins, axis=0)
             other._std_dev = np.repeat(other.std_dev, filter_copy.num_bins, axis=0)
-            other.add_filter(filter_copy)
+            other.filters.append(filter_copy)
 
         # Add filters present in other but not in self to self
         for self_filter in self_missing_filters:
             filter_copy = copy.deepcopy(self_filter)
             self._mean = np.repeat(self.mean, filter_copy.num_bins, axis=0)
             self._std_dev = np.repeat(self.std_dev, filter_copy.num_bins, axis=0)
-            self.add_filter(filter_copy)
+            self.filters.append(filter_copy)
 
         # Align other filters with self filters
         for i, self_filter in enumerate(self.filters):
@@ -1871,7 +2181,7 @@ class Tally(object):
                 np.tile(other.std_dev, (1, self.num_nuclides, 1))
 
         # Add nuclides to each tally such that each tally contains the complete
-        # set of nuclides necessary to perform an entrywise product. New 
+        # set of nuclides necessary to perform an entrywise product. New
         # nuclides added to a tally will have all their scores set to zero.
         else:
 
@@ -1887,7 +2197,7 @@ class Tally(object):
                     np.insert(other.mean, other.num_nuclides, 0, axis=1)
                 other._std_dev = \
                     np.insert(other.std_dev, other.num_nuclides, 0, axis=1)
-                other.add_nuclide(nuclide)
+                other.nuclides.append(nuclide)
 
             # Add nuclides present in other but not in self to self
             for nuclide in self_missing_nuclides:
@@ -1895,7 +2205,7 @@ class Tally(object):
                     np.insert(self.mean, self.num_nuclides, 0, axis=1)
                 self._std_dev = \
                     np.insert(self.std_dev, self.num_nuclides, 0, axis=1)
-                self.add_nuclide(nuclide)
+                self.nuclides.append(nuclide)
 
             # Align other nuclides with self nuclides
             for i, nuclide in enumerate(self.nuclides):
@@ -1928,13 +2238,13 @@ class Tally(object):
             for score in other_missing_scores:
                 other._mean = np.insert(other.mean, other.num_scores, 0, axis=2)
                 other._std_dev = np.insert(other.std_dev, other.num_scores, 0, axis=2)
-                other.add_score(score)
+                other.scores.append(score)
 
             # Add scores present in other but not in self to self
             for score in self_missing_scores:
                 self._mean = np.insert(self.mean, self.num_scores, 0, axis=2)
                 self._std_dev = np.insert(self.std_dev, self.num_scores, 0, axis=2)
-                self.add_score(score)
+                self.scores.append(score)
 
             # Align other scores with self scores
             for i, score in enumerate(self.scores):
@@ -1980,19 +2290,12 @@ class Tally(object):
 
         """
 
-        # Check that results have been read
-        if not self.derived and self.sum is None:
-            msg = 'Unable to use tally arithmetic with Tally ID="{0}" ' \
-                  'since it does not contain any results.'.format(self.id)
-            raise ValueError(msg)
-
-        cv.check_type('filter1', filter1, Filter)
-        cv.check_type('filter2', filter2, Filter)
+        cv.check_type('filter1', filter1, (Filter, CrossFilter, AggregateFilter))
+        cv.check_type('filter2', filter2, (Filter, CrossFilter, AggregateFilter))
 
         # Check that the filters exist in the tally and are not the same
         if filter1 == filter2:
-            msg = 'Unable to swap a filter with itself'
-            raise ValueError(msg)
+            return
         elif filter1 not in self.filters:
             msg = 'Unable to swap "{0}" filter1 in Tally ID="{1}" since it ' \
                   'does not contain such a filter'.format(filter1.type, self.id)
@@ -2199,12 +2502,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Real
+        other : openmc.Tally or float
             The tally or scalar value to add to this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the sum of this tally and the other
             tally or scalar value in the addition.
 
@@ -2239,12 +2542,9 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            for self_filter in self.filters:
-                new_tally.add_filter(self_filter)
-            for nuclide in self.nuclides:
-                new_tally.add_nuclide(nuclide)
-            for score in self.scores:
-                new_tally.add_score(score)
+            new_tally.filters = copy.deepcopy(self.filters)
+            new_tally.nuclides = copy.deepcopy(self.nuclides)
+            new_tally.scores = copy.deepcopy(self.scores)
 
             # If this tally operand is sparse, sparsify the new tally
             new_tally.sparse = self.sparse
@@ -2274,12 +2574,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Real
+        other : openmc.Tally or float
             The tally or scalar value to subtract from this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the difference of this tally and the
             other tally or scalar value in the subtraction.
 
@@ -2313,12 +2613,9 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            for self_filter in self.filters:
-                new_tally.add_filter(self_filter)
-            for nuclide in self.nuclides:
-                new_tally.add_nuclide(nuclide)
-            for score in self.scores:
-                new_tally.add_score(score)
+            new_tally.filters = copy.deepcopy(self.filters)
+            new_tally.nuclides = copy.deepcopy(self.nuclides)
+            new_tally.scores = copy.deepcopy(self.scores)
 
             # If this tally operand is sparse, sparsify the new tally
             new_tally.sparse = self.sparse
@@ -2349,12 +2646,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Real
+        other : openmc.Tally or float
             The tally or scalar value to multiply with this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the product of this tally and the
             other tally or scalar value in the multiplication.
 
@@ -2388,12 +2685,9 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            for self_filter in self.filters:
-                new_tally.add_filter(self_filter)
-            for nuclide in self.nuclides:
-                new_tally.add_nuclide(nuclide)
-            for score in self.scores:
-                new_tally.add_score(score)
+            new_tally.filters = copy.deepcopy(self.filters)
+            new_tally.nuclides = copy.deepcopy(self.nuclides)
+            new_tally.scores = copy.deepcopy(self.scores)
 
             # If this tally operand is sparse, sparsify the new tally
             new_tally.sparse = self.sparse
@@ -2424,12 +2718,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Tally or Real
+        other : openmc.Tally or float
             The tally or scalar value to divide this tally by
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the dividend of this tally and the
             other tally or scalar value in the division.
 
@@ -2463,12 +2757,9 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            for self_filter in self.filters:
-                new_tally.add_filter(self_filter)
-            for nuclide in self.nuclides:
-                new_tally.add_nuclide(nuclide)
-            for score in self.scores:
-                new_tally.add_score(score)
+            new_tally.filters = copy.deepcopy(self.filters)
+            new_tally.nuclides = copy.deepcopy(self.nuclides)
+            new_tally.scores = copy.deepcopy(self.scores)
 
             # If this tally operand is sparse, sparsify the new tally
             new_tally.sparse = self.sparse
@@ -2502,12 +2793,12 @@ class Tally(object):
 
         Parameters
         ----------
-        power : Tally or Real
+        power : openmc.Tally or float
             The tally or scalar value exponent
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is this tally raised to the power of the
             other tally or scalar value in the exponentiation.
 
@@ -2542,12 +2833,9 @@ class Tally(object):
             new_tally.with_summary = self.with_summary
             new_tally.num_realization = self.num_realizations
 
-            for self_filter in self.filters:
-                new_tally.add_filter(self_filter)
-            for nuclide in self.nuclides:
-                new_tally.add_nuclide(nuclide)
-            for score in self.scores:
-                new_tally.add_score(score)
+            new_tally.filters = copy.deepcopy(self.filters)
+            new_tally.nuclides = copy.deepcopy(self.nuclides)
+            new_tally.scores = copy.deepcopy(self.scores)
 
             # If original tally was sparse, sparsify the exponentiated tally
             new_tally.sparse = self.sparse
@@ -2566,12 +2854,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Real
+        other : float
             The scalar value to add to this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally of this tally added with the scalar value.
 
         """
@@ -2585,12 +2873,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Real
+        other : float
             The scalar value to subtract this tally from
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally of this tally subtracted from the scalar value.
 
         """
@@ -2604,12 +2892,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Real
+        other : float
             The scalar value to multiply with this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally of this tally multiplied by the scalar value.
 
         """
@@ -2623,12 +2911,12 @@ class Tally(object):
 
         Parameters
         ----------
-        other : Integer or Real
+        other : float
             The scalar value to divide by this tally
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally of the scalar value divided by this tally.
 
         """
@@ -2640,7 +2928,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the absolute value of this tally.
 
         """
@@ -2654,7 +2942,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived tally which is the negated value of this tally.
 
         """
@@ -2696,7 +2984,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new tally which encapsulates the subset of data requested in the
             order each filter, nuclide and score is listed in the parameters.
 
@@ -2713,7 +3001,13 @@ class Tally(object):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
+        # Create deep copy of tally to return as sliced tally
         new_tally = copy.deepcopy(self)
+        new_tally._derived = True
+
+        # Differentiate Tally with a new auto-generated Tally ID
+        new_tally.id = None
+
         new_tally.sparse = False
 
         if not self.derived and self.sum is not None:
@@ -2798,7 +3092,7 @@ class Tally(object):
     def summation(self, scores=[], filter_type=None,
                   filter_bins=[], nuclides=[], remove_filter=False):
         """Vectorized sum of tally data across scores, filter bins and/or
-        nuclides using tally addition.
+        nuclides using tally aggregation.
 
         This method constructs a new tally to encapsulate the sum of the data
         represented by the summation of the data in this tally. The tally data
@@ -2813,7 +3107,7 @@ class Tally(object):
         filter_type : str
             A filter type string (e.g., 'cell', 'energy') corresponding to the
             filter bins to sum across
-        filter_bins : Iterable of Integral or tuple
+        filter_bins : Iterable of int or tuple
             A list of the filter bins corresponding to the filter_type parameter
             Each bin in the list is the integer ID for 'material', 'surface',
             'cell', 'cellborn', and 'universe' Filters. Each bin is an integer
@@ -2831,7 +3125,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new tally which encapsulates the sum of data requested.
         """
 
@@ -2840,7 +3134,7 @@ class Tally(object):
         tally_sum._derived = True
         tally_sum._estimator = self.estimator
         tally_sum._num_realizations = self.num_realizations
-        tally_sum.with_batch_statistics = self.with_batch_statistics
+        tally_sum._with_batch_statistics = self.with_batch_statistics
         tally_sum._with_summary = self.with_summary
         tally_sum._sp_filename = self._sp_filename
         tally_sum._results_read = self._results_read
@@ -2881,12 +3175,12 @@ class Tally(object):
                     # Add AggregateFilter to the tally sum
                     if not remove_filter:
                         filter_sum = \
-                            AggregateFilter(self_filter, filter_bins, 'sum')
-                        tally_sum.add_filter(filter_sum)
+                            AggregateFilter(self_filter, [tuple(filter_bins)], 'sum')
+                        tally_sum.filters.append(filter_sum)
 
                 # Add a copy of each filter not summed across to the tally sum
                 else:
-                    tally_sum.add_filter(copy.deepcopy(self_filter))
+                    tally_sum.filters.append(copy.deepcopy(self_filter))
 
         # Add a copy of this tally's filters to the tally sum
         else:
@@ -2904,7 +3198,7 @@ class Tally(object):
 
             # Add AggregateNuclide to the tally sum
             nuclide_sum = AggregateNuclide(nuclides, 'sum')
-            tally_sum.add_nuclide(nuclide_sum)
+            tally_sum.nuclides.append(nuclide_sum)
 
         # Add a copy of this tally's nuclides to the tally sum
         else:
@@ -2922,7 +3216,7 @@ class Tally(object):
 
             # Add AggregateScore to the tally sum
             score_sum = AggregateScore(scores, 'sum')
-            tally_sum.add_score(score_sum)
+            tally_sum.scores.append(score_sum)
 
         # Add a copy of this tally's scores to the tally sum
         else:
@@ -2943,6 +3237,157 @@ class Tally(object):
         tally_sum.sparse = self.sparse
         return tally_sum
 
+    def average(self, scores=[], filter_type=None,
+                  filter_bins=[], nuclides=[], remove_filter=False):
+        """Vectorized average of tally data across scores, filter bins and/or
+        nuclides using tally aggregation.
+
+        This method constructs a new tally to encapsulate the average of the
+        data represented by the average of the data in this tally. The tally
+        data average is determined by the scores, filter bins and nuclides
+        specified in the input parameters.
+
+        Parameters
+        ----------
+        scores : list of str
+            A list of one or more score strings to average across
+            (e.g., ['absorption', 'nu-fission']; default is [])
+        filter_type : str
+            A filter type string (e.g., 'cell', 'energy') corresponding to the
+            filter bins to average across
+        filter_bins : Iterable of int or tuple
+            A list of the filter bins corresponding to the filter_type parameter
+            Each bin in the list is the integer ID for 'material', 'surface',
+            'cell', 'cellborn', and 'universe' Filters. Each bin is an integer
+            for the cell instance ID for 'distribcell' Filters. Each bin is a
+            2-tuple of floats for 'energy' and 'energyout' filters corresponding
+            to the energy boundaries of the bin of interest. Each bin is an
+            (x,y,z) 3-tuple for 'mesh' filters corresponding to the mesh cell of
+            interest.
+        nuclides : list of str
+            A list of nuclide name strings to average across
+            (e.g., ['U-235', 'U-238']; default is [])
+        remove_filter : bool
+            If a filter is being averaged over, this bool indicates whether to
+            remove that filter in the returned tally. Default is False.
+
+        Returns
+        -------
+        openmc.Tally
+            A new tally which encapsulates the average of data requested.
+        """
+
+        # Create new derived Tally for average
+        tally_avg = Tally()
+        tally_avg._derived = True
+        tally_avg._estimator = self.estimator
+        tally_avg._num_realizations = self.num_realizations
+        tally_avg._with_batch_statistics = self.with_batch_statistics
+        tally_avg._with_summary = self.with_summary
+        tally_avg._sp_filename = self._sp_filename
+        tally_avg._results_read = self._results_read
+
+        # Get tally data arrays reshaped with one dimension per filter
+        mean = self.get_reshaped_data(value='mean')
+        std_dev = self.get_reshaped_data(value='std_dev')
+
+        # Average across any filter bins specified by the user
+        if filter_type in _FILTER_TYPES:
+            find_filter = self.find_filter(filter_type)
+
+            # If user did not specify filter bins, average across all bins
+            if len(filter_bins) == 0:
+                bin_indices = np.arange(find_filter.num_bins)
+
+                if filter_type == 'distribcell':
+                    filter_bins = np.arange(find_filter.num_bins)
+                else:
+                    num_bins = find_filter.num_bins
+                    filter_bins = \
+                        [(find_filter.get_bin(i)) for i in range(num_bins)]
+
+            # Only average across bins specified by the user
+            else:
+                bin_indices = \
+                    [find_filter.get_bin_index(bin) for bin in filter_bins]
+
+            # Average across the bins in the user-specified filter
+            for i, self_filter in enumerate(self.filters):
+                if self_filter.type == filter_type:
+                    mean = np.take(mean, indices=bin_indices, axis=i)
+                    std_dev = np.take(std_dev, indices=bin_indices, axis=i)
+                    mean = np.mean(mean, axis=i, keepdims=True)
+                    std_dev = np.mean(std_dev**2, axis=i, keepdims=True)
+                    std_dev /= len(bin_indices)
+                    std_dev = np.sqrt(std_dev)
+
+                    # Add AggregateFilter to the tally avg
+                    if not remove_filter:
+                        filter_sum = \
+                            AggregateFilter(self_filter, [tuple(filter_bins)], 'avg')
+                        tally_avg.filters.append(filter_sum)
+
+                # Add a copy of each filter not averaged across to the tally avg
+                else:
+                    tally_avg.filters.append(copy.deepcopy(self_filter))
+
+        # Add a copy of this tally's filters to the tally avg
+        else:
+            tally_avg._filters = copy.deepcopy(self.filters)
+
+        # Sum across any nuclides specified by the user
+        if len(nuclides) != 0:
+            nuclide_bins = [self.get_nuclide_index(nuclide) for nuclide in nuclides]
+            axis_index = self.num_filters
+            mean = np.take(mean, indices=nuclide_bins, axis=axis_index)
+            std_dev = np.take(std_dev, indices=nuclide_bins, axis=axis_index)
+            mean = np.mean(mean, axis=axis_index, keepdims=True)
+            std_dev = np.mean(std_dev**2, axis=axis_index, keepdims=True)
+            std_dev /= len(nuclide_bins)
+            std_dev = np.sqrt(std_dev)
+
+            # Add AggregateNuclide to the tally avg
+            nuclide_avg = AggregateNuclide(nuclides, 'avg')
+            tally_avg.nuclides.append(nuclide_avg)
+
+        # Add a copy of this tally's nuclides to the tally avg
+        else:
+            tally_avg._nuclides = copy.deepcopy(self.nuclides)
+
+        # Sum across any scores specified by the user
+        if len(scores) != 0:
+            score_bins = [self.get_score_index(score) for score in scores]
+            axis_index = self.num_filters + 1
+            mean = np.take(mean, indices=score_bins, axis=axis_index)
+            std_dev = np.take(std_dev, indices=score_bins, axis=axis_index)
+            mean = np.sum(mean, axis=axis_index, keepdims=True)
+            std_dev = np.sum(std_dev**2, axis=axis_index, keepdims=True)
+            std_dev /= len(score_bins)
+            std_dev = np.sqrt(std_dev)
+
+            # Add AggregateScore to the tally avg
+            score_sum = AggregateScore(scores, 'avg')
+            tally_avg.scores.append(score_sum)
+
+        # Add a copy of this tally's scores to the tally avg
+        else:
+            tally_avg._scores = copy.deepcopy(self.scores)
+
+        # Update the tally avg's filter strides
+        tally_avg._update_filter_strides()
+
+        # Reshape condensed data arrays with one dimension for all filters
+        mean = np.reshape(mean, tally_avg.shape)
+        std_dev = np.reshape(std_dev, tally_avg.shape)
+
+        # Assign tally avg's data with the new arrays
+        tally_avg._mean = mean
+        tally_avg._std_dev = std_dev
+
+        # If original tally was sparse, sparsify the tally average
+        tally_avg.sparse = self.sparse
+        return tally_avg
+
     def diagonalize_filter(self, new_filter):
         """Diagonalize the tally data array along a new axis of filter bins.
 
@@ -2961,7 +3406,7 @@ class Tally(object):
 
         Returns
         -------
-        Tally
+        openmc.Tally
             A new derived Tally with data diagaonalized along the new filter.
 
         """
@@ -2975,7 +3420,7 @@ class Tally(object):
 
         # Add the new filter to a copy of this Tally
         new_tally = copy.deepcopy(self)
-        new_tally.add_filter(new_filter)
+        new_tally.filters.append(new_filter)
 
         # Determine "base" indices along the new "diagonal", and the factor
         # by which the "base" indices should be repeated to account for all
@@ -3037,9 +3482,8 @@ class TalliesFile(object):
 
         Parameters
         ----------
-        tally : Tally
+        tally : openmc.Tally
             Tally to add to file
-
         merge : bool
             Indicate whether the tally should be merged with an existing tally,
             if possible. Defaults to False.
@@ -3076,7 +3520,7 @@ class TalliesFile(object):
 
         Parameters
         ----------
-        tally : Tally
+        tally : openmc.Tally
             Tally to remove
 
         """
@@ -3112,7 +3556,7 @@ class TalliesFile(object):
 
         Parameters
         ----------
-        mesh : openmc.mesh.Mesh
+        mesh : openmc.Mesh
             Mesh to add to the file
 
         """
@@ -3128,7 +3572,7 @@ class TalliesFile(object):
 
         Parameters
         ----------
-        mesh : openmc.mesh.Mesh
+        mesh : openmc.Mesh
             Mesh to remove from the file
 
         """

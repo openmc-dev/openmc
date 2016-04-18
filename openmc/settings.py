@@ -9,6 +9,7 @@ import numpy as np
 from openmc.clean_xml import *
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
+from openmc import Nuclide
 from openmc.source import Source
 
 if sys.version_info[0] >= 3:
@@ -37,7 +38,7 @@ class SettingsFile(object):
         type are 'variance', 'std_dev', and 'rel_err'. The threshold value
         should be a float indicating the variance, standard deviation, or
         relative error used.
-    source : Iterable of openmc.source.Source
+    source : Iterable of openmc.Source
         Distribution of source sites in space, angle, and energy
     output : dict
         Dictionary indicating what files to output. Valid keys are 'summary',
@@ -70,15 +71,20 @@ class SettingsFile(object):
     cross_sections : str
         Indicates the path to an XML cross section listing file (usually named
         cross_sections.xml). If it is not set, the :envvar:`CROSS_SECTIONS`
-        environment variable will be used to find the path to the XML cross
-        section listing.
+        environment variable will be used for continuous-energy calculations
+        and :envvar:`MG_CROSS_SECTIONS` will be used for multi-group
+        calculations to find the path to the XML cross section file.
     multipole_library : str
         Indicates the path to a directory containing a windowed multipole
-        cross section library. If it is not set, the :envvar:`MULTIPOLE_LIBRARY'
-        environment variable will be used. A multipole library is optional.
-    energy_grid : str
-        Set the method used to search energy grids. Acceptable values are
-        'nuclide', 'logarithm', and 'material-union'.
+        cross section library. If it is not set, the
+        :envvar:`OPENMC_MULTIPOLE_LIBRARY' environment variable will be used. A
+        multipole library is optional.
+    energy_grid : {'nuclide', 'logarithm', 'material-union'}
+        Set the method used to search energy grids.
+    energy_mode : {'continuous-energy', 'multi-group'}
+        Set whether the calculation should be continuous-energy or multi-group.
+    max_order : int
+        Maximum scattering order to apply globally when in multi-group mode.
     ptables : bool
         Determine whether probability tables are used.
     run_cmfd : bool
@@ -128,6 +134,8 @@ class SettingsFile(object):
     use_windowed_multipole : bool
         Whether or not windowed multipole can be used to evaluate resolved
         resonance cross sections.
+    resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
+        The elastic scattering model to use for resonant isotopes
 
     """
 
@@ -140,6 +148,10 @@ class SettingsFile(object):
         self._inactive = None
         self._particles = None
         self._keff_trigger = None
+
+        # Energy mode subelement
+        self._energy_mode = None
+        self._max_order = None
 
         # Source subelement
         self._source = None
@@ -206,6 +218,8 @@ class SettingsFile(object):
         self._source_element = None
         self._multipole_active = None
 
+        self._resonance_scattering = None
+
     @property
     def run_mode(self):
         return self._run_mode
@@ -229,6 +243,14 @@ class SettingsFile(object):
     @property
     def keff_trigger(self):
         return self._keff_trigger
+
+    @property
+    def energy_mode(self):
+        return self._energy_mode
+
+    @property
+    def max_order(self):
+        return self._max_order
 
     @property
     def source(self):
@@ -394,9 +416,13 @@ class SettingsFile(object):
     def use_windowed_multipole(self):
         return self._multipole_active
 
+    @property
+    def resonance_scattering(self):
+        return self._resonance_scattering
+
     @run_mode.setter
     def run_mode(self, run_mode):
-        if 'run_mode' not in ['eigenvalue', 'fixed source']:
+        if run_mode not in ['eigenvalue', 'fixed source']:
             msg = 'Unable to set run mode to "{0}". Only "eigenvalue" ' \
                   'and "fixed source" are supported."'.format(run_mode)
             raise ValueError(msg)
@@ -454,6 +480,18 @@ class SettingsFile(object):
             raise ValueError(msg)
 
         self._keff_trigger = keff_trigger
+
+    @energy_mode.setter
+    def energy_mode(self, energy_mode):
+        check_value('energy mode', energy_mode,
+                    ['continuous-energy', 'multi-group'])
+        self._energy_mode = energy_mode
+
+    @max_order.setter
+    def max_order(self, max_order):
+        check_type('maximum scattering order', max_order, Integral)
+        check_greater_than('maximum scattering order', max_order, 0, True)
+        self._max_order = max_order
 
     @source.setter
     def source(self, source):
@@ -763,6 +801,16 @@ class SettingsFile(object):
         check_type('use_windowed_multipole', active, bool)
         self._multipole_active = active
 
+    @resonance_scattering.setter
+    def resonance_scattering(self, res):
+        if isinstance(res, Iterable):
+            check_type('resonance_scattering', res, Iterable,
+                       ResonanceScattering)
+            self._resonance_scattering = res
+        else:
+            check_type('resonance_scattering', res, ResonanceScattering)
+            self._resonance_scattering = [res]
+
     def _create_run_mode_subelement(self):
 
         if self.run_mode == 'eigenvalue':
@@ -808,6 +856,16 @@ class SettingsFile(object):
             for key in self._keff_trigger:
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(self._keff_trigger[key]).lower()
+
+    def _create_energy_mode_subelement(self):
+        if self._energy_mode is not None:
+            element = ET.SubElement(self._settings_file, "energy_mode")
+            element.text = str(self._energy_mode)
+
+    def _create_max_order_subelement(self):
+        if self._max_order is not None:
+            element = ET.SubElement(self._settings_file, "max_order")
+            element.text = str(self._max_order)
 
     def _create_source_subelement(self):
         if self.source is not None:
@@ -1002,7 +1060,7 @@ class SettingsFile(object):
             element = ET.SubElement(self._settings_file, "uniform_fs")
 
             subelement = ET.SubElement(element, "dimension")
-            subelement.text = str(self._ufs_dimension)
+            subelement.text = ' '.join(map(str, self._ufs_dimension))
 
             subelement = ET.SubElement(element, "lower_left")
             subelement.text = ' '.join(map(str, self._ufs_lower_left))
@@ -1043,6 +1101,17 @@ class SettingsFile(object):
                                     "use_windowed_multipole")
             element.text = str(self._multipole_active)
 
+    def _create_resonance_scattering_element(self):
+        if self.resonance_scattering is None: return
+
+        element = ET.SubElement(self._settings_file, "resonance_scattering")
+
+        for r in self.resonance_scattering:
+            if r.nuclide.name != r.nuclide_0K.name:
+                raise ValueError("The nuclide and nuclide_0K attributes of "
+                     "a ResonantScattering object must have identical names.")
+            r.create_xml_subelement(element)
+
     def export_to_xml(self):
         """Create a settings.xml file that can be used for a simulation.
 
@@ -1064,6 +1133,8 @@ class SettingsFile(object):
         self._create_cross_sections_subelement()
         self._create_multipole_library_subelement()
         self._create_energy_grid_subelement()
+        self._create_energy_mode_subelement()
+        self._create_max_order_subelement()
         self._create_ptables_subelement()
         self._create_run_cmfd_subelement()
         self._create_seed_subelement()
@@ -1079,6 +1150,7 @@ class SettingsFile(object):
         self._create_ufs_subelement()
         self._create_dd_subelement()
         self._create_use_multipole_subelement()
+        self._create_resonance_scattering_element()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._settings_file)
@@ -1087,3 +1159,104 @@ class SettingsFile(object):
         tree = ET.ElementTree(self._settings_file)
         tree.write("settings.xml", xml_declaration=True,
                              encoding='utf-8', method="xml")
+
+
+class ResonanceScattering(object):
+    """Specification of the elastic scattering model for resonant isotopes
+
+    Attributes
+    ----------
+    nuclide : openmc.Nuclide
+        The nuclide affected by this resonance scattering treatment.
+    nuclide_0K : openmc.Nuclide
+        This should be the same isotope as the nuclide attribute above, but it
+        should have an xs attribute that identifies 0 Kelvin data.
+    method : str
+        The method used to sample outgoing scattering energies.  Valid options
+        are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
+        rejection correction), and 'WCM' (weight correction method).
+    E_min : float
+        The minimum energy above which the specified method is applied.  By
+        default, CXS will be used below E_min.
+    E_max : float
+        The maximum energy below which the specified method is applied.  By
+        default, the asymptotic target-at-rest model is applied  above E_max.
+
+    """
+
+    def __init__(self):
+        self._nuclide = None
+        self._nuclide_0K = None
+        self._method = None
+        self._E_min = None
+        self._E_max = None
+
+    @property
+    def nuclide(self):
+        return self._nuclide
+
+    @property
+    def nuclide_0K(self):
+        return self._nuclide_0K
+
+    @property
+    def method(self):
+        return self._method
+
+    @property
+    def E_min(self):
+        return self._E_min
+
+    @property
+    def E_max(self):
+        return self._E_max
+
+    @nuclide.setter
+    def nuclide(self, nuc):
+        check_type('nuclide', nuc, Nuclide)
+        if nuc.zaid == None: raise ValueError("The nuclide must have an "
+             "explicitly defined zaid attribute.")
+        self._nuclide = nuc
+
+    @nuclide_0K.setter
+    def nuclide_0K(self, nuc):
+        check_type('nuclide_0K', nuc, Nuclide)
+        if nuc.zaid == None: raise ValueError("The nuclide_0K must have an "
+             "explicitly defined zaid attribute.")
+        self._nuclide_0K = nuc
+
+    @method.setter
+    def method(self, m):
+        check_value('method', m, ('ARES', 'CXS', 'DBRC', 'WCM'))
+        self._method = m
+
+    @E_min.setter
+    def E_min(self, E):
+        check_type('E_min', E, Real)
+        check_greater_than('E_min', E, 0, True)
+        self._E_min = E
+
+    @E_max.setter
+    def E_max(self, E):
+        check_type('E_max', E, Real)
+        check_greater_than('E_max', E, 0, True)
+        self._E_max = E
+
+    def create_xml_subelement(self, xml_element):
+        scatterer = ET.SubElement(xml_element, "scatterer")
+        subelement = ET.SubElement(scatterer, 'nuclide')
+        subelement.text = self.nuclide.name
+        if self.method is not None:
+            subelement = ET.SubElement(scatterer, 'method')
+            subelement.text = self.method
+        subelement = ET.SubElement(scatterer, 'xs_label')
+        subelement.text = str(self.nuclide.zaid) + '.' + str(self.nuclide.xs)
+        subelement = ET.SubElement(scatterer, 'xs_label_0K')
+        subelement.text = str(self.nuclide_0K.zaid) + '.' \
+             + str(self.nuclide_0K.xs)
+        if self.E_min is not None:
+            subelement = ET.SubElement(scatterer, 'E_min')
+            subelement.text = str(self.E_min)
+        if self.E_max is not None:
+            subelement = ET.SubElement(scatterer, 'E_max')
+            subelement.text = str(self.E_max)

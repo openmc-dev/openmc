@@ -270,7 +270,7 @@ class Material(object):
 
         Parameters
         ----------
-        nuclide : str or openmc.nuclide.Nuclide
+        nuclide : str or openmc.Nuclide
             Nuclide to add
         percent : float
             Atom or weight percent
@@ -313,7 +313,7 @@ class Material(object):
 
         Parameters
         ----------
-        nuclide : openmc.nuclide.Nuclide
+        nuclide : openmc.Nuclide
             Nuclide to remove
 
         """
@@ -332,7 +332,7 @@ class Material(object):
 
         Parameters
         ----------
-        macroscopic : str or Macroscopic
+        macroscopic : str or openmc.Macroscopic
             Macroscopic to add
 
         """
@@ -371,7 +371,7 @@ class Material(object):
 
         Parameters
         ----------
-        macroscopic : Macroscopic
+        macroscopic : openmc.Macroscopic
             Macroscopic to remove
 
         """
@@ -390,7 +390,7 @@ class Material(object):
 
         Parameters
         ----------
-        element : openmc.element.Element
+        element : openmc.Element
             Element to add
         percent : float
             Atom or weight percent
@@ -429,7 +429,7 @@ class Material(object):
 
         Parameters
         ----------
-        element : openmc.element.Element
+        element : openmc.Element
             Element to remove
 
         """
@@ -671,7 +671,7 @@ class MaterialsFile(object):
 
         Parameters
         ----------
-        material : Material
+        material : openmc.Material
             Material to add
 
         """
@@ -688,7 +688,7 @@ class MaterialsFile(object):
 
         Parameters
         ----------
-        materials : tuple or list of Material
+        materials : tuple or list of openmc.Material
             Materials to add
 
         """
@@ -706,7 +706,7 @@ class MaterialsFile(object):
 
         Parameters
         ----------
-        material : Material
+        material : openmc.Material
             Material to remove
 
         """

@@ -38,7 +38,7 @@ class SettingsFile(object):
         type are 'variance', 'std_dev', and 'rel_err'. The threshold value
         should be a float indicating the variance, standard deviation, or
         relative error used.
-    source : Iterable of openmc.source.Source
+    source : Iterable of openmc.Source
         Distribution of source sites in space, angle, and energy
     output : dict
         Dictionary indicating what files to output. Valid keys are 'summary',
@@ -1166,19 +1166,19 @@ class ResonanceScattering(object):
 
     Attributes
     ----------
-    nuclide : openmc.nuclide.Nuclide
+    nuclide : openmc.Nuclide
         The nuclide affected by this resonance scattering treatment.
-    nuclide_0K : openmc.nuclide.Nuclide
+    nuclide_0K : openmc.Nuclide
         This should be the same isotope as the nuclide attribute above, but it
         should have an xs attribute that identifies 0 Kelvin data.
     method : str
         The method used to sample outgoing scattering energies.  Valid options
         are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
         rejection correction), and 'WCM' (weight correction method).
-    E_min : Real
+    E_min : float
         The minimum energy above which the specified method is applied.  By
         default, CXS will be used below E_min.
-    E_max : Real
+    E_max : float
         The maximum energy below which the specified method is applied.  By
         default, the asymptotic target-at-rest model is applied  above E_max.
 

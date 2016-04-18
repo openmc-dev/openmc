@@ -5,7 +5,6 @@ Cell
 	Name           =	
 	Material       =	[2, 3, void, 2]
 	Region         =	-10000
-	Temperature    =	[ 293.60594237  293.60594237    0.          293.60594237]
 	Rotation       =	None
 	Translation    =	None
 	Offset         =	None

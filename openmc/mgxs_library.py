@@ -24,7 +24,7 @@ def ndarray_to_string(arr):
 
     Parameters
     ----------
-    arr : ndarray
+    arr : numpy.ndarray
         Array to combine in to a string
 
     Returns
@@ -657,7 +657,7 @@ class MGXSLibraryFile(object):
         Energy group structure.
     inverse_velocities : Iterable of Real
         Inverse of velocities, units of sec/cm
-    xsdatas : Iterable of XSdata
+    xsdatas : Iterable of openmc.XSdata
         Iterable of multi-Group cross section data objects
     """
 
@@ -693,7 +693,7 @@ class MGXSLibraryFile(object):
 
         Parameters
         ----------
-        xsdata : XSdata
+        xsdata : openmc.XSdata
             MGXS information to add
 
         """
@@ -716,7 +716,7 @@ class MGXSLibraryFile(object):
 
         Parameters
         ----------
-        xsdatas : tuple or list of XSdata
+        xsdatas : tuple or list of openmc.XSdata
             XSdatas to add
 
         """
@@ -734,7 +734,7 @@ class MGXSLibraryFile(object):
 
         Parameters
         ----------
-        xsdata : XSdata
+        xsdata : openmc.XSdata
             XSdata to remove
 
         """

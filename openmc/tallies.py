@@ -1565,8 +1565,8 @@ class Tally(object):
 
         return data
 
-    def get_pandas_dataframe(self, filters=True, nuclides=True,
-                             scores=True, derivative=True, summary=None,
+    def get_pandas_dataframe(self, filters=True, nuclides=True, scores=True,
+                             derivative=True, summary=None,
                              float_format='{:.2e}'):
         """Build a Pandas DataFrame for the Tally data.
 

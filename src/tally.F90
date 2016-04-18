@@ -3069,6 +3069,16 @@ contains
               score = score * deriv % flux_deriv
             end if
 
+          case (SCORE_SCATTER)
+            if (materials(p % material) % id == deriv % diff_material &
+                 .and. material_xs % total - material_xs % absorption /= ZERO) &
+                 then
+              score = score * (deriv % flux_deriv + ONE &
+                   / materials(p % material) % density_gpcc)
+            else
+              score = score * deriv % flux_deriv
+            end if
+
           case (SCORE_ABSORPTION)
             if (materials(p % material) % id == deriv % diff_material &
                  .and. material_xs % absorption /= ZERO) then
@@ -3142,6 +3152,22 @@ contains
                    / material_xs % total)
             else if (scoring_diff_nuclide .and. &
                  micro_xs(deriv % diff_nuclide) % total /= ZERO) then
+              score = score * (deriv % flux_deriv + ONE / atom_density)
+            else
+              score = score * deriv % flux_deriv
+            end if
+
+          case (SCORE_SCATTER)
+            if (i_nuclide == -1 .and. &
+                 materials(p % material) % id == deriv % diff_material .and. &
+                 material_xs % total - material_xs % absorption /= ZERO) then
+              score = score * (deriv % flux_deriv &
+                   + (micro_xs(deriv % diff_nuclide) % total &
+                   - micro_xs(deriv % diff_nuclide) % absorption) &
+                   / (material_xs % total - material_xs % absorption))
+            else if (scoring_diff_nuclide .and. &
+                 (micro_xs(deriv % diff_nuclide) % total &
+                 - micro_xs(deriv % diff_nuclide) % absorption) /= ZERO) then
               score = score * (deriv % flux_deriv + ONE / atom_density)
             else
               score = score * deriv % flux_deriv

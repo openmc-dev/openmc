@@ -353,6 +353,7 @@ contains
                  tally_derivs(tally % deriv) % id)
           end if
 
+          ! Write scores.
           call write_dataset(tally_group, "n_score_bins", tally % n_score_bins)
           allocate(str_array(size(tally % score_bins)))
           do j = 1, size(tally % score_bins)

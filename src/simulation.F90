@@ -4,26 +4,26 @@ module simulation
   use mpi
 #endif
 
-  use cmfd_execute, only: cmfd_init_batch, execute_cmfd
-  use constants,    only: ZERO
-  use eigenvalue,   only: count_source_for_ufs, calculate_average_keff, &
-                          calculate_combined_keff, calculate_generation_keff, &
-                          shannon_entropy, synchronize_bank, keff_generation
+  use cmfd_execute,    only: cmfd_init_batch, execute_cmfd
+  use constants,       only: ZERO
+  use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
+                             calculate_combined_keff, calculate_generation_keff, &
+                             shannon_entropy, synchronize_bank, keff_generation
 #ifdef _OPENMP
-  use eigenvalue,   only: join_bank_from_threads
+  use eigenvalue,      only: join_bank_from_threads
 #endif
   use global
-  use output,       only: write_message, header, print_columns, &
-                          print_batch_keff, print_generation
+  use output,          only: write_message, header, print_columns, &
+                             print_batch_keff, print_generation
   use particle_header, only: Particle
-  use random_lcg,   only: set_particle_seed
-  use source,       only: initialize_source
-  use state_point,  only: write_state_point, write_source_point
-  use string,       only: to_str
-  use tally,        only: synchronize_tallies, setup_active_usertallies, &
-                          reset_result
-  use trigger,      only: check_triggers
-  use tracking,     only: transport
+  use random_lcg,      only: set_particle_seed
+  use source,          only: initialize_source
+  use state_point,     only: write_state_point, write_source_point
+  use string,          only: to_str
+  use tally,           only: synchronize_tallies, setup_active_usertallies, &
+                             reset_result
+  use trigger,         only: check_triggers
+  use tracking,        only: transport
 
   implicit none
   private
@@ -131,7 +131,8 @@ contains
     integer :: i
 
     ! set defaults
-    call p % initialize_from_source(source_bank(index_source))
+    call p % initialize_from_source(source_bank(index_source), run_CE, &
+         energy_bin_avg)
 
     ! set identifier for particle
     p % id = work_index(rank) + index_source

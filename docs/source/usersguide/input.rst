@@ -112,9 +112,11 @@ standard deviation.
 
 The ``<cross_sections>`` element has no attributes and simply indicates the path
 to an XML cross section listing file (usually named cross_sections.xml). If this
-element is absent from the settings.xml file, the :envvar:`CROSS_SECTIONS`
-environment variable will be used to find the path to the XML cross section
-listing.
+element is absent from the settings.xml file, the
+:envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used to find the
+path to the XML cross section listing when in continuous-energy mode, and the
+:envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable will be used in
+multi-group mode.
 
 ``<cutoff>`` Element
 --------------------
@@ -212,7 +214,20 @@ cross section values between.
 
   *Default*: logarithm
 
+  .. note:: This element is not used in the multi-group :ref:`energy_mode`.
+
 .. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
+
+.. _energy_mode:
+
+``<energy_mode>`` Element
+-------------------------
+
+The ``<energy_mode>`` element tells OpenMC if the run-mode should be
+continuous-energy or multi-group.  Options for entry are: ``continuous-energy``
+or ``multi-group``.
+
+  *Default*: continuous-energy
 
 ``<entropy>`` Element
 ---------------------
@@ -264,6 +279,8 @@ based on the recommended value in LA-UR-14-24530_.
 
   *Default*: 8000
 
+  .. note:: This element is not used in the multi-group :ref:`energy_mode`.
+
 ``<multipole_library>`` Element
 -------------------------------
 
@@ -271,10 +288,23 @@ The ``<multipole_library>`` element indicates the directory containing a
 windowed multipole library. If a windowed multipole library is available,
 OpenMC can use it for on-the-fly Doppler-broadening of resolved resonance range
 cross sections. If this element is absent from the settings.xml file, the
-:envvar:`MULTIPOLE_LIBRARY` environment variable will be used.
+:envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used.
 
-  .. note:: The <use_windowed_multipole> element must also be set to "True"
+  .. note:: The <use_windowed_multipole> element must also be set to "true"
     for windowed multipole functionality.
+
+``<max_order>`` Element
+---------------------------
+
+The ``<max_order>`` element allows the user to set a maximum scattering order
+to apply to every nuclide/material in the problem.  That is, if the data
+library has :math:`P_3` data available, but ``<max_order>`` was set to ``1``,
+then, OpenMC will only use up to the :math:`P_1` data.
+
+  *Default*: Use the maximum order in the data library
+
+  .. note:: This element is not used in the continuous-energy
+    :ref:`energy_mode`.
 
 .. _natural_elements:
 
@@ -324,10 +354,10 @@ out the file and "false" will not.
     *Default*: false
 
   :summary:
-    Writes out an ASCII summary file describing all of the user input files that
+    Writes out an HDF5 summary file describing all of the user input files that
     were read in.
 
-    *Default*: false
+    *Default*: true
 
   :tallies:
     Write out an ASCII file of tally results.
@@ -354,6 +384,8 @@ in the unresolved resonance range if available. This element has no attributes
 or sub-elements and can be set to either "false" or "true".
 
   *Default*: true
+
+  .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
 ``<resonance_scattering>`` Element
 ----------------------------------
@@ -413,6 +445,8 @@ attributes or sub-elements:
               temperature.
 
     *Defaults*: None (scatterer), ARES (method), 0.01 eV (E_min), 1.0 keV (E_max)
+
+  .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
 ``<run_cmfd>`` Element
 ----------------------
@@ -591,6 +625,8 @@ variable and whose sub-elements/attributes are as follows:
   number :math:`a` that parameterizes the distribution :math:`p(x) dx = c x
   e^{-x/a} dx`.
 
+  .. note:: The above format should be used even when using the multi-group
+            :ref:`energy_mode`.
 :interpolation:
   For a "tabular" distribution, ``interpolation`` can be set to "histogram" or
   "linear-linear" thereby specifying how tabular points are to be interpolated.
@@ -1216,9 +1252,17 @@ Each ``material`` element can have the following attributes or sub-elements:
     ``<element>`` sub-elements are to be interpreted as nuclide/element
     densities in atom/b-cm, and the total density of the material is taken as
     the sum of all nuclides/elements. The "sum" option cannot be used in
-    conjunction with weight percents.
+    conjunction with weight percents.  The "macro" unit is used with
+    a ``macroscopic`` quantity to indicate that the density is already included
+    in the library and thus not needed here.  However, if a value is provided
+    for the ``value``, then this is treated as a number density multiplier on
+    the macroscopic cross sections in the multi-group data.  This can be used,
+    for example, when perturbing the density slightly.
 
     *Default*: None
+
+    .. note:: A ``macroscopic`` quantity can not be used in conjunction with a
+              ``nuclide``, ``element``, or ``sab`` quantity.
 
   :nuclide:
     An element with attributes/sub-elements called ``name``, ``xs``, and ``ao``
@@ -1246,6 +1290,9 @@ Each ``material`` element can have the following attributes or sub-elements:
     transport codes and to quantify the effects of anisotropic scattering.
 
     *Default*: None
+
+    .. note:: The ``scattering`` attribute/sub-element is not used in the
+              multi-group :ref:`energy_mode`.
 
   :element:
 
@@ -1282,11 +1329,34 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+    .. note:: The ``scattering`` attribute/sub-element is not used in the
+              multi-group :ref:`energy_mode`.
+
   :sab:
     Associates an S(a,b) table with the material. This element has
     attributes/sub-elements called ``name`` and ``xs``. The ``name`` attribute
     is the name of the S(a,b) table that should be associated with the material,
     and ``xs`` is the cross-section identifier for the table.
+
+    *Default*: None
+
+    .. note:: This element is not used in the multi-group :ref:`energy_mode`.
+
+  :macroscopic:
+    The ``macroscopic`` element is similar to the ``nuclide`` element, but,
+    recognizes that some multi-group libraries may be providing material
+    specific macroscopic cross sections instead of always providing nuclide
+    specific data like in the continuous-energy case.  To that end, the
+    macroscopic element has attributes/sub-elements called ``name``, and ``xs``.
+    The ``name`` attribute is the name of the cross-section for a
+    desired nuclide while the ``xs`` attribute is the cross-section
+    identifier. One example would be as follows:
+
+    .. code-block:: xml
+
+        <macroscopic name="UO2" xs="71c" />
+
+    .. note:: This element is only used in the multi-group :ref:`energy_mode`.
 
     *Default*: None
 
@@ -1376,7 +1446,8 @@ The ``<tally>`` element accepts the following sub-elements:
           A list of universes for which the tally should be accumulated.
 
         :energy:
-          A monotonically increasing list of bounding **pre-collision** energies
+          In continuous-energy mode, this filter should be provided as a
+          monotonically increasing list of bounding **pre-collision** energies
           for a number of groups. For example, if this filter is specified as
 
           .. code-block:: xml
@@ -1386,17 +1457,24 @@ The ``<tally>`` element accepts the following sub-elements:
           then two energy bins will be created, one with energies between 0 and
           1 MeV and the other with energies between 1 and 20 MeV.
 
+          In multi-group mode the bins provided must match group edges
+          defined in the multi-group library.
+
         :energyout:
-          A monotonically increasing list of bounding **post-collision**
-          energies for a number of groups. For example, if this filter is
-          specified as
+          In continuous-energy mode, this filter should be provided as a
+          monotonically increasing list of bounding **post-collision** energies
+          for a number of groups. For example, if this filter is specified as
 
           .. code-block:: xml
 
               <filter type="energyout" bins="0.0 1.0 20.0" />
 
-          then two post-collision energy bins will be created, one with energies
-          between 0 and 1 MeV and the other with energies between 1 and 20 MeV.
+          then two post-collision energy bins will be created, one with
+          energies between 0 and 1 MeV and the other with energies between
+          1 and 20 MeV.
+
+          In multi-group mode the bins provided must match group edges
+          defined in the multi-group library.
 
         :mu:
           A monotonically increasing list of bounding **post-collision** cosines
@@ -1479,6 +1557,8 @@ The ``<tally>`` element accepts the following sub-elements:
           .. code-block:: xml
 
               <filter type="delayedgroup" bins="1 2 3 4 5 6" />
+
+          .. note:: This filter type is not used in the multi-group :ref:`energy_mode`.
 
   :nuclides:
     If specified, the scores listed will be for particular nuclides, not the
@@ -1659,7 +1739,8 @@ The ``<tally>`` element accepts the following sub-elements:
         |Score                 | Description                                       |
         +======================+===================================================+
         |delayed-nu-fission    |Total production of delayed neutrons due to        |
-        |                      |fission.                                           |
+        |                      |fission. This score type is not used in the        |
+        |                      |multi-group :ref:`energy_mode`.                    |
         +----------------------+---------------------------------------------------+
         |nu-fission            |Total production of neutrons due to fission.       |
         +----------------------+---------------------------------------------------+
@@ -1688,6 +1769,8 @@ The ``<tally>`` element accepts the following sub-elements:
         +----------------------+---------------------------------------------------+
         |inverse-velocity      |The flux-weighted inverse velocity where the       |
         |                      |velocity is in units of centimeters per second.    |
+        |                      |This score type is not used in the                 |
+        |                      |multi-group :ref:`energy_mode`.                    |
         +----------------------+---------------------------------------------------+
         |kappa-fission         |The recoverable energy production rate due to      |
         |                      |fission. The recoverable energy is defined as the  |

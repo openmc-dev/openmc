@@ -574,6 +574,49 @@ contains
   end function calc_rn
 
 !===============================================================================
+! EXPAND_HARMONIC expands a given series of real spherical harmonics
+!===============================================================================
+
+  pure function expand_harmonic(data, order, uvw) result(val)
+    real(8), intent(in) :: data(:)
+    integer, intent(in) :: order
+    real(8), intent(in) :: uvw(3)
+    real(8)             :: val
+
+    integer :: l, lm_lo, lm_hi
+
+    val = data(1)
+    lm_lo = 2
+    lm_hi = 4
+    do l = 1, order - 1
+      val = val + sqrt(TWO * real(l,8) + ONE) * &
+           dot_product(calc_rn(l,uvw), data(lm_lo:lm_hi))
+      lm_lo = lm_hi + 1
+      lm_hi = lm_lo + 2 * (l + 1)
+    end do
+
+  end function expand_harmonic
+
+!===============================================================================
+! EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
+! and the value of x
+!===============================================================================
+
+  pure function evaluate_legendre(data, x) result(val)
+    real(8), intent(in) :: data(:)
+    real(8), intent(in) :: x
+    real(8)             :: val
+
+    integer :: l
+
+    val =  HALF * data(1)
+    do l = 1, size(data) - 1
+      val = val + (real(l,8) +  HALF) * data(l + 1) * calc_pn(l,x)
+    end do
+
+  end function evaluate_legendre
+
+!===============================================================================
 ! ROTATE_ANGLE rotates direction cosines through a polar angle whose cosine is
 ! mu and through an azimuthal angle sampled uniformly. Note that this is done
 ! with direct sampling rather than rejection as is done in MCNP and SERPENT.
@@ -676,13 +719,14 @@ contains
   end function watt_spectrum
 
 !===============================================================================
-! W acts as a front end to the MIT Faddeeva function, Faddeeva_w.
+! FADDEEVA the Faddeeva function, using Stephen Johnson's implementation
 !===============================================================================
 
-  function w(z) result(wv)
+  function faddeeva(z) result(wv)
     complex(C_DOUBLE_COMPLEX), intent(in) :: z ! The point to evaluate Z at
     complex(8)     :: wv     ! The resulting w(z) value
-    real(C_DOUBLE) :: relerr ! Target relative error in inner loop of MIT Faddeeva
+    real(C_DOUBLE) :: relerr ! Target relative error in inner loop of MIT
+                             !  Faddeeva
 
     ! Technically, the value we want is given by the equation:
     ! w(z) = I/Pi * Integrate[Exp[-t^2]/(z-t), {t, -Infinity, Infinity}]
@@ -697,13 +741,16 @@ contains
     ! For imag(z) > 0, w_int(z) = w_fun(z)
     ! For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
 
+    ! Note that faddeeva_w will interpret zero as machine epsilon
+
     relerr = ZERO
     if (aimag(z) > ZERO) then
       wv = faddeeva_w(z, relerr)
     else
       wv = -conjg(faddeeva_w(conjg(z), relerr))
     end if
-  end function w
+
+  end function faddeeva
 
   recursive function w_derivative(z, order) result(wv)
     complex(C_DOUBLE_COMPLEX), intent(in) :: z ! The point to evaluate Z at
@@ -712,9 +759,9 @@ contains
 
     select case(order)
     case (0)
-      wv = w(z)
+      wv = faddeeva(z)
     case (1)
-      wv = -TWO * z * w(z) + TWO * ONEI / SQRT_PI
+      wv = -TWO * z * faddeeva(z) + TWO * ONEI / SQRT_PI
     case default
       wv = -TWO * z * w_derivative(z, order-1) &
            - TWO * (order-1) * w_derivative(z, order-2)
@@ -722,20 +769,21 @@ contains
   end function w_derivative
 
 !===============================================================================
-! BROADEN_N_POLYNOMIALS doppler broadens polynomials of the form
+! BROADEN_WMP_POLYNOMIALS Doppler broadens the windowed multipole curvefit.  The
+! curvefit is a polynomial of the form
 ! a/En + b/sqrt(En) + c + d sqrt(En) ...
-! exactly and quickly.
 !===============================================================================
 
-  subroutine broaden_n_polynomials(En, dopp, n, factors)
+  subroutine broaden_wmp_polynomials(En, dopp, n, factors)
     real(8), intent(in) :: En         ! Energy to evaluate at
-    real(8), intent(in) :: dopp       ! sqrt(atomic weight ratio / kT), kT given in eV.
+    real(8), intent(in) :: dopp       ! sqrt(atomic weight ratio / kT),
+                                      !  kT given in eV.
     integer, intent(in) :: n          ! number of components to polynomial
     real(8), intent(out):: factors(n) ! output leading coefficient
 
     integer :: i
 
-    real(8) :: sqrtE               ! Sqrt(energy)
+    real(8) :: sqrtE               ! sqrt(energy)
     real(8) :: beta                ! sqrt(atomic weight ratio * E / kT)
     real(8) :: half_inv_dopp2      ! 0.5 / dopp**2
     real(8) :: quarter_inv_dopp4   ! 0.25 / dopp**4
@@ -762,19 +810,46 @@ contains
 
     factors(1) = erfbeta / En
     factors(2) = ONE / sqrtE
-    factors(3) = factors(1) * (half_inv_dopp2 + En) + exp_m_beta2 / (beta * SQRT_PI)
+    factors(3) = factors(1) * (half_inv_dopp2 + En) &
+         + exp_m_beta2 / (beta * SQRT_PI)
 
     ! Perform recursive broadening of high order components
     do i = 1, n-3
       if (i /= 1) then
-        factors(i+3) = -factors(i-1) * (i - ONE) * i * quarter_inv_dopp4 + &
-             factors(i+1) * (En + (ONE + TWO * i) * half_inv_dopp2)
+        factors(i+3) = -factors(i-1) * (i - ONE) * i * quarter_inv_dopp4 &
+             + factors(i+1) * (En + (ONE + TWO * i) * half_inv_dopp2)
       else
         ! Although it's mathematically identical, factors(0) will contain
         ! nothing, and we don't want to have to worry about memory.
         factors(i+3) = factors(i+1)*(En + (ONE + TWO * i) * half_inv_dopp2)
       end if
     end do
-  end subroutine broaden_n_polynomials
+  end subroutine broaden_wmp_polynomials
+
+!===============================================================================
+! find_angle finds the closest angle on the data grid and returns that index
+!===============================================================================
+
+    pure subroutine find_angle(polar, azimuthal, uvw, i_azi, i_pol)
+      real(8), intent(in) :: polar(:)     ! Polar angles [0,pi]
+      real(8), intent(in) :: azimuthal(:) ! Azi. angles [-pi,pi]
+      real(8), intent(in) :: uvw(3)       ! Direction of motion
+      integer, intent(inout) :: i_pol     ! Closest polar bin
+      integer, intent(inout) :: i_azi     ! Closest azi bin
+
+      real(8) :: my_pol, my_azi, dangle
+
+      ! Convert uvw to polar and azi
+
+      my_pol = acos(uvw(3))
+      my_azi = atan2(uvw(2), uvw(1))
+
+      ! Search for equi-binned angles
+      dangle = PI / real(size(polar),8)
+      i_pol  = floor(my_pol / dangle + ONE)
+      dangle = TWO * PI / real(size(azimuthal),8)
+      i_azi  = floor((my_azi + PI) / dangle + ONE)
+
+    end subroutine find_angle
 
 end module math

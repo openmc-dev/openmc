@@ -40,11 +40,14 @@ class Filter(object):
         The bins for the filter
     num_bins : Integral
         The number of filter bins
-    mesh : Mesh or None
+    mesh : openmc.Mesh or None
         A Mesh object for 'mesh' type filters.
     stride : Integral
         The number of filter, nuclide and score bins within each of this
         filter's bins.
+    distribcell_paths : list of str
+        The paths traversed through the CSG tree to reach each distribcell
+        instance (for 'distribcell' filters only)
 
     """
 
@@ -56,6 +59,7 @@ class Filter(object):
         self._bins = None
         self._mesh = None
         self._stride = None
+        self._distribcell_paths = None
 
         if type is not None:
             self.type = type
@@ -77,6 +81,25 @@ class Filter(object):
     def __ne__(self, other):
         return not self == other
 
+    def __gt__(self, other):
+        if self.type != other.type:
+            if self.type in _FILTER_TYPES and other.type in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.type) - \
+                        _FILTER_TYPES.index(other.type)
+                return delta > 0
+            else:
+                return False
+        else:
+            # Compare largest/smallest energy bin edges in energy filters
+            # This logic is used when merging tallies with energy filters
+            if 'energy' in self.type and 'energy' in other.type:
+                return self.bins[0] >= other.bins[-1]
+            else:
+                return max(self.bins) > max(other.bins)
+
+    def __lt__(self, other):
+        return not self > other
+
     def __hash__(self):
         return hash(repr(self))
 
@@ -91,6 +114,7 @@ class Filter(object):
             clone._num_bins = self.num_bins
             clone._mesh = copy.deepcopy(self.mesh, memo)
             clone._stride = self.stride
+            clone._distribcell_paths = copy.deepcopy(self.distribcell_paths)
 
             memo[id(self)] = clone
 
@@ -132,6 +156,10 @@ class Filter(object):
     @property
     def stride(self):
         return self._stride
+
+    @property
+    def distribcell_paths(self):
+        return self._distribcell_paths
 
     @type.setter
     def type(self, type):
@@ -227,12 +255,17 @@ class Filter(object):
 
         self._stride = stride
 
+    @distribcell_paths.setter
+    def distribcell_paths(self, distribcell_paths):
+        cv.check_iterable_type('distribcell_paths', distribcell_paths, str)
+        self._distribcell_paths = distribcell_paths
+
     def can_merge(self, other):
         """Determine if filter can be merged with another.
 
         Parameters
         ----------
-        other : Filter
+        other : openmc.Filter
             Filter to compare with
 
         Returns
@@ -246,20 +279,28 @@ class Filter(object):
             return False
 
         # Filters must be of the same type
-        elif self.type != other.type:
+        if self.type != other.type:
             return False
 
         # Distribcell filters cannot have more than one bin
-        elif self.type == 'distribcell':
+        if self.type == 'distribcell':
             return False
 
         # Mesh filters cannot have more than one bin
         elif self.type == 'mesh':
             return False
 
-        # Different energy bins are not mergeable
+        # Different energy bins structures must be mutually exclusive and
+        # share only one shared bin edge at the minimum or maximum energy
         elif 'energy' in self.type:
-            return False
+            # This low energy edge coincides with other's high energy edge
+            if self.bins[0] == other.bins[-1]:
+                return True
+            # This high energy edge coincides with other's low energy edge
+            elif self.bins[-1] == other.bins[0]:
+                return True
+            else:
+                return False
 
         else:
             return True
@@ -269,12 +310,12 @@ class Filter(object):
 
         Parameters
         ----------
-        other : Filter
+        other : openmc.Filter
             Filter to merge with
 
         Returns
         -------
-        merged_filter : Filter
+        merged_filter : openmc.Filter
             Filter resulting from the merge
 
         """
@@ -288,9 +329,21 @@ class Filter(object):
         merged_filter = copy.deepcopy(self)
 
         # Merge unique filter bins
-        merged_bins = list(set(np.concatenate((self.bins, other.bins))))
-        merged_filter.bins = merged_bins
-        merged_filter.num_bins = len(merged_bins)
+        merged_bins = np.concatenate((self.bins, other.bins))
+        merged_bins = np.unique(merged_bins)
+
+        # Sort energy bin edges
+        if 'energy' in self.type:
+            merged_bins = sorted(merged_bins)
+
+        # Assign merged bins to merged filter
+        merged_filter.bins = list(merged_bins)
+
+        # Count bins in the merged filter
+        if 'energy' in merged_filter.type:
+            merged_filter.num_bins = len(merged_bins) - 1
+        else:
+            merged_filter.num_bins = len(merged_bins)
 
         return merged_filter
 
@@ -302,7 +355,7 @@ class Filter(object):
 
         Parameters
         ----------
-        other : Filter
+        other : openmc.Filter
             The filter to query as a subset of this filter
 
         Returns
@@ -466,8 +519,8 @@ class Filter(object):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method
-        for the Tally.get_pandas_dataframe(...) method.
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
 
         This capability has been tested for Pandas >=0.13.1. However, it is
         recommended to use v0.16 or newer versions of Pandas since this method
@@ -477,7 +530,7 @@ class Filter(object):
         ----------
         data_size : Integral
             The total number of bins in the tally corresponding to this filter
-        summary : None or Summary
+        summary : None or openmc.Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). The geometric
             information in the Summary object is embedded into a Multi-index
@@ -502,9 +555,9 @@ class Filter(object):
             2. separate columns for the cell IDs, universe IDs, and lattice IDs
                and x,y,z cell indices corresponding to each (with summary info).
 
-            For 'energy' and 'energyout' filters, the DataFrame include a single
-            column with each element comprising a string with the lower, upper
-            energy bounds for each filter bin.
+            For 'energy' and 'energyout' filters, the DataFrame includes one
+            column for the lower energy bound and one column for the upper
+            energy bound for each filter bin.
 
             For 'mesh' filters, the DataFrame includes three columns for the
             x,y,z mesh cell indices corresponding to each filter bin.
@@ -521,14 +574,8 @@ class Filter(object):
 
         """
 
-        # Attempt to import Pandas
-        try:
-            import pandas as pd
-        except ImportError:
-            msg = 'The Pandas Python package must be installed on your system'
-            raise ImportError(msg)
-
         # Initialize Pandas DataFrame
+        import pandas as pd
         df = pd.DataFrame()
 
         # mesh filters
@@ -599,18 +646,10 @@ class Filter(object):
                 # offsets to OpenCG LocalCoords linked lists
                 offsets_to_coords = {}
 
-                # Use OpenCG to compute LocalCoords linked list for
-                # each region and store in dictionary
-                for region in range(num_regions):
+                for offset, path in enumerate(self.distribcell_paths):
+                    region = opencg_geometry.get_region_from_path(path)
                     coords = opencg_geometry.find_region(region)
-                    path = opencg.get_path(coords)
-                    cell_id = path[-1]
-
-                    # If this region is in Cell corresponding to the
-                    # distribcell filter bin, store it in dictionary
-                    if cell_id == self.bins[0]:
-                        offset = openmc_geometry.get_cell_instance(path)
-                        offsets_to_coords[offset] = coords
+                    offsets_to_coords[offset] = coords
 
                 # Each distribcell offset is a DataFrame bin
                 # Unravel the paths into DataFrame columns
@@ -707,7 +746,6 @@ class Filter(object):
             filter_bins = np.repeat(filter_bins, self.stride)
             tile_factor = data_size / len(filter_bins)
             filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = filter_bins
             df = pd.DataFrame({self.type : filter_bins})
 
             # If OpenCG level info DataFrame was created, concatenate
@@ -719,21 +757,30 @@ class Filter(object):
 
         # energy, energyout filters
         elif 'energy' in self.type:
-            bins = self.bins
-            num_bins = self.num_bins
+            # Extract the lower and upper energy bounds, then repeat and tile
+            # them as necessary to account for other filters.
+            lo_bins = np.repeat(self.bins[:-1], self.stride)
+            hi_bins = np.repeat(self.bins[1:], self.stride)
+            tile_factor = data_size / len(lo_bins)
+            lo_bins = np.tile(lo_bins, tile_factor)
+            hi_bins = np.tile(hi_bins, tile_factor)
 
-            # Create strings for
-            template = '({0:.1e} - {1:.1e})'
-            filter_bins = []
-            for i in range(num_bins):
-                filter_bins.append(template.format(bins[i], bins[i+1]))
+            # Add the new energy columns to the DataFrame.
+            df.loc[:, self.type + ' low [MeV]'] = lo_bins
+            df.loc[:, self.type + ' high [MeV]'] = hi_bins
 
-            # Tile the energy bins into a DataFrame column
-            filter_bins = np.repeat(filter_bins, self.stride)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = filter_bins
-            df = pd.concat([df, pd.DataFrame({self.type + ' [MeV]' : filter_bins})])
+        elif self.type in ('azimuthal', 'polar'):
+            # Extract the lower and upper angle bounds, then repeat and tile
+            # them as necessary to account for other filters.
+            lo_bins = np.repeat(self.bins[:-1], self.stride)
+            hi_bins = np.repeat(self.bins[1:], self.stride)
+            tile_factor = data_size / len(lo_bins)
+            lo_bins = np.tile(lo_bins, tile_factor)
+            hi_bins = np.tile(hi_bins, tile_factor)
+
+            # Add the new angle columns to the DataFrame.
+            df.loc[:, self.type + ' low'] = lo_bins
+            df.loc[:, self.type + ' high'] = hi_bins
 
         # universe, material, surface, cell, and cellborn filters
         else:

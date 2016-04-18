@@ -1,5 +1,7 @@
 import sys
+import copy
 from numbers import Integral
+from collections import Iterable
 
 import numpy as np
 
@@ -14,7 +16,7 @@ if sys.version_info[0] >= 3:
 _TALLY_ARITHMETIC_OPS = ['+', '-', '*', '/', '^']
 
 # Acceptable tally aggregation operations
-_TALLY_AGGREGATE_OPS = ['sum', 'mean']
+_TALLY_AGGREGATE_OPS = ['sum', 'avg']
 
 
 class CrossScore(object):
@@ -186,6 +188,23 @@ class CrossNuclide(object):
             return existing
 
     def __repr__(self):
+        return self.name
+
+
+    @property
+    def left_nuclide(self):
+        return self._left_nuclide
+
+    @property
+    def right_nuclide(self):
+        return self._right_nuclide
+
+    @property
+    def binary_op(self):
+        return self._binary_op
+
+    @property
+    def name(self):
 
         string = ''
 
@@ -206,18 +225,6 @@ class CrossNuclide(object):
             string += str(self.right_nuclide) + ')'
 
         return string
-
-    @property
-    def left_nuclide(self):
-        return self._left_nuclide
-
-    @property
-    def right_nuclide(self):
-        return self._right_nuclide
-
-    @property
-    def binary_op(self):
-        return self._binary_op
 
     @left_nuclide.setter
     def left_nuclide(self, left_nuclide):
@@ -430,7 +437,7 @@ class CrossFilter(object):
         filter_index = left_index * self.right_filter.num_bins + right_index
         return filter_index
 
-    def get_pandas_dataframe(self, datasize, summary=None):
+    def get_pandas_dataframe(self, data_size, summary=None):
         """Builds a Pandas DataFrame for the CrossFilter's bins.
 
         This method constructs a Pandas DataFrame object for the CrossFilter
@@ -445,7 +452,7 @@ class CrossFilter(object):
 
         Parameters
         ----------
-        datasize : Integral
+        data_size : Integral
             The total number of bins in the tally corresponding to this filter
         summary : None or Summary
             An optional Summary object to be used to construct columns for
@@ -472,18 +479,17 @@ class CrossFilter(object):
 
         # If left and right filters are identical, do not combine bins
         if self.left_filter == self.right_filter:
-            df = self.left_filter.get_pandas_dataframe(datasize, summary)
+            df = self.left_filter.get_pandas_dataframe(data_size, summary)
 
         # If left and right filters are different, combine their bins
         else:
-            left_df = self.left_filter.get_pandas_dataframe(datasize, summary)
-            right_df = self.right_filter.get_pandas_dataframe(datasize, summary)
+            left_df = self.left_filter.get_pandas_dataframe(data_size, summary)
+            right_df = self.right_filter.get_pandas_dataframe(data_size, summary)
             left_df = left_df.astype(str)
             right_df = right_df.astype(str)
             df = '(' + left_df + ' ' + self.binary_op + ' ' + right_df + ')'
 
         return df
-
 
 class AggregateScore(object):
     """A special-purpose tally score used to encapsulate an aggregate of a
@@ -494,7 +500,7 @@ class AggregateScore(object):
     scores : Iterable of str or CrossScore
         The scores included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally's scores with this AggregateScore
 
     Attributes
@@ -502,7 +508,7 @@ class AggregateScore(object):
     scores : Iterable of str or CrossScore
         The scores included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally's scores with this AggregateScore
 
     """
@@ -556,10 +562,16 @@ class AggregateScore(object):
     def aggregate_op(self):
         return self._aggregate_op
 
+    @property
+    def name(self):
+
+        # Append each score in the aggregate to the string
+        string = '(' + ', '.join(self.scores) + ')'
+        return string
+
     @scores.setter
     def scores(self, scores):
-        cv.check_iterable_type('scores', scores,
-            (basestring, CrossScore, AggregateScore))
+        cv.check_iterable_type('scores', scores, basestring)
         self._scores = scores
 
     @aggregate_op.setter
@@ -578,7 +590,7 @@ class AggregateNuclide(object):
     nuclides : Iterable of str or Nuclide or CrossNuclide
         The nuclides included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally's nuclides with this AggregateNuclide
 
     Attributes
@@ -586,7 +598,7 @@ class AggregateNuclide(object):
     nuclides : Iterable of str or Nuclide or CrossNuclide
         The nuclides included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally's nuclides with this AggregateNuclide
 
     """
@@ -644,10 +656,19 @@ class AggregateNuclide(object):
     def aggregate_op(self):
         return self._aggregate_op
 
+    @property
+    def name(self):
+
+        # Append each nuclide in the aggregate to the string
+        names = [nuclide.name if isinstance(nuclide, Nuclide) else str(nuclide)
+                 for nuclide in self.nuclides]
+        string = '(' + ', '.join(map(str, names)) + ')'
+        return string
+
     @nuclides.setter
     def nuclides(self, nuclides):
         cv.check_iterable_type('nuclides', nuclides,
-           (basestring, Nuclide, CrossNuclide, AggregateNuclide))
+            (basestring, Nuclide, CrossNuclide))
         self._nuclides = nuclides
 
     @aggregate_op.setter
@@ -668,7 +689,7 @@ class AggregateFilter(object):
     bins : Iterable of tuple
         The filter bins included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally filter's bins with this AggregateFilter
 
     Attributes
@@ -678,7 +699,7 @@ class AggregateFilter(object):
     aggregate_filter : filter
         The filter included in the aggregation
     aggregate_op : str
-        The tally aggregation operator (e.g., 'sum', 'mean', etc.) used
+        The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
         to aggregate across a tally filter's bins with this AggregateFilter
     bins : Iterable of tuple
         The filter bins included in the aggregation
@@ -714,6 +735,21 @@ class AggregateFilter(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __gt__(self, other):
+        if self.type != other.type:
+            if self.aggregate_filter.type in _FILTER_TYPES and \
+              other.aggregate_filter.type in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.aggregate_filter.type) - \
+                        _FILTER_TYPES.index(other.aggregate_filter.type)
+                return delta > 0
+            else:
+                return False
+        else:
+            return False
+
+    def __lt__(self, other):
+        return not self > other
 
     def __repr__(self):
         string = 'AggregateFilter\n'
@@ -759,7 +795,7 @@ class AggregateFilter(object):
 
     @property
     def num_bins(self):
-        return 1 if self.aggregate_filter else 0
+        return len(self.bins) if self.aggregate_filter else 0
 
     @property
     def stride(self):
@@ -776,14 +812,13 @@ class AggregateFilter(object):
 
     @aggregate_filter.setter
     def aggregate_filter(self, aggregate_filter):
-        cv.check_type('aggregate_filter', aggregate_filter,
-            (Filter, CrossFilter, AggregateFilter))
+        cv.check_type('aggregate_filter', aggregate_filter, (Filter, CrossFilter))
         self._aggregate_filter = aggregate_filter
 
     @bins.setter
     def bins(self, bins):
-        cv.check_iterable_type('bins', bins, (Integral, tuple))
-        self._bins = bins
+        cv.check_iterable_type('bins', bins, Iterable)
+        self._bins = list(map(tuple, bins))
 
     @aggregate_op.setter
     def aggregate_op(self, aggregate_op):
@@ -823,15 +858,14 @@ class AggregateFilter(object):
 
         """
 
-        if filter_bin not in self.bins and \
-           filter_bin != self._aggregate_filter.bins:
+        if filter_bin not in self.bins:
             msg = 'Unable to get the bin index for AggregateFilter since ' \
                   '"{0}" is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
         else:
-            return 0
+            return self.bins.index(filter_bin)
 
-    def get_pandas_dataframe(self, datasize, summary=None):
+    def get_pandas_dataframe(self, data_size, summary=None):
         """Builds a Pandas DataFrame for the AggregateFilter's bins.
 
         This method constructs a Pandas DataFrame object for the AggregateFilter
@@ -840,7 +874,7 @@ class AggregateFilter(object):
 
         Parameters
         ----------
-        datasize : Integral
+        data_size : Integral
             The total number of bins in the tally corresponding to this filter
         summary : None or Summary
             An optional Summary object to be used to construct columns for
@@ -868,14 +902,80 @@ class AggregateFilter(object):
 
         import pandas as pd
 
-        # Construct a sring representing the filter aggregation
-        aggregate_bin = '{0}('.format(self.aggregate_op)
-        aggregate_bin += ', '.join(map(str, self.bins)) + ')'
+        # Create NumPy array of the bin tuples for repeating / tiling
+        filter_bins = np.empty(self.num_bins, dtype=tuple)
+        for i, bin in enumerate(self.bins):
+            filter_bins[i] = bin
 
-        # Construct NumPy array of bin repeated for each element in dataframe
-        aggregate_bin_array = np.array([aggregate_bin])
-        aggregate_bin_array = np.repeat(aggregate_bin_array, datasize)
+        # Repeat and tile bins as needed for DataFrame
+        filter_bins = np.repeat(filter_bins, self.stride)
+        tile_factor = data_size / len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
 
-        # Construct Pandas DataFrame for the AggregateFilter
-        df = pd.DataFrame({self.type: aggregate_bin_array})
+        # Create DataFrame with aggregated bins
+        df = pd.DataFrame({self.type: filter_bins})
         return df
+
+    def can_merge(self, other):
+        """Determine if AggregateFilter can be merged with another.
+
+        Parameters
+        ----------
+        other : AggregateFilter
+            Filter to compare with
+
+        Returns
+        -------
+        bool
+            Whether the filter can be merged
+
+        """
+
+        if not isinstance(other, AggregateFilter):
+            return False
+
+        # Filters must be of the same type
+        elif self.type != other.type:
+            return False
+
+        # None of the bins in this filter should match in the other filter
+        for bin in self.bins:
+            if bin in other.bins:
+                return False
+
+        # If all conditional checks passed then filters are mergeable
+        return True
+
+    def merge(self, other):
+        """Merge this aggregatefilter with another.
+
+        Parameters
+        ----------
+        other : AggregateFilter
+            Filter to merge with
+
+        Returns
+        -------
+        merged_filter : AggregateFilter
+            Filter resulting from the merge
+
+        """
+
+        if not self.can_merge(other):
+            msg = 'Unable to merge "{0}" with "{1}" ' \
+                  'filters'.format(self.type, other.type)
+            raise ValueError(msg)
+
+        # Create deep copy of filter to return as merged filter
+        merged_filter = copy.deepcopy(self)
+
+        # Merge unique filter bins
+        merged_bins = self.bins + other.bins
+
+        # Sort energy bin edges
+        if 'energy' in self.type:
+            merged_bins = sorted(merged_bins)
+
+        # Assign merged bins to merged filter
+        merged_filter.bins = list(merged_bins)
+        return merged_filter

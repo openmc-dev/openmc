@@ -18,7 +18,7 @@ module state_point
   use global
   use hdf5_interface
   use output,             only: write_message, time_stamp
-  use string,             only: to_str, zero_padded, count_digits
+  use string,             only: to_str, count_digits, zero_padded
   use tally_header,       only: TallyObject
   use mesh_header,        only: RegularMesh
   use dict_header,        only: ElemKeyValueII, ElemKeyValueCI
@@ -49,10 +49,9 @@ contains
     integer, allocatable :: id_array(:)
     integer, allocatable :: key_array(:)
     integer(HID_T) :: file_id
-    integer(HID_T) :: cmfd_group
-    integer(HID_T) :: tallies_group, tally_group
-    integer(HID_T) :: meshes_group, mesh_group
-    integer(HID_T) :: filter_group, derivs_group, deriv_group
+    integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
+                      mesh_group, filter_group, derivs_group, deriv_group, &
+                      runtime_group
     character(20), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
     type(RegularMesh), pointer :: meshp
@@ -93,6 +92,11 @@ contains
       call write_dataset(file_id, "seed", seed)
 
       ! Write run information
+      if (run_CE) then
+        call write_dataset(file_id, "run_CE", 1)
+      else
+        call write_dataset(file_id, "run_CE", 0)
+      end if
       select case(run_mode)
       case (MODE_FIXEDSOURCE)
         call write_dataset(file_id, "run_mode", "fixed source")
@@ -128,13 +132,13 @@ contains
           call write_dataset(file_id, "cmfd_on", 1)
 
           cmfd_group = create_group(file_id, "cmfd")
-          call write_dataset(cmfd_group, "indices", cmfd%indices)
-          call write_dataset(cmfd_group, "k_cmfd", cmfd%k_cmfd)
-          call write_dataset(cmfd_group, "cmfd_src", cmfd%cmfd_src)
-          call write_dataset(cmfd_group, "cmfd_entropy", cmfd%entropy)
-          call write_dataset(cmfd_group, "cmfd_balance", cmfd%balance)
-          call write_dataset(cmfd_group, "cmfd_dominance", cmfd%dom)
-          call write_dataset(cmfd_group, "cmfd_srccmp", cmfd%src_cmp)
+          call write_dataset(cmfd_group, "indices", cmfd % indices)
+          call write_dataset(cmfd_group, "k_cmfd", cmfd % k_cmfd)
+          call write_dataset(cmfd_group, "cmfd_src", cmfd % cmfd_src)
+          call write_dataset(cmfd_group, "cmfd_entropy", cmfd % entropy)
+          call write_dataset(cmfd_group, "cmfd_balance", cmfd % balance)
+          call write_dataset(cmfd_group, "cmfd_dominance", cmfd % dom)
+          call write_dataset(cmfd_group, "cmfd_srccmp", cmfd % src_cmp)
           call close_group(cmfd_group)
         else
           call write_dataset(file_id, "cmfd_on", 0)
@@ -150,18 +154,18 @@ contains
       if (n_meshes > 0) then
 
         ! Print list of mesh IDs
-        current => mesh_dict%keys()
+        current => mesh_dict % keys()
 
         allocate(id_array(n_meshes))
         allocate(key_array(n_meshes))
         i = 1
 
         do while (associated(current))
-          key_array(i) = current%key
-          id_array(i) = current%value
+          key_array(i) = current % key
+          id_array(i) = current % value
 
           ! Move to next mesh
-          next => current%next
+          next => current % next
           deallocate(current)
           current => next
           i = i + 1
@@ -175,16 +179,17 @@ contains
         ! Write information for meshes
         MESH_LOOP: do i = 1, n_meshes
           meshp => meshes(id_array(i))
-          mesh_group = create_group(meshes_group, "mesh " // trim(to_str(meshp%id)))
+          mesh_group = create_group(meshes_group, "mesh " &
+               // trim(to_str(meshp % id)))
 
-          select case (meshp%type)
+          select case (meshp % type)
           case (MESH_REGULAR)
             call write_dataset(mesh_group, "type", "regular")
           end select
-          call write_dataset(mesh_group, "dimension", meshp%dimension)
-          call write_dataset(mesh_group, "lower_left", meshp%lower_left)
-          call write_dataset(mesh_group, "upper_right", meshp%upper_right)
-          call write_dataset(mesh_group, "width", meshp%width)
+          call write_dataset(mesh_group, "dimension", meshp % dimension)
+          call write_dataset(mesh_group, "lower_left", meshp % lower_left)
+          call write_dataset(mesh_group, "upper_right", meshp % upper_right)
+          call write_dataset(mesh_group, "width", meshp % width)
 
           call close_group(mesh_group)
         end do MESH_LOOP
@@ -239,7 +244,7 @@ contains
         ! Write all tally information except results
         do i = 1, n_tallies
           tally => tallies(i)
-          key_array(i) = tally%id
+          key_array(i) = tally % id
           id_array(i) = i
         end do
 
@@ -254,9 +259,9 @@ contains
           ! Get pointer to tally
           tally => tallies(i)
           tally_group = create_group(tallies_group, "tally " // &
-               trim(to_str(tally%id)))
+               trim(to_str(tally % id)))
 
-          select case(tally%estimator)
+          select case(tally % estimator)
           case (ESTIMATOR_ANALOG)
             call write_dataset(tally_group, "estimator", "analog")
           case (ESTIMATOR_TRACKLENGTH)
@@ -264,16 +269,17 @@ contains
           case (ESTIMATOR_COLLISION)
             call write_dataset(tally_group, "estimator", "collision")
           end select
-          call write_dataset(tally_group, "n_realizations", tally%n_realizations)
-          call write_dataset(tally_group, "n_filters", tally%n_filters)
+          call write_dataset(tally_group, "n_realizations", &
+               tally % n_realizations)
+          call write_dataset(tally_group, "n_filters", tally % n_filters)
 
           ! Write filter information
-          FILTER_LOOP: do j = 1, tally%n_filters
+          FILTER_LOOP: do j = 1, tally % n_filters
             filter_group = create_group(tally_group, "filter " // &
                  trim(to_str(j)))
 
             ! Write name of type
-            select case (tally%filters(j)%type)
+            select case (tally % filters(j) % type)
             case(FILTER_UNIVERSE)
               call write_dataset(filter_group, "type", "universe")
             case(FILTER_MATERIAL)
@@ -302,36 +308,37 @@ contains
               call write_dataset(filter_group, "type", "delayedgroup")
             end select
 
-            call write_dataset(filter_group, "n_bins", tally%filters(j)%n_bins)
+            call write_dataset(filter_group, "n_bins", &
+                 tally % filters(j) % n_bins)
             if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
                  tally % filters(j) % type == FILTER_ENERGYOUT .or. &
                  tally % filters(j) % type == FILTER_MU .or. &
                  tally % filters(j) % type == FILTER_POLAR .or. &
                  tally % filters(j) % type == FILTER_AZIMUTHAL) then
               call write_dataset(filter_group, "bins", &
-                   tally%filters(j)%real_bins)
+                   tally % filters(j) % real_bins)
             else
               call write_dataset(filter_group, "bins", &
-                   tally%filters(j)%int_bins)
+                   tally % filters(j) % int_bins)
             end if
 
             call close_group(filter_group)
           end do FILTER_LOOP
 
           ! Set up nuclide bin array and then write
-          allocate(str_array(tally%n_nuclide_bins))
-          NUCLIDE_LOOP: do j = 1, tally%n_nuclide_bins
-            if (tally%nuclide_bins(j) > 0) then
+          allocate(str_array(tally % n_nuclide_bins))
+          NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
+            if (tally % nuclide_bins(j) > 0) then
               ! Get index in cross section listings for this nuclide
-              i_list = nuclides(tally%nuclide_bins(j))%listing
+              i_list = nuclides(tally % nuclide_bins(j)) % listing
 
               ! Determine position of . in alias string (e.g. "U-235.71c"). If
               ! no . is found, just use the entire string.
-              i_xs = index(xs_listings(i_list)%alias, '.')
+              i_xs = index(xs_listings(i_list) % alias, '.')
               if (i_xs > 0) then
-                str_array(j) = xs_listings(i_list)%alias(1:i_xs - 1)
+                str_array(j) = xs_listings(i_list) % alias(1:i_xs - 1)
               else
-                str_array(j) = xs_listings(i_list)%alias
+                str_array(j) = xs_listings(i_list) % alias
               end if
             else
               str_array(j) = 'total'
@@ -346,33 +353,33 @@ contains
                  tally_derivs(tally % deriv) % id)
           end if
 
-          ! Write scores.
-          call write_dataset(tally_group, "n_score_bins", tally%n_score_bins)
-          allocate(str_array(size(tally%score_bins)))
-          do j = 1, size(tally%score_bins)
-            str_array(j) = reaction_name(tally%score_bins(j))
+          call write_dataset(tally_group, "n_score_bins", tally % n_score_bins)
+          allocate(str_array(size(tally % score_bins)))
+          do j = 1, size(tally % score_bins)
+            str_array(j) = reaction_name(tally % score_bins(j))
           end do
           call write_dataset(tally_group, "score_bins", str_array)
-          call write_dataset(tally_group, "n_user_score_bins", tally%n_user_score_bins)
+          call write_dataset(tally_group, "n_user_score_bins", &
+               tally % n_user_score_bins)
 
           deallocate(str_array)
 
           ! Write explicit moment order strings for each score bin
           k = 1
-          allocate(str_array(tally%n_score_bins))
-          MOMENT_LOOP: do j = 1, tally%n_user_score_bins
-            select case(tally%score_bins(k))
+          allocate(str_array(tally % n_score_bins))
+          MOMENT_LOOP: do j = 1, tally % n_user_score_bins
+            select case(tally % score_bins(k))
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-              str_array(k) = 'P' // trim(to_str(tally%moment_order(k)))
+              str_array(k) = 'P' // trim(to_str(tally % moment_order(k)))
               k = k + 1
             case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-              do n_order = 0, tally%moment_order(k)
+              do n_order = 0, tally % moment_order(k)
                 str_array(k) = 'P' // trim(to_str(n_order))
                 k = k + 1
               end do
             case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
                  SCORE_TOTAL_YN)
-              do n_order = 0, tally%moment_order(k)
+              do n_order = 0, tally % moment_order(k)
                 do nm_order = -n_order, n_order
                   str_array(k) = 'Y' // trim(to_str(n_order)) // ',' // &
                        trim(to_str(nm_order))
@@ -424,8 +431,9 @@ contains
           tally => tallies(i)
 
           ! Write sum and sum_sq for each bin
-          tally_group = open_group(tallies_group, "tally " // to_str(tally%id))
-          call write_dataset(tally_group, "results", tally%results)
+          tally_group = open_group(tallies_group, "tally " &
+               // to_str(tally % id))
+          call write_dataset(tally_group, "results", tally % results)
           call close_group(tally_group)
         end do TALLY_RESULTS
 
@@ -435,13 +443,45 @@ contains
       end if
 
       call close_group(tallies_group)
+
+      ! Write out the runtime metrics.
+      runtime_group = create_group(file_id, "runtime")
+      call write_dataset(runtime_group, "total initialization", &
+           time_initialize % get_value())
+      call write_dataset(runtime_group, "reading cross sections", &
+           time_read_xs % get_value())
+      call write_dataset(runtime_group, "simulation", &
+           time_inactive % get_value() + time_active % get_value())
+      call write_dataset(runtime_group, "transport", &
+           time_transport % get_value())
+      if (run_mode == MODE_EIGENVALUE) then
+        call write_dataset(runtime_group, "inactive batches", &
+             time_inactive % get_value())
+      end if
+      call write_dataset(runtime_group, "active batches", &
+           time_active % get_value())
+      if (run_mode == MODE_EIGENVALUE) then
+        call write_dataset(runtime_group, "synchronizing fission bank", &
+             time_bank % get_value())
+        call write_dataset(runtime_group, "sampling source sites", &
+             time_bank_sample % get_value())
+        call write_dataset(runtime_group, "SEND-RECV source sites", &
+             time_bank_sendrecv % get_value())
+      end if
+      call write_dataset(runtime_group, "accumulating tallies", &
+           time_tallies % get_value())
+      if (cmfd_run) then
+        call write_dataset(runtime_group, "CMFD", time_cmfd % get_value())
+        call write_dataset(runtime_group, "CMFD building matrices", &
+             time_cmfdbuild % get_value())
+        call write_dataset(runtime_group, "CMFD solving matrices", &
+             time_cmfdsolve % get_value())
+      end if
+      call write_dataset(runtime_group, "total", time_total % get_value())
+      call close_group(runtime_group)
+
       call file_close(file_id)
     end if
-
-    if (master .and. n_tallies > 0) then
-      deallocate(id_array)
-    end if
-
   end subroutine write_state_point
 
 !===============================================================================
@@ -687,6 +727,7 @@ contains
     integer(HID_T) :: tally_group
     real(8) :: real_array(3)
     logical :: source_present
+    integer :: sp_run_CE
     character(MAX_WORD_LEN) :: word
     type(TallyObject), pointer :: tally
 
@@ -698,7 +739,10 @@ contains
     file_id = file_open(path_state_point, 'r', parallel=.true.)
 
     ! Read filetype
-    call read_dataset(file_id, "filetype", int_array(1))
+    call read_dataset(file_id, "filetype", word)
+    if (word /= 'statepoint') then
+      call fatal_error("OpenMC tried to restart from a non-statepoint file.")
+    end if
 
     ! Read revision number for state point file and make sure it matches with
     ! current version
@@ -710,6 +754,17 @@ contains
 
     ! Read and overwrite random number seed
     call read_dataset(file_id, "seed", seed)
+
+    ! It is not impossible for a state point to be generated from a CE run but
+    ! to be loaded in to an MG run (or vice versa), check to prevent that.
+    call read_dataset(file_id, "run_CE", sp_run_CE)
+    if (sp_run_CE == 0 .and. run_CE) then
+      call fatal_error("State point file is from multi-group run but &
+                       & current run is continous-energy!")
+    else if (sp_run_CE == 1 .and. .not. run_CE) then
+      call fatal_error("State point file is from continuous-energy run but &
+                       & current run is multi-group!")
+    end if
 
     ! Read and overwrite run information except number of batches
     call read_dataset(file_id, "run_mode", word)
@@ -784,8 +839,13 @@ contains
            &file")
     end if
 
-    ! Read tallies to master
+    ! Read tallies to master. If we are using Parallel HDF5, all processes
+    ! need to be included in the HDF5 calls.
+#ifdef PHDF5
+    if (.true.) then
+#else
     if (master) then
+#endif
 
       ! Read number of realizations for global tallies
       call read_dataset(file_id, "n_realizations", n_realizations, indep=.true.)
@@ -795,7 +855,8 @@ contains
 
       ! Check if tally results are present
       tallies_group = open_group(file_id, "tallies")
-      call read_dataset(file_id, "tallies_present", int_array(1), indep=.true.)
+      call read_dataset(tallies_group, "tallies_present", int_array(1), &
+                        indep=.true.)
 
       ! Read in sum and sum squared
       if (int_array(1) == 1) then
@@ -803,10 +864,12 @@ contains
           ! Set pointer to tally
           tally => tallies(i)
 
-          ! Read sum and sum_sq for each bin
+          ! Read sum, sum_sq, and N for each bin
           tally_group = open_group(tallies_group, "tally " // &
-               trim(to_str(tally%id)))
-          call read_dataset(tally_group, "results", tally%results)
+               trim(to_str(tally % id)))
+          call read_dataset(tally_group, "results", tally % results)
+          call read_dataset(tally_group, "n_realizations", &
+               tally % n_realizations)
           call close_group(tally_group)
         end do TALLY_RESULTS
       end if

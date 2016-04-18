@@ -24,7 +24,7 @@ class EnergyGroups(object):
     ----------
     group_edges : Iterable of Real
         The energy group boundaries [MeV]
-    num_group : Integral
+    num_groups : int
         The number of energy groups
 
     """
@@ -54,10 +54,12 @@ class EnergyGroups(object):
     def __eq__(self, other):
         if not isinstance(other, EnergyGroups):
             return False
-        elif self.group_edges != other.group_edges:
+        elif self.num_groups != other.num_groups:
             return False
-        else:
+        elif np.allclose(self.group_edges, other.group_edges):
             return True
+        else:
+            return False
 
     def __ne__(self, other):
         return not self == other
@@ -84,7 +86,7 @@ class EnergyGroups(object):
 
         Parameters
         ----------
-        energy : Real
+        energy : float
             The energy of interest in MeV
 
         Returns
@@ -113,7 +115,7 @@ class EnergyGroups(object):
 
         Parameters
         ----------
-        group : Integral
+        group : int
             The energy group index, starting at 1 for the highest energies
 
         Returns
@@ -151,7 +153,7 @@ class EnergyGroups(object):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             The ndarray array indices for each energy group of interest
 
         Raises
@@ -198,7 +200,7 @@ class EnergyGroups(object):
 
         Returns
         -------
-        EnergyGroups
+        openmc.mgxs.EnergyGroups
             A coarsened version of this EnergyGroups object.
 
         Raises
@@ -236,3 +238,64 @@ class EnergyGroups(object):
         condensed_groups.group_edges = group_edges
 
         return condensed_groups
+
+    def can_merge(self, other):
+        """Determine if energy groups can be merged with another.
+
+        Parameters
+        ----------
+        other : openmc.mgxs.EnergyGroups
+            EnergyGroups to compare with
+
+        Returns
+        -------
+        bool
+            Whether the energy groups can be merged
+
+        """
+
+        if not isinstance(other, EnergyGroups):
+            return False
+
+        # If the energy group structures match then groups are mergeable
+        if self == other:
+            return True
+
+        # This low energy edge coincides with other's high energy edge
+        if self.group_edges[0] == other.group_edges[-1]:
+            return True
+        # This high energy edge coincides with other's low energy edge
+        elif self.group_edges[-1] == other.group_edges[0]:
+            return True
+        else:
+            return False
+
+    def merge(self, other):
+        """Merge this energy groups with another.
+
+        Parameters
+        ----------
+        other : openmc.mgxs.EnergyGroups
+            EnergyGroups to merge with
+
+        Returns
+        -------
+        merged_groups : openmc.mgxs.EnergyGroups
+            EnergyGroups resulting from the merge
+
+        """
+
+        if not self.can_merge(other):
+            raise ValueError('Unable to merge energy groups')
+
+        # Create deep copy to return as merged energy groups
+        merged_groups = copy.deepcopy(self)
+
+        # Merge unique filter bins
+        merged_edges = np.concatenate((self.group_edges, other.group_edges))
+        merged_edges = np.unique(merged_edges)
+        merged_edges = sorted(merged_edges)
+
+        # Assign merged edges to merged groups
+        merged_groups.group_edges = list(merged_edges)
+        return merged_groups

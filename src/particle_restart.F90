@@ -97,6 +97,7 @@ contains
     call read_dataset(file_id, 'id', p%id)
     call read_dataset(file_id, 'weight', p%wgt)
     call read_dataset(file_id, 'energy', p%E)
+    call read_dataset(file_id, 'energy_group', p%g)
     call read_dataset(file_id, 'xyz', p%coord(1)%xyz)
     call read_dataset(file_id, 'uvw', p%coord(1)%uvw)
 
@@ -105,6 +106,7 @@ contains
     p%last_xyz = p%coord(1)%xyz
     p%last_uvw = p%coord(1)%uvw
     p%last_E   = p%E
+    p%last_g   = p%g
 
     ! Close hdf5 file
     call file_close(file_id)

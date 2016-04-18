@@ -9,10 +9,11 @@ from openmc.checkvalue import check_type
 class Region(object):
     """Region of space that can be assigned to a cell.
 
-    Region is an abstract base class that is inherited by Halfspace,
-    Intersection, Union, and Complement. Each of those respective classes are
-    typically not instantiated directly but rather are created through operators
-    of the Surface and Region classes.
+    Region is an abstract base class that is inherited by
+    :class:`openmc.Halfspace`, :class:`openmc.Intersection`,
+    :class:`openmc.Union`, and :class:`openmc.Complement`. Each of those
+    respective classes are typically not instantiated directly but rather are
+    created through operators of the Surface and Region classes.
 
     """
 
@@ -201,11 +202,11 @@ class Intersection(Region):
     """Intersection of two or more regions.
 
     Instances of Intersection are generally created via the __and__ operator
-    applied to two instances of Region. This is illustrated in the following
-    example:
+    applied to two instances of :class:`openmc.Region`. This is illustrated in
+    the following example:
 
-    >>> equator = openmc.surface.ZPlane(z0=0.0)
-    >>> earth = openmc.surface.Sphere(R=637.1e6)
+    >>> equator = openmc.ZPlane(z0=0.0)
+    >>> earth = openmc.Sphere(R=637.1e6)
     >>> northern_hemisphere = -earth & +equator
     >>> southern_hemisphere = -earth & -equator
     >>> type(northern_hemisphere)
@@ -213,12 +214,12 @@ class Intersection(Region):
 
     Parameters
     ----------
-    *nodes
+    \*nodes
         Regions to take the intersection of
 
     Attributes
     ----------
-    nodes : tuple of Region
+    nodes : tuple of openmc.Region
         Regions to take the intersection of
     bounding_box : tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
@@ -255,21 +256,22 @@ class Union(Region):
     """Union of two or more regions.
 
     Instances of Union are generally created via the __or__ operator applied to
-    two instances of Region. This is illustrated in the following example:
+    two instances of :class:`openmc.Region`. This is illustrated in the
+    following example:
 
-    >>> s1 = openmc.surface.ZPlane(z0=0.0)
-    >>> s2 = openmc.surface.Sphere(R=637.1e6)
+    >>> s1 = openmc.ZPlane(z0=0.0)
+    >>> s2 = openmc.Sphere(R=637.1e6)
     >>> type(-s2 | +s1)
     <class 'openmc.region.Union'>
 
     Parameters
     ----------
-    *nodes
+    \*nodes
         Regions to take the union of
 
     Attributes
     ----------
-    nodes : tuple of Region
+    nodes : tuple of openmc.Region
         Regions to take the union of
     bounding_box : tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
@@ -305,13 +307,13 @@ class Union(Region):
 class Complement(Region):
     """Complement of a region.
 
-    The Complement of an existing Region can be created by using the __invert__
-    operator as the following example demonstrates:
+    The Complement of an existing :class:`openmc.Region` can be created by using
+    the __invert__ operator as the following example demonstrates:
 
-    >>> xl = openmc.surface.XPlane(x0=-10.0)
-    >>> xr = openmc.surface.XPlane(x0=10.0)
-    >>> yl = openmc.surface.YPlane(y0=-10.0)
-    >>> yr = openmc.surface.YPlane(y0=10.0)
+    >>> xl = openmc.XPlane(x0=-10.0)
+    >>> xr = openmc.XPlane(x0=10.0)
+    >>> yl = openmc.YPlane(y0=-10.0)
+    >>> yr = openmc.YPlane(y0=10.0)
     >>> inside_box = +xl & -xr & +yl & -yl
     >>> outside_box = ~inside_box
     >>> type(outside_box)
@@ -319,12 +321,12 @@ class Complement(Region):
 
     Parameters
     ----------
-    node : Region
+    node : openmc.Region
         Region to take the complement of
 
     Attributes
     ----------
-    node : Region
+    node : openmc.Region
         Regions to take the complement of
     bounding_box : tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box

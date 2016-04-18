@@ -3039,6 +3039,8 @@ contains
     logical :: scoring_diff_nuclide
     real(8) :: dsigT, dsigA, dsigF, cum_dsig
 
+    if (score == ZERO) return
+
     associate(deriv => tally_derivs(t % deriv))
       select case (deriv % variable)
 
@@ -3347,7 +3349,7 @@ contains
                   end if
                 end associate
                 score = score * (deriv % flux_deriv &
-                     + dsigF * mat % atom_density(l) / material_xs % fission &
+                     + dsigF * mat % atom_density(l) / material_xs % nu_fission&
                      * micro_xs(p % event_nuclide) % nu_fission &
                      / micro_xs(p % event_nuclide) % fission)
               end associate

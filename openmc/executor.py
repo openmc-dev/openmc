@@ -27,7 +27,7 @@ def _run(command, output, cwd):
     return p.returncode
 
 
-def plot(output=True, openmc_exec='openmc', cwd='.'):
+def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
     """Run OpenMC in plotting mode
 
     Parameters

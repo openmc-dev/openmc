@@ -16,7 +16,7 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         self._input_set.settings.output = {'summary': True}
 
         # Initialize the tallies file
-        tallies_file = openmc.TalliesFile()
+        tallies_file = openmc.Tallies()
 
         # Initialize the nuclides
         u235 = openmc.Nuclide('U-235')

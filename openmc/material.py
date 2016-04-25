@@ -25,9 +25,6 @@ def reset_auto_material_id():
 DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro']
 
-# Constant for density when not needed
-NO_DENSITY = 99999.
-
 
 class Material(object):
     """A material composed of a collection of nuclides/elements that can be
@@ -141,9 +138,9 @@ class Material(object):
         string += '{0: <16}\n'.format('\tElements')
 
         for element in self._elements:
-            percent = self._nuclides[element][1]
-            percent_type = self._nuclides[element][2]
-            string += '{0: >16}'.format('\t{0}'.format(element))
+            percent = self._elements[element][1]
+            percent_type = self._elements[element][2]
+            string += '{0: <16}'.format('\t{0}'.format(element))
             string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
 
         return string
@@ -218,13 +215,13 @@ class Material(object):
         else:
             self._name = ''
 
-    def set_density(self, units, density=NO_DENSITY):
+    def set_density(self, units, density=None):
         """Set the density of the material
 
         Parameters
         ----------
-        units : str
-            Physical units of density
+        units : {'g/cm3', 'g/cc', 'km/cm3', 'atom/b-cm', 'atom/cm3', 'sum', 'macro'}
+            Physical units of density.
         density : float, optional
             Value of the density. Must be specified unless units is given as
             'sum'.
@@ -235,8 +232,8 @@ class Material(object):
                    density, Real)
         check_value('density units', units, DENSITY_UNITS)
 
-        if density == NO_DENSITY and units is not 'sum':
-            msg = 'Unable to set the density Material ID="{0}" ' \
+        if density is None and units is not 'sum':
+            msg = 'Unable to set the density for Material ID="{0}" ' \
                   'because a density must be set when not using ' \
                   'sum unit'.format(self._id)
             raise ValueError(msg)
@@ -274,7 +271,7 @@ class Material(object):
             Nuclide to add
         percent : float
             Atom or weight percent
-        percent_type : str
+        percent_type : {'ao', 'wo'}
             'ao' for atom percent and 'wo' for weight percent
 
         """
@@ -394,7 +391,7 @@ class Material(object):
             Element to add
         percent : float
             Atom or weight percent
-        percent_type : str
+        percent_type : {'ao', 'wo'}
             'ao' for atom percent and 'wo' for weight percent
 
         """
@@ -420,7 +417,10 @@ class Material(object):
             raise ValueError(msg)
 
         # Copy this Element to separate it from same Element in other Materials
-        element = deepcopy(element)
+        if isinstance(element, openmc.Element):
+            element = deepcopy(element)
+        else:
+            element = openmc.Element(element)
 
         self._elements[element._name] = (element, percent, percent_type)
 
@@ -498,7 +498,7 @@ class Material(object):
         xml_element.set("name", nuclide[0]._name)
 
         if not distrib:
-            if nuclide[2] is 'ao':
+            if nuclide[2] == 'ao':
                 xml_element.set("ao", str(nuclide[1]))
             else:
                 xml_element.set("wo", str(nuclide[1]))
@@ -525,10 +525,13 @@ class Material(object):
         xml_element.set("name", str(element[0]._name))
 
         if not distrib:
-            if element[2] is 'ao':
+            if element[2] == 'ao':
                 xml_element.set("ao", str(element[1]))
             else:
                 xml_element.set("wo", str(element[1]))
+
+        if element[0].xs is not None:
+            xml_element.set("xs", element[0].xs)
 
         if not element[0].scattering is None:
             xml_element.set("scattering", element[0].scattering)

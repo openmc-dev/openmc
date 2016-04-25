@@ -412,7 +412,7 @@ class MGXS(object):
         # Otherwise, return all nuclides in the spatial domain
         else:
             nuclides = self.domain.get_all_nuclides()
-            return nuclides.keys()
+            return list(nuclides.keys())
 
     def get_nuclide_density(self, nuclide):
         """Get the atomic number density in units of atoms/b-cm for a nuclide

@@ -136,6 +136,9 @@ Note that the implementation of WMP in OpenMC currently assumes that inelastic
 scattering does not occur in the resolved resonance region.  This is usually,
 but not always the case.  Future library versions may eliminate this issue.
 
+The data format used by OpenMC to represent windowed multipole data is specified
+in :ref:`io_data_wmp`
+
 .. only:: html
 
    .. rubric:: References

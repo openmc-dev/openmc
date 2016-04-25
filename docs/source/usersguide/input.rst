@@ -1941,7 +1941,7 @@ sub-elements:
     datafiles can be processed into 3D SILO files using the
     ``openmc-voxel-to-silovtk`` utility provided with the OpenMC source, and
     subsequently viewed with a 3D viewer such as VISIT or Paraview. See the
-    :ref:`usersguide_voxel` for information about the datafile structure.
+    :ref:`io_voxel` for information about the datafile structure.
 
     .. note:: Since the PPM format is saved without any kind of compression,
               the resulting file sizes can be quite large.  Saving the image in

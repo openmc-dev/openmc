@@ -29,8 +29,19 @@ The Windowed Multipole Library Format v0.2
     - **fit_order** (*int*)
         The order of the curve fit.
     - **formalism** (*int*)
-        The formalism of the underlying data. Uses the `ENDF-6`_ format formalism
-        numbers.
+        The formalism of the underlying data. Uses the `ENDF-6`_ format
+        formalism numbers.
+        
+        .. table:: Table of supported formalisms.
+        
+            +-------------+------------------+
+            | Formalism   | Formalism number |
+            +=============+==================+
+            | MLBW        | 2                |
+            +-------------+------------------+
+            | Reich-Moore | 3                |
+            +-------------+------------------+
+        
     - **l_value** (*int[]*)
         The index for a corresponding pole. Equivalent to the :math:`l` quantum
         number of the resonance the pole comes from :math:`+1`.

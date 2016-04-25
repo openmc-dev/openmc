@@ -12,11 +12,12 @@ The Windowed Multipole Library Format v0.2
         Curve fit coefficients. Indexed by (reaction type, coefficient index,
         window index).
     - **data** (*complex[][]*)
-        Complex poles and residues.  First index is `[pole, residue_1,
-        residue_2, ...]`.  Residues are in the order: total, competitive if
-        present, absorption, fission.  Second index is the set index.  Complex
-        numbers are stored by forming a type with `"r"` and `"i"` identifiers,
-        similar to how `h5py` does it.
+        Complex poles and residues.  Each pole has a corresponding set of
+        residues.  For example, the `i`th pole and corresponding residues are
+        stored as `data[:,i] = [pole, residue_1, residue_2, ...]`.  The 
+        residues are in the order: total, competitive if present, absorption,
+        fission. Complex numbers are stored by forming a type with `"r"` and
+        `"i"` identifiers, similar to how `h5py` does it.
     - **start_E** (*double*)
         Lowest energy the windowed multipole part of the library is valid for.
     - **end_E** (*double*)

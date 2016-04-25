@@ -642,8 +642,8 @@ class Material(object):
         return element
 
 
-class MaterialsFile(object):
-    """Materials file used for an OpenMC simulation. Corresponds directly to the
+class Materials(object):
+    """Materials used for an OpenMC simulation. Corresponds directly to the
     materials.xml input file.
 
     Attributes
@@ -655,7 +655,6 @@ class MaterialsFile(object):
     """
 
     def __init__(self):
-        # Initialize MaterialsFile class attributes
         self._materials = []
         self._default_xs = None
         self._materials_file = ET.Element("materials")
@@ -681,7 +680,7 @@ class MaterialsFile(object):
 
         if not isinstance(material, Material):
             msg = 'Unable to add a non-Material "{0}" to the ' \
-                  'MaterialsFile'.format(material)
+                  'Materials instance'.format(material)
             raise ValueError(msg)
 
         self._materials.append(material)
@@ -716,7 +715,7 @@ class MaterialsFile(object):
 
         if not isinstance(material, Material):
             msg = 'Unable to remove a non-Material "{0}" from the ' \
-                  'MaterialsFile'.format(material)
+                  'Materials instance'.format(material)
             raise ValueError(msg)
 
         self._materials.remove(material)

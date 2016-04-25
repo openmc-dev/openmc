@@ -41,7 +41,7 @@ class MGTalliesTestHarness(PyAPITestHarness):
         tally2.add_score('scatter')
         tally2.add_score('nu-scatter')
 
-        self._input_set.tallies = openmc.TalliesFile()
+        self._input_set.tallies = openmc.Tallies()
         self._input_set.tallies.add_mesh(mesh)
         self._input_set.tallies.add_tally(tally1)
         self._input_set.tallies.add_tally(tally2)

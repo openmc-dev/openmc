@@ -5,9 +5,9 @@ from openmc.stats import Box
 
 class InputSet(object):
     def __init__(self):
-        self.settings = openmc.SettingsFile()
-        self.materials = openmc.MaterialsFile()
-        self.geometry = openmc.GeometryFile()
+        self.settings = openmc.Settings()
+        self.materials = openmc.Materials()
+        self.geometry = openmc.Geometry()
         self.tallies = None
         self.plots = None
 
@@ -550,11 +550,8 @@ class InputSet(object):
 
         root.add_cells((c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12))
 
-        # Define the geometry file.
-        geometry = openmc.Geometry()
-        geometry.root_universe = root
-
-        self.geometry.geometry = geometry
+        # Assign root universe to geometry
+        self.geometry.root_universe = root
 
     def build_default_settings(self):
         self.settings.batches = 10
@@ -630,12 +627,8 @@ class MGInputSet(InputSet):
 
         root.add_cells((c1,c2,c3))
 
-        # Define the geometry file.
-        geometry = openmc.Geometry()
-        geometry.root_universe = root
-
-        self.geometry.geometry = geometry
-
+        # Assign root universe to geometry
+        self.geometry.root_universe = root
 
     def build_default_settings(self):
         self.settings.batches = 10
@@ -656,8 +649,3 @@ class MGInputSet(InputSet):
         plot.color = 'mat'
 
         self.plots.add_plot(plot)
-
-
-
-
-

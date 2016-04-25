@@ -647,7 +647,7 @@ class XSdata(object):
         return element
 
 
-class MGXSLibraryFile(object):
+class MGXSLibrary(object):
     """Multi-Group Cross Sections file used for an OpenMC simulation.
     Corresponds directly to the MG version of the cross_sections.xml input file.
 
@@ -662,7 +662,6 @@ class MGXSLibraryFile(object):
     """
 
     def __init__(self, energy_groups):
-        # Initialize MGXSLibraryFile class attributes
         self._xsdatas = []
         self._energy_groups = energy_groups
         self._inverse_velocities = None
@@ -701,12 +700,12 @@ class MGXSLibraryFile(object):
         # Check the type
         if not isinstance(xsdata, XSdata):
             msg = 'Unable to add a non-XSdata "{0}" to the ' \
-                  'MGXSLibraryFile'.format(xsdata)
+                  'MGXSLibrary instance'.format(xsdata)
             raise ValueError(msg)
 
         # Make sure energy groups match.
         if xsdata.energy_groups != self._energy_groups:
-            msg = 'Energy groups of XSdata do not match that of MGXSLibraryFile!'
+            msg = 'Energy groups of XSdata do not match that of MGXSLibrary!'
             raise ValueError(msg)
 
         self._xsdatas.append(xsdata)
@@ -741,7 +740,7 @@ class MGXSLibraryFile(object):
 
         if not isinstance(xsdata, XSdata):
             msg = 'Unable to remove a non-XSdata "{0}" from the ' \
-                  'XSdatasFile'.format(xsdata)
+                  'MGXSLibrary instance'.format(xsdata)
             raise ValueError(msg)
 
         self._xsdatas.remove(xsdata)

@@ -354,8 +354,8 @@ class Library(object):
 
         Parameters
         ----------
-        tallies_file : openmc.TalliesFile
-            A TalliesFile object to add each MGXS' tallies to generate a
+        tallies_file : openmc.Tallies
+            A Tallies object to add each MGXS' tallies to generate a
             "tallies.xml" input file for OpenMC
         merge : bool
             Indicate whether tallies should be merged when possible. Defaults
@@ -363,7 +363,7 @@ class Library(object):
 
         """
 
-        cv.check_type('tallies_file', tallies_file, openmc.TalliesFile)
+        cv.check_type('tallies_file', tallies_file, openmc.Tallies)
 
         # Add tallies from each MGXS for each domain and mgxs type
         for domain in self.domains:

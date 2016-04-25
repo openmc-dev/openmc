@@ -401,14 +401,13 @@ class Plot(object):
         return element
 
 
-class PlotsFile(object):
+class Plots(object):
     """Plots file used for an OpenMC simulation. Corresponds directly to the
     plots.xml input file.
 
     """
 
     def __init__(self):
-        # Initialize PlotsFile class attributes
         self._plots = []
         self._plots_file = ET.Element("plots")
 
@@ -423,7 +422,7 @@ class PlotsFile(object):
         """
 
         if not isinstance(plot, Plot):
-            msg = 'Unable to add a non-Plot "{0}" to the PlotsFile'.format(plot)
+            msg = 'Unable to add a non-Plot "{0}" to the Plots instance'.format(plot)
             raise ValueError(msg)
 
         self._plots.append(plot)

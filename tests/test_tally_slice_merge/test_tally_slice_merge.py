@@ -17,7 +17,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         self._input_set.settings.output = {'summary': True}
 
         # Initialize the tallies file
-        tallies_file = openmc.TalliesFile()
+        tallies_file = openmc.Tallies()
 
         # Define nuclides and scores to add to both tallies
         self.nuclides = ['U-235', 'U-238']
@@ -69,8 +69,8 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         for nuclide in self.nuclides:
             distribcell_tally.add_nuclide(nuclide)
 
-        # Add tallies to a TalliesFile
-        tallies_file = openmc.TalliesFile()
+        # Add tallies to a Tallies object
+        tallies_file = openmc.Tallies()
         tallies_file.add_tally(tallies[0])
         tallies_file.add_tally(distribcell_tally)
 
@@ -95,7 +95,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
         # Slice the tallies by cell filter bins
         cell_filter_prod = itertools.product(tallies, self.cell_filters)
-        tallies = map(lambda tf: tf[0].get_slice(filters=[tf[1].type], 
+        tallies = map(lambda tf: tf[0].get_slice(filters=[tf[1].type],
                       filter_bins=[tf[1].get_bin(0)]), cell_filter_prod)
 
         # Slice the tallies by energy filter bins
@@ -133,11 +133,11 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         # Extract the distribcell tally
         distribcell_tally = sp.get_tally(name='distribcell tally')
 
-        # Sum up a few subdomains from the distribcell tally 
-        sum1 = distribcell_tally.summation(filter_type='distribcell', 
+        # Sum up a few subdomains from the distribcell tally
+        sum1 = distribcell_tally.summation(filter_type='distribcell',
                                            filter_bins=[0,100,2000,30000])
         # Sum up a few subdomains from the distribcell tally
-        sum2 = distribcell_tally.summation(filter_type='distribcell', 
+        sum2 = distribcell_tally.summation(filter_type='distribcell',
                                            filter_bins=[500,5000,50000])
 
         # Merge the distribcell tally slices

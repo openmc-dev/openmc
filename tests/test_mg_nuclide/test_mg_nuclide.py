@@ -67,7 +67,7 @@ class MGNuclideInputSet(MGInputSet):
         geometry = openmc.Geometry()
         geometry.root_universe = root
 
-        self.geometry.geometry = geometry
+        self.geometry = geometry
 
 class MGNuclideTestHarness(PyAPITestHarness):
     def __init__(self, statepoint_name, tallies_present, mg=False):

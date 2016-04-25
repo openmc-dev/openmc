@@ -3419,14 +3419,13 @@ class Tally(object):
         return new_tally
 
 
-class TalliesFile(object):
+class Tallies(object):
     """Tallies file used for an OpenMC simulation. Corresponds directly to the
     tallies.xml input file.
 
     """
 
     def __init__(self):
-        # Initialize TalliesFile class attributes
         self._tallies = []
         self._meshes = []
         self._tallies_file = ET.Element("tallies")
@@ -3453,7 +3452,7 @@ class TalliesFile(object):
         """
 
         if not isinstance(tally, Tally):
-            msg = 'Unable to add a non-Tally "{0}" to the TalliesFile'.format(tally)
+            msg = 'Unable to add a non-Tally "{0}" to the Tallies instance'.format(tally)
             raise ValueError(msg)
 
         if merge:
@@ -3524,7 +3523,7 @@ class TalliesFile(object):
         """
 
         if not isinstance(mesh, Mesh):
-            msg = 'Unable to add a non-Mesh "{0}" to the TalliesFile'.format(mesh)
+            msg = 'Unable to add a non-Mesh "{0}" to the Tallies instance'.format(mesh)
             raise ValueError(msg)
 
         self._meshes.append(mesh)

@@ -125,7 +125,7 @@ class Plot(object):
         return self._background
 
     @property
-    def mask_componenets(self):
+    def mask_components(self):
         return self._mask_components
 
     @property
@@ -227,7 +227,7 @@ class Plot(object):
 
         self._col_spec = col_spec
 
-    @mask_componenets.setter
+    @mask_components.setter
     def mask_components(self, mask_components):
         cv.check_type('plot mask_components', mask_components, Iterable, Integral)
         for component in mask_components:

@@ -23,7 +23,11 @@ def reset_auto_surface_id():
 
 
 class Surface(object):
-    """A two-dimensional surface with an associated boundary condition.
+    """An implicit surface with an associated boundary condition.
+
+    An implicit surface is defined as the set of zeros of a function of the
+    three Cartesian coordinates. Surfaces in OpenMC are limited to a set of
+    algebraic surfaces, i.e., surfaces that are polynomial in x, y, and z.
 
     Parameters
     ----------
@@ -43,14 +47,14 @@ class Surface(object):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -63,7 +67,7 @@ class Surface(object):
         # A dictionary of the quadratic surface coefficients
         # Key        - coefficeint name
         # Value    - coefficient value
-        self._coeffs = {}
+        self._coefficients = {}
 
         # An ordered list of the coefficient names to export to XML in the
         # proper order
@@ -82,12 +86,13 @@ class Surface(object):
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
         string += '{0: <16}{1}{2}\n'.format('\tBoundary', '=\t', self._boundary_type)
 
-        coeffs = '{0: <16}'.format('\tCoefficients') + '\n'
+        coefficients = '{0: <16}'.format('\tCoefficients') + '\n'
 
-        for coeff in self._coeffs:
-            coeffs += '{0: <16}{1}{2}\n'.format(coeff, '=\t', self._coeffs[coeff])
+        for coeff in self._coefficients:
+            coefficients += '{0: <16}{1}{2}\n'.format(
+                coeff, '=\t', self._coefficients[coeff])
 
-        string += coeffs
+        string += coefficients
 
         return string
 
@@ -108,8 +113,8 @@ class Surface(object):
         return self._boundary_type
 
     @property
-    def coeffs(self):
-        return self._coeffs
+    def coefficients(self):
+        return self._coefficients
 
     @id.setter
     def id(self, surface_id):
@@ -173,7 +178,7 @@ class Surface(object):
         element.set("type", self._type)
         if self.boundary_type != 'transmission':
             element.set("boundary", self.boundary_type)
-        element.set("coeffs", ' '.join([str(self._coeffs.setdefault(key, 0.0))
+        element.set("coeffs", ' '.join([str(self._coefficients.setdefault(key, 0.0))
                                         for key in self._coeff_keys]))
 
         return element
@@ -215,14 +220,14 @@ class Plane(Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -239,39 +244,39 @@ class Plane(Surface):
 
     @property
     def a(self):
-        return self.coeffs['A']
+        return self.coefficients['A']
 
     @property
     def b(self):
-        return self.coeffs['B']
+        return self.coefficients['B']
 
     @property
     def c(self):
-        return self.coeffs['C']
+        return self.coefficients['C']
 
     @property
     def d(self):
-        return self.coeffs['D']
+        return self.coefficients['D']
 
     @a.setter
     def a(self, A):
         check_type('A coefficient', A, Real)
-        self._coeffs['A'] = A
+        self._coefficients['A'] = A
 
     @b.setter
     def b(self, B):
         check_type('B coefficient', B, Real)
-        self._coeffs['B'] = B
+        self._coefficients['B'] = B
 
     @c.setter
     def c(self, C):
         check_type('C coefficient', C, Real)
-        self._coeffs['C'] = C
+        self._coefficients['C'] = C
 
     @d.setter
     def d(self, D):
         check_type('D coefficient', D, Real)
-        self._coeffs['D'] = D
+        self._coefficients['D'] = D
 
 
 class XPlane(Plane):
@@ -298,14 +303,14 @@ class XPlane(Plane):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -319,12 +324,12 @@ class XPlane(Plane):
 
     @property
     def x0(self):
-        return self.coeffs['x0']
+        return self.coefficients['x0']
 
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
-        self._coeffs['x0'] = x0
+        self._coefficients['x0'] = x0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -382,14 +387,14 @@ class YPlane(Plane):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -404,12 +409,12 @@ class YPlane(Plane):
 
     @property
     def y0(self):
-        return self.coeffs['y0']
+        return self.coefficients['y0']
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
-        self._coeffs['y0'] = y0
+        self._coefficients['y0'] = y0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -467,14 +472,14 @@ class ZPlane(Plane):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -489,12 +494,12 @@ class ZPlane(Plane):
 
     @property
     def z0(self):
-        return self.coeffs['z0']
+        return self.coefficients['z0']
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
-        self._coeffs['z0'] = z0
+        self._coefficients['z0'] = z0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -553,14 +558,14 @@ class Cylinder(Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -575,12 +580,12 @@ class Cylinder(Surface):
 
     @property
     def r(self):
-        return self.coeffs['R']
+        return self.coefficients['R']
 
     @r.setter
     def r(self, R):
         check_type('R coefficient', R, Real)
-        self._coeffs['R'] = R
+        self._coefficients['R'] = R
 
 
 class XCylinder(Cylinder):
@@ -615,14 +620,14 @@ class XCylinder(Cylinder):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -637,21 +642,21 @@ class XCylinder(Cylinder):
 
     @property
     def y0(self):
-        return self.coeffs['y0']
+        return self.coefficients['y0']
 
     @property
     def z0(self):
-        return self.coeffs['z0']
+        return self.coefficients['z0']
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
-        self._coeffs['y0'] = y0
+        self._coefficients['y0'] = y0
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
-        self._coeffs['z0'] = z0
+        self._coefficients['z0'] = z0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -718,14 +723,14 @@ class YCylinder(Cylinder):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -740,21 +745,21 @@ class YCylinder(Cylinder):
 
     @property
     def x0(self):
-        return self.coeffs['x0']
+        return self.coefficients['x0']
 
     @property
     def z0(self):
-        return self.coeffs['z0']
+        return self.coefficients['z0']
 
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
-        self._coeffs['x0'] = x0
+        self._coefficients['x0'] = x0
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
-        self._coeffs['z0'] = z0
+        self._coefficients['z0'] = z0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -821,14 +826,14 @@ class ZCylinder(Cylinder):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -843,21 +848,21 @@ class ZCylinder(Cylinder):
 
     @property
     def x0(self):
-        return self.coeffs['x0']
+        return self.coefficients['x0']
 
     @property
     def y0(self):
-        return self.coeffs['y0']
+        return self.coefficients['y0']
 
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
-        self._coeffs['x0'] = x0
+        self._coefficients['x0'] = x0
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
-        self._coeffs['y0'] = y0
+        self._coefficients['y0'] = y0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -928,14 +933,14 @@ class Sphere(Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -952,39 +957,39 @@ class Sphere(Surface):
 
     @property
     def x0(self):
-        return self.coeffs['x0']
+        return self.coefficients['x0']
 
     @property
     def y0(self):
-        return self.coeffs['y0']
+        return self.coefficients['y0']
 
     @property
     def z0(self):
-        return self.coeffs['z0']
+        return self.coefficients['z0']
 
     @property
     def r(self):
-        return self.coeffs['R']
+        return self.coefficients['R']
 
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
-        self._coeffs['x0'] = x0
+        self._coefficients['x0'] = x0
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
-        self._coeffs['y0'] = y0
+        self._coefficients['y0'] = y0
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
-        self._coeffs['z0'] = z0
+        self._coefficients['z0'] = z0
 
     @r.setter
     def r(self, R):
         check_type('R coefficient', R, Real)
-        self._coeffs['R'] = R
+        self._coefficients['R'] = R
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -1056,14 +1061,14 @@ class Cone(Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -1081,39 +1086,39 @@ class Cone(Surface):
 
     @property
     def x0(self):
-        return self.coeffs['x0']
+        return self.coefficients['x0']
 
     @property
     def y0(self):
-        return self.coeffs['y0']
+        return self.coefficients['y0']
 
     @property
     def z0(self):
-        return self.coeffs['z0']
+        return self.coefficients['z0']
 
     @property
     def r2(self):
-        return self.coeffs['r2']
+        return self.coefficients['r2']
 
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
-        self._coeffs['x0'] = x0
+        self._coefficients['x0'] = x0
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
-        self._coeffs['y0'] = y0
+        self._coefficients['y0'] = y0
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
-        self._coeffs['z0'] = z0
+        self._coefficients['z0'] = z0
 
     @r2.setter
     def r2(self, R2):
         check_type('R^2 coefficient', R2, Real)
-        self._coeffs['R2'] = R2
+        self._coefficients['R2'] = R2
 
 
 class XCone(Cone):
@@ -1153,14 +1158,14 @@ class XCone(Cone):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -1209,14 +1214,14 @@ class YCone(Cone):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -1265,14 +1270,14 @@ class ZCone(Cone):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -1309,14 +1314,14 @@ class Quadric(Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
@@ -1340,93 +1345,93 @@ class Quadric(Surface):
 
     @property
     def a(self):
-        return self.coeffs['a']
+        return self.coefficients['a']
 
     @property
     def b(self):
-        return self.coeffs['b']
+        return self.coefficients['b']
 
     @property
     def c(self):
-        return self.coeffs['c']
+        return self.coefficients['c']
 
     @property
     def d(self):
-        return self.coeffs['d']
+        return self.coefficients['d']
 
     @property
     def e(self):
-        return self.coeffs['e']
+        return self.coefficients['e']
 
     @property
     def f(self):
-        return self.coeffs['f']
+        return self.coefficients['f']
 
     @property
     def g(self):
-        return self.coeffs['g']
+        return self.coefficients['g']
 
     @property
     def h(self):
-        return self.coeffs['h']
+        return self.coefficients['h']
 
     @property
     def j(self):
-        return self.coeffs['j']
+        return self.coefficients['j']
 
     @property
     def k(self):
-        return self.coeffs['k']
+        return self.coefficients['k']
 
     @a.setter
     def a(self, a):
         check_type('a coefficient', a, Real)
-        self._coeffs['a'] = a
+        self._coefficients['a'] = a
 
     @b.setter
     def b(self, b):
         check_type('b coefficient', b, Real)
-        self._coeffs['b'] = b
+        self._coefficients['b'] = b
 
     @c.setter
     def c(self, c):
         check_type('c coefficient', c, Real)
-        self._coeffs['c'] = c
+        self._coefficients['c'] = c
 
     @d.setter
     def d(self, d):
         check_type('d coefficient', d, Real)
-        self._coeffs['d'] = d
+        self._coefficients['d'] = d
 
     @e.setter
     def e(self, e):
         check_type('e coefficient', e, Real)
-        self._coeffs['e'] = e
+        self._coefficients['e'] = e
 
     @f.setter
     def f(self, f):
         check_type('f coefficient', f, Real)
-        self._coeffs['f'] = f
+        self._coefficients['f'] = f
 
     @g.setter
     def g(self, g):
         check_type('g coefficient', g, Real)
-        self._coeffs['g'] = g
+        self._coefficients['g'] = g
 
     @h.setter
     def h(self, h):
         check_type('h coefficient', h, Real)
-        self._coeffs['h'] = h
+        self._coefficients['h'] = h
 
     @j.setter
     def j(self, j):
         check_type('j coefficient', j, Real)
-        self._coeffs['j'] = j
+        self._coefficients['j'] = j
 
     @k.setter
     def k(self, k):
         check_type('k coefficient', k, Real)
-        self._coeffs['k'] = k
+        self._coefficients['k'] = k
 
 
 class Halfspace(Region):

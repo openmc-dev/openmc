@@ -643,8 +643,8 @@ class Material(object):
 
 
 class Materials(object):
-    """Materials used for an OpenMC simulation. Corresponds directly to the
-    materials.xml input file.
+    """Collection of Materials used for an OpenMC simulation. Corresponds directly
+    to the materials.xml input file.
 
     Attributes
     ----------

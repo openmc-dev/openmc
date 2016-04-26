@@ -74,7 +74,7 @@ cell1.fill = universe1
 universe1.add_cells([cell2, cell3])
 root.add_cells([cell1, cell4])
 
-# Instantiate a Geometry and register the root Universe, and export to XML
+# Instantiate a Geometry, register the root Universe, and export to XML
 geometry = openmc.Geometry()
 geometry.root_universe = root
 geometry.export_to_xml()
@@ -124,7 +124,7 @@ third_tally = openmc.Tally(tally_id=3, name='third tally')
 third_tally.filters = [cell_filter, energy_filter, energyout_filter]
 third_tally.scores = ['scatter', 'nu-scatter', 'nu-fission']
 
-# Instantiate a Tallies object, register all Tallies, and export to XML
+# Instantiate a Tallies collection, register all Tallies, and export to XML
 tallies_file = openmc.Tallies()
 tallies_file.add_tally(first_tally)
 tallies_file.add_tally(second_tally)

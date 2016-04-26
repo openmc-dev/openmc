@@ -3420,8 +3420,8 @@ class Tally(object):
 
 
 class Tallies(object):
-    """Tallies file used for an OpenMC simulation. Corresponds directly to the
-    tallies.xml input file.
+    """Collection of Tallies used for an OpenMC simulation. Corresponds directly to
+    the tallies.xml input file.
 
     """
 

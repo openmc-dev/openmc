@@ -30,7 +30,7 @@ moderator.add_nuclide(h1, 2.)
 moderator.add_nuclide(o16, 1.)
 moderator.add_s_alpha_beta('HH2O', '71t')
 
-# Instantiate a Materials object, register all Materials, and export to XML
+# Instantiate a Materials collection, register all Materials, and export to XML
 materials_file = openmc.Materials()
 materials_file.default_xs = '71c'
 materials_file.add_materials([moderator, fuel])
@@ -116,7 +116,7 @@ lattice2.universes = [[univ4, univ4],
 cell1.fill = lattice2
 cell2.fill = lattice1
 
-# Instantiate a Geometry and register the root Universe, and export to XML
+# Instantiate a Geometry, register the root Universe, and export to XML
 geometry = openmc.Geometry()
 geometry.root_universe = root
 geometry.export_to_xml()
@@ -176,7 +176,7 @@ tally = openmc.Tally(tally_id=1)
 tally.filters = [mesh_filter]
 tally.scores = ['total']
 
-# Instantiate a Tallies object, register Tally/Mesh, and export to XML
+# Instantiate a Tallies collection, register Tally/Mesh, and export to XML
 tallies_file = openmc.Tallies()
 tallies_file.add_mesh(mesh)
 tallies_file.add_tally(tally)

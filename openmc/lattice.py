@@ -7,7 +7,7 @@ import sys
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.universe import Universe, AUTO_UNIVERSE_ID
+import openmc
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -93,9 +93,8 @@ class Lattice(object):
     @id.setter
     def id(self, lattice_id):
         if lattice_id is None:
-            global AUTO_UNIVERSE_ID
-            self._id = AUTO_UNIVERSE_ID
-            AUTO_UNIVERSE_ID += 1
+            self._id = openmc.universe.AUTO_UNIVERSE_ID
+            openmc.universe.AUTO_UNIVERSE_ID += 1
         else:
             cv.check_type('lattice ID', lattice_id, Integral)
             cv.check_greater_than('lattice ID', lattice_id, 0, equality=True)
@@ -111,12 +110,12 @@ class Lattice(object):
 
     @outer.setter
     def outer(self, outer):
-        cv.check_type('outer universe', outer, Universe)
+        cv.check_type('outer universe', outer, openmc.Universe)
         self._outer = outer
 
     @universes.setter
     def universes(self, universes):
-        cv.check_iterable_type('lattice universes', universes, Universe,
+        cv.check_iterable_type('lattice universes', universes, openmc.Universe,
                                min_depth=2, max_depth=3)
         self._universes = np.asarray(universes)
 
@@ -127,20 +126,20 @@ class Lattice(object):
         -------
         universes : collections.OrderedDict
             Dictionary whose keys are universe IDs and values are
-            :class:`Universe` instances
+            :class:`openmc.Universe` instances
 
         """
 
         univs = OrderedDict()
         for k in range(len(self._universes)):
             for j in range(len(self._universes[k])):
-                if isinstance(self._universes[k][j], Universe):
+                if isinstance(self._universes[k][j], openmc.Universe):
                     u = self._universes[k][j]
                     univs[u._id] = u
                 else:
                     for i in range(len(self._universes[k][j])):
                         u = self._universes[k][j][i]
-                        assert isinstance(u, Universe)
+                        assert isinstance(u, openmc.Universe)
                         univs[u._id] = u
 
         if self.outer is not None:
@@ -615,10 +614,10 @@ class HexLattice(Lattice):
         # clockwise fashion.
 
         # Check to see if the given universes look like a 2D or a 3D array.
-        if isinstance(self._universes[0][0], Universe):
+        if isinstance(self._universes[0][0], openmc.Universe):
             n_dims = 2
 
-        elif isinstance(self._universes[0][0][0], Universe):
+        elif isinstance(self._universes[0][0][0], openmc.Universe):
             n_dims = 3
 
         else:

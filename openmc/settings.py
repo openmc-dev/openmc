@@ -16,7 +16,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-class SettingsFile(object):
+class Settings(object):
     """Settings file used for an OpenMC simulation. Corresponds directly to the
     settings.xml input file.
 

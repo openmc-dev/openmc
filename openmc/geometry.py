@@ -23,7 +23,6 @@ class Geometry(object):
     """
 
     def __init__(self):
-        # Initialize Geometry class attributes
         self._root_universe = None
         self._offsets = {}
 
@@ -41,6 +40,27 @@ class Geometry(object):
             raise ValueError(msg)
 
         self._root_universe = root_universe
+
+    def export_to_xml(self):
+        """Create a geometry.xml file that can be used for a simulation.
+
+        """
+
+        # Clear OpenMC written IDs used to optimize XML generation
+        openmc.universe.WRITTEN_IDS = {}
+
+        # Create XML representation
+        geometry_file = ET.Element("geometry")
+        self.root_universe.create_xml_subelement(geometry_file)
+
+        # Clean the indentation in the file to be user-readable
+        sort_xml_elements(geometry_file)
+        clean_xml_indentation(geometry_file)
+
+        # Write the XML Tree to the geometry.xml file
+        tree = ET.ElementTree(geometry_file)
+        tree.write("geometry.xml", xml_declaration=True, encoding='utf-8',
+                   method="xml")
 
     def get_cell_instance(self, path):
         """Return the instance number for the final cell in a geometry path.
@@ -436,52 +456,3 @@ class Geometry(object):
         lattices = list(lattices)
         lattices.sort(key=lambda x: x.id)
         return lattices
-
-
-class GeometryFile(object):
-    """Geometry file used for an OpenMC simulation. Corresponds directly to the
-    geometry.xml input file.
-
-    Attributes
-    ----------
-    geometry : openmc.Geometry
-        The geometry to be used
-
-    """
-
-    def __init__(self):
-        # Initialize GeometryFile class attributes
-        self._geometry = None
-        self._geometry_file = ET.Element("geometry")
-
-    @property
-    def geometry(self):
-        return self._geometry
-
-    @geometry.setter
-    def geometry(self, geometry):
-        check_type('the geometry', geometry, Geometry)
-        self._geometry = geometry
-
-    def export_to_xml(self):
-        """Create a geometry.xml file that can be used for a simulation.
-
-        """
-
-        # Clear OpenMC written IDs used to optimize XML generation
-        openmc.universe.WRITTEN_IDS = {}
-
-        # Reset xml element tree
-        self._geometry_file.clear()
-
-        root_universe = self.geometry.root_universe
-        root_universe.create_xml_subelement(self._geometry_file)
-
-        # Clean the indentation in the file to be user-readable
-        sort_xml_elements(self._geometry_file)
-        clean_xml_indentation(self._geometry_file)
-
-        # Write the XML Tree to the geometry.xml file
-        tree = ET.ElementTree(self._geometry_file)
-        tree.write("geometry.xml", xml_declaration=True,
-                             encoding='utf-8', method="xml")

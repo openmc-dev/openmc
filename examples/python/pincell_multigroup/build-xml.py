@@ -12,7 +12,7 @@ inactive = 10
 particles = 1000
 
 ###############################################################################
-#                 Exporting to OpenMC mg_cross_sections.xml File
+#                 Exporting to OpenMC mg_cross_sections.xml file
 ###############################################################################
 
 # Instantiate the energy group data
@@ -59,13 +59,13 @@ scatter = [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0
             [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]]
 h2o_xsdata.scatter = np.array(scatter)
 
-mg_cross_sections_file = openmc.MGXSLibraryFile(groups)
+mg_cross_sections_file = openmc.MGXSLibrary(groups)
 mg_cross_sections_file.add_xsdatas([uo2_xsdata,h2o_xsdata])
 mg_cross_sections_file.export_to_xml()
 
 
 ###############################################################################
-#                 Exporting to OpenMC materials.xml File
+#                 Exporting to OpenMC materials.xml file
 ###############################################################################
 
 # Instantiate some Macroscopic Data
@@ -81,15 +81,15 @@ water = openmc.Material(material_id=2, name='Water')
 water.set_density('macro', 1.0)
 water.add_macroscopic(h2o_data)
 
-# Instantiate a MaterialsFile, register all Materials, and export to XML
-materials_file = openmc.MaterialsFile()
+# Instantiate a Materials collection, register all Materials, and export to XML
+materials_file = openmc.Materials()
 materials_file.default_xs = '300K'
 materials_file.add_materials([uo2, water])
 materials_file.export_to_xml()
 
 
 ###############################################################################
-#                 Exporting to OpenMC geometry.xml File
+#                 Exporting to OpenMC geometry.xml file
 ###############################################################################
 
 # Instantiate ZCylinder surfaces
@@ -122,22 +122,18 @@ root = openmc.Universe(universe_id=0, name='root universe')
 # Register Cells with Universe
 root.add_cells([fuel, moderator])
 
-# Instantiate a Geometry and register the root Universe
+# Instantiate a Geometry, register the root Universe, and export to XML
 geometry = openmc.Geometry()
 geometry.root_universe = root
-
-# Instantiate a GeometryFile, register Geometry, and export to XML
-geometry_file = openmc.GeometryFile()
-geometry_file.geometry = geometry
-geometry_file.export_to_xml()
+geometry.export_to_xml()
 
 
 ###############################################################################
-#                   Exporting to OpenMC settings.xml File
+#                   Exporting to OpenMC settings.xml file
 ###############################################################################
 
-# Instantiate a SettingsFile, set all runtime parameters, and export to XML
-settings_file = openmc.SettingsFile()
+# Instantiate a Settings object, set all runtime parameters, and export to XML
+settings_file = openmc.Settings()
 settings_file.energy_mode = "multi-group"
 settings_file.cross_sections = "./mg_cross_sections.xml"
 settings_file.batches = batches
@@ -152,7 +148,7 @@ settings_file.source = openmc.source.Source(space=uniform_dist)
 settings_file.export_to_xml()
 
 ###############################################################################
-#                   Exporting to OpenMC tallies.xml File
+#                   Exporting to OpenMC tallies.xml file
 ###############################################################################
 
 # Instantiate a tally mesh
@@ -177,8 +173,8 @@ tally.add_score('flux')
 tally.add_score('fission')
 tally.add_score('nu-fission')
 
-# Instantiate a TalliesFile, register all Tallies, and export to XML
-tallies_file = openmc.TalliesFile()
+# Instantiate a Tallies collection, register all Tallies, and export to XML
+tallies_file = openmc.Tallies()
 tallies_file.add_mesh(mesh)
 tallies_file.add_tally(tally)
 tallies_file.export_to_xml()

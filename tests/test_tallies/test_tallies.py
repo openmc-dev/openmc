@@ -4,7 +4,7 @@ import os
 import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from openmc import Filter, Mesh, Tally, TalliesFile
+from openmc import Filter, Mesh, Tally, Tallies
 from openmc.source import Source
 from openmc.stats import Box
 
@@ -170,7 +170,7 @@ class TalliesTestHarness(PyAPITestHarness):
         all_nuclide_tallies[0].estimator = 'tracklength'
         all_nuclide_tallies[0].estimator = 'collision'
 
-        self._input_set.tallies = TalliesFile()
+        self._input_set.tallies = Tallies()
         self._input_set.tallies.add_tally(azimuthal_tally1)
         self._input_set.tallies.add_tally(azimuthal_tally2)
         self._input_set.tallies.add_tally(azimuthal_tally3)

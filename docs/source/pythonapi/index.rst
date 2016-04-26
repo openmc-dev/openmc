@@ -29,7 +29,7 @@ Classes
    :template: myclass.rst
 
    openmc.XSdata
-   openmc.MGXSLibraryFile
+   openmc.MGXSLibrary
 
 Functions
 +++++++++
@@ -50,7 +50,7 @@ Simulation Settings
 
    openmc.Source
    openmc.ResonanceScattering
-   openmc.SettingsFile
+   openmc.Settings
 
 Material Specification
 ----------------------
@@ -64,7 +64,7 @@ Material Specification
    openmc.Element
    openmc.Macroscopic
    openmc.Material
-   openmc.MaterialsFile
+   openmc.Materials
 
 Building geometry
 -----------------
@@ -96,7 +96,6 @@ Building geometry
    openmc.RectLattice
    openmc.HexLattice
    openmc.Geometry
-   openmc.GeometryFile
 
 Many of the above classes are derived from several abstract classes:
 
@@ -121,7 +120,7 @@ Constructing Tallies
    openmc.Mesh
    openmc.Trigger
    openmc.Tally
-   openmc.TalliesFile
+   openmc.Tallies
 
 Coarse Mesh Finite Difference Acceleration
 ------------------------------------------
@@ -132,7 +131,7 @@ Coarse Mesh Finite Difference Acceleration
    :template: myclass.rst
 
    openmc.CMFDMesh
-   openmc.CMFDFile
+   openmc.CMFD
 
 Plotting
 --------
@@ -143,7 +142,7 @@ Plotting
    :template: myclass.rst
 
    openmc.Plot
-   openmc.PlotsFile
+   openmc.Plots
 
 Running OpenMC
 --------------
@@ -151,9 +150,10 @@ Running OpenMC
 .. autosummary::
    :toctree: generated
    :nosignatures:
-   :template: myclass.rst
+   :template: myfunction.rst
 
-   openmc.Executor
+   openmc.run
+   openmc.plot_geometry
 
 Post-processing
 ---------------

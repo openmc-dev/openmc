@@ -52,9 +52,9 @@ contains
 
     ! Write version information
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     Copyright:      2011-2015 Massachusetts Institute of Technology'
+         '     Copyright:      2011-2016 Massachusetts Institute of Technology'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     License:        http://mit-crpg.github.io/openmc/license.html'
+         '     License:        http://openmc.readthedocs.org/en/latest/license.html'
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",8X,I1,".",I1,".",I1)') &
          VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1

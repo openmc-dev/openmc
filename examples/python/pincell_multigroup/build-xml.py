@@ -81,7 +81,7 @@ water = openmc.Material(material_id=2, name='Water')
 water.set_density('macro', 1.0)
 water.add_macroscopic(h2o_data)
 
-# Instantiate a Materials object, register all Materials, and export to XML
+# Instantiate a Materials collection, register all Materials, and export to XML
 materials_file = openmc.Materials()
 materials_file.default_xs = '300K'
 materials_file.add_materials([uo2, water])
@@ -122,7 +122,7 @@ root = openmc.Universe(universe_id=0, name='root universe')
 # Register Cells with Universe
 root.add_cells([fuel, moderator])
 
-# Instantiate a Geometry and register the root Universe, and export to XML
+# Instantiate a Geometry, register the root Universe, and export to XML
 geometry = openmc.Geometry()
 geometry.root_universe = root
 geometry.export_to_xml()
@@ -173,7 +173,7 @@ tally.add_score('flux')
 tally.add_score('fission')
 tally.add_score('nu-fission')
 
-# Instantiate a Tallies object, register all Tallies, and export to XML
+# Instantiate a Tallies collection, register all Tallies, and export to XML
 tallies_file = openmc.Tallies()
 tallies_file.add_mesh(mesh)
 tallies_file.add_tally(tally)

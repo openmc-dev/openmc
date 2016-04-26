@@ -100,7 +100,7 @@ borated_water.add_nuclide(o16, 2.4672e-2)
 borated_water.add_nuclide(o17, 6.0099e-5)
 borated_water.add_s_alpha_beta('HH2O', '71t')
 
-# Instantiate a Materials object, register all Materials, and export to XML
+# Instantiate a Materials collection, register all Materials, and export to XML
 materials_file = openmc.Materials()
 materials_file.default_xs = '71c'
 materials_file.add_materials([uo2, helium, zircaloy, borated_water])
@@ -149,7 +149,7 @@ root = openmc.Universe(universe_id=0, name='root universe')
 # Register Cells with Universe
 root.add_cells([fuel, gap, clad, water])
 
-# Instantiate a Geometry and register the root Universe, and export to XML
+# Instantiate a Geometry, register the root Universe, and export to XML
 geometry = openmc.Geometry()
 geometry.root_universe = root
 geometry.export_to_xml()
@@ -197,7 +197,7 @@ tally = openmc.Tally(tally_id=1, name='tally 1')
 tally.filters = [energy_filter, mesh_filter]
 tally.scores = ['flux', 'fission', 'nu-fission']
 
-# Instantiate a Tallies object, register all Tallies, and export to XML
+# Instantiate a Tallies collection, register all Tallies, and export to XML
 tallies_file = openmc.Tallies()
 tallies_file.add_mesh(mesh)
 tallies_file.add_tally(tally)

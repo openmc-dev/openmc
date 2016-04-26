@@ -402,8 +402,8 @@ class Plot(object):
 
 
 class Plots(object):
-    """Plots file used for an OpenMC simulation. Corresponds directly to the
-    plots.xml input file.
+    """Collection of Plots used for an OpenMC simulation. Corresponds directly to
+    the plots.xml input file.
 
     """
 

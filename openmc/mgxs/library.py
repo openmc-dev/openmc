@@ -355,7 +355,7 @@ class Library(object):
         Parameters
         ----------
         tallies_file : openmc.Tallies
-            A Tallies object to add each MGXS' tallies to generate a
+            A Tallies collection to add each MGXS' tallies to generate a
             "tallies.xml" input file for OpenMC
         merge : bool
             Indicate whether tallies should be merged when possible. Defaults

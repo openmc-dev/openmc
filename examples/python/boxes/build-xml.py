@@ -36,7 +36,7 @@ moderator.add_nuclide(h1, 2.)
 moderator.add_nuclide(o16, 1.)
 moderator.add_s_alpha_beta('HH2O', '71t')
 
-# Instantiate a Materials object, register all Materials, and export to XML
+# Instantiate a Materials collection, register all Materials, and export to XML
 materials_file = openmc.Materials()
 materials_file.default_xs = '71c'
 materials_file.add_materials([fuel1, fuel2, moderator])
@@ -97,7 +97,7 @@ outer_box.fill = moderator
 root = openmc.Universe(universe_id=0, name='root universe')
 root.add_cells([inner_box, middle_box, outer_box])
 
-# Instantiate a Geometry and register the root Universe, and export to XML
+# Instantiate a Geometry, register the root Universe, and export to XML
 geometry = openmc.Geometry()
 geometry.root_universe = root
 geometry.export_to_xml()
@@ -107,7 +107,7 @@ geometry.export_to_xml()
 #                   Exporting to OpenMC settings.xml File
 ###############################################################################
 
-# Instantiate a SettingsFile, set all runtime parameters, and export to XML
+# Instantiate a Settings object, set all runtime parameters, and export to XML
 settings_file = openmc.Settings()
 settings_file.batches = batches
 settings_file.inactive = inactive
@@ -129,7 +129,7 @@ plot.width = [20, 20]
 plot.pixels = [200, 200]
 plot.color = 'cell'
 
-# Instantiate a Plots object, add Plot, and export to XML
+# Instantiate a Plots collection, add Plot, and export to XML
 plot_file = openmc.Plots()
 plot_file.add_plot(plot)
 plot_file.export_to_xml()

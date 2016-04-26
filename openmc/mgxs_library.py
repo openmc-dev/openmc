@@ -705,7 +705,7 @@ class MGXSLibrary(object):
 
         # Make sure energy groups match.
         if xsdata.energy_groups != self._energy_groups:
-            msg = 'Energy groups of XSdata do not match that of MGXSLibrary!'
+            msg = 'Energy groups of XSdata do not match that of MGXSLibrary.'
             raise ValueError(msg)
 
         self._xsdatas.append(xsdata)

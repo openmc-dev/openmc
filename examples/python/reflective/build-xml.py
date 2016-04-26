@@ -23,7 +23,7 @@ fuel = openmc.Material(material_id=1, name='fuel')
 fuel.set_density('g/cc', 4.5)
 fuel.add_nuclide(u235, 1.)
 
-# Instantiate a Materials object, register Material, and export to XML
+# Instantiate a Materials collection, register Material, and export to XML
 materials_file = openmc.Materials()
 materials_file.default_xs = '71c'
 materials_file.add_material(fuel)
@@ -64,7 +64,7 @@ root = openmc.Universe(universe_id=0, name='root universe')
 # Register Cell with Universe
 root.add_cell(cell)
 
-# Instantiate a Geometry and register the root Universe, and export to XML
+# Instantiate a Geometry, register the root Universe, and export to XML
 geometry = openmc.Geometry()
 geometry.root_universe = root
 geometry.export_to_xml()

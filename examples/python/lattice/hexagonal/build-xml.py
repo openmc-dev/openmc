@@ -35,7 +35,7 @@ iron = openmc.Material(material_id=3, name='iron')
 iron.set_density('g/cc', 7.9)
 iron.add_nuclide(fe56, 1.)
 
-# Instantiate a Materials object, register all Materials, and export to XML
+# Instantiate a Materials collection, register all Materials, and export to XML
 materials_file = openmc.Materials()
 materials_file.default_xs = '71c'
 materials_file.add_materials([moderator, fuel, iron])
@@ -105,7 +105,7 @@ lattice.outer = univ2
 # Fill Cell with the Lattice
 cell1.fill = lattice
 
-# Instantiate a Geometry and register the root Universe, and export to XML
+# Instantiate a Geometry, register the root Universe, and export to XML
 geometry = openmc.Geometry()
 geometry.root_universe = root
 geometry.export_to_xml()
@@ -115,7 +115,7 @@ geometry.export_to_xml()
 #                   Exporting to OpenMC settings.xml file
 ###############################################################################
 
-# Instantiate a SettingsFile, set all runtime parameters, and export to XML
+# Instantiate a Settings object, set all runtime parameters, and export to XML
 settings_file = openmc.Settings()
 settings_file.batches = batches
 settings_file.inactive = inactive
@@ -151,7 +151,7 @@ plot_yz.width = [8, 8]
 plot_yz.pixels = [400, 400]
 plot_yz.color = 'mat'
 
-# Instantiate a Plots object, add plots, and export to XML
+# Instantiate a Plots collection, add plots, and export to XML
 plot_file = openmc.Plots()
 plot_file.add_plot(plot_xy)
 plot_file.add_plot(plot_yz)
@@ -167,7 +167,7 @@ tally = openmc.Tally(tally_id=1)
 tally.filters = [openmc.Filter(type='distribcell', bins=[cell2.id])]
 tally.scores = ['total']
 
-# Instantiate a Tallies object, register Tally/Mesh, and export to XML
+# Instantiate a Tallies collection, register Tally/Mesh, and export to XML
 tallies_file = openmc.Tallies()
 tallies_file.add_tally(tally)
 tallies_file.export_to_xml()

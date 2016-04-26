@@ -54,7 +54,10 @@ def run(particles=None, threads=None, geometry_debug=False,
     particles : int, optional
         Number of particles to simulate per generation.
     threads : int, optional
-        Number of OpenMP threads.
+        Number of OpenMP threads. If OpenMC is compiled with OpenMP threading
+        enabled, the default is implementation-dependent but is usually equal to
+        the number of hardware threads available (or a value set by the
+        OMP_NUM_THREADS environment variable).
     geometry_debug : bool, optional
         Turn on geometry debugging during simulation. Defaults to False.
     restart_file : str, optional

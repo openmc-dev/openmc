@@ -387,7 +387,7 @@ class Material(object):
 
         Parameters
         ----------
-        element : openmc.Element
+        element : openmc.Element or str
             Element to add
         percent : float
             Atom or weight percent
@@ -401,7 +401,7 @@ class Material(object):
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
-        if not isinstance(element, openmc.Element):
+        if not isinstance(element, (openmc.Element, str)):
             msg = 'Unable to add an Element to Material ID="{0}" with a ' \
                   'non-Element value "{1}"'.format(self._id, element)
             raise ValueError(msg)

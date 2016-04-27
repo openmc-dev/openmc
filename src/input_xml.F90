@@ -38,8 +38,8 @@ contains
 
   subroutine read_input_xml()
 
+    call read_settings_xml()
     if (run_mode /= MODE_PLOTTING) then
-      call read_settings_xml()
       if (run_CE) then
         call read_ce_cross_sections_xml()
       else
@@ -92,18 +92,22 @@ contains
     type(NodeList), pointer :: node_scat_list => null()
     type(NodeList), pointer :: node_source_list => null()
 
-    ! Display output message
-    call write_message("Reading settings XML file...", 5)
-
     ! Check if settings.xml exists
     filename = trim(path_input) // "settings.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      call fatal_error("Settings XML file '" // trim(filename) // "' does not &
-           &exist! In order to run OpenMC, you first need a set of input files;&
-           & at a minimum, this includes settings.xml, geometry.xml, and &
-           &materials.xml. Please consult the user's guide at &
-           &http://mit-crpg.github.io/openmc for further information.")
+      if (run_mode /= MODE_PLOTTING) then
+        call fatal_error("Settings XML file '" // trim(filename) // "' does &
+             &not exist! In order to run OpenMC, you first need a set of input &
+             &files; at a minimum, this includes settings.xml, geometry.xml, &
+             &and materials.xml. Please consult the user's guide at &
+             &http://mit-crpg.github.io/openmc for further information.")
+      else
+        ! The settings.xml file is optional if we just want to make a plot.
+        return
+      end if
+    else
+      call write_message("Reading settings XML file...", 5)
     end if
 
     ! Parse settings.xml file

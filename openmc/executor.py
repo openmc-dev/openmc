@@ -10,7 +10,7 @@ if sys.version_info[0] >= 3:
 def _run(command, output, cwd):
     # Launch a subprocess
     p = subprocess.Popen(command, shell=True, cwd=cwd, stdout=subprocess.PIPE,
-                         universal_newlines=True)
+                         stderr=subprocess.STDOUT, universal_newlines=True)
 
     # Capture and re-print OpenMC output in real-time
     while True:

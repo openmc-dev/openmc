@@ -38,8 +38,8 @@ contains
 
   subroutine read_input_xml()
 
-    call read_settings_xml()
     if (run_mode /= MODE_PLOTTING) then
+      call read_settings_xml()
       if (run_CE) then
         call read_ce_cross_sections_xml()
       else

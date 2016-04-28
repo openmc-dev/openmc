@@ -2491,15 +2491,15 @@ contains
 
     ! number of energies
     read(tab_unit, 10) rec
-    read(rec(11:80), '(i70)') tope % nE_tabs
+    read(rec(10:80), '(i71)') tope % nE_tabs
 
     ! number of temperatures
     read(tab_unit, 10) rec
-    read(rec(15:80), '(i66)') tope % nT_tabs
+    read(rec(14:80), '(i67)') tope % nT_tabs
 
     ! number of probability-xs bands
     read(tab_unit, 10) rec
-    read(rec(8:80), '(i73)') tope % n_bands
+    read(rec(7:80), '(i74)') tope % n_bands
 
     ! allocate probability tables
     allocate(tope % E_tabs(tope % nE_tabs))
@@ -2943,6 +2943,7 @@ contains
 
     ! fission xs from probability bands
     if ((tope % INT == LINEAR_LINEAR .and. INT_T == LINEAR_LINEAR) .or. &
+         (tope % INT == LINEAR_LINEAR .and. INT_T == STATISTICAL) .or. &
          (tope % prob_tables(i_E, i_Tlow) % f(i_low) % xs_mean > ZERO .and. &
          tope % prob_tables(i_E+1, i_Tlow) % f(i_up) % xs_mean > ZERO)) then
       xsTlow = interpolator(fE, &
@@ -2958,6 +2959,7 @@ contains
 
     ! capture xs from probability bands
     if ((tope % INT == LINEAR_LINEAR .and. INT_T == LINEAR_LINEAR) .or. &
+         (tope % INT == LINEAR_LINEAR .and. INT_T == STATISTICAL) .or. &
          (tope % prob_tables(i_E, i_Tlow) % g(i_low) % xs_mean > ZERO .and. &
          tope % prob_tables(i_E+1, i_Tlow) % g(i_up) % xs_mean > ZERO)) then
       xsTlow = interpolator(fE, &
@@ -2973,6 +2975,7 @@ contains
 
     ! competitive xs from probability bands
     if ((tope % INT == LINEAR_LINEAR .and. INT_T == LINEAR_LINEAR) .or. &
+         (tope % INT == LINEAR_LINEAR .and. INT_T == STATISTICAL) .or. &
          (tope % prob_tables(i_E, i_Tlow) % x(i_low) % xs_mean > ZERO .and. &
          tope % prob_tables(i_E+1, i_Tlow) % x(i_up) % xs_mean > ZERO)) then
       xsTlow = interpolator(fE, &
@@ -4246,6 +4249,8 @@ contains
     real(8) :: val_low ! lower bounding value
     real(8) :: val_up  ! upper bounding value
     real(8) :: factor  ! interpolation factor
+    real(8) :: xi      ! prn for statistical interpolation
+    real(8) :: prob    ! probability for statistical interpolation
 
     select case(scheme)
     case(HISTOGRAM)
@@ -4268,6 +4273,15 @@ contains
 
     case(SQRT_LOG)
       factor = (sqrt(val) - sqrt(val_low)) / (sqrt(val_up) - sqrt(val_low))
+
+    case(STATISTICAL)
+      xi = prn()
+      prob = (val - val_low) / (val_up - val_low)
+      if (xi > prob) then
+        factor = ZERO
+      else
+        factor = ONE
+      end if
 
     case default
       call fatal_error('Interpolation scheme not recognized')
@@ -4311,6 +4325,9 @@ contains
 
     case(SQRT_LOG)
       val = val_low * exp(factor * log(val_up / val_low))
+
+    case(STATISTICAL)
+      val = val_low + factor * (val_up - val_low)
 
     case default
       call fatal_error('Interpolation scheme not recognized')

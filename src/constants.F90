@@ -202,7 +202,8 @@ module constants
        LOG_LINEAR    = 4, & ! ln(y) is linear in x
        LOG_LOG       = 5, & ! ln(y) is linear in ln(x)
        SQRT_LINEAR   = 7, & ! y is linear in sqrt(x)
-       SQRT_LOG      = 8    ! ln(y) is linear in sqrt(x)
+       SQRT_LOG      = 8, & ! ln(y) is linear in sqrt(x)
+       STATISTICAL   = 9    ! linear statistical interpolation
 
   ! Particle type
   integer, parameter :: &

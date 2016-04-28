@@ -3554,6 +3554,8 @@ contains
           INT_T = SQRT_LINEAR
         case('sqrt-log')
           INT_T = SQRT_LOG
+        case('statistical')
+          INT_T = STATISTICAL
         case default
           call fatal_error('Unrecognized temperature interpolation scheme')
         end select

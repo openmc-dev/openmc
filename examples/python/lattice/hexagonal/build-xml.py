@@ -35,10 +35,9 @@ iron = openmc.Material(material_id=3, name='iron')
 iron.set_density('g/cc', 7.9)
 iron.add_nuclide(fe56, 1.)
 
-# Instantiate a Materials collection, register all Materials, and export to XML
-materials_file = openmc.Materials()
+# Instantiate a Materials collection and export to XML
+materials_file = openmc.Materials([moderator, fuel, iron])
 materials_file.default_xs = '71c'
-materials_file.add_materials([moderator, fuel, iron])
 materials_file.export_to_xml()
 
 
@@ -152,9 +151,7 @@ plot_yz.pixels = [400, 400]
 plot_yz.color = 'mat'
 
 # Instantiate a Plots collection, add plots, and export to XML
-plot_file = openmc.Plots()
-plot_file.add_plot(plot_xy)
-plot_file.add_plot(plot_yz)
+plot_file = openmc.Plots((plot_xy, plot_yz))
 plot_file.export_to_xml()
 
 
@@ -167,7 +164,6 @@ tally = openmc.Tally(tally_id=1)
 tally.filters = [openmc.Filter(type='distribcell', bins=[cell2.id])]
 tally.scores = ['total']
 
-# Instantiate a Tallies collection, register Tally/Mesh, and export to XML
-tallies_file = openmc.Tallies()
-tallies_file.add_tally(tally)
+# Instantiate a Tallies collection and export to XML
+tallies_file = openmc.Tallies([tally])
 tallies_file.export_to_xml()

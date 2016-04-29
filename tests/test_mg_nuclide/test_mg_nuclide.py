@@ -26,7 +26,7 @@ class MGNuclideInputSet(MGInputSet):
 
         # Define the materials file.
         self.materials.default_xs = '71c'
-        self.materials.add_materials((uo2, clad, water))
+        self.materials += (uo2, clad, water)
 
         # Define surfaces.
 

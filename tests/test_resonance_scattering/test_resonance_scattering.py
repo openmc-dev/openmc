@@ -17,9 +17,8 @@ class ResonanceScatteringTestHarness(PyAPITestHarness):
         mat.add_nuclide('Pu-239', 0.02)
         mat.add_nuclide('H-1', 20.0)
 
-        mats_file = openmc.Materials()
+        mats_file = openmc.Materials([mat])
         mats_file.default_xs = '71c'
-        mats_file.add_material(mat)
         mats_file.export_to_xml()
 
         # Geometry

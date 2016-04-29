@@ -15,9 +15,6 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         # The summary.h5 file needs to be created to read in the tallies
         self._input_set.settings.output = {'summary': True}
 
-        # Initialize the tallies file
-        tallies_file = openmc.Tallies()
-
         # Initialize the nuclides
         u235 = openmc.Nuclide('U-235')
         u238 = openmc.Nuclide('U-238')
@@ -33,7 +30,7 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         tally.filters = [energy_filter, distrib_filter]
         tally.scores = ['nu-fission', 'total']
         tally.nuclides = [u235, u238, pu239]
-        tallies_file.add_tally(tally)
+        tallies_file = openmc.Tallies([tally])
 
         # Export tallies to file
         self._input_set.tallies = tallies_file

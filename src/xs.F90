@@ -2942,8 +2942,8 @@ contains
     xs_n = interpolator(fT, xsTlow, xsTup, INT_T)
 
     ! fission xs from probability bands
-    if ((tope % INT == LINEAR_LINEAR .and. INT_T == LINEAR_LINEAR) .or. &
-         (tope % INT == LINEAR_LINEAR .and. INT_T == STATISTICAL) .or. &
+    if ((tope % INT == LINEAR_LINEAR .and. (INT_T == LINEAR_LINEAR .or. &
+         INT_T == STATISTICAL .or. INT_T == LOW_NEIGHBOR)) .or. &
          (tope % prob_tables(i_E, i_Tlow) % f(i_low) % xs_mean > ZERO .and. &
          tope % prob_tables(i_E+1, i_Tlow) % f(i_up) % xs_mean > ZERO)) then
       xsTlow = interpolator(fE, &
@@ -2958,8 +2958,8 @@ contains
     end if
 
     ! capture xs from probability bands
-    if ((tope % INT == LINEAR_LINEAR .and. INT_T == LINEAR_LINEAR) .or. &
-         (tope % INT == LINEAR_LINEAR .and. INT_T == STATISTICAL) .or. &
+    if ((tope % INT == LINEAR_LINEAR .and. (INT_T == LINEAR_LINEAR .or. &
+         INT_T == STATISTICAL .or. INT_T == LOW_NEIGHBOR)) .or. &
          (tope % prob_tables(i_E, i_Tlow) % g(i_low) % xs_mean > ZERO .and. &
          tope % prob_tables(i_E+1, i_Tlow) % g(i_up) % xs_mean > ZERO)) then
       xsTlow = interpolator(fE, &
@@ -2974,8 +2974,8 @@ contains
     end if
 
     ! competitive xs from probability bands
-    if ((tope % INT == LINEAR_LINEAR .and. INT_T == LINEAR_LINEAR) .or. &
-         (tope % INT == LINEAR_LINEAR .and. INT_T == STATISTICAL) .or. &
+    if ((tope % INT == LINEAR_LINEAR .and. (INT_T == LINEAR_LINEAR .or. &
+         INT_T == STATISTICAL .or. INT_T == LOW_NEIGHBOR)) .or. &
          (tope % prob_tables(i_E, i_Tlow) % x(i_low) % xs_mean > ZERO .and. &
          tope % prob_tables(i_E+1, i_Tlow) % x(i_up) % xs_mean > ZERO)) then
       xsTlow = interpolator(fE, &
@@ -4283,6 +4283,9 @@ contains
         factor = ONE
       end if
 
+    case(LOW_NEIGHBOR)
+      factor = ZERO
+
     case default
       call fatal_error('Interpolation scheme not recognized')
 
@@ -4328,6 +4331,9 @@ contains
 
     case(STATISTICAL)
       val = val_low + factor * (val_up - val_low)
+
+    case(LOW_NEIGHBOR)
+      val = val_low
 
     case default
       call fatal_error('Interpolation scheme not recognized')

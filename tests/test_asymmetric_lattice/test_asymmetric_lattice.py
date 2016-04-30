@@ -54,12 +54,11 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
 
         # Initialize the tallies
         tally = openmc.Tally(name='distribcell tally', tally_id=27)
-        tally.add_filter(distrib_filter)
-        tally.add_score('nu-fission')
+        tally.filters.append(distrib_filter)
+        tally.scores.append('nu-fission')
 
         # Initialize the tallies file
-        tallies_file = openmc.Tallies()
-        tallies_file.add_tally(tally)
+        tallies_file = openmc.Tallies([tally])
 
         # Assign the tallies file to the input set
         self._input_set.tallies = tallies_file

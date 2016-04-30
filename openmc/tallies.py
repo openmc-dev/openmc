@@ -3419,65 +3419,108 @@ class Tally(object):
         return new_tally
 
 
-class Tallies(object):
-    """Collection of Tallies used for an OpenMC simulation. Corresponds directly to
-    the tallies.xml input file.
+class Tallies(cv.CheckedList):
+    """Collection of Tallies used for an OpenMC simulation.
+
+    This class corresponds directly to the tallies.xml input file. It can be
+    thought of as a normal Python list where each member is a :class:`Tally`. It
+    behaves like a list as the following example demonstrates:
+
+    >>> t1 = openmc.Tally()
+    >>> t2 = openmc.Tally()
+    >>> t3 = openmc.Tally()
+    >>> tallies = openmc.Tallies([t1])
+    >>> tallies.append(t2)
+    >>> tallies += [t3]
+
+    Parameters
+    ----------
+    tallies : Iterable of openmc.Tally
+        Tallies to add to the collection
 
     """
 
-    def __init__(self):
-        self._tallies = []
-        self._meshes = []
+    def __init__(self, tallies=None):
+        super(Tallies, self).__init__(Tally, 'tallies collection')
         self._tallies_file = ET.Element("tallies")
-
-    @property
-    def tallies(self):
-        return self._tallies
-
-    @property
-    def meshes(self):
-        return self._meshes
+        if tallies is not None:
+            self += tallies
 
     def add_tally(self, tally, merge=False):
-        """Add a tally to the file
+        """Append tally to collection
+
+        .. deprecated:: 0.8
+            Use :meth:`Tallies.append` instead.
 
         Parameters
         ----------
         tally : openmc.Tally
-            Tally to add to file
+            Tally to add
         merge : bool
             Indicate whether the tally should be merged with an existing tally,
             if possible. Defaults to False.
 
         """
+        warnings.warn("Tallies.add_tally(...) has been deprecated and may be "
+                      "removed in a future version. Use Tallies.append(...) "
+                      "instead.", DeprecationWarning)
+        self.append(tally, merge)
 
+    def append(self, tally, merge=False):
+        """Append tally to collection
+
+        Parameters
+        ----------
+        tally : openmc.Tally
+            Tally to append
+        merge : bool
+            Indicate whether the tally should be merged with an existing tally,
+            if possible. Defaults to False.
+
+        """
         if not isinstance(tally, Tally):
             msg = 'Unable to add a non-Tally "{0}" to the Tallies instance'.format(tally)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         if merge:
             merged = False
 
             # Look for a tally to merge with this one
-            for i, tally2 in enumerate(self._tallies):
+            for i, tally2 in enumerate(self):
 
                 # If a mergeable tally is found
                 if tally2.can_merge(tally):
                     # Replace tally 2 with the merged tally
                     merged_tally = tally2.merge(tally)
-                    self._tallies[i] = merged_tally
+                    self[i] = merged_tally
                     merged = True
                     break
 
             # If not mergeable tally was found, simply add this tally
             if not merged:
-                self._tallies.append(tally)
+                super(Tallies, self).append(tally)
 
         else:
-            self._tallies.append(tally)
+            super(Tallies, self).append(tally)
+
+    def insert(self, index, item):
+        """Insert tally before index
+
+        Parameters
+        ----------
+        index : int
+            Index in list
+        item : openmc.Tally
+            Tally to insert
+
+        """
+        super(Tallies, self).insert(index, item)
 
     def remove_tally(self, tally):
-        """Remove a tally from the file
+        """Remove a tally from the collection
+
+        .. deprecated:: 0.8
+            Use :meth:`Tallies.remove` instead.
 
         Parameters
         ----------
@@ -3485,8 +3528,11 @@ class Tallies(object):
             Tally to remove
 
         """
+        warnings.warn("Tallies.remove_tally(...) has been deprecated and may "
+                      "be removed in a future version. Use Tallies.remove(...) "
+                      "instead.", DeprecationWarning)
 
-        self._tallies.remove(tally)
+        self.remove(tally)
 
     def merge_tallies(self):
         """Merge any mergeable tallies together. Note that n-way merges are
@@ -3494,8 +3540,8 @@ class Tallies(object):
 
         """
 
-        for i, tally1 in enumerate(self._tallies):
-            for j, tally2 in enumerate(self._tallies):
+        for i, tally1 in enumerate(self):
+            for j, tally2 in enumerate(self):
                 # Do not merge the same tally with itself
                 if i == j:
                     continue
@@ -3504,16 +3550,20 @@ class Tallies(object):
                 if tally1.can_merge(tally2):
                     # Replace tally 1 with the merged tally
                     merged_tally = tally1.merge(tally2)
-                    self._tallies[i] = merged_tally
+                    self[i] = merged_tally
 
                     # Remove tally 2 since it is no longer needed
-                    self._tallies.pop(j)
+                    self.pop(j)
 
                     # Continue iterating from the first loop
                     break
 
     def add_mesh(self, mesh):
         """Add a mesh to the file
+
+        .. deprecated:: 0.8
+            Meshes that appear in a tally are automatically added to the
+            collection.
 
         Parameters
         ----------
@@ -3522,14 +3572,16 @@ class Tallies(object):
 
         """
 
-        if not isinstance(mesh, Mesh):
-            msg = 'Unable to add a non-Mesh "{0}" to the Tallies instance'.format(mesh)
-            raise ValueError(msg)
-
-        self._meshes.append(mesh)
+        warnings.warn("Tallies.add_mesh(...) has been deprecated and may be "
+                      "removed in a future version. Meshes that appear in a "
+                      "tally are automatically added to the collection.",
+                      DeprecationWarning)
 
     def remove_mesh(self, mesh):
         """Remove a mesh from the file
+
+        .. deprecated:: 0.8
+            Meshes do not need to be managed explicitly.
 
         Parameters
         ----------
@@ -3537,21 +3589,26 @@ class Tallies(object):
             Mesh to remove from the file
 
         """
-
-        self._meshes.remove(mesh)
+        warnings.warn("Tallies.remove_mesh(...) has been deprecated and may be "
+                      "removed in a future version. Meshes do not need to be "
+                      "managed explicitly.", DeprecationWarning)
 
     def _create_tally_subelements(self):
-        for tally in self._tallies:
+        for tally in self:
             xml_element = tally.get_tally_xml()
             self._tallies_file.append(xml_element)
 
     def _create_mesh_subelements(self):
-        for mesh in self._meshes:
-            if len(mesh._name) > 0:
-                self._tallies_file.append(ET.Comment(mesh._name))
+        already_written = set()
+        for tally in self:
+            for f in tally.filters:
+                if f.type == 'mesh' and f.mesh not in already_written:
+                    if len(f.mesh.name) > 0:
+                        self._tallies_file.append(ET.Comment(f.mesh.name))
 
-            xml_element = mesh.get_mesh_xml()
-            self._tallies_file.append(xml_element)
+                    xml_element = f.mesh.get_mesh_xml()
+                    self._tallies_file.append(xml_element)
+                    already_written.add(f.mesh)
 
     def export_to_xml(self):
         """Create a tallies.xml file that can be used for a simulation.

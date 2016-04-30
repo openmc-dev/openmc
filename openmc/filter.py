@@ -535,6 +535,9 @@ class Filter(object):
             Construct columns for distribcell tally filters. The geometric
             information in the Summary object is embedded into a Multi-index
             column with a geometric "path" to each distribcell instance.
+            NOTE: This option assumes that all distribcell paths are of the same
+            length and do not have the same universes and cells but different
+            lattice cell indices.
 
         Returns
         -------
@@ -626,24 +629,31 @@ class Filter(object):
             # Create Pandas Multi-index columns for each level in CSG tree
             if distribcell_paths:
 
-                # FIXME: Make assumption that each path is the same length???
-                # NOTE: Just state this caveat in the docstring
-
+                # Make copy of array of distribcell paths to use in
+                # Pandas Multi-index column construction
                 distribcell_paths = copy.deepcopy(self.distribcell_paths)
                 num_offsets = len(distribcell_paths)
-                levels_remain = True
-                level_counter = 0
 
-                # FIXME: Allocate NumPy arrays for each CSG level
+                # Loop over CSG levels in the distribcell paths
+                level_counter = 0
+                levels_remain = True
                 while levels_remain:
+
+                    # Use level key as first index in Pandas Multi-index column
                     level_counter += 1
                     level_key = 'level {}'.format(level_counter)
-                    first_path = distribcell_paths[0]
-                    level_dict = OrderedDict()
 
+                    # Use the first distribcell path to determine if level
+                    # is a universe/cell or lattice level
+                    first_path = distribcell_paths[0]
                     next_index = first_path.index('-')
                     level = first_path[:next_index]
+
+                    # Trim universe/lattice info from path
                     first_path = first_path[next_index+2:]
+
+                    # Create a dictionary for this level for Pandas Multi-index
+                    level_dict = OrderedDict()
 
                     # This level is a lattice (e.g., ID(x,y,z))
                     if '(' in level:
@@ -666,14 +676,6 @@ class Filter(object):
                     else:
                         level_type = 'universe'
 
-                        # Pop off the cell ID from the path
-                        if '-' in first_path:
-                            next_index = first_path.index('-')
-                            level = first_path[:next_index]
-                            first_path = first_path[next_index+2:]
-                        else:
-                            levels_remain = False
-
                         # Initialize prefix Multi-index keys
                         univ_key = (level_key, 'univ', 'id')
                         cell_key = (level_key, 'cell', 'id')
@@ -682,6 +684,10 @@ class Filter(object):
                         # each Multi-index column in the DataFrame
                         level_dict[univ_key] = np.empty(num_offsets)
                         level_dict[cell_key] = np.empty(num_offsets)
+
+                        # Determine any levels remain in path
+                        if '-' not in first_path:
+                            levels_remain = False
 
                     # Populate Multi-index arrays with all distribcell paths
                     for i, path in enumerate(distribcell_paths):
@@ -739,7 +745,7 @@ class Filter(object):
                     else:
                         level_df = pd.concat([level_df, pd.DataFrame(level_dict)], axis=1)
 
-            # Create DataFrame column for distribcell instances IDs
+            # Create DataFrame column for distribcell instance IDs
             # NOTE: This is performed regardless of whether the user
             # requests Summary geometric information
             filter_bins = np.arange(self.num_bins)

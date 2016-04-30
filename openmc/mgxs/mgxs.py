@@ -1346,7 +1346,7 @@ class MGXS(object):
                 modified.write('\n\\end{document}')
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',
-                             xs_type='macro', summary=None):
+                             xs_type='macro', distribcell_paths=False):
         """Build a Pandas DataFrame for the MGXS data.
 
         This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
@@ -1366,12 +1366,9 @@ class MGXS(object):
         xs_type: {'macro', 'micro'}
             Return macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
-        summary : None or openmc.Summary
-            An optional Summary object to be used to construct columns for
-            distribcell tally filters (default is None). The geometric
-            information in the Summary object is embedded into a multi-index
-            column with a geometric "path" to each distribcell intance.
-            NOTE: This option requires the OpenCG Python package.
+    distribcell_paths : list of str
+        The paths traversed through the CSG tree to reach each distribcell
+        instance (for 'distribcell' filters only)
 
         Returns
         -------
@@ -1398,7 +1395,8 @@ class MGXS(object):
             # Use tally summation to sum across all nuclides
             query_nuclides = self.get_all_nuclides()
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
-            df = xs_tally.get_pandas_dataframe(summary=summary)
+            df = xs_tally.get_pandas_dataframe(
+                    distribcell_paths=distribcell_paths)
 
             # Remove nuclide column since it is homogeneous and redundant
             df.drop('nuclide', axis=1, inplace=True)
@@ -1406,14 +1404,16 @@ class MGXS(object):
         # If the user requested a specific set of nuclides
         elif self.by_nuclide and nuclides != 'all':
             xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
-            df = xs_tally.get_pandas_dataframe(summary=summary)
+            df = xs_tally.get_pandas_dataframe(
+                    distribcell_paths=distribcell_paths)
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
-            df = self.xs_tally.get_pandas_dataframe(summary=summary)
+            df = self.xs_tally.get_pandas_dataframe(
+                    distribcell_paths=distribcell_paths)
 
         # Remove the score column since it is homogeneous and redundant
-        if summary and 'distribcell' in self.domain_type:
+        if distribcell_paths and 'distribcell' in self.domain_type:
             df = df.drop('score', level=0, axis=1)
         else:
             df = df.drop('score', axis=1)
@@ -2557,7 +2557,7 @@ class Chi(MGXS):
         return xs
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',
-                             xs_type='macro', summary=None):
+                             xs_type='macro', distribcell_paths=False):
         """Build a Pandas DataFrame for the MGXS data.
 
         This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
@@ -2577,12 +2577,9 @@ class Chi(MGXS):
         xs_type: {'macro', 'micro'}
             Return macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
-        summary : None or openmc.Summary
-            An optional Summary object to be used to construct columns for
-            distribcell tally filters (default is None). The geometric
-            information in the Summary object is embedded into a multi-index
-            column with a geometric "path" to each distribcell intance.
-            NOTE: This option requires the OpenCG Python package.
+    distribcell_paths : list of str
+        The paths traversed through the CSG tree to reach each distribcell
+        instance (for 'distribcell' filters only)
 
         Returns
         -------
@@ -2598,8 +2595,8 @@ class Chi(MGXS):
         """
 
         # Build the dataframe using the parent class method
-        df = super(Chi, self).get_pandas_dataframe(groups, nuclides,
-                                                   xs_type, summary)
+        df = super(Chi, self).get_pandas_dataframe(
+                groups, nuclides, xs_type, distribcell_paths=distribcell_paths)
 
         # If user requested micro cross sections, multiply by the atom
         # densities to cancel out division made by the parent class method

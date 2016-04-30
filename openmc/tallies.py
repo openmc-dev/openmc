@@ -1538,8 +1538,8 @@ class Tally(object):
 
         return data
 
-    def get_pandas_dataframe(self, filters=True, nuclides=True,
-                             scores=True, summary=None, float_format='{:.2e}'):
+    def get_pandas_dataframe(self, filters=True, nuclides=True, scores=True,
+                             distribcell_paths=False, float_format='{:.2e}'):
         """Build a Pandas DataFrame for the Tally data.
 
         This method constructs a Pandas DataFrame object for the Tally data
@@ -1557,12 +1557,10 @@ class Tally(object):
             Include columns with nuclide bin information (default is True).
         scores : bool
             Include columns with score bin information (default is True).
-        summary : None or openmc.Summary
-            An optional Summary object to be used to construct columns for
-            distribcell tally filters (default is None). The geometric
+        distribcell_paths : bool
+            Construct columns for distribcell tally filters. The geometric
             information in the Summary object is embedded into a Multi-index
-            column with a geometric "path" to each distribcell intance.
-            NOTE: This option requires the OpenCG Python package.
+            column with a geometric "path" to each distribcell instance.
         float_format : str
             All floats in the DataFrame will be formatted using the given
             format string before printing.
@@ -1588,13 +1586,15 @@ class Tally(object):
             msg = 'The Tally ID="{0}" has no data to return'.format(self.id)
             raise KeyError(msg)
 
+        '''
         # If using Summary, ensure StatePoint.link_with_summary(...) was called
-        if summary and not self.with_summary:
+        if distribcell_pathssummary and not self.with_summary:
             msg = 'The Tally ID="{0}" has not been linked with the Summary. ' \
                   'Call the StatePoint.link_with_summary(...) method ' \
                   'before using Tally.get_pandas_dataframe(...) with ' \
                   'Summary info'.format(self.id)
             raise KeyError(msg)
+        '''
 
         # Initialize a pandas dataframe for the tally data
         import pandas as pd
@@ -1608,7 +1608,8 @@ class Tally(object):
 
             # Append each Filter's DataFrame to the overall DataFrame
             for self_filter in self.filters:
-                filter_df = self_filter.get_pandas_dataframe(data_size, summary)
+                filter_df = self_filter.get_pandas_dataframe(
+                        data_size, distribcell_paths)
                 df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it

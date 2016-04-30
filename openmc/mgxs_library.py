@@ -1,18 +1,18 @@
 from collections import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
-import warnings
 import sys
-if sys.version_info[0] >= 3:
-    basestring = str
 
 import numpy as np
 
 import openmc
-from openmc.mgxs import EnergyGroups
+import openmc.mgxs
 from openmc.checkvalue import check_type, check_value, check_greater_than, \
-                              check_iterable_type
+    check_iterable_type
 from openmc.clean_xml import *
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 # Supported incoming particle MGXS angular treatment representations
 _REPRESENTATIONS = ['isotropic', 'angle']
@@ -133,9 +133,9 @@ class XSdata(object):
         angles and outer-dimension being the polar angles.
     absorption : numpy.ndarray
         Group-wise absorption cross section ordered by increasing group index
-        (i.e., fast to thermal).  If ``representation`` is "isotropic", then the
+        (i.e., fast to thermal). If ``representation`` is "isotropic", then the
         length of this list should equal the number of groups described in the
-        ``groups`` attribute.  If ``representation`` is "angle", then the length
+        ``groups`` attribute. If ``representation`` is "angle", then the length
         of this list should equal the number of groups times the number of
         azimuthal angles times the number of polar angles, with the
         inner-dimension being groups, intermediate-dimension being azimuthal
@@ -152,7 +152,7 @@ class XSdata(object):
     multiplicity : numpy.ndarray
         Ratio of neutrons produced in scattering collisions to the neutrons
         which undergo scattering collisions; that is, the multiplicity provides
-        the code with a scaling factor to account for neutrons being produced in
+        the code with a scaling factor to account for neutrons produced in
         (n,xn) reactions.  This information is assumed isotropic and therefore
         does not need to be repeated for every Legendre moment or
         histogram/tabular bin.  This matrix follows the same arrangement as
@@ -160,30 +160,30 @@ class XSdata(object):
         needed to provide the scattering type information.
     fission : numpy.ndarray
         Group-wise fission cross section ordered by increasing group index
-        (i.e., fast to thermal).  If ``representation`` is "isotropic", then the
+        (i.e., fast to thermal). If ``representation`` is "isotropic", then the
         length of this list should equal the number of groups described in the
-        ``groups`` attribute.  If ``representation`` is "angle", then the length
+        ``groups`` attribute. If ``representation`` is "angle", then the length
         of this list should equal the number of groups times the number of
         azimuthal angles times the number of polar angles, with the
         inner-dimension being groups, intermediate-dimension being azimuthal
         angles and outer-dimension being the polar angles.
     k_fission : numpy.ndarray
-        Group-wise kappa-fission cross section ordered by increasing group index
-        (i.e., fast to thermal).  If ``representation`` is "isotropic", then the
-        length of this list should equal the number of groups described in the
-        ``groups`` attribute.  If ``representation`` is "angle", then the length
+        Group-wise kappa-fission cross section ordered by increasing group
+        index (i.e., fast to thermal).  If ``representation`` is "isotropic",
+        then the length of this list should equal the number of groups in the
+        ``groups`` attribute. If ``representation`` is "angle", then the length
         of this list should equal the number of groups times the number of
         azimuthal angles times the number of polar angles, with the
         inner-dimension being groups, intermediate-dimension being azimuthal
         angles and outer-dimension being the polar angles.
     chi : numpy.ndarray
-        Group-wise fission spectra ordered by increasing group index (i.e., fast
-        to thermal).  This attribute should be used if making the common
+        Group-wise fission spectra ordered by increasing group index (i.e.,
+        fast to thermal).  This attribute should be used if making the common
         approximation that the fission spectra does not depend on incoming
-        energy.  If the user does not wish to make this approximation, then this
-        should not be provided and this information included in the
+        energy.  If the user does not wish to make this approximation, then
+        this should not be provided and this information included in the
         ``nu_fission`` element instead.  If ``representation`` is "isotropic",
-        then the length of this list should equal the number of groups described
+        then the length of this list should equal the number of groups
         in the ``groups`` element.  If ``representation`` is "angle", then the
         length of this list should equal the number of groups times the number
         of azimuthal angles times the number of polar angles, with the
@@ -191,12 +191,13 @@ class XSdata(object):
         angles and outer-dimension being the polar angles.
     nu_fission : numpy.ndarray
         Group-wise fission production cross section vector (i.e., if ``chi`` is
-        provided), or is the group-wise fission production matrix.  If providing
+        provided), or is the group-wise fission production matrix. If providing
         the vector, it should be ordered the same as the ``fission`` data.  If
         providing the matrix, it should be ordered the same as the
         ``multiplicity`` matrix.
 
     """
+
     def __init__(self, name, energy_groups, representation="isotropic"):
         # Initialize class attributes
         self._name = name
@@ -308,11 +309,11 @@ class XSdata(object):
     @energy_groups.setter
     def energy_groups(self, energy_groups):
         # Check validity of energy_groups
-        check_type("energy_groups", energy_groups, EnergyGroups)
+        check_type("energy_groups", energy_groups, openmc.mgxs.EnergyGroups)
 
-        # Check that there is one or more groups
-        if ((energy_groups.num_groups is None) or
-            (energy_groups.num_groups < 1)):
+        # Check that there are one or more groups
+        ng = energy_groups.num_groups
+        if ((ng is None) or (ng < 1)):
 
             msg = 'energy_groups object incorrectly initialized.'
             raise ValueError(msg)
@@ -413,7 +414,8 @@ class XSdata(object):
             shape = (self._num_polar, self._num_azimuthal,
                      self._energy_groups.num_groups)
         # check we have a numpy list
-        check_type("absorption", absorption, np.ndarray, expected_iter_type=Real)
+        check_type("absorption", absorption, np.ndarray,
+                   expected_iter_type=Real)
         if absorption.shape == shape:
             self._absorption = np.copy(absorption)
         else:
@@ -447,14 +449,15 @@ class XSdata(object):
             shape = (self._num_polar, self._num_azimuthal,
                      self._energy_groups.num_groups)
         # check we have a numpy list
-        check_type("k_fission", k_fission, np.ndarray, expected_iter_type=Real)
+        check_type("k_fission", k_fission, np.ndarray,
+                   expected_iter_type=Real)
         if k_fission.shape == shape:
             self._k_fission = np.copy(k_fission)
             if np.sum(self._k_fission) > 0.0:
                 self._fissionable = True
         else:
-            msg = 'Shape of provided k_fission "{0}" does not match shape ' \
-                  'required, "{1}"'.format(k_fission.shape, shape)
+            msg = 'Shape of provided k_fission "{0}" does not match ' \
+                  'shape required, "{1}"'.format(k_fission.shape, shape)
             raise ValueError(msg)
 
     @chi.setter
@@ -462,6 +465,7 @@ class XSdata(object):
         if not self._use_chi:
             msg = 'Providing chi when nu_fission already provided as matrix!'
             raise ValueError(msg)
+
         if self._representation is 'isotropic':
             shape = (self._energy_groups.num_groups,)
         elif self._representation is 'angle':
@@ -516,18 +520,21 @@ class XSdata(object):
         if multiplicity.shape == shape:
             self._multiplicity = np.copy(multiplicity)
         else:
-            msg = 'Shape of provided multiplicity "{0}" does not match shape ' \
-                  'required, "{1}"'.format(multiplicity.shape, shape)
+            msg = 'Shape of provided multiplicity "{0}" does not match shape' \
+                  ' required, "{1}"'.format(multiplicity.shape, shape)
             raise ValueError(msg)
 
     @nu_fission.setter
     def nu_fission(self, nu_fission):
+        # The NuFissionXS class does not have the capability to produce
+        # a fission matrix and therefore if this path is pursued, we know
+        # chi must be used.
         # nu_fission can be given as a vector or a matrix
         # Vector is used when chi also exists.
         # Matrix is used when chi does not exist.
         # We have to check that the correct form is given, but only if
         # chi already has been set.  If not, we just check that this is OK
-        # and set the use_chi flag.
+        # and set the use_chi flag accordingly
 
         # First lets set our dimensions here since they get used repeatedly
         # throughout this code.
@@ -542,8 +549,8 @@ class XSdata(object):
                          self._energy_groups.num_groups,
                          self._energy_groups.num_groups)
 
-        # Begin by checking the case when chi has already been given and thus
-        # the rules for filling in nu_fission are set.
+        # Begin by checking the case when chi has already been given and
+        # thus the rules for filling in nu_fission are set.
         if self._use_chi is not None:
             if self._use_chi:
                 shape = shape_vec
@@ -553,20 +560,521 @@ class XSdata(object):
                 msg = "Invalid Shape of Nu_fission!"
                 raise ValueError(msg)
         else:
-            # Get shape of nu_fission so we can figure if we need chi or not
+            # Get shape of nu_fission to determine if we need chi or not
             if nu_fission.shape == shape_vec:
                 self._use_chi = True
-                shape = shape_vec
             elif nu_fission.shape == shape_mat:
                 self._use_chi = False
-                shape = shape_mat
             else:
                 msg = "Invalid Shape of Nu_fission!"
                 raise ValueError(msg)
 
         # check we have a numpy list
-        check_type("nu_fission", nu_fission, np.ndarray, expected_iter_type=Real)
+        check_type("nu_fission", nu_fission, np.ndarray,
+                   expected_iter_type=Real)
         self._nu_fission = np.copy(nu_fission)
+        if np.sum(self._nu_fission) > 0.0:
+            self._fissionable = True
+
+    def set_total(self, total, **kwargs):
+        if isinstance(total, openmc.mgxs.TotalXS):
+            # Make sure passed MGXS object contains correct group structure
+            if self.energy_groups != total.energy_groups:
+                msg = 'Group structure of provided TotalXS does not match' \
+                      ' group structure of XSdata object'
+                raise ValueError(msg)
+            # Get openmc.mgxs.get_xs() arguments from kwargs
+            # nuclides, xs_type, and value will have sane defaults but can be
+            # overridden by kwards
+            if 'nuclides' in kwargs:
+                nuclides = kwargs['nuclides']
+            else:
+                nuclides = 'sum'
+            if 'xs_type' in kwargs:
+                xs_type = kwargs['xs_type']
+            else:
+                xs_type = 'macro'
+            if 'value' in kwargs:
+                value = kwargs['value']
+            else:
+                value = 'mean'
+            # subdomains is required from the kwargs as this is specific to
+            # this XSdata object.
+            if 'subdomains' in kwargs:
+                subdomains = kwargs['subdomains']
+            else:
+                msg = "Argument 'subdomains' is required"
+                raise ValueError(msg)
+
+            if self._representation is 'isotropic':
+                self._total = total.get_xs(subdomains=subdomains,
+                                           nuclides=nuclides, xs_type=xs_type,
+                                           value=value)
+            elif self._representation is 'angle':
+                # Not yet implemented as MGXS do not yet support this
+                pass
+
+        else:
+            if self._representation is 'isotropic':
+                shape = (self._energy_groups.num_groups,)
+            elif self._representation is 'angle':
+                shape = (self._num_polar, self._num_azimuthal,
+                         self._energy_groups.num_groups)
+            # check we have a numpy list
+            check_type("total", total, np.ndarray, expected_iter_type=Real)
+            if total.shape == shape:
+                self._total = np.copy(total)
+            else:
+                msg = 'Shape of provided total "{0}" does not match shape ' \
+                      'required, "{1}"'.format(total.shape, shape)
+                raise ValueError(msg)
+
+    def set_absorption(self, absorption, **kwargs):
+        if isinstance(absorption, openmc.mgxs.AbsorptionXS):
+            # Make sure passed MGXS object contains correct group structure
+            if self.energy_groups != absorption.energy_groups:
+                msg = 'Group structure of provided AbsorptionXS does not ' \
+                      ' match group structure of XSdata object'
+                raise ValueError(msg)
+            # Get openmc.mgxs.get_xs() arguments from kwargs
+            # nuclides, xs_type, and value will have sane defaults but can be
+            # overridden by kwards
+            if 'nuclides' in kwargs:
+                nuclides = kwargs['nuclides']
+            else:
+                nuclides = 'sum'
+            if 'xs_type' in kwargs:
+                xs_type = kwargs['xs_type']
+            else:
+                xs_type = 'macro'
+            if 'value' in kwargs:
+                value = kwargs['value']
+            else:
+                value = 'mean'
+            # subdomains is required from the kwargs as this is specific to
+            # this XSdata object.
+            if 'subdomains' in kwargs:
+                subdomains = kwargs['subdomains']
+            else:
+                msg = "Argument 'subdomains' is required"
+                raise ValueError(msg)
+
+            if self._representation is 'isotropic':
+                self._absorption = absorption.get_xs(subdomains=subdomains,
+                                                     nuclides=nuclides,
+                                                     xs_type=xs_type,
+                                                     value=value)
+            elif self._representation is 'angle':
+                # Not yet implemented as MGXS do not yet support this
+                pass
+
+        else:
+            if self._representation is 'isotropic':
+                shape = (self._energy_groups.num_groups,)
+            elif self._representation is 'angle':
+                shape = (self._num_polar, self._num_azimuthal,
+                         self._energy_groups.num_groups)
+            # check we have a numpy list
+            check_type("absorption", absorption, np.ndarray, expected_iter_type=Real)
+            if absorption.shape == shape:
+                self._absorption = np.copy(absorption)
+            else:
+                msg = 'Shape of provided absorption "{0}" does not match shape ' \
+                      'required, "{1}"'.format(absorption.shape, shape)
+                raise ValueError(msg)
+
+    def set_fission(self, fission, **kwargs):
+        if isinstance(fission, openmc.mgxs.FissionXS):
+            # Make sure passed MGXS object contains correct group structure
+            if self.energy_groups != fission.energy_groups:
+                msg = 'Group structure of provided FissionXS does not match ' \
+                      'group structure of XSdata object'
+                raise ValueError(msg)
+            # Get openmc.mgxs.get_xs() arguments from kwargs
+            # nuclides, xs_type, and value will have sane defaults but can be
+            # overridden by kwards
+            if 'nuclides' in kwargs:
+                nuclides = kwargs['nuclides']
+            else:
+                nuclides = 'sum'
+            if 'xs_type' in kwargs:
+                xs_type = kwargs['xs_type']
+            else:
+                xs_type = 'macro'
+            if 'value' in kwargs:
+                value = kwargs['value']
+            else:
+                value = 'mean'
+            # subdomains is required from the kwargs as this is specific to
+            # this XSdata object.
+            if 'subdomains' in kwargs:
+                subdomains = kwargs['subdomains']
+            else:
+                msg = "Argument 'subdomains' is required"
+                raise ValueError(msg)
+
+            if self._representation is 'isotropic':
+                self._fission = fission.get_xs(subdomains=subdomains,
+                                               nuclides=nuclides,
+                                               xs_type=xs_type,
+                                               value=value)
+            elif self._representation is 'angle':
+                # Not yet implemented as MGXS do not yet support this
+                pass
+
+        else:
+            if self._representation is 'isotropic':
+                shape = (self._energy_groups.num_groups,)
+            elif self._representation is 'angle':
+                shape = (self._num_polar, self._num_azimuthal,
+                         self._energy_groups.num_groups)
+            # check we have a numpy list
+            check_type("fission", fission, np.ndarray, expected_iter_type=Real)
+            if fission.shape == shape:
+                self._fission = np.copy(fission)
+                if np.sum(self._fission) > 0.0:
+                    self._fissionable = True
+            else:
+                msg = 'Shape of provided fission "{0}" does not match shape ' \
+                      'required, "{1}"'.format(fission.shape, shape)
+                raise ValueError(msg)
+
+    def set_k_fission(self, k_fission, **kwargs):
+        if isinstance(k_fission, openmc.mgxs.KappaFissionXS):
+            # Make sure passed MGXS object contains correct group structure
+            if self.energy_groups != k_fission.energy_groups:
+                msg = 'Group structure of provided KappaFissionXS does not ' \
+                      'match group structure of XSdata object'
+                raise ValueError(msg)
+            # Get openmc.mgxs.get_xs() arguments from kwargs
+            # nuclides, xs_type, and value will have sane defaults but can be
+            # overridden by kwards
+            if 'nuclides' in kwargs:
+                nuclides = kwargs['nuclides']
+            else:
+                nuclides = 'sum'
+            if 'xs_type' in kwargs:
+                xs_type = kwargs['xs_type']
+            else:
+                xs_type = 'macro'
+            if 'value' in kwargs:
+                value = kwargs['value']
+            else:
+                value = 'mean'
+            # subdomains is required from the kwargs as this is specific to
+            # this XSdata object.
+            if 'subdomains' in kwargs:
+                subdomains = kwargs['subdomains']
+            else:
+                msg = "Argument 'subdomains' is required"
+                raise ValueError(msg)
+
+            if self._representation is 'isotropic':
+                self._k_fission = k_fission.get_xs(subdomains=subdomains,
+                                                   nuclides=nuclides,
+                                                   xs_type=xs_type,
+                                                   value=value)
+            elif self._representation is 'angle':
+                # Not yet implemented as MGXS do not yet support this
+                pass
+
+        else:
+            if self._representation is 'isotropic':
+                shape = (self._energy_groups.num_groups,)
+            elif self._representation is 'angle':
+                shape = (self._num_polar, self._num_azimuthal,
+                         self._energy_groups.num_groups)
+            # check we have a numpy list
+            check_type("k_fission", k_fission, np.ndarray,
+                       expected_iter_type=Real)
+            if k_fission.shape == shape:
+                self._k_fission = np.copy(k_fission)
+                if np.sum(self._k_fission) > 0.0:
+                    self._fissionable = True
+            else:
+                msg = 'Shape of provided k_fission "{0}" does not match ' \
+                      'shape required, "{1}"'.format(k_fission.shape, shape)
+                raise ValueError(msg)
+
+    def set_chi(self, chi, **kwargs):
+        if not self._use_chi:
+            msg = 'Providing chi when nu_fission already provided as matrix!'
+            raise ValueError(msg)
+
+        if isinstance(chi, openmc.mgxs.Chi):
+            # Make sure passed MGXS object contains correct group structure
+            if self.energy_groups != chi.energy_groups:
+                msg = 'Group structure of provided Chi does not ' \
+                      'match group structure of XSdata object'
+                raise ValueError(msg)
+            # Get openmc.mgxs.get_xs() arguments from kwargs
+            # nuclides, xs_type, and value will have sane defaults but can be
+            # overridden by kwards
+            if 'nuclides' in kwargs:
+                nuclides = kwargs['nuclides']
+            else:
+                nuclides = 'sum'
+            if 'xs_type' in kwargs:
+                xs_type = kwargs['xs_type']
+            else:
+                xs_type = 'macro'
+            if 'value' in kwargs:
+                value = kwargs['value']
+            else:
+                value = 'mean'
+            # subdomains is required from the kwargs as this is specific to
+            # this XSdata object.
+            if 'subdomains' in kwargs:
+                subdomains = kwargs['subdomains']
+            else:
+                msg = "Argument 'subdomains' is required"
+                raise ValueError(msg)
+
+            if self._representation is 'isotropic':
+                self._chi = chi.get_xs(subdomains=subdomains,
+                                       nuclides=nuclides,
+                                       xs_type=xs_type,
+                                       value=value)
+            elif self._representation is 'angle':
+                # Not yet implemented as MGXS do not yet support this
+                pass
+
+        else:
+            if self._representation is 'isotropic':
+                shape = (self._energy_groups.num_groups,)
+            elif self._representation is 'angle':
+                shape = (self._num_polar, self._num_azimuthal,
+                         self._energy_groups.num_groups)
+            # check we have a numpy list
+            check_type("chi", chi, np.ndarray, expected_iter_type=Real)
+            if chi.shape == shape:
+                self._chi = np.copy(chi)
+            else:
+                msg = 'Shape of provided chi "{0}" does not match shape ' \
+                      'required, "{1}"'.format(chi.shape, shape)
+                raise ValueError(msg)
+            if self._use_chi is not None:
+                self._use_chi = True
+
+    def set_scatter(self, scatter, **kwargs):
+        if isinstance(scatter, openmc.mgxs.ScatterMatrixXS):
+            # Make sure passed MGXS object contains correct group structure
+            if self.energy_groups != scatter.energy_groups:
+                msg = 'Group structure of provided ScatterMatrixXS does not ' \
+                      'match group structure of XSdata object'
+                raise ValueError(msg)
+            # Get openmc.mgxs.get_xs() arguments from kwargs
+            # nuclides, xs_type, and value will have sane defaults but can be
+            # overridden by kwards
+            if 'nuclides' in kwargs:
+                nuclides = kwargs['nuclides']
+            else:
+                nuclides = 'sum'
+            if 'xs_type' in kwargs:
+                xs_type = kwargs['xs_type']
+            else:
+                xs_type = 'macro'
+            if 'value' in kwargs:
+                value = kwargs['value']
+            else:
+                value = 'mean'
+            # subdomains is required from the kwargs as this is specific to
+            # this XSdata object.
+            if 'subdomains' in kwargs:
+                subdomains = kwargs['subdomains']
+            else:
+                msg = "Argument 'subdomains' is required"
+                raise ValueError(msg)
+
+            if self._representation is 'isotropic':
+                self._scatter = scatter.get_xs(subdomains=subdomains,
+                                               nuclides=nuclides,
+                                               xs_type=xs_type,
+                                               value=value)
+            elif self._representation is 'angle':
+                # Not yet implemented as MGXS do not yet support this
+                pass
+
+        else:
+            if self._representation is 'isotropic':
+                shape = (self.num_orders, self._energy_groups.num_groups,
+                         self._energy_groups.num_groups)
+                max_depth = 3
+            elif self._representation is 'angle':
+                shape = (self._num_polar, self._num_azimuthal, self.num_orders,
+                         self._energy_groups.num_groups,
+                         self._energy_groups.num_groups)
+                max_depth = 5
+            # check we have a numpy list
+            check_iterable_type("scatter", scatter, expected_type=Real,
+                                max_depth=max_depth)
+            if scatter.shape == shape:
+                self._scatter = np.copy(scatter)
+            else:
+                msg = 'Shape of provided scatter "{0}" does not match shape ' \
+                      'required, "{1}"'.format(scatter.shape, shape)
+                raise ValueError(msg)
+
+    def set_multiplicity(self, multiplicity, scatter=None, **kwargs):
+        if isinstance(multiplicity, openmc.mgxs.NuScatterMatrixXS):
+            if not isinstance(scatter, openmc.mgxs.ScatterMatrixXS):
+                msg = "Argument 'scatter' must be provided."
+                raise ValueError(msg)
+            # Make sure passed MGXS objects contain correct group structure
+            if self.energy_groups != multiplicity.energy_groups:
+                msg = 'Group structure of provided NuScatterMatrixXS does not ' \
+                      'match group structure of XSdata object'
+                raise ValueError(msg)
+            if self.energy_groups != scatter.energy_groups:
+                msg = 'Group structure of provided ScatterMatrixXS does not ' \
+                      'match group structure of XSdata object'
+                raise ValueError(msg)
+            # Get openmc.mgxs.get_xs() arguments from kwargs
+            # nuclides, xs_type, and value will have sane defaults but can be
+            # overridden by kwards
+            if 'nuclides' in kwargs:
+                nuclides = kwargs['nuclides']
+            else:
+                nuclides = 'sum'
+            if 'xs_type' in kwargs:
+                xs_type = kwargs['xs_type']
+            else:
+                xs_type = 'macro'
+            if 'value' in kwargs:
+                value = kwargs['value']
+            else:
+                value = 'mean'
+            # subdomains is required from the kwargs as this is specific to
+            # this XSdata object.
+            if 'subdomains' in kwargs:
+                subdomains = kwargs['subdomains']
+            else:
+                msg = "Argument 'subdomains' is required"
+                raise ValueError(msg)
+
+            if self._representation is 'isotropic':
+                nuscatt = multiplicity.get_xs(subdomains=subdomains,
+                                              nuclides=nuclides,
+                                              xs_type=xs_type,
+                                              value=value)
+                scatt = scatter.get_xs(subdomains=subdomains,
+                                       nuclides=nuclides,
+                                       xs_type=xs_type,
+                                       value=value)
+                self._multiplicity = np.divide(nuscatt, scatt)
+            elif self._representation is 'angle':
+                # Not yet implemented as MGXS do not yet support this
+                pass
+
+        else:
+            if self._representation is 'isotropic':
+                shape = (self._energy_groups.num_groups,
+                         self._energy_groups.num_groups)
+                max_depth = 2
+            elif self._representation is 'angle':
+                shape = (self._num_polar, self._num_azimuthal,
+                         self._energy_groups.num_groups,
+                         self._energy_groups.num_groups)
+                max_depth = 4
+            # check we have a numpy list
+            check_iterable_type("multiplicity", multiplicity, expected_type=Real,
+                                max_depth=max_depth)
+            if multiplicity.shape == shape:
+                self._multiplicity = np.copy(multiplicity)
+            else:
+                msg = 'Shape of provided multiplicity "{0}" does not match shape' \
+                      ' required, "{1}"'.format(multiplicity.shape, shape)
+                raise ValueError(msg)
+
+    def set_nu_fission(self, nu_fission, **kwargs):
+        # The NuFissionXS class does not have the capability to produce
+        # a fission matrix and therefore if this path is pursued, we know
+        # chi must be used.
+        if isinstance(nu_fission, openmc.mgxs.NuFissionXS):
+            # Make sure passed MGXS object contains correct group structure
+            if self.energy_groups != nu_fission.energy_groups:
+                msg = 'Group structure of provided NuFissionXS does not match'\
+                      ' group structure of XSdata object'
+                raise ValueError(msg)
+            # Get openmc.mgxs.get_xs() arguments from kwargs
+            # nuclides, xs_type, and value will have sane defaults but can be
+            # overridden by kwards
+            if 'nuclides' in kwargs:
+                nuclides = kwargs['nuclides']
+            else:
+                nuclides = 'sum'
+            if 'xs_type' in kwargs:
+                xs_type = kwargs['xs_type']
+            else:
+                xs_type = 'macro'
+            if 'value' in kwargs:
+                value = kwargs['value']
+            else:
+                value = 'mean'
+            # subdomains is required from the kwargs as this is specific to
+            # this XSdata object.
+            if 'subdomains' in kwargs:
+                subdomains = kwargs['subdomains']
+            else:
+                msg = "Argument 'subdomains' is required"
+                raise ValueError(msg)
+
+            if self._representation is 'isotropic':
+                self._nu_fission = nu_fission.get_xs(subdomains=subdomains,
+                                                     nuclides=nuclides,
+                                                     xs_type=xs_type,
+                                                     value=value)
+            elif self._representation is 'angle':
+                # Not yet implemented as MGXS do not yet support this
+                pass
+
+            self._use_chi = True
+
+        else:
+            # nu_fission can be given as a vector or a matrix
+            # Vector is used when chi also exists.
+            # Matrix is used when chi does not exist.
+            # We have to check that the correct form is given, but only if
+            # chi already has been set.  If not, we just check that this is OK
+            # and set the use_chi flag accordingly
+
+            # First lets set our dimensions here since they get used repeatedly
+            # throughout this code.
+            if self._representation is 'isotropic':
+                shape_vec = (self._energy_groups.num_groups,)
+                shape_mat = (self._energy_groups.num_groups,
+                             self._energy_groups.num_groups)
+            elif self._representation is 'angle':
+                shape_vec = (self._num_polar, self._num_azimuthal,
+                             self._energy_groups.num_groups)
+                shape_mat = (self._num_polar, self._num_azimuthal,
+                             self._energy_groups.num_groups,
+                             self._energy_groups.num_groups)
+
+            # Begin by checking the case when chi has already been given and
+            # thus the rules for filling in nu_fission are set.
+            if self._use_chi is not None:
+                if self._use_chi:
+                    shape = shape_vec
+                else:
+                    shape = shape_mat
+                if nu_fission.shape != shape:
+                    msg = "Invalid Shape of Nu_fission!"
+                    raise ValueError(msg)
+            else:
+                # Get shape of nu_fission to determine if we need chi or not
+                if nu_fission.shape == shape_vec:
+                    self._use_chi = True
+                elif nu_fission.shape == shape_mat:
+                    self._use_chi = False
+                else:
+                    msg = "Invalid Shape of Nu_fission!"
+                    raise ValueError(msg)
+
+            # check we have a numpy list
+            check_type("nu_fission", nu_fission, np.ndarray,
+                       expected_iter_type=Real)
+            self._nu_fission = np.copy(nu_fission)
         if np.sum(self._nu_fission) > 0.0:
             self._fissionable = True
 
@@ -649,7 +1157,8 @@ class XSdata(object):
 
 class MGXSLibrary(object):
     """Multi-Group Cross Sections file used for an OpenMC simulation.
-    Corresponds directly to the MG version of the cross_sections.xml input file.
+    Corresponds directly to the MG version of the cross_sections.xml input
+    file.
 
     Attributes
     ----------
@@ -684,7 +1193,7 @@ class MGXSLibrary(object):
 
     @energy_groups.setter
     def energy_groups(self, energy_groups):
-        check_type("energy groups", energy_groups, EnergyGroups)
+        check_type("energy groups", energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
 
     def add_xsdata(self, xsdata):
@@ -721,8 +1230,8 @@ class MGXSLibrary(object):
         """
 
         if not isinstance(xsdatas, Iterable):
-            msg = 'Unable to create OpenMC xsdatas.xml file from "{0}" which ' \
-                  'is not iterable'.format(xsdatas)
+            msg = 'Unable to create OpenMC xsdatas.xml file from "{0}" which' \
+                  ' is not iterable'.format(xsdatas)
             raise ValueError(msg)
 
         for xsdata in xsdatas:
@@ -793,4 +1302,4 @@ class MGXSLibrary(object):
         # Write the XML Tree to the xsdatas.xml file
         tree = ET.ElementTree(self._cross_sections_file)
         tree.write(filename, xml_declaration=True,
-                             encoding='utf-8', method="xml")
+                   encoding='utf-8', method="xml")

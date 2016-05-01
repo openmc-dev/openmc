@@ -4,6 +4,8 @@ import copy
 import pickle
 from numbers import Integral
 from collections import OrderedDict
+import numpy as np
+import warnings.warn as warn
 
 import openmc
 import openmc.mgxs
@@ -712,3 +714,169 @@ class Library(object):
 
         # Load and return pickled Library object
         return pickle.load(open(full_filename, 'rb'))
+
+    def write_mg_library(self, xs_type='micro', domain_names=None, xs_ids=None,
+                         filename='mg_cross_sections', directory='./'):
+        """Create a cross-section data library file for the Multi-Group
+        mode of OpenMC.
+
+        Parameters
+        ----------
+        xs_type: {'macro', 'micro'}
+            Provide the macro or micro cross section in units of cm^-1 or
+            barns. Defaults to 'macro'. If the Library object is not tallied by
+            nuclide this will be set to 'macro' regardless
+        domain_names : Iterable of str
+            List of names to apply to the xsdata entries in the
+            resultant mgxs data file. Defaults to "set1", "set2", ...
+        xs_ids : str or Iterable of str
+            Cross section set identifier (i.e., "71c") for all
+            data sets (if only str) or for each individual one
+            (if iterable of str). Defaults to '1g'
+        filename : str
+            Filename for the pickle file. Defaults to 'mg_cross_sections'.
+        directory : str
+            Directory for the pickle file. Defaults to './' (the
+            current working directory).
+
+        See also
+        --------
+        Library.dump_to_file(mgxs_lib, filename, directory)
+
+        """
+
+        # Check data types provided
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        if not self.by_nuclide:
+            xs_type = 'macro'
+        if domain_names is not None:
+            cv.check_iterable_type('domain_names', filename, basestring)
+        if xs_ids is not None:
+            if isinstance(xs_ids, basestring):
+                # If we only have a string lets convert it now to a list
+                # of strings.
+                xs_ids = [xs_ids for i in range(len(self.domains))]
+            else:
+                cv.check_iterable_type('xs_ids', xs_ids, basestring)
+        else:
+            xs_ids = ['.1g']
+        cv.check_type('filename', filename, basestring)
+        cv.check_type('directory', directory, basestring)
+
+        # Make directory if it does not exist
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        full_filename = os.path.join(directory, filename + '.xml')
+        full_filename = full_filename.replace(' ', '-')
+
+        # Initialize file
+        mgxs_file = openmc.MGXSLibrary(self.energy_groups)
+
+        # Set the scattering order as isotropic until
+        # support  for higher orders are included
+        order = 0
+
+        # Build XSdata objects
+        xsdatas = []
+        for i in range(len(self.domains)):
+            id = self.domains[i].id
+            if not self.by_nuclide:
+                # Use k instead of i simply because k will be used for
+                # the nuclide index in the else part of this conditional
+                # and using k allows us to use the same code.
+                k = i
+                # Build & add metadata to XSdata object
+                # (Use i here because k in nuclides will add chars to this)
+                if domain_names is None:
+                    name = 'set' + str(i + 1)
+                else:
+                    name = domain_names[i]
+                name += xs_ids[k]
+                xsdata = openmc.XSdata(name, self.energy_groups)
+                xsdata.order = order
+
+                # Now get xs data itself
+                if 'total' in self.mgxs_types:
+                    xsdata.set_total(self.all_mgxs[id]['total'],
+                                     xs_type=xs_type, subdomains=(k + 1,))
+                if 'absorption' in self.mgxs_types:
+                    xsdata.set_absorption(self.all_mgxs[id]['absorption'],
+                                          xs_type=xs_type, subdomains=(k + 1,))
+                if 'fission' in self.mgxs_types:
+                    xsdata.set_fission(self.all_mgxs[id]['fission'],
+                                       xs_type=xs_type, subdomains=(k + 1,))
+                if 'kappa-fission' in self.mgxs_types:
+                    xsdata.set_k_fission(self.all_mgxs[id]['kappa-fission'],
+                                         xs_type=xs_type, subdomains=(k + 1,))
+                if 'chi' in self.mgxs_types:
+                    xsdata.set_chi(self.all_mgxs[id]['chi'],
+                                   xs_type=xs_type, subdomains=(k + 1,))
+                if 'nu-fission' in self.mgxs_types:
+                    xsdata.set_nu_fission(self.all_mgxs[id]['nu-fission'],
+                                          xs_type=xs_type, subdomains=(k + 1,))
+                # multiplicity requires scatter and nu-scatter
+                if (('scatter' in self.mgxs_types) and ('nu-scatter' in
+                                                        self.mgxs_types)):
+                    xsdata.set_multiplicity(self.all_mgxs[id]['nu-scatter'],
+                                            self.all_mgxs[id]['scatter'],
+                                            xs_type=xs_type,
+                                            subdomains=(k + 1,))
+                    using_multiplicity = True
+                else:
+                    using_multiplicity = False
+
+                if using_multiplicity:
+                    xsdata.set_scatter(self.all_mgxs[id]['scatter'],
+                                       xs_type=xs_type,
+                                       subdomains=(k + 1,))
+                else:
+                    if 'nu-scatter' in self.mgxs_types:
+                        xsdata.set_scatter(self.all_mgxs[id]['nu-scatter'],
+                                           xs_type=xs_type,
+                                           subdomains=(k + 1,))
+                        # Since we are not using multiplicity, then
+                        # scattering multiplication (nu-scatter) must be
+                        # accounted for approximately by using an adjusted
+                        # absorption cross section.
+                        if self.total is not None:
+                            xsdata.absorption = \
+                                np.subtract(xsdata.total,
+                                            np.sum(xsdata.scatter[0, :, :],
+                                                   axis=1))
+                        else:
+                            # Total isnt included so we cant do the above
+                            # approximation w/out changing absorption instead.
+                            # That can be done with:
+                            # SigA' = SigA - (nuSigS - SigS)
+                            # Doing so would mean essentially duplicating
+                            # set_scatter from MGXSLibrary to obtain the
+                            # SigS, which would be big and ugly once
+                            # angle filters are available.
+                            # Instead, raise a warning about the
+                            # lack of neutron balance and then use scatter
+                            # instead of nu-scatter
+                            if 'scatter' in self.mgxs_types:
+                                msg = "To properly use the 'nu-scatter' " + \
+                                      "MGXS type and maintain neutron " + \
+                                      "balance, a 'total' MGXS type " + \
+                                      "should be provided."
+                                warn(msg)
+                                xsdata.set_scatter(
+                                    self.all_mgxs[id]['scatter'],
+                                    xs_type=xs_type, subdomains=(k + 1,))
+                            else:
+                                # Welp, cant do that either. Quit while ahead.
+                                msg = "Total X/S must be provided if using" + \
+                                      " nu-scatter as the scattering data"
+                                raise ValueError(msg)
+
+                xsdatas.append(xsdata)
+            else:
+                pass
+
+        # Add XSdatas to file
+
+        # Finally, write the file
+        mgxs_file.export_to_xml(full_filename)

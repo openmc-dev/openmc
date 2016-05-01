@@ -13,6 +13,20 @@ online. We recommend going through the modules from Codecademy_ and/or the
 `Scipy lectures`_. The full API documentation serves to provide more information
 on a given module or class.
 
+-------------------------
+Example Jupyter Notebooks
+-------------------------
+
+.. toctree::
+    :maxdepth: 1
+
+    examples/post-processing
+    examples/pandas-dataframes
+    examples/tally-arithmetic
+    examples/mgxs-part-i
+    examples/mgxs-part-ii
+    examples/mgxs-part-iii
+
 ------------------------------------
 :mod:`openmc` -- Basic Functionality
 ------------------------------------
@@ -270,20 +284,6 @@ Multi-group Cross Section Libraries
     :template: myclass.rst
 
     openmc.mgxs.Library
-
--------------------------
-Example Jupyter Notebooks
--------------------------
-
-.. toctree::
-    :maxdepth: 1
-
-    examples/post-processing
-    examples/pandas-dataframes
-    examples/tally-arithmetic
-    examples/mgxs-part-i
-    examples/mgxs-part-ii
-    examples/mgxs-part-iii
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

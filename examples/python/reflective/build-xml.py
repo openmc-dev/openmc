@@ -23,10 +23,9 @@ fuel = openmc.Material(material_id=1, name='fuel')
 fuel.set_density('g/cc', 4.5)
 fuel.add_nuclide(u235, 1.)
 
-# Instantiate a Materials collection, register Material, and export to XML
-materials_file = openmc.Materials()
+# Instantiate a Materials collection and export to XML
+materials_file = openmc.Materials([fuel])
 materials_file.default_xs = '71c'
-materials_file.add_material(fuel)
 materials_file.export_to_xml()
 
 

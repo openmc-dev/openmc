@@ -100,10 +100,9 @@ borated_water.add_nuclide(o16, 2.4672e-2)
 borated_water.add_nuclide(o17, 6.0099e-5)
 borated_water.add_s_alpha_beta('HH2O', '71t')
 
-# Instantiate a Materials collection, register all Materials, and export to XML
-materials_file = openmc.Materials()
+# Instantiate a Materials collection and export to XML
+materials_file = openmc.Materials([uo2, helium, zircaloy, borated_water])
 materials_file.default_xs = '71c'
-materials_file.add_materials([uo2, helium, zircaloy, borated_water])
 materials_file.export_to_xml()
 
 
@@ -197,8 +196,6 @@ tally = openmc.Tally(tally_id=1, name='tally 1')
 tally.filters = [energy_filter, mesh_filter]
 tally.scores = ['flux', 'fission', 'nu-fission']
 
-# Instantiate a Tallies collection, register all Tallies, and export to XML
-tallies_file = openmc.Tallies()
-tallies_file.add_mesh(mesh)
-tallies_file.add_tally(tally)
+# Instantiate a Tallies collection and export to XML
+tallies_file = openmc.Tallies([tally])
 tallies_file.export_to_xml()

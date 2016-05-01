@@ -31,10 +31,9 @@ fuel = openmc.Material(material_id=40, name='fuel')
 fuel.set_density('g/cc', 4.5)
 fuel.add_nuclide(u235, 1.)
 
-# Instantiate a Materials collection, register all Materials, and export to XML
-materials_file = openmc.Materials()
+# Instantiate a Materials collection and export to XML
+materials_file = openmc.Materials([moderator, fuel])
 materials_file.default_xs = '71c'
-materials_file.add_materials([moderator, fuel])
 materials_file.export_to_xml()
 
 
@@ -124,9 +123,6 @@ third_tally = openmc.Tally(tally_id=3, name='third tally')
 third_tally.filters = [cell_filter, energy_filter, energyout_filter]
 third_tally.scores = ['scatter', 'nu-scatter', 'nu-fission']
 
-# Instantiate a Tallies collection, register all Tallies, and export to XML
-tallies_file = openmc.Tallies()
-tallies_file.add_tally(first_tally)
-tallies_file.add_tally(second_tally)
-tallies_file.add_tally(third_tally)
+# Instantiate a Tallies collection and export to XML
+tallies_file = openmc.Tallies((first_tally, second_tally, third_tally))
 tallies_file.export_to_xml()

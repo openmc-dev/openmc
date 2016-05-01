@@ -81,10 +81,9 @@ water = openmc.Material(material_id=2, name='Water')
 water.set_density('macro', 1.0)
 water.add_macroscopic(h2o_data)
 
-# Instantiate a Materials collection, register all Materials, and export to XML
-materials_file = openmc.Materials()
+# Instantiate a Materials collection and export to XML
+materials_file = openmc.Materials([uo2, water])
 materials_file.default_xs = '300K'
-materials_file.add_materials([uo2, water])
 materials_file.export_to_xml()
 
 
@@ -167,14 +166,9 @@ mesh_filter.mesh = mesh
 
 # Instantiate the Tally
 tally = openmc.Tally(tally_id=1, name='tally 1')
-tally.add_filter(energy_filter)
-tally.add_filter(mesh_filter)
-tally.add_score('flux')
-tally.add_score('fission')
-tally.add_score('nu-fission')
+tally.filters = [energy_filter, mesh_filter]
+tally.scores = ['flux', 'fission', 'nu-fission']
 
 # Instantiate a Tallies collection, register all Tallies, and export to XML
-tallies_file = openmc.Tallies()
-tallies_file.add_mesh(mesh)
-tallies_file.add_tally(tally)
+tallies_file = openmc.Tallies([tally])
 tallies_file.export_to_xml()

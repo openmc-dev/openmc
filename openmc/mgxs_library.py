@@ -739,6 +739,98 @@ class XSdata(object):
                       'required, "{1}"'.format(fission.shape, shape)
                 raise ValueError(msg)
 
+    def set_nu_fission(self, nu_fission, **kwargs):
+        # The NuFissionXS class does not have the capability to produce
+        # a fission matrix and therefore if this path is pursued, we know
+        # chi must be used.
+        if isinstance(nu_fission, openmc.mgxs.NuFissionXS):
+            # Make sure passed MGXS object contains correct group structure
+            if self.energy_groups != nu_fission.energy_groups:
+                msg = 'Group structure of provided NuFissionXS does not match'\
+                      ' group structure of XSdata object'
+                raise ValueError(msg)
+            # Get openmc.mgxs.get_xs() arguments from kwargs
+            # nuclides, xs_type, and value will have sane defaults but can be
+            # overridden by kwards
+            if 'nuclides' in kwargs:
+                nuclides = kwargs['nuclides']
+            else:
+                nuclides = 'sum'
+            if 'xs_type' in kwargs:
+                xs_type = kwargs['xs_type']
+            else:
+                xs_type = 'macro'
+            if 'value' in kwargs:
+                value = kwargs['value']
+            else:
+                value = 'mean'
+            # subdomains is required from the kwargs as this is specific to
+            # this XSdata object.
+            if 'subdomains' in kwargs:
+                subdomains = kwargs['subdomains']
+            else:
+                msg = "Argument 'subdomains' is required"
+                raise ValueError(msg)
+
+            if self._representation is 'isotropic':
+                self._nu_fission = nu_fission.get_xs(subdomains=subdomains,
+                                                     nuclides=nuclides,
+                                                     xs_type=xs_type,
+                                                     value=value)
+            elif self._representation is 'angle':
+                # Not yet implemented as MGXS do not yet support this
+                pass
+
+            self._use_chi = True
+
+        else:
+            # nu_fission can be given as a vector or a matrix
+            # Vector is used when chi also exists.
+            # Matrix is used when chi does not exist.
+            # We have to check that the correct form is given, but only if
+            # chi already has been set.  If not, we just check that this is OK
+            # and set the use_chi flag accordingly
+
+            # First lets set our dimensions here since they get used repeatedly
+            # throughout this code.
+            if self._representation is 'isotropic':
+                shape_vec = (self._energy_groups.num_groups,)
+                shape_mat = (self._energy_groups.num_groups,
+                             self._energy_groups.num_groups)
+            elif self._representation is 'angle':
+                shape_vec = (self._num_polar, self._num_azimuthal,
+                             self._energy_groups.num_groups)
+                shape_mat = (self._num_polar, self._num_azimuthal,
+                             self._energy_groups.num_groups,
+                             self._energy_groups.num_groups)
+
+            # Begin by checking the case when chi has already been given and
+            # thus the rules for filling in nu_fission are set.
+            if self._use_chi is not None:
+                if self._use_chi:
+                    shape = shape_vec
+                else:
+                    shape = shape_mat
+                if nu_fission.shape != shape:
+                    msg = "Invalid Shape of Nu_fission!"
+                    raise ValueError(msg)
+            else:
+                # Get shape of nu_fission to determine if we need chi or not
+                if nu_fission.shape == shape_vec:
+                    self._use_chi = True
+                elif nu_fission.shape == shape_mat:
+                    self._use_chi = False
+                else:
+                    msg = "Invalid Shape of Nu_fission!"
+                    raise ValueError(msg)
+
+            # check we have a numpy list
+            check_type("nu_fission", nu_fission, np.ndarray,
+                       expected_iter_type=Real)
+            self._nu_fission = np.copy(nu_fission)
+        if np.sum(self._nu_fission) > 0.0:
+            self._fissionable = True
+
     def set_k_fission(self, k_fission, **kwargs):
         if isinstance(k_fission, openmc.mgxs.KappaFissionXS):
             # Make sure passed MGXS object contains correct group structure
@@ -985,98 +1077,6 @@ class XSdata(object):
                 msg = 'Shape of provided multiplicity "{0}" does not match shape' \
                       ' required, "{1}"'.format(multiplicity.shape, shape)
                 raise ValueError(msg)
-
-    def set_nu_fission(self, nu_fission, **kwargs):
-        # The NuFissionXS class does not have the capability to produce
-        # a fission matrix and therefore if this path is pursued, we know
-        # chi must be used.
-        if isinstance(nu_fission, openmc.mgxs.NuFissionXS):
-            # Make sure passed MGXS object contains correct group structure
-            if self.energy_groups != nu_fission.energy_groups:
-                msg = 'Group structure of provided NuFissionXS does not match'\
-                      ' group structure of XSdata object'
-                raise ValueError(msg)
-            # Get openmc.mgxs.get_xs() arguments from kwargs
-            # nuclides, xs_type, and value will have sane defaults but can be
-            # overridden by kwards
-            if 'nuclides' in kwargs:
-                nuclides = kwargs['nuclides']
-            else:
-                nuclides = 'sum'
-            if 'xs_type' in kwargs:
-                xs_type = kwargs['xs_type']
-            else:
-                xs_type = 'macro'
-            if 'value' in kwargs:
-                value = kwargs['value']
-            else:
-                value = 'mean'
-            # subdomains is required from the kwargs as this is specific to
-            # this XSdata object.
-            if 'subdomains' in kwargs:
-                subdomains = kwargs['subdomains']
-            else:
-                msg = "Argument 'subdomains' is required"
-                raise ValueError(msg)
-
-            if self._representation is 'isotropic':
-                self._nu_fission = nu_fission.get_xs(subdomains=subdomains,
-                                                     nuclides=nuclides,
-                                                     xs_type=xs_type,
-                                                     value=value)
-            elif self._representation is 'angle':
-                # Not yet implemented as MGXS do not yet support this
-                pass
-
-            self._use_chi = True
-
-        else:
-            # nu_fission can be given as a vector or a matrix
-            # Vector is used when chi also exists.
-            # Matrix is used when chi does not exist.
-            # We have to check that the correct form is given, but only if
-            # chi already has been set.  If not, we just check that this is OK
-            # and set the use_chi flag accordingly
-
-            # First lets set our dimensions here since they get used repeatedly
-            # throughout this code.
-            if self._representation is 'isotropic':
-                shape_vec = (self._energy_groups.num_groups,)
-                shape_mat = (self._energy_groups.num_groups,
-                             self._energy_groups.num_groups)
-            elif self._representation is 'angle':
-                shape_vec = (self._num_polar, self._num_azimuthal,
-                             self._energy_groups.num_groups)
-                shape_mat = (self._num_polar, self._num_azimuthal,
-                             self._energy_groups.num_groups,
-                             self._energy_groups.num_groups)
-
-            # Begin by checking the case when chi has already been given and
-            # thus the rules for filling in nu_fission are set.
-            if self._use_chi is not None:
-                if self._use_chi:
-                    shape = shape_vec
-                else:
-                    shape = shape_mat
-                if nu_fission.shape != shape:
-                    msg = "Invalid Shape of Nu_fission!"
-                    raise ValueError(msg)
-            else:
-                # Get shape of nu_fission to determine if we need chi or not
-                if nu_fission.shape == shape_vec:
-                    self._use_chi = True
-                elif nu_fission.shape == shape_mat:
-                    self._use_chi = False
-                else:
-                    msg = "Invalid Shape of Nu_fission!"
-                    raise ValueError(msg)
-
-            # check we have a numpy list
-            check_type("nu_fission", nu_fission, np.ndarray,
-                       expected_iter_type=Real)
-            self._nu_fission = np.copy(nu_fission)
-        if np.sum(self._nu_fission) > 0.0:
-            self._fissionable = True
 
     def _get_xsdata_xml(self):
         element = ET.Element("xsdata")

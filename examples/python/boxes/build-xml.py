@@ -36,10 +36,9 @@ moderator.add_nuclide(h1, 2.)
 moderator.add_nuclide(o16, 1.)
 moderator.add_s_alpha_beta('HH2O', '71t')
 
-# Instantiate a Materials collection, register all Materials, and export to XML
-materials_file = openmc.Materials()
+# Instantiate a Materials collection and export to XML
+materials_file = openmc.Materials([fuel1, fuel2, moderator])
 materials_file.default_xs = '71c'
-materials_file.add_materials([fuel1, fuel2, moderator])
 materials_file.export_to_xml()
 
 
@@ -129,7 +128,6 @@ plot.width = [20, 20]
 plot.pixels = [200, 200]
 plot.color = 'cell'
 
-# Instantiate a Plots collection, add Plot, and export to XML
-plot_file = openmc.Plots()
-plot_file.add_plot(plot)
+# Instantiate a Plots collection and export to XML
+plot_file = openmc.Plots([plot])
 plot_file.export_to_xml()

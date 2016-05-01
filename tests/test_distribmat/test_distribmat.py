@@ -28,9 +28,8 @@ class DistribmatTestHarness(PyAPITestHarness):
         light_fuel.set_density('g/cc', 2.0)
         light_fuel.add_nuclide('U-235', 1.0)
 
-        mats_file = openmc.Materials()
+        mats_file = openmc.Materials([moderator, dense_fuel, light_fuel])
         mats_file.default_xs = '71c'
-        mats_file.add_materials([moderator, dense_fuel, light_fuel])
         mats_file.export_to_xml()
 
 

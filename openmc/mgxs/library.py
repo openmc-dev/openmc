@@ -370,7 +370,7 @@ class Library(object):
             for mgxs_type in self.mgxs_types:
                 mgxs = self.get_mgxs(domain, mgxs_type)
                 for tally_id, tally in mgxs.tallies.items():
-                    tallies_file.add_tally(tally, merge=merge)
+                    tallies_file.append(tally, merge=merge)
 
     def load_from_statepoint(self, statepoint):
         """Extracts tallies in an OpenMC StatePoint with the data needed to

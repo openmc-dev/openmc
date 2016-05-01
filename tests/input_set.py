@@ -267,9 +267,9 @@ class InputSet(object):
 
         # Define the materials file.
         self.materials.default_xs = '71c'
-        self.materials.add_materials((fuel, clad, cold_water, hot_water,
-             rpv_steel, lower_rad_ref, upper_rad_ref, bot_plate, bot_nozzle,
-             top_nozzle, top_fa, bot_fa))
+        self.materials += (fuel, clad, cold_water, hot_water, rpv_steel,
+                           lower_rad_ref, upper_rad_ref, bot_plate,
+                           bot_nozzle, top_nozzle, top_fa, bot_fa)
 
         # Define surfaces.
         s1 = openmc.ZCylinder(R=0.41, surface_id=1)
@@ -590,7 +590,7 @@ class MGInputSet(InputSet):
 
         # Define the materials file.
         self.materials.default_xs = '71c'
-        self.materials.add_materials((uo2, clad, water))
+        self.materials += (uo2, clad, water)
 
         # Define surfaces.
 

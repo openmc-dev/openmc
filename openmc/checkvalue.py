@@ -1,3 +1,4 @@
+import copy
 from collections import Iterable
 from numbers import Integral, Real
 
@@ -57,7 +58,7 @@ def check_type(name, value, expected_type, expected_iter_type=None):
         else:
             msg = 'Unable to set "{0}" to "{1}" which is not of type "{2}"'.format(
                 name, value, expected_type.__name__)
-        raise ValueError(msg)
+        raise TypeError(msg)
 
     if expected_iter_type:
         for item in value:
@@ -71,7 +72,7 @@ def check_type(name, value, expected_type, expected_iter_type=None):
                     msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
                           'of type "{2}"'.format(name, value,
                                                  expected_iter_type.__name__)
-                raise ValueError(msg)
+                raise TypeError(msg)
 
 
 def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
@@ -122,7 +123,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
             if len(tree) < min_depth:
                 msg = 'Error setting "{0}": The item at {1} does not meet the '\
                       'minimum depth of {2}'.format(name, ind_str, min_depth)
-                raise ValueError(msg)
+                raise TypeError(msg)
 
             # This item is okay.  Move on to the next item.
             index[-1] += 1
@@ -140,7 +141,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
                     msg = 'Error setting {0}: Found an iterable at {1}, items '\
                           'in that iterable exceed the maximum depth of {2}' \
                           .format(name, ind_str, max_depth)
-                    raise ValueError(msg)
+                    raise TypeError(msg)
 
             else:
                 # This item is completely unexpected.
@@ -148,7 +149,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
                       "item at {2} is of type '{3}'"\
                       .format(name, expected_type.__name__, ind_str,
                               type(current_item).__name__)
-                raise ValueError(msg)
+                raise TypeError(msg)
 
 
 def check_length(name, value, length_min, length_max=None):
@@ -277,6 +278,21 @@ class CheckedList(list):
         self.name = name
         for item in items:
             self.append(item)
+
+    def __add__(self, other):
+        new_instance = copy.copy(self)
+        new_instance += other
+        return new_instance
+
+    def __radd__(self, other):
+        return self + other
+
+    def __iadd__(self, other):
+        check_type('CheckedList add operand', other, Iterable,
+                   self.expected_type)
+        for item in other:
+            self.append(item)
+        return self
 
     def append(self, item):
         """Append item to list

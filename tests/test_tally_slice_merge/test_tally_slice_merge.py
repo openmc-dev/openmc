@@ -70,9 +70,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
             distribcell_tally.add_nuclide(nuclide)
 
         # Add tallies to a Tallies object
-        tallies_file = openmc.Tallies()
-        tallies_file.add_tally(tallies[0])
-        tallies_file.add_tally(distribcell_tally)
+        tallies_file = openmc.Tallies((tallies[0], distribcell_tally))
 
         # Export tallies to file
         self._input_set.tallies = tallies_file

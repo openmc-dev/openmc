@@ -5,7 +5,7 @@ import pickle
 from numbers import Integral
 from collections import OrderedDict
 import numpy as np
-import warnings.warn as warn
+from warnings import warn
 
 import openmc
 import openmc.mgxs
@@ -715,7 +715,7 @@ class Library(object):
         # Load and return pickled Library object
         return pickle.load(open(full_filename, 'rb'))
 
-    def write_mg_library(self, xs_type='micro', domain_names=None, xs_ids=None,
+    def write_mg_library(self, xs_type='macro', domain_names=None, xs_ids=None,
                          filename='mg_cross_sections', directory='./'):
         """Create a cross-section data library file for the Multi-Group
         mode of OpenMC.
@@ -725,7 +725,7 @@ class Library(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'. If the Library object is not tallied by
-            nuclide this will be set to 'macro' regardless
+            nuclide this will be set to 'macro' regardless.
         domain_names : Iterable of str
             List of names to apply to the xsdata entries in the
             resultant mgxs data file. Defaults to "set1", "set2", ...
@@ -760,7 +760,7 @@ class Library(object):
             else:
                 cv.check_iterable_type('xs_ids', xs_ids, basestring)
         else:
-            xs_ids = ['.1g']
+            xs_ids = ['1g']
         cv.check_type('filename', filename, basestring)
         cv.check_type('directory', directory, basestring)
 
@@ -781,6 +781,7 @@ class Library(object):
         # Build XSdata objects
         xsdatas = []
         for i in range(len(self.domains)):
+
             id = self.domains[i].id
             if not self.by_nuclide:
                 # Use k instead of i simply because k will be used for
@@ -793,7 +794,7 @@ class Library(object):
                     name = 'set' + str(i + 1)
                 else:
                     name = domain_names[i]
-                name += xs_ids[k]
+                name += '.' + xs_ids[k]
                 xsdata = openmc.XSdata(name, self.energy_groups)
                 xsdata.order = order
 
@@ -817,10 +818,10 @@ class Library(object):
                     xsdata.set_nu_fission(self.all_mgxs[id]['nu-fission'],
                                           xs_type=xs_type, subdomains=(k + 1,))
                 # multiplicity requires scatter and nu-scatter
-                if (('scatter' in self.mgxs_types) and ('nu-scatter' in
-                                                        self.mgxs_types)):
-                    xsdata.set_multiplicity(self.all_mgxs[id]['nu-scatter'],
-                                            self.all_mgxs[id]['scatter'],
+                if ((('scatter matrix' in self.mgxs_types) and
+                     ('nu-scatter matrix' in self.mgxs_types))):
+                    xsdata.set_multiplicity(self.all_mgxs[id]['nu-scatter matrix'],
+                                            self.all_mgxs[id]['scatter matrix'],
                                             xs_type=xs_type,
                                             subdomains=(k + 1,))
                     using_multiplicity = True
@@ -828,12 +829,12 @@ class Library(object):
                     using_multiplicity = False
 
                 if using_multiplicity:
-                    xsdata.set_scatter(self.all_mgxs[id]['scatter'],
+                    xsdata.set_scatter(self.all_mgxs[id]['scatter matrix'],
                                        xs_type=xs_type,
                                        subdomains=(k + 1,))
                 else:
                     if 'nu-scatter' in self.mgxs_types:
-                        xsdata.set_scatter(self.all_mgxs[id]['nu-scatter'],
+                        xsdata.set_scatter(self.all_mgxs[id]['nu-scatter matrix'],
                                            xs_type=xs_type,
                                            subdomains=(k + 1,))
                         # Since we are not using multiplicity, then
@@ -858,8 +859,9 @@ class Library(object):
                             # lack of neutron balance and then use scatter
                             # instead of nu-scatter
                             if 'scatter' in self.mgxs_types:
-                                msg = "To properly use the 'nu-scatter' " + \
-                                      "MGXS type and maintain neutron " + \
+                                msg = "To properly use the " + \
+                                      "'nu-scatter matrix' MGXS type " + \
+                                      "and maintain neutron " + \
                                       "balance, a 'total' MGXS type " + \
                                       "should be provided."
                                 warn(msg)
@@ -869,7 +871,8 @@ class Library(object):
                             else:
                                 # Welp, cant do that either. Quit while ahead.
                                 msg = "Total X/S must be provided if using" + \
-                                      " nu-scatter as the scattering data"
+                                      " 'nu-scatter matrix' as the " + \
+                                      "scattering data"
                                 raise ValueError(msg)
 
                 xsdatas.append(xsdata)
@@ -877,6 +880,7 @@ class Library(object):
                 pass
 
         # Add XSdatas to file
+        mgxs_file.add_xsdatas(xsdatas)
 
         # Finally, write the file
         mgxs_file.export_to_xml(full_filename)

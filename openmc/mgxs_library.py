@@ -462,9 +462,10 @@ class XSdata(object):
 
     @chi.setter
     def chi(self, chi):
-        if not self._use_chi:
-            msg = 'Providing chi when nu_fission already provided as matrix!'
-            raise ValueError(msg)
+        if self._use_chi is not None:
+            if not self._use_chi:
+                msg = 'Providing chi when nu_fission already provided as matrix!'
+                raise ValueError(msg)
 
         if self._representation is 'isotropic':
             shape = (self._energy_groups.num_groups,)
@@ -889,9 +890,10 @@ class XSdata(object):
                 raise ValueError(msg)
 
     def set_chi(self, chi, **kwargs):
-        if not self._use_chi:
-            msg = 'Providing chi when nu_fission already provided as matrix!'
-            raise ValueError(msg)
+        if self._use_chi is not None:
+            if not self._use_chi:
+                msg = 'Providing chi when nu_fission already provided as matrix!'
+                raise ValueError(msg)
 
         if isinstance(chi, openmc.mgxs.Chi):
             # Make sure passed MGXS object contains correct group structure

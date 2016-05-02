@@ -202,7 +202,7 @@ contains
       this % last_g       = int(src % E)
       this % E            = energy_bin_avg(this % g)
     end if
-    this % last_E       = src % E
+    this % last_E       = this % E
 
   end subroutine initialize_from_source
 
@@ -232,7 +232,7 @@ contains
     this % n_secondary = n
     this % secondary_bank(this % n_secondary) % E = this % E
     if (.not. run_CE) then
-      this % secondary_bank(this % n_secondary) % E = real(this % g, 8)
+      this % secondary_bank(this % n_secondary) % E = real(this % g,8)
     end if
 
   end subroutine create_secondary

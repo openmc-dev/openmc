@@ -76,9 +76,10 @@ class MGMaxOrderTestHarness(PyAPITestHarness):
         self._input_set = MGNuclideInputSet()
 
     def _build_inputs(self):
-        super(MGMaxOrderTestHarness, self)._build_inputs()
         # Set P1 scattering
         self._input_set.settings.max_order = 1
+        # Call standard input build
+        super(MGMaxOrderTestHarness, self)._build_inputs()
 
 if __name__ == '__main__':
     harness = MGMaxOrderTestHarness('statepoint.10.*', False, mg=True)

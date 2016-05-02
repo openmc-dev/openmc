@@ -27,7 +27,7 @@ class MGNuclideInputSet(MGInputSet):
 
         # Define the materials file.
         self.materials.default_xs = '71c'
-        self.materials.add_materials((uo2, clad, water))
+        self.materials += (uo2, clad, water)
 
         # Define surfaces.
 
@@ -68,7 +68,7 @@ class MGNuclideInputSet(MGInputSet):
         geometry = openmc.Geometry()
         geometry.root_universe = root
 
-        self.geometry.geometry = geometry
+        self.geometry = geometry
 
 class MGMaxOrderTestHarness(PyAPITestHarness):
     def __init__(self, statepoint_name, tallies_present, mg=False):

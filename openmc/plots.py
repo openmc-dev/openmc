@@ -2,6 +2,7 @@ from collections import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
+import warnings
 
 import numpy as np
 
@@ -125,7 +126,7 @@ class Plot(object):
         return self._background
 
     @property
-    def mask_componenets(self):
+    def mask_components(self):
         return self._mask_components
 
     @property
@@ -227,7 +228,7 @@ class Plot(object):
 
         self._col_spec = col_spec
 
-    @mask_componenets.setter
+    @mask_components.setter
     def mask_components(self, mask_components):
         cv.check_type('plot mask_components', mask_components, Iterable, Integral)
         for component in mask_components:
@@ -275,7 +276,7 @@ class Plot(object):
             The random number seed used to generate the color scheme
 
         """
-        
+
         cv.check_type('geometry', geometry, openmc.Geometry)
         cv.check_type('seed', seed, Integral)
         cv.check_greater_than('seed', seed, 1, equality=True)
@@ -401,44 +402,90 @@ class Plot(object):
         return element
 
 
-class PlotsFile(object):
-    """Plots file used for an OpenMC simulation. Corresponds directly to the
-    plots.xml input file.
+class Plots(cv.CheckedList):
+    """Collection of Plots used for an OpenMC simulation.
+
+    This class corresponds directly to the plots.xml input file. It can be
+    thought of as a normal Python list where each member is a :class:`Plot`. It
+    behaves like a list as the following example demonstrates:
+
+    >>> xz_plot = openmc.Plot()
+    >>> big_plot = openmc.Plot()
+    >>> small_plot = openmc.Plot()
+    >>> p = openmc.Plots((xz_plot, big_plot))
+    >>> p.append(small_plot)
+    >>> small_plot = p.pop()
+
+    Parameters
+    ----------
+    plots : Iterable of openmc.Plot
+        Plots to add to the collection
 
     """
 
-    def __init__(self):
-        # Initialize PlotsFile class attributes
-        self._plots = []
+    def __init__(self, plots=None):
+        super(Plots, self).__init__(Plot, 'plots collection')
         self._plots_file = ET.Element("plots")
+        if plots is not None:
+            self += plots
 
     def add_plot(self, plot):
         """Add a plot to the file.
 
+        .. deprecated:: 0.8
+            Use :meth:`Plots.append` instead.
+
         Parameters
         ----------
-        plot : Plot
+        plot : openmc.Plot
             Plot to add
 
         """
+        warnings.warn("Plots.add_plot(...) has been deprecated and may be "
+                      "removed in a future version. Use Plots.append(...) "
+                      "instead.", DeprecationWarning)
+        self.append(plot)
 
-        if not isinstance(plot, Plot):
-            msg = 'Unable to add a non-Plot "{0}" to the PlotsFile'.format(plot)
-            raise ValueError(msg)
+    def append(self, plot):
+        """Append plot to collection
 
-        self._plots.append(plot)
+        Parameters
+        ----------
+        plot : openmc.Plot
+            Plot to append
+
+        """
+        super(Plots, self).append(plot)
+
+    def insert(self, index, plot):
+        """Insert plot before index
+
+        Parameters
+        ----------
+        index : int
+            Index in list
+        plot : openmc.Plot
+            Plot to insert
+
+        """
+        super(Plots, self).insert(index, plot)
 
     def remove_plot(self, plot):
         """Remove a plot from the file.
 
+        .. deprecated:: 0.8
+            Use :meth:`Plots.remove` instead.
+
         Parameters
         ----------
-        plot : Plot
+        plot : openmc.Plot
             Plot to remove
 
         """
-
-        self._plots.remove(plot)
+        warnings.warn("Plots.remove_plot(...) has been deprecated and may be "
+                      "removed in a future version. Use Plots.remove(...) "
+                      "instead.", DeprecationWarning)
+        self.remove(plot)
 
     def colorize(self, geometry, seed=1):
         """Generate a consistent color scheme for each domain in each plot.
@@ -456,7 +503,7 @@ class PlotsFile(object):
 
         """
 
-        for plot in self._plots:
+        for plot in self:
             plot.colorize(geometry, seed)
 
 
@@ -482,11 +529,11 @@ class PlotsFile(object):
 
         """
 
-        for plot in self._plots:
+        for plot in self:
             plot.highlight_domains(geometry, domains, seed, alpha, background)
 
     def _create_plot_subelements(self):
-        for plot in self._plots:
+        for plot in self:
             xml_element = plot.get_plot_xml()
 
             if len(plot._name) > 0:

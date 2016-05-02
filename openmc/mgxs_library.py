@@ -24,7 +24,7 @@ def ndarray_to_string(arr):
 
     Parameters
     ----------
-    arr : ndarray
+    arr : numpy.ndarray
         Array to combine in to a string
 
     Returns
@@ -647,7 +647,7 @@ class XSdata(object):
         return element
 
 
-class MGXSLibraryFile(object):
+class MGXSLibrary(object):
     """Multi-Group Cross Sections file used for an OpenMC simulation.
     Corresponds directly to the MG version of the cross_sections.xml input file.
 
@@ -657,12 +657,11 @@ class MGXSLibraryFile(object):
         Energy group structure.
     inverse_velocities : Iterable of Real
         Inverse of velocities, units of sec/cm
-    xsdatas : Iterable of XSdata
+    xsdatas : Iterable of openmc.XSdata
         Iterable of multi-Group cross section data objects
     """
 
     def __init__(self, energy_groups):
-        # Initialize MGXSLibraryFile class attributes
         self._xsdatas = []
         self._energy_groups = energy_groups
         self._inverse_velocities = None
@@ -693,7 +692,7 @@ class MGXSLibraryFile(object):
 
         Parameters
         ----------
-        xsdata : XSdata
+        xsdata : openmc.XSdata
             MGXS information to add
 
         """
@@ -701,12 +700,12 @@ class MGXSLibraryFile(object):
         # Check the type
         if not isinstance(xsdata, XSdata):
             msg = 'Unable to add a non-XSdata "{0}" to the ' \
-                  'MGXSLibraryFile'.format(xsdata)
+                  'MGXSLibrary instance'.format(xsdata)
             raise ValueError(msg)
 
         # Make sure energy groups match.
         if xsdata.energy_groups != self._energy_groups:
-            msg = 'Energy groups of XSdata do not match that of MGXSLibraryFile!'
+            msg = 'Energy groups of XSdata do not match that of MGXSLibrary.'
             raise ValueError(msg)
 
         self._xsdatas.append(xsdata)
@@ -716,7 +715,7 @@ class MGXSLibraryFile(object):
 
         Parameters
         ----------
-        xsdatas : tuple or list of XSdata
+        xsdatas : tuple or list of openmc.XSdata
             XSdatas to add
 
         """
@@ -734,14 +733,14 @@ class MGXSLibraryFile(object):
 
         Parameters
         ----------
-        xsdata : XSdata
+        xsdata : openmc.XSdata
             XSdata to remove
 
         """
 
         if not isinstance(xsdata, XSdata):
             msg = 'Unable to remove a non-XSdata "{0}" from the ' \
-                  'XSdatasFile'.format(xsdata)
+                  'MGXSLibrary instance'.format(xsdata)
             raise ValueError(msg)
 
         self._xsdatas.remove(xsdata)

@@ -1,6 +1,5 @@
 import openmc
-from openmc.source import Source
-from openmc.stats import Box
+
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -13,7 +12,7 @@ particles = 10000
 
 
 ###############################################################################
-#                 Exporting to OpenMC materials.xml File
+#                 Exporting to OpenMC materials.xml file
 ###############################################################################
 
 # Instantiate some Nuclides
@@ -32,15 +31,14 @@ fuel = openmc.Material(material_id=40, name='fuel')
 fuel.set_density('g/cc', 4.5)
 fuel.add_nuclide(u235, 1.)
 
-# Instantiate a MaterialsFile, register all Materials, and export to XML
-materials_file = openmc.MaterialsFile()
+# Instantiate a Materials collection and export to XML
+materials_file = openmc.Materials([moderator, fuel])
 materials_file.default_xs = '71c'
-materials_file.add_materials([moderator, fuel])
 materials_file.export_to_xml()
 
 
 ###############################################################################
-#                 Exporting to OpenMC geometry.xml File
+#                 Exporting to OpenMC geometry.xml file
 ###############################################################################
 
 # Instantiate ZCylinder surfaces
@@ -75,31 +73,32 @@ cell1.fill = universe1
 universe1.add_cells([cell2, cell3])
 root.add_cells([cell1, cell4])
 
-# Instantiate a Geometry and register the root Universe
+# Instantiate a Geometry, register the root Universe, and export to XML
 geometry = openmc.Geometry()
 geometry.root_universe = root
-
-# Instantiate a GeometryFile, register Geometry, and export to XML
-geometry_file = openmc.GeometryFile()
-geometry_file.geometry = geometry
-geometry_file.export_to_xml()
+geometry.export_to_xml()
 
 
 ###############################################################################
-#                   Exporting to OpenMC settings.xml File
+#                   Exporting to OpenMC settings.xml file
 ###############################################################################
 
-# Instantiate a SettingsFile, set all runtime parameters, and export to XML
-settings_file = openmc.SettingsFile()
+# Instantiate a Settings object, set all runtime parameters, and export to XML
+settings_file = openmc.Settings()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
-settings_file.source = Source(space=Box([-4, -4, -4], [4, 4, 4]))
+
+# Create an initial uniform spatial source distribution over fissionable zones
+bounds = [-4., -4., -4., 4., 4., 4.]
+uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
+settings_file.source = openmc.source.Source(space=uniform_dist)
+
 settings_file.export_to_xml()
 
 
 ###############################################################################
-#                   Exporting to OpenMC tallies.xml File
+#                   Exporting to OpenMC tallies.xml file
 ###############################################################################
 
 # Instantiate some tally Filters
@@ -124,9 +123,6 @@ third_tally = openmc.Tally(tally_id=3, name='third tally')
 third_tally.filters = [cell_filter, energy_filter, energyout_filter]
 third_tally.scores = ['scatter', 'nu-scatter', 'nu-fission']
 
-# Instantiate a TalliesFile, register all Tallies, and export to XML
-tallies_file = openmc.TalliesFile()
-tallies_file.add_tally(first_tally)
-tallies_file.add_tally(second_tally)
-tallies_file.add_tally(third_tally)
+# Instantiate a Tallies collection and export to XML
+tallies_file = openmc.Tallies((first_tally, second_tally, third_tally))
 tallies_file.export_to_xml()

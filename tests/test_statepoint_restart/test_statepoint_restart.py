@@ -5,8 +5,7 @@ import os
 import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import TestHarness
-from openmc.statepoint import StatePoint
-from openmc.executor import Executor
+import openmc
 
 
 class StatepointRestartTestHarness(TestHarness):
@@ -50,17 +49,15 @@ class StatepointRestartTestHarness(TestHarness):
         statepoint = statepoint[0]
 
         # Run OpenMC
-        executor = Executor()
-
         if self._opts.mpi_exec is not None:
-            returncode = executor.run_simulation(mpi_procs=self._opts.mpi_np,
-                                                 restart_file=statepoint,
-                                                 openmc_exec=self._opts.exe,
-                                                 mpi_exec=self._opts.mpi_exec)
+            returncode = openmc.run(mpi_procs=self._opts.mpi_np,
+                                    restart_file=statepoint,
+                                    openmc_exec=self._opts.exe,
+                                    mpi_exec=self._opts.mpi_exec)
 
         else:
-            returncode = executor.run_simulation(openmc_exec=self._opts.exe,
-                                                 restart_file=statepoint)
+            returncode = openmc.run(openmc_exec=self._opts.exe,
+                                    restart_file=statepoint)
 
         assert returncode == 0, 'OpenMC did not exit successfully.'
 

@@ -23,7 +23,7 @@ class MGXSTestHarness(PyAPITestHarness):
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6, 20.])
 
         # Initialize MGXS Library for a few cross section types
-        self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry.geometry)
+        self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
         self.mgxs_lib.by_nuclide = False
         self.mgxs_lib.mgxs_types = ['transport', 'nu-fission',
                                     'nu-scatter matrix', 'chi']
@@ -32,7 +32,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.build_library()
 
         # Initialize a tallies file
-        self._input_set.tallies = openmc.TalliesFile()
+        self._input_set.tallies = openmc.Tallies()
         self.mgxs_lib.add_to_tallies_file(self._input_set.tallies, merge=False)
         self._input_set.tallies.export_to_xml()
 

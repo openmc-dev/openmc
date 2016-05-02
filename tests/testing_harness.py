@@ -13,9 +13,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 from input_set import InputSet, MGInputSet
-from openmc.statepoint import StatePoint
-from openmc.executor import Executor
-import openmc.particle_restart as pr
+import openmc
 
 
 class TestHarness(object):
@@ -63,15 +61,13 @@ class TestHarness(object):
             self._cleanup()
 
     def _run_openmc(self):
-        executor = Executor()
-
         if self._opts.mpi_exec is not None:
-            returncode = executor.run_simulation(mpi_procs=self._opts.mpi_np,
-                                                 openmc_exec=self._opts.exe,
-                                                 mpi_exec=self._opts.mpi_exec)
+            returncode = openmc.run(mpi_procs=self._opts.mpi_np,
+                                    openmc_exec=self._opts.exe,
+                                    mpi_exec=self._opts.mpi_exec)
 
         else:
-            returncode = executor.run_simulation(openmc_exec=self._opts.exe)
+            returncode = openmc.run(openmc_exec=self._opts.exe)
 
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
@@ -90,7 +86,7 @@ class TestHarness(object):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = StatePoint(statepoint)
+        sp = openmc.StatePoint(statepoint)
 
         # Write out k-combined.
         outstr = 'k-combined:\n'
@@ -158,7 +154,7 @@ class CMFDTestHarness(TestHarness):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = StatePoint(statepoint)
+        sp = openmc.StatePoint(statepoint)
 
         # Write out the eigenvalue and tallies.
         outstr = super(CMFDTestHarness, self)._get_results()
@@ -195,13 +191,12 @@ class ParticleRestartTestHarness(TestHarness):
                          'mpi_exec': self._opts.mpi_exec})
 
         # Initial run
-        executor = Executor()
-        returncode = executor.run_simulation(**args)
+        returncode = openmc.run(**args)
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
         # Run particle restart
         args.update({'restart_file': self._sp_name})
-        returncode = executor.run_simulation(**args)
+        returncode = openmc.run(**args)
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
     def _test_output_created(self):
@@ -216,7 +211,7 @@ class ParticleRestartTestHarness(TestHarness):
         """Digest info in the statepoint and return as a string."""
         # Read the particle restart file.
         particle = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        p = pr.Particle(particle)
+        p = openmc.Particle(particle)
 
         # Write out the properties.
         outstr = ''

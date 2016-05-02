@@ -24,7 +24,7 @@ class Element(object):
         Chemical symbol of the element, e.g. Pu
     xs : str
         Cross section identifier, e.g. 71c
-    scattering : 'data' or 'iso-in-lab' or None
+    scattering : {'data', 'iso-in-lab', None}
         The type of angular scattering distribution to use
 
     """

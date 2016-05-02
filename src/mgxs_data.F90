@@ -164,8 +164,6 @@ contains
 
   subroutine create_macro_xs()
     integer :: i_mat ! index in materials array
-    integer :: i             ! loop index over nuclides
-    integer :: l             ! Loop over score bins
     type(Material), pointer :: mat ! current material
     integer :: scatt_type
 

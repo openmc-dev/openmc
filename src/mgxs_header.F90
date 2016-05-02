@@ -1333,9 +1333,9 @@ module mgxs_header
       integer :: i             ! loop index over nuclides
       integer :: gin, gout     ! group indices
       real(8) :: atom_density  ! atom density of a nuclide
-      real(8) :: norm
+      real(8) :: norm, nuscatt
       integer :: mat_max_order, order, order_dim, nuc_order_dim
-      real(8), allocatable :: temp_mult(:,:)
+      real(8), allocatable :: temp_mult(:,:), mult_num(:,:), mult_denom(:,:)
       real(8), allocatable :: scatt_coeffs(:,:,:)
 
       ! Set the meta-data
@@ -1417,6 +1417,10 @@ module mgxs_header
       this % chi = ZERO
       allocate(temp_mult(groups,groups))
       temp_mult = ZERO
+      allocate(mult_num(groups,groups))
+      mult_num = ZERO
+      allocate(mult_denom(groups,groups))
+      mult_denom = ZERO
       allocate(scatt_coeffs(order_dim,groups,groups))
       scatt_coeffs = ZERO
 
@@ -1445,10 +1449,24 @@ module mgxs_header
           end if
 
           ! Get the multiplication matrix
+          ! To combine from nuclidic data we need to use the final relationship
+          ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+          !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+          ! Developed as follows:
+          ! mult_{gg'} = nuScatt{g,g'} / Scatt{g,g'}
+          ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) / sum(N_i*scatt_{i,g,g'})
+          ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+          !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+          ! nuscatt_{i,g,g'} can be reconstructed from scatter % energy and
+          ! scatter % scattxs
           do gin = 1, groups
             do gout = nuc % scatter % gmin(gin), nuc % scatter % gmax(gin)
-              temp_mult(gout,gin) = temp_mult(gout,gin) + atom_density * &
-                   nuc % scatter % mult(gin) % data(gout)
+              nuscatt = nuc % scatter % scattxs(gin) * &
+                   nuc % scatter % energy(gin) % data(gout)
+              mult_num(gout, gin) = mult_num(gout, gin) + atom_density * &
+                   nuscatt
+              mult_denom(gout, gin) = mult_denom(gout,gin) + atom_density * &
+                   nuscatt / nuc % scatter % mult(gin) % data(gout)
             end do
           end do
 
@@ -1462,6 +1480,17 @@ module mgxs_header
         type is (MgxsAngle)
           call fatal_error("Invalid Passing of MgxsAngle to MgxsIso Object")
         end select
+      end do
+
+      ! Obtain temp_mult
+      do gin = 1, groups
+        do gout = 1, groups
+          if (mult_denom(gout, gin) > ZERO) then
+            temp_mult(gout, gin) = mult_num(gout, gin) / mult_denom(gout, gin)
+          else
+            temp_mult(gout, gin) = ONE
+          end if
+        end do
       end do
 
       ! Initialize the ScattData Object
@@ -1478,7 +1507,7 @@ module mgxs_header
       end if
 
       ! Deallocate temporaries
-      deallocate(scatt_coeffs, temp_mult)
+      deallocate(scatt_coeffs, temp_mult, mult_num, mult_denom)
 
     end subroutine mgxsiso_combine
 
@@ -1496,9 +1525,9 @@ module mgxs_header
       integer :: gin, gout     ! group indices
       real(8) :: atom_density  ! atom density of a nuclide
       integer :: ipol, iazi, n_pol, n_azi
-      real(8) :: norm
+      real(8) :: norm, nuscatt
       integer :: mat_max_order, order, order_dim, nuc_order_dim
-      real(8), allocatable :: temp_mult(:,:,:,:)
+      real(8), allocatable :: temp_mult(:,:,:,:), mult_num(:,:,:,:), mult_denom(:,:,:,:)
       real(8), allocatable :: scatt_coeffs(:,:,:,:,:)
 
       ! Set the meta-data
@@ -1617,6 +1646,10 @@ module mgxs_header
       this % chi = ZERO
       allocate(temp_mult(groups,groups,n_azi,n_pol))
       temp_mult = ZERO
+      allocate(mult_num(groups,groups,n_azi,n_pol))
+      mult_num = ZERO
+      allocate(mult_denom(groups,groups,n_azi,n_pol))
+      mult_denom = ZERO
       allocate(scatt_coeffs(order_dim,groups,groups,n_azi,n_pol))
       scatt_coeffs = ZERO
 
@@ -1647,13 +1680,27 @@ module mgxs_header
           end if
 
           ! Get the multiplication matrix
+          ! To combine from nuclidic data we need to use the final relationship
+          ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+          !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+          ! Developed as follows:
+          ! mult_{gg'} = nuScatt{g,g'} / Scatt{g,g'}
+          ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) / sum(N_i*scatt_{i,g,g'})
+          ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+          !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+          ! nuscatt_{i,g,g'} can be reconstructed from scatter % energy and
+          ! scatter % scattxs
           do ipol = 1, n_pol
             do iazi = 1, n_azi
               do gin = 1, groups
                 do gout = nuc % scatter(iazi,ipol) % obj % gmin(gin), &
                      nuc % scatter(iazi,ipol) % obj % gmax(gin)
-                  temp_mult(gout,gin,iazi,ipol) = temp_mult(gout,gin,iazi,ipol) + &
-                       atom_density * &
+                  nuscatt = nuc % scatter(iazi,ipol) % obj % scattxs(gin) * &
+                       nuc % scatter(iazi,ipol) % obj % energy(gin) % data(gout)
+                  mult_num(gout,gin,iazi,ipol) = mult_num(gout,gin,iazi,ipol) + &
+                       atom_density * nuscatt
+                  mult_denom(gout,gin,iazi,ipol) = mult_denom(gout,gin,iazi,ipol) + &
+                       atom_density * nuscatt / &
                        nuc % scatter(iazi,ipol) % obj % mult(gin) % data(gout)
                 end do
               end do
@@ -1672,6 +1719,21 @@ module mgxs_header
             end do
           end do
         end select
+      end do
+
+      ! Obtain temp_mult
+      do ipol = 1, n_pol
+        do iazi = 1, n_azi
+          do gin = 1, groups
+            do gout = 1, groups
+              if (mult_denom(gout,gin,iazi,ipol) > ZERO) then
+                temp_mult(gout,gin,iazi,ipol) = mult_num(gout,gin,iazi,ipol) / mult_denom(gout,gin,iazi,ipol)
+              else
+                temp_mult(gout,gin,iazi,ipol) = ONE
+              end if
+            end do
+          end do
+        end do
       end do
 
       ! Initialize the ScattData Object

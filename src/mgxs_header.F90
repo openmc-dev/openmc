@@ -221,6 +221,11 @@ module mgxs_header
       else
         this % zaid = 0
       end if
+      if (check_for_node(node_xsdata, "awr")) then
+        call get_node_value(node_xsdata, "awr", this % awr)
+      else
+        this % awr = -ONE
+      end if
       if (check_for_node(node_xsdata, "scatt_type")) then
         call get_node_value(node_xsdata, "scatt_type", temp_str)
         temp_str = trim(to_lower(temp_str))

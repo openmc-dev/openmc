@@ -204,6 +204,8 @@ class XSdata(object):
         self._energy_groups = energy_groups
         self._representation = representation
         self._alias = None
+        self._zaid = None
+        self._awr = None
         self._kT = None
         self._fissionable = False
         self._scatt_type = 'legendre'
@@ -236,6 +238,14 @@ class XSdata(object):
     @property
     def alias(self):
         return self._alias
+
+    @property
+    def zaid(self):
+        return self._zaid
+
+    @property
+    def awr(self):
+        return self._awr
 
     @property
     def kT(self):
@@ -333,6 +343,20 @@ class XSdata(object):
             self._alias = alias
         else:
             self._alias = self._name
+
+    @zaid.setter
+    def zaid(self, zaid):
+        # Check type and value
+        check_type("zaid", zaid, Integral)
+        check_greater_than("zaid", zaid, 0, equality=False)
+        self._zaid = zaid
+
+    @awr.setter
+    def awr(self, awr):
+        # Check validity of type and that the awr value is > 0
+        check_type("awr", awr, Real)
+        check_greater_than("awr", awr, 0.0, equality=False)
+        self._awr = awr
 
     @kT.setter
     def kT(self, kT):
@@ -1087,6 +1111,18 @@ class XSdata(object):
         if self._alias is not None:
             subelement = ET.SubElement(element, 'alias')
             subelement.text = self.alias
+
+        if self._kT is not None:
+            subelement = ET.SubElement(element, 'kT')
+            subelement.text = str(self._kT)
+
+        if self._zaid is not None:
+            subelement = ET.SubElement(element, 'zaid')
+            subelement.text = str(self._zaid)
+
+        if self._awr is not None:
+            subelement = ET.SubElement(element, 'awr')
+            subelement.text = str(self._awr)
 
         if self._kT is not None:
             subelement = ET.SubElement(element, 'kT')

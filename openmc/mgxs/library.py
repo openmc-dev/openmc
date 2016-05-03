@@ -410,6 +410,7 @@ class Library(object):
 
         self._sp_filename = statepoint._f.filename
         self._openmc_geometry = statepoint.summary.openmc_geometry
+        self._nuclides = statepoint.summary.nuclides
 
         if statepoint.run_mode == 'k-eigenvalue':
             self._keff = statepoint.k_combined[0]
@@ -872,6 +873,10 @@ class Library(object):
                     name += '.' + xs_ids[i]
                     xsdata = openmc.XSdata(name, self.energy_groups)
                     xsdata.order = order
+                    print(self._nuclides)
+                    print(nuclide)
+                    xsdata.zaid = self._nuclides[nuclide][0]
+                    xsdata.awr  = self._nuclides[nuclide][1]
 
                     # Now get xs data itself
                     if 'total' in self.mgxs_types:

@@ -378,11 +378,11 @@ class Summary(object):
                 self.lattices[index] = lattice
 
             if lattice_type == 'hexagonal':
-                n_rings = self._f['geometry/lattices'][key]['n_rings'][0]
-                n_axial = self._f['geometry/lattices'][key]['n_axial'][0]
+                n_rings = self._f['geometry/lattices'][key]['n_rings'].value
+                n_axial = self._f['geometry/lattices'][key]['n_axial'].value
                 center = self._f['geometry/lattices'][key]['center'][...]
                 pitch = self._f['geometry/lattices'][key]['pitch'][...]
-                outer = self._f['geometry/lattices'][key]['outer'][0]
+                outer = self._f['geometry/lattices'][key]['outer'].value
 
                 universe_ids = self._f[
                     'geometry/lattices'][key]['universes'][...]

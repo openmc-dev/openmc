@@ -10,6 +10,7 @@ if sys.version_info[0] >= 3:
 import openmc
 import openmc.checkvalue as cv
 from openmc.clean_xml import *
+from openmc.data import natural_abundance
 
 
 # A static variable for auto-generated Material IDs
@@ -382,7 +383,7 @@ class Material(object):
         if macroscopic._name == self._macroscopic.name:
             self._macroscopic = None
 
-    def add_element(self, element, percent, percent_type='ao'):
+    def add_element(self, element, percent, percent_type='ao', expand=False):
         """Add a natural element to the material
 
         Parameters
@@ -391,8 +392,12 @@ class Material(object):
             Element to add
         percent : float
             Atom or weight percent
-        percent_type : {'ao', 'wo'}
-            'ao' for atom percent and 'wo' for weight percent
+        percent_type : {'ao', 'wo'}, optional
+            'ao' for atom percent and 'wo' for weight percent. Defaults to atom
+            percent.
+        expand : bool, optional
+            Whether to expand the natural element into its naturally-occurring
+            isotopes. Defaults to False.
 
         """
 
@@ -422,7 +427,15 @@ class Material(object):
         else:
             element = openmc.Element(element)
 
-        self._elements[element._name] = (element, percent, percent_type)
+        if expand:
+            if percent_type == 'wo':
+                raise NotImplementedError('Expanding natural element based on '
+                                          'weight percent is not yet supported.')
+            for isotope, abundance in element.expand():
+                self._nuclides[isotope.name] = (
+                    isotope, percent*abundance, percent_type)
+        else:
+            self._elements[element.name] = (element, percent, percent_type)
 
     def remove_element(self, element):
         """Remove a natural element from the material
@@ -490,6 +503,14 @@ class Material(object):
             nuclide = nuclide_tuple[0]
             density = nuclide_tuple[1]
             nuclides[nuclide._name] = (nuclide, density)
+
+        for element_name, element_tuple in self._elements.items():
+            element = element_tuple[0]
+            density = element_tuple[1]
+
+            # Expand natural element into isotopes
+            for isotope, abundance in element.expand():
+                nuclides[isotope.name] = (isotope, density*abundance)
 
         return nuclides
 

@@ -65,9 +65,10 @@ class Summary(object):
 
         self.n_batches = self._f['n_batches'].value
         self.n_particles = self._f['n_particles'].value
-        self.n_active = self._f['n_active'].value
-        self.n_inactive = self._f['n_inactive'].value
-        self.gen_per_batch = self._f['gen_per_batch'].value
+        if 'n_inactive' in self._f:
+            self.n_active = self._f['n_active'].value
+            self.n_inactive = self._f['n_inactive'].value
+            self.gen_per_batch = self._f['gen_per_batch'].value
         self.n_procs = self._f['n_procs'].value
 
     def _read_geometry(self):

@@ -50,6 +50,14 @@ class Material(object):
         Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/cm3',
         'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
         applies in the case of a multi-group calculation.
+    elements : collections.OrderedDict
+        Dictionary whose keys are element names and values are 3-tuples
+        consisting of an :class:`openmc.Element` instance, the percent density,
+        and the percent type (atom or weight fraction).
+    nuclides : collections.OrderedDict
+        Dictionary whose keys are nuclide names and values are 3-tuples
+        consisting of an :class:`openmc.Nuclide` instance, the percent density,
+        and the percent type (atom or weight fraction).
 
     """
 
@@ -186,6 +194,14 @@ class Material(object):
     @property
     def density_units(self):
         return self._density_units
+
+    @property
+    def elements(self):
+        return self._elements
+
+    @property
+    def nuclides(self):
+        return self._nuclides
 
     @property
     def convert_to_distrib_comps(self):

@@ -83,11 +83,6 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = openmc.StatePoint(statepoint)
 
-        # Read the summary file.
-        summary = glob.glob(os.path.join(os.getcwd(), 'summary.h5'))[0]
-        su = openmc.Summary(summary)
-        sp.link_with_summary(su)
-
         # Extract the cell tally
         tallies = [sp.get_tally(name='cell tally')]
 

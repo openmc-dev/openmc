@@ -602,10 +602,11 @@ class XSdata(object):
             self._fissionable = True
 
     def set_total(self, total, **kwargs):
-        if isinstance(total, openmc.mgxs.TotalXS):
+        if (isinstance(total, openmc.mgxs.TotalXS) or
+            isinstance(total, openmc.mgxs.TransportXS)):
             # Make sure passed MGXS object contains correct group structure
             if self.energy_groups != total.energy_groups:
-                msg = 'Group structure of provided TotalXS does not match' \
+                msg = 'Group structure of provided data does not match' \
                       ' group structure of XSdata object'
                 raise ValueError(msg)
             # Get openmc.mgxs.get_xs() arguments from kwargs

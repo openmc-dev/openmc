@@ -649,7 +649,7 @@ class HexLattice(Lattice):
         # Set the number of rings and make sure this number is consistent for
         # all axial positions.
         if n_dims == 3:
-            self.num_rings = len(self._universes)
+            self.num_rings = len(self._universes[0])
             for rings in self._universes:
                 if len(rings) != self._num_rings:
                     msg = 'HexLattice ID={0:d} has an inconsistent number of ' \

@@ -17,7 +17,7 @@ if sys.version_info[0] >= 3:
 
 # The following represent the most accurate MGXS generation strategy
 # for use in the MG mode of OpenMC.
-OPENMC_MG_MGXS_TYPES = ['total', 'absorption', 'nu-fission', 'chi',
+OPENMC_MG_MGXS_TYPES = ['transport', 'absorption', 'nu-fission', 'chi',
                         'scatter matrix', 'nu-scatter matrix']
 
 

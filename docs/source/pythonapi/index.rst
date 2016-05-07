@@ -26,6 +26,7 @@ Example Jupyter Notebooks
     examples/mgxs-part-i
     examples/mgxs-part-ii
     examples/mgxs-part-iii
+    examples/mgxs-part-iv
 
 ------------------------------------
 :mod:`openmc` -- Basic Functionality

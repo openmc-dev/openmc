@@ -41,6 +41,7 @@ class Summary(object):
         self._read_nuclides()
         self._read_geometry()
         self._read_tallies()
+        self._f.close()
 
     @property
     def openmc_geometry(self):

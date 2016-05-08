@@ -654,7 +654,8 @@ class MGXS(object):
             self.tallies[tally_type] = sp_tally
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
-               xs_type='macro', order_groups='increasing', value='mean'):
+               xs_type='macro', order_groups='increasing',
+               value='mean', **kwargs):
         """Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested multi-group
@@ -1143,7 +1144,7 @@ class MGXS(object):
 
     def build_hdf5_store(self, filename='mgxs.h5', directory='mgxs',
                          subdomains='all', nuclides='all',
-                         xs_type='macro', append=True):
+                         xs_type='macro', row_column='inout', append=True):
         """Export the multi-group cross section data to an HDF5 binary file.
 
         This method constructs an HDF5 file which stores the multi-group
@@ -1172,6 +1173,10 @@ class MGXS(object):
         xs_type: {'macro', 'micro'}
             Store the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
+        row_column: {'inout', 'outin'}
+            Store scattering matrices indexed first by incoming group and
+            second by outgoing group ('inout'), or vice versa ('outin').
+            Defaults to 'inout'.
         append : bool
             If true, appends to an existing HDF5 file with the same filename
             directory (if one exists). Defaults to True.
@@ -1258,9 +1263,9 @@ class MGXS(object):
 
                 # Extract the cross section for this subdomain and nuclide
                 average = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
-                                      xs_type=xs_type, value='mean')
+                    xs_type=xs_type, value='mean', row_column=row_column)
                 std_dev = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
-                                      xs_type=xs_type, value='std_dev')
+                    xs_type=xs_type, value='std_dev', row_column=row_column)
                 average = average.squeeze()
                 std_dev = std_dev.squeeze()
 
@@ -1973,7 +1978,8 @@ class ScatterMatrixXS(MGXS):
 
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all', xs_type='macro',
-               order_groups='increasing', value='mean'):
+               order_groups='increasing', row_column='inout',
+               value='mean', **kwargs):
         """Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested scattering
@@ -1999,6 +2005,10 @@ class ScatterMatrixXS(MGXS):
             Return the cross section indexed according to increasing or
             decreasing energy groups (decreasing or increasing energies).
             Defaults to 'increasing'.
+        row_column: {'inout', 'outin'}
+            Return the cross section indexed first by incoming group and
+            second by outgoing group ('inout'), or vice versa ('outin').
+            Defaults to 'inout'.
         value : str
             A string for the type of value to return - 'mean', 'std_dev', or
             'rel_err' are accepted. Defaults to the empty string.
@@ -2091,6 +2101,10 @@ class ScatterMatrixXS(MGXS):
             new_shape = (num_subdomains, num_in_groups, num_out_groups)
             new_shape += xs.shape[1:]
             xs = np.reshape(xs, new_shape)
+
+            # Transpose the scattering matrix if requested by user
+            if row_column == 'outin':
+                xs = np.swapaxes(xs, 1, 2)
 
             # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, ::-1, :]
@@ -2422,7 +2436,8 @@ class Chi(MGXS):
         return merged_mgxs
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
-               xs_type='macro', order_groups='increasing', value='mean'):
+               xs_type='macro', order_groups='increasing',
+               value='mean', **kwargs):
         """Returns an array of the fission spectrum.
 
         This method constructs a 2D NumPy array for the requested multi-group

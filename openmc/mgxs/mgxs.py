@@ -1174,8 +1174,9 @@ class MGXS(object):
             Store the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
         row_column: {'inout', 'outin'}
-            Store scattering matrices indexed first by incoming group and second
-            by outgoing group ('inout'), or vice versa ('outin').
+            Store scattering matrices indexed first by incoming group and
+            second by outgoing group ('inout'), or vice versa ('outin').
+            Defaults to 'inout'.
         append : bool
             If true, appends to an existing HDF5 file with the same filename
             directory (if one exists). Defaults to True.
@@ -2005,8 +2006,9 @@ class ScatterMatrixXS(MGXS):
             decreasing energy groups (decreasing or increasing energies).
             Defaults to 'increasing'.
         row_column: {'inout', 'outin'}
-            Return the cross section indexed first by incoming group and second
-            by outgoing group ('inout'), or vice versa ('outin').
+            Return the cross section indexed first by incoming group and
+            second by outgoing group ('inout'), or vice versa ('outin').
+            Defaults to 'inout'.
         value : str
             A string for the type of value to return - 'mean', 'std_dev', or
             'rel_err' are accepted. Defaults to the empty string.

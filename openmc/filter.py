@@ -516,7 +516,7 @@ class Filter(object):
 
         return filter_bin
 
-    def get_pandas_dataframe(self, data_size, distribcell_paths=False):
+    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -531,13 +531,13 @@ class Filter(object):
         ----------
         data_size : Integral
             The total number of bins in the tally corresponding to this filter
-        distribcell_paths : bool
-            Construct columns for distribcell tally filters. The geometric
-            information in the Summary object is embedded into a Multi-index
-            column with a geometric "path" to each distribcell instance.
-            NOTE: This option assumes that all distribcell paths are of the same
-            length and do not have the same universes and cells but different
-            lattice cell indices.
+        distribcell_paths : bool, optional
+            Construct columns for distribcell tally filters (default is True).
+            The geometric information in the Summary object is embedded into a
+            Multi-index column with a geometric "path" to each distribcell
+            instance. NOTE: This option assumes that all distribcell paths are
+            of the same length and do not have the same universes and cells but
+            different lattice cell indices.
 
         Returns
         -------

@@ -1586,16 +1586,6 @@ class Tally(object):
             msg = 'The Tally ID="{0}" has no data to return'.format(self.id)
             raise KeyError(msg)
 
-        '''
-        # If using Summary, ensure StatePoint.link_with_summary(...) was called
-        if distribcell_pathssummary and not self.with_summary:
-            msg = 'The Tally ID="{0}" has not been linked with the Summary. ' \
-                  'Call the StatePoint.link_with_summary(...) method ' \
-                  'before using Tally.get_pandas_dataframe(...) with ' \
-                  'Summary info'.format(self.id)
-            raise KeyError(msg)
-        '''
-
         # Initialize a pandas dataframe for the tally data
         import pandas as pd
         df = pd.DataFrame()

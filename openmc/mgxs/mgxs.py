@@ -1366,9 +1366,11 @@ class MGXS(object):
         xs_type: {'macro', 'micro'}
             Return macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
-    distribcell_paths : list of str
-        The paths traversed through the CSG tree to reach each distribcell
-        instance (for 'distribcell' filters only)
+        distribcell_paths : bool, optional
+            Construct columns for distribcell tally filters (default is True).
+            The geometric information in the Summary object is embedded into
+            a Multi-index column with a geometric "path" to each distribcell
+            instance.
 
         Returns
         -------

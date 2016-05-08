@@ -8,7 +8,7 @@ module nuclide_header
   use endf_header, only: Function1D
   use error,       only: fatal_error, warning
   use list_header, only: ListInt
-  use math,        only: evaluate_legendre, find_angle
+  use math,        only: evaluate_legendre
   use product_header, only: AngleEnergyContainer
   use reaction_header, only: Reaction
   use stl_vector,  only: VectorInt

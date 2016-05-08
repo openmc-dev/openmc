@@ -6,7 +6,7 @@ module mgxs_header
   use list_header,     only: ListInt
   use material_header, only: material
   use math,            only: calc_pn, calc_rn, expand_harmonic, &
-                             evaluate_legendre, find_angle
+                             evaluate_legendre
   use nuclide_header,  only: MaterialMacroXS
   use random_lcg,      only: prn
   use scattdata_header
@@ -150,7 +150,7 @@ module mgxs_header
     real(8), allocatable :: nu_fission(:)   ! fission matrix (Gout x Gin)
     real(8), allocatable :: k_fission(:)    ! kappa-fission
     real(8), allocatable :: fission(:)      ! neutron production
-    real(8), allocatable :: chi(:,:)        ! Fission Spectra
+    real(8), allocatable :: chi(:, :)        ! Fission Spectra
 
   contains
     procedure :: init_file   => mgxsiso_init_file ! Initialize Nuclidic MGXS Data
@@ -170,13 +170,13 @@ module mgxs_header
   type, extends(Mgxs) :: MgxsAngle
 
     ! Microscopic cross sections
-    real(8), allocatable :: total(:,:,:)        ! total cross section
-    real(8), allocatable :: absorption(:,:,:)   ! absorption cross section
-    type(ScattDataContainer), allocatable :: scatter(:,:) ! scattering information
-    real(8), allocatable :: nu_fission(:,:,:)   ! fission matrix (Gout x Gin)
-    real(8), allocatable :: k_fission(:,:,:)    ! kappa-fission
-    real(8), allocatable :: fission(:,:,:)      ! neutron production
-    real(8), allocatable :: chi(:,:,:,:)        ! Fission Spectra
+    real(8), allocatable :: total(:, :, :)        ! total cross section
+    real(8), allocatable :: absorption(:, :, :)   ! absorption cross section
+    type(ScattDataContainer), allocatable :: scatter(:, :) ! scattering information
+    real(8), allocatable :: nu_fission(:, :, :)   ! fission matrix (Gout x Gin)
+    real(8), allocatable :: k_fission(:, :, :)    ! kappa-fission
+    real(8), allocatable :: fission(:, :, :)      ! neutron production
+    real(8), allocatable :: chi(:, :, :, :)        ! Fission Spectra
     ! In all cases, right-most indices are theta, phi
     integer              :: n_pol         ! Number of polar angles
     integer              :: n_azi         ! Number of azimuthal angles
@@ -272,11 +272,11 @@ module mgxs_header
       type(Node), pointer     :: node_legendre_mu
       character(MAX_LINE_LEN) :: temp_str
       logical                 :: enable_leg_mu
-      real(8), allocatable    :: temp_arr(:), temp_2d(:,:)
-      real(8), allocatable    :: temp_mult(:,:)
-      real(8), allocatable    :: scatt_coeffs(:,:,:)
-      real(8), allocatable    :: input_scatt(:,:,:)
-      real(8), allocatable    :: temp_scatt(:,:,:)
+      real(8), allocatable    :: temp_arr(:), temp_2d(:, :)
+      real(8), allocatable    :: temp_mult(:, :)
+      real(8), allocatable    :: scatt_coeffs(:, :, :)
+      real(8), allocatable    :: input_scatt(:, :, :)
+      real(8), allocatable    :: temp_scatt(:, :, :)
       real(8)                 :: dmu, mu, norm
       integer                 :: order, order_dim, gin, gout, l, arr_len
       integer                 :: legendre_mu_points, imu
@@ -288,24 +288,24 @@ module mgxs_header
       allocate(this % nu_fission(groups))
       allocate(this % chi(groups,groups))
       if (this % fissionable) then
-        if (check_for_node(node_xsdata,"chi")) then
+        if (check_for_node(node_xsdata, "chi")) then
           ! Chi was provided, that means they are giving chi and nu-fission
           ! vectors
           ! Get chi
           allocate(temp_arr(1 * groups))
-          call get_node_array(node_xsdata,"chi",temp_arr)
+          call get_node_array(node_xsdata, "chi", temp_arr)
           do gin = 1, groups
             do gout = 1, groups
-              this % chi(gout,gin) = temp_arr(gout)
+              this % chi(gout, gin) = temp_arr(gout)
             end do
             ! Normalize chi so its CDF goes to 1
-            this % chi(:,gin) = this % chi(:,gin) / sum(this % chi(:,gin))
+            this % chi(:, gin) = this % chi(:, gin) / sum(this % chi(:, gin))
           end do
           deallocate(temp_arr)
 
           ! Get nu_fission (as a vector)
-          if (check_for_node(node_xsdata,"nu_fission")) then
-            call get_node_array(node_xsdata,"nu_fission",this % nu_fission)
+          if (check_for_node(node_xsdata, "nu_fission")) then
+            call get_node_array(node_xsdata, "nu_fission", this % nu_fission)
           else
             call fatal_error("If fissionable, must provide nu_fission!")
           end if
@@ -313,11 +313,11 @@ module mgxs_header
         else
           ! chi isnt provided but is within nu_fission, existing as a matrix
           ! So, get nu_fission (as a matrix)
-          if (check_for_node(node_xsdata,"nu_fission")) then
+          if (check_for_node(node_xsdata, "nu_fission")) then
             allocate(temp_arr(groups*groups))
-            call get_node_array(node_xsdata,"nu_fission",temp_arr)
-            allocate(temp_2d(groups,groups))
-            temp_2d = reshape(temp_arr,(/groups,groups/))
+            call get_node_array(node_xsdata, "nu_fission", temp_arr)
+            allocate(temp_2d(groups, groups))
+            temp_2d = reshape(temp_arr, (/groups, groups/))
             deallocate(temp_arr)
           else
             call fatal_error("If fissionable, must provide nu_fission!")
@@ -325,14 +325,14 @@ module mgxs_header
 
           ! Set the vector nu-fission from the matrix nu-fission
           do gin = 1, groups
-            this % nu_fission(gin) = sum(temp_2d(:,gin))
+            this % nu_fission(gin) = sum(temp_2d(:, gin))
           end do
 
           ! Now pull out information needed for chi
           this % chi = temp_2d
           ! Normalize chi so its CDF goes to 1
           do gin = 1, groups
-            this % chi(:,gin) = this % chi(:,gin) / sum(this % chi(:,gin))
+            this % chi(:, gin) = this % chi(:, gin) / sum(this % chi(:, gin))
           end do
           deallocate(temp_2d)
         end if
@@ -340,8 +340,8 @@ module mgxs_header
         ! (*Need is defined as will be using it to tally)
         if (get_fiss) then
           allocate(this % fission(groups))
-          if (check_for_node(node_xsdata,"fission")) then
-            call get_node_array(node_xsdata,"fission",this % fission)
+          if (check_for_node(node_xsdata, "fission")) then
+            call get_node_array(node_xsdata, "fission", this % fission)
           else
             call fatal_error("Fission data missing, required due to fission&
                              & tallies in tallies.xml file!")
@@ -349,8 +349,8 @@ module mgxs_header
         end if
         if (get_kfiss) then
           allocate(this % k_fission(groups))
-          if (check_for_node(node_xsdata,"kappa_fission")) then
-            call get_node_array(node_xsdata,"kappa_fission",this % k_fission)
+          if (check_for_node(node_xsdata, "kappa_fission")) then
+            call get_node_array(node_xsdata, "kappa_fission", this % k_fission)
           else
             call fatal_error("kappa_fission data missing, required due to &
                              &kappa-fission tallies in tallies.xml file!")
@@ -362,19 +362,19 @@ module mgxs_header
       end if
 
       allocate(this % absorption(groups))
-      if (check_for_node(node_xsdata,"absorption")) then
-        call get_node_array(node_xsdata,"absorption",this % absorption)
+      if (check_for_node(node_xsdata, "absorption")) then
+        call get_node_array(node_xsdata, "absorption", this % absorption)
       else
         call fatal_error("Must provide absorption!")
       end if
 
       ! Get multiplication data if present
       allocate(temp_mult(groups, groups))
-      if (check_for_node(node_xsdata,"multiplicity")) then
-        arr_len = get_arraysize_double(node_xsdata,"multiplicity")
+      if (check_for_node(node_xsdata, "multiplicity")) then
+        arr_len = get_arraysize_double(node_xsdata, "multiplicity")
         if (arr_len == groups * groups) then
           allocate(temp_arr(arr_len))
-          call get_node_array(node_xsdata,"multiplicity",temp_arr)
+          call get_node_array(node_xsdata, "multiplicity", temp_arr)
           temp_mult = reshape(temp_arr, (/groups, groups/))
           deallocate(temp_arr)
         else
@@ -392,24 +392,25 @@ module mgxs_header
 
       ! Set the default (leave as Legendre polynomials)
       enable_leg_mu = .false.
-      if (check_for_node(node_xsdata,"tabular_legendre")) then
-        call get_node_ptr(node_xsdata,"tabular_legendre",node_legendre_mu)
+      if (check_for_node(node_xsdata, "tabular_legendre")) then
+        call get_node_ptr(node_xsdata, "tabular_legendre", node_legendre_mu)
         if (check_for_node(node_legendre_mu, "enable")) then
-          call get_node_value(node_legendre_mu,"enable",temp_str)
+          call get_node_value(node_legendre_mu, "enable", temp_str)
           temp_str = trim(to_lower(temp_str))
           if (temp_str == 'true' .or. temp_str == '1') then
             enable_leg_mu = .true.
           elseif (temp_str == 'false' .or. temp_str == '0') then
             enable_leg_mu = .false.
           else
-            call fatal_error("Unrecognized tabular_legendre/enable: " // temp_str)
+            call fatal_error("Unrecognized tabular_legendre/enable: " &
+                             // temp_str)
           end if
         end if
         ! Ok, so if we need to convert to a tabular form, get the user provided
         ! number of points
         if (enable_leg_mu) then
-          if (check_for_node(node_legendre_mu,"num_points")) then
-            call get_node_value(node_legendre_mu,"num_points", &
+          if (check_for_node(node_legendre_mu, "num_points")) then
+            call get_node_value(node_legendre_mu, "num_points", &
                  legendre_mu_points)
             if (legendre_mu_points <= 0) &
                  call fatal_error("num_points element must be positive&
@@ -422,8 +423,8 @@ module mgxs_header
       end if
 
       ! Get the library's value for the order
-      if (check_for_node(node_xsdata,"order")) then
-        call get_node_value(node_xsdata,"order",order)
+      if (check_for_node(node_xsdata, "order")) then
+        call get_node_value(node_xsdata, "order", order)
       else
         call fatal_error("Order Must Be Provided!")
       end if
@@ -444,10 +445,10 @@ module mgxs_header
       ! but then need to convert it to a more useful ordering for processing
       ! (Order x Gout x Gin).
       allocate(input_scatt(groups, groups, order_dim))
-      if (check_for_node(node_xsdata,"scatter")) then
+      if (check_for_node(node_xsdata, "scatter")) then
         allocate(temp_arr(groups * groups * order_dim))
-        call get_node_array(node_xsdata,"scatter",temp_arr)
-        input_scatt = reshape(temp_arr,(/groups,groups,order_dim/))
+        call get_node_array(node_xsdata, "scatter", temp_arr)
+        input_scatt = reshape(temp_arr, (/groups, groups, order_dim/))
         deallocate(temp_arr)
 
         ! Compare the number of orders given with the maximum order of the
@@ -456,8 +457,8 @@ module mgxs_header
           order = min(order_dim - 1, max_order)
           order_dim = order + 1
         end if
-        allocate(temp_scatt(groups,groups,order_dim))
-        temp_scatt(:,:,:) = input_scatt(:,:,1:order_dim)
+        allocate(temp_scatt(groups, groups, order_dim))
+        temp_scatt(:, :, :) = input_scatt(:, :, 1:order_dim)
 
         ! Take input format (groups, groups, order) and convert to
         ! the more useful format needed for scattdata: (order, groups, groups)
@@ -470,9 +471,9 @@ module mgxs_header
           this % scatt_type = ANGLE_TABULAR
           order_dim = legendre_mu_points
           order = order_dim
-          dmu = TWO / real(order - 1,8)
+          dmu = TWO / real(order - 1, 8)
 
-          allocate(scatt_coeffs(order_dim,groups,groups))
+          allocate(scatt_coeffs(order_dim, groups, groups))
           do gin = 1, groups
             do gout = 1, groups
               norm = ZERO
@@ -482,35 +483,36 @@ module mgxs_header
                 else if (imu == order_dim) then
                   mu = ONE
                 else
-                  mu = -ONE + real(imu - 1,8) * dmu
+                  mu = -ONE + real(imu - 1, 8) * dmu
                 end if
-                scatt_coeffs(imu,gout,gin) = &
-                     evaluate_legendre(temp_scatt(gout,gin,:),mu)
+                scatt_coeffs(imu, gout, gin) = &
+                     evaluate_legendre(temp_scatt(gout, gin, :),mu)
                 ! Ensure positivity of distribution
-                if (scatt_coeffs(imu,gout,gin) < ZERO) &
-                     scatt_coeffs(imu,gout,gin) = ZERO
+                if (scatt_coeffs(imu, gout, gin) < ZERO) &
+                     scatt_coeffs(imu, gout, gin) = ZERO
                 ! And accrue the integral
                 if (imu > 1) then
-                  norm = norm + HALF * dmu * (scatt_coeffs(imu-1,gout,gin) + &
-                                              scatt_coeffs(imu,gout,gin))
+                  norm = norm + HALF * dmu * &
+                       (scatt_coeffs(imu - 1, gout, gin) + &
+                        scatt_coeffs(imu, gout, gin))
                 end if
               end do
               ! Now that we have the integral, lets ensure that the distribution
               ! is normalized such that it preserves the original scattering xs
               if (norm > ZERO) then
-                scatt_coeffs(:,gout,gin) = scatt_coeffs(:,gout,gin) * &
-                     temp_scatt(gout,gin,1) / norm
+                scatt_coeffs(:, gout, gin) = scatt_coeffs(:, gout, gin) * &
+                     temp_scatt(gout, gin, 1) / norm
               end if
             end do
           end do
         else
           ! Sticking with current representation, carry forward but change
           ! the array ordering
-          allocate(scatt_coeffs(order_dim,groups,groups))
+          allocate(scatt_coeffs(order_dim, groups, groups))
           do gin = 1, groups
             do gout = 1, groups
               do l = 1, order_dim
-                scatt_coeffs(l,gout,gin) = temp_scatt(gout,gin,l)
+                scatt_coeffs(l, gout, gin) = temp_scatt(gout, gin, l)
               end do
             end do
           end do
@@ -541,8 +543,8 @@ module mgxs_header
 
       ! Get, or infer, total xs data.
       allocate(this % total(groups))
-      if (check_for_node(node_xsdata,"total")) then
-        call get_node_array(node_xsdata,"total",this % total)
+      if (check_for_node(node_xsdata, "total")) then
+        call get_node_array(node_xsdata, "total", this % total)
       else
         this % total = this % absorption + this % scatter % scattxs
       end if
@@ -572,11 +574,11 @@ module mgxs_header
       type(Node), pointer     :: node_legendre_mu
       character(MAX_LINE_LEN) :: temp_str
       logical                 :: enable_leg_mu
-      real(8), allocatable    :: temp_arr(:), temp_4d(:,:,:,:)
-      real(8), allocatable    :: temp_mult(:,:,:,:)
-      real(8), allocatable    :: scatt_coeffs(:,:,:,:,:)
-      real(8), allocatable    :: input_scatt(:,:,:,:,:)
-      real(8), allocatable    :: temp_scatt(:,:,:,:,:)
+      real(8), allocatable    :: temp_arr(:), temp_4d(:, :, :, :)
+      real(8), allocatable    :: temp_mult(:, :, :, :)
+      real(8), allocatable    :: scatt_coeffs(:, :, :, :, :)
+      real(8), allocatable    :: input_scatt(:, :, :, :, :)
+      real(8), allocatable    :: temp_scatt(:, :, :, :, :)
       real(8)                 :: dmu, mu, norm, dangle
       integer                 :: order, order_dim, gin, gout, l, arr_len
       integer                 :: legendre_mu_points, imu, ipol, iazi
@@ -604,9 +606,9 @@ module mgxs_header
         ! When this feature is supported, this line will be activated
         call get_node_array(node_xsdata, "polar", this % polar)
       else
-        dangle = PI / real(this % n_pol,8)
+        dangle = PI / real(this % n_pol, 8)
         do ipol = 1, this % n_pol
-          this % polar(ipol) = (real(ipol,8) - HALF) * dangle
+          this % polar(ipol) = (real(ipol, 8) - HALF) * dangle
         end do
       end if
       if (check_for_node(node_xsdata, "azimuthal")) then
@@ -614,22 +616,22 @@ module mgxs_header
         ! When this feature is supported, this line will be activated
         call get_node_array(node_xsdata, "azimuthal", this % azimuthal)
       else
-        dangle = TWO * PI / real(this % n_azi,8)
+        dangle = TWO * PI / real(this % n_azi, 8)
         do iazi = 1, this % n_azi
-          this % azimuthal(iazi) = -PI + (real(iazi,8) - HALF) * dangle
+          this % azimuthal(iazi) = -PI + (real(iazi, 8) - HALF) * dangle
         end do
       end if
 
       ! Load the more specific data
-      allocate(this % nu_fission(groups,this % n_azi,this % n_pol))
-      allocate(this % chi(groups,groups,this % n_azi,this % n_pol))
+      allocate(this % nu_fission(groups, this % n_azi, this % n_pol))
+      allocate(this % chi(groups, groups, this % n_azi, this % n_pol))
       if (this % fissionable) then
-        if (check_for_node(node_xsdata,"chi")) then
+        if (check_for_node(node_xsdata, "chi")) then
           ! Chi was provided, that means they are giving chi and nu-fission
           ! vectors
           ! Get chi
           allocate(temp_arr(1 * groups * this % n_azi * this % n_pol))
-          call get_node_array(node_xsdata,"chi",temp_arr)
+          call get_node_array(node_xsdata, "chi", temp_arr)
           ! Initialize counter for temp_arr
           l = 0
           gin = 1
@@ -637,11 +639,12 @@ module mgxs_header
             do iazi = 1, this % n_azi
               do gout = 1, groups
                 l = l + 1
-                this % chi(gout,gin,iazi,ipol) = temp_arr(l)
+                this % chi(gout, gin, iazi, ipol) = temp_arr(l)
               end do
               ! Normalize chi so its CDF goes to 1
-              this % chi(:,gin,iazi,ipol) = this % chi(:,gin,iazi,ipol) / &
-                   sum(this % chi(:,gin,iazi,ipol))
+              this % chi(:, gin, iazi, ipol) = &
+                   this % chi(:, gin, iazi, ipol) / &
+                   sum(this % chi(:, gin, iazi, ipol))
             end do
           end do
 
@@ -649,17 +652,19 @@ module mgxs_header
           do ipol = 1, this % n_pol
             do iazi = 1, this % n_azi
               do gin = 2, groups
-                this % chi(:,gin,iazi,ipol) = this % chi(:,1,iazi,ipol)
+                this % chi(:, gin, iazi, ipol) = &
+                     this % chi(:, 1, iazi, ipol)
               end do
             end do
           end do
           deallocate(temp_arr)
 
           ! Get nu_fission (as a vector)
-          if (check_for_node(node_xsdata,"nu_fission")) then
+          if (check_for_node(node_xsdata, "nu_fission")) then
             allocate(temp_arr(groups * this % n_azi * this % n_pol))
-            call get_node_array(node_xsdata,"nu_fission",temp_arr)
-            this % nu_fission = reshape(temp_arr,(/groups,this % n_azi,this % n_pol/))
+            call get_node_array(node_xsdata, "nu_fission", temp_arr)
+            this % nu_fission = reshape(temp_arr,(/groups, this % n_azi, &
+                                                   this % n_pol/))
             deallocate(temp_arr)
           else
             call fatal_error("If fissionable, must provide nu_fission!")
@@ -668,11 +673,12 @@ module mgxs_header
         else
           ! chi isnt provided but is within nu_fission, existing as a matrix
           ! So, get nu_fission (as a matrix)
-          if (check_for_node(node_xsdata,"nu_fission")) then
+          if (check_for_node(node_xsdata, "nu_fission")) then
             allocate(temp_arr(groups * groups * this % n_azi * this % n_pol))
-            call get_node_array(node_xsdata,"nu_fission",temp_arr)
-            allocate(temp_4d(groups,groups,this % n_azi,this % n_pol))
-            temp_4d = reshape(temp_arr,(/groups,groups,this % n_azi,this % n_pol/))
+            call get_node_array(node_xsdata, "nu_fission", temp_arr)
+            allocate(temp_4d(groups, groups, this % n_azi,this % n_pol))
+            temp_4d = reshape(temp_arr, (/groups, groups, this % n_azi, &
+                                          this % n_pol/))
             deallocate(temp_arr)
           else
             call fatal_error("If fissionable, must provide nu_fission!")
@@ -682,7 +688,8 @@ module mgxs_header
           do ipol = 1, this % n_pol
             do iazi = 1, this % n_azi
               do gin = 1, groups
-                this % nu_fission(gin,iazi,ipol) = sum(temp_4d(:,gin,iazi,ipol))
+                this % nu_fission(gin, iazi, ipol) = &
+                     sum(temp_4d(:, gin, iazi, ipol))
               end do
             end do
           end do
@@ -693,8 +700,9 @@ module mgxs_header
           do ipol = 1, this % n_pol
             do iazi = 1, this % n_azi
               do gin = 1, groups
-                this % chi(:,gin,iazi,ipol) = this % chi(:,gin,iazi,ipol) / &
-                     sum(this % chi(:,gin,iazi,ipol))
+                this % chi(:, gin, iazi, ipol) = &
+                     this % chi(:, gin, iazi, ipol) / &
+                     sum(this % chi(:, gin, iazi, ipol))
               end do
             end do
           end do
@@ -704,11 +712,12 @@ module mgxs_header
         ! If we have a need* for the fission and kappa-fission x/s, get them
         ! (*Need is defined as will be using it to tally)
         if (get_fiss) then
-          if (check_for_node(node_xsdata,"fission")) then
+          if (check_for_node(node_xsdata, "fission")) then
             allocate(temp_arr(groups * this % n_azi * this % n_pol))
-            call get_node_array(node_xsdata,"fission",temp_arr)
-            allocate(this % fission(groups,this % n_azi,this % n_pol))
-            this % fission = reshape(temp_arr,(/groups,this % n_azi,this % n_pol/))
+            call get_node_array(node_xsdata, "fission", temp_arr)
+            allocate(this % fission(groups, this % n_azi, this % n_pol))
+            this % fission = reshape(temp_arr, (/groups, this % n_azi, &
+                                                 this % n_pol/))
             deallocate(temp_arr)
           else
             call fatal_error("Fission data missing, required due to fission&
@@ -716,11 +725,12 @@ module mgxs_header
           end if
         end if
         if (get_kfiss) then
-          if (check_for_node(node_xsdata,"kappa_fission")) then
+          if (check_for_node(node_xsdata, "kappa_fission")) then
             allocate(temp_arr(groups * this % n_azi * this % n_pol))
-            call get_node_array(node_xsdata,"kappa_fission",temp_arr)
-            allocate(this % k_fission(groups,this % n_azi,this % n_pol))
-            this % k_fission = reshape(temp_arr,(/groups, this % n_azi,this % n_pol/))
+            call get_node_array(node_xsdata, "kappa_fission", temp_arr)
+            allocate(this % k_fission(groups, this % n_azi, this % n_pol))
+            this % k_fission = reshape(temp_arr, (/groups, this % n_azi, &
+                                                   this % n_pol/))
             deallocate(temp_arr)
           else
             call fatal_error("kappa_fission data missing, required due to &
@@ -732,24 +742,26 @@ module mgxs_header
         this % chi = ZERO
       end if
 
-      if (check_for_node(node_xsdata,"absorption")) then
+      if (check_for_node(node_xsdata, "absorption")) then
         allocate(temp_arr(groups * this % n_azi * this % n_pol))
-        call get_node_array(node_xsdata,"absorption",temp_arr)
-        allocate(this % absorption(groups,this % n_azi,this % n_pol))
-        this % absorption = reshape(temp_arr,(/groups,this % n_azi,this % n_pol/))
+        call get_node_array(node_xsdata, "absorption", temp_arr)
+        allocate(this % absorption(groups, this % n_azi, this % n_pol))
+        this % absorption = reshape(temp_arr, (/groups, this % n_azi, &
+                                                this % n_pol/))
         deallocate(temp_arr)
       else
         call fatal_error("Must provide absorption!")
       end if
 
       ! Get multiplication data if present
-      allocate(temp_mult(groups,groups,this % n_azi,this % n_pol))
-      if (check_for_node(node_xsdata,"multiplicity")) then
-        arr_len = get_arraysize_double(node_xsdata,"multiplicity")
+      allocate(temp_mult(groups,groups, this % n_azi, this % n_pol))
+      if (check_for_node(node_xsdata, "multiplicity")) then
+        arr_len = get_arraysize_double(node_xsdata, "multiplicity")
         if (arr_len == groups * groups * this % n_azi * this % n_pol) then
           allocate(temp_arr(arr_len))
-          call get_node_array(node_xsdata,"multiplicity",temp_arr)
-          temp_mult = reshape(temp_arr,(/groups,groups,this % n_azi,this % n_pol/))
+          call get_node_array(node_xsdata, "multiplicity", temp_arr)
+          temp_mult = reshape(temp_arr, (/groups, groups, this % n_azi, &
+                                          this % n_pol/))
           deallocate(temp_arr)
         else
           call fatal_error("Multiplicity length not same as number of groups&
@@ -766,24 +778,25 @@ module mgxs_header
 
       ! Set the default (leave as Legendre polynomials)
       enable_leg_mu = .false.
-      if (check_for_node(node_xsdata,"tabular_legendre")) then
-        call get_node_ptr(node_xsdata,"tabular_legendre",node_legendre_mu)
+      if (check_for_node(node_xsdata, "tabular_legendre")) then
+        call get_node_ptr(node_xsdata, "tabular_legendre", node_legendre_mu)
         if (check_for_node(node_legendre_mu, "enable")) then
-          call get_node_value(node_legendre_mu,"enable",temp_str)
+          call get_node_value(node_legendre_mu, "enable", temp_str)
           temp_str = trim(to_lower(temp_str))
           if (temp_str == 'true' .or. temp_str == '1') then
             enable_leg_mu = .true.
           elseif (temp_str == 'false' .or. temp_str == '0') then
             enable_leg_mu = .false.
           else
-            call fatal_error("Unrecognized tabular_legendre/enable: " // temp_str)
+            call fatal_error("Unrecognized tabular_legendre/enable: " &
+                             // temp_str)
           end if
         end if
         ! Ok, so if we need to convert to a tabular form, get the user provided
         ! number of points
         if (enable_leg_mu) then
-          if (check_for_node(node_legendre_mu,"num_points")) then
-            call get_node_value(node_legendre_mu,"num_points", &
+          if (check_for_node(node_legendre_mu, "num_points")) then
+            call get_node_value(node_legendre_mu, "num_points", &
                  legendre_mu_points)
             if (legendre_mu_points <= 0) &
                  call fatal_error("num_points element must be positive&
@@ -796,8 +809,8 @@ module mgxs_header
       end if
 
       ! Get the library's value for the order
-      if (check_for_node(node_xsdata,"order")) then
-        call get_node_value(node_xsdata,"order",order)
+      if (check_for_node(node_xsdata, "order")) then
+        call get_node_value(node_xsdata, "order", order)
       else
         call fatal_error("Order Must Be Provided!")
       end if
@@ -817,13 +830,14 @@ module mgxs_header
       ! Gout x Gin x Order x Azi x Pol.  We will get it in that format in
       ! input_scatt, but then need to convert it to a more useful ordering
       ! for processing (Order x Gout x Gin x Azi x Pol).
-      allocate(input_scatt(groups,groups,order_dim,this % n_azi,this % n_pol))
-      if (check_for_node(node_xsdata,"scatter")) then
+      allocate(input_scatt(groups, groups, order_dim, this % n_azi, &
+                           this % n_pol))
+      if (check_for_node(node_xsdata, "scatter")) then
         allocate(temp_arr(groups * groups * order_dim * this % n_azi * &
                           this % n_pol))
-        call get_node_array(node_xsdata,"scatter",temp_arr)
-        input_scatt = reshape(temp_arr,(/groups,groups,order_dim,this % n_azi, &
-                                        this % n_pol/))
+        call get_node_array(node_xsdata, "scatter", temp_arr)
+        input_scatt = reshape(temp_arr, (/groups, groups, order_dim, &
+                                          this % n_azi, this % n_pol/))
         deallocate(temp_arr)
 
         ! Compare the number of orders given with the maximum order of the
@@ -833,8 +847,9 @@ module mgxs_header
           order_dim = order + 1
         end if
 
-        allocate(temp_scatt(groups,groups,order_dim,this % n_azi,this % n_pol))
-        temp_scatt(:,:,:,:,:) = input_scatt(:,:,1:order_dim,:,:)
+        allocate(temp_scatt(groups, groups, order_dim, this % n_azi, &
+                            this % n_pol))
+        temp_scatt(:, :, :, :, :) = input_scatt(:, :, 1:order_dim, :, :)
 
         ! Take input format (groups, groups, order) and convert to
         ! the more useful format needed for scattdata: (order, groups, groups)
@@ -848,9 +863,10 @@ module mgxs_header
           this % scatt_type = ANGLE_TABULAR
           order_dim = legendre_mu_points
           order = order_dim
-          dmu = TWO / real(order - 1,8)
+          dmu = TWO / real(order - 1, 8)
 
-          allocate(scatt_coeffs(order_dim,groups,groups,this % n_azi,this % n_pol))
+          allocate(scatt_coeffs(order_dim, groups, groups, this % n_azi, &
+                                this % n_pol))
           do ipol = 1, this % n_pol
             do iazi = 1, this % n_azi
               do gin = 1, groups
@@ -862,26 +878,26 @@ module mgxs_header
                     else if (imu == order_dim) then
                       mu = ONE
                     else
-                      mu = -ONE + real(imu - 1,8) * dmu
+                      mu = -ONE + real(imu - 1, 8) * dmu
                     end if
-                    scatt_coeffs(imu,gout,gin,iazi,ipol) = &
-                         evaluate_legendre(temp_scatt(gout,gin,:,iazi,ipol),mu)
+                    scatt_coeffs(imu, gout, gin, iazi, ipol) = &
+                         evaluate_legendre(temp_scatt(gout, gin, :, iazi, ipol), mu)
                     ! Ensure positivity of distribution
-                    if (scatt_coeffs(imu,gout,gin,iazi,ipol) < ZERO) &
-                         scatt_coeffs(imu,gout,gin,iazi,ipol) = ZERO
+                    if (scatt_coeffs(imu, gout, gin, iazi, ipol) < ZERO) &
+                         scatt_coeffs(imu, gout, gin, iazi, ipol) = ZERO
                     ! And accrue the integral
                     if (imu > 1) then
                       norm = norm + HALF * dmu * &
-                           (scatt_coeffs(imu-1,gout,gin,iazi,ipol) + &
-                            scatt_coeffs(imu,gout,gin,iazi,ipol))
+                           (scatt_coeffs(imu - 1, gout, gin, iazi, ipol) + &
+                            scatt_coeffs(imu, gout, gin, iazi, ipol))
                     end if
                   end do
                   ! Now that we have the integral, lets ensure that the distribution
                   ! is normalized such that it preserves the original scattering xs
                   if (norm > ZERO) then
-                    scatt_coeffs(:,gout,gin,iazi,ipol) = &
-                         scatt_coeffs(:,gout,gin,iazi,ipol) * &
-                         temp_scatt(gout,gin,1,iazi,ipol) / norm
+                    scatt_coeffs(:, gout, gin, iazi, ipol) = &
+                         scatt_coeffs(:, gout, gin, iazi, ipol) * &
+                         temp_scatt(gout, gin, 1, iazi, ipol) / norm
                   end if
                 end do
               end do
@@ -890,14 +906,15 @@ module mgxs_header
         else
           ! Sticking with current representation, carry forward but change
           ! the array ordering
-          allocate(scatt_coeffs(order_dim,groups,groups,this % n_azi,this % n_pol))
+          allocate(scatt_coeffs(order_dim, groups, groups, this % n_azi, &
+                                this % n_pol))
           do ipol = 1, this % n_pol
             do iazi = 1, this % n_azi
               do gin = 1, groups
                 do gout = 1, groups
                   do l = 1, order_dim
-                    scatt_coeffs(l,gout,gin,iazi,ipol) = &
-                         temp_scatt(gout,gin,l,iazi,ipol)
+                    scatt_coeffs(l, gout, gin, iazi, ipol) = &
+                         temp_scatt(gout, gin, l, iazi, ipol)
                   end do
                 end do
               end do
@@ -911,35 +928,37 @@ module mgxs_header
 
       allocate(this % scatter(this % n_azi, this % n_pol))
       do ipol = 1, this % n_pol
-        do iazi = 1, this % n_azi
+        do iazi = 1,  this % n_azi
           ! Allocate and initialize our ScattData Object.
           if (this % scatt_type == ANGLE_HISTOGRAM) then
-            allocate(ScattDataHistogram :: this % scatter(iazi,ipol) % obj)
+            allocate(ScattDataHistogram :: this % scatter(iazi, ipol) % obj)
           else if (this % scatt_type == ANGLE_TABULAR) then
-            allocate(ScattDataTabular :: this % scatter(iazi,ipol) % obj)
+            allocate(ScattDataTabular :: this % scatter(iazi, ipol) % obj)
           else if (this % scatt_type == ANGLE_LEGENDRE) then
-            allocate(ScattDataLegendre :: this % scatter(iazi,ipol) % obj)
+            allocate(ScattDataLegendre :: this % scatter(iazi, ipol) % obj)
           end if
 
           ! Initialize the ScattData Object
-          call this % scatter(iazi,ipol) % obj % init(&
-               temp_mult(:,:,iazi,ipol), scatt_coeffs(:,:,:,iazi,ipol))
+          call this % scatter(iazi, ipol) % obj % init(&
+               temp_mult(:, :, iazi, ipol), &
+               scatt_coeffs(:, :, :, iazi, ipol))
         end do
       end do
       ! Deallocate temporaries for the next material
-      deallocate(input_scatt,scatt_coeffs,temp_mult)
+      deallocate(input_scatt, scatt_coeffs, temp_mult)
 
-      allocate(this % total(groups,this % n_azi,this % n_pol))
-      if (check_for_node(node_xsdata,"total")) then
+      allocate(this % total(groups, this % n_azi, this % n_pol))
+      if (check_for_node(node_xsdata, "total")) then
         allocate(temp_arr(groups * this % n_azi * this % n_pol))
-        call get_node_array(node_xsdata,"total",temp_arr)
-        this % total = reshape(temp_arr,(/groups,this % n_azi,this % n_pol/))
+        call get_node_array(node_xsdata, "total", temp_arr)
+        this % total = reshape(temp_arr, (/groups, this % n_azi, &
+                                           this % n_pol/))
         deallocate(temp_arr)
       else
         do ipol = 1, this % n_pol
           do iazi = 1, this % n_azi
-            this % total(:,iazi,ipol) = this % absorption(:,iazi,ipol) + &
-                 this % scatter(iazi,ipol) % obj % scattxs(:)
+            this % total(:, iazi, ipol) = this % absorption(:, iazi, ipol) + &
+                 this % scatter(iazi, ipol) % obj % scattxs(:)
           end do
         end do
       end if
@@ -1074,13 +1093,13 @@ module mgxs_header
       size_scattmat = 0
       do ipol = 1, this % n_pol
         do iazi = 1, this % n_azi
-          do gin = 1, size(this % scatter(iazi,ipol) % obj % energy)
+          do gin = 1, size(this % scatter(iazi, ipol) % obj % energy)
             size_scattmat = size_scattmat + &
-                 2 * size(this % scatter(iazi,ipol) % obj % energy(gin) % data) + &
-                 size(this % scatter(iazi,ipol) % obj % dist(gin) % data)
+                 2 * size(this % scatter(iazi, ipol) % obj % energy(gin) % data) + &
+                 size(this % scatter(iazi, ipol) % obj % dist(gin) % data)
           end do
           size_scattmat = size_scattmat + &
-               size(this % scatter(iazi,ipol) % obj % scattxs)
+               size(this % scatter(iazi, ipol) % obj % scattxs)
         end do
       end do
       size_scattmat = size_scattmat * 8
@@ -1141,7 +1160,7 @@ module mgxs_header
           xs = this % chi(gout,gin)
         else
           ! Not sure youd want a 1 or a 0, but here you go!
-          xs = sum(this % chi(:,gin))
+          xs = sum(this % chi(:, gin))
         end if
       case('scatter')
         if (present(gout)) then
@@ -1211,68 +1230,69 @@ module mgxs_header
         call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
         select case(xstype)
         case('total')
-          xs = this % total(gin,iazi,ipol)
+          xs = this % total(gin, iazi, ipol)
         case('absorption')
-          xs = this % absorption(gin,iazi,ipol)
+          xs = this % absorption(gin, iazi, ipol)
         case('fission')
           if (allocated(this % fission)) then
-            xs = this % fission(gin,iazi,ipol)
+            xs = this % fission(gin, iazi, ipol)
           else
             xs = ZERO
           end if
         case('kappa_fission')
           if (allocated(this % k_fission)) then
-            xs = this % k_fission(gin,iazi,ipol)
+            xs = this % k_fission(gin, iazi, ipol)
           else
             xs = ZERO
           end if
         case('nu_fission')
-          xs = this % nu_fission(gin,iazi,ipol)
+          xs = this % nu_fission(gin, iazi, ipol)
         case('chi')
           if (present(gout)) then
-            xs = this % chi(gout,gin,iazi,ipol)
+            xs = this % chi(gout, gin, iazi, ipol)
           else
             ! Not sure youd want a 1 or a 0, but here you go!
-            xs = sum(this % chi(:,gin,iazi,ipol))
+            xs = sum(this % chi(:, gin, iazi, ipol))
           end if
         case('scatter')
           if (present(gout)) then
-            if (gout < this % scatter(iazi,ipol) % obj % gmin(gin) .or. &
-                 gout > this % scatter(iazi,ipol) % obj % gmax(gin)) then
+            if (gout < this % scatter(iazi, ipol) % obj % gmin(gin) .or. &
+                 gout > this % scatter(iazi, ipol) % obj % gmax(gin)) then
               xs = ZERO
             else
-              xs = this % scatter(iazi,ipol) % obj % scattxs(gin) * &
-                   this % scatter(iazi,ipol) % obj % energy(gin) % data(gout)
+              xs = this % scatter(iazi, ipol) % obj % scattxs(gin) * &
+                   this % scatter(iazi, ipol) % obj % energy(gin) % data(gout)
             end if
           else
-            xs = this % scatter(iazi,ipol) % obj % scattxs(gin)
+            xs = this % scatter(iazi, ipol) % obj % scattxs(gin)
           end if
         case('scatter/mult')
           if (present(gout)) then
-            if (gout < this % scatter(iazi,ipol) % obj % gmin(gin) .or. &
-                 gout > this % scatter(iazi,ipol) % obj % gmax(gin)) then
+            if (gout < this % scatter(iazi, ipol) % obj % gmin(gin) .or. &
+                 gout > this % scatter(iazi, ipol) % obj % gmax(gin)) then
               xs = ZERO
             else
-              xs = this % scatter(iazi,ipol) % obj % scattxs(gin) * &
-                   this % scatter(iazi,ipol) % obj % energy(gin) % data(gout) / &
-                   this % scatter(iazi,ipol) % obj % mult(gin) % data(gout)
+              xs = this % scatter(iazi, ipol) % obj % scattxs(gin) * &
+                   this % scatter(iazi, ipol) % obj % energy(gin) % data(gout) / &
+                   this % scatter(iazi, ipol) % obj % mult(gin) % data(gout)
             end if
           else
-            xs = this % scatter(iazi,ipol) % obj % scattxs(gin) / &
-                 (dot_product(this % scatter(iazi,ipol) % obj % mult(gin) % data, &
-                  this % scatter(iazi,ipol) % obj % energy(gin) % data))
+            xs = this % scatter(iazi, ipol) % obj % scattxs(gin) / &
+                 (dot_product(this % scatter(iazi, ipol) % obj % mult(gin) % data, &
+                  this % scatter(iazi, ipol) % obj % energy(gin) % data))
           end if
         case('scatter*f_mu/mult','scatter*f_mu')
           if (present(gout)) then
-            if (gout < this % scatter(iazi,ipol) % obj % gmin(gin) .or. &
-                 gout > this % scatter(iazi,ipol) % obj % gmax(gin)) then
+            if (gout < this % scatter(iazi, ipol) % obj % gmin(gin) .or. &
+                 gout > this % scatter(iazi, ipol) % obj % gmax(gin)) then
               xs = ZERO
             else
-              xs = this % scatter(iazi,ipol) % obj % scattxs(gin) * &
-                   this % scatter(iazi,ipol) % obj % energy(gin) % data(gout)
-              xs = xs * this % scatter(iazi,ipol) % obj % calc_f(gin, gout, mu)
+              xs = this % scatter(iazi, ipol) % obj % scattxs(gin) * &
+                   this % scatter(iazi, ipol) % obj % energy(gin) % data(gout)
+              xs = xs * this % scatter(iazi, ipol) % obj % calc_f(gin, gout, mu)
               if (xstype == 'scatter*f_mu/mult') then
-                xs = xs / this % scatter(iazi,ipol) % obj % mult(gin) % data(gout)
+                xs = xs / &
+                     this % scatter(iazi, ipol) % obj % mult(gin) % data(gout)
               end if
             end if
           else
@@ -1335,11 +1355,11 @@ module mgxs_header
       real(8) :: atom_density  ! atom density of a nuclide
       real(8) :: norm, nuscatt
       integer :: mat_max_order, order, order_dim, nuc_order_dim
-      real(8), allocatable :: temp_mult(:,:), mult_num(:,:), mult_denom(:,:)
-      real(8), allocatable :: scatt_coeffs(:,:,:)
+      real(8), allocatable :: temp_mult(:, :), mult_num(:, :), mult_denom(:, :)
+      real(8), allocatable :: scatt_coeffs(:, :, :)
 
       ! Set the meta-data
-      call mgxs_combine(this,mat,scatt_type,i_listing)
+      call mgxs_combine(this, mat, scatt_type, i_listing)
 
       ! Determine the scattering type of our data and ensure all scattering orders
       ! are the same.
@@ -1350,7 +1370,6 @@ module mgxs_header
       ! If we have tabular only data, then make sure all datasets have same size
       if (scatt_type == ANGLE_HISTOGRAM) then
         ! Check all scattering data to ensure it is the same size
-        ! order = size(nuclides(mat % nuclide(1)) % obj % scatter % data,dim=1)
         do i = 2, mat % n_nuclides
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsIso)
@@ -1370,7 +1389,7 @@ module mgxs_header
         do i = 2, mat % n_nuclides
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsIso)
-            if (order /= size(nuc % scatter % dist(1) % data,dim=1)) &
+            if (order /= size(nuc % scatter % dist(1) % data, dim=1)) &
                  call fatal_error("All Tabular Scattering Entries Must Be&
                                   & Same Length!")
           end select
@@ -1388,7 +1407,7 @@ module mgxs_header
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsIso)
             if (size(nuc % scatter % dist(1) % data,dim=1) > mat_max_order) &
-                 mat_max_order = size(nuc % scatter % dist(1) % data,dim=1)
+                 mat_max_order = size(nuc % scatter % dist(1) % data, dim=1)
           end select
         end do
 
@@ -1444,7 +1463,8 @@ module mgxs_header
               this % fission = this % fission + atom_density * nuc % fission
             end if
             if (allocated(nuc % k_fission)) then
-              this % k_fission = this % k_fission + atom_density * nuc % k_fission
+              this % k_fission = this % k_fission + atom_density * &
+                   nuc % k_fission
             end if
           end if
 
@@ -1471,11 +1491,11 @@ module mgxs_header
           end do
 
           ! Get the complete scattering matrix
-          nuc_order_dim = size(nuc % scatter % dist(1) % data,dim=1)
-          scatt_coeffs(1:min(nuc_order_dim, order_dim),:,:) = &
-               scatt_coeffs(1:min(nuc_order_dim, order_dim),:,:) + &
+          nuc_order_dim = size(nuc % scatter % dist(1) % data, dim=1)
+          scatt_coeffs(1:min(nuc_order_dim, order_dim), :, :) = &
+               scatt_coeffs(1:min(nuc_order_dim, order_dim), :, :) + &
                atom_density * &
-               nuc % scatter % get_matrix(min(nuc_order_dim,order_dim))
+               nuc % scatter % get_matrix(min(nuc_order_dim, order_dim))
 
         type is (MgxsAngle)
           call fatal_error("Invalid Passing of MgxsAngle to MgxsIso Object")
@@ -1494,14 +1514,14 @@ module mgxs_header
       end do
 
       ! Initialize the ScattData Object
-      call this % scatter % init(temp_mult,scatt_coeffs)
+      call this % scatter % init(temp_mult, scatt_coeffs)
 
       ! Now normalize chi
       if (mat % fissionable) then
         do gin = 1, groups
-          norm =  sum(this % chi(:,gin))
+          norm =  sum(this % chi(:, gin))
           if (norm > ZERO) then
-            this % chi(:,gin) = this % chi(:,gin) / norm
+            this % chi(:, gin) = this % chi(:, gin) / norm
           end if
         end do
       end if
@@ -1527,8 +1547,8 @@ module mgxs_header
       integer :: ipol, iazi, n_pol, n_azi
       real(8) :: norm, nuscatt
       integer :: mat_max_order, order, order_dim, nuc_order_dim
-      real(8), allocatable :: temp_mult(:,:,:,:), mult_num(:,:,:,:), mult_denom(:,:,:,:)
-      real(8), allocatable :: scatt_coeffs(:,:,:,:,:)
+      real(8), allocatable :: temp_mult(:, :, :, :), mult_num(:, :, :, :)
+      real(8), allocatable :: mult_denom(:, :, :, :), scatt_coeffs(:, :, :, :, :)
 
       ! Set the meta-data
       call mgxs_combine(this,mat,scatt_type,i_listing)
@@ -1568,7 +1588,7 @@ module mgxs_header
         do i = 2, mat % n_nuclides
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsAngle)
-            if (order /= size(nuc % scatter(1,1) % obj % dist(1) % data,dim=1)) &
+            if (order /= size(nuc % scatter(1,1) % obj % dist(1) % data, dim=1)) &
                  call fatal_error("All Histogram Scattering Entries Must Be&
                                   & Same Length!")
           end select
@@ -1589,7 +1609,7 @@ module mgxs_header
         do i = 2, mat % n_nuclides
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsAngle)
-            if (order /= size(nuc % scatter(1,1) % obj % dist(1) % data,dim=1)) &
+            if (order /= size(nuc % scatter(1, 1) % obj % dist(1) % data,dim=1)) &
                  call fatal_error("All Tabular Scattering Entries Must Be&
                                   & Same Length!")
           end select
@@ -1611,8 +1631,8 @@ module mgxs_header
         do i = 1, mat % n_nuclides
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsAngle)
-            if (size(nuc % scatter(1,1) % obj % dist(1) % data,dim=1) > mat_max_order) &
-                 mat_max_order = size(nuc % scatter(1,1) % obj% dist(1) % data,dim=1)
+            if (size(nuc % scatter(1,1) % obj % dist(1) % data, dim=1) > mat_max_order) &
+                 mat_max_order = size(nuc % scatter(1,1) % obj% dist(1) % data, dim=1)
           end select
         end do
 
@@ -1632,25 +1652,25 @@ module mgxs_header
       end if
 
       ! Allocate and initialize data within macro_xs(i_mat) object
-      allocate(this % total(groups,n_azi,n_pol))
+      allocate(this % total(groups, n_azi, n_pol))
       this % total = ZERO
-      allocate(this % absorption(groups,n_azi,n_pol))
+      allocate(this % absorption(groups, n_azi, n_pol))
       this % absorption = ZERO
-      allocate(this % fission(groups,n_azi,n_pol))
+      allocate(this % fission(groups, n_azi, n_pol))
       this % fission = ZERO
-      allocate(this % k_fission(groups,n_azi,n_pol))
+      allocate(this % k_fission(groups, n_azi, n_pol))
       this % k_fission = ZERO
-      allocate(this % nu_fission(groups,n_azi,n_pol))
+      allocate(this % nu_fission(groups, n_azi, n_pol))
       this % nu_fission = ZERO
-      allocate(this % chi(groups,groups,n_azi,n_pol))
+      allocate(this % chi(groups, groups, n_azi, n_pol))
       this % chi = ZERO
-      allocate(temp_mult(groups,groups,n_azi,n_pol))
+      allocate(temp_mult(groups, groups, n_azi, n_pol))
       temp_mult = ZERO
-      allocate(mult_num(groups,groups,n_azi,n_pol))
+      allocate(mult_num(groups, groups, n_azi, n_pol))
       mult_num = ZERO
-      allocate(mult_denom(groups,groups,n_azi,n_pol))
+      allocate(mult_denom(groups, groups, n_azi, n_pol))
       mult_denom = ZERO
-      allocate(scatt_coeffs(order_dim,groups,groups,n_azi,n_pol))
+      allocate(scatt_coeffs(order_dim, groups, groups, n_azi, n_pol))
       scatt_coeffs = ZERO
 
       ! Add contribution from each nuclide in material
@@ -1675,7 +1695,8 @@ module mgxs_header
               this % fission = this % fission + atom_density * nuc % fission
             end if
             if (allocated(nuc % k_fission)) then
-              this % k_fission = this % k_fission + atom_density * nuc % k_fission
+              this % k_fission = this % k_fission + atom_density * &
+                   nuc % k_fission
             end if
           end if
 
@@ -1693,15 +1714,16 @@ module mgxs_header
           do ipol = 1, n_pol
             do iazi = 1, n_azi
               do gin = 1, groups
-                do gout = nuc % scatter(iazi,ipol) % obj % gmin(gin), &
-                     nuc % scatter(iazi,ipol) % obj % gmax(gin)
-                  nuscatt = nuc % scatter(iazi,ipol) % obj % scattxs(gin) * &
-                       nuc % scatter(iazi,ipol) % obj % energy(gin) % data(gout)
-                  mult_num(gout,gin,iazi,ipol) = mult_num(gout,gin,iazi,ipol) + &
+                do gout = nuc % scatter(iazi, ipol) % obj % gmin(gin), &
+                     nuc % scatter(iazi, ipol) % obj % gmax(gin)
+                  nuscatt = nuc % scatter(iazi, ipol) % obj % scattxs(gin) * &
+                       nuc % scatter(iazi, ipol) % obj % energy(gin) % data(gout)
+                  mult_num(gout, gin, iazi, ipol) = mult_num(gout, gin, iazi, ipol) + &
                        atom_density * nuscatt
-                  mult_denom(gout,gin,iazi,ipol) = mult_denom(gout,gin,iazi,ipol) + &
+                  mult_denom(gout, gin, iazi, ipol) = &
+                       mult_denom(gout, gin, iazi, ipol) + &
                        atom_density * nuscatt / &
-                       nuc % scatter(iazi,ipol) % obj % mult(gin) % data(gout)
+                       nuc % scatter(iazi, ipol) % obj % mult(gin) % data(gout)
                 end do
               end do
             end do
@@ -1711,11 +1733,10 @@ module mgxs_header
           nuc_order_dim = size(nuc % scatter(1,1) % obj % dist(1) % data,dim=1)
           do ipol = 1, n_pol
             do iazi = 1, n_azi
-              scatt_coeffs(1:min(nuc_order_dim,order_dim),:,:,iazi,ipol) = &
-                   scatt_coeffs(1:min(nuc_order_dim, order_dim),:,:,iazi,ipol) + &
-                   atom_density * &
-                   nuc % scatter(iazi,ipol) % obj % get_matrix(&
-                   min(nuc_order_dim,order_dim))
+              scatt_coeffs(1:min(nuc_order_dim, order_dim), :, :, iazi, ipol) = &
+                   scatt_coeffs(1:min(nuc_order_dim, order_dim), :, :, iazi, ipol) + &
+                   atom_density * nuc % scatter(iazi, ipol) % obj % get_matrix(&
+                   min(nuc_order_dim, order_dim))
             end do
           end do
         end select
@@ -1726,10 +1747,12 @@ module mgxs_header
         do iazi = 1, n_azi
           do gin = 1, groups
             do gout = 1, groups
-              if (mult_denom(gout,gin,iazi,ipol) > ZERO) then
-                temp_mult(gout,gin,iazi,ipol) = mult_num(gout,gin,iazi,ipol) / mult_denom(gout,gin,iazi,ipol)
+              if (mult_denom(gout, gin, iazi, ipol) > ZERO) then
+                temp_mult(gout, gin, iazi, ipol) = &
+                     mult_num(gout, gin, iazi, ipol) / &
+                     mult_denom(gout, gin, iazi, ipol)
               else
-                temp_mult(gout,gin,iazi,ipol) = ONE
+                temp_mult(gout, gin, iazi, ipol) = ONE
               end if
             end do
           end do
@@ -1739,8 +1762,8 @@ module mgxs_header
       ! Initialize the ScattData Object
       do ipol = 1, n_pol
         do iazi = 1, n_azi
-          call this % scatter(iazi,ipol) % obj % init( &
-               temp_mult(:,:,iazi,ipol), scatt_coeffs(:,:,:,iazi,ipol))
+          call this % scatter(iazi, ipol) % obj % init( &
+               temp_mult(:, :, iazi, ipol), scatt_coeffs(:, :, :, iazi, ipol))
         end do
       end do
 
@@ -1749,9 +1772,9 @@ module mgxs_header
         do ipol = 1, n_pol
           do iazi = 1, n_azi
             do gin = 1, groups
-              norm =  sum(this % chi(:,gin,iazi,ipol))
+              norm =  sum(this % chi(:, gin, iazi, ipol))
               if (norm > ZERO) then
-                this % chi(:,gin,iazi,ipol) = this % chi(:,gin,iazi,ipol) / norm
+                this % chi(:, gin, iazi, ipol) = this % chi(:, gin, iazi, ipol) / norm
               end if
             end do
           end do
@@ -1799,11 +1822,11 @@ module mgxs_header
 
       xi = prn()
       gout = 1
-      prob = this % chi(gout,gin,iazi,ipol)
+      prob = this % chi(gout, gin, iazi, ipol)
 
       do while (prob < xi)
         gout = gout + 1
-        prob = prob + this % chi(gout,gin,iazi,ipol)
+        prob = prob + this % chi(gout, gin, iazi, ipol)
       end do
 
     end function mgxsang_sample_fission_energy
@@ -1835,7 +1858,7 @@ module mgxs_header
       integer :: iazi, ipol ! Angular indices
 
       call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
-      call this % scatter(iazi,ipol) % obj % sample(gin,gout,mu,wgt)
+      call this % scatter(iazi, ipol) % obj % sample(gin, gout, mu, wgt)
 
     end subroutine mgxsang_sample_scatter
 
@@ -1867,15 +1890,38 @@ module mgxs_header
       integer :: iazi, ipol
 
       call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
-      xs % total         = this % total(gin,iazi,ipol)
-      xs % elastic       = this % scatter(iazi,ipol) % obj % scattxs(gin)
-      xs % absorption    = this % absorption(gin,iazi,ipol)
-      xs % fission       = this % fission(gin,iazi,ipol)
-      xs % nu_fission    = this % nu_fission(gin,iazi,ipol)
+      xs % total         = this % total(gin, iazi, ipol)
+      xs % elastic       = this % scatter(iazi, ipol) % obj % scattxs(gin)
+      xs % absorption    = this % absorption(gin, iazi, ipol)
+      xs % fission       = this % fission(gin, iazi, ipol)
+      xs % nu_fission    = this % nu_fission(gin, iazi, ipol)
 
     end subroutine mgxsang_calculate_xs
 
-!!!TODO:
-! Move find_angle from math to here after we fully implement this and are ready
-! to delete macroxs_header and relevant portions from nuclide_header.
+!===============================================================================
+! find_angle finds the closest angle on the data grid and returns that index
+!===============================================================================
+
+    pure subroutine find_angle(polar, azimuthal, uvw, i_azi, i_pol)
+      real(8), intent(in) :: polar(:)     ! Polar angles [0,pi]
+      real(8), intent(in) :: azimuthal(:) ! Azi. angles [-pi,pi]
+      real(8), intent(in) :: uvw(3)       ! Direction of motion
+      integer, intent(inout) :: i_pol     ! Closest polar bin
+      integer, intent(inout) :: i_azi     ! Closest azi bin
+
+      real(8) :: my_pol, my_azi, dangle
+
+      ! Convert uvw to polar and azi
+
+      my_pol = acos(uvw(3))
+      my_azi = atan2(uvw(2), uvw(1))
+
+      ! Search for equi-binned angles
+      dangle = PI / real(size(polar),8)
+      i_pol  = floor(my_pol / dangle + ONE)
+      dangle = TWO * PI / real(size(azimuthal),8)
+      i_azi  = floor((my_azi + PI) / dangle + ONE)
+
+    end subroutine find_angle
+
 end module mgxs_header

@@ -232,7 +232,7 @@ contains
     this % n_secondary = n
     this % secondary_bank(this % n_secondary) % E = this % E
     if (.not. run_CE) then
-      this % secondary_bank(this % n_secondary) % E = real(this % g,8)
+      this % secondary_bank(this % n_secondary) % E = real(this % g, 8)
     end if
 
   end subroutine create_secondary

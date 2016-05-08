@@ -1346,7 +1346,7 @@ class MGXS(object):
                 modified.write('\n\\end{document}')
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',
-                             xs_type='macro', distribcell_paths=False):
+                             xs_type='macro', distribcell_paths=True):
         """Build a Pandas DataFrame for the MGXS data.
 
         This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but

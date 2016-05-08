@@ -1539,7 +1539,7 @@ class Tally(object):
         return data
 
     def get_pandas_dataframe(self, filters=True, nuclides=True, scores=True,
-                             distribcell_paths=False, float_format='{:.2e}'):
+                             distribcell_paths=True, float_format='{:.2e}'):
         """Build a Pandas DataFrame for the Tally data.
 
         This method constructs a Pandas DataFrame object for the Tally data
@@ -1557,10 +1557,11 @@ class Tally(object):
             Include columns with nuclide bin information (default is True).
         scores : bool
             Include columns with score bin information (default is True).
-        distribcell_paths : bool
-            Construct columns for distribcell tally filters. The geometric
-            information in the Summary object is embedded into a Multi-index
-            column with a geometric "path" to each distribcell instance.
+        distribcell_paths : bool, optional
+            Construct columns for distribcell tally filters (default is True).
+            The geometric information in the Summary object is embedded into a
+            Multi-index column with a geometric "path" to each distribcell
+            instance.
         float_format : str
             All floats in the DataFrame will be formatted using the given
             format string before printing.

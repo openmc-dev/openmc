@@ -1415,10 +1415,7 @@ class MGXS(object):
                     distribcell_paths=distribcell_paths)
 
         # Remove the score column since it is homogeneous and redundant
-        if distribcell_paths and 'distribcell' in self.domain_type:
-            df = df.drop('score', level=0, axis=1)
-        else:
-            df = df.drop('score', axis=1)
+        df = df.drop('score', axis=1)
 
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)

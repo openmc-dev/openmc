@@ -1840,7 +1840,7 @@ class ScatterMatrixXS(MGXS):
     ----------
     correction : 'P0' or None
         Apply the P0 correction to scattering matrices if set to 'P0'
-    order : int
+    legendre_order : int
         The highest legendre moment in the scattering matrix (default is 0)
 
     """
@@ -1851,11 +1851,12 @@ class ScatterMatrixXS(MGXS):
                                               groups, by_nuclide, name)
         self._rxn_type = 'scatter matrix'
         self._correction = 'P0'
-        self._order = 0
+        self._legendre_order = 0
 
     def __deepcopy__(self, memo):
         clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
         clone._correction = self.correction
+        clone._legendre_order = self.legendre_order
         return clone
 
     @property
@@ -1863,8 +1864,8 @@ class ScatterMatrixXS(MGXS):
         return self._correction
 
     @property
-    def order(self):
-        return self._order
+    def legendre_order(self):
+        return self._legendre_order
 
     @property
     def tallies(self):
@@ -1888,12 +1889,12 @@ class ScatterMatrixXS(MGXS):
             filters = [[energy]]
 
             # Create separate tallies for each moment
-            for moment in range(self.order+1):
+            for moment in range(self.legendre_order+1):
                 scores.append('scatter-{}'.format(moment))
                 filters.append([energy, energyout])
 
             # Append to the lists for the P0 approximation if needed
-            if self.correction == 'P0' and self.order == 0:
+            if self.correction == 'P0' and self.legendre_order == 0:
                 scores.append('scatter-1')
                 filters.append([energyout])
 
@@ -1911,7 +1912,7 @@ class ScatterMatrixXS(MGXS):
         if self._rxn_rate_tally is None:
 
             # If using P0 correction subtract scatter-P1 from the diagonal
-            if self.correction == 'P0' and self.order == 0:
+            if self.correction == 'P0' and self.legendre_order == 0:
                 scatter_p1 = self.tallies['scatter-1']
                 scatter_p1 = scatter_p1.get_slice(scores=['scatter-1'])
                 energy_filter = self.tallies['scatter-0'].find_filter('energy')
@@ -1922,7 +1923,7 @@ class ScatterMatrixXS(MGXS):
             # Merge all scattering moments into a single reaction rate Tally
             else:
                 rxn_rate_tally = self.tallies['scatter-0']
-                for moment in range(1, self.order+1):
+                for moment in range(1, self.legendre_order+1):
                     scatter_key = 'scatter-{}'.format(moment)
                     scatter_pn = self.tallies[scatter_key]
                     rxn_rate_tally = rxn_rate_tally.merge(scatter_pn)
@@ -1937,26 +1938,27 @@ class ScatterMatrixXS(MGXS):
     def correction(self, correction):
         cv.check_value('correction', correction, ('P0', None))
 
-        if correction == 'P0' and self.order > 0:
+        if correction == 'P0' and self.legendre_order > 0:
             msg = 'The P0 correction will be ignored since the scattering ' \
-                  'order {} is greater than zero'.format(self.order)
+                  'order {} is greater than zero'.format(self.legendre_order)
             warnings.warn(msg)
 
         self._correction = correction
 
-    @order.setter
-    def order(self, order):
-        cv.check_type('order', order, Integral)
-        cv.check_greater_than('order', order, 0, equality=True)
+    @legendre_order.setter
+    def legendre_order(self, legendre_order):
+        cv.check_type('legendre_order', legendre_order, Integral)
+        cv.check_greater_than('legendre_order', legendre_order, 0, equality=True)
 
-        if self.correction == 'P0' and self.order > 0:
+        if self.correction == 'P0' and legendre_order > 0:
             msg = 'The P0 correction will be ignored since the scattering ' \
-                  'order {} is greater than zero'.format(self.order)
+                  'order {} is greater than zero'.format(self.legendre_order)
             warnings.warn(msg, RuntimeWarning)
 
-        self._order = order
+        self._legendre_order = legendre_order
 
-    def get_slice(self, nuclides=[], in_groups=[], out_groups=[]):
+    def get_slice(self, nuclides=[], in_groups=[], out_groups=[],
+                  legendre_order='same'):
         """Build a sliced ScatterMatrix for the specified nuclides and
         energy groups.
 
@@ -1976,6 +1978,12 @@ class ScatterMatrixXS(MGXS):
         out_groups : list of int
             A list of outgoing energy group indices starting at 1 for the high
             energies (e.g., [1, 2, 3]; default is [])
+        legendre_order : int or 'same'
+            The highest Legendre moment in the sliced MGXS. If order is 'same'
+            then the sliced MGXS will have the same Legendre moments as the
+            original MGXS (default). If order is an integer less than the
+            original MGXS' order, then only those Legendre moments up to that
+            order will be included in the sliced MGXS.
 
         Returns
         -------
@@ -1989,6 +1997,16 @@ class ScatterMatrixXS(MGXS):
         slice_xs = super(ScatterMatrixXS, self).get_slice(nuclides, in_groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
+
+        # Slice the Legendre order if needed
+        if legendre_order != 'same':
+            cv.check_type('legendre_order', legendre_order, Integral)
+            cv.check_less_than('legendre_order', legendre_order,
+                               self.legendre_order, equality=True)
+            slice_xs.legendre_order = legendre_order
+
+            for moment in range(legendre_order+1, self.legendre_order+1):
+                del slice_xs.tallies['scatter-{}'.format(moment)]
 
         # Slice outgoing energy groups if needed
         if len(out_groups) != 0:
@@ -2089,7 +2107,7 @@ class ScatterMatrixXS(MGXS):
         if moment != 'all':
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
-            cv.check_less_than('moment', moment, self.order, equality=True)
+            cv.check_less_than('moment', moment, 10, equality=True)
             scores = [self.xs_tally.scores[moment]]
         else:
             scores = []
@@ -2203,7 +2221,7 @@ class ScatterMatrixXS(MGXS):
         if moment != 'all':
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
-            cv.check_less_than('moment', moment, self.order, equality=True)
+            cv.check_less_than('moment', moment, 10, equality=True)
             df = df[df['score'] == str(self.xs_tally.scores[moment])]
 
         return df
@@ -2253,7 +2271,7 @@ class ScatterMatrixXS(MGXS):
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         if self.correction != 'P0':
-            rxn_type= '{0} (moment {1})'.format(self.rxn_type, moment)
+            rxn_type= '{0} (P{1})'.format(self.rxn_type, moment)
         else:
             rxn_type = self.rxn_type
 
@@ -2321,8 +2339,6 @@ class ScatterMatrixXS(MGXS):
         print(string)
 
 
-# FIXME: Add order property to Library
-
 class NuScatterMatrixXS(ScatterMatrixXS):
     """A scattering production matrix multi-group cross section."""
 
@@ -2355,13 +2371,13 @@ class NuScatterMatrixXS(ScatterMatrixXS):
             keys = ['flux']
 
             # Create separate tallies for each moment
-            for moment in range(self.order+1):
+            for moment in range(self.legendre_order+1):
                 scores.append('nu-scatter-{}'.format(moment))
                 filters.append([energy, energyout])
                 keys.append('scatter-{}'.format(moment))
 
             # Append to the lists for the P0 approximation if needed
-            if self.correction == 'P0' and self.order == 0:
+            if self.correction == 'P0' and self.legendre_order == 0:
                 scores.append('scatter-1')
                 filters.append([energyout])
                 keys.append('scatter-1')

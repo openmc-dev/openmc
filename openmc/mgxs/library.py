@@ -2,6 +2,7 @@ import sys
 import os
 import copy
 import pickle
+import warnings
 from numbers import Integral
 from collections import OrderedDict
 
@@ -57,6 +58,8 @@ class Library(object):
         The spatial domain(s) for which MGXS in the Library are computed
     correction : {'P0', None}
         Apply the P0 correction to scattering matrices if set to 'P0'
+    legendre_order : int
+        The highest legendre moments in the scattering matrices (default is 0)
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
     tally_trigger : openmc.Trigger
@@ -89,8 +92,9 @@ class Library(object):
         self._mgxs_types = []
         self._domain_type = None
         self._domains = 'all'
-        self._correction = 'P0'
         self._energy_groups = None
+        self._correction = 'P0'
+        self._legendre_order = 0
         self._tally_trigger = None
         self._all_mgxs = OrderedDict()
         self._sp_filename = None
@@ -118,6 +122,7 @@ class Library(object):
             clone._domain_type = self.domain_type
             clone._domains = copy.deepcopy(self.domains)
             clone._correction = self.correction
+            clone._legendre_order = self.legendre_order
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = copy.deepcopy(self.all_mgxs)
@@ -186,12 +191,16 @@ class Library(object):
             return self._domains
 
     @property
+    def energy_groups(self):
+        return self._energy_groups
+
+    @property
     def correction(self):
         return self._correction
 
     @property
-    def energy_groups(self):
-        return self._energy_groups
+    def legendre_order(self):
+        return self._legendre_order
 
     @property
     def tally_trigger(self):
@@ -280,15 +289,21 @@ class Library(object):
 
             self._domains = domains
 
+    @energy_groups.setter
+    def energy_groups(self, energy_groups):
+        cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
+        self._energy_groups = energy_groups
+
     @correction.setter
     def correction(self, correction):
         cv.check_value('correction', correction, ('P0', None))
         self._correction = correction
 
-    @energy_groups.setter
-    def energy_groups(self, energy_groups):
-        cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
-        self._energy_groups = energy_groups
+    @legendre_order.setter
+    def legendre_order(self, legendre_order):
+        cv.check_type('legendre_order', legendre_order, Integral)
+        cv.check_greater_than('legendre_order', legendre_order, 0, equality=True)
+        self._legendre_order = legendre_order
 
     @tally_trigger.setter
     def tally_trigger(self, tally_trigger):
@@ -344,6 +359,7 @@ class Library(object):
                 # Specify whether to use a transport ('P0') correction
                 if isinstance(mgxs, openmc.mgxs.ScatterMatrixXS):
                     mgxs.correction = self.correction
+                    mgxs.legendre_order = self.legendre_order
 
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 

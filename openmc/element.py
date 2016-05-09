@@ -1,6 +1,8 @@
 import sys
 
+import openmc
 from openmc.checkvalue import check_type
+from openmc.data import natural_abundance
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -109,3 +111,22 @@ class Element(object):
             raise ValueError(msg)
 
         self._scattering = scattering
+
+    def expand(self):
+        """Expand natural element into its naturally-occurring isotopes.
+
+        Returns
+        -------
+        isotopes : list
+            Naturally-occurring isotopes of the element. Each item of the list
+            is a tuple consisting of an openmc.Nuclide instance and the natural
+            abundance of the isotope.
+
+        """
+
+        isotopes = []
+        for isotope, abundance in natural_abundance.items():
+            if isotope.startswith(self.name):
+                nuc = openmc.Nuclide(isotope, self.xs)
+                isotopes.append((nuc, abundance))
+        return isotopes

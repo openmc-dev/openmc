@@ -591,7 +591,8 @@ class Library(object):
         return subdomain_avg_library
 
     def build_hdf5_store(self, filename='mgxs.h5', directory='mgxs',
-                         subdomains='all', nuclides='all', xs_type='macro'):
+                         subdomains='all', nuclides='all', xs_type='macro',
+                         row_column='inout'):
         """Export the multi-group cross section library to an HDF5 binary file.
 
         This method constructs an HDF5 file which stores the library's
@@ -621,6 +622,10 @@ class Library(object):
         xs_type: {'macro', 'micro'}
             Store the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
+        row_column: {'inout', 'outin'}
+            Store scattering matrices indexed first by incoming group and
+            second by outgoing group ('inout'), or vice versa ('outin').
+            Defaults to 'inout'.
 
         Raises
         ------
@@ -662,8 +667,8 @@ class Library(object):
                 if subdomains == 'avg':
                     mgxs = mgxs.get_subdomain_avg_xs()
 
-                mgxs.build_hdf5_store(filename, directory,
-                                      xs_type=xs_type, nuclides=nuclides)
+                mgxs.build_hdf5_store(filename, directory, xs_type=xs_type,
+                                      nuclides=nuclides, row_column=row_column)
 
     def dump_to_file(self, filename='mgxs', directory='mgxs'):
         """Store this Library object in a pickle binary file.

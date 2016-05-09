@@ -330,11 +330,11 @@ contains
           MOMENT_LOOP: do j = 1, tally % n_user_score_bins
             select case(tally % score_bins(k))
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-              str_array(k) = 'P' // trim(to_str(tally % moment_order(k)))
+              str_array(k) = trim(to_str(tally % moment_order(k)))
               k = k + 1
             case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
               do n_order = 0, tally % moment_order(k)
-                str_array(k) = 'P' // trim(to_str(n_order))
+                str_array(k) = trim(to_str(n_order))
                 k = k + 1
               end do
             case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &

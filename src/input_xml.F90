@@ -3338,28 +3338,17 @@ contains
 
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
-
-            ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
+
           case ('scatter-n')
-            if (n_order == 0) then
-              t % score_bins(j) = SCORE_SCATTER
-            else
-              t % score_bins(j) = SCORE_SCATTER_N
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
-            end if
+            t % score_bins(j) = SCORE_SCATTER_N
             t % moment_order(j) = n_order
+            t % estimator = ESTIMATOR_ANALOG
 
           case ('nu-scatter-n')
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
-            if (n_order == 0) then
-              t % score_bins(j) = SCORE_NU_SCATTER
-            else
-              t % score_bins(j) = SCORE_NU_SCATTER_N
-            end if
+            t % score_bins(j) = SCORE_NU_SCATTER_N
             t % moment_order(j) = n_order
+            t % estimator = ESTIMATOR_ANALOG
 
           case ('scatter-pn')
             t % estimator = ESTIMATOR_ANALOG

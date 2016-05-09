@@ -82,11 +82,6 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = openmc.StatePoint(statepoint)
 
-        # Read the summary file
-        summary = glob.glob(os.path.join(os.getcwd(), 'summary.h5'))[0]
-        su = openmc.Summary(summary)
-        sp.link_with_summary(su)
-
         # Extract the tally of interest
         tally = sp.get_tally(name='distribcell tally')
 
@@ -96,8 +91,8 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         outstr += ', '.join(map(str, tally.std_dev.flatten())) + '\n'
 
         # Extract fuel assembly lattices from the summary
-        core = su.get_cell_by_id(1)
-        fuel = su.get_cell_by_id(80)
+        core = sp.summary.get_cell_by_id(1)
+        fuel = sp.summary.get_cell_by_id(80)
         fuel = fuel.fill
         core = core.fill
 

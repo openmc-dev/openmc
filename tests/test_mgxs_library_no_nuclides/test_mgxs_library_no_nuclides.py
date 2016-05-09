@@ -43,11 +43,6 @@ class MGXSTestHarness(PyAPITestHarness):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = openmc.StatePoint(statepoint)
 
-        # Read the summary file.
-        summary = glob.glob(os.path.join(os.getcwd(), 'summary.h5'))[0]
-        su = openmc.Summary(summary)
-        sp.link_with_summary(su)
-
         # Load the MGXS library from the statepoint
         self.mgxs_lib.load_from_statepoint(sp)
 

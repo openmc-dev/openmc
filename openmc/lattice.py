@@ -32,11 +32,11 @@ class Lattice(object):
         Name of the lattice
     pitch : float
         Pitch of the lattice in cm
-    outer : int
-        The unique identifier of a universe to fill all space outside the
-        lattice
-    universes : numpy.ndarray of openmc.Universe
-        An array of universes filling each element of the lattice
+    outer : openmc.Universe
+        A universe to fill all space outside the lattice
+    universes : Iterable of Iterable of openmc.Universe
+        A two- or three-dimensional list/array of universes filling each element
+        of the lattice
 
     """
 
@@ -259,6 +259,13 @@ class RectLattice(Lattice):
     lower_left : Iterable of float
         The coordinates of the lower-left corner of the lattice. If the lattice
         is two-dimensional, only the x- and y-coordinates are specified.
+    pitch : float
+        Pitch of the lattice in cm
+    outer : openmc.Universe
+        A universe to fill all space outside the lattice
+    universes : Iterable of Iterable of openmc.Universe
+        A two- or three-dimensional list/array of universes filling each element
+        of the lattice
 
     """
 
@@ -505,6 +512,13 @@ class HexLattice(Lattice):
     center : Iterable of float
         Coordinates of the center of the lattice. If the lattice does not have
         axial sections then only the x- and y-coordinates are specified
+    pitch : float
+        Pitch of the lattice in cm
+    outer : openmc.Universe
+        A universe to fill all space outside the lattice
+    universes : Iterable of Iterable of openmc.Universe
+        A two- or three-dimensional list/array of universes filling each element
+        of the lattice
 
     """
 
@@ -635,7 +649,7 @@ class HexLattice(Lattice):
         # Set the number of rings and make sure this number is consistent for
         # all axial positions.
         if n_dims == 3:
-            self.num_rings = len(self._universes)
+            self.num_rings = len(self._universes[0])
             for rings in self._universes:
                 if len(rings) != self._num_rings:
                     msg = 'HexLattice ID={0:d} has an inconsistent number of ' \

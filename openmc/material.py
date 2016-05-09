@@ -245,18 +245,24 @@ class Material(object):
 
         """
 
-        cv.check_type('the density for Material ID="{0}"'.format(self._id),
-                      density, Real)
         cv.check_value('density units', units, DENSITY_UNITS)
-
-        if density is None and units is not 'sum':
-            msg = 'Unable to set the density for Material ID="{0}" ' \
-                  'because a density must be set when not using ' \
-                  'sum unit'.format(self._id)
-            raise ValueError(msg)
-
-        self._density = density
         self._density_units = units
+
+        if units is 'sum':
+            if density is not None:
+                msg = 'Density "{0}" for Material ID="{1}" is ignored ' \
+                      'because the unit is "sum"'.format(density, self._id)
+                warnings.warn(msg)
+        else:
+            if density is None:
+                msg = 'Unable to set the density for Material ID="{0}" ' \
+                      'because a density must be set when not using ' \
+                      '"sum" unit'.format(self._id)
+                raise ValueError(msg)
+
+            cv.check_type('the density for Material ID="{0}"'.format(self._id),
+                          density, Real)
+            self._density = density
 
     @distrib_otf_file.setter
     def distrib_otf_file(self, filename):

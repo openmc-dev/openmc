@@ -36,8 +36,8 @@ class Universe(object):
         automatically be assigned
     name : str, optional
         Name of the universe. If not specified, the name is the empty string.
-    cells : Iterable of openmc.Cell
-        Cells to add to the universe
+    cells : Iterable of openmc.Cell, optional
+        Cells to add to the universe. By default no cells are added.
 
     Attributes
     ----------

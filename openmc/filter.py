@@ -629,6 +629,12 @@ class Filter(object):
             # Create Pandas Multi-index columns for each level in CSG tree
             if distribcell_paths:
 
+                # Distribcell paths require linked metadata from the Summary
+                if self.distribcell_paths is None:
+                    msg = 'Unable to construct distribcell paths since '
+                          'the Summary is not linked to the StatePoint'
+                    raise ValueError(msg)
+
                 # Make copy of array of distribcell paths to use in
                 # Pandas Multi-index column construction
                 distribcell_paths = copy.deepcopy(self.distribcell_paths)

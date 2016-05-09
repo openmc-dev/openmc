@@ -2,6 +2,7 @@ from __future__ import division
 
 from collections import Iterable, OrderedDict
 from numbers import Integral
+import warnings
 import os
 import sys
 import copy
@@ -1412,12 +1413,6 @@ class MGXS(object):
         else:
             df = self.xs_tally.get_pandas_dataframe(summary=summary)
 
-        # Remove the score column since it is homogeneous and redundant
-        if summary and 'distribcell' in self.domain_type:
-            df = df.drop('score', level=0, axis=1)
-        else:
-            df = df.drop('score', axis=1)
-
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
         all_groups = np.repeat(all_groups, self.num_nuclides)
@@ -1431,7 +1426,8 @@ class MGXS(object):
 
             df.rename(columns={'energyout low [MeV]': 'group out'},
                       inplace=True)
-            out_groups = np.tile(all_groups, df.shape[0] / all_groups.size)
+            out_groups = np.repeat(all_groups, self.xs_tally.num_scores)
+            out_groups = np.tile(out_groups, df.shape[0] / out_groups.size)
             df['group out'] = out_groups
             del df['energyout high [MeV]']
             columns = ['group in', 'group out']
@@ -1843,6 +1839,8 @@ class ScatterMatrixXS(MGXS):
     ----------
     correction : 'P0' or None
         Apply the P0 correction to scattering matrices if set to 'P0'
+    order : int
+        The highest order in the scattering matrix (default is 0)
 
     """
 
@@ -1852,6 +1850,7 @@ class ScatterMatrixXS(MGXS):
                                               groups, by_nuclide, name)
         self._rxn_type = 'scatter matrix'
         self._correction = 'P0'
+        self._order = 0
 
     def __deepcopy__(self, memo):
         clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
@@ -1861,6 +1860,10 @@ class ScatterMatrixXS(MGXS):
     @property
     def correction(self):
         return self._correction
+
+    @property
+    def order(self):
+        return self._order
 
     @property
     def tallies(self):
@@ -1879,13 +1882,19 @@ class ScatterMatrixXS(MGXS):
             energy = openmc.Filter('energy', group_edges)
             energyout = openmc.Filter('energyout', group_edges)
 
-            # Create a list of scores for each Tally to be created
-            if self.correction == 'P0':
-                scores = ['flux', 'scatter', 'scatter-P1']
-                filters = [[energy], [energy, energyout], [energyout]]
-            else:
-                scores = ['flux', 'scatter']
-                filters = [[energy], [energy, energyout]]
+            # Create lists of scores, filters for each Tally to be created
+            scores = ['flux']
+            filters = [[energy]]
+
+            # Create separate tallies for each moment
+            for moment in range(self.order+1):
+                scores.append('scatter-{}'.format(moment))
+                filters.append([energy, energyout])
+
+            # Append to the lists for the P0 approximation if needed
+            if self.correction == 'P0' and self.order == 0:
+                scores.append('scatter-1')
+                filters.append([energyout])
 
             estimator = 'analog'
             keys = scores
@@ -1899,16 +1908,25 @@ class ScatterMatrixXS(MGXS):
     def rxn_rate_tally(self):
 
         if self._rxn_rate_tally is None:
+
             # If using P0 correction subtract scatter-P1 from the diagonal
-            if self.correction == 'P0':
-                scatter_p1 = self.tallies['scatter-P1']
-                scatter_p1 = scatter_p1.get_slice(scores=['scatter-P1'])
-                energy_filter = self.tallies['scatter'].find_filter('energy')
+            if self.correction == 'P0' and self.order == 0:
+                scatter_p1 = self.tallies['scatter-1']
+                scatter_p1 = scatter_p1.get_slice(scores=['scatter-1'])
+                energy_filter = self.tallies['scatter-0'].find_filter('energy')
                 energy_filter = copy.deepcopy(energy_filter)
                 scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
-                self._rxn_rate_tally = self.tallies['scatter'] - scatter_p1
+                self._rxn_rate_tally = self.tallies['scatter-0'] - scatter_p1
+
+            # Merge all scattering moments into a single reaction rate Tally
             else:
-                self._rxn_rate_tally = self.tallies['scatter']
+                rxn_rate_tally = self.tallies['scatter-0']
+                for moment in range(1, self.order+1):
+                    scatter_key = 'scatter-{}'.format(moment)
+                    scatter_pn = self.tallies[scatter_key]
+                    rxn_rate_tally = rxn_rate_tally.merge(scatter_pn)
+
+                self._rxn_rate_tally = rxn_rate_tally
 
             self._rxn_rate_tally.sparse = self.sparse
 
@@ -1917,8 +1935,27 @@ class ScatterMatrixXS(MGXS):
     @correction.setter
     def correction(self, correction):
         cv.check_value('correction', correction, ('P0', None))
+
+        if correction == 'P0' and self.order > 0:
+            msg = 'The P0 correction will be ignored since the scattering ' \
+                  'order {} is greater than zero'.format(self.order)
+            warnings.warn(msg)
+
         self._correction = correction
 
+    @order.setter
+    def order(self, order):
+        cv.check_type('order', order, Integral)
+        cv.check_greater_than('order', order, 0, equality=True)
+
+        if self.correction == 'P0' and self.order > 0:
+            msg = 'The P0 correction will be ignored since the scattering ' \
+                  'order {} is greater than zero'.format(self.order)
+            warnings.warn(msg, RuntimeWarning)
+
+        self._order = order
+
+    # FIXME: Add order param
     def get_slice(self, nuclides=[], in_groups=[], out_groups=[]):
         """Build a sliced ScatterMatrix for the specified nuclides and
         energy groups.
@@ -1971,8 +2008,8 @@ class ScatterMatrixXS(MGXS):
         slice_xs.sparse = self.sparse
         return slice_xs
 
-    def get_xs(self, in_groups='all', out_groups='all',
-               subdomains='all', nuclides='all', xs_type='macro',
+    def get_xs(self, in_groups='all', out_groups='all', subdomains='all',
+               nuclides='all', moment='all', xs_type='macro',
                order_groups='increasing', value='mean'):
         """Returns an array of multi-group cross sections.
 
@@ -1992,6 +2029,10 @@ class ScatterMatrixXS(MGXS):
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
+        moment : int or 'all'
+            The scattering matrix moment to return. All moments will be
+             returned if the moment is 'all' (default); otherwise, a specific
+             moment will be returned.
         xs_type: {'macro', 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
@@ -2044,6 +2085,15 @@ class ScatterMatrixXS(MGXS):
                 filters.append('energyout')
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
+        # Construct CrossScore for requested scattering moment
+        if moment != 'all':
+            cv.check_type('moment', moment, Integral)
+            cv.check_greater_than('moment', moment, 0, equality=True)
+            cv.check_less_than('moment', moment, self.order, equality=True)
+            scores = [self.xs_tally.scores[moment]]
+        else:
+            scores = []
+
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
             if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
@@ -2056,10 +2106,10 @@ class ScatterMatrixXS(MGXS):
         # Use tally summation if user requested the sum for all nuclides
         if nuclides == 'sum' or nuclides == ['sum']:
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
-            xs = xs_tally.get_values(filters=filters,
+            xs = xs_tally.get_values(scores=scores, filters=filters,
                                      filter_bins=filter_bins, value=value)
         else:
-            xs = self.xs_tally.get_values(filters=filters,
+            xs = self.xs_tally.get_values(scores=scores, filters=filters,
                                           filter_bins=filter_bins,
                                           nuclides=query_nuclides, value=value)
 
@@ -2101,7 +2151,8 @@ class ScatterMatrixXS(MGXS):
 
         return xs
 
-    def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
+    def print_xs(self, subdomains='all', nuclides='all',
+                 xs_type='macro', moment=0):
         """Prints a string representation for the multi-group cross section.
 
         Parameters
@@ -2118,6 +2169,8 @@ class ScatterMatrixXS(MGXS):
         xs_type: {'macro', 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
+        moment : int
+            The scattering moment to print (default is 0)
 
         """
 
@@ -2142,9 +2195,14 @@ class ScatterMatrixXS(MGXS):
 
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
+        if self.correction != 'P0':
+            rxn_type= '{0} (moment {1})'.format(self.rxn_type, moment)
+        else:
+            rxn_type = self.rxn_type
+
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', rxn_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -2189,11 +2247,11 @@ class ScatterMatrixXS(MGXS):
                         string += template.format('', in_group, out_group)
                         average = \
                             self.get_xs([in_group], [out_group],
-                                        [subdomain], [nuclide],
+                                        [subdomain], [nuclide], moment=moment,
                                         xs_type=xs_type, value='mean')
                         rel_err = \
                             self.get_xs([in_group], [out_group],
-                                        [subdomain], [nuclide],
+                                        [subdomain], [nuclide], moment=moment,
                                         xs_type=xs_type, value='rel_err')
                         average = average.flatten()[0]
                         rel_err = rel_err.flatten()[0] * 100.
@@ -2205,6 +2263,8 @@ class ScatterMatrixXS(MGXS):
 
         print(string)
 
+
+# FIXME: Add order property to Library
 
 class NuScatterMatrixXS(ScatterMatrixXS):
     """A scattering production matrix multi-group cross section."""
@@ -2228,27 +2288,34 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         # Instantiate tallies if they do not exist
         if self._tallies is None:
 
-            # Create the non-domain specific Filters for the Tallies
             group_edges = self.energy_groups.group_edges
             energy = openmc.Filter('energy', group_edges)
             energyout = openmc.Filter('energyout', group_edges)
 
-            # Create a list of scores for each Tally to be created
-            if self.correction == 'P0':
-                scores = ['flux', 'nu-scatter', 'scatter-P1']
-                estimator = 'analog'
-                keys = ['flux', 'scatter', 'scatter-P1']
-                filters = [[energy], [energy, energyout], [energyout]]
-            else:
-                scores = ['flux', 'nu-scatter']
-                estimator = 'analog'
-                keys = ['flux', 'scatter']
-                filters = [[energy], [energy, energyout]]
+            # Create lists of scores, filters for each Tally to be created
+            scores = ['flux']
+            filters = [[energy]]
+            keys = ['flux']
+
+            # Create separate tallies for each moment
+            for moment in range(self.order+1):
+                scores.append('nu-scatter-{}'.format(moment))
+                filters.append([energy, energyout])
+                keys.append('scatter-{}'.format(moment))
+
+            # Append to the lists for the P0 approximation if needed
+            if self.correction == 'P0' and self.order == 0:
+                scores.append('scatter-1')
+                filters.append([energyout])
+                keys.append('scatter-1')
+
+            estimator = 'analog'
 
             # Intialize the Tallies
             self._create_tallies(scores, filters, keys, estimator)
 
         return self._tallies
+
 
 class Chi(MGXS):
     """The fission spectrum."""

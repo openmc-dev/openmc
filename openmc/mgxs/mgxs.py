@@ -1534,7 +1534,7 @@ class TransportXS(MGXS):
         """Construct the OpenMC tallies needed to compute this cross section.
 
         This method constructs three analog tallies to compute the 'flux',
-        'total' and 'scatter-P1' reaction rates in the spatial domain and
+        'total' and 'scatter-1' reaction rates in the spatial domain and
         energy groups of interest.
 
         """
@@ -1543,7 +1543,7 @@ class TransportXS(MGXS):
         if self._tallies is None:
 
             # Create a list of scores for each Tally to be created
-            scores = ['flux', 'total', 'scatter-P1']
+            scores = ['flux', 'total', 'scatter-1']
             estimator = 'analog'
             keys = scores
 
@@ -1561,15 +1561,9 @@ class TransportXS(MGXS):
     @property
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
-            scatter_p1 = copy.deepcopy(self.tallies['scatter-P1'])
-
-            # Use tally slicing to remove scatter-P0 data from scatter-P1 tally
-            self.tallies['scatter-P1'] = \
-                scatter_p1.get_slice(scores=['scatter-P1'])
-
-            self.tallies['scatter-P1'].filters[-1].type = 'energy'
+            self.tallies['scatter-1'].filters[-1].type = 'energy'
             self._rxn_rate_tally = \
-                self.tallies['total'] - self.tallies['scatter-P1']
+                self.tallies['total'] - self.tallies['scatter-1']
             self._rxn_rate_tally.sparse = self.sparse
 
         return self._rxn_rate_tally
@@ -1916,7 +1910,7 @@ class ScatterMatrixXS(MGXS):
 
         if self._rxn_rate_tally is None:
 
-            # If using P0 correction subtract scatter-P1 from the diagonal
+            # If using P0 correction subtract scatter-1 from the diagonal
             if self.correction == 'P0' and self.legendre_order == 0:
                 scatter_p1 = self.tallies['scatter-1']
                 scatter_p1 = scatter_p1.get_slice(scores=['scatter-1'])

@@ -631,7 +631,7 @@ class Filter(object):
 
                 # Distribcell paths require linked metadata from the Summary
                 if self.distribcell_paths is None:
-                    msg = 'Unable to construct distribcell paths since '
+                    msg = 'Unable to construct distribcell paths since ' \
                           'the Summary is not linked to the StatePoint'
                     raise ValueError(msg)
 

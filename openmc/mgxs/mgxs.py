@@ -1948,6 +1948,7 @@ class ScatterMatrixXS(MGXS):
     def legendre_order(self, legendre_order):
         cv.check_type('legendre_order', legendre_order, Integral)
         cv.check_greater_than('legendre_order', legendre_order, 0, equality=True)
+        cv.check_less_than('legendre_order', legendre_order, 10, equality=True)
 
         if self.correction == 'P0' and legendre_order > 0:
             msg = 'The P0 correction will be ignored since the scattering ' \
@@ -2112,7 +2113,8 @@ class ScatterMatrixXS(MGXS):
         if moment != 'all':
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
-            cv.check_less_than('moment', moment, 10, equality=True)
+            cv.check_less_than(
+                    'moment', moment, self.legendre_order, equality=True)
             scores = [self.xs_tally.scores[moment]]
         else:
             scores = []
@@ -2230,7 +2232,8 @@ class ScatterMatrixXS(MGXS):
         if moment != 'all':
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
-            cv.check_less_than('moment', moment, 10, equality=True)
+            cv.check_less_than(
+                    'moment', moment, self.legendre_order, equality=True)
             df = df[df['score'] == str(self.xs_tally.scores[moment])]
 
         return df

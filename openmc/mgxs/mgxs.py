@@ -1833,14 +1833,15 @@ class NuScatterXS(MGXS):
 
 
 class ScatterMatrixXS(MGXS):
-    """A scattering matrix multi-group cross section.
+    """A scattering matrix multi-group cross section for one or more Legendre
+    moments.
 
     Attributes
     ----------
     correction : 'P0' or None
         Apply the P0 correction to scattering matrices if set to 'P0'
     order : int
-        The highest order in the scattering matrix (default is 0)
+        The highest legendre moment in the scattering matrix (default is 0)
 
     """
 
@@ -1869,8 +1870,8 @@ class ScatterMatrixXS(MGXS):
     def tallies(self):
         """Construct the OpenMC tallies needed to compute this cross section.
 
-        This method constructs three analog tallies to compute the 'flux',
-        'scatter' and 'scatter-P1' reaction rates in the spatial domain and
+        This method constructs three analog tallies to compute the 'flux'
+        and Legendre scattering moment reaction rates in the spatial domain and
         energy groups of interest.
 
         """
@@ -1955,7 +1956,6 @@ class ScatterMatrixXS(MGXS):
 
         self._order = order
 
-    # FIXME: Add order param
     def get_slice(self, nuclides=[], in_groups=[], out_groups=[]):
         """Build a sliced ScatterMatrix for the specified nuclides and
         energy groups.
@@ -2150,6 +2150,63 @@ class ScatterMatrixXS(MGXS):
             xs = np.atleast_2d(xs)
 
         return xs
+
+    def get_pandas_dataframe(self, groups='all', nuclides='all', moment='all',
+                             xs_type='macro', summary=None):
+        """Build a Pandas DataFrame for the MGXS data.
+
+        This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
+        renames the columns with terminology appropriate for cross section data.
+
+        Parameters
+        ----------
+        groups : Iterable of Integral or 'all'
+            Energy groups of interest. Defaults to 'all'.
+        nuclides : Iterable of str or 'all' or 'sum'
+            The nuclides of the cross-sections to include in the dataframe. This
+            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            The special string 'all' will include the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will
+            include the cross sections summed over all nuclides. Defaults
+            to 'all'.
+        moment : int or 'all'
+            The scattering matrix moment to return. All moments will be
+             returned if the moment is 'all' (default); otherwise, a specific
+             moment will be returned.
+        xs_type: {'macro', 'micro'}
+            Return macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
+        summary : None or openmc.Summary
+            An optional Summary object to be used to construct columns for
+            distribcell tally filters (default is None). The geometric
+            information in the Summary object is embedded into a multi-index
+            column with a geometric "path" to each distribcell intance.
+            NOTE: This option requires the OpenCG Python package.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame for the cross section data.
+
+        Raises
+        ------
+        ValueError
+            When this method is called before the multi-group cross section is
+            computed from tally data.
+
+        """
+
+        df = super(ScatterMatrixXS, self).get_pandas_dataframe(
+                groups, nuclides, xs_type, summary)
+
+        # Select rows corresponding to requested scattering moment
+        if moment != 'all':
+            cv.check_type('moment', moment, Integral)
+            cv.check_greater_than('moment', moment, 0, equality=True)
+            cv.check_less_than('moment', moment, self.order, equality=True)
+            df = df[df['score'] == str(self.xs_tally.scores[moment])]
+
+        return df
 
     def print_xs(self, subdomains='all', nuclides='all',
                  xs_type='macro', moment=0):

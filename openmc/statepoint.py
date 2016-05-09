@@ -622,8 +622,6 @@ class StatePoint(object):
 
         Raises
         ------
-        RuntimeError
-            If a Summary object has already been linked.
         ValueError
             An error when the argument passed to the 'summary' parameter is not
             an openmc.Summary object.
@@ -631,7 +629,9 @@ class StatePoint(object):
         """
 
         if self.summary is not None:
-            raise RuntimeError('A Summary object has already been linked.')
+            warnings.warn('A Summary object has already been linked.',
+                          RuntimeWarning)
+            return
 
         if not isinstance(summary, openmc.summary.Summary):
             msg = 'Unable to link statepoint with "{0}" which ' \

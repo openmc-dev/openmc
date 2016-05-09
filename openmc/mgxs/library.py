@@ -59,7 +59,7 @@ class Library(object):
     correction : {'P0', None}
         Apply the P0 correction to scattering matrices if set to 'P0'
     legendre_order : int
-        The highest legendre moments in the scattering matrices (default is 0)
+        The highest legendre moment in the scattering matrices (default is 0)
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
     tally_trigger : openmc.Trigger

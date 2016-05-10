@@ -201,7 +201,7 @@ module mgxs_header
 ! the xsdata object node itself.
 !===============================================================================
 
-    subroutine mgxs_init_file(this,node_xsdata,i_listing)
+    subroutine mgxs_init_file(this, node_xsdata, i_listing)
       class(Mgxs), intent(inout)      :: this        ! Working Object
       type(Node), pointer, intent(in) :: node_xsdata ! Data from MGXS xml
       integer, intent(in)             :: i_listing   ! Index in listings array
@@ -236,7 +236,7 @@ module mgxs_header
         else if (temp_str == 'tabular') then
           this % scatt_type = ANGLE_TABULAR
         else
-          call fatal_error("Invalid Scatt Type Option!")
+          call fatal_error("Invalid scatt_type option!")
         end if
       else
         this % scatt_type = ANGLE_LEGENDRE
@@ -259,8 +259,8 @@ module mgxs_header
 
     end subroutine mgxs_init_file
 
-    subroutine mgxsiso_init_file(this,node_xsdata,groups,get_kfiss,get_fiss, &
-                                 max_order,i_listing)
+    subroutine mgxsiso_init_file(this, node_xsdata, groups, get_kfiss, get_fiss, &
+                                 max_order, i_listing)
       class(MgxsIso), intent(inout)   :: this        ! Working Object
       type(Node), pointer, intent(in) :: node_xsdata ! Data from MGXS xml
       integer, intent(in)             :: groups      ! Number of Energy groups
@@ -282,7 +282,7 @@ module mgxs_header
       integer                 :: legendre_mu_points, imu
 
       ! Call generic data gathering routine (will populate the metadata)
-      call mgxs_init_file(this,node_xsdata,i_listing)
+      call mgxs_init_file(this, node_xsdata, i_listing)
 
       ! Load the more specific data
       allocate(this % nu_fission(groups))
@@ -292,7 +292,7 @@ module mgxs_header
           ! Chi was provided, that means they are giving chi and nu-fission
           ! vectors
           ! Get chi
-          allocate(temp_arr(1 * groups))
+          allocate(temp_arr(groups))
           call get_node_array(node_xsdata, "chi", temp_arr)
           do gin = 1, groups
             do gout = 1, groups
@@ -329,7 +329,7 @@ module mgxs_header
           end do
 
           ! Now pull out information needed for chi
-          this % chi = temp_2d
+          this % chi(:, :) = temp_2d
           ! Normalize chi so its CDF goes to 1
           do gin = 1, groups
             this % chi(:, gin) = this % chi(:, gin) / sum(this % chi(:, gin))
@@ -375,14 +375,14 @@ module mgxs_header
         if (arr_len == groups * groups) then
           allocate(temp_arr(arr_len))
           call get_node_array(node_xsdata, "multiplicity", temp_arr)
-          temp_mult = reshape(temp_arr, (/groups, groups/))
+          temp_mult(:, :) = reshape(temp_arr, (/groups, groups/))
           deallocate(temp_arr)
         else
           call fatal_error("Multiplicity length not same as number of groups&
                            & squared!")
         end if
       else
-        temp_mult = ONE
+        temp_mult(:, :) = ONE
       end if
 
       ! Get scattering treatment information
@@ -426,7 +426,7 @@ module mgxs_header
       if (check_for_node(node_xsdata, "order")) then
         call get_node_value(node_xsdata, "order", order)
       else
-        call fatal_error("Order Must Be Provided!")
+        call fatal_error("Order must be provided!")
       end if
 
       ! Before retrieving the data, store the dimensionality of the data in
@@ -546,11 +546,11 @@ module mgxs_header
       if (check_for_node(node_xsdata, "total")) then
         call get_node_array(node_xsdata, "total", this % total)
       else
-        this % total = this % absorption + this % scatter % scattxs
+        this % total(:) = this % absorption(:) + this % scatter % scattxs(:)
       end if
 
       ! Deallocate temporaries for the next material
-      deallocate(input_scatt,scatt_coeffs,temp_mult)
+      deallocate(input_scatt, scatt_coeffs, temp_mult)
 
       ! Finally, check sigT to ensure it is not 0 since it is
       ! often divided by in the tally routines
@@ -561,8 +561,8 @@ module mgxs_header
 
     end subroutine mgxsiso_init_file
 
-    subroutine mgxsang_init_file(this,node_xsdata,groups,get_kfiss,get_fiss, &
-                                 max_order,i_listing)
+    subroutine mgxsang_init_file(this, node_xsdata, groups, get_kfiss, get_fiss, &
+                                 max_order, i_listing)
       class(MgxsAngle), intent(inout) :: this        ! Working Object
       type(Node), pointer, intent(in) :: node_xsdata ! Data from MGXS xml
       integer, intent(in)             :: groups      ! Number of Energy groups
@@ -584,18 +584,18 @@ module mgxs_header
       integer                 :: legendre_mu_points, imu, ipol, iazi
 
       ! Call generic data gathering routine (will populate the metadata)
-      call mgxs_init_file(this,node_xsdata,i_listing)
+      call mgxs_init_file(this, node_xsdata, i_listing)
 
       if (check_for_node(node_xsdata, "num_polar")) then
         call get_node_value(node_xsdata, "num_polar", this % n_pol)
       else
-        call fatal_error("num_polar Must Be Provided!")
+        call fatal_error("num_polar must be provided!")
       end if
 
       if (check_for_node(node_xsdata, "num_azimuthal")) then
         call get_node_value(node_xsdata, "num_azimuthal", this % n_azi)
       else
-        call fatal_error("num_azimuthal Must Be Provided!")
+        call fatal_error("num_azimuthal must be provided!")
       end if
 
       ! Load angle data, if present (else equally spaced)
@@ -663,8 +663,8 @@ module mgxs_header
           if (check_for_node(node_xsdata, "nu_fission")) then
             allocate(temp_arr(groups * this % n_azi * this % n_pol))
             call get_node_array(node_xsdata, "nu_fission", temp_arr)
-            this % nu_fission = reshape(temp_arr,(/groups, this % n_azi, &
-                                                   this % n_pol/))
+            this % nu_fission(:, :, :) = reshape(temp_arr, (/groups, &
+                 this % n_azi, this % n_pol/))
             deallocate(temp_arr)
           else
             call fatal_error("If fissionable, must provide nu_fission!")
@@ -677,8 +677,8 @@ module mgxs_header
             allocate(temp_arr(groups * groups * this % n_azi * this % n_pol))
             call get_node_array(node_xsdata, "nu_fission", temp_arr)
             allocate(temp_4d(groups, groups, this % n_azi,this % n_pol))
-            temp_4d = reshape(temp_arr, (/groups, groups, this % n_azi, &
-                                          this % n_pol/))
+            temp_4d(:, :, :, :) = reshape(temp_arr, (/groups, groups, &
+                 this % n_azi, this % n_pol/))
             deallocate(temp_arr)
           else
             call fatal_error("If fissionable, must provide nu_fission!")
@@ -716,8 +716,8 @@ module mgxs_header
             allocate(temp_arr(groups * this % n_azi * this % n_pol))
             call get_node_array(node_xsdata, "fission", temp_arr)
             allocate(this % fission(groups, this % n_azi, this % n_pol))
-            this % fission = reshape(temp_arr, (/groups, this % n_azi, &
-                                                 this % n_pol/))
+            this % fission(:, :, :) = reshape(temp_arr, (/groups, this % n_azi, &
+                 this % n_pol/))
             deallocate(temp_arr)
           else
             call fatal_error("Fission data missing, required due to fission&
@@ -729,8 +729,8 @@ module mgxs_header
             allocate(temp_arr(groups * this % n_azi * this % n_pol))
             call get_node_array(node_xsdata, "kappa_fission", temp_arr)
             allocate(this % k_fission(groups, this % n_azi, this % n_pol))
-            this % k_fission = reshape(temp_arr, (/groups, this % n_azi, &
-                                                   this % n_pol/))
+            this % k_fission(:, :, :) = reshape(temp_arr, (/groups, &
+                 this % n_azi, this % n_pol/))
             deallocate(temp_arr)
           else
             call fatal_error("kappa_fission data missing, required due to &
@@ -738,16 +738,16 @@ module mgxs_header
           end if
         end if
       else
-        this % nu_fission = ZERO
-        this % chi = ZERO
+        this % nu_fission(:, :, :) = ZERO
+        this % chi(:, :, :, :) = ZERO
       end if
 
       if (check_for_node(node_xsdata, "absorption")) then
         allocate(temp_arr(groups * this % n_azi * this % n_pol))
         call get_node_array(node_xsdata, "absorption", temp_arr)
         allocate(this % absorption(groups, this % n_azi, this % n_pol))
-        this % absorption = reshape(temp_arr, (/groups, this % n_azi, &
-                                                this % n_pol/))
+        this % absorption(:, :, :) = reshape(temp_arr, (/groups, this % n_azi, &
+             this % n_pol/))
         deallocate(temp_arr)
       else
         call fatal_error("Must provide absorption!")
@@ -760,15 +760,15 @@ module mgxs_header
         if (arr_len == groups * groups * this % n_azi * this % n_pol) then
           allocate(temp_arr(arr_len))
           call get_node_array(node_xsdata, "multiplicity", temp_arr)
-          temp_mult = reshape(temp_arr, (/groups, groups, this % n_azi, &
-                                          this % n_pol/))
+          temp_mult(:, :, :, :) = reshape(temp_arr, (/groups, groups, &
+               this % n_azi, this % n_pol/))
           deallocate(temp_arr)
         else
           call fatal_error("Multiplicity length not same as number of groups&
                            & squared!")
         end if
       else
-        temp_mult = ONE
+        temp_mult(:, :, :, :) = ONE
       end if
 
       ! Get scattering treatment information
@@ -812,7 +812,7 @@ module mgxs_header
       if (check_for_node(node_xsdata, "order")) then
         call get_node_value(node_xsdata, "order", order)
       else
-        call fatal_error("Order Must Be Provided!")
+        call fatal_error("Order must be provided!")
       end if
 
       ! Before retrieving the data, store the dimensionality of the data in
@@ -836,8 +836,8 @@ module mgxs_header
         allocate(temp_arr(groups * groups * order_dim * this % n_azi * &
                           this % n_pol))
         call get_node_array(node_xsdata, "scatter", temp_arr)
-        input_scatt = reshape(temp_arr, (/groups, groups, order_dim, &
-                                          this % n_azi, this % n_pol/))
+        input_scatt(:, :, :, :, :) = reshape(temp_arr, (/groups, groups, &
+             order_dim, this % n_azi, this % n_pol/))
         deallocate(temp_arr)
 
         ! Compare the number of orders given with the maximum order of the
@@ -951,8 +951,8 @@ module mgxs_header
       if (check_for_node(node_xsdata, "total")) then
         allocate(temp_arr(groups * this % n_azi * this % n_pol))
         call get_node_array(node_xsdata, "total", temp_arr)
-        this % total = reshape(temp_arr, (/groups, this % n_azi, &
-                                           this % n_pol/))
+        this % total(:, :, :) = reshape(temp_arr, (/groups, this % n_azi, &
+             this % n_pol/))
         deallocate(temp_arr)
       else
         do ipol = 1, this % n_pol
@@ -1251,7 +1251,7 @@ module mgxs_header
           if (present(gout)) then
             xs = this % chi(gout, gin, iazi, ipol)
           else
-            ! Not sure youd want a 1 or a 0, but here you go!
+            ! Not sure you would want a 1 or a 0, but here you go!
             xs = sum(this % chi(:, gin, iazi, ipol))
           end if
         case('scatter')
@@ -1316,7 +1316,7 @@ module mgxs_header
 ! objects
 !===============================================================================
 
-    subroutine mgxs_combine(this,mat,scatt_type,i_listing)
+    subroutine mgxs_combine(this, mat, scatt_type, i_listing)
       class(Mgxs), intent(inout)          :: this ! The Mgxs to initialize
       type(Material), pointer, intent(in) :: mat  ! base material
       integer, intent(in)                 :: scatt_type ! How is data presented
@@ -1340,7 +1340,7 @@ module mgxs_header
 
     end subroutine mgxs_combine
 
-    subroutine mgxsiso_combine(this,mat,nuclides,groups,max_order,scatt_type, &
+    subroutine mgxsiso_combine(this, mat, nuclides, groups, max_order, scatt_type, &
                                i_listing)
       class(MgxsIso), intent(inout)       :: this ! The Mgxs to initialize
       type(Material), pointer, intent(in) :: mat  ! base material
@@ -1373,9 +1373,9 @@ module mgxs_header
         do i = 2, mat % n_nuclides
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsIso)
-            if (order /= size(nuc % scatter % dist(1) % data,dim=1)) &
-                 call fatal_error("All Histogram Scattering Entries Must Be&
-                                  & Same Length!")
+            if (order /= size(nuc % scatter % dist(1) % data, dim=1)) &
+                 call fatal_error("All histogram scattering entries must be&
+                                  & same length!")
           end select
         end do
         ! Ok, got our order, store the dimensionality
@@ -1390,8 +1390,8 @@ module mgxs_header
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsIso)
             if (order /= size(nuc % scatter % dist(1) % data, dim=1)) &
-                 call fatal_error("All Tabular Scattering Entries Must Be&
-                                  & Same Length!")
+                 call fatal_error("All tabular scattering entries must be&
+                                  & same length!")
           end select
         end do
         ! Ok, got our order, store the dimensionality
@@ -1406,7 +1406,7 @@ module mgxs_header
         do i = 1, mat % n_nuclides
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsIso)
-            if (size(nuc % scatter % dist(1) % data,dim=1) > mat_max_order) &
+            if (size(nuc % scatter % dist(1) % data, dim=1) > mat_max_order) &
                  mat_max_order = size(nuc % scatter % dist(1) % data, dim=1)
           end select
         end do
@@ -1423,25 +1423,25 @@ module mgxs_header
 
       ! Allocate and initialize data needed for macro_xs(i_mat) object
       allocate(this % total(groups))
-      this % total = ZERO
+      this % total(:) = ZERO
       allocate(this % absorption(groups))
-      this % absorption = ZERO
+      this % absorption(:) = ZERO
       allocate(this % fission(groups))
-      this % fission = ZERO
+      this % fission(:) = ZERO
       allocate(this % k_fission(groups))
-      this % k_fission = ZERO
+      this % k_fission(:) = ZERO
       allocate(this % nu_fission(groups))
-      this % nu_fission = ZERO
+      this % nu_fission(:) = ZERO
       allocate(this % chi(groups,groups))
-      this % chi = ZERO
+      this % chi(:, :) = ZERO
       allocate(temp_mult(groups,groups))
-      temp_mult = ZERO
+      temp_mult(:, :) = ZERO
       allocate(mult_num(groups,groups))
-      mult_num = ZERO
+      mult_num(:, :) = ZERO
       allocate(mult_denom(groups,groups))
-      mult_denom = ZERO
+      mult_denom(:, :) = ZERO
       allocate(scatt_coeffs(order_dim,groups,groups))
-      scatt_coeffs = ZERO
+      scatt_coeffs(:, :, :) = ZERO
 
       ! Add contribution from each nuclide in material
       do i = 1, mat % n_nuclides
@@ -1452,19 +1452,19 @@ module mgxs_header
         select type(nuc => nuclides(mat % nuclide(i)) % obj)
         type is (MgxsIso)
           ! Add contributions to total, absorption, and fission data (if necessary)
-          this % total = this % total + atom_density * nuc % total
-          this % absorption = this % absorption + &
-               atom_density * nuc % absorption
+          this % total(:) = this % total(:) + atom_density * nuc % total(:)
+          this % absorption(:) = this % absorption(:) + &
+               atom_density * nuc % absorption(:)
           if (nuc % fissionable) then
-            this % chi = this % chi + atom_density * nuc % chi
-            this % nu_fission = this % nu_fission + atom_density * &
-                 nuc % nu_fission
+            this % chi(:, :) = this % chi(:, :) + atom_density * nuc % chi(:, :)
+            this % nu_fission(:) = this % nu_fission(:)+ atom_density * &
+                 nuc % nu_fission(:)
             if (allocated(nuc % fission)) then
-              this % fission = this % fission + atom_density * nuc % fission
+              this % fission(:) = this % fission(:) + atom_density * nuc % fission(:)
             end if
             if (allocated(nuc % k_fission)) then
-              this % k_fission = this % k_fission + atom_density * &
-                   nuc % k_fission
+              this % k_fission(:) = this % k_fission(:) + atom_density * &
+                   nuc % k_fission(:)
             end if
           end if
 
@@ -1498,7 +1498,7 @@ module mgxs_header
                nuc % scatter % get_matrix(min(nuc_order_dim, order_dim))
 
         type is (MgxsAngle)
-          call fatal_error("Invalid Passing of MgxsAngle to MgxsIso Object")
+          call fatal_error("Invalid passing of MgxsAngle to MgxsIso object")
         end select
       end do
 
@@ -1531,7 +1531,7 @@ module mgxs_header
 
     end subroutine mgxsiso_combine
 
-    subroutine mgxsang_combine(this,mat,nuclides,groups,max_order,scatt_type,&
+    subroutine mgxsang_combine(this, mat, nuclides, groups, max_order, scatt_type, &
                                i_listing)
       class(MgxsAngle), intent(inout)     :: this ! The Mgxs to initialize
       type(Material), pointer, intent(in) :: mat  ! base material
@@ -1551,7 +1551,7 @@ module mgxs_header
       real(8), allocatable :: mult_denom(:, :, :, :), scatt_coeffs(:, :, :, :, :)
 
       ! Set the meta-data
-      call mgxs_combine(this,mat,scatt_type,i_listing)
+      call mgxs_combine(this, mat, scatt_type, i_listing)
 
       ! Get the number of each polar and azi angles and make sure all the
       ! NuclideAngle types have the same number of these angles
@@ -1564,12 +1564,12 @@ module mgxs_header
             n_pol = nuc % n_pol
             n_azi = nuc % n_azi
             allocate(this % polar(n_pol))
-            this % polar = nuc % polar
+            this % polar(:) = nuc % polar(:)
             allocate(this % azimuthal(n_azi))
-            this % azimuthal = nuc % azimuthal
+            this % azimuthal(:) = nuc % azimuthal(:)
           else
             if ((n_pol /= nuc % n_pol) .or. (n_azi /= nuc % n_azi)) then
-              call fatal_error("All Angular Data Must Be Same Length!")
+              call fatal_error("All angular data must be same length!")
             end if
           end if
         end select
@@ -1589,8 +1589,8 @@ module mgxs_header
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsAngle)
             if (order /= size(nuc % scatter(1,1) % obj % dist(1) % data, dim=1)) &
-                 call fatal_error("All Histogram Scattering Entries Must Be&
-                                  & Same Length!")
+                 call fatal_error("All histogram scattering entries must be&
+                                  & same length!")
           end select
         end do
         ! Ok, got our order, store the dimensionality
@@ -1609,9 +1609,9 @@ module mgxs_header
         do i = 2, mat % n_nuclides
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsAngle)
-            if (order /= size(nuc % scatter(1, 1) % obj % dist(1) % data,dim=1)) &
-                 call fatal_error("All Tabular Scattering Entries Must Be&
-                                  & Same Length!")
+            if (order /= size(nuc % scatter(1, 1) % obj % dist(1) % data, dim=1)) &
+                 call fatal_error("All tabular scattering entries must be&
+                                  & same length!")
           end select
         end do
         ! Ok, got our order, store the dimensionality
@@ -1653,25 +1653,25 @@ module mgxs_header
 
       ! Allocate and initialize data within macro_xs(i_mat) object
       allocate(this % total(groups, n_azi, n_pol))
-      this % total = ZERO
+      this % total(:, :, :) = ZERO
       allocate(this % absorption(groups, n_azi, n_pol))
-      this % absorption = ZERO
+      this % absorption(:, :, :) = ZERO
       allocate(this % fission(groups, n_azi, n_pol))
-      this % fission = ZERO
+      this % fission(:, :, :) = ZERO
       allocate(this % k_fission(groups, n_azi, n_pol))
-      this % k_fission = ZERO
+      this % k_fission(:, :, :) = ZERO
       allocate(this % nu_fission(groups, n_azi, n_pol))
-      this % nu_fission = ZERO
+      this % nu_fission(:, :, :) = ZERO
       allocate(this % chi(groups, groups, n_azi, n_pol))
-      this % chi = ZERO
+      this % chi(:, :, :, :) = ZERO
       allocate(temp_mult(groups, groups, n_azi, n_pol))
-      temp_mult = ZERO
+      temp_mult(:, :, :, :) = ZERO
       allocate(mult_num(groups, groups, n_azi, n_pol))
-      mult_num = ZERO
+      mult_num(:, :, :, :) = ZERO
       allocate(mult_denom(groups, groups, n_azi, n_pol))
-      mult_denom = ZERO
+      mult_denom(:, :, :, :) = ZERO
       allocate(scatt_coeffs(order_dim, groups, groups, n_azi, n_pol))
-      scatt_coeffs = ZERO
+      scatt_coeffs(:, :, :, :, :) = ZERO
 
       ! Add contribution from each nuclide in material
       do i = 1, mat % n_nuclides
@@ -1681,22 +1681,24 @@ module mgxs_header
         ! Perform our operations which depend upon the type
         select type(nuc => nuclides(mat % nuclide(i)) % obj)
         type is (MgxsIso)
-          call fatal_error("Invalid Passing of MgxsIso to MgxsAngle Object")
+          call fatal_error("Invalid passing of MgxsIso to MgxsAngle object")
         type is (MgxsAngle)
           ! Add contributions to total, absorption, and fission data (if necessary)
-          this % total = this % total + atom_density * nuc % total
-          this % absorption = this % absorption + &
-               atom_density * nuc % absorption
+          this % total(:, :, :) = this % total(:, :, :) + &
+               atom_density * nuc % total(:, :, :)
+          this % absorption(:, :, :) = this % absorption(:, :, :) + &
+               atom_density * nuc % absorption(:, :, :)
           if (nuc % fissionable) then
             this % chi = this % chi + atom_density * nuc % chi
-            this % nu_fission = this % nu_fission + atom_density * &
-                 nuc % nu_fission
+            this % nu_fission(:, :, :) = this % nu_fission(:, :, :) + &
+                 atom_density * nuc % nu_fission(:, :, :)
             if (allocated(nuc % fission)) then
-              this % fission = this % fission + atom_density * nuc % fission
+              this % fission(:, :, :) = this % fission(:, :, :) + &
+                   atom_density * nuc % fission(:, :, :)
             end if
             if (allocated(nuc % k_fission)) then
-              this % k_fission = this % k_fission + atom_density * &
-                   nuc % k_fission
+              this % k_fission(:, :, :) = this % k_fission(:, :, :) + &
+                   atom_density * nuc % k_fission(:, :, :)
             end if
           end if
 
@@ -1730,7 +1732,7 @@ module mgxs_header
           end do
 
           ! Get the complete scattering matrix
-          nuc_order_dim = size(nuc % scatter(1,1) % obj % dist(1) % data,dim=1)
+          nuc_order_dim = size(nuc % scatter(1, 1) % obj % dist(1) % data, dim=1)
           do ipol = 1, n_pol
             do iazi = 1, n_azi
               scatt_coeffs(1:min(nuc_order_dim, order_dim), :, :, iazi, ipol) = &

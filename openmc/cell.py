@@ -243,6 +243,10 @@ class Cell(object):
 
     @rotation.setter
     def rotation(self, rotation):
+        if not isinstance(self.fill, openmc.Universe):
+            raise RuntimeError('Cell rotation can only be applied if the cell '
+                               'is filled with a Universe')
+
         cv.check_type('cell rotation', rotation, Iterable, Real)
         cv.check_length('cell rotation', rotation, 3)
         self._rotation = rotation

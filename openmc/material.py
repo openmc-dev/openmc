@@ -251,16 +251,16 @@ class Material(object):
         if units is 'sum':
             if density is not None:
                 msg = 'Density "{0}" for Material ID="{1}" is ignored ' \
-                      'because the unit is "sum"'.format(density, self._id)
+                      'because the unit is "sum"'.format(density, self.id)
                 warnings.warn(msg)
         else:
             if density is None:
                 msg = 'Unable to set the density for Material ID="{0}" ' \
-                      'because a density must be set when not using ' \
-                      '"sum" unit'.format(self._id)
+                      'because a density value must be given when not using ' \
+                      '"sum" unit'.format(self.id)
                 raise ValueError(msg)
 
-            cv.check_type('the density for Material ID="{0}"'.format(self._id),
+            cv.check_type('the density for Material ID="{0}"'.format(self.id),
                           density, Real)
             self._density = density
 

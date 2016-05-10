@@ -23,7 +23,7 @@ def reset_auto_cell_id():
 
 
 class Cell(object):
-    """A region of space defined as the intersection of half-space created by
+    r"""A region of space defined as the intersection of half-space created by
     quadric surfaces.
 
     Parameters
@@ -48,11 +48,24 @@ class Cell(object):
         Indicates what the region of space is filled with
     region : openmc.Region
         Region of space that is assigned to the cell.
-    rotation : numpy.ndarray
+    rotation : Iterable of float
         If the cell is filled with a universe, this array specifies the angles
         in degrees about the x, y, and z axes that the filled universe should be
-        rotated.
-    translation : numpy.ndarray
+        rotated. The rotation applied is an intrinsic rotation with specified
+        Tait-Bryan angles. That is to say, if the angles are :math:`(\phi,
+        \theta, \psi)`, then the rotation matrix applied is :math:`R_z(\psi)
+        R_y(\theta) R_x(\phi)` or
+
+        .. math::
+
+           \left [ \begin{array}{ccc} \cos\theta \cos\psi & -\cos\theta \sin\psi
+           + \sin\phi \sin\theta \cos\psi & \sin\phi \sin\psi + \cos\phi
+           \sin\theta \cos\psi \\ \cos\theta \sin\psi & \cos\phi \cos\psi +
+           \sin\phi \sin\theta \sin\psi & -\sin\phi \cos\psi + \cos\phi
+           \sin\theta \sin\psi \\ -\sin\theta & \sin\phi \cos\theta & \cos\phi
+           \cos\theta \end{array} \right ]
+
+    translation : Iterable of float
         If the cell is filled with a universe, this array specifies a vector
         that is used to translate (shift) the universe.
     offsets : ndarray

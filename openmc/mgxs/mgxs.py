@@ -1418,6 +1418,9 @@ class MGXS(object):
         else:
             df = self.xs_tally.get_pandas_dataframe(summary=summary)
 
+        # Remove the score column since it is homogeneous and redundant
+        df = df.drop('score', axis=1)
+
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
         all_groups = np.repeat(all_groups, self.num_nuclides)
@@ -2228,13 +2231,23 @@ class ScatterMatrixXS(MGXS):
         df = super(ScatterMatrixXS, self).get_pandas_dataframe(
                 groups, nuclides, xs_type, summary)
 
+        # Add a moment column to dataframe
+        moments = np.array(['P{}'.format(i) for i in range(self.legendre_order+1)])
+        moments = np.tile(moments, df.shape[0] / moments.size)
+        df['moment'] = moments
+
+        # Place the moment column before the mean column
+        mean_index = df.columns.get_loc('mean')
+        columns = df.columns.tolist()
+        df = df[columns[:mean_index] + ['moment'] + columns[mean_index:]]
+
         # Select rows corresponding to requested scattering moment
         if moment != 'all':
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
             cv.check_less_than(
                     'moment', moment, self.legendre_order, equality=True)
-            df = df[df['score'] == str(self.xs_tally.scores[moment])]
+            df = df.iloc[moment:self.legendre_order:]
 
         return df
 

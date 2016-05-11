@@ -2190,7 +2190,7 @@ class ScatterMatrixXS(MGXS):
         return xs
 
     def get_pandas_dataframe(self, groups='all', nuclides='all', moment='all',
-                             xs_type='macro', summary=None):
+                             xs_type='macro', distribcell_paths=True):
         """Build a Pandas DataFrame for the MGXS data.
 
         This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
@@ -2214,12 +2214,11 @@ class ScatterMatrixXS(MGXS):
         xs_type: {'macro', 'micro'}
             Return macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
-        summary : None or openmc.Summary
-            An optional Summary object to be used to construct columns for
-            distribcell tally filters (default is None). The geometric
-            information in the Summary object is embedded into a multi-index
-            column with a geometric "path" to each distribcell intance.
-            NOTE: This option requires the OpenCG Python package.
+        distribcell_paths : bool, optional
+            Construct columns for distribcell tally filters (default is True).
+            The geometric information in the Summary object is embedded into a
+            Multi-index column with a geometric "path" to each distribcell
+            instance.
 
         Returns
         -------
@@ -2235,7 +2234,7 @@ class ScatterMatrixXS(MGXS):
         """
 
         df = super(ScatterMatrixXS, self).get_pandas_dataframe(
-                groups, nuclides, xs_type, summary)
+                groups, nuclides, xs_type, distribcell_paths)
 
         # Add a moment column to dataframe
         moments = np.array(['P{}'.format(i) for i in range(self.legendre_order+1)])

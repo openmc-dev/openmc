@@ -2,48 +2,48 @@
 0         1         1   total  0.412084    0.02359   material  group in nuclide      mean  std. dev.
 0         1         1   total  0.076425   0.003691   material  group in  group out nuclide moment      mean  std. dev. moment
 0         1         1          1   total     P0  0.345643   0.021487     P0   material  group out nuclide  mean  std. dev.
-0         1          1   total     1   0.055333   material  group in nuclide      mean  std. dev.
+0         1          1   total   1.0   0.055333   material  group in nuclide      mean  std. dev.
 0         2         1   total  0.241262    0.00841   material  group in nuclide  mean  std. dev.
-0         2         1   total     0          0   material  group in  group out nuclide moment      mean  std. dev. moment
+0         2         1   total   0.0        0.0   material  group in  group out nuclide moment      mean  std. dev. moment
 0         2         1          1   total     P0  0.241262    0.00841     P0   material  group out nuclide  mean  std. dev.
-0         2          1   total     0          0   material  group in nuclide      mean  std. dev.
+0         2          1   total   0.0        0.0   material  group in nuclide      mean  std. dev.
 0         3         1   total  0.400028   0.034667   material  group in nuclide  mean  std. dev.
-0         3         1   total     0          0   material  group in  group out nuclide moment      mean  std. dev. moment
+0         3         1   total   0.0        0.0   material  group in  group out nuclide moment      mean  std. dev. moment
 0         3         1          1   total     P0  0.393462   0.033646     P0   material  group out nuclide  mean  std. dev.
-0         3          1   total     0          0   material  group in nuclide      mean  std. dev.
+0         3          1   total   0.0        0.0   material  group in nuclide      mean  std. dev.
 0         4         1   total  0.377402   0.072937   material  group in nuclide  mean  std. dev.
-0         4         1   total     0          0   material  group in  group out nuclide moment      mean  std. dev. moment
+0         4         1   total   0.0        0.0   material  group in  group out nuclide moment      mean  std. dev. moment
 0         4         1          1   total     P0  0.371473   0.071226     P0   material  group out nuclide  mean  std. dev.
-0         4          1   total     0          0   material  group in nuclide  mean  std. dev.
-0         5         1   total     0          0   material  group in nuclide  mean  std. dev.
-0         5         1   total     0          0   material  group in  group out nuclide moment  mean  std. dev. moment
-0         5         1          1   total     P0     0          0     P0   material  group out nuclide  mean  std. dev.
-0         5          1   total     0          0   material  group in nuclide  mean  std. dev.
-0         6         1   total     0          0   material  group in nuclide  mean  std. dev.
-0         6         1   total     0          0   material  group in  group out nuclide moment  mean  std. dev. moment
-0         6         1          1   total     P0     0          0     P0   material  group out nuclide  mean  std. dev.
-0         6          1   total     0          0   material  group in nuclide  mean  std. dev.
-0         7         1   total     0          0   material  group in nuclide  mean  std. dev.
-0         7         1   total     0          0   material  group in  group out nuclide moment  mean  std. dev. moment
-0         7         1          1   total     P0     0          0     P0   material  group out nuclide  mean  std. dev.
-0         7          1   total     0          0   material  group in nuclide  mean  std. dev.
-0         8         1   total     0          0   material  group in nuclide  mean  std. dev.
-0         8         1   total     0          0   material  group in  group out nuclide moment  mean  std. dev. moment
-0         8         1          1   total     P0     0          0     P0   material  group out nuclide  mean  std. dev.
-0         8          1   total     0          0   material  group in nuclide      mean  std. dev.
+0         4          1   total   0.0        0.0   material  group in nuclide  mean  std. dev.
+0         5         1   total   0.0        0.0   material  group in nuclide  mean  std. dev.
+0         5         1   total   0.0        0.0   material  group in  group out nuclide moment  mean  std. dev. moment
+0         5         1          1   total     P0   0.0        0.0     P0   material  group out nuclide  mean  std. dev.
+0         5          1   total   0.0        0.0   material  group in nuclide  mean  std. dev.
+0         6         1   total   0.0        0.0   material  group in nuclide  mean  std. dev.
+0         6         1   total   0.0        0.0   material  group in  group out nuclide moment  mean  std. dev. moment
+0         6         1          1   total     P0   0.0        0.0     P0   material  group out nuclide  mean  std. dev.
+0         6          1   total   0.0        0.0   material  group in nuclide  mean  std. dev.
+0         7         1   total   0.0        0.0   material  group in nuclide  mean  std. dev.
+0         7         1   total   0.0        0.0   material  group in  group out nuclide moment  mean  std. dev. moment
+0         7         1          1   total     P0   0.0        0.0     P0   material  group out nuclide  mean  std. dev.
+0         7          1   total   0.0        0.0   material  group in nuclide  mean  std. dev.
+0         8         1   total   0.0        0.0   material  group in nuclide  mean  std. dev.
+0         8         1   total   0.0        0.0   material  group in  group out nuclide moment  mean  std. dev. moment
+0         8         1          1   total     P0   0.0        0.0     P0   material  group out nuclide  mean  std. dev.
+0         8          1   total   0.0        0.0   material  group in nuclide      mean  std. dev.
 0         9         1   total  0.600536   0.748875   material  group in nuclide  mean  std. dev.
-0         9         1   total     0          0   material  group in  group out nuclide moment      mean  std. dev. moment
+0         9         1   total   0.0        0.0   material  group in  group out nuclide moment      mean  std. dev. moment
 0         9         1          1   total     P0  0.600536   0.748875     P0   material  group out nuclide  mean  std. dev.
-0         9          1   total     0          0   material  group in nuclide      mean  std. dev.
+0         9          1   total   0.0        0.0   material  group in nuclide      mean  std. dev.
 0        10         1   total  0.235515   0.613974   material  group in nuclide  mean  std. dev.
-0        10         1   total     0          0   material  group in  group out nuclide moment      mean  std. dev. moment
+0        10         1   total   0.0        0.0   material  group in  group out nuclide moment      mean  std. dev. moment
 0        10         1          1   total     P0  0.235515   0.613974     P0   material  group out nuclide  mean  std. dev.
-0        10          1   total     0          0   material  group in nuclide      mean  std. dev.
+0        10          1   total   0.0        0.0   material  group in nuclide      mean  std. dev.
 0        11         1   total  0.510145   0.741941   material  group in nuclide  mean  std. dev.
-0        11         1   total     0          0   material  group in  group out nuclide moment      mean  std. dev. moment
+0        11         1   total   0.0        0.0   material  group in  group out nuclide moment      mean  std. dev. moment
 0        11         1          1   total     P0  0.491857   0.715554     P0   material  group out nuclide  mean  std. dev.
-0        11          1   total     0          0   material  group in nuclide     mean  std. dev.
+0        11          1   total   0.0        0.0   material  group in nuclide     mean  std. dev.
 0        12         1   total  0.73836   0.825631   material  group in nuclide  mean  std. dev.
-0        12         1   total     0          0   material  group in  group out nuclide moment      mean  std. dev. moment
+0        12         1   total   0.0        0.0   material  group in  group out nuclide moment      mean  std. dev. moment
 0        12         1          1   total     P0  0.723265   0.808231     P0   material  group out nuclide  mean  std. dev.
-0        12          1   total     0          0
+0        12          1   total   0.0        0.0

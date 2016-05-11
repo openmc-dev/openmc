@@ -2034,10 +2034,14 @@ class ScatterMatrixXS(MGXS):
                subdomains='all', nuclides='all', moment='all',
                xs_type='macro', order_groups='increasing',
                row_column='inout', value='mean', **kwargs):
-        """Returns an array of multi-group cross sections.
+        r"""Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested scattering
         matrix data data for one or more energy groups and subdomains.
+
+        NOTE: The scattering moments are not multiplied by the :math:`(2l+1)/2`
+        prefactor in the expansion of the scattering source into Legendre
+        moments in the neutron transport equation.
 
         Parameters
         ----------

@@ -1215,11 +1215,10 @@ Each ``material`` element can have the following attributes or sub-elements:
     An element with attributes/sub-elements called ``value`` and ``units``. The
     ``value`` attribute is the numeric value of the density while the ``units``
     can be "g/cm3", "kg/m3", "atom/b-cm", "atom/cm3", or "sum". The "sum" unit
-    indicates that values appearing in ``ao`` attributes for ``<nuclide>`` and
-    ``<element>`` sub-elements are to be interpreted as nuclide/element
-    densities in atom/b-cm, and the total density of the material is taken as
-    the sum of all nuclides/elements. The "sum" option cannot be used in
-    conjunction with weight percents.  The "macro" unit is used with
+    indicates that values appearing in ``ao`` or ``wo`` attributes for ``<nuclide>``
+    and ``<element>`` sub-elements are to be interpreted as absolute nuclide/element
+    densities in atom/b-cm or g/cm3, and the total density of the material is
+    taken as the sum of all nuclides/elements. The "macro" unit is used with
     a ``macroscopic`` quantity to indicate that the density is already included
     in the library and thus not needed here.  However, if a value is provided
     for the ``value``, then this is treated as a number density multiplier on

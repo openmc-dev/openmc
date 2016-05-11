@@ -297,12 +297,26 @@ class Library(object):
     @correction.setter
     def correction(self, correction):
         cv.check_value('correction', correction, ('P0', None))
+
+        if correction == 'P0' and self.legendre_order > 0:
+            msg = 'The P0 correction will be ignored since the scattering ' \
+                  'order {} is greater than zero'.format(self.legendre_order)
+            warnings.warn(msg)
+
         self._correction = correction
 
     @legendre_order.setter
     def legendre_order(self, legendre_order):
         cv.check_type('legendre_order', legendre_order, Integral)
         cv.check_greater_than('legendre_order', legendre_order, 0, equality=True)
+        cv.check_less_than('legendre_order', legendre_order, 10, equality=True)
+
+        if self.correction == 'P0' and legendre_order > 0:
+            msg = 'The P0 correction will be ignored since the scattering ' \
+                  'order {} is greater than zero'.format(self.legendre_order)
+            warnings.warn(msg, RuntimeWarning)
+            self.correction = None
+
         self._legendre_order = legendre_order
 
     @tally_trigger.setter

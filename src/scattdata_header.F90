@@ -14,7 +14,7 @@ module scattdata_header
 !===============================================================================
 
   type :: Jagged2D
-    real(8), allocatable :: data(:,:)
+    real(8), allocatable :: data(:, :)
   end type Jagged2D
 
   type :: Jagged1D
@@ -27,12 +27,15 @@ module scattdata_header
 !===============================================================================
 
   type, abstract :: ScattData
-    ! normalized p0 matrix on its own for sampling energy
+    ! The data attribute of the energy, mult, and dist arrays
+    ! are not necessarily 1-indexed as they instead will be allocated
+    ! from a minimum outgoing group to an outgoing minimum group.
+    ! Normalized p0 matrix on its own for sampling energy
     type(Jagged1D), allocatable :: energy(:) ! (Gin % data(Gout))
-    ! nu-scatter multiplication (i.e. nu-scatt/scatt)
+    ! Nu-scatter multiplication (i.e. nu-scatt/scatt)
     type(Jagged1D), allocatable :: mult(:)   ! (Gin % data(Gout))
     ! Angular distribution
-    type(Jagged2D), allocatable :: dist(:)   ! (Gin % data(Order/Nmu x Gout)
+    type(Jagged2D), allocatable :: dist(:)   ! (Gin % data(Order/Nmu, Gout)
     integer, allocatable :: gmin(:)     ! Minimum outgoing group
     integer, allocatable :: gmax(:)     ! Maximum outgoing group
     real(8), allocatable :: scattxs(:)  ! Isotropic Sigma_{s,g_{in}}
@@ -47,9 +50,9 @@ module scattdata_header
   abstract interface
     subroutine scattdata_init_(this, mult, coeffs)
       import ScattData
-      class(ScattData), intent(inout) :: this          ! Scattering Object to work with
-      real(8), intent(in)             :: mult(:,:)     ! Scatter Prod'n Matrix
-      real(8), intent(in)             :: coeffs(:,:,:) ! Coefficients to use
+      class(ScattData), intent(inout) :: this            ! Object to work with
+      real(8), intent(in)             :: mult(:, :)      ! Scatter Prod'n Matrix
+      real(8), intent(in)             :: coeffs(:, :, :) ! Coefficients to use
     end subroutine scattdata_init_
 
     pure function scattdata_calc_f_(this, gin, gout, mu) result(f)
@@ -120,10 +123,10 @@ contains
 !===============================================================================
 
     subroutine scattdata_init(this, order, energy, mult)
-      class(ScattData), intent(inout) :: this        ! Object to work on
-      integer, intent(in)             :: order       ! Data Order
-      real(8), intent(inout)          :: energy(:,:) ! Energy Transfer Matrix
-      real(8), intent(in)             :: mult(:,:)   ! Scatter Prod'n Matrix
+      class(ScattData), intent(inout) :: this         ! Object to work on
+      integer, intent(in)             :: order        ! Data Order
+      real(8), intent(inout)          :: energy(:, :) ! Energy Transfer Matrix
+      real(8), intent(in)             :: mult(:, :)   ! Scatter Prod'n Matrix
 
       integer :: groups, gmin, gmax, gin
       real(8) :: norm
@@ -139,15 +142,15 @@ contains
       ! Also set energy values when doing it
       do gin = 1, groups
         ! Make sure energy is normalized (i.e., CDF is 1)
-        norm = sum(energy(:,gin))
-        if (norm /= ZERO) energy(:,gin) = energy(:,gin) / norm
+        norm = sum(energy(:, gin))
+        if (norm /= ZERO) energy(:, gin) = energy(:, gin) / norm
         ! Find gmin by checking the P0 moment
         do gmin = 1, groups
-          if (energy(gmin,gin) > ZERO) exit
+          if (energy(gmin, gin) > ZERO) exit
         end do
         ! Find gmax by checking the P0 moment
         do gmax = groups, 1, -1
-          if (energy(gmax,gin) > ZERO) exit
+          if (energy(gmax, gin) > ZERO) exit
         end do
         ! Treat the case of all zeros
         if (gmin > gmax) then
@@ -156,10 +159,10 @@ contains
           ! By not changing energy(gin) here we are leaving it as zero
         end if
         allocate(this % energy(gin) % data(gmin:gmax))
-        this % energy(gin) % data(gmin:gmax) = energy(gmin:gmax,gin)
+        this % energy(gin) % data(gmin:gmax) = energy(gmin:gmax, gin)
         allocate(this % mult(gin) % data(gmin:gmax))
-        this % mult(gin) % data(gmin:gmax) = mult(gmin:gmax,gin)
-        allocate(this % dist(gin) % data(order,gmin:gmax))
+        this % mult(gin) % data(gmin:gmax) = mult(gmin:gmax, gin)
+        allocate(this % dist(gin) % data(order, gmin:gmax))
         this % dist(gin) % data = ZERO
         this % gmin(gin) = gmin
         this % gmax(gin) = gmax
@@ -167,38 +170,38 @@ contains
     end subroutine scattdata_init
 
     subroutine scattdatalegendre_init(this, mult, coeffs)
-      class(ScattDataLegendre), intent(inout) :: this          ! Object to work on
-      real(8), intent(in)                     :: mult(:,:)     ! Scatter Prod'n Matrix
-      real(8), intent(in)                     :: coeffs(:,:,:) ! Coefficients to use
+      class(ScattDataLegendre), intent(inout) :: this            ! Object to work on
+      real(8), intent(in)                     :: mult(:, :)      ! Scatter Prod'n Matrix
+      real(8), intent(in)                     :: coeffs(:, :, :) ! Coefficients to use
 
       real(8) :: dmu, mu, f, norm
       integer :: imu, Nmu, gout, gin, groups, order
-      real(8), allocatable :: energy(:,:)
-      real(8), allocatable :: matrix(:,:,:)
+      real(8), allocatable :: energy(:, :)
+      real(8), allocatable :: matrix(:, :, :)
 
-      groups = size(coeffs,dim=3)
-      order = size(coeffs,dim=1)
+      groups = size(coeffs, dim=3)
+      order = size(coeffs, dim=1)
 
       ! make a copy of coeffs that we can use to extract data and normalize
-      allocate(matrix(order,groups,groups))
-      matrix = coeffs
+      allocate(matrix(order, groups, groups))
+      matrix (:, :, :)= coeffs
 
       ! Get scattxs value
       allocate(this % scattxs(groups))
       ! Get this by summing the un-normalized P0 coefficient in matrix
       ! over all outgoing groups
-      this % scattxs = sum(matrix(1,:,:),dim=1)
+      this % scattxs(:) = sum(matrix(1, :, :), dim=1)
 
-      allocate(energy(groups,groups))
-      energy = ZERO
+      allocate(energy(groups, groups))
+      energy(:, :) = ZERO
       ! Build energy transfer probability matrix from data in matrix
       ! while also normalizing matrix itself (making CDF of f(mu=1)=1)
       do gin = 1, groups
         do gout = 1, groups
-          norm = matrix(1,gout,gin)
-          energy(gout,gin) = norm
+          norm = matrix(1, gout, gin)
+          energy(gout, gin) = norm
           if (norm /= ZERO) then
-            matrix(:,gout,gin) = matrix(:,gout,gin) / norm
+            matrix(:, gout, gin) = matrix(:, gout, gin) / norm
           end if
         end do
       end do
@@ -209,16 +212,16 @@ contains
       ! Set dist values from matrix and initialize max_val
       do gin = 1, groups
         do gout = this % gmin(gin), this % gmax(gin)
-          this % dist(gin) % data(:,gout) = matrix(:,gout,gin)
+          this % dist(gin) % data(:, gout) = matrix(:, gout, gin)
         end do
         allocate(this % max_val(gin) % data(this % gmin(gin):this % gmax(gin)))
-        this % max_val(gin) % data = ZERO
+        this % max_val(gin) % data(:) = ZERO
       end do
 
       ! Step through the polynomial with fixed number of points to identify
       ! the maximal value.
       Nmu = 1001
-      dmu = TWO / real(Nmu - 1,8)
+      dmu = TWO / real(Nmu - 1, 8)
       do gin = 1, groups
         do gout = this % gmin(gin), this % gmax(gin)
           do imu = 1, Nmu
@@ -228,7 +231,7 @@ contains
             else if (imu == Nmu) then
               mu = ONE
             else
-              mu = -ONE + real(imu - 1,8) * dmu
+              mu = -ONE + real(imu - 1, 8) * dmu
             end if
             ! Calculate probability
             f = this % calc_f(gin,gout,mu)
@@ -245,37 +248,37 @@ contains
 
     subroutine scattdatahistogram_init(this, mult, coeffs)
       class(ScattDataHistogram), intent(inout) :: this   ! Object to work on
-      real(8), intent(in)                      :: mult(:,:)     ! Scatter Prod'n Matrix
-      real(8), intent(in)                      :: coeffs(:,:,:) ! Coefficients to use
+      real(8), intent(in)                      :: mult(:, :)     ! Scatter Prod'n Matrix
+      real(8), intent(in)                      :: coeffs(:, :, :) ! Coefficients to use
 
       integer :: imu, gin, gout, groups, order
       real(8) :: norm
-      real(8), allocatable :: energy(:,:)
-      real(8), allocatable :: matrix(:,:,:)
+      real(8), allocatable :: energy(:, :)
+      real(8), allocatable :: matrix(:, :, :)
 
-      groups = size(coeffs,dim=3)
-      order = size(coeffs,dim=1)
+      groups = size(coeffs, dim=3)
+      order = size(coeffs, dim=1)
 
       ! make a copy of coeffs that we can use to extract data and normalize
-      allocate(matrix(order,groups,groups))
-      matrix = coeffs
+      allocate(matrix(order, groups, groups))
+      matrix(:, :, :) = coeffs
 
       ! Get scattxs value
       allocate(this % scattxs(groups))
       ! Get this by summing the un-normalized P0 coefficient in matrix
       ! over all outgoing groups
-      this % scattxs = sum(sum(matrix(:,:,:),dim=1),dim=1)
+      this % scattxs(:) = sum(sum(matrix(:, :, :), dim=1), dim=1)
 
-      allocate(energy(groups,groups))
-      energy = ZERO
+      allocate(energy(groups, groups))
+      energy(:, :) = ZERO
       ! Build energy transfer probability matrix from data in matrix
       ! while also normalizing matrix itself (making CDF of f(mu=1)=1)
       do gin = 1, groups
         do gout = 1, groups
-          norm = sum(matrix(:,gout,gin))
-          energy(gout,gin) = norm
+          norm = sum(matrix(:, gout, gin))
+          energy(gout, gin) = norm
           if (norm /= ZERO) then
-            matrix(:,gout,gin) = matrix(:,gout,gin) / norm
+            matrix(:, gout, gin) = matrix(:, gout, gin) / norm
           end if
         end do
       end do
@@ -283,10 +286,10 @@ contains
       call scattdata_init(this, order, energy, mult)
 
       allocate(this % mu(order))
-      this % dmu = TWO / real(order,8)
+      this % dmu = TWO / real(order, 8)
       this % mu(1) = -ONE
       do imu = 2, order
-        this % mu(imu) = -ONE + real(imu - 1,8) * this % dmu
+        this % mu(imu) = -ONE + real(imu - 1, 8) * this % dmu
       end do
 
       ! Integrate this histogram so we can avoid rejection sampling while
@@ -297,21 +300,23 @@ contains
                                         this % gmin(gin):this % gmax(gin)))
         do gout = this % gmin(gin), this % gmax(gin)
           ! Store the histogram
-          this % fmu(gin) % data(:,gout) = matrix(:,gout,gin)
+          this % fmu(gin) % data(:, gout) = matrix(:, gout, gin)
           ! Integrate the histogram
-          this % dist(gin) % data(1,gout) = this % dmu * matrix(1,gout,gin)
+          this % dist(gin) % data(1, gout) = &
+               this % dmu * matrix(1, gout, gin)
           do imu = 2, order
-            this % dist(gin) % data(imu,gout) = this % dmu * matrix(imu,gout,gin) + &
-                 this % dist(gin) % data(imu - 1,gout)
+            this % dist(gin) % data(imu, gout) = &
+                 this % dmu * matrix(imu, gout, gin) + &
+                 this % dist(gin) % data(imu - 1, gout)
           end do
 
           ! Now make sure integral norms to zero
-          norm = this % dist(gin) % data(order,gout)
+          norm = this % dist(gin) % data(order, gout)
           if (norm > ZERO) then
-            this % fmu(gin) % data(:,gout) = &
-                 this % fmu(gin) % data(:,gout) / norm
-            this % dist(gin) % data(:,gout) = &
-                 this % dist(gin) % data(:,gout) / norm
+            this % fmu(gin) % data(:, gout) = &
+                 this % fmu(gin) % data(:, gout) / norm
+            this % dist(gin) % data(:, gout) = &
+                 this % dist(gin) % data(:, gout) / norm
           end if
         end do
       end do
@@ -320,27 +325,27 @@ contains
 
     subroutine scattdatatabular_init(this, mult, coeffs)
       class(ScattDataTabular), intent(inout) :: this   ! Object to work on
-      real(8), intent(in)                    :: mult(:,:)   ! Scatter Prod'n Matrix
-      real(8), intent(in)                    :: coeffs(:,:,:) ! Coefficients to use
+      real(8), intent(in)                    :: mult(:, :)   ! Scatter Prod'n Matrix
+      real(8), intent(in)                    :: coeffs(:, :, :) ! Coefficients to use
 
       integer :: imu, gin, gout, groups, order
       real(8) :: norm
-      real(8), allocatable :: energy(:,:)
-      real(8), allocatable :: matrix(:,:,:)
+      real(8), allocatable :: energy(:, :)
+      real(8), allocatable :: matrix(:, :, :)
 
-      groups = size(coeffs,dim=3)
-      order = size(coeffs,dim=1)
+      groups = size(coeffs, dim=3)
+      order = size(coeffs, dim=1)
 
       ! make a copy of coeffs that we can use to extract data and normalize
-      allocate(matrix(order,groups,groups))
-      matrix = coeffs
+      allocate(matrix(order, groups, groups))
+      matrix(:, :, :) = coeffs
 
       ! Build the angular distribution mu values
       allocate(this % mu(order))
-      this % dmu = TWO / real(order - 1,8)
+      this % dmu = TWO / real(order - 1, 8)
       this % mu(1) = -ONE
       do imu = 2, order - 1
-        this % mu(imu) = -ONE + real(imu - 1,8) * this % dmu
+        this % mu(imu) = -ONE + real(imu - 1, 8) * this % dmu
       end do
       this % mu(order) = ONE
 
@@ -353,24 +358,24 @@ contains
         norm = ZERO
         do gout = 1, groups
           do imu = 2, order
-            norm = norm + HALF * this % dmu * (matrix(imu - 1,gout,gin) + &
-                                               matrix(imu,gout,gin))
+            norm = norm + HALF * this % dmu * (matrix(imu - 1, gout, gin) + &
+                                               matrix(imu, gout, gin))
           end do
         end do
         this % scattxs(gin) = norm
       end do
 
-      allocate(energy(groups,groups))
-      energy = ZERO
+      allocate(energy(groups, groups))
+      energy(:, :) = ZERO
       ! Build energy transfer probability matrix from data in matrix
       do gin = 1, groups
         do gout = 1, groups
           norm = ZERO
           do imu = 2, order
             norm = norm + HALF * this % dmu * &
-                 (matrix(imu - 1,gout,gin) + matrix(imu,gout,gin))
+                 (matrix(imu - 1, gout, gin) + matrix(imu, gout, gin))
           end do
-          energy(gout,gin) = norm
+          energy(gout, gin) = norm
         end do
       end do
       call scattdata_init(this, order, energy, mult)
@@ -383,12 +388,12 @@ contains
         do gout = this % gmin(gin), this % gmax(gin)
           ! Coeffs contain f(mu), put in f(mu) as that is where the
           ! PDF lives
-          this % fmu(gin) % data(:,gout) = matrix(:,gout,gin)
+          this % fmu(gin) % data(:, gout) = matrix(:, gout, gin)
 
           ! Force positivity
           do imu = 1, order
-            if (this % fmu(gin) % data(imu,gout) < ZERO) then
-              this % fmu(gin) % data(imu,gout) = ZERO
+            if (this % fmu(gin) % data(imu, gout) < ZERO) then
+              this % fmu(gin) % data(imu, gout) = ZERO
             end if
           end do
 
@@ -397,27 +402,27 @@ contains
           norm = ZERO
           do imu = 2, order
             norm = norm + HALF * this % dmu * &
-                 (this % fmu(gin) % data(imu - 1,gout) + &
-                  this % fmu(gin) % data(imu,gout))
+                 (this % fmu(gin) % data(imu - 1, gout) + &
+                  this % fmu(gin) % data(imu, gout))
           end do
           if (norm > ZERO) then
-            this % fmu(gin) % data(:,gout) = &
-                 this % fmu(gin) % data(:,gout) / norm
+            this % fmu(gin) % data(:, gout) = &
+                 this % fmu(gin) % data(:, gout) / norm
           end if
 
           ! Now create CDF from fmu with trapezoidal rule
-          this % dist(gin) % data(1,gout) = ZERO
+          this % dist(gin) % data(1, gout) = ZERO
           do imu = 2, order
-            this % dist(gin) % data(imu,gout) = &
-                 this % dist(gin) % data(imu - 1,gout) + &
-                 HALF * this % dmu * (this % fmu(gin) % data(imu - 1,gout) + &
-                                      this % fmu(gin) % data(imu,gout))
+            this % dist(gin) % data(imu, gout) = &
+                 this % dist(gin) % data(imu - 1, gout) + &
+                 HALF * this % dmu * (this % fmu(gin) % data(imu - 1, gout) + &
+                                      this % fmu(gin) % data(imu, gout))
           end do
           ! Ensure we normalize to 1 still
-          norm = this % dist(gin) % data(order,gout)
+          norm = this % dist(gin) % data(order, gout)
           if (norm > ZERO) then
-            this % dist(gin) % data(:,gout) = &
-                 this % dist(gin) % data(:,gout) / norm
+            this % dist(gin) % data(:, gout) = &
+                 this % dist(gin) % data(:, gout) / norm
           end if
         end do
       end do
@@ -438,7 +443,7 @@ contains
       if (gout < this % gmin(gin) .or. gout > this % gmax(gin)) then
         f = ZERO
       else
-        f = evaluate_legendre(this % dist(gin) % data(:,gout),mu)
+        f = evaluate_legendre(this % dist(gin) % data(:, gout), mu)
       end if
 
     end function scattdatalegendre_calc_f
@@ -457,12 +462,12 @@ contains
       else
         ! Find mu bin
         if (mu == ONE) then
-          imu = size(this % fmu(gin) % data,dim=1)
+          imu = size(this % fmu(gin) % data, dim=1)
         else
-          imu = floor((mu + ONE)/ this % dmu + ONE)
+          imu = floor((mu + ONE) / this % dmu + ONE)
         end if
 
-        f = this % fmu(gin) % data(imu,gout)
+        f = this % fmu(gin) % data(imu, gout)
       end if
 
     end function scattdatahistogram_calc_f
@@ -482,15 +487,15 @@ contains
       else
         ! Find mu bin
         if (mu == ONE) then
-          imu = size(this % fmu(gin) % data,dim=1) - 1
+          imu = size(this % fmu(gin) % data, dim=1) - 1
         else
-          imu = floor((mu + ONE)/ this % dmu + ONE)
+          imu = floor((mu + ONE) / this % dmu + ONE)
         end if
 
         ! Now interpolate to find f(mu)
         r = (mu - this % mu(imu)) / (this % mu(imu + 1) - this % mu(imu))
-        f = (ONE - r) * this % fmu(gin) % data(imu,gout) + &
-             r * this % fmu(gin) % data(imu + 1,gout)
+        f = (ONE - r) * this % fmu(gin) % data(imu, gout) + &
+             r * this % fmu(gin) % data(imu + 1, gout)
       end if
 
     end function scattdatatabular_calc_f
@@ -529,7 +534,7 @@ contains
     samples = 0
     do
       mu = TWO * prn() - ONE
-      f = this % calc_f(gin,gout,mu)
+      f = this % calc_f(gin, gout, mu)
       if (f > ZERO) then
         u = prn() * M
         if (u <= f) then
@@ -567,11 +572,11 @@ contains
     end do
 
     xi = prn()
-    if (xi < this % dist(gin) % data(1,gout)) then
+    if (xi < this % dist(gin) % data(1, gout)) then
       imu = 1
     else
-      imu = binary_search(this % dist(gin) % data(:,gout), &
-                          size(this % dist(gin) % data(:,gout)), xi)
+      imu = binary_search(this % dist(gin) % data(:, gout), &
+                          size(this % dist(gin) % data(:, gout)), xi)
     end if
 
     ! Randomly select a mu in this bin.
@@ -604,12 +609,12 @@ contains
     end do
 
     ! determine outgoing cosine bin
-    NP = size(this % dist(gin) % data(:,gout))
+    NP = size(this % dist(gin) % data(:, gout))
     xi = prn()
 
-    c_k = this % dist(gin) % data(1,gout)
+    c_k = this % dist(gin) % data(1, gout)
     do k = 1, NP - 1
-      c_k1 = this % dist(gin) % data(k + 1,gout)
+      c_k1 = this % dist(gin) % data(k + 1, gout)
       if (xi < c_k1) exit
       c_k = c_k1
     end do
@@ -617,18 +622,19 @@ contains
     ! check to make sure k is <= NP - 1
     k = min(k, NP - 1)
 
-    p0  = this % fmu(gin) % data(k,gout)
+    p0  = this % fmu(gin) % data(k, gout)
     mu0 = this % mu(k)
     ! Linear-linear interpolation to find mu value w/in bin.
-    p1  = this % fmu(gin) % data(k + 1,gout)
+    p1  = this % fmu(gin) % data(k + 1, gout)
     mu1 = this % mu(k + 1)
 
-    frac = (p1 - p0)/(mu1 - mu0)
+    frac = (p1 - p0) / (mu1 - mu0)
 
     if (frac == ZERO) then
-      mu = mu0 + (xi - c_k)/p0
+      mu = mu0 + (xi - c_k) / p0
     else
-      mu = mu0 + (sqrt(max(ZERO, p0 * p0 + TWO * frac * (xi - c_k))) - p0) / frac
+      mu = mu0 + &
+           (sqrt(max(ZERO, p0 * p0 + TWO * frac * (xi - c_k))) - p0) / frac
     end if
 
     if (mu <= -ONE) then
@@ -649,23 +655,24 @@ contains
     pure function scattdata_get_matrix(this, req_order) result(matrix)
       class(ScattData), intent(in) :: this          ! Scattering Object to work with
       integer, intent(in)          :: req_order     ! Requested order of matrix
-      real(8), allocatable         :: matrix(:,:,:) ! Resultant matrix just built
+      real(8), allocatable         :: matrix(:, :, :) ! Resultant matrix just built
 
       integer :: order, groups, gin, gout
 
       groups = size(this % energy)
-      order = min(req_order,size(this % dist(1) % data(:,1)))
+      ! Set gin and gout for getting the order
+      order = min(req_order, size(this % dist(1) % data, dim=1))
 
-      allocate(matrix(order,groups,groups))
+      allocate(matrix(order, groups, groups))
       ! Initialize to 0; this way the zero entries in the dense matrix dont
       ! need to be explicitly set, requiring a significant increase in the
       ! lines of code.
-      matrix = ZERO
+      matrix(:, :, :) = ZERO
       do gin = 1, groups
         do gout = this % gmin(gin), this % gmax(gin)
-          matrix(:,gout,gin) = this % scattxs(gin) * &
+          matrix(:, gout, gin) = this % scattxs(gin) * &
                this % energy(gin) % data(gout) * &
-               this % dist(gin) % data(1:order,gout)
+               this % dist(gin) % data(1:order, gout)
         end do
       end do
     end function scattdata_get_matrix
@@ -673,23 +680,23 @@ contains
     pure function scattdatahistogram_get_matrix(this, req_order) result(matrix)
       class(ScattDataHistogram), intent(in) :: this          ! Scattering Object to work with
       integer, intent(in)                 :: req_order     ! Requested order of matrix
-      real(8), allocatable                :: matrix(:,:,:) ! Resultant matrix just built
+      real(8), allocatable                :: matrix(:, :, :) ! Resultant matrix just built
 
       integer :: order, groups, gin, gout
 
       groups = size(this % energy)
-      order = min(req_order,size(this % dist(1) % data(:,1)))
+      order = min(req_order, size(this % dist(1) % data, dim=1))
 
-      allocate(matrix(order,groups,groups))
+      allocate(matrix(order, groups, groups))
       ! Initialize to 0; this way the zero entries in the dense matrix dont
       ! need to be explicitly set, requiring a significant increase in the
       ! lines of code.
-      matrix = ZERO
+      matrix(:, :, :) = ZERO
       do gin = 1, groups
         do gout = this % gmin(gin), this % gmax(gin)
-          matrix(:,gout,gin) = this % scattxs(gin) * &
+          matrix(:, gout, gin) = this % scattxs(gin) * &
                this % energy(gin) % data(gout) * &
-               this % fmu(gin) % data(1:order,gout)
+               this % fmu(gin) % data(1:order, gout)
         end do
       end do
     end function scattdatahistogram_get_matrix
@@ -697,23 +704,23 @@ contains
     pure function scattdatatabular_get_matrix(this, req_order) result(matrix)
       class(ScattDataTabular), intent(in) :: this          ! Scattering Object to work with
       integer, intent(in)                 :: req_order     ! Requested order of matrix
-      real(8), allocatable                :: matrix(:,:,:) ! Resultant matrix just built
+      real(8), allocatable                :: matrix(:, :, :) ! Resultant matrix just built
 
       integer :: order, groups, gin, gout
 
       groups = size(this % energy)
-      order = min(req_order,size(this % dist(1) % data(:,1)))
+      order = min(req_order, size(this % dist(1) % data, dim=1))
 
-      allocate(matrix(order,groups,groups))
+      allocate(matrix(order, groups, groups))
       ! Initialize to 0; this way the zero entries in the dense matrix dont
       ! need to be explicitly set, requiring a significant increase in the
       ! lines of code.
-      matrix = ZERO
+      matrix(:, :, :) = ZERO
       do gin = 1, groups
         do gout = this % gmin(gin), this % gmax(gin)
-          matrix(:,gout,gin) = this % scattxs(gin) * &
+          matrix(:, gout, gin) = this % scattxs(gin) * &
                this % energy(gin) % data(gout) * &
-               this % fmu(gin) % data(1:order,gout)
+               this % fmu(gin) % data(1:order, gout)
         end do
       end do
     end function scattdatatabular_get_matrix

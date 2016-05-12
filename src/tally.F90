@@ -961,9 +961,9 @@ contains
           if (i_nuclide > 0) then
             score = score * atom_density * &
                  nucxs % get_xs('scatter*f_mu/mult', p % last_g, p % g, &
-                                UVW=p_uvw,MU=p % mu) / &
+                                UVW=p_uvw, MU=p % mu) / &
                  matxs % get_xs('scatter*f_mu/mult', p % last_g, p % g, &
-                                UVW=p_uvw,MU=p % mu)
+                                UVW=p_uvw, MU=p % mu)
           end if
 
         else
@@ -1080,11 +1080,11 @@ contains
           end if
           if (i_nuclide > 0) then
               score = score * atom_density * &
-                   nucxs % get_xs('fission',    p_g, UVW=p_uvw) / &
+                   nucxs % get_xs('fission', p_g, UVW=p_uvw) / &
                    matxs % get_xs('absorption', p_g, UVW=p_uvw)
             else
               score = score * &
-                   matxs % get_xs('fission',    p_g, UVW=p_uvw) / &
+                   matxs % get_xs('fission', p_g, UVW=p_uvw) / &
                    matxs % get_xs('absorption', p_g, UVW=p_uvw)
             end if
         else
@@ -1170,11 +1170,11 @@ contains
           if (i_nuclide > 0) then
             score = score * atom_density * &
                  nucxs % get_xs('kappa_fission', p_g, UVW=p_uvw) / &
-                 matxs % get_xs('absorption',    p_g, UVW=p_uvw)
+                 matxs % get_xs('absorption', p_g, UVW=p_uvw)
           else
             score = score * &
                  matxs % get_xs('kappa_fission', p_g, UVW=p_uvw) / &
-                 matxs % get_xs('absorption',    p_g, UVW=p_uvw)
+                 matxs % get_xs('absorption', p_g, UVW=p_uvw)
           end if
         else
           if (i_nuclide > 0) then

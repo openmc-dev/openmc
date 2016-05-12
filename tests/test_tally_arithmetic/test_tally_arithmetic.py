@@ -62,11 +62,6 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = openmc.StatePoint(statepoint)
 
-        # Read the summary file.
-        summary = glob.glob(os.path.join(os.getcwd(), 'summary.h5'))[0]
-        su = openmc.Summary(summary)
-        sp.link_with_summary(su)
-
         # Load the tallies
         tally_1 = sp.get_tally(name='tally 1')
         tally_2 = sp.get_tally(name='tally 2')

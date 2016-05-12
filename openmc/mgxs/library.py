@@ -17,7 +17,7 @@ if sys.version_info[0] >= 3:
 
 
 class Library(object):
-    '''A multi-group cross section library for some energy group structure.
+    """A multi-group cross section library for some energy group structure.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -79,7 +79,7 @@ class Library(object):
         Whether or not the Library's tallies use SciPy's LIL sparse matrix
         format for compressed data storage
 
-    '''
+    """
 
     def __init__(self, openmc_geometry, by_nuclide=False,
                  mgxs_types=None, name=''):
@@ -300,7 +300,7 @@ class Library(object):
 
     @sparse.setter
     def sparse(self, sparse):
-        '''Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
         sparse matrices, and vice versa.
 
         This property may be used to reduce the amount of data in memory during
@@ -308,7 +308,7 @@ class Library(object):
         matrices internally within the Tally object. All tally data access
         properties and methods will return data as a dense NumPy array.
 
-        '''
+        """
 
         cv.check_type('sparse', sparse, bool)
 
@@ -321,14 +321,14 @@ class Library(object):
         self._sparse = sparse
 
     def build_library(self):
-        '''Initialize MGXS objects in each domain and for each reaction type
+        """Initialize MGXS objects in each domain and for each reaction type
         in the library.
 
         This routine will populate the all_mgxs instance attribute dictionary
         with MGXS subclass objects keyed by each domain ID (e.g., Material IDs)
         and cross section type (e.g., 'nu-fission', 'total', etc.).
 
-        '''
+        """
 
         # Initialize MGXS for each domain and mgxs type and store in dictionary
         for domain in self.domains:
@@ -351,7 +351,7 @@ class Library(object):
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 
     def add_to_tallies_file(self, tallies_file, merge=True):
-        '''Add all tallies from all MGXS objects to a tallies file.
+        """Add all tallies from all MGXS objects to a tallies file.
 
         NOTE: This assumes that :meth:`Library.build_library` has been called
 
@@ -364,7 +364,7 @@ class Library(object):
             Indicate whether tallies should be merged when possible. Defaults
             to True.
 
-        '''
+        """
 
         cv.check_type('tallies_file', tallies_file, openmc.Tallies)
 
@@ -376,7 +376,7 @@ class Library(object):
                     tallies_file.append(tally, merge=merge)
 
     def load_from_statepoint(self, statepoint):
-        '''Extracts tallies in an OpenMC StatePoint with the data needed to
+        """Extracts tallies in an OpenMC StatePoint with the data needed to
         compute multi-group cross sections.
 
         This method is needed to compute cross section data from tallies
@@ -395,7 +395,7 @@ class Library(object):
             When this method is called with a statepoint that has not been
             linked with a summary object.
 
-        '''
+        """
 
         cv.check_type('statepoint', statepoint, openmc.StatePoint)
 
@@ -419,7 +419,7 @@ class Library(object):
                 mgxs.sparse = self.sparse
 
     def get_mgxs(self, domain, mgxs_type):
-        '''Return the MGXS object for some domain and reaction rate type.
+        """Return the MGXS object for some domain and reaction rate type.
 
         This routine searches the library for an MGXS object for the spatial
         domain and reaction rate type requested by the user.
@@ -444,7 +444,7 @@ class Library(object):
             If no MGXS object can be found for the requested domain or
             multi-group cross section type
 
-        '''
+        """
 
         if self.domain_type == 'material':
             cv.check_type('domain', domain, (openmc.Material, Integral))
@@ -474,7 +474,7 @@ class Library(object):
         return self.all_mgxs[domain_id][mgxs_type]
 
     def get_condensed_library(self, coarse_groups):
-        '''Construct an energy-condensed version of this library.
+        """Construct an energy-condensed version of this library.
 
         This routine condenses each of the multi-group cross sections in the
         library to a coarse energy group structure. NOTE: This routine must
@@ -501,7 +501,7 @@ class Library(object):
         --------
         MGXS.get_condensed_xs(coarse_groups)
 
-        '''
+        """
 
         if self.sp_filename is None:
             msg = 'Unable to get a condensed coarse group cross section ' \
@@ -530,7 +530,7 @@ class Library(object):
         return condensed_library
 
     def get_subdomain_avg_library(self):
-        '''Construct a subdomain-averaged version of this library.
+        """Construct a subdomain-averaged version of this library.
 
         This routine averages each multi-group cross section across distribcell
         instances. The method performs spatial homogenization to compute the
@@ -553,7 +553,7 @@ class Library(object):
         --------
         MGXS.get_subdomain_avg_xs(subdomains)
 
-        '''
+        """
 
         if self.sp_filename is None:
             msg = 'Unable to get a subdomain-averaged cross section ' \
@@ -581,7 +581,7 @@ class Library(object):
     def build_hdf5_store(self, filename='mgxs.h5', directory='mgxs',
                          subdomains='all', nuclides='all', xs_type='macro',
                          row_column='inout'):
-        '''Export the multi-group cross section library to an HDF5 binary file.
+        """Export the multi-group cross section library to an HDF5 binary file.
 
         This method constructs an HDF5 file which stores the library's
         multi-group cross section data. The data is stored in a hierarchy of
@@ -624,7 +624,7 @@ class Library(object):
         --------
         MGXS.build_hdf5_store(filename, directory, xs_type)
 
-        '''
+        """
 
         if self.sp_filename is None:
             msg = 'Unable to export multi-group cross section library ' \
@@ -659,7 +659,7 @@ class Library(object):
                                       nuclides=nuclides, row_column=row_column)
 
     def dump_to_file(self, filename='mgxs', directory='mgxs'):
-        '''Store this Library object in a pickle binary file.
+        """Store this Library object in a pickle binary file.
 
         Parameters
         ----------
@@ -672,7 +672,7 @@ class Library(object):
         --------
         Library.load_from_file(filename, directory)
 
-        '''
+        """
 
         cv.check_type('filename', filename, basestring)
         cv.check_type('directory', directory, basestring)
@@ -689,7 +689,7 @@ class Library(object):
 
     @staticmethod
     def load_from_file(filename='mgxs', directory='mgxs'):
-        '''Load a Library object from a pickle binary file.
+        """Load a Library object from a pickle binary file.
 
         Parameters
         ----------
@@ -707,7 +707,7 @@ class Library(object):
         --------
         Library.dump_to_file(mgxs_lib, filename, directory)
 
-        '''
+        """
 
         cv.check_type('filename', filename, basestring)
         cv.check_type('directory', directory, basestring)
@@ -725,7 +725,7 @@ class Library(object):
     def write_mg_library(self, xs_type='macro', domain_names=None, xs_ids=None,
                          filename='mg_cross_sections', directory='./',
                          return_names=True):
-        '''Creates a cross-section data library file for the Multi-Group
+        """Creates a cross-section data library file for the Multi-Group
         mode of OpenMC.
 
         Parameters
@@ -768,7 +768,7 @@ class Library(object):
         --------
         Library.dump_to_file(mgxs_lib, filename, directory)
 
-        '''
+        """
 
         # Check to ensure the Library contains the correct
         # multi-group cross section types
@@ -904,10 +904,11 @@ class Library(object):
                         # accounted for approximately by using an adjusted
                         # absorption cross section.
                         if 'total' in self.mgxs_types:
-                            xsdata.absorption = \
+                            xsdata._absorption = \
                                 np.subtract(xsdata.total,
                                             np.sum(xsdata.scatter[0, :, :],
                                                    axis=1))
+
                 xsdatas.append(xsdata)
 
         # Add XSdatas to file
@@ -925,24 +926,20 @@ class Library(object):
         a MGXS Library for OpenMC's Multi-Group mode via the
         `Library.write_mg_library` method.
         The rules to check include:
-        - Fission is not required as a fixed source problem could be
-          the target.
-        - Absorption is required.
+        - Either total or transport should be present.
+          - Both can be available if one wants, but we should
+            use whatever corresponds to Library.correction (if P0: transport)
+        - Absorption and total (or transport) are required.
+        - A nu-fission cross section and chi values are not required as a
+          fixed source problem could be the target.
+        - Fission and kappa-fission are not required as they are only
+          needed to support tallies the user may wish to request.
         - A nu-scatter matrix is required.
           - Having both nu-scatter (of any order) and scatter
             (at least isotropic) matrices is preferred
           - If only nu-scatter, need total (not transport), to
             be used in adjusting absorption
             (i.e., reduced_abs = tot - nuscatt)
-        - Either total or transport should be present.
-          - Both can be available if one wants, but we should
-            use whatever corresponds to Library.correction (if P0: transport)
-
-        Raises
-        ------
-        ValueError
-            When the Library object is initialized with insufficient types of
-            cross sections for the Library.
 
         See also
         --------
@@ -979,7 +976,12 @@ class Library(object):
             msg = 'Transport MGXS type is required since a "P0" correction ' \
                   'is applied, but a Transport MGXS is not provided.'
             warn(msg)
+        elif (((self.correction is None) and
+               ('total' not in self.mgxs_types))):
+            error_flag = True
+            msg = 'Total MGXS type is required, but not provided.'
+            warn(msg)
 
         if error_flag:
-            msg = "Invalid MGXS configuration encountered."
+            msg = 'Invalid MGXS configuration encountered.'
             raise ValueError(msg)

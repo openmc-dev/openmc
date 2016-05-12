@@ -1630,6 +1630,14 @@ contains
           call fatal_error("Periodic boundary condition applied to &
                &non-planar surface.")
         end select
+
+        ! Make sure opposite surface is also periodic
+        associate (surf => surfaces(i) % obj)
+          if (surfaces(surf % opposite) % obj % bc /= BC_PERIODIC) then
+            call fatal_error("Could not find matching surface for periodic &
+                 &boundary on surface " // trim(to_str(surf % id)) // ".")
+          end if
+        end associate
       end if
     end do
 

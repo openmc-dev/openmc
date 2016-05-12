@@ -22,6 +22,7 @@ if sys.version_info[0] >= 3:
 # Supported cross section types
 MGXS_TYPES = ['total',
               'transport',
+              'nu-transport',
               'absorption',
               'capture',
               'fission',
@@ -333,7 +334,7 @@ class MGXS(object):
 
         Parameters
         ----------
-        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
             The type of multi-group cross section object to return
         domain : openmc.Material or openmc.Cell or openmc.Universe
             The domain for spatial homogenization
@@ -362,6 +363,8 @@ class MGXS(object):
             mgxs = TotalXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'transport':
             mgxs = TransportXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'nu-transport':
+            mgxs = NuTransportXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'absorption':
             mgxs = AbsorptionXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'capture':
@@ -1526,13 +1529,29 @@ class TotalXS(MGXS):
 
 
 class TransportXS(MGXS):
-    """A transport-corrected total multi-group cross section."""
+    """A transport-corrected total multi-group cross section.
+
+    Attributes
+    ----------
+    use_nu : bool
+        Whether or not to account for scattering multiplicity in the
+        correction. If False, a "scatter-1" score is used (default);
+        if True, a "nu-scatter-1" score is used. This should be
+        set to False if using a ScatterMatrixXS and True if using
+        a NuScatterMatrixXS to preserve neutron balance.
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
         super(TransportXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name)
         self._rxn_type = 'transport'
+        self._use_nu = False
+
+    @property
+    def use_nu(self):
+        return self._use_nu
 
     @property
     def tallies(self):
@@ -1548,9 +1567,14 @@ class TransportXS(MGXS):
         if self._tallies is None:
 
             # Create a list of scores for each Tally to be created
-            scores = ['flux', 'total', 'scatter-1']
+            scores = ['flux', 'total']
+            if self.use_nu:
+                scores.append('nu-scatter-1')
+            else:
+                scores.append('scatter-1')
+
             estimator = 'analog'
-            keys = scores
+            keys = ['flux', 'total', 'scatter-1']
 
             # Create the non-domain specific Filters for the Tallies
             group_edges = self.energy_groups.group_edges
@@ -1572,6 +1596,46 @@ class TransportXS(MGXS):
             self._rxn_rate_tally.sparse = self.sparse
 
         return self._rxn_rate_tally
+
+
+class NuTransportXS(TransportXS):
+    """A transport-corrected total multi-group cross section which
+    accounts for neutron multiplicity in scattering reactions."""
+
+    def __init__(self, domain=None, domain_type=None,
+                 groups=None, by_nuclide=False, name=''):
+        super(NuTransportXS, self).__init__(domain, domain_type,
+                                            groups, by_nuclide, name)
+        self._rxn_type = 'nu-transport'
+
+    @property
+    def tallies(self):
+        """Construct the OpenMC tallies needed to compute this cross section.
+
+        This method constructs three analog tallies to compute the 'flux',
+        'total' and 'nu-scatter-1' reaction rates in the spatial domain and
+        energy groups of interest.
+
+        """
+
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
+
+            # Create a list of scores for each Tally to be created
+            scores = ['flux', 'total', 'nu-scatter-1']
+            keys = ['flux', 'total', 'scatter-1']
+            estimator = 'analog'
+
+            # Create the non-domain specific Filters for the Tallies
+            group_edges = self.energy_groups.group_edges
+            energy_filter = openmc.Filter('energy', group_edges)
+            energyout_filter = openmc.Filter('energyout', group_edges)
+            filters = [[energy_filter], [energy_filter], [energyout_filter]]
+
+            # Initialize the Tallies
+            self._create_tallies(scores, filters, keys, estimator)
+
+        return self._tallies
 
 
 class AbsorptionXS(MGXS):

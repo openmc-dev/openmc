@@ -33,6 +33,10 @@ class Cell(object):
         automatically be assigned.
     name : str, optional
         Name of the cell. If not specified, the name is the empty string.
+    fill : openmc.Material or openmc.Universe or openmc.Lattice or 'void' or iterable of openmc.Material, optional
+        Indicates what the region of space is filled with
+    region : openmc.Region, optional
+        Region of space that is assigned to the cell.
 
     Attributes
     ----------
@@ -58,7 +62,7 @@ class Cell(object):
 
     """
 
-    def __init__(self, cell_id=None, name=''):
+    def __init__(self, cell_id=None, name='', fill=None, region=None):
         # Initialize Cell class attributes
         self.id = cell_id
         self.name = name
@@ -69,6 +73,11 @@ class Cell(object):
         self._translation = None
         self._offsets = None
         self._distribcell_index = None
+
+        if fill is not None:
+            self.fill = fill
+        if region is not None:
+            self.region = region
 
     def __eq__(self, other):
         if not isinstance(other, Cell):

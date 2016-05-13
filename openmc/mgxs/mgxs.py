@@ -2115,7 +2115,7 @@ class ScatterMatrixXS(MGXS):
             # Place the moment column before the mean column
             mean_index = df.columns.get_loc('mean')
             columns = df.columns.tolist()
-            df = df[columns[:mean_index] + ['moment'] + columns[mean_index:-2]]
+            df = df[columns[:mean_index] + ['moment'] + columns[mean_index:-1]]
 
         # Select rows corresponding to requested scattering moment
         if moment != 'all':

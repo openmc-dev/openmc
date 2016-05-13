@@ -215,10 +215,50 @@ class MGXS(object):
 
     @property
     def tallies(self):
+        """Construct the OpenMC tallies needed to compute the cross section."""
+
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
+
+            # Initialize a collection of Tallies
+            self._tallies = OrderedDict()
+
+            # Create a domain Filter object
+            domain_filter = openmc.Filter(self.domain_type, self.domain.id)
+
+            # Create each Tally needed to compute the multi group cross section
+            for score, key, filters in zip(self.scores, self.keys, self.filters):
+                self.tallies[key] = openmc.Tally(name=self.name)
+                self.tallies[key].scores = [score]
+                self.tallies[key].estimator = self.estimator
+                self.tallies[key].filters = [domain_filter]
+
+                # If a tally trigger was specified, add it to each tally
+                if self.tally_trigger:
+                    trigger_clone = copy.deepcopy(self.tally_trigger)
+                    trigger_clone.scores = [score]
+                    self.tallies[key].triggers.append(trigger_clone)
+
+                # Add non-domain specific Filters (e.g., 'energy') to the Tally
+                for add_filter in filters:
+                    self.tallies[key].filters.append(add_filter)
+
+                # If this is a by-nuclide cross-section, add nuclides to Tally
+                if self.by_nuclide and score != 'flux':
+                    all_nuclides = self.get_all_nuclides()
+                    for nuclide in all_nuclides:
+                        self.tallies[key].nuclides.append(nuclide)
+                else:
+                    self.tallies[key].nuclides.append('total')
+
         return self._tallies
 
     @property
     def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = self.tallies[self.rxn_type]
+            self._rxn_rate_tally.sparse = self.sparse
+
         return self._rxn_rate_tally
 
     @property
@@ -262,6 +302,24 @@ class MGXS(object):
     @property
     def derived(self):
         return self._derived
+
+    @property
+    def scores(self):
+        return ['flux', self.rxn_type]
+
+    @property
+    def filters(self):
+        group_edges = self.energy_groups.group_edges
+        energy_filter = openmc.Filter('energy', group_edges)
+        return [[energy_filter] * len(self.scores)]
+
+    @property
+    def tally_keys(self):
+        return self.scores
+
+    @property
+    def estimator(self):
+        return 'tracklength'
 
     @name.setter
     def name(self, name):
@@ -503,63 +561,6 @@ class MGXS(object):
                 densities[i] = self.get_nuclide_density(nuclide)
 
         return densities
-
-    def _create_tallies(self, scores, all_filters, keys, estimator):
-        """Instantiates tallies needed to compute the multi-group cross section.
-
-        This is a helper method for MGXS subclasses to create tallies
-        for input file generation. The tallies are stored in the tallies dict.
-        This method is called by each subclass' tallies property getter
-        which define the parameters given to this parent class method.
-
-        Parameters
-        ----------
-        scores : Iterable of str
-            Scores for each tally
-        all_filters : Iterable of tuple of openmc.Filter
-            Tuples of non-spatial domain filters for each tally
-        keys : Iterable of str
-            Key string used to store each tally in the tallies dictionary
-        estimator : {'analog', 'tracklength'}
-            Type of estimator to use for each tally
-
-        """
-
-        cv.check_iterable_type('scores', scores, basestring)
-        cv.check_length('scores', scores, len(keys))
-        cv.check_iterable_type('filters', all_filters, openmc.Filter, 1, 2)
-        cv.check_type('keys', keys, Iterable, basestring)
-        cv.check_value('estimator', estimator, ['analog', 'tracklength'])
-
-        self._tallies = OrderedDict()
-
-        # Create a domain Filter object
-        domain_filter = openmc.Filter(self.domain_type, self.domain.id)
-
-        # Create each Tally needed to compute the multi group cross section
-        for score, key, filters in zip(scores, keys, all_filters):
-            self.tallies[key] = openmc.Tally(name=self.name)
-            self.tallies[key].scores = [score]
-            self.tallies[key].estimator = estimator
-            self.tallies[key].filters = [domain_filter]
-
-            # If a tally trigger was specified, add it to each tally
-            if self.tally_trigger:
-                trigger_clone = copy.deepcopy(self.tally_trigger)
-                trigger_clone.scores = [score]
-                self.tallies[key].triggers.append(trigger_clone)
-
-            # Add all non-domain specific Filters (e.g., 'energy') to the Tally
-            for add_filter in filters:
-                self.tallies[key].filters.append(add_filter)
-
-            # If this is a by-nuclide cross-section, add all nuclides to Tally
-            if self.by_nuclide and score != 'flux':
-                all_nuclides = self.get_all_nuclides()
-                for nuclide in all_nuclides:
-                    self.tallies[key].nuclides.append(nuclide)
-            else:
-                self.tallies[key].nuclides.append('total')
 
     def _compute_xs(self):
         """Performs generic cleanup after a subclass' uses tally arithmetic to
@@ -1492,100 +1493,30 @@ class TotalXS(MGXS):
                                       groups, by_nuclide, name)
         self._rxn_type = 'total'
 
-    @property
-    def tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross section.
-
-        This method constructs two tracklength tallies to compute the 'flux'
-        and 'total' reaction rates in the spatial domain and energy groups
-        of interest.
-
-        """
-
-        # Instantiate tallies if they do not exist
-        if self._tallies is None:
-
-            # Create a list of scores for each Tally to be created
-            scores = ['flux', 'total']
-            estimator = 'tracklength'
-            keys = scores
-
-            # Create the non-domain specific Filters for the Tallies
-            group_edges = self.energy_groups.group_edges
-            energy_filter = openmc.Filter('energy', group_edges)
-            filters = [[energy_filter], [energy_filter]]
-
-            # Initialize the Tallies
-            self._create_tallies(scores, filters, keys, estimator)
-
-        return self._tallies
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None :
-            self._rxn_rate_tally = self.tallies['total']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
-
 
 class TransportXS(MGXS):
-    """A transport-corrected total multi-group cross section.
-
-    Attributes
-    ----------
-    use_nu : bool
-        Whether or not to account for scattering multiplicity in the
-        correction. If False, a "scatter-1" score is used (default);
-        if True, a "nu-scatter-1" score is used. This should be
-        set to False if using a ScatterMatrixXS and True if using
-        a NuScatterMatrixXS to preserve neutron balance.
-
-    """
+    """A transport-corrected total multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
         super(TransportXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name)
         self._rxn_type = 'transport'
-        self._use_nu = False
 
     @property
-    def use_nu(self):
-        return self._use_nu
+    def scores(self):
+        return ['flux', 'total', 'scatter-1']
 
     @property
-    def tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross section.
+    def filters(self):
+        group_edges = self.energy_groups.group_edges
+        energy_filter = openmc.Filter('energy', group_edges)
+        energyout_filter = openmc.Filter('energyout', group_edges)
+        return [[energy_filter], [energy_filter], [energyout_filter]]
 
-        This method constructs three analog tallies to compute the 'flux',
-        'total' and 'scatter-1' reaction rates in the spatial domain and
-        energy groups of interest.
-
-        """
-
-        # Instantiate tallies if they do not exist
-        if self._tallies is None:
-
-            # Create a list of scores for each Tally to be created
-            scores = ['flux', 'total']
-            if self.use_nu:
-                scores.append('nu-scatter-1')
-            else:
-                scores.append('scatter-1')
-
-            estimator = 'analog'
-            keys = ['flux', 'total', 'scatter-1']
-
-            # Create the non-domain specific Filters for the Tallies
-            group_edges = self.energy_groups.group_edges
-            energy_filter = openmc.Filter('energy', group_edges)
-            energyout_filter = openmc.Filter('energyout', group_edges)
-            filters = [[energy_filter], [energy_filter], [energyout_filter]]
-
-            # Initialize the Tallies
-            self._create_tallies(scores, filters, keys, estimator)
-
-        return self._tallies
+    @property
+    def estimator(self):
+        return 'analog'
 
     @property
     def rxn_rate_tally(self):
@@ -1609,33 +1540,12 @@ class NuTransportXS(TransportXS):
         self._rxn_type = 'nu-transport'
 
     @property
-    def tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross section.
+    def scores(self):
+        return ['flux', 'total', 'nu-scatter-1']
 
-        This method constructs three analog tallies to compute the 'flux',
-        'total' and 'nu-scatter-1' reaction rates in the spatial domain and
-        energy groups of interest.
-
-        """
-
-        # Instantiate tallies if they do not exist
-        if self._tallies is None:
-
-            # Create a list of scores for each Tally to be created
-            scores = ['flux', 'total', 'nu-scatter-1']
-            keys = ['flux', 'total', 'scatter-1']
-            estimator = 'analog'
-
-            # Create the non-domain specific Filters for the Tallies
-            group_edges = self.energy_groups.group_edges
-            energy_filter = openmc.Filter('energy', group_edges)
-            energyout_filter = openmc.Filter('energyout', group_edges)
-            filters = [[energy_filter], [energy_filter], [energyout_filter]]
-
-            # Initialize the Tallies
-            self._create_tallies(scores, filters, keys, estimator)
-
-        return self._tallies
+    @property
+    def keys(self):
+        return ['flux', 'total', 'scatter-1']
 
 
 class AbsorptionXS(MGXS):
@@ -1646,41 +1556,6 @@ class AbsorptionXS(MGXS):
         super(AbsorptionXS, self).__init__(domain, domain_type,
                                            groups, by_nuclide, name)
         self._rxn_type = 'absorption'
-
-    @property
-    def tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross section.
-
-        This method constructs two tracklength tallies to compute the 'flux'
-        and 'absorption' reaction rates in the spatial domain and energy
-        groups of interest.
-
-        """
-
-        # Instantiate tallies if they do not exist
-        if self._tallies is None:
-
-            # Create a list of scores for each Tally to be created
-            scores = ['flux', 'absorption']
-            estimator = 'tracklength'
-            keys = scores
-
-            # Create the non-domain specific Filters for the Tallies
-            group_edges = self.energy_groups.group_edges
-            energy_filter = openmc.Filter('energy', group_edges)
-            filters = [[energy_filter], [energy_filter]]
-
-            # Initialize the Tallies
-            self._create_tallies(scores, filters, keys, estimator)
-
-        return self._tallies
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['absorption']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
 
 
 class CaptureXS(MGXS):
@@ -1700,32 +1575,8 @@ class CaptureXS(MGXS):
         self._rxn_type = 'capture'
 
     @property
-    def tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross section.
-
-        This method constructs two tracklength tallies to compute the 'flux'
-        and 'capture' reaction rates in the spatial domain and energy
-        groups of interest.
-
-        """
-
-        # Instantiate tallies if they do not exist
-        if self._tallies is None:
-
-            # Create a list of scores for each Tally to be created
-            scores = ['flux', 'absorption', 'fission']
-            estimator = 'tracklength'
-            keys = scores
-
-            # Create the non-domain specific Filters for the Tallies
-            group_edges = self.energy_groups.group_edges
-            energy_filter = openmc.Filter('energy', group_edges)
-            filters = [[energy_filter], [energy_filter], [energy_filter]]
-
-            # Initialize the Tallies
-            self._create_tallies(scores, filters, keys, estimator)
-
-        return self._tallies
+    def scores(self):
+        return ['flux', 'absorption', 'fission']
 
     @property
     def rxn_rate_tally(self):
@@ -1735,80 +1586,36 @@ class CaptureXS(MGXS):
             self._rxn_rate_tally.sparse = self.sparse
         return self._rxn_rate_tally
 
-class FissionXSBase(MGXS):
-    """A fission production multi-group cross section base class
-       for NuFission and KappaFission
-    """
 
-    # This is an abstract class which cannot be instantiated
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self, rxn_type, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
-        super(FissionXSBase, self).__init__(domain, domain_type,
-                                            groups, by_nuclide, name)
-        self._rxn_type = rxn_type
-
-    @property
-    def tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross section.
-
-        This method constructs two tracklength tallies to compute the 'flux'
-        and 'rxn_type' reaction rates in the spatial domain and energy
-        groups of interest.
-
-        """
-
-        # Instantiate tallies if they do not exist
-        if self._tallies is None:
-
-            # Create a list of scores for each Tally to be created
-            scores = ['flux', self._rxn_type]
-            estimator = 'tracklength'
-            keys = scores
-
-            # Create the non-domain specific Filters for the Tallies
-            group_edges = self.energy_groups.group_edges
-            energy_filter = openmc.Filter('energy', group_edges)
-            filters = [[energy_filter], [energy_filter]]
-
-            # Initialize the Tallies
-            self._create_tallies(scores, filters, keys, estimator)
-
-        return self._tallies
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies[self._rxn_type]
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
-
-
-class FissionXS(FissionXSBase):
+class FissionXS(MGXS):
     """A fission multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
-        super(FissionXS, self).__init__('fission', domain, domain_type,
+        super(FissionXS, self).__init__(domain, domain_type,
                                         groups, by_nuclide, name)
+        self._rxn_type = 'fission'
 
 
-class NuFissionXS(FissionXSBase):
+class NuFissionXS(MGXS):
     """A fission production multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
-        super(NuFissionXS, self).__init__('nu-fission', domain, domain_type,
+        super(NuFissionXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name)
+        self._rxn_type = 'nu-fission'
 
-class KappaFissionXS(FissionXSBase):
+
+class KappaFissionXS(MGXS):
     """A recoverable fission energy production rate multi-group cross section."""
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
-        super(KappaFissionXS, self).__init__('kappa-fission', domain, domain_type,
+        super(KappaFissionXS, self).__init__(domain, domain_type,
                                              groups, by_nuclide, name)
+        self._rxn_type = 'kappa-fission'
+
 
 class ScatterXS(MGXS):
     """A scatter multi-group cross section."""
@@ -1819,41 +1626,6 @@ class ScatterXS(MGXS):
                                         groups, by_nuclide, name)
         self._rxn_type = 'scatter'
 
-    @property
-    def tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross section.
-
-        This method constructs two tracklength tallies to compute the 'flux'
-        and 'scatter' reaction rates in the spatial domain and energy
-        groups of interest.
-
-        """
-
-        # Instantiate tallies if they do not exist
-        if self._tallies is None:
-
-            # Create a list of scores for each Tally to be created
-            scores = ['flux', 'scatter']
-            estimator = 'tracklength'
-            keys = scores
-
-            # Create the non-domain specific Filters for the Tallies
-            group_edges = self.energy_groups.group_edges
-            energy_filter = openmc.Filter('energy', group_edges)
-            filters = [[energy_filter], [energy_filter]]
-
-            # Intialize the Tallies
-            self._create_tallies(scores, filters, keys, estimator)
-
-        return self._tallies
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['scatter']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
-
 
 class NuScatterXS(MGXS):
     """A nu-scatter multi-group cross section."""
@@ -1863,41 +1635,6 @@ class NuScatterXS(MGXS):
         super(NuScatterXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name)
         self._rxn_type = 'nu-scatter'
-
-    @property
-    def tallies(self):
-        """Construct the OpenMC tallies needed to compute this cross section.
-
-        This method constructs two analog tallies to compute the 'flux'
-        and 'nu-scatter' reaction rates in the spatial domain and energy
-        groups of interest.
-
-        """
-
-        # Instantiate tallies if they do not exist
-        if self._tallies is None:
-
-            # Create a list of scores for each Tally to be created
-            scores = ['flux', 'nu-scatter']
-            estimator = 'analog'
-            keys = scores
-
-            # Create the non-domain specific Filters for the Tallies
-            group_edges = self.energy_groups.group_edges
-            energy_filter = openmc.Filter('energy', group_edges)
-            filters = [[energy_filter], [energy_filter]]
-
-            # Initialize the Tallies
-            self._create_tallies(scores, filters, keys, estimator)
-
-        return self._tallies
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['nu-scatter']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
 
 
 class ScatterMatrixXS(MGXS):
@@ -1934,6 +1671,14 @@ class ScatterMatrixXS(MGXS):
     @property
     def legendre_order(self):
         return self._legendre_order
+
+    @property
+    def scores(self):
+        return ['flux', 'total', 'nu-scatter-1']
+
+    @property
+    def keys(self):
+        return ['flux', 'total', 'scatter-1']
 
     @property
     def tallies(self):

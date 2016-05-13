@@ -71,7 +71,7 @@ contains
 
     integer :: int_scalar
     integer(HID_T) :: file_id
-    character(MAX_WORD_LEN) :: mode
+    character(MAX_WORD_LEN) :: tempstr
 
     ! Write meessage
     call write_message("Loading particle restart file " &
@@ -81,25 +81,25 @@ contains
     file_id = file_open(path_particle_restart, 'r')
 
     ! Read data from file
-    call read_dataset(file_id, 'filetype', int_scalar)
-    call read_dataset(file_id, 'revision', int_scalar)
-    call read_dataset(file_id, 'current_batch', current_batch)
-    call read_dataset(file_id, 'gen_per_batch', gen_per_batch)
-    call read_dataset(file_id, 'current_gen', current_gen)
-    call read_dataset(file_id, 'n_particles', n_particles)
-    call read_dataset(file_id, 'run_mode', mode)
-    select case (mode)
+    call read_dataset(tempstr, file_id, 'filetype')
+    call read_dataset(int_scalar, file_id, 'revision')
+    call read_dataset(current_batch, file_id, 'current_batch')
+    call read_dataset(gen_per_batch, file_id, 'gen_per_batch')
+    call read_dataset(current_gen, file_id, 'current_gen')
+    call read_dataset(n_particles, file_id, 'n_particles')
+    call read_dataset(tempstr, file_id, 'run_mode')
+    select case (tempstr)
     case ('k-eigenvalue')
       previous_run_mode = MODE_EIGENVALUE
     case ('fixed source')
       previous_run_mode = MODE_FIXEDSOURCE
     end select
-    call read_dataset(file_id, 'id', p%id)
-    call read_dataset(file_id, 'weight', p%wgt)
-    call read_dataset(file_id, 'energy', p%E)
-    call read_dataset(file_id, 'energy_group', p%g)
-    call read_dataset(file_id, 'xyz', p%coord(1)%xyz)
-    call read_dataset(file_id, 'uvw', p%coord(1)%uvw)
+    call read_dataset(p%id, file_id, 'id')
+    call read_dataset(p%wgt, file_id, 'weight')
+    call read_dataset(p%E, file_id, 'energy')
+    call read_dataset(p%g, file_id, 'energy_group')
+    call read_dataset(p%coord(1)%xyz, file_id, 'xyz')
+    call read_dataset(p%coord(1)%uvw, file_id, 'uvw')
 
     ! Set particle last attributes
     p%last_wgt = p%wgt

@@ -5,9 +5,9 @@ module physics_mg
   use constants
   use error,                  only: fatal_error, warning
   use global
-  use macroxs_header,         only: MacroXS, MacroXSContainer
   use material_header,        only: Material
   use math,                   only: rotate_angle
+  use mgxs_header,            only: Mgxs, MgxsContainer
   use mesh,                   only: get_mesh_indices
   use output,                 only: write_message
   use particle_header,        only: Particle
@@ -77,6 +77,7 @@ contains
         call create_fission_sites(p, p % secondary_bank, p % n_secondary)
       end if
     end if
+
     ! If survival biasing is being used, the following subroutine adjusts the
     ! weight of the particle. Otherwise, it checks to see if absorption occurs
 
@@ -178,7 +179,7 @@ contains
     real(8) :: phi                      ! fission neutron azimuthal angle
     real(8) :: weight                   ! weight adjustment for ufs method
     logical :: in_mesh                  ! source site in ufs mesh?
-    class(MacroXS), pointer :: xs
+    class(Mgxs), pointer :: xs
 
     ! Get Pointers
     xs => macro_xs(p % material) % obj
@@ -241,14 +242,12 @@ contains
       ! Set weight of fission bank site
       bank_array(i) % wgt = ONE/weight
 
-      ! Sample cosine of angle -- fission neutrons are always emitted
-      ! isotropically. Sometimes in ACE data, fission reactions actually have
-      ! an angular distribution listed, but for those that do, it's simply just
-      ! a uniform distribution in mu
+      ! Sample cosine of angle -- fission neutrons are treated as being emitted
+      ! isotropically.
       mu = TWO * prn() - ONE
 
       ! Sample azimuthal angle uniformly in [0,2*pi)
-      phi = TWO*PI*prn()
+      phi = TWO * PI * prn()
       bank_array(i) % uvw(1) = mu
       bank_array(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
       bank_array(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
@@ -256,7 +255,7 @@ contains
       ! Sample secondary energy distribution for fission reaction and set energy
       ! in fission bank
       bank_array(i) % E = &
-           real(xs % sample_fission_energy(p % g, fission_bank(i) % uvw), 8)
+           real(xs % sample_fission_energy(p % g, bank_array(i) % uvw), 8)
     end do
 
     ! increment number of bank sites

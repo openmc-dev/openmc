@@ -296,7 +296,11 @@ contains
           NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
             if (tally % nuclide_bins(j) > 0) then
               ! Get index in cross section listings for this nuclide
-              i_list = nuclides(tally % nuclide_bins(j)) % listing
+              if (run_CE) then
+                i_list = nuclides(tally % nuclide_bins(j)) % listing
+              else
+                i_list = nuclides_MG(tally % nuclide_bins(j)) % obj % listing
+              end if
 
               ! Determine position of . in alias string (e.g. "U-235.71c"). If
               ! no . is found, just use the entire string.

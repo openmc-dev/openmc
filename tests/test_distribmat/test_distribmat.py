@@ -17,16 +17,16 @@ class DistribmatTestHarness(PyAPITestHarness):
 
         moderator = openmc.Material(material_id=1)
         moderator.set_density('g/cc', 1.0)
-        moderator.add_nuclide('H-1', 2.0)
-        moderator.add_nuclide('O-16', 1.0)
+        moderator.add_nuclide('H1', 2.0)
+        moderator.add_nuclide('O16', 1.0)
 
         dense_fuel = openmc.Material(material_id=2)
         dense_fuel.set_density('g/cc', 4.5)
-        dense_fuel.add_nuclide('U-235', 1.0)
+        dense_fuel.add_nuclide('U235', 1.0)
 
         light_fuel = openmc.Material(material_id=3)
         light_fuel.set_density('g/cc', 2.0)
-        light_fuel.add_nuclide('U-235', 1.0)
+        light_fuel.add_nuclide('U235', 1.0)
 
         mats_file = openmc.Materials([moderator, dense_fuel, light_fuel])
         mats_file.default_xs = '71c'

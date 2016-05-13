@@ -19,9 +19,9 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         tallies_file = openmc.Tallies()
 
         # Initialize the nuclides
-        u235 = openmc.Nuclide('U-235')
-        u238 = openmc.Nuclide('U-238')
-        pu239 = openmc.Nuclide('Pu-239')
+        u235 = openmc.Nuclide('U235')
+        u238 = openmc.Nuclide('U238')
+        pu239 = openmc.Nuclide('Pu239')
 
         # Initialize Mesh
         mesh = openmc.Mesh(mesh_id=1)

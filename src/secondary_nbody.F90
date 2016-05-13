@@ -2,6 +2,8 @@ module secondary_nbody
 
   use angleenergy_header, only: AngleEnergy
   use constants,          only: ONE, TWO, PI
+  use hdf5,               only: HID_T
+  use hdf5_interface,     only: read_attribute
   use math,               only: maxwell_spectrum
   use random_lcg,         only: prn
 
@@ -18,6 +20,7 @@ module secondary_nbody
     real(8) :: Q
   contains
     procedure :: sample => nbody_sample
+    procedure :: from_hdf5 => nbody_from_hdf5
   end type NBodyPhaseSpace
 
 contains
@@ -66,5 +69,15 @@ contains
     v = x/(x+y)
     E_out = E_max * v
   end subroutine nbody_sample
+
+  subroutine nbody_from_hdf5(this, group_id)
+    class(NBodyPhaseSpace), intent(inout) :: this
+    integer(HID_T),         intent(in)    :: group_id
+
+    call read_attribute(this%mass_ratio, group_id, 'total_mass')
+    call read_attribute(this%n_bodies, group_id, 'n_particles')
+    call read_attribute(this%A, group_id, 'atomic_weight_ratio')
+    call read_attribute(this%Q, group_id, 'q_value')
+  end subroutine nbody_from_hdf5
 
 end module secondary_nbody

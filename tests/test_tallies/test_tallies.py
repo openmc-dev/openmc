@@ -155,7 +155,7 @@ class TalliesTestHarness(PyAPITestHarness):
         total_tallies[0].scores = ['total']
         for t in total_tallies[1:]:
             t.scores = ['total-y4']
-            t.nuclides = ['U-235', 'total']
+            t.nuclides = ['U235', 'total']
         total_tallies[1].estimator = 'tracklength'
         total_tallies[2].estimator = 'analog'
         total_tallies[3].estimator = 'collision'

@@ -1,0 +1,850 @@
+from abc import ABCMeta, abstractmethod
+from collections import Iterable
+from numbers import Integral, Real
+
+import h5py
+import numpy as np
+
+from openmc.data.container import Tabulated1D, interpolation_scheme
+from openmc.stats.univariate import Univariate, Tabular, Discrete, Mixture
+import openmc.checkvalue as cv
+
+
+class EnergyDistribution(object):
+    """Abstract superclass for all energy distributions."""
+
+    __metaclass__ = ABCMeta
+
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def to_hdf5(self, group):
+        pass
+
+    @staticmethod
+    def from_hdf5(group):
+        """Generate energy distribution from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.EnergyDistribution
+            Energy distribution
+
+        """
+        energy_type = group.attrs['type'].decode()
+        if energy_type == 'maxwell':
+            return MaxwellEnergy.from_hdf5(group)
+        elif energy_type == 'evaporation':
+            return Evaporation.from_hdf5(group)
+        elif energy_type == 'watt':
+            return WattEnergy.from_hdf5(group)
+        elif energy_type == 'madland-nix':
+            return MadlandNix.from_hdf5(group)
+        elif energy_type == 'discrete_photon':
+            return DiscretePhoton.from_hdf5(group)
+        elif energy_type == 'level':
+            return LevelInelastic.from_hdf5(group)
+        elif energy_type == 'continuous':
+            return ContinuousTabular.from_hdf5(group)
+
+
+class ArbitraryTabulated(EnergyDistribution):
+    r"""Arbitrary tabulated function given in ENDF MF=5, LF=1 represented as
+
+    .. math::
+         f(E \rightarrow E') = g(E \rightarrow E')
+
+    Parameters
+    ----------
+    energy : numpy.ndarray
+        Array of incident neutron energies
+    pdf : list of openmc.data.Tabulated1D
+        Tabulated outgoing energy distribution probability density functions
+
+    Attributes
+    ----------
+    energy : numpy.ndarray
+        Array of incident neutron energies
+    pdf : list of openmc.data.Tabulated1D
+        Tabulated outgoing energy distribution probability density functions
+
+    """
+
+    def __init__(self, energy, pdf):
+        self.energy = energy
+        self.pdf = pdf
+
+    def to_hdf5(self, group):
+        NotImplementedError
+
+
+class GeneralEvaporation(EnergyDistribution):
+    r"""General evaporation spectrum given in ENDF MF=5, LF=5 represented as
+
+    .. math::
+        f(E \rightarrow E') = g(E'/\theta(E))
+
+    Parameters
+    ----------
+    theta : openmc.data.Tabulated1D
+        Tabulated function of incident neutron energy :math:`E`
+    g : openmc.data.Tabulated1D
+        Tabulated function of :math:`x = E'/\theta(E)`
+    u : float
+        Constant introduced to define the proper upper limit for the final
+        particle energy such that :math:`0 \le E' \le E - U`
+
+    Attributes
+    ----------
+    theta : openmc.data.Tabulated1D
+        Tabulated function of incident neutron energy :math:`E`
+    g : openmc.data.Tabulated1D
+        Tabulated function of :math:`x = E'/\theta(E)`
+    u : float
+        Constant introduced to define the proper upper limit for the final
+        particle energy such that :math:`0 \le E' \le E - U`
+
+    """
+
+    def __init__(self, theta, g, u):
+        self.theta = theta
+        self.g = g
+        self.u = u
+
+    def to_hdf5(self, group):
+        raise NotImplementedError
+
+
+class MaxwellEnergy(EnergyDistribution):
+    r"""Simple Maxwellian fission spectrum represented as
+
+    .. math::
+        f(E \rightarrow E') = \frac{\sqrt{E'}}{I} e^{-E'/\theta(E)}
+
+    Parameters
+    ----------
+    theta : openmc.data.Tabulated1D
+        Tabulated function of incident neutron energy
+    u : float
+        Constant introduced to define the proper upper limit for the final
+        particle energy such that :math:`0 \le E' \le E - U`
+
+    Attributes
+    ----------
+    theta : openmc.data.Tabulated1D
+        Tabulated function of incident neutron energy
+    u : float
+        Constant introduced to define the proper upper limit for the final
+        particle energy such that :math:`0 \le E' \le E - U`
+
+    """
+
+    def __init__(self, theta, u):
+        self.theta = theta
+        self.u = u
+
+    @property
+    def theta(self):
+        return self._theta
+
+    @property
+    def u(self):
+        return self._u
+
+    @theta.setter
+    def theta(self, theta):
+        cv.check_type('Maxwell theta', theta, Tabulated1D)
+        self._theta = theta
+
+    @u.setter
+    def u(self, u):
+        cv.check_type('Maxwell restriction energy', u, Real)
+        self._u = u
+
+    def to_hdf5(self, group):
+        """Write distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
+
+        group.attrs['type'] = np.string_('maxwell')
+        group.attrs['u'] = self.u
+        self.theta.to_hdf5(group, 'theta')
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate Maxwell distribution from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.MaxwellEnergy
+            Maxwell distribution
+
+        """
+        theta = Tabulated1D.from_hdf5(group['theta'])
+        u = group.attrs['u']
+        return cls(theta, u)
+
+
+class Evaporation(EnergyDistribution):
+    r"""Evaporation spectrum represented as
+
+    .. math::
+        f(E \rightarrow E') = \frac{E'}{I} e^{-E'/\theta(E)}
+
+    Parameters
+    ----------
+    theta : openmc.data.Tabulated1D
+        Tabulated function of incident neutron energy
+    u : float
+        Constant introduced to define the proper upper limit for the final
+        particle energy such that :math:`0 \le E' \le E - U`
+
+    Attributes
+    ----------
+    theta : openmc.data.Tabulated1D
+        Tabulated function of incident neutron energy
+    u : float
+        Constant introduced to define the proper upper limit for the final
+        particle energy such that :math:`0 \le E' \le E - U`
+
+    """
+
+    def __init__(self, theta, u):
+        self.theta = theta
+        self.u = u
+
+    @property
+    def theta(self):
+        return self._theta
+
+    @property
+    def u(self):
+        return self._u
+
+    @theta.setter
+    def theta(self, theta):
+        cv.check_type('Evaporation theta', theta, Tabulated1D)
+        self._theta = theta
+
+    @u.setter
+    def u(self, u):
+        cv.check_type('Evaporation restriction energy', u, Real)
+        self._u = u
+
+    def to_hdf5(self, group):
+        """Write distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
+
+        group.attrs['type'] = np.string_('evaporation')
+        group.attrs['u'] = self.u
+        self.theta.to_hdf5(group, 'theta')
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate evaporation spectrum from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.Evaporation
+            Evaporation spectrum distribution
+
+        """
+        theta = Tabulated1D.from_hdf5(group['theta'])
+        u = group.attrs['u']
+        return cls(theta, u)
+
+
+class WattEnergy(EnergyDistribution):
+    r"""Energy-dependent Watt spectrum represented as
+
+    .. math::
+        f(E \rightarrow E') = \frac{e^{-E'/a}}{I} \sinh \left ( \sqrt{bE'}
+        \right )
+
+    Parameters
+    ----------
+    a, b : openmc.data.Tabulated1D
+        Energy-dependent parameters tabulated as function of incident neutron
+        energy
+    u : float
+        Constant introduced to define the proper upper limit for the final
+        particle energy such that :math:`0 \le E' \le E - U`
+
+    Attributes
+    ----------
+    a, b : openmc.data.Tabulated1D
+        Energy-dependent parameters tabulated as function of incident neutron
+        energy
+    u : float
+        Constant introduced to define the proper upper limit for the final
+        particle energy such that :math:`0 \le E' \le E - U`
+
+    """
+
+    def __init__(self, a, b, u):
+        self.a = a
+        self.b = b
+        self.u = u
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def b(self):
+        return self._b
+
+    @property
+    def u(self):
+        return self._u
+
+    @a.setter
+    def a(self, a):
+        cv.check_type('Watt a', a, Tabulated1D)
+        self._a = a
+
+    @b.setter
+    def b(self, b):
+        cv.check_type('Watt b', b, Tabulated1D)
+        self._b = b
+
+    @u.setter
+    def u(self, u):
+        cv.check_type('Watt restriction energy', u, Real)
+        self._u = u
+
+    def to_hdf5(self, group):
+        """Write distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
+
+        group.attrs['type'] = np.string_('watt')
+        group.attrs['u'] = self.u
+        self.a.to_hdf5(group, 'a')
+        self.b.to_hdf5(group, 'b')
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate Watt fission spectrum from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.WattEnergy
+            Watt fission spectrum
+
+        """
+        a = Tabulated1D.from_hdf5(group['a'])
+        b = Tabulated1D.from_hdf5(group['b'])
+        u = group.attrs['u']
+        return cls(a, b, u)
+
+class MadlandNix(EnergyDistribution):
+    r"""Energy-dependent fission neutron spectrum (Madland and Nix) given in
+    ENDF MF=5, LF=12 represented as
+
+    .. math::
+        f(E \rightarrow E') = \frac{1}{2} [ g(E', E_F(L)) + g(E', E_F(H))]
+
+    where
+
+    .. math::
+        g(E',E_F) = \frac{1}{3\sqrt{E_F T_M}} \left [ u_2^{3/2} E_1 (u_2) -
+        u_1^{3/2} E_1 (u_1) + \gamma \left ( \frac{3}{2}, u_2 \right ) - \gamma
+        \left ( \frac{3}{2}, u_1 \right ) \right ] \\ u_1 = \left ( \sqrt{E'} -
+        \sqrt{E_F} \right )^2 / T_M \\ u_2 = \left ( \sqrt{E'} + \sqrt{E_F}
+        \right )^2 / T_M.
+
+    Parameters
+    ----------
+    efl, efh : float
+        Constants which represent the average kinetic energy per nucleon of the
+        fission fragment (efl = light, efh = heavy)
+    tm : openmc.data.Tabulated1D
+        Parameter tabulated as a function of incident neutron energy
+
+    Attributes
+    ----------
+    efl, efh : float
+        Constants which represent the average kinetic energy per nucleon of the
+        fission fragment (efl = light, efh = heavy)
+    tm : openmc.data.Tabulated1D
+        Parameter tabulated as a function of incident neutron energy
+
+    """
+
+    def __init__(self, efl, efh, tm):
+        self.efl = efl
+        self.efh = efh
+        self.tm = tm
+
+    @property
+    def efl(self):
+        return self._efl
+
+    @property
+    def efh(self):
+        return self._efh
+
+    @property
+    def tm(self):
+        return self._tm
+
+    @efl.setter
+    def efl(self, efl):
+        name = 'Madland-Nix light fragment energy'
+        cv.check_type(name, efl, Real)
+        cv.check_greater_than(name, efl, 0.)
+        self._efl = efl
+
+    @efh.setter
+    def efh(self, efh):
+        name = 'Madland-Nix heavy fragment energy'
+        cv.check_type(name, efh, Real)
+        cv.check_greater_than(name, efh, 0.)
+        self._efh = efh
+
+    @tm.setter
+    def tm(self, tm):
+        cv.check_type('Madland-Nix maximum temperature', tm, Tabulated1D)
+        self._tm = tm
+
+    def to_hdf5(self, group):
+        """Write distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
+
+        group.attrs['type'] = np.string_('madland-nix')
+        group.attrs['efl'] = self.efl
+        group.attrs['efh'] = self.efh
+        self.tm.to_hdf5(group)
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate Madland-Nix fission spectrum from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.MadlandNix
+            Madland-Nix fission spectrum
+
+        """
+        efl = group.attrs['efl']
+        efh = group.attrs['efh']
+        tm = Tabulated1D.from_hdf5(group['tm'])
+        return cls(efl, efh, tm)
+
+
+class DiscretePhoton(EnergyDistribution):
+    """Discrete photon energy distribution
+
+    Parameters
+    ----------
+    primary_flag : int
+        Indicator of whether the photon is a primary or non-primary photon.
+    energy : float
+        Photon energy (if lp==0 or lp==1) or binding energy (if lp==2).
+    atomic_weight_ratio : float
+        Atomic weight ratio of the target nuclide responsible for the emitted
+        particle
+
+    Attributes
+    ----------
+    primary_flag : int
+        Indicator of whether the photon is a primary or non-primary photon.
+    energy : float
+        Photon energy (if lp==0 or lp==1) or binding energy (if lp==2).
+    atomic_weight_ratio : float
+        Atomic weight ratio of the target nuclide responsible for the emitted
+        particle
+
+    """
+
+    def __init__(self, primary_flag, energy, atomic_weight_ratio):
+        super(DiscretePhoton, self).__init__()
+        self.primary_flag = primary_flag
+        self.energy = energy
+        self.atomic_weight_ratio = atomic_weight_ratio
+
+    @property
+    def primary_flag(self):
+        return self._primary_flag
+
+    @property
+    def energy(self):
+        return self._energy
+
+    @property
+    def atomic_weight_ratio(self):
+        return self._atomic_weight_ratio
+
+    @primary_flag.setter
+    def primary_flag(self, primary_flag):
+        cv.check_type('discrete photon primary_flag', primary_flag, Integral)
+        self._primary_flag = primary_flag
+
+    @energy.setter
+    def energy(self, energy):
+        cv.check_type('discrete photon energy', energy, Real)
+        self._energy = energy
+
+    @atomic_weight_ratio.setter
+    def atomic_weight_ratio(self, atomic_weight_ratio):
+        cv.check_type('atomic weight ratio', atomic_weight_ratio, Real)
+        self._atomic_weight_ratio = atomic_weight_ratio
+
+    def to_hdf5(self, group):
+        """Write distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
+
+        group.attrs['type'] = np.string_('discrete_photon')
+        group.attrs['primary_flag'] = self.primary_flag
+        group.attrs['energy'] = self.energy
+        group.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate discrete photon energy distribution from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.DiscretePhoton
+            Discrete photon energy distribution
+
+        """
+        primary_flag = group.attrs['primary_flag']
+        energy = group.attrs['energy']
+        awr = group.attrs['atomic_weight_ratio']
+        return cls(primary_flag, energy, awr)
+
+
+class LevelInelastic(EnergyDistribution):
+    r"""Level inelastic scattering
+
+    Parameters
+    ----------
+    threshold : float
+        Energy threshold in the laboratory system, :math:`(A + 1)/A * |Q|`
+    mass_ratio : float
+        :math:`(A/(A + 1))^2`
+
+    Attributes
+    ----------
+    threshold : float
+        Energy threshold in the laboratory system, :math:`(A + 1)/A * |Q|`
+    mass_ratio : float
+        :math:`(A/(A + 1))^2`
+
+    """
+
+    def __init__(self, threshold, mass_ratio):
+        super(LevelInelastic, self).__init__()
+        self.threshold = threshold
+        self.mass_ratio = mass_ratio
+
+    @property
+    def threshold(self):
+        return self._threshold
+
+    @property
+    def mass_ratio(self):
+        return self._mass_ratio
+
+    @threshold.setter
+    def threshold(self, threshold):
+        cv.check_type('level inelastic threhsold', threshold, Real)
+        self._threshold = threshold
+
+    @mass_ratio.setter
+    def mass_ratio(self, mass_ratio):
+        cv.check_type('level inelastic mass ratio', mass_ratio, Real)
+        self._mass_ratio = mass_ratio
+
+    def to_hdf5(self, group):
+        """Write distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
+
+        group.attrs['type'] = np.string_('level')
+        group.attrs['threshold'] = self.threshold
+        group.attrs['mass_ratio'] = self.mass_ratio
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate level inelastic distribution from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.LevelInelastic
+            Level inelastic scattering distribution
+
+        """
+        threshold = group.attrs['threshold']
+        mass_ratio = group.attrs['mass_ratio']
+        return cls(threshold, mass_ratio)
+
+
+class ContinuousTabular(EnergyDistribution):
+    """Continuous tabular distribution
+
+    Parameters
+    ----------
+    breakpoints : Iterable of int
+        Breakpoints defining interpolation regions
+    interpolation : Iterable of int
+        Interpolation codes
+    energy : Iterable of float
+        Incoming energies at which distributions exist
+    energy_out : Iterable of openmc.stats.Univariate
+        Distribution of outgoing energies corresponding to each incoming energy
+
+    Attributes
+    ----------
+    breakpoints : Iterable of int
+        Breakpoints defining interpolation regions
+    interpolation : Iterable of int
+        Interpolation codes
+    energy : Iterable of float
+        Incoming energies at which distributions exist
+    energy_out : Iterable of openmc.stats.Univariate
+        Distribution of outgoing energies corresponding to each incoming energy
+
+    """
+
+    def __init__(self, breakpoints, interpolation, energy, energy_out):
+        super(ContinuousTabular, self).__init__()
+        self.breakpoints = breakpoints
+        self.interpolation = interpolation
+        self.energy = energy
+        self.energy_out = energy_out
+
+    @property
+    def breakpoints(self):
+        return self._breakpoints
+
+    @property
+    def interpolation(self):
+        return self._interpolation
+
+    @property
+    def energy(self):
+        return self._energy
+
+    @property
+    def energy_out(self):
+        return self._energy_out
+
+    @breakpoints.setter
+    def breakpoints(self, breakpoints):
+        cv.check_type('continuous tabular breakpoints', breakpoints,
+                      Iterable, Integral)
+        self._breakpoints = breakpoints
+
+    @interpolation.setter
+    def interpolation(self, interpolation):
+        cv.check_type('continuous tabular interpolation', interpolation,
+                      Iterable, Integral)
+        self._interpolation = interpolation
+
+    @energy.setter
+    def energy(self, energy):
+        cv.check_type('continuous tabular incoming energy', energy,
+                      Iterable, Real)
+        self._energy = energy
+
+    @energy_out.setter
+    def energy_out(self, energy_out):
+        cv.check_type('continuous tabular outgoing energy', energy_out,
+                      Iterable, Univariate)
+        self._energy_out = energy_out
+
+    def to_hdf5(self, group):
+        """Write distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
+
+        group.attrs['type'] = np.string_('continuous')
+
+        dset = group.create_dataset('energy', data=self.energy)
+        dset.attrs['interpolation'] = np.vstack((self.breakpoints,
+                                                 self.interpolation))
+
+        # Determine total number of (E,p) pairs and create array
+        n_pairs = sum(len(d) for d in self.energy_out)
+        pairs = np.empty((3, n_pairs))
+
+        # Create array for offsets
+        offsets = np.empty(len(self.energy_out), dtype=int)
+        interpolation = np.empty(len(self.energy_out), dtype=int)
+        n_discrete_lines = np.empty(len(self.energy_out), dtype=int)
+        j = 0
+
+        # Populate offsets and pairs array
+        for i, eout in enumerate(self.energy_out):
+            n = len(eout)
+            offsets[i] = j
+
+            if isinstance(eout, Mixture):
+                discrete, continuous = eout.distribution
+                n_discrete_lines[i] = m = len(discrete)
+                interpolation[i] = 1 if continuous.interpolation == 'histogram' else 2
+                pairs[0, j:j+m] = discrete.x
+                pairs[1, j:j+m] = discrete.p
+                pairs[2, j:j+m] = discrete.c
+                pairs[0, j+m:j+n] = continuous.x
+                pairs[1, j+m:j+n] = continuous.p
+                pairs[2, j+m:j+n] = continuous.c
+            else:
+                if isinstance(eout, Tabular):
+                    n_discrete_lines[i] = 0
+                    interpolation[i] = 1 if eout.interpolation == 'histogram' else 2
+                elif isinstance(eout, Discrete):
+                    n_discrete_lines[i] = n
+                    interpolation[i] = 1
+                pairs[0, j:j+n] = eout.x
+                pairs[1, j:j+n] = eout.p
+                pairs[2, j:j+n] = eout.c
+            j += n
+
+        # Create dataset for distributions
+        dset = group.create_dataset('distribution', data=pairs)
+
+        # Write interpolation as attribute
+        dset.attrs['offsets'] = offsets
+        dset.attrs['interpolation'] = interpolation
+        dset.attrs['n_discrete_lines'] = n_discrete_lines
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate continuous tabular distribution from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.ContinuousTabular
+            Continuous tabular energy distribution
+
+        """
+        interp_data = group['energy'].attrs['interpolation']
+        energy_breakpoints = interp_data[0,:]
+        energy_interpolation = interp_data[1,:]
+        energy = group['energy'].value
+
+        data = group['distribution']
+        offsets = data.attrs['offsets']
+        interpolation = data.attrs['interpolation']
+        n_discrete_lines = data.attrs['n_discrete_lines']
+
+        energy_out = []
+        n_energy = len(energy)
+        for i in range(n_energy):
+            # Determine length of outgoing energy distribution and number of
+            # discrete lines
+            j = offsets[i]
+            if i < n_energy - 1:
+                n = offsets[i+1] - j
+            else:
+                n = data.shape[1] - j
+            m = n_discrete_lines[i]
+
+            # Create discrete distribution if lines are present
+            if m > 0:
+                eout_discrete = Discrete(data[0, j:j+m], data[1, j:j+m])
+                eout_discrete.c = data[2, j:j+m]
+                p_discrete = eout_discrete.c[-1]
+
+            # Create continuous distribution
+            if m < n:
+                interp = interpolation_scheme[interpolation[i]]
+                eout_continuous = Tabular(data[0, j+m:j+n], data[1, j+m:j+n], interp)
+                eout_continuous.c = data[2, j+m:j+n]
+
+            # If both continuous and discrete are present, create a mixture
+            # distribution
+            if m == 0:
+                eout_i = eout_continuous
+            elif m == n:
+                eout_i = eout_discrete
+            else:
+                eout_i = Mixture([p_discrete, 1. - p_discrete],
+                                 [eout_discrete, eout_continuous])
+            energy_out.append(eout_i)
+
+        return cls(energy_breakpoints, energy_interpolation,
+                   energy, energy_out)

@@ -22,7 +22,7 @@ except ImportError:
 
 cwd = os.getcwd()
 sys.path.insert(0, os.path.join(cwd, '..'))
-from openmc.ace import ascii_to_binary
+from openmc.data.ace import ascii_to_binary
 
 baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',

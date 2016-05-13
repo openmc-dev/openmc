@@ -5,13 +5,18 @@ module nuclide_header
   use constants
   use dict_header, only: DictIntInt
   use endf,        only: reaction_name, is_fission, is_disappearance
-  use endf_header, only: Function1D
+  use endf_header, only: Function1D, Constant1D, Polynomial, Tabulated1D
   use error,       only: fatal_error, warning
+  use hdf5,        only: HID_T, HSIZE_T, SIZE_T, h5iget_name_f
+  use h5lt,        only: h5ltpath_valid_f
+  use hdf5_interface, only: read_attribute, open_group, close_group, &
+       open_dataset, read_dataset, close_dataset, get_shape
   use list_header, only: ListInt
   use math,        only: evaluate_legendre
   use multipole_header, only: MultipoleArray
   use product_header, only: AngleEnergyContainer
   use reaction_header, only: Reaction
+  use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use stl_vector,  only: VectorInt
   use string
   use urr_header, only: UrrData
@@ -26,14 +31,14 @@ module nuclide_header
 
   type :: Nuclide
     ! Nuclide meta-data
-    character(12) :: name    ! name of nuclide, e.g. 92235.03c
+    character(20) :: name    ! name of nuclide, e.g. U235.71c
     integer       :: zaid    ! Z and A identifier, e.g. 92235
+    integer       :: metastable ! metastable state
     real(8)       :: awr     ! Atomic Weight Ratio
-    integer       :: listing ! index in xs_listings
     real(8)       :: kT      ! temperature in MeV (k*T)
 
     ! Fission information
-    logical :: fissionable   ! nuclide is fissionable?
+    logical :: fissionable = .false.  ! nuclide is fissionable?
 
     ! Energy grid information
     integer :: n_grid                     ! # of nuclide grid points
@@ -61,13 +66,13 @@ module nuclide_header
 
     ! Fission information
     logical :: has_partial_fission = .false. ! nuclide has partial fission reactions?
-    integer :: n_fission                     ! # of fission reactions
+    integer :: n_fission = 0                 ! # of fission reactions
     integer :: n_precursor = 0               ! # of delayed neutron precursors
     integer, allocatable :: index_fission(:) ! indices in reactions
     class(Function1D), allocatable :: total_nu
 
     ! Unresolved resonance data
-    logical                :: urr_present
+    logical                :: urr_present = .false.
     integer                :: urr_inelastic
     type(UrrData), pointer :: urr_data => null()
 
@@ -84,7 +89,9 @@ module nuclide_header
   contains
     procedure :: clear => nuclide_clear
     procedure :: print => nuclide_print
+    procedure :: from_hdf5 => nuclide_from_hdf5
     procedure :: nu    => nuclide_nu
+    procedure, private :: create_derived => nuclide_create_derived
   end type Nuclide
 
 !===============================================================================
@@ -144,24 +151,14 @@ module nuclide_header
   end type MaterialMacroXS
 
 !===============================================================================
-! XSLISTING contains data read from a CE or MG cross_sections.xml file
-! (or equivalent)
+! LIBRARY contains data read from a cross_sections.xml file
 !===============================================================================
 
-  type XsListing
-    character(12) :: name       ! table name, e.g. 92235.70c
-    character(12) :: alias      ! table alias, e.g. U-235.70c
-    integer       :: type       ! type of table (cont-E neutron, S(A,b), etc)
-    integer       :: zaid       ! ZAID identifier = 1000*Z + A
-    integer       :: filetype   ! ASCII or BINARY
-    integer       :: location   ! location of table within library
-    integer       :: recl       ! record length for library
-    integer       :: entries    ! number of entries per record
-    real(8)       :: awr        ! atomic weight ratio (# of neutron masses)
-    real(8)       :: kT         ! Boltzmann constant * temperature (MeV)
-    logical       :: metastable ! is this nuclide metastable?
-    character(MAX_FILE_LEN) :: path ! path to library containing table
-  end type XsListing
+  type Library
+    integer :: type
+    character(MAX_WORD_LEN), allocatable :: materials(:)
+    character(MAX_FILE_LEN) :: path
+  end type Library
 
   contains
 
@@ -173,18 +170,254 @@ module nuclide_header
     class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
 
     if (associated(this % urr_data)) deallocate(this % urr_data)
-
-    call this % reaction_index % clear()
-
     if (associated(this % multipole)) deallocate(this % multipole)
 
   end subroutine nuclide_clear
+
+  subroutine nuclide_from_hdf5(this, group_id)
+    class(Nuclide), intent(inout) :: this
+    integer(HID_T),   intent(in)    :: group_id
+
+    integer :: i
+    integer :: Z
+    integer :: A
+    integer :: n_reaction
+    integer :: hdf5_err
+    integer(HID_T) :: urr_group, nu_group
+    integer(HID_T) :: energy_dset
+    integer(HID_T) :: rx_group
+    integer(HID_T) :: total_nu
+    integer(SIZE_T) :: name_len, name_file_len
+    integer(HSIZE_T) :: dims(1)
+    character(MAX_WORD_LEN) :: temp
+    logical :: exists
+
+    ! Get name of nuclide from group
+    name_len = len(this % name)
+    call h5iget_name_f(group_id, this % name, name_len, name_file_len, hdf5_err)
+
+    ! Get rid of leading '/'
+    this % name = trim(this % name(2:))
+
+    call read_attribute(Z, group_id, 'Z')
+    call read_attribute(A, group_id, 'A')
+    call read_attribute(this % metastable, group_id, 'metastable')
+    this % zaid = 1000*Z + A + 400*this % metastable
+    call read_attribute(this % awr, group_id, 'atomic_weight_ratio')
+    call read_attribute(this % kT, group_id, 'temperature')
+    call read_attribute(n_reaction, group_id, 'n_reaction')
+    this % n_reaction = n_reaction
+
+    ! Read energy grid
+    energy_dset = open_dataset(group_id, 'energy')
+    call get_shape(energy_dset, dims)
+    this % n_grid = int(dims(1), 4)
+    allocate(this % energy(this % n_grid))
+    call read_dataset(this % energy, energy_dset)
+    call close_dataset(energy_dset)
+
+    ! Read reactions
+    allocate(this % reactions(n_reaction))
+    do i = 1, size(this % reactions)
+      rx_group = open_group(group_id, 'reaction_' // trim(to_str(i - 1)))
+      call this % reactions(i) % from_hdf5(rx_group)
+      call close_group(rx_group)
+    end do
+
+    ! Read unresolved resonance probability tables if present
+    call h5ltpath_valid_f(group_id, 'urr', .true., exists, hdf5_err)
+    if (exists) then
+      this % urr_present = .true.
+      allocate(this % urr_data)
+      urr_group = open_group(group_id, 'urr')
+      call this % urr_data % from_hdf5(urr_group)
+
+      ! if the inelastic competition flag indicates that the inelastic cross
+      ! section should be determined from a normal reaction cross section, we need
+      ! to get the index of the reaction
+      if (this % urr_data % inelastic_flag > 0) then
+        do i = 1, size(this % reactions)
+          if (this % reactions(i) % MT == this % urr_data % inelastic_flag) then
+            this % urr_inelastic = i
+          end if
+        end do
+
+        ! Abort if no corresponding inelastic reaction was found
+        if (this % urr_inelastic == NONE) then
+          call fatal_error("Could not find inelastic reaction specified on &
+               &unresolved resonance probability table.")
+        end if
+      end if
+
+      ! Check for negative values
+      if (any(this % urr_data % prob < ZERO)) then
+        call warning("Negative value(s) found on probability table &
+             &for nuclide " // this % name)
+      end if
+    end if
+
+    ! Check for nu-total
+    call h5ltpath_valid_f(group_id, 'total_nu', .true., exists, hdf5_err)
+    if (exists) then
+      nu_group = open_group(group_id, 'total_nu')
+
+      ! Read total nu data
+      total_nu = open_dataset(nu_group, 'yield')
+      call read_attribute(temp, total_nu, 'type')
+      select case (temp)
+      case ('constant')
+        allocate(Constant1D :: this % total_nu)
+      case ('tabulated')
+        allocate(Tabulated1D :: this % total_nu)
+      case ('polynomial')
+        allocate(Polynomial :: this % total_nu)
+      end select
+      call this % total_nu % from_hdf5(total_nu)
+      call close_dataset(total_nu)
+
+      call close_group(nu_group)
+    end if
+
+    ! Create derived cross section data
+    call this % create_derived()
+
+  end subroutine nuclide_from_hdf5
+
+  subroutine nuclide_create_derived(this)
+    class(Nuclide), intent(inout) :: this
+
+    integer :: i
+    integer :: j
+    integer :: k
+    integer :: m
+    integer :: n
+    integer :: i_fission
+    type(ListInt) :: MTs
+
+    ! Allocate and initialize derived cross sections
+    allocate(this % total(this % n_grid))
+    allocate(this % elastic(this % n_grid))
+    allocate(this % fission(this % n_grid))
+    allocate(this % nu_fission(this % n_grid))
+    allocate(this % absorption(this % n_grid))
+    this % total(:) = ZERO
+    this % elastic(:) = ZERO
+    this % fission(:) = ZERO
+    this % nu_fission(:) = ZERO
+    this % absorption(:) = ZERO
+
+    i_fission = 0
+
+    do i = 1, size(this % reactions)
+      call MTs % append(this % reactions(i) % MT)
+      call this % reaction_index % add_key(this % reactions(i) % MT, i)
+
+      associate (rx => this % reactions(i))
+        j = rx % threshold
+        n = size(rx % sigma)
+
+        ! Skip total inelastic level scattering, gas production cross sections
+        ! (MT=200+), etc.
+        if (rx % MT == N_LEVEL .or. rx % MT == N_NONELASTIC) cycle
+        if (rx % MT > N_5N2P .and. rx % MT < N_P0) cycle
+
+        ! Skip level cross sections if total is available
+        if (rx % MT >= N_P0 .and. rx % MT <= N_PC .and. MTs % contains(N_P)) cycle
+        if (rx % MT >= N_D0 .and. rx % MT <= N_DC .and. MTs % contains(N_D)) cycle
+        if (rx % MT >= N_T0 .and. rx % MT <= N_TC .and. MTs % contains(N_T)) cycle
+        if (rx % MT >= N_3HE0 .and. rx % MT <= N_3HEC .and. MTs % contains(N_3HE)) cycle
+        if (rx % MT >= N_A0 .and. rx % MT <= N_AC .and. MTs % contains(N_A)) cycle
+        if (rx % MT >= N_2N0 .and. rx % MT <= N_2NC .and. MTs % contains(N_2N)) cycle
+
+        ! Copy elastic
+        if (rx % MT == ELASTIC) this % elastic(:) = rx % sigma
+
+        ! Add contribution to total cross section
+        this % total(j:j+n-1) = this % total(j:j+n-1) + rx % sigma
+
+        ! Add contribution to absorption cross section
+        if (is_disappearance(rx % MT)) then
+          this % absorption(j:j+n-1) = this % absorption(j:j+n-1) + rx % sigma
+        end if
+
+        ! Information about fission reactions
+        if (rx % MT == N_FISSION) then
+          allocate(this % index_fission(1))
+        elseif (rx % MT == N_F) then
+          allocate(this % index_fission(PARTIAL_FISSION_MAX))
+          this % has_partial_fission = .true.
+        end if
+
+        ! Add contribution to fission cross section
+        if (is_fission(rx % MT)) then
+          this % fissionable = .true.
+          this % fission(j:j+n-1) = this % fission(j:j+n-1) + rx % sigma
+
+          ! Also need to add fission cross sections to absorption
+          this % absorption(j:j+n-1) = this % absorption(j:j+n-1) + rx % sigma
+
+          ! If total fission reaction is present, there's no need to store the
+          ! reaction cross-section since it was copied to this % fission
+          if (rx % MT == N_FISSION) deallocate(rx % sigma)
+
+          ! Keep track of this reaction for easy searching later
+          i_fission = i_fission + 1
+          this % index_fission(i_fission) = i
+          this % n_fission = this % n_fission + 1
+
+          ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<
+          ! Before the secondary distribution refactor, when the angle/energy
+          ! distribution was uncorrelated, no angle was actually sampled. With
+          ! the refactor, an angle is always sampled for an uncorrelated
+          ! distribution even when no angle distribution exists in the ACE file
+          ! (isotropic is assumed). To preserve the RNG stream, we explicitly
+          ! mark fission reactions so that we avoid the angle sampling.
+          do k = 1, size(rx % products)
+            if (rx % products(k) % particle == NEUTRON) then
+              do m = 1, size(rx % products(k) % distribution)
+                associate (aedist => rx % products(k) % distribution(m) % obj)
+                  select type (aedist)
+                  type is (UncorrelatedAngleEnergy)
+                    aedist % fission = .true.
+                  end select
+                end associate
+              end do
+            end if
+          end do
+          ! <<<<<<<<<<<<<<<<<<<<<<<<<<<< REMOVE THIS <<<<<<<<<<<<<<<<<<<<<<<<<<<
+        end if
+      end associate
+    end do
+
+    ! Determine number of delayed neutron precursors
+    if (this % fissionable) then
+      do i = 1, size(this % reactions(this % index_fission(1)) % products)
+        if (this % reactions(this % index_fission(1)) % products(i) % &
+             emission_mode == EMISSION_DELAYED) then
+          this % n_precursor = this % n_precursor + 1
+        end if
+      end do
+    end if
+
+    ! Calculate nu-fission cross section
+    if (this % fissionable) then
+      do i = 1, size(this % energy)
+        this % nu_fission(i) = this % nu(this % energy(i), EMISSION_TOTAL) * &
+             this % fission(i)
+      end do
+    else
+      this % nu_fission(:) = ZERO
+    end if
+
+    ! Clear MTs set
+    call MTs % clear()
+  end subroutine nuclide_create_derived
 
 !===============================================================================
 ! NUCLIDE_NU is an interface to the number of fission neutrons produced
 !===============================================================================
 
-  function nuclide_nu(this, E, emission_mode, group) result(nu)
+  pure function nuclide_nu(this, E, emission_mode, group) result(nu)
     class(Nuclide),    intent(in) :: this
     real(8),           intent(in) :: E
     integer,           intent(in) :: emission_mode
@@ -237,8 +470,8 @@ module nuclide_header
       if (allocated(this % total_nu)) then
         nu = this % total_nu % evaluate(E)
       else
-        associate (rx => this % reactions(this % index_fission(1)))
-          nu = rx % products(1) % yield % evaluate(E)
+        associate (product => this % reactions(this % index_fission(1)) % products(1))
+          nu = product % yield % evaluate(E)
         end associate
       end if
     end select

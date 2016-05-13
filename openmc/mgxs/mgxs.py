@@ -1525,7 +1525,85 @@ class MGXS(object):
 
 
 class TotalXS(MGXS):
-    """A total multi-group cross section."""
+    """A total multi-group cross section.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
@@ -1535,7 +1613,85 @@ class TotalXS(MGXS):
 
 
 class TransportXS(MGXS):
-    """A transport-corrected total multi-group cross section."""
+    """A transport-corrected total multi-group cross section.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
@@ -1571,7 +1727,85 @@ class TransportXS(MGXS):
 
 class NuTransportXS(TransportXS):
     """A transport-corrected total multi-group cross section which
-    accounts for neutron multiplicity in scattering reactions."""
+    accounts for neutron multiplicity in scattering reactions.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
@@ -1589,7 +1823,85 @@ class NuTransportXS(TransportXS):
 
 
 class AbsorptionXS(MGXS):
-    """An absorption multi-group cross section."""
+    """An absorption multi-group cross section.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
@@ -1605,6 +1917,82 @@ class CaptureXS(MGXS):
     OpenMC's 'absorption' and 'fission' reaction rate score types. This includes
     not only radiative capture, but all forms of neutron disappearance aside
     from fission (e.g., MT > 100).
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
 
     """
 
@@ -1628,7 +2016,85 @@ class CaptureXS(MGXS):
 
 
 class FissionXS(MGXS):
-    """A fission multi-group cross section."""
+    """A fission multi-group cross section.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
@@ -1638,7 +2104,85 @@ class FissionXS(MGXS):
 
 
 class NuFissionXS(MGXS):
-    """A fission production multi-group cross section."""
+    """A fission production multi-group cross section.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
@@ -1648,7 +2192,85 @@ class NuFissionXS(MGXS):
 
 
 class KappaFissionXS(MGXS):
-    """A recoverable fission energy production rate multi-group cross section."""
+    """A recoverable fission energy production rate multi-group cross section.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
@@ -1658,7 +2280,85 @@ class KappaFissionXS(MGXS):
 
 
 class ScatterXS(MGXS):
-    """A scatter multi-group cross section."""
+    """A scatter multi-group cross section.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
@@ -1668,7 +2368,85 @@ class ScatterXS(MGXS):
 
 
 class NuScatterXS(MGXS):
-    """A nu-scatter multi-group cross section."""
+    """A nu-scatter multi-group cross section.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
@@ -1681,12 +2459,85 @@ class ScatterMatrixXS(MGXS):
     """A scattering matrix multi-group cross section for one or more Legendre
     moments.
 
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
     Attributes
     ----------
     correction : 'P0' or None
         Apply the P0 correction to scattering matrices if set to 'P0'
     legendre_order : int
         The highest legendre moment in the scattering matrix (default is 0)
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
 
     """
 
@@ -2241,7 +3092,90 @@ class ScatterMatrixXS(MGXS):
 
 
 class NuScatterMatrixXS(ScatterMatrixXS):
-    """A scattering production matrix multi-group cross section."""
+    """A scattering production matrix multi-group cross section for one or
+    more Legendre moments.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    correction : 'P0' or None
+        Apply the P0 correction to scattering matrices if set to 'P0'
+    legendre_order : int
+        The highest legendre moment in the scattering matrix (default is 0)
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
@@ -2252,7 +3186,85 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
 
 class Chi(MGXS):
-    """The fission spectrum."""
+    """The fission spectrum.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for deterministic neutronics calculations.
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):

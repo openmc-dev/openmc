@@ -173,8 +173,12 @@ contains
       if (check_for_node(doc, "max_order")) then
         call get_node_value(doc, "max_order", max_order)
       else
-        ! Set to default of largest int, which means to use whatever is contained in library
-        max_order = huge(0)
+        ! Set to default of largest int - 1, which means to use whatever is
+        ! contained in library.
+        ! This is largest int - 1 because for legendre scattering, a value of
+        ! 1 is added to the order; adding 1 to huge(0) gets you the largest
+        ! negative integer, which is not what we want.
+        max_order = huge(0) - 1
       end if
     else
       max_order = 0
@@ -2857,11 +2861,15 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
+            ! We can save tallying time if we know that the tally bins
+            ! match the energy group structure.  In that case, the matching bin
+            ! index is simply the group (after flipping for the different
+            ! ordering of the library and tallying systems).
             if (.not. run_CE) then
-              if (n_words /= energy_groups + 1) then
-                t % energy_matches_groups = .false.
-              else if (all(t % filters(j) % real_bins == energy_bins)) then
-                t % energy_matches_groups = .false.
+              if (n_words == energy_groups + 1) then
+                if (all(t % filters(j) % real_bins == &
+                        energy_bins(energy_groups + 1:1:-1))) &
+                     t % energy_matches_groups = .true.
               end if
             end if
 
@@ -2876,11 +2884,15 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
+            ! We can save tallying time if we know that the tally bins
+            ! match the energy group structure.  In that case, the matching bin
+            ! index is simply the group (after flipping for the different
+            ! ordering of the library and tallying systems).
             if (.not. run_CE) then
-              if (n_words /= energy_groups + 1) then
-                t % energy_matches_groups = .false.
-              else if (all(t % filters(j) % real_bins == energy_bins)) then
-                t % energy_matches_groups = .false.
+              if (n_words == energy_groups + 1) then
+                if (all(t % filters(j) % real_bins == &
+                        energy_bins(energy_groups + 1:1:-1))) &
+                     t % energyout_matches_groups = .true.
               end if
             end if
 
@@ -3338,7 +3350,13 @@ contains
 
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
-            t % estimator = ESTIMATOR_ANALOG
+
+            ! Set tally estimator to analog for CE mode
+            ! (MG mode has all data available without a collision being
+            ! necessary)
+            if (run_CE) then
+              t % estimator = ESTIMATOR_ANALOG
+            end if
 
           case ('scatter-n')
             t % score_bins(j) = SCORE_SCATTER_N
@@ -3387,10 +3405,14 @@ contains
             call fatal_error("Diffusion score no longer supported for tallies, &
                  &please remove")
           case ('n1n')
-            t % score_bins(j) = SCORE_N_1N
+            if (run_CE) then
+              t % score_bins(j) = SCORE_N_1N
 
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
+              ! Set tally estimator to analog
+              t % estimator = ESTIMATOR_ANALOG
+            else
+              call fatal_error("Cannot tally n1n rate in multi-group mode!")
+            end if
           case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
 
@@ -4506,6 +4528,7 @@ contains
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_xsdata => null()
     type(NodeList), pointer :: node_xsdata_list => null()
+    real(8), allocatable :: rev_energy_bins(:)
 
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
@@ -4527,6 +4550,7 @@ contains
       call fatal_error("groups element must exist!")
     end if
 
+    allocate(rev_energy_bins(energy_groups + 1))
     allocate(energy_bins(energy_groups + 1))
     if (check_for_node(doc, "group_structure")) then
       ! Get neutron group structure
@@ -4534,6 +4558,9 @@ contains
     else
       call fatal_error("group_structures element must exist!")
     end if
+
+    ! First reverse the order of energy_groups
+    energy_bins = energy_bins(energy_groups + 1:1:-1)
 
     allocate(energy_bin_avg(energy_groups))
     do i = 1, energy_groups
@@ -4548,7 +4575,7 @@ contains
       ! If not given, estimate them by using average energy in group which is
       ! assumed to be the midpoint
       do i = 1, energy_groups
-        inverse_velocities(i) = &
+        inverse_velocities(i) = ONE / &
              (sqrt(TWO * energy_bin_avg(i) / (MASS_NEUTRON_MEV)) * &
               C_LIGHT * 100.0_8)
       end do

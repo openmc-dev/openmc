@@ -12,16 +12,16 @@ class MGNuclideInputSet(MGInputSet):
         # Define materials needed for 1D/1G slab problem
         # This time do using nuclide, not macroscopic
         uo2 = openmc.Material(name='UO2', material_id=1)
-        uo2.set_density('g/cm3', 1.0)
+        uo2.set_density('sum', 1.0)
         uo2.add_nuclide("uo2_iso", 1.0)
 
         clad = openmc.Material(name='Clad', material_id=2)
-        clad.set_density('g/cm3', 1.0)
+        clad.set_density('sum', 1.0)
         clad.add_nuclide("clad_ang_mu", 1.0)
 
-        water_data = openmc.Nuclide('lwtr_iso_mu', '71c')
+        # water_data = openmc.Nuclide('lwtr_iso_mu', '71c')
         water = openmc.Material(name='LWTR', material_id=3)
-        water.set_density('g/cm3', 1.0)
+        water.set_density('sum', 1.0)
         water.add_nuclide("lwtr_iso_mu", 1.0)
 
         # Define the materials file.

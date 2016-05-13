@@ -28,6 +28,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.mgxs_types = ['transport', 'nu-fission',
                                     'nu-scatter matrix', 'chi']
         self.mgxs_lib.energy_groups = energy_groups
+        self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'material'
         self.mgxs_lib.build_library()
 

@@ -90,6 +90,15 @@ class MGXS(object):
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section
     rxn_rate_tally : openmc.Tally
@@ -115,8 +124,12 @@ class MGXS(object):
     sparse : bool
         Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
         for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
 
     """
 
@@ -138,7 +151,9 @@ class MGXS(object):
         self._rxn_rate_tally = None
         self._xs_tally = None
         self._sparse = False
+        self._loaded_sp = False
         self._derived = False
+        self._hdf5_key = None
 
         self.name = name
         self.by_nuclide = by_nuclide
@@ -212,6 +227,24 @@ class MGXS(object):
     @property
     def num_groups(self):
         return self.energy_groups.num_groups
+
+    @property
+    def scores(self):
+        return ['flux', self.rxn_type]
+
+    @property
+    def filters(self):
+        group_edges = self.energy_groups.group_edges
+        energy_filter = openmc.Filter('energy', group_edges)
+        return [[energy_filter]] * len(self.scores)
+
+    @property
+    def tally_keys(self):
+        return self.scores
+
+    @property
+    def estimator(self):
+        return 'tracklength'
 
     @property
     def tallies(self):
@@ -301,26 +334,19 @@ class MGXS(object):
             return 'sum'
 
     @property
+    def loaded_sp(self):
+        return self._loaded_sp
+
+    @property
     def derived(self):
         return self._derived
 
     @property
-    def scores(self):
-        return ['flux', self.rxn_type]
-
-    @property
-    def filters(self):
-        group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
-        return [[energy_filter]] * len(self.scores)
-
-    @property
-    def tally_keys(self):
-        return self.scores
-
-    @property
-    def estimator(self):
-        return 'tracklength'
+    def hdf5_key(self):
+        if self._hdf5_key is not None:
+            return self._hdf5_key
+        else:
+            return self._rxn_type
 
     @name.setter
     def name(self, name):
@@ -644,9 +670,11 @@ class MGXS(object):
             filter_bins = []
 
         # Clear any tallies previously loaded from a statepoint
-        self._tallies = None
-        self._xs_tally = None
-        self._rxn_rate_tally = None
+        if self.loaded_sp:
+            self._tallies = None
+            self._xs_tally = None
+            self._rxn_rate_tally = None
+            self._loaded_sp = False
 
         # Find, slice and store Tallies from StatePoint
         # The tally slicing is needed if tally merging was used
@@ -658,6 +686,8 @@ class MGXS(object):
                                           filter_bins, tally.nuclides)
             sp_tally.sparse = self.sparse
             self.tallies[tally_type] = sp_tally
+
+        self._loaded_sp = True
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
@@ -1253,8 +1283,8 @@ class MGXS(object):
             else:
                 subdomain_group = domain_group
 
-            # Create a separate HDF5 group for the rxn type
-            rxn_group = subdomain_group.require_group(self.rxn_type)
+            # Create a separate HDF5 group for this cross section
+            rxn_group = subdomain_group.require_group(self.hdf5_key)
 
             # Create a separate HDF5 group for each nuclide
             for j, nuclide in enumerate(nuclides):
@@ -1655,9 +1685,10 @@ class ScatterMatrixXS(MGXS):
                  groups=None, by_nuclide=False, name=''):
         super(ScatterMatrixXS, self).__init__(domain, domain_type,
                                               groups, by_nuclide, name)
-        self._rxn_type = 'scatter matrix'
+        self._rxn_type = 'scatter'
         self._correction = 'P0'
         self._legendre_order = 0
+        self._hdf5_key = 'scatter matrix'
 
     def __deepcopy__(self, memo):
         clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
@@ -1677,11 +1708,11 @@ class ScatterMatrixXS(MGXS):
     def scores(self):
         scores = ['flux']
 
-        for moment in range(self.legendre_order+1):
-            scores.append('scatter-{}'.format(moment))
-
         if self.correction == 'P0' and self.legendre_order == 0:
-            scores.append('scatter-1')
+            scores += ['{}-0'.format(self.rxn_type),
+                       '{}-1'.format(self.rxn_type)]
+        else:
+            scores += ['{}-P{}'.format(self.rxn_type, self.legendre_order)]
 
         return scores
 
@@ -1690,19 +1721,13 @@ class ScatterMatrixXS(MGXS):
         group_edges = self.energy_groups.group_edges
         energy = openmc.Filter('energy', group_edges)
         energyout = openmc.Filter('energyout', group_edges)
-        filters = [[energy]]
-
-        for moment in range(self.legendre_order+1):
-            filters.append([energy, energyout])
 
         if self.correction == 'P0' and self.legendre_order == 0:
-            filters.append([energyout])
+            filters = [[energy], [energy, energyout], [energyout]]
+        else:
+            filters = [[energy], [energy, energyout]]
 
         return filters
-
-    @property
-    def tally_keys(self):
-        return ['flux', 'scatter-0', 'scatter-1']
 
     @property
     def estimator(self):
@@ -1715,21 +1740,17 @@ class ScatterMatrixXS(MGXS):
 
             # If using P0 correction subtract scatter-1 from the diagonal
             if self.correction == 'P0' and self.legendre_order == 0:
-                scatter_p1 = self.tallies['scatter-1']
-                scatter_p1 = scatter_p1.get_slice(scores=[self.scores[-1]])
-                energy_filter = self.tallies['scatter-0'].find_filter('energy')
+                scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
+                scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
+                energy_filter = scatter_p0.find_filter('energy')
                 energy_filter = copy.deepcopy(energy_filter)
                 scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
-                self._rxn_rate_tally = self.tallies['scatter-0'] - scatter_p1
+                self._rxn_rate_tally = scatter_p0 - scatter_p1
 
-            # Merge all scattering moments into a single reaction rate Tally
+            # Extract scattering moment reaction rate Tally
             else:
-                rxn_rate_tally = self.tallies['scatter-0']
-                for moment in range(1, self.legendre_order+1):
-                    scatter_pn = self.tallies['scatter-{}'.format(moment)]
-                    rxn_rate_tally = rxn_rate_tally.merge(scatter_pn)
-
-                self._rxn_rate_tally = rxn_rate_tally
+                tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
+                self._rxn_rate_tally = self.tallies[tally_key]
 
             self._rxn_rate_tally.sparse = self.sparse
 
@@ -1759,6 +1780,44 @@ class ScatterMatrixXS(MGXS):
             self.correction = None
 
         self._legendre_order = legendre_order
+
+    def load_from_statepoint(self, statepoint):
+        """Extracts tallies in an OpenMC StatePoint with the data needed to
+        compute multi-group cross sections.
+
+        This method is needed to compute cross section data from tallies
+        in an OpenMC StatePoint object.
+
+        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+
+        Parameters
+        ----------
+        statepoint : openmc.StatePoint
+            An OpenMC StatePoint object with tally data
+
+        Raises
+        ------
+        ValueError
+            When this method is called with a statepoint that has not been
+            linked with a summary object.
+
+        """
+
+        # Clear any tallies previously loaded from a statepoint
+        if self.loaded_sp:
+            self._tallies = None
+            self._xs_tally = None
+            self._rxn_rate_tally = None
+            self._loaded_sp = False
+
+        # Expand scores to match the format in the statepoint
+        # e.g., "scatter-P2" -> "scatter-0", "scatter-1", "scatter-2"
+        if self.legendre_order != 0:
+            tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
+            self.tallies[tally_key].scores = \
+                [self.rxn_type + '-{}'.format(i) for i in range(self.legendre_order+1)]
+
+        super(ScatterMatrixXS, self).load_from_statepoint(statepoint)
 
     def get_slice(self, nuclides=[], in_groups=[], out_groups=[],
                   legendre_order='same'):
@@ -1808,8 +1867,12 @@ class ScatterMatrixXS(MGXS):
                                self.legendre_order, equality=True)
             slice_xs.legendre_order = legendre_order
 
-            for moment in range(legendre_order+1, self.legendre_order+1):
-                del slice_xs.tallies['scatter-{}'.format(moment)]
+            # Slice the scattering tally
+            tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
+            expand_scores = \
+                [self.rxn_type + '-{}'.format(i) for i in range(self.legendre_order+1)]
+            slice_xs.tallies[tally_key] = \
+                slice_xs.tallies[tally_key].get_slice(scores=expand_scores)
 
         # Slice outgoing energy groups if needed
         if len(out_groups) != 0:
@@ -2034,14 +2097,16 @@ class ScatterMatrixXS(MGXS):
                 groups, nuclides, xs_type, distribcell_paths)
 
         # Add a moment column to dataframe
-        moments = np.array(['P{}'.format(i) for i in range(self.legendre_order+1)])
-        moments = np.tile(moments, df.shape[0] / moments.size)
-        df['moment'] = moments
+        if self.legendre_order > 0:
+            # Insert a column corresponding to the Legendre moments
+            moments = ['P{}'.format(i) for i in range(self.legendre_order+1)]
+            moments = np.tile(moments, df.shape[0] / len(moments))
+            df['moment'] = moments
 
-        # Place the moment column before the mean column
-        mean_index = df.columns.get_loc('mean')
-        columns = df.columns.tolist()
-        df = df[columns[:mean_index] + ['moment'] + columns[mean_index:]]
+            # Place the moment column before the mean column
+            mean_index = df.columns.get_loc('mean')
+            columns = df.columns.tolist()
+            df = df[columns[:mean_index] + ['moment'] + columns[mean_index:-2]]
 
         # Select rows corresponding to requested scattering moment
         if moment != 'all':
@@ -2049,7 +2114,7 @@ class ScatterMatrixXS(MGXS):
             cv.check_greater_than('moment', moment, 0, equality=True)
             cv.check_less_than(
                     'moment', moment, self.legendre_order, equality=True)
-            df = df.iloc[moment:self.legendre_order:]
+            df = df[df['moment'] == 'P{}'.format(moment)]
 
         return df
 
@@ -2173,19 +2238,8 @@ class NuScatterMatrixXS(ScatterMatrixXS):
                  groups=None, by_nuclide=False, name=''):
         super(NuScatterMatrixXS, self).__init__(domain, domain_type,
                                                 groups, by_nuclide, name)
-        self._rxn_type = 'nu-scatter matrix'
-
-    @property
-    def scores(self):
-        scores = ['flux']
-
-        for moment in range(self.legendre_order+1):
-            scores.append('nu-scatter-{}'.format(moment))
-
-        if self.correction == 'P0' and self.legendre_order == 0:
-            scores.append('nu-scatter-1')
-
-        return scores
+        self._rxn_type = 'nu-scatter'
+        self._hdf5_key = 'nu-scatter matrix'
 
 
 class Chi(MGXS):

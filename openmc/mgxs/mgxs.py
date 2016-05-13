@@ -368,6 +368,15 @@ class MGXS(object):
         cv.check_type('domain', domain, tuple(_DOMAINS))
         self._domain = domain
 
+        # Assign a domain type
+        if self.domain_type is None:
+            if isinstance(domain, openmc.Material):
+                self._domain_type = 'material'
+            elif isinstance(domain, openmc.Cell):
+                self._domain_type = 'cell'
+            elif isinstance(domain, openmc.Universe):
+                self._domain_type = 'universe'
+
     @domain_type.setter
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, tuple(DOMAIN_TYPES))

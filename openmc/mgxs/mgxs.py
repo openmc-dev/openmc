@@ -1821,9 +1821,10 @@ class ScatterMatrixXS(MGXS):
 
         # Expand scores to match the format in the statepoint
         # e.g., "scatter-P2" -> "scatter-0", "scatter-1", "scatter-2"
-        tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
-        self.tallies[tally_key].scores = \
-            [self.rxn_type + '-{}'.format(i) for i in range(self.legendre_order+1)]
+        if self.correction != 'P0' or self.legendre_order != 0:
+            tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
+            self.tallies[tally_key].scores = \
+                [self.rxn_type + '-{}'.format(i) for i in range(self.legendre_order+1)]
 
         super(ScatterMatrixXS, self).load_from_statepoint(statepoint)
 

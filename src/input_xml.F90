@@ -153,7 +153,7 @@ contains
         else
           call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", env_variable)
           if (len_trim(env_variable) == 0) then
-            call fatal_error("No cross_sections.xml file was specified in &
+            call fatal_error("No mgxs.xml file was specified in &
                  &settings.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
                  &variable. OpenMC needs such a file to identify where to &
                  &find the cross section libraries. Please consult the user's &
@@ -4537,24 +4537,24 @@ contains
   subroutine read_mg_cross_sections_xml()
 
     integer :: i           ! loop index
-    logical :: file_exists ! does cross_sections.xml exist?
+    logical :: file_exists ! does mgxs.xml exist?
     type(XsListing), pointer :: listing => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_xsdata => null()
     type(NodeList), pointer :: node_xsdata_list => null()
     real(8), allocatable :: rev_energy_bins(:)
 
-    ! Check if cross_sections.xml exists
+    ! Check if mgxs.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-      ! Could not find cross_sections.xml file
+      ! Could not find mgxs.xml file
       call fatal_error("Cross sections XML file '" &
            // trim(path_cross_sections) // "' does not exist!")
     end if
 
     call write_message("Reading cross sections XML file...", 5)
 
-    ! Parse cross_sections.xml file
+    ! Parse mgxs.xml file
     call open_xmldoc(doc, path_cross_sections)
 
     if (check_for_node(doc, "groups")) then
@@ -4602,7 +4602,7 @@ contains
     ! Allocate xs_listings array
     if (n_listings == 0) then
       call fatal_error("At least one <xsdata> element must be present in &
-                       &cross_sections.xml file!")
+                       &mgxs.xml file!")
     else
       allocate(xs_listings(n_listings))
     end if

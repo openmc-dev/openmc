@@ -420,7 +420,8 @@ class XSdata(object):
             enable = tabular_legendre['enable']
             check_type('enable', enable, bool)
         else:
-            msg = 'enable must be provided in tabular_legendre'
+            msg = 'The tabular_legendre dict must include a value keyed by ' \
+                  '"enable"'
             raise ValueError(msg)
         if 'num_points' in tabular_legendre:
             num_points = tabular_legendre['num_points']
@@ -448,217 +449,77 @@ class XSdata(object):
 
     @total.setter
     def total(self, total):
-        """This method sets the total cross section by performing a
-        deep-copy of the provided ndarray. If the angular
-        representation is "isotropic" the shape of the input array
-        must be the number of energy groups. If the angular
-        representation is "angle" then the shape of the input
-        array must be the number of polar angles, number azimuthal
-        angles and energy groups.
-
-        Parameters
-        ----------
-        total: ndarray
-            Array of group-wise cross sections to apply
-
-        """
-
-        # check we have a numpy list
         check_type('total', total, np.ndarray, expected_iter_type=Real)
-        # Check the dimensions of the data
         check_value('total shape', total.shape, self.vector_shape)
 
-        self._total = np.copy(total)
+        self._total = total
 
     @absorption.setter
     def absorption(self, absorption):
-        """This method sets the absorption cross section by performing a
-        deep-copy of the provided ndarray. If the angular
-        representation is "isotropic" the shape of the input array
-        must be the number of energy groups. If the angular
-        representation is "angle" then the shape of the input
-        array must be the number of polar angles, number azimuthal
-        angles and energy groups.
-
-        Parameters
-        ----------
-        absorption: ndarray
-            Array of group-wise cross sections to apply
-
-        """
-
-        # check we have a numpy list
         check_type('absorption', absorption, np.ndarray,
                    expected_iter_type=Real)
-        # Check the dimensions of the data
         check_value('absorption shape', absorption.shape, self.vector_shape)
 
-        self._absorption = np.copy(absorption)
+        self._absorption = absorption
 
     @fission.setter
     def fission(self, fission):
-        """This method sets the fission cross section by performing a
-        deep-copy of the provided ndarray. If the angular
-        representation is "isotropic" the shape of the input array
-        must be the number of energy groups. If the angular
-        representation is "angle" then the shape of the input
-        array must be the number of polar angles, number azimuthal
-        angles and energy groups.
-
-        Parameters
-        ----------
-        fission: ndarray
-            Array of group-wise cross sections to apply
-
-        """
-
-        # check we have a numpy list
         check_type('fission', fission, np.ndarray,
                    expected_iter_type=Real)
-        # Check the dimensions of the data
         check_value('fission shape', fission.shape, self.vector_shape)
 
-        self._fission = np.copy(fission)
+        self._fission = fission
 
         if np.sum(self._fission) > 0.0:
             self._fissionable = True
 
     @kappa_fission.setter
     def kappa_fission(self, kappa_fission):
-        """This method sets the kappa_fission cross section by performing a
-        deep-copy of the provided ndarray. If the angular
-        representation is "isotropic" the shape of the input array
-        must be the number of energy groups. If the angular
-        representation is "angle" then the shape of the input
-        array must be the number of polar angles, number azimuthal
-        angles and energy groups.
-
-        Parameters
-        ----------
-        kappa_fission: ndarray
-            Array of group-wise cross sections to apply
-
-        """
-
-        # check we have a numpy list
-        check_type('kappa_fission', fission, np.ndarray,
+        check_type('kappa_fission', kappa_fission, np.ndarray,
                    expected_iter_type=Real)
-        # Check the dimensions of the data
         check_value('kappa fission shape', kappa_fission.shape,
                     self.vector_shape)
 
-        self._kappa_fission = np.copy(fission)
+        self._kappa_fission = kappa_fission
 
         if np.sum(self._kappa_fission) > 0.0:
             self._fissionable = True
 
     @chi.setter
     def chi(self, chi):
-        """This method sets the chi cross section by performing a
-        deep-copy of the provided ndarray. If the angular
-        representation is "isotropic" the shape of the input array
-        must be the number of energy groups. If the angular
-        representation is "angle" then the shape of the input
-        array must be the number of polar angles, number azimuthal
-        angles and energy groups.
-
-        Parameters
-        ----------
-        chi: ndarray
-            Array of group-wise chi values to apply
-
-        """
-
         if self._use_chi is not None:
             if not self._use_chi:
                 msg = 'Providing chi when nu_fission already provided as a' \
                       'matrix'
                 raise ValueError(msg)
 
-        # check we have a numpy list
         check_type('chi', chi, np.ndarray, expected_iter_type=Real)
-        # Check the dimensions of the data
         check_value('chi shape', chi.shape, self.vector_shape)
 
-        self._chi = np.copy(chi)
+        self._chi = chi
 
         if self._use_chi is not None:
             self._use_chi = True
 
     @scatter.setter
     def scatter(self, scatter):
-        """This method sets the scattering matrix cross sections
-        by performing a deep-copy of the provided ndarray.
-        If the angular representation is "isotropic" the shape of
-        the input array must be the number of scattering orders, the
-        number of energy groups, and the number of energy groups. If
-        the angular representation is "angle" then the shape of the input
-        array must be the number of polar angles, number azimuthal
-        angles, number of scattering orders, energy groups, and energy groups.
-
-        Parameters
-        ----------
-        scatter : ndarrays
-            Array of cross sections to apply
-
-        """
-
-        # check we have a numpy list
         check_type('scatter', scatter, np.ndarray, expected_iter_type=Real,
                    max_depth=len(scatter.shape))
-        # Check the dimensions of the data
         check_value('scatter shape', scatter.shape, self.pn_matrix_shape)
 
-        self._scatter = np.copy(scatter)
+        self._scatter = scatter
 
     @multiplicity.setter
     def multiplicity(self, multiplicity):
-        """This method sets the scattering multiplicity matrix cross sections
-        by performing a deep-copy of the provided ndarray. Multiplicity,
-        in OpenMC parlance, is a factor used to account for the production
-        of neutrons introduced by scattering multiplication reactions, i.e.,
-        (n,xn) events. In this sense, the multiplication matrix is simply
-        defined as the ratio of the nu-scatter and scatter matrices.
-        If the angular representation is "isotropic" the shape of
-        the input array must be the number of energy groups and the number
-        of energy groups. If the angular representation is "angle" then the
-        shape of the input array must be the number of polar angles,
-        number azimuthal angles, number of scattering orders, energy groups,
-        and energy groups.
-
-        Parameters
-        ----------
-        multiplicity : ndarrays
-            Array of scattering multiplications to apply
-
-        """
-
-        # check we have a numpy list
         check_type('multiplicity', multiplicity, np.ndarray,
                    expected_iter_type=Real, max_depth=len(multiplicity.shape))
-        # Check the dimensions of the data
         check_value('multiplicity shape', multiplicity.shape,
                     self.matrix_shape)
 
-        self._multiplicity = np.copy(multiplicity)
+        self._multiplicity = multiplicity
 
     @nu_fission.setter
     def nu_fission(self, nu_fission):
-        """This method sets the nu_fission cross section by performing a
-        deep-copy of the provided ndarray. If the angular
-        representation is "isotropic" the shape of the input array
-        must be the number of energy groups. If the angular
-        representation is "angle" then the shape of the input
-        array must be the number of polar angles, number azimuthal
-        angles and energy groups.
-
-        Parameters
-        ----------
-        nu_fission: ndarray
-            Array of group-wise cross sections to apply
-
-        """
-
         # The NuFissionXS class does not have the capability to produce
         # a fission matrix and therefore if this path is pursued, we know
         # chi must be used.
@@ -669,12 +530,10 @@ class XSdata(object):
         # chi already has been set.  If not, we just check that this is OK
         # and set the use_chi flag accordingly
 
-        # First, check we have a numpy list
         check_type('nu_fission', nu_fission, np.ndarray,
                    expected_iter_type=Real, max_depth=len(nu_fission.shape))
 
         if self._use_chi is not None:
-            # Check the dimensions of the data
             if self._use_chi:
                 check_value('nu_fission shape', nu_fission.shape,
                             self.vector_shape)
@@ -682,16 +541,16 @@ class XSdata(object):
                 check_value('nu_fission shape', nu_fission.shape,
                             self.matrix_shape)
         else:
-            # Make sure the dimensions are at least right
             check_value('nu_fission shape', nu_fission.shape,
                         (self.vector_shape, self.matrix_shape))
-            # Then find out which one we have so we can set use_chi
+            # Find out if we have a nu-fission matrix or vector
+            # and set a flag to allow other methods to check this later.
             if nu_fission.shape == self.vector_shape:
                 self._use_chi = True
             else:
                 self._use_chi = False
 
-        self._nu_fission = np.copy(nu_fission)
+        self._nu_fission = nu_fission
         if np.sum(self._nu_fission) > 0.0:
             self._fissionable = True
 
@@ -716,11 +575,7 @@ class XSdata(object):
 
         check_type('total', total, (openmc.mgxs.TotalXS,
                                     openmc.mgxs.TransportXS))
-
-        # Make sure passed MGXS object contains correct group structure
         check_value('energy_groups', total.energy_groups, [self.energy_groups])
-
-        # Make sure passed MGXS object has correct domain type
         check_value('domain_type', total.domain_type,
                     ['universe', 'cell', 'material'])
 
@@ -750,12 +605,8 @@ class XSdata(object):
         """
 
         check_type('absorption', absorption, openmc.mgxs.AbsorptionXS)
-
-        # Make sure passed MGXS object contains correct group structure
         check_value('energy_groups', absorption.energy_groups,
                     [self.energy_groups])
-
-        # Make sure passed MGXS object has correct domain type
         check_value('domain_type', absorption.domain_type,
                     ['universe', 'cell', 'material'])
 
@@ -785,12 +636,8 @@ class XSdata(object):
         """
 
         check_type('fission', fission, openmc.mgxs.FissionXS)
-
-        # Make sure passed MGXS object contains correct group structure
         check_value('energy_groups', fission.energy_groups,
                     [self.energy_groups])
-
-        # Make sure passed MGXS object has correct domain type
         check_value('domain_type', fission.domain_type,
                     ['universe', 'cell', 'material'])
 
@@ -824,12 +671,8 @@ class XSdata(object):
         # a fission matrix and therefore if this path is pursued, we know
         # chi must be used.
         check_type('nu_fission', nu_fission, openmc.mgxs.NuFissionXS)
-
-        # Make sure passed MGXS object contains correct group structure
         check_value('energy_groups', nu_fission.energy_groups,
                     [self.energy_groups])
-
-        # Make sure passed MGXS object has correct domain type
         check_value('domain_type', nu_fission.domain_type,
                     ['universe', 'cell', 'material'])
 
@@ -866,12 +709,8 @@ class XSdata(object):
         """
 
         check_type('k_fission', k_fission, openmc.mgxs.KappaFissionXS)
-
-        # Make sure passed MGXS object contains correct group structure
         check_value('energy_groups', k_fission.energy_groups,
                     [self.energy_groups])
-
-        # Make sure passed MGXS object has correct domain type
         check_value('domain_type', k_fission.domain_type,
                     ['universe', 'cell', 'material'])
 
@@ -906,11 +745,7 @@ class XSdata(object):
                 raise ValueError(msg)
 
         check_type('chi', chi, openmc.mgxs.Chi)
-
-        # Make sure passed MGXS object contains correct group structure
         check_value('energy_groups', chi.energy_groups, [self.energy_groups])
-
-        # Make sure passed MGXS object has correct domain type
         check_value('domain_type', chi.domain_type,
                     ['universe', 'cell', 'material'])
 
@@ -944,12 +779,8 @@ class XSdata(object):
         """
 
         check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
-
-        # Make sure passed MGXS object contains correct group structure
         check_value('energy_groups', scatter.energy_groups,
                     [self.energy_groups])
-
-        # Make sure passed MGXS object has correct domain type
         check_value('domain_type', scatter.domain_type,
                     ['universe', 'cell', 'material'])
 
@@ -990,14 +821,10 @@ class XSdata(object):
 
         check_type('nuscatter', nuscatter, openmc.mgxs.NuScatterMatrixXS)
         check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
-
-        # Make sure passed MGXS object contains correct group structure
         check_value('energy_groups', nuscatter.energy_groups,
                     [self.energy_groups])
         check_value('energy_groups', scatter.energy_groups,
                     [self.energy_groups])
-
-        # Make sure passed MGXS object has correct domain type
         check_value('domain_type', nuscatter.domain_type,
                     ['universe', 'cell', 'material'])
         check_value('domain_type', scatter.domain_type,
@@ -1153,14 +980,10 @@ class MGXSLibrary(object):
             MGXS information to add
 
         """
-
-        # Check the type
         if not isinstance(xsdata, XSdata):
             msg = 'Unable to add a non-XSdata "{0}" to the ' \
                   'MGXSLibrary instance'.format(xsdata)
             raise ValueError(msg)
-
-        # Make sure energy groups match.
         if xsdata.energy_groups != self._energy_groups:
             msg = 'Energy groups of XSdata do not match that of MGXSLibrary.'
             raise ValueError(msg)
@@ -1176,8 +999,6 @@ class MGXSLibrary(object):
             XSdatas to add
 
         """
-
-        # Check we have an iterable of XSdatas
         check_iterable_type('xsdatas', xsdatas, XSdata)
 
         for xsdata in xsdatas:
@@ -1222,14 +1043,14 @@ class MGXSLibrary(object):
             xml_element = xsdata._get_xsdata_xml()
             self._cross_sections_file.append(xml_element)
 
-    def export_to_xml(self, filename='mg_cross_sections.xml'):
-        """Create an mg_cross_sections.xml file that can be used for a
+    def export_to_xml(self, filename='mgxs.xml'):
+        """Create an mgxs.xml file that can be used for a
         simulation.
 
         Parameters
         ----------
         filename : str, optional
-            filename of file, default is mg_cross_sections.xml
+            filename of file, default is mgxs.xml
 
         """
 

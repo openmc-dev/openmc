@@ -348,7 +348,9 @@ class Material(object):
             del self._nuclides[nuclide._name]
 
     def add_macroscopic(self, macroscopic):
-        """Add a macroscopic to the material
+        """Add a macroscopic to the material.  This will also set the
+        density of the material to 1.0, unless it has been otherwise set,
+        as a default for Macroscopic cross sections.
 
         Parameters
         ----------
@@ -385,6 +387,14 @@ class Material(object):
                   'Only One Macroscopic allowed per ' \
                   'Material!'.format(self._id, macroscopic)
             raise ValueError(msg)
+
+        # Generally speaking, the density for a macroscopic object will
+        # be 1.0.  Therefore, lets set density to 1.0 so that the user
+        # doesnt need to set it unless its needed.
+        # Of course, if the user has already set a value of density,
+        # then we will not override it.
+        if self._density is None:
+            self.set_density('macro', 1.0)
 
     def remove_macroscopic(self, macroscopic):
         """Remove a macroscopic from the material

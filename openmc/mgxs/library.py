@@ -4,8 +4,9 @@ import copy
 import pickle
 from numbers import Integral
 from collections import OrderedDict
-import numpy as np
 from warnings import warn
+
+import numpy as np
 
 import openmc
 import openmc.mgxs
@@ -759,7 +760,7 @@ class Library(object):
 
         See also
         --------
-        Library.create_mg_library(...)
+        Library.create_mg_library()
 
         """
 
@@ -890,7 +891,7 @@ class Library(object):
 
         See also
         --------
-        Library.dump_to_file(mgxs_lib, filename, directory)
+        Library.dump_to_file()
 
         """
 
@@ -922,9 +923,7 @@ class Library(object):
         # support for higher orders are included in openmc.mgxs
         order = 0
 
-        # Build storage for our XSdata objects
-        xsdatas = []
-
+        # Create the xsdata object and add it to the mgxs_file
         for i, domain in enumerate(self.domains):
             if self.by_nuclide:
                 nuclides = list(domain.get_all_nuclides().keys())
@@ -943,10 +942,7 @@ class Library(object):
                                          xs_type=xs_type, xs_id=xs_ids[i],
                                          order=order)
 
-                xsdatas.append(xsdata)
-
-        # Add XSdatas to file
-        mgxs_file.add_xsdatas(xsdatas)
+                mgxs_file.add_xsdata(xsdata)
 
         return mgxs_file
 
@@ -977,7 +973,7 @@ class Library(object):
 
         See also
         --------
-        Library.create_mg_library(...)
+        Library.create_mg_library()
 
         """
 

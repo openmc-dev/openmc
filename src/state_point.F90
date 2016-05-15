@@ -782,16 +782,16 @@ contains
       ! Read in CMFD info
       if (int_array(1) == 1) then
         cmfd_group = open_group(file_id, "cmfd")
-        call read_dataset(cmfd%indices, cmfd_group, "indices")
-        call read_dataset(cmfd%k_cmfd(1:restart_batch), cmfd_group, "k_cmfd")
-        call read_dataset(cmfd%cmfd_src, cmfd_group, "cmfd_src")
-        call read_dataset(cmfd%entropy(1:restart_batch), cmfd_group, &
+        call read_dataset(cmfd % indices, cmfd_group, "indices")
+        call read_dataset(cmfd % k_cmfd(1:restart_batch), cmfd_group, "k_cmfd")
+        call read_dataset(cmfd % cmfd_src, cmfd_group, "cmfd_src")
+        call read_dataset(cmfd % entropy(1:restart_batch), cmfd_group, &
              "cmfd_entropy")
-        call read_dataset(cmfd%balance(1:restart_batch), cmfd_group, &
+        call read_dataset(cmfd % balance(1:restart_batch), cmfd_group, &
              "cmfd_balance")
-        call read_dataset(cmfd%dom(1:restart_batch), cmfd_group, &
+        call read_dataset(cmfd % dom(1:restart_batch), cmfd_group, &
              "cmfd_dominance")
-        call read_dataset(cmfd%src_cmp(1:restart_batch), cmfd_group, &
+        call read_dataset(cmfd % src_cmp(1:restart_batch), cmfd_group, &
              "cmfd_srccmp")
         call close_group(cmfd_group)
       end if

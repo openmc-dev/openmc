@@ -367,7 +367,7 @@ class XSdata(object):
         check_type('energy_groups', energy_groups, openmc.mgxs.EnergyGroups)
 
         if energy_group.group_edges is None:
-            msg = 'Unable to assign an EnergyGroups object ' + \
+            msg = 'Unable to assign an EnergyGroups object ' \
                   'with uninitialized group edges'
             raise ValueError(msg)
         self._energy_groups = energy_groups
@@ -518,7 +518,10 @@ class XSdata(object):
         # Convert to a numpy array so we can easily get the shape for
         # checking
         npchi = np.asarray(chi)
-        check_value('chi shape', npchi.shape, [self.vector_shape])
+        # Check the shape
+        if npchi.shape != self.vector_shape:
+            msg = 'Provided chi iterable does not have the expected shape.'
+            raise ValueError(msg)
 
         self._chi = npchi
 
@@ -605,6 +608,11 @@ class XSdata(object):
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
 
+        See also
+        --------
+        openmc.mgxs.Library.create_mg_library()
+        openmc.mgxs.Library.get_xsdata
+
         """
 
         check_type('total', total, (openmc.mgxs.TotalXS,
@@ -635,6 +643,11 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+
+        See also
+        --------
+        openmc.mgxs.Library.create_mg_library()
+        openmc.mgxs.Library.get_xsdata
 
         """
 
@@ -667,6 +680,11 @@ class XSdata(object):
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
 
+        See also
+        --------
+        openmc.mgxs.Library.create_mg_library()
+        openmc.mgxs.Library.get_xsdata
+
         """
 
         check_type('fission', fission, openmc.mgxs.FissionXS)
@@ -698,6 +716,11 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+
+        See also
+        --------
+        openmc.mgxs.Library.create_mg_library()
+        openmc.mgxs.Library.get_xsdata
 
         """
 
@@ -740,6 +763,11 @@ class XSdata(object):
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
 
+        See also
+        --------
+        openmc.mgxs.Library.create_mg_library()
+        openmc.mgxs.Library.get_xsdata
+
         """
 
         check_type('k_fission', k_fission, openmc.mgxs.KappaFissionXS)
@@ -769,6 +797,11 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+
+        See also
+        --------
+        openmc.mgxs.Library.create_mg_library()
+        openmc.mgxs.Library.get_xsdata
 
         """
 
@@ -810,6 +843,11 @@ class XSdata(object):
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
 
+        See also
+        --------
+        openmc.mgxs.Library.create_mg_library()
+        openmc.mgxs.Library.get_xsdata
+
         """
 
         check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
@@ -850,6 +888,11 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+
+        See also
+        --------
+        openmc.mgxs.Library.create_mg_library()
+        openmc.mgxs.Library.get_xsdata
 
         """
 

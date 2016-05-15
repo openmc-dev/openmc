@@ -118,7 +118,7 @@ contains
     real(8), allocatable :: awrs(:)
     integer, allocatable :: zaids(:)
 
-    ! Use H5LT interface to write useful data from nuclide objects
+    ! Write useful data from nuclide objects
     nuclide_group = create_group(file_id, "nuclides")
     call write_dataset(nuclide_group, "n_nuclides_total", n_nuclides_total)
 

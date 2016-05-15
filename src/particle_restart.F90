@@ -34,7 +34,7 @@ contains
     verbosity = 10
 
     ! Initialize the particle to be tracked
-    call p%initialize()
+    call p % initialize()
 
     ! Read in the restart information
     call read_particle_restart(p, previous_run_mode)
@@ -46,9 +46,9 @@ contains
     select case (previous_run_mode)
     case (MODE_EIGENVALUE)
       particle_seed = ((current_batch - 1)*gen_per_batch + &
-           current_gen - 1)*n_particles + p%id
+           current_gen - 1)*n_particles + p % id
     case (MODE_FIXEDSOURCE)
-      particle_seed = p%id
+      particle_seed = p % id
     end select
 
     call set_particle_seed(particle_seed)
@@ -94,19 +94,19 @@ contains
     case ('fixed source')
       previous_run_mode = MODE_FIXEDSOURCE
     end select
-    call read_dataset(p%id, file_id, 'id')
-    call read_dataset(p%wgt, file_id, 'weight')
-    call read_dataset(p%E, file_id, 'energy')
-    call read_dataset(p%g, file_id, 'energy_group')
-    call read_dataset(p%coord(1)%xyz, file_id, 'xyz')
-    call read_dataset(p%coord(1)%uvw, file_id, 'uvw')
+    call read_dataset(p % id, file_id, 'id')
+    call read_dataset(p % wgt, file_id, 'weight')
+    call read_dataset(p % E, file_id, 'energy')
+    call read_dataset(p % g, file_id, 'energy_group')
+    call read_dataset(p % coord(1) % xyz, file_id, 'xyz')
+    call read_dataset(p % coord(1) % uvw, file_id, 'uvw')
 
     ! Set particle last attributes
-    p%last_wgt = p%wgt
-    p%last_xyz = p%coord(1)%xyz
-    p%last_uvw = p%coord(1)%uvw
-    p%last_E   = p%E
-    p%last_g   = p%g
+    p % last_wgt = p % wgt
+    p % last_xyz = p % coord(1)%xyz
+    p % last_uvw = p % coord(1)%uvw
+    p % last_E   = p % E
+    p % last_g   = p % g
 
     ! Close hdf5 file
     call file_close(file_id)

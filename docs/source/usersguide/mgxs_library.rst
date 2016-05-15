@@ -22,9 +22,9 @@ materials.
 
 .. _XML: http://www.w3.org/XML/
 
-------------------------------------------------
+--------------------------------------
 MGXS Library Specification -- mgxs.xml
-------------------------------------------------
+--------------------------------------
 
 The multi-group library meta-data is contained within the groups_,
 group_structure_, and inverse_velocities_ elements.
@@ -33,7 +33,7 @@ The actual multi-group data itself is contained within the xsdata_ element.
 .. _groups:
 
 ``<groups>`` Element
-----------------------------------
+--------------------
 
 The ``<groups>`` element has no attributes and simply provides the number of
 energy groups contained within the library.

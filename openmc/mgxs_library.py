@@ -346,6 +346,16 @@ class XSdata(object):
                     self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
 
+    @property
+    def pn_matrix_shape(self):
+        if self.representation is 'isotropic':
+            return (self.num_orders, self.energy_groups.num_groups,
+                    self.energy_groups.num_groups)
+        elif self.representation is 'angle':
+            return (self.num_polar, self.num_azimuthal, self.num_orders,
+                    self.energy_groups.num_groups,
+                    self.energy_groups.num_groups)
+
     @name.setter
     def name(self, name):
         check_type('name for XSdata', name, basestring)
@@ -449,38 +459,49 @@ class XSdata(object):
 
     @total.setter
     def total(self, total):
-        check_type('total', total, np.ndarray, expected_iter_type=Real)
-        check_value('total shape', total.shape, self.vector_shape)
+        check_type('total', total, Iterable, expected_iter_type=Real)
+        # Convert to a numpy array so we can easily get the shape for
+        # checking
+        nptotal = np.array(total)
+        check_value('total shape', nptotal.shape, [self.vector_shape])
 
-        self._total = total
+        self._total = nptotal
 
     @absorption.setter
     def absorption(self, absorption):
-        check_type('absorption', absorption, np.ndarray,
-                   expected_iter_type=Real)
-        check_value('absorption shape', absorption.shape, self.vector_shape)
+        check_type('absorption', absorption, Iterable, expected_iter_type=Real)
+        # Convert to a numpy array so we can easily get the shape for
+        # checking
+        npabsorption = np.array(absorption)
+        check_value('absorption shape', npabsorption.shape,
+                    [self.vector_shape])
 
-        self._absorption = absorption
+        self._absorption = npabsorption
 
     @fission.setter
     def fission(self, fission):
-        check_type('fission', fission, np.ndarray,
-                   expected_iter_type=Real)
-        check_value('fission shape', fission.shape, self.vector_shape)
+        check_type('fission', fission, Iterable, expected_iter_type=Real)
+        # Convert to a numpy array so we can easily get the shape for
+        # checking
+        npfission = np.array(fission)
+        check_value('fission shape', npfission.shape, [self.vector_shape])
 
-        self._fission = fission
+        self._fission = npfission
 
         if np.sum(self._fission) > 0.0:
             self._fissionable = True
 
     @kappa_fission.setter
     def kappa_fission(self, kappa_fission):
-        check_type('kappa_fission', kappa_fission, np.ndarray,
+        check_type('kappa_fission', kappa_fission, Iterable,
                    expected_iter_type=Real)
-        check_value('kappa fission shape', kappa_fission.shape,
-                    self.vector_shape)
+        # Convert to a numpy array so we can easily get the shape for
+        # checking
+        npkappa_fission = np.array(kappa_fission)
+        check_value('kappa fission shape', npkappa_fission.shape,
+                    [self.vector_shape])
 
-        self._kappa_fission = kappa_fission
+        self._kappa_fission = npkappa_fission
 
         if np.sum(self._kappa_fission) > 0.0:
             self._fissionable = True
@@ -493,30 +514,39 @@ class XSdata(object):
                       'matrix'
                 raise ValueError(msg)
 
-        check_type('chi', chi, np.ndarray, expected_iter_type=Real)
-        check_value('chi shape', chi.shape, self.vector_shape)
+        check_type('chi', chi, Iterable, expected_iter_type=Real)
+        # Convert to a numpy array so we can easily get the shape for
+        # checking
+        npchi = np.array(chi)
+        check_value('chi shape', npchi.shape, [self.vector_shape])
 
-        self._chi = chi
+        self._chi = npchi
 
         if self._use_chi is not None:
             self._use_chi = True
 
     @scatter.setter
     def scatter(self, scatter):
-        check_type('scatter', scatter, np.ndarray, expected_iter_type=Real,
-                   max_depth=len(scatter.shape))
-        check_value('scatter shape', scatter.shape, self.pn_matrix_shape)
+        # Convert to a numpy array so we can easily get the shape for
+        # checking
+        npscatter = np.array(scatter)
+        check_iterable_type('scatter', npscatter, Real,
+                            max_depth=len(npscatter.shape))
+        check_value('scatter shape', npscatter.shape, [self.pn_matrix_shape])
 
-        self._scatter = scatter
+        self._scatter = npscatter
 
     @multiplicity.setter
     def multiplicity(self, multiplicity):
-        check_type('multiplicity', multiplicity, np.ndarray,
-                   expected_iter_type=Real, max_depth=len(multiplicity.shape))
-        check_value('multiplicity shape', multiplicity.shape,
-                    self.matrix_shape)
+        # Convert to a numpy array so we can easily get the shape for
+        # checking
+        npmultiplicity = np.array(multiplicity)
+        check_iterable_type('multiplicity', npmultiplicity, Real,
+                            max_depth=len(npmultiplicity.shape))
+        check_value('multiplicity shape', npmultiplicity.shape,
+                    [self.matrix_shape])
 
-        self._multiplicity = multiplicity
+        self._multiplicity = npmultiplicity
 
     @nu_fission.setter
     def nu_fission(self, nu_fission):
@@ -530,27 +560,31 @@ class XSdata(object):
         # chi already has been set.  If not, we just check that this is OK
         # and set the use_chi flag accordingly
 
-        check_type('nu_fission', nu_fission, np.ndarray,
-                   expected_iter_type=Real, max_depth=len(nu_fission.shape))
+        # Convert to a numpy array so we can easily get the shape for
+        # checking
+        npnu_fission = np.array(nu_fission)
+
+        check_iterable_type('nu_fission', npnu_fission, Real,
+                            max_depth=len(npnu_fission.shape))
 
         if self._use_chi is not None:
             if self._use_chi:
-                check_value('nu_fission shape', nu_fission.shape,
-                            self.vector_shape)
+                check_value('nu_fission shape', npnu_fission.shape,
+                            [self.vector_shape])
             else:
-                check_value('nu_fission shape', nu_fission.shape,
-                            self.matrix_shape)
+                check_value('nu_fission shape', npnu_fission.shape,
+                            [self.matrix_shape])
         else:
-            check_value('nu_fission shape', nu_fission.shape,
-                        (self.vector_shape, self.matrix_shape))
+            check_value('nu_fission shape', npnu_fission.shape,
+                        [self.vector_shape, self.matrix_shape])
             # Find out if we have a nu-fission matrix or vector
             # and set a flag to allow other methods to check this later.
-            if nu_fission.shape == self.vector_shape:
+            if npnu_fission.shape == self.vector_shape:
                 self._use_chi = True
             else:
                 self._use_chi = False
 
-        self._nu_fission = nu_fission
+        self._nu_fission = npnu_fission
         if np.sum(self._nu_fission) > 0.0:
             self._fissionable = True
 

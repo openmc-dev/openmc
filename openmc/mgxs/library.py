@@ -247,8 +247,7 @@ class Library(object):
 
     @domain_type.setter
     def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type,
-                       tuple(openmc.mgxs.DOMAIN_TYPES))
+        cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._domain_type = domain_type
 
     @domains.setter
@@ -722,8 +721,8 @@ class Library(object):
         # Load and return pickled Library object
         return pickle.load(open(full_filename, 'rb'))
 
-    def get_xsdata(self, domain, domain_name, nuclide='total', xs_type='macro',
-                   xs_id='1m', order=-1):
+    def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
+                   xs_id='1m', order=None):
         """Generates an openmc.XSdata object describing a multi-group cross section
         data set for eventual combination in to an openmc.MGXSLibrary object
         (i.e., the library).
@@ -732,7 +731,7 @@ class Library(object):
         ----------
         domain : openmc.Material or openmc.Cell or openmc.Universe
             The domain for spatial homogenization
-        domain_name : str
+        xsdata_name : str
             Name to apply to the "xsdata" entry produced by this method
         nuclide : str
             A nuclide name string (e.g., 'U-235').  Defaults to 'total' to
@@ -743,7 +742,7 @@ class Library(object):
             nuclide this will be set to 'macro' regardless.
         xs_ids : str
             Cross section set identifier. Defaults to '1m'.
-        order : Scattering order for this dataset entry.  Default is -1,
+        order : Scattering order for this dataset entry.  Default is None,
             which will force the XSdata object to use whatever the maximum
             order available.
 
@@ -766,11 +765,11 @@ class Library(object):
 
         cv.check_type('domain', domain, (openmc.Material, openmc.Cell,
                                          openmc.Cell))
-        cv.check_type('domain_name', domain_name, basestring)
+        cv.check_type('xsdata_name', xsdata_name, basestring)
         cv.check_type('nuclide', nuclide, basestring)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
         cv.check_type('xs_id', xs_id, basestring)
-        cv.check_type('order', order, Integral)
+        cv.check_type('order', order, (type(None), Integral))
         cv.check_greater_than('order', order, -1, equality=True)
 
         # Make sure statepoint has been loaded
@@ -784,12 +783,18 @@ class Library(object):
             xs_type = 'macro'
 
         # Build & add metadata to XSdata object
-        name = domain_name
+        name = xsdata_name
         if nuclide is not 'total':
             name += '_' + nuclide
         name += '.' + xs_id
         xsdata = openmc.XSdata(name, self.energy_groups)
-        xsdata.order = order
+        if order is 0:
+            xsdata.order = order
+        else:
+            msg = 'Generating anisotropic scattering from openmc.Library' \
+                  'objects has not yet been implemented.'
+            raise NotImplementedError(msg)
+
         if nuclide is not 'total':
             xsdata.zaid = self._nuclides[nuclide][0]
             xsdata.awr = self._nuclides[nuclide][1]
@@ -852,7 +857,7 @@ class Library(object):
 
         return xsdata
 
-    def create_mg_library(self, xs_type='macro', domain_names=None,
+    def create_mg_library(self, xs_type='macro', xsdata_names=None,
                           xs_ids=None):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC.
@@ -863,7 +868,7 @@ class Library(object):
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'. If the Library object is not tallied by
             nuclide this will be set to 'macro' regardless.
-        domain_names : Iterable of str
+        xsdata_names : Iterable of str
             List of names to apply to the "xsdata" entries in the
             resultant mgxs data file. Defaults to 'set1', 'set2', ...
         xs_ids : str or Iterable of str
@@ -894,8 +899,8 @@ class Library(object):
         self.check_library_for_openmc_mgxs()
 
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-        if domain_names is not None:
-            cv.check_iterable_type('domain_names', domain_names, basestring)
+        if xsdata_names is not None:
+            cv.check_iterable_type('xsdata_names', xsdata_names, basestring)
         if xs_ids is not None:
             if isinstance(xs_ids, basestring):
                 # If we only have a string lets convert it now to a list
@@ -927,14 +932,14 @@ class Library(object):
                 nuclides = ['total']
             for nuclide in nuclides:
                 # Build & add metadata to XSdata object
-                if domain_names is None:
-                    name = 'set' + str(i + 1)
+                if xsdata_names is None:
+                    xsdata_name = 'set' + str(i + 1)
                 else:
-                    name = domain_names[i]
+                    xsdata_name = xsdata_names[i]
                 if nuclide is not 'total':
-                    name += '_' + nuclide
+                    xsdata_name += '_' + nuclide
 
-                xsdata = self.get_xsdata(domain, name, nuclide=nuclide,
+                xsdata = self.get_xsdata(domain, xsdata_name, nuclide=nuclide,
                                          xs_type=xs_type, xs_id=xs_ids[i],
                                          order=order)
 
@@ -952,14 +957,17 @@ class Library(object):
 
         The rules to check include:
         - Either total or transport should be present.
+
           - Both can be available if one wants, but we should
             use whatever corresponds to Library.correction (if P0: transport)
+
         - Absorption and total (or transport) are required.
         - A nu-fission cross section and chi values are not required as a
           fixed source problem could be the target.
         - Fission and kappa-fission are not required as they are only
           needed to support tallies the user may wish to request.
         - A nu-scatter matrix is required.
+
           - Having both nu-scatter (of any order) and scatter
             (at least isotropic) matrices is preferred
           - If only nu-scatter, need total (not transport), to

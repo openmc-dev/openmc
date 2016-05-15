@@ -956,6 +956,7 @@ class Library(object):
         a MGXS Library for OpenMC's Multi-Group mode.
 
         The rules to check include:
+
         - Either total or transport should be present.
 
           - Both can be available if one wants, but we should

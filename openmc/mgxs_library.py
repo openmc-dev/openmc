@@ -103,7 +103,7 @@ class XSdata(object):
         1000*(atomic number) + mass number. As an example, the zaid of U-235
         would be 92235.
     awr : float
-        Atomic-weight-ratio of an isotope.  That is, the ratio of the mass
+        Atomic weight ratio of an isotope.  That is, the ratio of the mass
         of the isotope to the mass of a single neutron.
     kT : float
         Temperature (in units of MeV).
@@ -390,14 +390,14 @@ class XSdata(object):
     def zaid(self, zaid):
         # Check type and value
         check_type('zaid', zaid, Integral)
-        check_greater_than('zaid', zaid, 0, equality=False)
+        check_greater_than('zaid', zaid, 0)
         self._zaid = zaid
 
     @awr.setter
     def awr(self, awr):
         # Check validity of type and that the awr value is > 0
         check_type('awr', awr, Real)
-        check_greater_than('awr', awr, 0.0, equality=False)
+        check_greater_than('awr', awr, 0.0)
         self._awr = awr
 
     @kT.setter
@@ -462,7 +462,7 @@ class XSdata(object):
         check_type('total', total, Iterable, expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for
         # checking
-        nptotal = np.array(total)
+        nptotal = np.asarray(total)
         check_value('total shape', nptotal.shape, [self.vector_shape])
 
         self._total = nptotal
@@ -472,7 +472,7 @@ class XSdata(object):
         check_type('absorption', absorption, Iterable, expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for
         # checking
-        npabsorption = np.array(absorption)
+        npabsorption = np.asarray(absorption)
         check_value('absorption shape', npabsorption.shape,
                     [self.vector_shape])
 
@@ -483,7 +483,7 @@ class XSdata(object):
         check_type('fission', fission, Iterable, expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for
         # checking
-        npfission = np.array(fission)
+        npfission = np.asarray(fission)
         check_value('fission shape', npfission.shape, [self.vector_shape])
 
         self._fission = npfission
@@ -497,7 +497,7 @@ class XSdata(object):
                    expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for
         # checking
-        npkappa_fission = np.array(kappa_fission)
+        npkappa_fission = np.asarray(kappa_fission)
         check_value('kappa fission shape', npkappa_fission.shape,
                     [self.vector_shape])
 
@@ -517,7 +517,7 @@ class XSdata(object):
         check_type('chi', chi, Iterable, expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for
         # checking
-        npchi = np.array(chi)
+        npchi = np.asarray(chi)
         check_value('chi shape', npchi.shape, [self.vector_shape])
 
         self._chi = npchi
@@ -529,7 +529,7 @@ class XSdata(object):
     def scatter(self, scatter):
         # Convert to a numpy array so we can easily get the shape for
         # checking
-        npscatter = np.array(scatter)
+        npscatter = np.asarray(scatter)
         check_iterable_type('scatter', npscatter, Real,
                             max_depth=len(npscatter.shape))
         check_value('scatter shape', npscatter.shape, [self.pn_matrix_shape])
@@ -540,7 +540,7 @@ class XSdata(object):
     def multiplicity(self, multiplicity):
         # Convert to a numpy array so we can easily get the shape for
         # checking
-        npmultiplicity = np.array(multiplicity)
+        npmultiplicity = np.asarray(multiplicity)
         check_iterable_type('multiplicity', npmultiplicity, Real,
                             max_depth=len(npmultiplicity.shape))
         check_value('multiplicity shape', npmultiplicity.shape,
@@ -562,7 +562,7 @@ class XSdata(object):
 
         # Convert to a numpy array so we can easily get the shape for
         # checking
-        npnu_fission = np.array(nu_fission)
+        npnu_fission = np.asarray(nu_fission)
 
         check_iterable_type('nu_fission', npnu_fission, Real,
                             max_depth=len(npnu_fission.shape))
@@ -595,7 +595,7 @@ class XSdata(object):
 
         Parameters
         ----------
-        total: {openmc.mgxs.TotalXS, openmc.mgxs.TransportXS}
+        total: openmc.mgxs.TotalXS or openmc.mgxs.TransportXS
             MGXS Object containing the total or transport cross section
             for the domain of interest.
         nuclide : str

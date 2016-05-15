@@ -267,7 +267,7 @@ class Summary(object):
                     rotation = \
                       self._f['geometry/cells'][key]['rotation'][...]
                     rotation = np.asarray(rotation, dtype=np.int)
-                    cell.rotation = rotation
+                    cell._rotation = rotation
 
             # Store Cell fill information for after Universe/Lattice creation
             self._cell_fills[index] = (fill_type, fill)

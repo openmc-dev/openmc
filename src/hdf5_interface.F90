@@ -64,14 +64,28 @@ module hdf5_interface
     module procedure read_tally_result_2D
   end interface read_dataset
 
+  interface read_attribute
+    module procedure read_attribute_double
+    module procedure read_attribute_double_1D
+    module procedure read_attribute_double_2D
+    module procedure read_attribute_integer
+    module procedure read_attribute_integer_1D
+    module procedure read_attribute_integer_2D
+    module procedure read_attribute_string
+  end interface read_attribute
+
   public :: write_dataset
   public :: read_dataset
+  public :: read_attribute
   public :: file_create
   public :: file_open
   public :: file_close
   public :: create_group
   public :: open_group
   public :: close_group
+  public :: open_dataset
+  public :: close_dataset
+  public :: get_shape
   public :: write_attribute_string
 
 contains
@@ -244,6 +258,44 @@ contains
   end subroutine close_group
 
 !===============================================================================
+! OPEN_DATASET opens an existing HDF5 dataset
+!===============================================================================
+
+  function open_dataset(group_id, name) result(dataset_id)
+    integer(HID_T), intent(in) :: group_id
+    character(*),   intent(in) :: name ! name of dataset
+    integer(HID_T)             :: dataset_id
+
+    logical :: exists   ! does the dataset exist
+    integer :: hdf5_err ! HDF5 error code
+
+    ! Check if group exists
+    call h5ltpath_valid_f(group_id, trim(name), .true., exists, hdf5_err)
+
+    ! open group if it exists
+    if (exists) then
+      call h5dopen_f(group_id, trim(name), dataset_id, hdf5_err)
+    else
+      call fatal_error("The dataset '" // trim(name) // "' does not exist.")
+    end if
+  end function open_dataset
+
+!===============================================================================
+! CLOSE_GROUP closes HDF5 temp_group
+!===============================================================================
+
+  subroutine close_dataset(dataset_id)
+    integer(HID_T), intent(inout) :: dataset_id
+
+    integer :: hdf5_err ! HDF5 error code
+
+    call h5dclose_f(dataset_id, hdf5_err)
+    if (hdf5_err < 0) then
+      call fatal_error("Unable to close HDF5 dataset.")
+    end if
+  end subroutine close_dataset
+
+!===============================================================================
 ! WRITE_DOUBLE writes double precision scalar data
 !===============================================================================
 
@@ -293,19 +345,27 @@ contains
 ! READ_DOUBLE reads double precision scalar data
 !===============================================================================
 
-  subroutine read_double(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name    ! name for data
-    real(8),      intent(inout), target :: buffer  ! read data to here
-    logical,      intent(in), optional :: indep ! independent I/O
+  subroutine read_double(buffer, obj_id, name, indep)
+    real(8),      target,   intent(inout) :: buffer
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep  ! independent I/O
 
-    integer :: hdf5_err
-    integer :: data_xfer_mode
+    integer        :: hdf5_err
+    integer        :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
-    type(c_ptr) :: f_ptr
+    integer(HID_T) :: dset_id
+    type(c_ptr)    :: f_ptr
+
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
+    else
+      dset_id = obj_id
+    end if
 
     ! Set up collective vs. independent I/O
     data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
@@ -313,21 +373,20 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     f_ptr = c_loc(buffer)
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
+      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
     end if
 
-    call h5dclose_f(dset, hdf5_err)
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_double
 
 !===============================================================================
@@ -396,35 +455,46 @@ contains
 ! READ_DOUBLE_1D reads double precision 1-D array data
 !===============================================================================
 
-  subroutine read_double_1D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(inout), target :: buffer(:) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_double_1D(buffer, obj_id, name, indep)
+    real(8), target,        intent(inout) :: buffer(:)
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep  ! independent I/O
 
+    integer          :: hdf5_err
+    integer(HID_T)   :: dset_id
     integer(HSIZE_T) :: dims(1)
 
-    dims(:) = shape(buffer)
-    if (present(indep)) then
-      call read_double_1D_explicit(group_id, dims, name, buffer, indep)
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
     else
-      call read_double_1D_explicit(group_id, dims, name, buffer)
+      dset_id = obj_id
     end if
+
+    dims(:) = shape(buffer)
+
+    if (present(indep)) then
+      call read_double_1D_explicit(dset_id, dims, buffer, indep)
+    else
+      call read_double_1D_explicit(dset_id, dims, buffer)
+    end if
+
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_double_1D
 
-  subroutine read_double_1D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(1)
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(inout), target :: buffer(dims(1)) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_double_1D_explicit(dset_id, dims, buffer, indep)
+    integer(HID_T),    intent(in)    :: dset_id
+    integer(HSIZE_T),  intent(in)    :: dims(1)
+    real(8), target,   intent(inout) :: buffer(dims(1))
+    logical, optional, intent(in)    :: indep   ! independent I/O
 
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -433,21 +503,18 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     f_ptr = c_loc(buffer)
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
+      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
     end if
-
-    call h5dclose_f(dset, hdf5_err)
   end subroutine read_double_1D_explicit
 
 !===============================================================================
@@ -516,35 +583,46 @@ contains
 ! READ_DOUBLE_2D reads double precision 2-D array data
 !===============================================================================
 
-  subroutine read_double_2D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(inout), target :: buffer(:,:) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_double_2D(buffer, obj_id, name, indep)
+    real(8), target,        intent(inout) :: buffer(:,:)
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep  ! independent I/O
 
+    integer          :: hdf5_err
+    integer(HID_T)   :: dset_id
     integer(HSIZE_T) :: dims(2)
 
-    dims(:) = shape(buffer)
-    if (present(indep)) then
-      call read_double_2D_explicit(group_id, dims, name, buffer, indep)
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
     else
-      call read_double_2D_explicit(group_id, dims, name, buffer)
+      dset_id = obj_id
     end if
+
+    dims(:) = shape(buffer)
+
+    if (present(indep)) then
+      call read_double_2D_explicit(dset_id, dims, buffer, indep)
+    else
+      call read_double_2D_explicit(dset_id, dims, buffer)
+    end if
+
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_double_2D
 
-  subroutine read_double_2D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(2)
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(inout), target :: buffer(dims(1),dims(2))
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_double_2D_explicit(dset_id, dims, buffer, indep)
+    integer(HID_T),    intent(in)    :: dset_id
+    integer(HSIZE_T),  intent(in)    :: dims(2)
+    real(8), target,   intent(inout) :: buffer(dims(1),dims(2))
+    logical, optional, intent(in)    :: indep   ! independent I/O
 
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -553,21 +631,18 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     f_ptr = c_loc(buffer)
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
+      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
     end if
-
-    call h5dclose_f(dset, hdf5_err)
   end subroutine read_double_2D_explicit
 
 !===============================================================================
@@ -636,35 +711,46 @@ contains
 ! READ_DOUBLE_3D reads double precision 3-D array data
 !===============================================================================
 
-  subroutine read_double_3D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(inout), target :: buffer(:,:,:) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_double_3D(buffer, obj_id, name, indep)
+    real(8), target,        intent(inout) :: buffer(:,:,:)
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep  ! independent I/O
 
+    integer          :: hdf5_err
+    integer(HID_T)   :: dset_id
     integer(HSIZE_T) :: dims(3)
 
-    dims(:) = shape(buffer)
-    if (present(indep)) then
-      call read_double_3D_explicit(group_id, dims, name, buffer, indep)
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
     else
-      call read_double_3D_explicit(group_id, dims, name, buffer)
+      dset_id = obj_id
     end if
+
+    dims(:) = shape(buffer)
+
+    if (present(indep)) then
+      call read_double_3D_explicit(dset_id, dims, buffer, indep)
+    else
+      call read_double_3D_explicit(dset_id, dims, buffer)
+    end if
+
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_double_3D
 
-  subroutine read_double_3D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(3)
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(inout), target :: buffer(dims(1),dims(2),dims(3))
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_double_3D_explicit(dset_id, dims, buffer, indep)
+    integer(HID_T),    intent(in)    :: dset_id
+    integer(HSIZE_T),  intent(in)    :: dims(3)
+    real(8), target,   intent(inout) :: buffer(dims(1),dims(2),dims(3))
+    logical, optional, intent(in)    :: indep   ! independent I/O
 
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -673,21 +759,18 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     f_ptr = c_loc(buffer)
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
+      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
     end if
-
-    call h5dclose_f(dset, hdf5_err)
   end subroutine read_double_3D_explicit
 
 !===============================================================================
@@ -756,35 +839,46 @@ contains
 ! READ_DOUBLE_4D reads double precision 4-D array data
 !===============================================================================
 
-  subroutine read_double_4D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(inout), target :: buffer(:,:,:,:) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_double_4D(buffer, obj_id, name, indep)
+    real(8), target,        intent(inout) :: buffer(:,:,:,:)
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep  ! independent I/O
 
+    integer          :: hdf5_err
+    integer(HID_T)   :: dset_id
     integer(HSIZE_T) :: dims(4)
 
-    dims(:) = shape(buffer)
-    if (present(indep)) then
-      call read_double_4D_explicit(group_id, dims, name, buffer, indep)
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
     else
-      call read_double_4D_explicit(group_id, dims, name, buffer)
+      dset_id = obj_id
     end if
+
+    dims(:) = shape(buffer)
+
+    if (present(indep)) then
+      call read_double_4D_explicit(dset_id, dims, buffer, indep)
+    else
+      call read_double_4D_explicit(dset_id, dims, buffer)
+    end if
+
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_double_4D
 
-  subroutine read_double_4D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(4)
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(inout), target :: buffer(dims(1),dims(2),dims(3),dims(4))
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_double_4D_explicit(dset_id, dims, buffer, indep)
+    integer(HID_T),    intent(in)    :: dset_id
+    integer(HSIZE_T),  intent(in)    :: dims(4)
+    real(8), target,   intent(inout) :: buffer(dims(1),dims(2),dims(3),dims(4))
+    logical, optional, intent(in)    :: indep   ! independent I/O
 
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -793,21 +887,18 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     f_ptr = c_loc(buffer)
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
+      call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
     end if
-
-    call h5dclose_f(dset, hdf5_err)
   end subroutine read_double_4D_explicit
 
 !===============================================================================
@@ -860,19 +951,27 @@ contains
 ! READ_INTEGER reads integer precision scalar data
 !===============================================================================
 
-  subroutine read_integer(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name    ! name for data
-    integer,      intent(inout), target :: buffer  ! read data to here
-    logical,      intent(in), optional :: indep ! independent I/O
+  subroutine read_integer(buffer, obj_id, name, indep)
+    integer,      target,   intent(inout) :: buffer
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep  ! independent I/O
 
-    integer :: hdf5_err
-    integer :: data_xfer_mode
+    integer        :: hdf5_err
+    integer        :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
-    type(c_ptr) :: f_ptr
+    integer(HID_T) :: dset_id
+    type(c_ptr)    :: f_ptr
+
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
+    else
+      dset_id = obj_id
+    end if
 
     ! Set up collective vs. independent I/O
     data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
@@ -880,21 +979,20 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     f_ptr = c_loc(buffer)
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+      call h5dread_f(dset_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
     end if
 
-    call h5dclose_f(dset, hdf5_err)
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_integer
 
 !===============================================================================
@@ -963,35 +1061,46 @@ contains
 ! READ_INTEGER_1D reads integer precision 1-D array data
 !===============================================================================
 
-  subroutine read_integer_1D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name      ! name of data
-    integer,      intent(inout), target :: buffer(:) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_integer_1D(buffer, obj_id, name, indep)
+    integer, target,        intent(inout) :: buffer(:)
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep  ! independent I/O
 
+    integer          :: hdf5_err
+    integer(HID_T)   :: dset_id
     integer(HSIZE_T) :: dims(1)
 
-    dims(:) = shape(buffer)
-    if (present(indep)) then
-      call read_integer_1D_explicit(group_id, dims, name, buffer, indep)
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
     else
-      call read_integer_1D_explicit(group_id, dims, name, buffer)
+      dset_id = obj_id
     end if
+
+    dims(:) = shape(buffer)
+
+    if (present(indep)) then
+      call read_integer_1D_explicit(dset_id, dims, buffer, indep)
+    else
+      call read_integer_1D_explicit(dset_id, dims, buffer)
+    end if
+
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_integer_1D
 
-  subroutine read_integer_1D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(1)
-    character(*), intent(in)           :: name      ! name of data
-    integer,      intent(inout), target :: buffer(dims(1)) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_integer_1D_explicit(dset_id, dims, buffer, indep)
+    integer(HID_T),    intent(in)    :: dset_id
+    integer(HSIZE_T),  intent(in)    :: dims(1)
+    integer, target,   intent(inout) :: buffer(dims(1))
+    logical, optional, intent(in)    :: indep   ! independent I/O
 
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1000,21 +1109,18 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     f_ptr = c_loc(buffer)
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+      call h5dread_f(dset_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
     end if
-
-    call h5dclose_f(dset, hdf5_err)
   end subroutine read_integer_1D_explicit
 
 !===============================================================================
@@ -1083,35 +1189,46 @@ contains
 ! READ_INTEGER_2D reads integer precision 2-D array data
 !===============================================================================
 
-  subroutine read_integer_2D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name      ! name of data
-    integer,      intent(inout), target :: buffer(:,:) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_integer_2D(buffer, obj_id, name, indep)
+    integer, target,        intent(inout) :: buffer(:,:)
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep  ! independent I/O
 
+    integer          :: hdf5_err
+    integer(HID_T)   :: dset_id
     integer(HSIZE_T) :: dims(2)
 
-    dims(:) = shape(buffer)
-    if (present(indep)) then
-      call read_integer_2D_explicit(group_id, dims, name, buffer, indep)
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
     else
-      call read_integer_2D_explicit(group_id, dims, name, buffer)
+      dset_id = obj_id
     end if
+
+    dims(:) = shape(buffer)
+
+    if (present(indep)) then
+      call read_integer_2D_explicit(dset_id, dims, buffer, indep)
+    else
+      call read_integer_2D_explicit(dset_id, dims, buffer)
+    end if
+
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_integer_2D
 
-  subroutine read_integer_2D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(2)
-    character(*), intent(in)           :: name      ! name of data
-    integer,      intent(inout), target :: buffer(dims(1),dims(2))
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_integer_2D_explicit(dset_id, dims, buffer, indep)
+    integer(HID_T),    intent(in)    :: dset_id
+    integer(HSIZE_T),  intent(in)    :: dims(2)
+    integer, target,   intent(inout) :: buffer(dims(1),dims(2))
+    logical, optional, intent(in)    :: indep   ! independent I/O
 
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1120,21 +1237,18 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     f_ptr = c_loc(buffer)
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+      call h5dread_f(dset_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
     end if
-
-    call h5dclose_f(dset, hdf5_err)
   end subroutine read_integer_2D_explicit
 
 !===============================================================================
@@ -1203,35 +1317,46 @@ contains
 ! READ_INTEGER_3D reads integer precision 3-D array data
 !===============================================================================
 
-  subroutine read_integer_3D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name      ! name of data
-    integer,      intent(inout), target :: buffer(:,:,:) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_integer_3D(buffer, obj_id, name, indep)
+    integer, target,        intent(inout) :: buffer(:,:,:)
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep  ! independent I/O
 
+    integer          :: hdf5_err
+    integer(HID_T)   :: dset_id
     integer(HSIZE_T) :: dims(3)
 
-    dims(:) = shape(buffer)
-    if (present(indep)) then
-      call read_integer_3D_explicit(group_id, dims, name, buffer, indep)
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
     else
-      call read_integer_3D_explicit(group_id, dims, name, buffer)
+      dset_id = obj_id
     end if
+
+    dims(:) = shape(buffer)
+
+    if (present(indep)) then
+      call read_integer_3D_explicit(dset_id, dims, buffer, indep)
+    else
+      call read_integer_3D_explicit(dset_id, dims, buffer)
+    end if
+
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_integer_3D
 
-  subroutine read_integer_3D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(3)
-    character(*), intent(in)           :: name      ! name of data
-    integer,      intent(inout), target :: buffer(dims(1),dims(2),dims(3))
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_integer_3D_explicit(dset_id, dims, buffer, indep)
+    integer(HID_T),    intent(in)    :: dset_id
+    integer(HSIZE_T),  intent(in)    :: dims(3)
+    integer, target,   intent(inout) :: buffer(dims(1),dims(2),dims(3))
+    logical, optional, intent(in)    :: indep   ! independent I/O
 
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1240,21 +1365,18 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     f_ptr = c_loc(buffer)
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+      call h5dread_f(dset_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
     end if
-
-    call h5dclose_f(dset, hdf5_err)
   end subroutine read_integer_3D_explicit
 
 !===============================================================================
@@ -1323,35 +1445,46 @@ contains
 ! READ_INTEGER_4D reads integer precision 4-D array data
 !===============================================================================
 
-  subroutine read_integer_4D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name      ! name of data
-    integer,      intent(inout), target :: buffer(:,:,:,:) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_integer_4D(buffer, obj_id, name, indep)
+    integer, target,        intent(inout) :: buffer(:,:,:,:)
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep  ! independent I/O
 
+    integer          :: hdf5_err
+    integer(HID_T)   :: dset_id
     integer(HSIZE_T) :: dims(4)
 
-    dims(:) = shape(buffer)
-    if (present(indep)) then
-      call read_integer_4D_explicit(group_id, dims, name, buffer, indep)
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
     else
-      call read_integer_4D_explicit(group_id, dims, name, buffer)
+      dset_id = obj_id
     end if
+
+    dims(:) = shape(buffer)
+
+    if (present(indep)) then
+      call read_integer_4D_explicit(dset_id, dims, buffer, indep)
+    else
+      call read_integer_4D_explicit(dset_id, dims, buffer)
+    end if
+
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_integer_4D
 
-  subroutine read_integer_4D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(4)
-    character(*), intent(in)           :: name      ! name of data
-    integer,      intent(inout), target :: buffer(dims(1),dims(2),dims(3),dims(4))
-    logical,      intent(in), optional :: indep   ! independent I/O
+  subroutine read_integer_4D_explicit(dset_id, dims, buffer, indep)
+    integer(HID_T),    intent(in)    :: dset_id
+    integer(HSIZE_T),  intent(in)    :: dims(4)
+    integer, target,   intent(inout) :: buffer(dims(1),dims(2),dims(3),dims(4))
+    logical, optional, intent(in)    :: indep   ! independent I/O
 
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
     type(c_ptr) :: f_ptr
 
     ! Set up collective vs. independent I/O
@@ -1360,21 +1493,18 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     f_ptr = c_loc(buffer)
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+      call h5dread_f(dset_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
     end if
-
-    call h5dclose_f(dset, hdf5_err)
   end subroutine read_integer_4D_explicit
 
 !===============================================================================
@@ -1427,19 +1557,27 @@ contains
 ! READ_LONG reads long integer scalar data
 !===============================================================================
 
-  subroutine read_long(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name    ! name for data
-    integer(8),   intent(inout), target :: buffer  ! read data to here
-    logical,      intent(in), optional :: indep ! independent I/O
+  subroutine read_long(buffer, obj_id, name, indep)
+    integer(8),   target,   intent(inout) :: buffer
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep  ! independent I/O
 
-    integer :: hdf5_err
-    integer :: data_xfer_mode
+    integer        :: hdf5_err
+    integer        :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
-    type(c_ptr) :: f_ptr
+    integer(HID_T) :: dset_id
+    type(c_ptr)    :: f_ptr
+
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
+    else
+      dset_id = obj_id
+    end if
 
     ! Set up collective vs. independent I/O
     data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
@@ -1447,21 +1585,20 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
     f_ptr = c_loc(buffer)
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, hdf5_integer8_t, f_ptr, hdf5_err, xfer_prp=plist)
+      call h5dread_f(dset_id, hdf5_integer8_t, f_ptr, hdf5_err, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, hdf5_integer8_t, f_ptr, hdf5_err)
+      call h5dread_f(dset_id, hdf5_integer8_t, f_ptr, hdf5_err)
     end if
 
-    call h5dclose_f(dset, hdf5_err)
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_long
 
 !===============================================================================
@@ -1529,24 +1666,30 @@ contains
 ! READ_STRING reads string data
 !===============================================================================
 
-  subroutine read_string(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)            :: name    ! name for data
-    character(*), intent(inout), target :: buffer  ! read data to here
-    logical,      intent(in), optional  :: indep ! independent I/O
+  subroutine read_string(buffer, obj_id, name, indep)
+    character(*), target,   intent(inout) :: buffer
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep ! independent I/O
 
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
+    integer(HID_T) :: dset_id
+    integer(HID_T) :: space_id
     integer(HID_T) :: filetype
     integer(HID_T) :: memtype
     integer(SIZE_T) :: size
     integer(SIZE_T) :: n
     type(c_ptr) :: f_ptr
+
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
+    else
+      dset_id = obj_id
+    end if
 
     ! Set up collective vs. independent I/O
     data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
@@ -1554,12 +1697,11 @@ contains
       if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
     end if
 
-    ! Get dataset and dataspace
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
-    call h5dget_space_f(dset, dspace, hdf5_err)
+    ! Get dataspace
+    call h5dget_space_f(dset_id, space_id, hdf5_err)
 
     ! Make sure buffer is large enough
-    call h5dget_type_f(dset, filetype, hdf5_err)
+    call h5dget_type_f(dset_id, filetype, hdf5_err)
     call h5tget_size_f(filetype, size, hdf5_err)
     if (size > len(buffer) + 1) then
       call fatal_error("Character buffer is not long enough to &
@@ -1574,20 +1716,21 @@ contains
     ! Get pointer to start of string
     f_ptr = c_loc(buffer(1:1))
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, memtype, f_ptr, hdf5_err, mem_space_id=dspace, &
-           xfer_prp=plist)
+      call h5dread_f(dset_id, memtype, f_ptr, hdf5_err, &
+           mem_space_id=space_id, xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, memtype, f_ptr, hdf5_err, mem_space_id=dspace)
+      call h5dread_f(dset_id, memtype, f_ptr, hdf5_err, mem_space_id=space_id)
     end if
 
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
+    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
+
+    call h5sclose_f(space_id, hdf5_err)
     call h5tclose_f(filetype, hdf5_err)
     call h5tclose_f(memtype, hdf5_err)
   end subroutine read_string
@@ -1674,36 +1817,45 @@ contains
 ! READ_STRING_1D reads string 1-D array data
 !===============================================================================
 
-  subroutine read_string_1D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)            :: name
-    character(*), intent(inout), target :: buffer(:)
-    logical,      intent(in), optional  :: indep ! independent I/O
+  subroutine read_string_1D(buffer, obj_id, name, indep)
+    character(*), target,   intent(inout) :: buffer(:)
+    integer(HID_T),         intent(in)    :: obj_id
+    character(*), optional, intent(in)    :: name
+    logical,      optional, intent(in)    :: indep ! independent I/O
 
+    integer          :: hdf5_err
+    integer(HID_T)   :: dset_id
     integer(HSIZE_T) :: dims(1)
 
-    dims(:) = shape(buffer)
-    if (present(indep)) then
-      call read_string_1D_explicit(group_id, dims, name, buffer, indep)
+    ! If 'name' argument is passed, obj_id is interpreted to be a group and
+    ! 'name' is the name of the dataset we should read from
+    if (present(name)) then
+      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
     else
-      call read_string_1D_explicit(group_id, dims, name, buffer)
+      dset_id = obj_id
+    end if
+
+    dims(:) = shape(buffer)
+
+    if (present(indep)) then
+      call read_string_1D_explicit(dset_id, dims, buffer, indep)
+    else
+      call read_string_1D_explicit(dset_id, dims, buffer)
     end if
   end subroutine read_string_1D
 
-  subroutine read_string_1D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(1)
-    character(*), intent(in)            :: name
-    character(*), intent(inout), target :: buffer(dims(1))
-    logical,      intent(in), optional  :: indep ! independent I/O
+  subroutine read_string_1D_explicit(dset_id, dims, buffer, indep)
+    integer(HID_T),       intent(in)    :: dset_id
+    integer(HSIZE_T),     intent(in)    :: dims(1)
+    character(*), target, intent(inout) :: buffer(dims(1))
+    logical, optional,    intent(in)    :: indep   ! independent I/O
 
     integer :: hdf5_err
     integer :: data_xfer_mode
 #ifdef PHDF5
     integer(HID_T) :: plist   ! property list
 #endif
-    integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
+    integer(HID_T) :: space_id
     integer(HID_T) :: filetype
     integer(HID_T) :: memtype
     integer(SIZE_T) :: size
@@ -1717,11 +1869,10 @@ contains
     end if
 
     ! Get dataset and dataspace
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
-    call h5dget_space_f(dset, dspace, hdf5_err)
+    call h5dget_space_f(dset_id, space_id, hdf5_err)
 
     ! Make sure buffer is large enough
-    call h5dget_type_f(dset, filetype, hdf5_err)
+    call h5dget_type_f(dset_id, filetype, hdf5_err)
     call h5tget_size_f(filetype, size, hdf5_err)
     if (size > len(buffer(1)) + 1) then
       call fatal_error("Character buffer is not long enough to &
@@ -1736,20 +1887,19 @@ contains
     ! Get pointer to start of string
     f_ptr = c_loc(buffer(1)(1:1))
 
-    if (using_mpio_device(group_id)) then
+    if (using_mpio_device(dset_id)) then
 #ifdef PHDF5
       call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
       call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset, memtype, f_ptr, hdf5_err, mem_space_id=dspace, &
+      call h5dread_f(dset_id, memtype, f_ptr, hdf5_err, mem_space_id=space_id, &
            xfer_prp=plist)
       call h5pclose_f(plist, hdf5_err)
 #endif
     else
-      call h5dread_f(dset, memtype, f_ptr, hdf5_err, mem_space_id=dspace)
+      call h5dread_f(dset_id, memtype, f_ptr, hdf5_err, mem_space_id=space_id)
     end if
 
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
+    call h5sclose_f(space_id, hdf5_err)
     call h5tclose_f(filetype, hdf5_err)
     call h5tclose_f(memtype, hdf5_err)
   end subroutine read_string_1D_explicit
@@ -1892,6 +2042,254 @@ contains
     call h5dread_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
     call h5dclose_f(dset, hdf5_err)
   end subroutine read_tally_result_2D_explicit
+
+  subroutine read_attribute_double(buffer, obj_id, name)
+    real(8),        intent(inout), target :: buffer
+    integer(HID_T), intent(in)            :: obj_id
+    character(*),   intent(in)            :: name
+
+    integer        :: hdf5_err
+    integer(HID_T) :: attr_id
+    type(c_ptr)    :: f_ptr
+
+    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
+    f_ptr = c_loc(buffer)
+    call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
+    call h5aclose_f(attr_id, hdf5_err)
+  end subroutine read_attribute_double
+
+  subroutine read_attribute_double_1D(buffer, obj_id, name)
+    real(8), target, allocatable, intent(inout) :: buffer(:)
+    integer(HID_T),  intent(in)    :: obj_id
+    character(*),    intent(in)    :: name
+
+    integer          :: hdf5_err
+    integer(HID_T)   :: space_id
+    integer(HID_T)   :: attr_id
+    integer(HSIZE_T) :: dims(1)
+    integer(HSIZE_T) :: maxdims(1)
+
+    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
+
+    if (allocated(buffer)) then
+      dims(:) = shape(buffer)
+    else
+      call h5aget_space_f(attr_id, space_id, hdf5_err)
+      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
+      allocate(buffer(dims(1)))
+      call h5sclose_f(space_id, hdf5_err)
+    end if
+
+    call read_attribute_double_1D_explicit(attr_id, dims, buffer)
+    call h5aclose_f(attr_id, hdf5_err)
+  end subroutine read_attribute_double_1D
+
+  subroutine read_attribute_double_1D_explicit(attr_id, dims, buffer)
+    integer(HID_T),   intent(in)    :: attr_id
+    integer(HSIZE_T), intent(in)    :: dims(1)
+    real(8), target,  intent(inout) :: buffer(dims(1))
+
+    integer        :: hdf5_err
+    type(c_ptr)    :: f_ptr
+
+    f_ptr = c_loc(buffer)
+    call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
+  end subroutine read_attribute_double_1D_explicit
+
+  subroutine read_attribute_double_2D(buffer, obj_id, name)
+    real(8), target, allocatable, intent(inout) :: buffer(:,:)
+    integer(HID_T),  intent(in)    :: obj_id
+    character(*),    intent(in)    :: name
+
+    integer          :: hdf5_err
+    integer(HID_T)   :: space_id
+    integer(HID_T)   :: attr_id
+    integer(HSIZE_T) :: dims(2)
+    integer(HSIZE_T) :: maxdims(2)
+
+    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
+
+    if (allocated(buffer)) then
+      dims(:) = shape(buffer)
+    else
+      call h5aget_space_f(attr_id, space_id, hdf5_err)
+      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
+      allocate(buffer(dims(1), dims(2)))
+      call h5sclose_f(space_id, hdf5_err)
+    end if
+
+    call read_attribute_double_2D_explicit(attr_id, dims, buffer)
+    call h5aclose_f(attr_id, hdf5_err)
+  end subroutine read_attribute_double_2D
+
+  subroutine read_attribute_double_2D_explicit(attr_id, dims, buffer)
+    integer(HID_T),   intent(in)    :: attr_id
+    integer(HSIZE_T), intent(in)    :: dims(2)
+    real(8), target,  intent(inout) :: buffer(dims(1),dims(2))
+
+    integer        :: hdf5_err
+    type(c_ptr)    :: f_ptr
+
+    f_ptr = c_loc(buffer)
+    call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
+  end subroutine read_attribute_double_2D_explicit
+
+  subroutine read_attribute_integer(buffer, obj_id, name)
+    integer,        intent(inout), target :: buffer
+    integer(HID_T), intent(in)            :: obj_id
+    character(*),   intent(in)            :: name
+
+    integer        :: hdf5_err
+    integer(HID_T) :: attr_id
+    type(c_ptr)    :: f_ptr
+
+    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
+    f_ptr = c_loc(buffer)
+    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+    call h5aclose_f(attr_id, hdf5_err)
+  end subroutine read_attribute_integer
+
+  subroutine read_attribute_integer_1D(buffer, obj_id, name)
+    integer, target, allocatable, intent(inout) :: buffer(:)
+    integer(HID_T),  intent(in)    :: obj_id
+    character(*),    intent(in)    :: name
+
+    integer          :: hdf5_err
+    integer(HID_T)   :: space_id
+    integer(HID_T)   :: attr_id
+    integer(HSIZE_T) :: dims(1)
+    integer(HSIZE_T) :: maxdims(1)
+
+    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
+
+    if (allocated(buffer)) then
+      dims(:) = shape(buffer)
+    else
+      call h5aget_space_f(attr_id, space_id, hdf5_err)
+      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
+      allocate(buffer(dims(1)))
+      call h5sclose_f(space_id, hdf5_err)
+    end if
+
+    call read_attribute_integer_1D_explicit(attr_id, dims, buffer)
+    call h5aclose_f(attr_id, hdf5_err)
+  end subroutine read_attribute_integer_1D
+
+  subroutine read_attribute_integer_1D_explicit(attr_id, dims, buffer)
+    integer(HID_T),   intent(in)    :: attr_id
+    integer(HSIZE_T), intent(in)    :: dims(1)
+    integer, target,  intent(inout) :: buffer(dims(1))
+
+    integer        :: hdf5_err
+    type(c_ptr)    :: f_ptr
+
+    f_ptr = c_loc(buffer)
+    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+  end subroutine read_attribute_integer_1D_explicit
+
+  subroutine read_attribute_integer_2D(buffer, obj_id, name)
+    integer, target, allocatable, intent(inout) :: buffer(:,:)
+    integer(HID_T),  intent(in)    :: obj_id
+    character(*),    intent(in)    :: name
+
+    integer          :: hdf5_err
+    integer(HID_T)   :: space_id
+    integer(HID_T)   :: attr_id
+    integer(HSIZE_T) :: dims(2)
+    integer(HSIZE_T) :: maxdims(2)
+
+    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
+
+    if (allocated(buffer)) then
+      dims(:) = shape(buffer)
+    else
+      call h5aget_space_f(attr_id, space_id, hdf5_err)
+      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
+      allocate(buffer(dims(1), dims(2)))
+      call h5sclose_f(space_id, hdf5_err)
+    end if
+
+    call read_attribute_integer_2D_explicit(attr_id, dims, buffer)
+    call h5aclose_f(attr_id, hdf5_err)
+  end subroutine read_attribute_integer_2D
+
+  subroutine read_attribute_integer_2D_explicit(attr_id, dims, buffer)
+    integer(HID_T),   intent(in)    :: attr_id
+    integer(HSIZE_T), intent(in)    :: dims(2)
+    integer, target,  intent(inout) :: buffer(dims(1),dims(2))
+
+    integer        :: hdf5_err
+    type(c_ptr)    :: f_ptr
+
+    f_ptr = c_loc(buffer)
+    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+  end subroutine read_attribute_integer_2D_explicit
+
+  subroutine read_attribute_string(buffer, obj_id, name)
+    character(*),   intent(inout), target :: buffer  ! read data to here
+    integer(HID_T), intent(in)            :: obj_id
+    character(*),   intent(in)            :: name    ! name for data
+
+    integer         :: hdf5_err
+    integer(HID_T)  :: attr_id ! data set handle
+    integer(HID_T)  :: filetype
+    integer(HID_T)  :: memtype
+    integer(SIZE_T) :: i
+    integer(SIZE_T) :: size
+    character(kind=C_CHAR), allocatable, target :: temp_buffer(:)
+    type(c_ptr)     :: f_ptr
+
+    ! Get dataset and dataspace
+    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
+
+    ! Make sure buffer is large enough
+    call h5aget_type_f(attr_id, filetype, hdf5_err)
+    call h5tget_size_f(filetype, size, hdf5_err)
+    allocate(temp_buffer(size))
+    if (size > len(buffer)) then
+      call fatal_error("Character buffer is not long enough to &
+           &read HDF5 string.")
+    end if
+
+    ! Get datatype in memory based on Fortran character
+    call h5tcopy_f(H5T_C_S1, memtype, hdf5_err)
+    call h5tset_size_f(memtype, size + 1, hdf5_err)
+
+    ! Get pointer to start of string
+    f_ptr = c_loc(temp_buffer(1))
+
+    call h5aread_f(attr_id, memtype, f_ptr, hdf5_err)
+    buffer = ''
+    do i = 1, size
+      buffer(i:i) = temp_buffer(i)
+    end do
+    deallocate(temp_buffer)
+
+    call h5aclose_f(attr_id, hdf5_err)
+    call h5tclose_f(filetype, hdf5_err)
+    call h5tclose_f(memtype, hdf5_err)
+  end subroutine read_attribute_string
+
+  subroutine get_shape(obj_id, dims)
+    integer(HID_T),   intent(in)  :: obj_id
+    integer(HSIZE_T), intent(out) :: dims(:)
+
+    integer          :: hdf5_err
+    integer          :: type
+    integer(HID_T)   :: space_id
+    integer(HSIZE_T) :: maxdims(size(dims))
+
+    call h5iget_type_f(obj_id, type, hdf5_err)
+    if (type == H5I_DATASET_F) then
+      call h5dget_space_f(obj_id, space_id, hdf5_err)
+      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
+      call h5sclose_f(space_id, hdf5_err)
+    elseif (type == H5I_ATTR_F) then
+      call h5aget_space_f(obj_id, space_id, hdf5_err)
+      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
+      call h5sclose_f(space_id, hdf5_err)
+    end if
+  end subroutine get_shape
 
   function using_mpio_device(obj_id) result(mpio)
     integer(HID_T), intent(in) :: obj_id

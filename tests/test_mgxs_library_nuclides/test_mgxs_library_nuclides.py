@@ -28,6 +28,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.mgxs_types = ['transport', 'nu-fission',
                                     'nu-scatter matrix', 'chi']
         self.mgxs_lib.energy_groups = energy_groups
+        self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'material'
         self.mgxs_lib.build_library()
 
@@ -36,7 +37,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.add_to_tallies_file(self._input_set.tallies, merge=False)
         self._input_set.tallies.export_to_xml()
 
-    def _get_results(self, hash_output=False):
+    def _get_results(self, hash_output=True):
         """Digest info in the statepoint and return as a string."""
 
         # Read the statepoint file.

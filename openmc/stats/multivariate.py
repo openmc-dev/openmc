@@ -328,8 +328,8 @@ class Point(Spatial):
 
     Parameters
     ----------
-    xyz : Iterable of float
-        Cartesian coordinates of location
+    xyz : Iterable of float, optional
+        Cartesian coordinates of location. Defaults to (0., 0., 0.).
 
     Attributes
     ----------
@@ -338,7 +338,7 @@ class Point(Spatial):
 
     """
 
-    def __init__(self, xyz):
+    def __init__(self, xyz=(0., 0., 0.)):
         super(Point, self).__init__()
         self.xyz = xyz
 

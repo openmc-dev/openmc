@@ -2672,7 +2672,7 @@ class ScatterMatrixXS(MGXS):
 
         # Expand scores to match the format in the statepoint
         # e.g., "scatter-P2" -> "scatter-0", "scatter-1", "scatter-2"
-        if self.legendre_order != 0:
+        if self.correction != 'P0' or self.legendre_order != 0:
             tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
             self.tallies[tally_key].scores = \
                 [self.rxn_type + '-{}'.format(i) for i in range(self.legendre_order+1)]
@@ -2966,7 +2966,7 @@ class ScatterMatrixXS(MGXS):
             # Place the moment column before the mean column
             mean_index = df.columns.get_loc('mean')
             columns = df.columns.tolist()
-            df = df[columns[:mean_index] + ['moment'] + columns[mean_index:-2]]
+            df = df[columns[:mean_index] + ['moment'] + columns[mean_index:-1]]
 
         # Select rows corresponding to requested scattering moment
         if moment != 'all':

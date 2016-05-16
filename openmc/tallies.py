@@ -1629,7 +1629,7 @@ class Tally(object):
 
             for score in self.scores:
                 if isinstance(score, (basestring, CrossScore)):
-                    scores.append(score)
+                    scores.append(str(score))
                 elif isinstance(score, AggregateScore):
                     scores.append(score.name)
                     column_name = '{0}(score)'.format(score.aggregate_op)

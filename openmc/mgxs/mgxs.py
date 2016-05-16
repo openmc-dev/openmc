@@ -297,8 +297,6 @@ class MGXS(object):
 
     @property
     def xs_tally(self):
-        """Computes multi-group cross section using OpenMC tally arithmetic."""
-
         if self._xs_tally is None:
             if self.tallies is None:
                 msg = 'Unable to get xs_tally since tallies have ' \

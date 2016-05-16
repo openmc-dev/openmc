@@ -3359,28 +3359,14 @@ contains
             end if
 
           case ('scatter-n')
-            if (n_order == 0) then
-              t % score_bins(j) = SCORE_SCATTER
-            else
-              t % score_bins(j) = SCORE_SCATTER_N
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
-            end if
+            t % score_bins(j) = SCORE_SCATTER_N
             t % moment_order(j) = n_order
+            t % estimator = ESTIMATOR_ANALOG
 
           case ('nu-scatter-n')
-            if (n_order == 0) then
-              t % score_bins(j) = SCORE_NU_SCATTER
-            else
-              t % score_bins(j) = SCORE_NU_SCATTER_N
-              ! Set tally estimator to analog for CE mode
-              ! (MG mode has all data available without a collision being
-              ! necessary)
-              if (run_CE) then
-                t % estimator = ESTIMATOR_ANALOG
-              end if
-            end if
+            t % score_bins(j) = SCORE_NU_SCATTER_N
             t % moment_order(j) = n_order
+            t % estimator = ESTIMATOR_ANALOG
 
           case ('scatter-pn')
             t % estimator = ESTIMATOR_ANALOG

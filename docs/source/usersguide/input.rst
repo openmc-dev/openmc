@@ -1033,6 +1033,20 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
         <cell fill="..." rotation="0 0 90" />
 
+    The rotation applied is an intrinsic rotation whose Tait-Bryan angles are
+    given as those specified about the x, y, and z axes respectively. That is to
+    say, if the angles are :math:`(\phi, \theta, \psi)`, then the rotation
+    matrix applied is :math:`R_z(\psi) R_y(\theta) R_x(\phi)` or
+
+    .. math::
+
+       \left [ \begin{array}{ccc} \cos\theta \cos\psi & -\cos\theta \sin\psi +
+       \sin\phi \sin\theta \cos\psi & \sin\phi \sin\psi + \cos\phi \sin\theta
+       \cos\psi \\ \cos\theta \sin\psi & \cos\phi \cos\psi + \sin\phi \sin\theta
+       \sin\psi & -\sin\phi \cos\psi + \cos\phi \sin\theta \sin\psi \\
+       -\sin\theta & \sin\phi \cos\theta & \cos\phi \cos\theta \end{array}
+       \right ]
+
     *Default*: None
 
   :translation:

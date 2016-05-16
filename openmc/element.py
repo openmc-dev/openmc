@@ -1,7 +1,7 @@
 import sys
 
 import openmc
-from openmc.checkvalue import check_type
+from openmc.checkvalue import check_type, check_length
 from openmc.data import natural_abundance
 
 if sys.version_info[0] >= 3:
@@ -99,7 +99,8 @@ class Element(object):
 
     @name.setter
     def name(self, name):
-        check_type('name', name, basestring)
+        check_type('element name', name, basestring)
+        check_length('element name', name, 1, 2)
         self._name = name
 
     @scattering.setter

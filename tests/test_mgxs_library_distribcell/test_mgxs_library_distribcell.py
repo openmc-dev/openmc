@@ -29,6 +29,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.mgxs_types = ['transport', 'nu-fission',
                                     'nu-scatter matrix', 'chi']
         self.mgxs_lib.energy_groups = energy_groups
+        self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'distribcell'
         material_cells = self.mgxs_lib.openmc_geometry.get_all_material_cells()
         self.mgxs_lib.domains = [material_cells[-1]]

@@ -516,7 +516,7 @@ class Material(object):
         for nuclide_name in self._nuclides:
             self._nuclides[nuclide_name][0].scattering = 'iso-in-lab'
         for element_name in self._elements:
-            self._element[element_name][0].scattering = 'iso-in-lab'
+            self._elements[element_name][0].scattering = 'iso-in-lab'
 
     def get_all_nuclides(self):
         """Returns all nuclides in the material

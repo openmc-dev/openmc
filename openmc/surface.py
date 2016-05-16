@@ -2,11 +2,12 @@ from abc import ABCMeta
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
+from math import sqrt
 
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_greater_than
-from openmc.region import Region
+from openmc.region import Region, Intersection
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -1503,3 +1504,45 @@ class Halfspace(Region):
     def __str__(self):
         return '-' + str(self.surface.id) if self.side == '-' \
             else str(self.surface.id)
+
+
+def make_hexagon_region(edge_length=1., orientation='y'):
+    """Create a hexagon region from six surface planes.
+
+    Parameters
+    ----------
+    edge_length : float
+        Length of a side of the hexagon in cm
+    orientation : {'x', 'y'}
+        An 'x' orientation means that two sides of the hexagon are parallel to
+        the x-axis and a 'y' orientation means that two sides of the hexagon are
+        parallel to the y-axis.
+
+    Returns
+    -------
+    openmc.Region
+        The inside of a hexagonal prism
+
+    """
+
+    l = edge_length
+
+    if orientation == 'y':
+        right = XPlane(x0=sqrt(3.)/2.*l)
+        left = XPlane(x0=-sqrt(3.)/2.*l)
+        c = sqrt(3.)/3.
+        ur = Plane(A=c, B=1., D=l)  # y = -x/sqrt(3) + a
+        ul = Plane(A=-c, B=1., D=l)  # y = x/sqrt(3) + a
+        lr = Plane(A=-c, B=1., D=-l) # y = x/sqrt(3) - a
+        ll = Plane(A=c, B=1., D=-l)  # y = -x/sqrt(3) - a
+        return Intersection(-right, +left, -ur, -ul, +lr, +ll)
+
+    elif orientation == 'x':
+        top = YPlane(y0=sqrt(3.)/2.*l)
+        bottom = YPlane(y0=-sqrt(3.)/2.*l)
+        c = sqrt(3.)
+        ur = Plane(A=c, B=1., D=c*l)  # y = -sqrt(3)*(x - a)
+        lr = Plane(A=-c, B=1., D=-c*l)  # y = sqrt(3)*(x + a)
+        ll = Plane(A=c, B=1., D=-c*l) # y = -sqrt(3)*(x + a)
+        ul = Plane(A=-c, B=1., D=c*l)  # y = sqrt(3)*(x + a)
+        return Intersection(-top, +bottom, -ur, +lr, +ll, -ul)

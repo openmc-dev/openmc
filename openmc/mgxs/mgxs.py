@@ -248,7 +248,6 @@ class MGXS(object):
 
     @property
     def tallies(self):
-        """Construct the OpenMC tallies needed to compute the cross section."""
 
         # Instantiate tallies if they do not exist
         if self._tallies is None:
@@ -3298,7 +3297,6 @@ class Chi(MGXS):
 
     @property
     def xs_tally(self):
-        """Computes chi fission spectrum using OpenMC tally arithmetic."""
 
         if self._xs_tally is None:
             nu_fission_in = self.tallies['nu-fission-in']

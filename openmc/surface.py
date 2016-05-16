@@ -1527,7 +1527,7 @@ def make_hexagon_region(edge_length=1., orientation='y'):
 
     l = edge_length
 
-    if orientation == 'x':
+    if orientation == 'y':
         right = XPlane(x0=sqrt(3.)/2.*l)
         left = XPlane(x0=-sqrt(3.)/2.*l)
         c = sqrt(3.)/3.
@@ -1537,7 +1537,7 @@ def make_hexagon_region(edge_length=1., orientation='y'):
         ll = Plane(A=c, B=1., D=-l)  # y = -x/sqrt(3) - a
         return Intersection(-right, +left, -ur, -ul, +lr, +ll)
 
-    elif orientation == 'y':
+    elif orientation == 'x':
         top = YPlane(y0=sqrt(3.)/2.*l)
         bottom = YPlane(y0=-sqrt(3.)/2.*l)
         c = sqrt(3.)

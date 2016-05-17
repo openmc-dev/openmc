@@ -829,7 +829,8 @@ class XSdata(object):
     def set_scatter_mgxs(self, scatter, nuclide='total', xs_type='macro'):
         """This method allows for an openmc.mgxs.ScatterMatrixXS
         to be used to set the scatter matrix cross section for this XSdata
-        object.
+        object.  If the XsData.order attribute has not yet been set, then
+        it will be set based on the properties of scatter.
 
         Parameters
         ----------
@@ -856,9 +857,35 @@ class XSdata(object):
         check_value('domain_type', scatter.domain_type,
                     ['universe', 'cell', 'material'])
 
+        # Methods of representing anisotropic scattering besides
+        # Legendre expansions have not been implemented yet in openmc.mgxs.
+        # Therefore check to make sure the XsData has been set to
+        # legendre scattering.
+        if (self.scatt_type != 'legendre'):
+            msg = 'Anisotrpic scattering representations other than ' \
+                  'Legendre expansions have not yet been implemented in ' \
+                  'openmc.mgxs.'
+            raise ValueError(msg)
+
+        # If the user has not defined XsData.order, then we will set
+        # the order based on the data within scatter.
+        # Otherwise, we will check to see that XsData.order to match
+        # the order of scatter
+        if self.order is None:
+            self.order = scatter.legendre_order
+        else:
+            check_value('legendre_order', scatter.legendre_order,
+                        [self.order])
+
         if self._representation is 'isotropic':
-            self._scatter = np.array([scatter.get_xs(nuclides=nuclide,
-                                                     xs_type=xs_type)])
+            # Get the scattering orders in the outermost dimension
+            self._scatter = np.zeros((self.num_orders,
+                                      self.energy_groups.num_groups,
+                                      self.energy_groups.num_groups))
+            for moment in range(self.num_orders):
+                self._scatter[moment, :, :] = scatter.get_xs(nuclides=nuclide,
+                                                             xs_type=xs_type,
+                                                             moment=moment)
 
         elif self._representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
@@ -908,10 +935,12 @@ class XSdata(object):
                     ['universe', 'cell', 'material'])
 
         if self._representation is 'isotropic':
+            # import pdb; pdb.set_trace()
+
             nuscatt = nuscatter.get_xs(nuclides=nuclide,
-                                       xs_type=xs_type)
+                                       xs_type=xs_type, moment=0)
             scatt = scatter.get_xs(nuclides=nuclide,
-                                   xs_type=xs_type)
+                                   xs_type=xs_type, moment=0)
             self._multiplicity = np.divide(nuscatt, scatt)
         elif self._representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
@@ -969,7 +998,8 @@ class XSdata(object):
         if self._tabular_legendre is not None:
             subelement = ET.SubElement(element, 'tabular_legendre')
             subelement.set('enable', str(self._tabular_legendre['enable']))
-            subelement.set('num_points', str(self._tabular_legendre['num_points']))
+            subelement.set('num_points',
+                           str(self._tabular_legendre['num_points']))
 
         if self._total is not None:
             subelement = ET.SubElement(element, 'total')

@@ -460,7 +460,7 @@ class Library(object):
         ----------
         domain : Material or Cell or Universe or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
             The type of multi-group cross section object to return
 
         Returns
@@ -773,9 +773,9 @@ class Library(object):
             nuclide this will be set to 'macro' regardless.
         xs_ids : str
             Cross section set identifier. Defaults to '1m'.
-        order : Scattering order for this dataset entry.  Default is None,
-            which will force the XSdata object to use whatever the maximum
-            order available.
+        order : Scattering order for this data entry.  Default is None,
+            which will force the XSdata object to use whatever the order of the
+            Library object is.
 
         Returns
         -------
@@ -801,7 +801,8 @@ class Library(object):
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
         cv.check_type('xs_id', xs_id, basestring)
         cv.check_type('order', order, (type(None), Integral))
-        cv.check_greater_than('order', order, -1, equality=True)
+        if order is not None:
+            cv.check_greater_than('order', order, 0, equality=True)
 
         # Make sure statepoint has been loaded
         if self._sp_filename is None:
@@ -819,20 +820,22 @@ class Library(object):
             name += '_' + nuclide
         name += '.' + xs_id
         xsdata = openmc.XSdata(name, self.energy_groups)
-        if order is 0:
-            xsdata.order = order
+
+        if order is None:
+            # Set the order to the Library's order (the defualt behavior)
+            xsdata.order = self.legendre_order
         else:
-            msg = 'Generating anisotropic scattering from openmc.Library' \
-                  'objects has not yet been implemented.'
-            raise NotImplementedError(msg)
+            # Set the order of the xsdata object to the minimum of
+            # the provided order or the Library's order.
+            xsdata.order = min(order, self.legendre_order)
 
         if nuclide is not 'total':
             xsdata.zaid = self._nuclides[nuclide][0]
             xsdata.awr = self._nuclides[nuclide][1]
 
         # Now get xs data itself
-        if 'transport' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'transport')
+        if ('nu-transport' in self.mgxs_types) and (self.correction == 'P0'):
+            mymgxs = self.get_mgxs(domain, 'nu-transport')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide])
         elif 'total' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'total')
@@ -949,10 +952,6 @@ class Library(object):
         # Initialize file
         mgxs_file = openmc.MGXSLibrary(self.energy_groups)
 
-        # Set the scattering order as isotropic until
-        # support for higher orders are included in openmc.mgxs
-        order = 0
-
         # Create the xsdata object and add it to the mgxs_file
         for i, domain in enumerate(self.domains):
             if self.by_nuclide:
@@ -969,8 +968,7 @@ class Library(object):
                     xsdata_name += '_' + nuclide
 
                 xsdata = self.get_xsdata(domain, xsdata_name, nuclide=nuclide,
-                                         xs_type=xs_type, xs_id=xs_ids[i],
-                                         order=order)
+                                         xs_type=xs_type, xs_id=xs_ids[i])
 
                 mgxs_file.add_xsdata(xsdata)
 
@@ -1031,10 +1029,10 @@ class Library(object):
         # Total or transport can be present, but if using
         # self.correction=="P0", then we should use transport.
         if (((self.correction is "P0") and
-             ('transport' not in self.mgxs_types))):
+             ('nu-transport' not in self.mgxs_types))):
             error_flag = True
-            msg = 'Transport MGXS type is required since a "P0" correction ' \
-                  'is applied, but a Transport MGXS is not provided.'
+            msg = 'NuTransport MGXS type is required since a "P0" correction' \
+                  ' is applied, but a Transport MGXS is not provided.'
             warn(msg)
         elif (((self.correction is None) and
                ('total' not in self.mgxs_types))):

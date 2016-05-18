@@ -38,8 +38,10 @@ class Summary(object):
         self._opencg_geometry = None
 
         self._read_metadata()
+        self._read_nuclides()
         self._read_geometry()
         self._read_tallies()
+        self._f.close()
 
     @property
     def openmc_geometry(self):
@@ -55,8 +57,8 @@ class Summary(object):
     def _read_metadata(self):
         # Read OpenMC version
         self.version = [self._f['version_major'].value,
-                         self._f['version_minor'].value,
-                         self._f['version_release'].value]
+                        self._f['version_minor'].value,
+                        self._f['version_release'].value]
         # Read date and time
         self.date_and_time = self._f['date_and_time'][...]
 
@@ -70,6 +72,17 @@ class Summary(object):
             self.n_inactive = self._f['n_inactive'].value
             self.gen_per_batch = self._f['gen_per_batch'].value
         self.n_procs = self._f['n_procs'].value
+
+    def _read_nuclides(self):
+        self.nuclides = {}
+        n_nuclides = self._f['nuclides/n_nuclides_total'].value
+        names = self._f['nuclides/names'].value
+        awrs = self._f['nuclides/awrs'].value
+        zaids = self._f['nuclides/zaids'].value
+        for n in range(n_nuclides):
+            name = names[n].decode()
+            name = name[:name.find('.')]
+            self.nuclides[name] = (zaids[n], awrs[n])
 
     def _read_geometry(self):
         # Read in and initialize the Materials and Geometry

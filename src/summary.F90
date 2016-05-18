@@ -68,6 +68,7 @@ contains
            "description", "Number of generations per batch")
     end if
 
+    call write_nuclides(file_id)
     call write_geometry(file_id)
     call write_materials(file_id)
     if (n_tallies > 0) then
@@ -104,6 +105,49 @@ contains
          "Number of MPI processes")
 
   end subroutine write_header
+
+!===============================================================================
+! WRITE_NUCLIDES
+!===============================================================================
+
+  subroutine write_nuclides(file_id)
+    integer(HID_T), intent(in) :: file_id
+    integer(HID_T) :: nuclide_group
+    integer :: i
+    character(12), allocatable :: nucnames(:)
+    real(8), allocatable :: awrs(:)
+    integer, allocatable :: zaids(:)
+
+    ! Write useful data from nuclide objects
+    nuclide_group = create_group(file_id, "nuclides")
+    call write_dataset(nuclide_group, "n_nuclides_total", n_nuclides_total)
+
+    ! Build array of nuclide names, awrs, and zaids
+    allocate(nucnames(n_nuclides_total))
+    allocate(awrs(n_nuclides_total))
+    allocate(zaids(n_nuclides_total))
+    do i = 1, n_nuclides_total
+      if (run_CE) then
+        nucnames(i) = xs_listings(nuclides(i) % listing) % alias
+        awrs(i)     = nuclides(i) % awr
+        zaids(i)    = nuclides(i) % zaid
+      else
+        nucnames(i) = xs_listings(nuclides_MG(i) % obj % listing) % alias
+        awrs(i)     = nuclides_MG(i) % obj % awr
+        zaids(i)    = nuclides_MG(i) % obj % zaid
+      end if
+    end do
+
+    ! Write nuclide names, awrs and zaids
+    call write_dataset(nuclide_group, "names", nucnames)
+    call write_dataset(nuclide_group, "awrs", awrs)
+    call write_dataset(nuclide_group, "zaids", zaids)
+
+    call close_group(nuclide_group)
+
+    deallocate(nucnames, awrs, zaids)
+
+  end subroutine write_nuclides
 
 !===============================================================================
 ! WRITE_GEOMETRY

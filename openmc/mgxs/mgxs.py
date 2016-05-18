@@ -376,7 +376,7 @@ class MGXS(object):
 
     @domain_type.setter
     def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, tuple(DOMAIN_TYPES))
+        cv.check_value('domain type', domain_type, DOMAIN_TYPES)
         self._domain_type = domain_type
 
     @energy_groups.setter

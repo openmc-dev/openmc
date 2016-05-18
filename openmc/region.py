@@ -29,6 +29,10 @@ class Region(object):
         return Complement(self)
 
     @abstractmethod
+    def __contains__(self, point):
+        return False
+
+    @abstractmethod
     def __str__(self):
         return ''
 
@@ -229,6 +233,22 @@ class Intersection(Region):
     def __init__(self, *nodes):
         self.nodes = list(nodes)
 
+    def __contains__(self, point):
+        """Check whether a point is contained in the region.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinates, :math:`(x',y',z')`, of the point
+
+        Returns
+        -------
+        bool
+            Whether the point is in the region
+
+        """
+        return all(point in n for n in self.nodes)
+
     def __str__(self):
         return '(' + ' '.join(map(str, self.nodes)) + ')'
 
@@ -280,6 +300,22 @@ class Union(Region):
 
     def __init__(self, *nodes):
         self.nodes = list(nodes)
+
+    def __contains__(self, point):
+        """Check whether a point is contained in the region.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinates, :math:`(x',y',z')`, of the point
+
+        Returns
+        -------
+        bool
+            Whether the point is in the region
+
+        """
+        return any(point in n for n in self.nodes)
 
     def __str__(self):
         return '(' + ' | '.join(map(str, self.nodes)) + ')'
@@ -335,6 +371,22 @@ class Complement(Region):
 
     def __init__(self, node):
         self.node = node
+
+    def __contains__(self, point):
+        """Check whether a point is contained in the region.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinates, :math:`(x',y',z')`, of the point
+
+        Returns
+        -------
+        bool
+            Whether the point is in the region
+
+        """
+        return point not in self.node
 
     def __str__(self):
         return '~' + str(self.node)

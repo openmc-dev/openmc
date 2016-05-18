@@ -295,6 +295,25 @@ class Plane(Surface):
         self._periodic_surface = periodic_surface
         periodic_surface._periodic_surface = self
 
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`Ax' + By' + Cz' - d`
+
+        """
+
+        x, y, z = point
+        return self.a*x + self.b*y + self.c*z - self.d
+
     def create_xml_subelement(self):
         element = super(Plane, self).create_xml_subelement()
 
@@ -392,6 +411,23 @@ class XPlane(Plane):
             return (np.array([self.x0, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
 
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`x' - x_0`
+
+        """
+        return point[0] - self.x0
+
 
 class YPlane(Plane):
     """A plane perpendicular to the y axis of the form :math:`y - y_0 = 0`
@@ -481,6 +517,23 @@ class YPlane(Plane):
             return (np.array([-np.inf, self.y0, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
 
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`y' - y_0`
+
+        """
+        return point[1] - self.y0
+
 
 class ZPlane(Plane):
     """A plane perpendicular to the z axis of the form :math:`z - z_0 = 0`
@@ -569,6 +622,23 @@ class ZPlane(Plane):
         elif side == '+':
             return (np.array([-np.inf, -np.inf, self.z0]),
                     np.array([np.inf, np.inf, np.inf]))
+
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`z' - z_0`
+
+        """
+        return point[2] - self.z0
 
 
 class Cylinder(Surface):
@@ -728,6 +798,25 @@ class XCylinder(Cylinder):
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
 
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`(y' - y_0)^2 + (z' - z_0)^2 - R^2`
+
+        """
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+        return y**2 + z**2 - self.r**2
+
 
 class YCylinder(Cylinder):
     """An infinite cylinder whose length is parallel to the y-axis of the form
@@ -831,6 +920,25 @@ class YCylinder(Cylinder):
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
 
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`(x' - x_0)^2 + (z' - z_0)^2 - R^2`
+
+        """
+        x = point[0] - self.x0
+        z = point[2] - self.z0
+        return x**2 + z**2 - self.r**2
+
 
 class ZCylinder(Cylinder):
     """An infinite cylinder whose length is parallel to the z-axis of the form
@@ -933,6 +1041,25 @@ class ZCylinder(Cylinder):
         elif side == '+':
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
+
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`(x' - x_0)^2 + (y' - y_0)^2 - R^2`
+
+        """
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        return x**2 + y**2 - self.r**2
 
 
 class Sphere(Surface):
@@ -1061,6 +1188,26 @@ class Sphere(Surface):
         elif side == '+':
             return (np.array([-np.inf, -np.inf, -np.inf]),
                     np.array([np.inf, np.inf, np.inf]))
+
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`(x' - x_0)^2 + (y' - y_0)^2 + (z' - z_0)^2 - R^2`
+
+        """
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+        return x**2 + y**2 + z**2 - self.r**2
 
 
 class Cone(Surface):
@@ -1214,6 +1361,26 @@ class XCone(Cone):
 
         self._type = 'x-cone'
 
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`(y' - y_0)^2 + (z' - z_0)^2 - R^2(x' - x_0)^2`
+
+        """
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+        return y**2 + z**2 - self.r2*x**2
+
 
 class YCone(Cone):
     """A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
@@ -1270,6 +1437,26 @@ class YCone(Cone):
 
         self._type = 'y-cone'
 
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`(x' - x_0)^2 + (z' - z_0)^2 - R^2(y' - y_0)^2`
+
+        """
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+        return x**2 + z**2 - self.r2*y**2
+
 
 class ZCone(Cone):
     """A cone parallel to the x-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
@@ -1325,6 +1512,26 @@ class ZCone(Cone):
                                     R2, name=name)
 
         self._type = 'z-cone'
+
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`(x' - x_0)^2 + (y' - y_0)^2 - R^2(z' - z_0)^2`
+
+        """
+        x = point[0] - self.x0
+        y = point[1] - self.y0
+        z = point[2] - self.z0
+        return x**2 + y**2 - self.r2*z**2
 
 
 class Quadric(Surface):
@@ -1471,6 +1678,27 @@ class Quadric(Surface):
         check_type('k coefficient', k, Real)
         self._coefficients['k'] = k
 
+    def evaluate(self, point):
+        """Evaluate the surface equation at a given point.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
+            equation should be evaluated.
+
+        Returns
+        -------
+        float
+            :math:`Ax'^2 + By'^2 + Cz'^2 + Dx'y' + Ey'z' + Fx'z' + Gx' + Hy' +
+            Jz' + K = 0`
+
+        """
+        x, y, z = point
+        return x*(self.a*x + self.d*y + self.g) + \
+            y*(self.b*y + self.e*z + self.h) + \
+            z*(self.c*z + self.f*x + self.j) + self.k
+
 
 class Halfspace(Region):
     """A positive or negative half-space region.
@@ -1515,6 +1743,24 @@ class Halfspace(Region):
 
     def __invert__(self):
         return -self.surface if self.side == '+' else +self.surface
+
+    def __contains__(self, point):
+        """Check whether a point is contained in the half-space.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinates, :math:`(x',y',z')`, of the point
+
+        Returns
+        -------
+        bool
+            Whether the point is in the half-space
+
+        """
+
+        val = self.surface.evaluate(point)
+        return val >= 0. if self.side == '+' else val < 0.
 
     @property
     def surface(self):

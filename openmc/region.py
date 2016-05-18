@@ -223,7 +223,7 @@ class Intersection(Region):
 
     Attributes
     ----------
-    nodes : tuple of openmc.Region
+    nodes : list of openmc.Region
         Regions to take the intersection of
     bounding_box : tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
@@ -232,6 +232,10 @@ class Intersection(Region):
 
     def __init__(self, *nodes):
         self.nodes = list(nodes)
+
+    def __iter__(self):
+        for n in self.nodes:
+            yield n
 
     def __contains__(self, point):
         """Check whether a point is contained in the region.
@@ -300,6 +304,10 @@ class Union(Region):
 
     def __init__(self, *nodes):
         self.nodes = list(nodes)
+
+    def __iter__(self):
+        for n in self.nodes:
+            yield n
 
     def __contains__(self, point):
         """Check whether a point is contained in the region.

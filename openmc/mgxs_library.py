@@ -137,6 +137,10 @@ class XSdata(object):
         ``representation``.
     matrix_shape : iterable of int
         Dimensionality of matrix multi-group cross sections (e.g., the
+        fission matrix cross section).  The return result depends on the
+        value of ``representation``.
+    pn_matrix_shape : iterable of int
+        Dimensionality of scattering matrix data (e.g., the
         scattering matrix cross section).  The return result depends on the
         value of ``representation``.
     total : numpy.ndarray
@@ -621,9 +625,9 @@ class XSdata(object):
         check_value('domain_type', total.domain_type,
                     ['universe', 'cell', 'material'])
 
-        if self._representation is 'isotropic':
+        if self.representation is 'isotropic':
             self._total = total.get_xs(nuclides=nuclide, xs_type=xs_type)
-        elif self._representation is 'angle':
+        elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -657,10 +661,10 @@ class XSdata(object):
         check_value('domain_type', absorption.domain_type,
                     ['universe', 'cell', 'material'])
 
-        if self._representation is 'isotropic':
+        if self.representation is 'isotropic':
             self._absorption = absorption.get_xs(nuclides=nuclide,
                                                  xs_type=xs_type)
-        elif self._representation is 'angle':
+        elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -693,10 +697,10 @@ class XSdata(object):
         check_value('domain_type', fission.domain_type,
                     ['universe', 'cell', 'material'])
 
-        if self._representation is 'isotropic':
+        if self.representation is 'isotropic':
             self._fission = fission.get_xs(nuclides=nuclide,
                                            xs_type=xs_type)
-        elif self._representation is 'angle':
+        elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -733,10 +737,10 @@ class XSdata(object):
         check_value('domain_type', nu_fission.domain_type,
                     ['universe', 'cell', 'material'])
 
-        if self._representation is 'isotropic':
+        if self.representation is 'isotropic':
             self._nu_fission = nu_fission.get_xs(nuclides=nuclide,
                                                  xs_type=xs_type)
-        elif self._representation is 'angle':
+        elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -776,10 +780,10 @@ class XSdata(object):
         check_value('domain_type', k_fission.domain_type,
                     ['universe', 'cell', 'material'])
 
-        if self._representation is 'isotropic':
+        if self.representation is 'isotropic':
             self._kappa_fission = k_fission.get_xs(nuclides=nuclide,
                                                    xs_type=xs_type)
-        elif self._representation is 'angle':
+        elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -816,10 +820,10 @@ class XSdata(object):
         check_value('domain_type', chi.domain_type,
                     ['universe', 'cell', 'material'])
 
-        if self._representation is 'isotropic':
+        if self.representation is 'isotropic':
             self._chi = chi.get_xs(nuclides=nuclide,
                                    xs_type=xs_type)
-        elif self._representation is 'angle':
+        elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -829,7 +833,7 @@ class XSdata(object):
     def set_scatter_mgxs(self, scatter, nuclide='total', xs_type='macro'):
         """This method allows for an openmc.mgxs.ScatterMatrixXS
         to be used to set the scatter matrix cross section for this XSdata
-        object.  If the XsData.order attribute has not yet been set, then
+        object.  If the XSdata.order attribute has not yet been set, then
         it will be set based on the properties of scatter.
 
         Parameters
@@ -857,19 +861,15 @@ class XSdata(object):
         check_value('domain_type', scatter.domain_type,
                     ['universe', 'cell', 'material'])
 
-        # Methods of representing anisotropic scattering besides
-        # Legendre expansions have not been implemented yet in openmc.mgxs.
-        # Therefore check to make sure the XsData has been set to
-        # legendre scattering.
         if (self.scatt_type != 'legendre'):
-            msg = 'Anisotrpic scattering representations other than ' \
+            msg = 'Anisotropic scattering representations other than ' \
                   'Legendre expansions have not yet been implemented in ' \
                   'openmc.mgxs.'
             raise ValueError(msg)
 
-        # If the user has not defined XsData.order, then we will set
+        # If the user has not defined XSdata.order, then we will set
         # the order based on the data within scatter.
-        # Otherwise, we will check to see that XsData.order to match
+        # Otherwise, we will check to see that XSdata.order to match
         # the order of scatter
         if self.order is None:
             self.order = scatter.legendre_order
@@ -877,7 +877,7 @@ class XSdata(object):
             check_value('legendre_order', scatter.legendre_order,
                         [self.order])
 
-        if self._representation is 'isotropic':
+        if self.representation is 'isotropic':
             # Get the scattering orders in the outermost dimension
             self._scatter = np.zeros((self.num_orders,
                                       self.energy_groups.num_groups,
@@ -887,7 +887,7 @@ class XSdata(object):
                                                              xs_type=xs_type,
                                                              moment=moment)
 
-        elif self._representation is 'angle':
+        elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -934,15 +934,13 @@ class XSdata(object):
         check_value('domain_type', scatter.domain_type,
                     ['universe', 'cell', 'material'])
 
-        if self._representation is 'isotropic':
-            # import pdb; pdb.set_trace()
-
+        if self.representation is 'isotropic':
             nuscatt = nuscatter.get_xs(nuclides=nuclide,
                                        xs_type=xs_type, moment=0)
             scatt = scatter.get_xs(nuclides=nuclide,
                                    xs_type=xs_type, moment=0)
             self._multiplicity = np.divide(nuscatt, scatt)
-        elif self._representation is 'angle':
+        elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
         self._multiplicity = np.nan_to_num(self._multiplicity)

@@ -11,7 +11,7 @@ particles = 10000
 
 
 ###############################################################################
-#                 Exporting to OpenMC materials.xml File
+#                 Exporting to OpenMC materials.xml file
 ###############################################################################
 
 # Instantiate some Nuclides
@@ -30,15 +30,14 @@ moderator.add_nuclide(h1, 2.)
 moderator.add_nuclide(o16, 1.)
 moderator.add_s_alpha_beta('HH2O', '71t')
 
-# Instantiate a MaterialsFile, register all Materials, and export to XML
-materials_file = openmc.MaterialsFile()
+# Instantiate a Materials collection and export to XML
+materials_file = openmc.Materials([moderator, fuel])
 materials_file.default_xs = '71c'
-materials_file.add_materials([moderator, fuel])
 materials_file.export_to_xml()
 
 
 ###############################################################################
-#                 Exporting to OpenMC geometry.xml File
+#                 Exporting to OpenMC geometry.xml file
 ###############################################################################
 
 # Instantiate Surfaces
@@ -106,22 +105,18 @@ lattice.universes = [[univ1, univ2, univ1, univ2],
 # Fill Cell with the Lattice
 cell1.fill = lattice
 
-# Instantiate a Geometry and register the root Universe
+# Instantiate a Geometry, register the root Universe, and export to XML
 geometry = openmc.Geometry()
 geometry.root_universe = root
-
-# Instantiate a GeometryFile, register Geometry, and export to XML
-geometry_file = openmc.GeometryFile()
-geometry_file.geometry = geometry
-geometry_file.export_to_xml()
+geometry.export_to_xml()
 
 
 ###############################################################################
-#                   Exporting to OpenMC settings.xml File
+#                   Exporting to OpenMC settings.xml file
 ###############################################################################
 
-# Instantiate a SettingsFile, set all runtime parameters, and export to XML
-settings_file = openmc.SettingsFile()
+# Instantiate a Settings object, set all runtime parameters, and export to XML
+settings_file = openmc.Settings()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
@@ -137,7 +132,7 @@ settings_file.export_to_xml()
 
 
 ###############################################################################
-#                   Exporting to OpenMC plots.xml File
+#                   Exporting to OpenMC plots.xml file
 ###############################################################################
 
 plot = openmc.Plot(plot_id=1)
@@ -146,14 +141,13 @@ plot.width = [4, 4]
 plot.pixels = [400, 400]
 plot.color = 'mat'
 
-# Instantiate a PlotsFile, add Plot, and export to XML
-plot_file = openmc.PlotsFile()
-plot_file.add_plot(plot)
+# Instantiate a Plots collection and export to XML
+plot_file = openmc.Plots([plot])
 plot_file.export_to_xml()
 
 
 ###############################################################################
-#                   Exporting to OpenMC tallies.xml File
+#                   Exporting to OpenMC tallies.xml file
 ###############################################################################
 
 # Instantiate a tally mesh
@@ -177,8 +171,6 @@ tally.filters = [mesh_filter]
 tally.scores = ['total']
 tally.triggers = [trigger]
 
-# Instantiate a TalliesFile, register Tally/Mesh, and export to XML
-tallies_file = openmc.TalliesFile()
-tallies_file.add_mesh(mesh)
-tallies_file.add_tally(tally)
+# Instantiate a Tallies collection and export to XML
+tallies_file = openmc.Tallies([tally])
 tallies_file.export_to_xml()

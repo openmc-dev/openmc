@@ -1,7 +1,7 @@
 module simulation
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   use cmfd_execute,    only: cmfd_init_batch, execute_cmfd

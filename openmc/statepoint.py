@@ -1,5 +1,8 @@
 import sys
 import re
+import os
+import warnings
+
 import numpy as np
 
 import openmc
@@ -13,6 +16,14 @@ class StatePoint(object):
     """State information on a simulation at a certain point in time (at the end
     of a given batch). Statepoints can be used to analyze tally results as well
     as restart a simulation.
+
+    Parameters
+    ----------
+    filename : str
+        Path to file to load
+    autolink : bool, optional
+        Whether to automatically link in metadata from a summary.h5
+        file. Defaults to True.
 
     Attributes
     ----------
@@ -93,7 +104,7 @@ class StatePoint(object):
 
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, autolink=True):
         import h5py
         self._f = h5py.File(filename, 'r')
 
@@ -116,9 +127,16 @@ class StatePoint(object):
         # Set flags for what data has been read
         self._meshes_read = False
         self._tallies_read = False
-        self._summary = False
+        self._summary = None
         self._global_tallies = None
         self._sparse = False
+
+        # Automatically link in a summary file if one exists
+        if autolink:
+            path_summary = os.path.join(os.path.dirname(filename), 'summary.h5')
+            if os.path.exists(path_summary):
+                su = openmc.Summary(path_summary)
+                self.link_with_summary(su)
 
     def close(self):
         self._f.close()
@@ -611,6 +629,11 @@ class StatePoint(object):
             an openmc.Summary object.
 
         """
+
+        if self.summary is not None:
+            warnings.warn('A Summary object has already been linked.',
+                          RuntimeWarning)
+            return
 
         if not isinstance(summary, openmc.summary.Summary):
             msg = 'Unable to link statepoint with "{0}" which ' \

@@ -5,9 +5,9 @@ from openmc.stats import Box
 
 class InputSet(object):
     def __init__(self):
-        self.settings = openmc.SettingsFile()
-        self.materials = openmc.MaterialsFile()
-        self.geometry = openmc.GeometryFile()
+        self.settings = openmc.Settings()
+        self.materials = openmc.Materials()
+        self.geometry = openmc.Geometry()
         self.tallies = None
         self.plots = None
 
@@ -267,9 +267,9 @@ class InputSet(object):
 
         # Define the materials file.
         self.materials.default_xs = '71c'
-        self.materials.add_materials((fuel, clad, cold_water, hot_water,
-             rpv_steel, lower_rad_ref, upper_rad_ref, bot_plate, bot_nozzle,
-             top_nozzle, top_fa, bot_fa))
+        self.materials += (fuel, clad, cold_water, hot_water, rpv_steel,
+                           lower_rad_ref, upper_rad_ref, bot_plate,
+                           bot_nozzle, top_nozzle, top_fa, bot_fa)
 
         # Define surfaces.
         s1 = openmc.ZCylinder(R=0.41, surface_id=1)
@@ -550,11 +550,8 @@ class InputSet(object):
 
         root.add_cells((c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12))
 
-        # Define the geometry file.
-        geometry = openmc.Geometry()
-        geometry.root_universe = root
-
-        self.geometry.geometry = geometry
+        # Assign root universe to geometry
+        self.geometry.root_universe = root
 
     def build_default_settings(self):
         self.settings.batches = 10
@@ -593,7 +590,7 @@ class MGInputSet(InputSet):
 
         # Define the materials file.
         self.materials.default_xs = '71c'
-        self.materials.add_materials((uo2, clad, water))
+        self.materials += (uo2, clad, water)
 
         # Define surfaces.
 
@@ -630,12 +627,8 @@ class MGInputSet(InputSet):
 
         root.add_cells((c1,c2,c3))
 
-        # Define the geometry file.
-        geometry = openmc.Geometry()
-        geometry.root_universe = root
-
-        self.geometry.geometry = geometry
-
+        # Assign root universe to geometry
+        self.geometry.root_universe = root
 
     def build_default_settings(self):
         self.settings.batches = 10
@@ -656,8 +649,3 @@ class MGInputSet(InputSet):
         plot.color = 'mat'
 
         self.plots.add_plot(plot)
-
-
-
-
-

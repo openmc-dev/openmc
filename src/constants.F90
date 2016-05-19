@@ -37,7 +37,7 @@ module constants
   real(8), parameter :: FP_COINCIDENT = 1e-12_8
 
   ! Maximum number of collisions/crossings
-  integer, parameter :: MAX_EVENTS = 10000
+  integer, parameter :: MAX_EVENTS = 1000000
   integer, parameter :: MAX_SAMPLE = 100000
 
   ! Maximum number of secondary particles created

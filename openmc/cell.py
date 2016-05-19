@@ -23,7 +23,7 @@ def reset_auto_cell_id():
 
 
 class Cell(object):
-    """A region of space defined as the intersection of half-space created by
+    r"""A region of space defined as the intersection of half-space created by
     quadric surfaces.
 
     Parameters
@@ -33,6 +33,10 @@ class Cell(object):
         automatically be assigned.
     name : str, optional
         Name of the cell. If not specified, the name is the empty string.
+    fill : openmc.Material or openmc.Universe or openmc.Lattice or 'void' or iterable of openmc.Material, optional
+        Indicates what the region of space is filled with
+    region : openmc.Region, optional
+        Region of space that is assigned to the cell.
 
     Attributes
     ----------
@@ -44,14 +48,25 @@ class Cell(object):
         Indicates what the region of space is filled with
     region : openmc.Region
         Region of space that is assigned to the cell.
-    rotation : numpy.ndarray
+    rotation : Iterable of float
         If the cell is filled with a universe, this array specifies the angles
         in degrees about the x, y, and z axes that the filled universe should be
-        rotated.
+        Tait-Bryan angles. That is to say, if the angles are :math:`(\phi,
+        \theta, \psi)`, then the rotation matrix applied is :math:`R_z(\psi)
+        R_y(\theta) R_x(\phi)` or
+
+        .. math::
+
+           \left [ \begin{array}{ccc} \cos\theta \cos\psi & -\cos\theta \sin\psi
+           + \sin\phi \sin\theta \cos\psi & \sin\phi \sin\psi + \cos\phi
+           \sin\theta \cos\psi \\ \cos\theta \sin\psi & \cos\phi \cos\psi +
+           \sin\phi \sin\theta \sin\psi & -\sin\phi \cos\psi + \cos\phi
+           \sin\theta \sin\psi \\ -\sin\theta & \sin\phi \cos\theta & \cos\phi
+           \cos\theta \end{array} \right ]
     temperature : float or iterable of float
         Temperature of the cell in Kelvin.  Multiple temperatures can be given
         to give each distributed cell instance a unique temperature.
-    translation : numpy.ndarray
+    translation : Iterable of float
         If the cell is filled with a universe, this array specifies a vector
         that is used to translate (shift) the universe.
     offsets : ndarray
@@ -61,7 +76,7 @@ class Cell(object):
 
     """
 
-    def __init__(self, cell_id=None, name=''):
+    def __init__(self, cell_id=None, name='', fill=None, region=None):
         # Initialize Cell class attributes
         self.id = cell_id
         self.name = name
@@ -73,6 +88,11 @@ class Cell(object):
         self._translation = None
         self._offsets = None
         self._distribcell_index = None
+
+        if fill is not None:
+            self.fill = fill
+        if region is not None:
+            self.region = region
 
     def __eq__(self, other):
         if not isinstance(other, Cell):
@@ -234,6 +254,10 @@ class Cell(object):
 
     @rotation.setter
     def rotation(self, rotation):
+        if not isinstance(self.fill, openmc.Universe):
+            raise RuntimeError('Cell rotation can only be applied if the cell '
+                               'is filled with a Universe')
+
         cv.check_type('cell rotation', rotation, Iterable, Real)
         cv.check_length('cell rotation', rotation, 3)
         self._rotation = rotation

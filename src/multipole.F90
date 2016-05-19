@@ -42,39 +42,39 @@ contains
       group_id = open_group(file_id, "/nuclide")
 
       ! Load in all the array size scalars
-      call read_dataset(group_id, "length", multipole % length)
-      call read_dataset(group_id, "windows", multipole % windows)
-      call read_dataset(group_id, "num_l", multipole % num_l)
-      call read_dataset(group_id, "fit_order", multipole % fit_order)
-      call read_dataset(group_id, "max_w", multipole % max_w)
-      call read_dataset(group_id, "fissionable", is_fissionable)
+      call read_dataset(multipole % length, group_id, "length")
+      call read_dataset(multipole % windows, group_id, "windows")
+      call read_dataset(multipole % num_l, group_id, "num_l")
+      call read_dataset(multipole % fit_order, group_id, "fit_order")
+      call read_dataset(multipole % max_w, group_id, "max_w")
+      call read_dataset(is_fissionable, group_id, "fissionable")
       if (is_fissionable == MP_FISS) then
         multipole % fissionable = .true.
       else
         multipole % fissionable = .false.
       end if
-      call read_dataset(group_id, "formalism", multipole % formalism)
+      call read_dataset(multipole % formalism, group_id, "formalism")
 
-      call read_dataset(group_id, "spacing", multipole % spacing)
-      call read_dataset(group_id, "sqrtAWR", multipole % sqrtAWR)
-      call read_dataset(group_id, "start_E", multipole % start_E)
-      call read_dataset(group_id, "end_E", multipole % end_E)
+      call read_dataset(multipole % spacing, group_id, "spacing")
+      call read_dataset(multipole % sqrtAWR, group_id, "sqrtAWR")
+      call read_dataset(multipole % start_E, group_id, "start_E")
+      call read_dataset(multipole % end_E, group_id, "end_E")
 
       ! Allocate the multipole array components
       call multipole % allocate()
 
       ! Read in arrays
-      call read_dataset(group_id, "data", multipole % data)
-      call read_dataset(group_id, "pseudo_K0RS", multipole % pseudo_k0RS)
-      call read_dataset(group_id, "l_value", multipole % l_value)
-      call read_dataset(group_id, "w_start", multipole % w_start)
-      call read_dataset(group_id, "w_end", multipole % w_end)
-      call read_dataset(group_id, "broaden_poly", multipole % broaden_poly)
+      call read_dataset(multipole % data, group_id, "data")
+      call read_dataset(multipole % pseudo_k0RS, group_id, "pseudo_K0RS")
+      call read_dataset(multipole % l_value, group_id, "l_value")
+      call read_dataset(multipole % w_start, group_id, "w_start")
+      call read_dataset(multipole % w_end, group_id, "w_end")
+      call read_dataset(multipole % broaden_poly, group_id, "broaden_poly")
 
-      call read_dataset(group_id, "curvefit", multipole % curvefit)
+      call read_dataset(multipole % curvefit, group_id, "curvefit")
 
       ! Delete ACE pointwise data
-      call read_dataset(group_id, "n_grid", nuc % n_grid)
+      call read_dataset(nuc % n_grid, group_id, "n_grid")
 
       deallocate(nuc % energy)
       deallocate(nuc % total)
@@ -95,14 +95,14 @@ contains
       nuc % fission(:) = ZERO
 
       ! Read in new energy axis (converting eV to MeV)
-      call read_dataset(group_id, "energy_points", nuc % energy)
+      call read_dataset(nuc % energy, group_id, "energy_points")
       nuc % energy = nuc % energy / 1.0e6_8
 
       ! Get count and list of MT tables
-      call read_dataset(group_id, "MT_count", NMT)
+      call read_dataset(NMT, group_id, "MT_count")
       allocate(MT(NMT))
 
-      call read_dataset(group_id, "MT_list", MT)
+      call read_dataset(MT, group_id, "MT_list")
 
       call close_group(group_id)
 
@@ -117,10 +117,10 @@ contains
         ! Each MT needs to be treated slightly differently.
         select case (MT(i))
           case(ELASTIC)
-            call read_dataset(group_id, "MT_sigma", nuc % elastic)
+            call read_dataset(nuc % elastic, group_id, "MT_sigma")
             nuc % total(:) = nuc % total + nuc % elastic
           case(N_FISSION)
-            call read_dataset(group_id, "MT_sigma", nuc % fission)
+            call read_dataset(nuc % fission, group_id, "MT_sigma")
             nuc % total(:) = nuc % total + nuc % fission
             nuc % absorption(:) = nuc % absorption + nuc % fission
             accumulated_fission = .true.
@@ -143,12 +143,12 @@ contains
                 deallocate(nuc % reactions(j) % sigma)
                 allocate(nuc % reactions(j) % sigma(nuc % n_grid))
 
-                call read_dataset(group_id, "MT_sigma", &
-                                  nuc % reactions(j) % sigma)
-                call read_dataset(group_id, "Q_value", &
-                                  nuc % reactions(j) % Q_value)
-                call read_dataset(group_id, "threshold", &
-                                  nuc % reactions(j) % threshold)
+                call read_dataset(nuc % reactions(j) % sigma, &
+                                  group_id, "MT_sigma")
+                call read_dataset(nuc % reactions(j) % Q_value, &
+                                  group_id, "Q_value")
+                call read_dataset(nuc % reactions(j) % threshold, &
+                                  group_id, "threshold")
                 nuc % reactions(j) % threshold = 1 ! TODO: reconsider implications.
                 nuc % reactions(j) % Q_value = nuc % reactions(j) % Q_value &
                                                / 1.0e6_8

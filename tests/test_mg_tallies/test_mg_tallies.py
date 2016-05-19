@@ -27,24 +27,15 @@ class MGTalliesTestHarness(PyAPITestHarness):
         mat_filter = openmc.Filter(type='material', bins=[1,2,3])
 
         tally1 = openmc.Tally(tally_id=1)
-        tally1.add_filter(mesh_filter)
-        tally1.add_score('total')
-        tally1.add_score('absorption')
-        tally1.add_score('flux')
-        tally1.add_score('fission')
-        tally1.add_score('nu-fission')
+        tally1.filters = [mesh_filter]
+        tally1.scores = ['total', 'absorption', 'flux',
+                         'fission', 'nu-fission']
 
         tally2 = openmc.Tally(tally_id=2)
-        tally2.add_filter(mat_filter)
-        tally2.add_filter(energy_filter)
-        tally2.add_filter(energyout_filter)
-        tally2.add_score('scatter')
-        tally2.add_score('nu-scatter')
+        tally2.filters = [mat_filter, energy_filter, energyout_filter]
+        tally2.scores = ['scatter', 'nu-scatter']
 
-        self._input_set.tallies = openmc.TalliesFile()
-        self._input_set.tallies.add_mesh(mesh)
-        self._input_set.tallies.add_tally(tally1)
-        self._input_set.tallies.add_tally(tally2)
+        self._input_set.tallies = openmc.Tallies([tally1, tally2])
 
         super(MGTalliesTestHarness, self)._build_inputs()
 

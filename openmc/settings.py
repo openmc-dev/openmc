@@ -16,7 +16,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-class SettingsFile(object):
+class Settings(object):
     """Settings file used for an OpenMC simulation. Corresponds directly to the
     settings.xml input file.
 
@@ -70,9 +70,10 @@ class SettingsFile(object):
         deviation.
     cross_sections : str
         Indicates the path to an XML cross section listing file (usually named
-        cross_sections.xml). If it is not set, the :envvar:`CROSS_SECTIONS`
-        environment variable will be used for continuous-energy calculations
-        and :envvar:`MG_CROSS_SECTIONS` will be used for multi-group
+        cross_sections.xml). If it is not set, the
+        :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used for
+        continuous-energy calculations and
+        :envvar:`OPENMC_MG_CROSS_SECTIONS` will be used for multi-group
         calculations to find the path to the XML cross section file.
     multipole_library : str
         Indicates the path to a directory containing a windowed multipole

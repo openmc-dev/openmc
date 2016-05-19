@@ -1,8 +1,11 @@
 from collections import OrderedDict, Iterable
+from math import cos, sin, pi
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 import warnings
+
+import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
@@ -83,6 +86,7 @@ class Cell(object):
         self._type = None
         self._region = None
         self._rotation = None
+        self._rotation_matrix = None
         self._translation = None
         self._offsets = None
         self._distribcell_index = None
@@ -91,6 +95,9 @@ class Cell(object):
             self.fill = fill
         if region is not None:
             self.region = region
+
+    def __contains__(self, point):
+        return point in self.region
 
     def __eq__(self, other):
         if not isinstance(other, Cell):
@@ -124,6 +131,8 @@ class Cell(object):
         if isinstance(self._fill, openmc.Material):
             string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
                                                 self._fill._id)
+        elif isinstance(self._fill, basestring):
+            string += '{0: <16}=\tvoid\n'.format('\tMaterial')
         elif isinstance(self._fill, Iterable):
             string += '{0: <16}{1}'.format('\tMaterial', '=\t')
             string += '['
@@ -178,6 +187,10 @@ class Cell(object):
     @property
     def rotation(self):
         return self._rotation
+
+    @property
+    def rotation_matrix(self):
+        return self._rotation_matrix
 
     @property
     def translation(self):
@@ -249,13 +262,23 @@ class Cell(object):
 
         cv.check_type('cell rotation', rotation, Iterable, Real)
         cv.check_length('cell rotation', rotation, 3)
-        self._rotation = rotation
+        self._rotation = np.asarray(rotation)
+
+        # Save rotation matrix
+        phi, theta, psi = self.rotation*(-pi/180.)
+        c3, s3 = cos(phi), sin(phi)
+        c2, s2 = cos(theta), sin(theta)
+        c1, s1 = cos(psi), sin(psi)
+        self._rotation_matrix = np.array([
+            [c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+            [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+            [-s2, c2*s3, c2*c3]])
 
     @translation.setter
     def translation(self, translation):
         cv.check_type('cell translation', translation, Iterable, Real)
         cv.check_length('cell translation', translation, 3)
-        self._translation = translation
+        self._translation = np.asarray(translation)
 
     @offsets.setter
     def offsets(self, offsets):

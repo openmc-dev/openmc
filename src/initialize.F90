@@ -378,7 +378,7 @@ contains
 
           ! Check what type of file this is
           file_id = file_open(argv(i), 'r', parallel=.true.)
-          call read_dataset(file_id, 'filetype', filetype)
+          call read_dataset(filetype, file_id, 'filetype')
           call file_close(file_id)
 
           ! Set path and flag for type of run
@@ -404,7 +404,7 @@ contains
 
               ! Check file type is a source file
               file_id = file_open(argv(i), 'r', parallel=.true.)
-              call read_dataset(file_id, 'filetype', filetype)
+              call read_dataset(filetype, file_id, 'filetype')
               call file_close(file_id)
               if (filetype /= 'source') then
                 call fatal_error("Second file after restart flag must be a &

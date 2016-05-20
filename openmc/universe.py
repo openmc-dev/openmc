@@ -36,6 +36,8 @@ class Universe(object):
         automatically be assigned
     name : str, optional
         Name of the universe. If not specified, the name is the empty string.
+    cells : Iterable of openmc.Cell, optional
+        Cells to add to the universe. By default no cells are added.
 
     Attributes
     ----------
@@ -49,7 +51,7 @@ class Universe(object):
 
     """
 
-    def __init__(self, universe_id=None, name=''):
+    def __init__(self, universe_id=None, name='', cells=None):
         # Initialize Cell class attributes
         self.id = universe_id
         self.name = name
@@ -61,7 +63,9 @@ class Universe(object):
         # Keys     - Cell IDs
         # Values - Offsets
         self._cell_offsets = OrderedDict()
-        self._num_regions = 0
+
+        if cells is not None:
+            self.add_cells(cells)
 
     def __eq__(self, other):
         if not isinstance(other, Universe):
@@ -87,8 +91,6 @@ class Universe(object):
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         string += '{0: <16}{1}{2}\n'.format('\tCells', '=\t',
                                             list(self._cells.keys()))
-        string += '{0: <16}{1}{2}\n'.format('\t# Regions', '=\t',
-                                            self._num_regions)
         return string
 
     @property

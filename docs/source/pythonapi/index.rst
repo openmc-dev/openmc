@@ -13,6 +13,21 @@ online. We recommend going through the modules from Codecademy_ and/or the
 `Scipy lectures`_. The full API documentation serves to provide more information
 on a given module or class.
 
+-------------------------
+Example Jupyter Notebooks
+-------------------------
+
+.. toctree::
+    :maxdepth: 1
+
+    examples/post-processing
+    examples/pandas-dataframes
+    examples/tally-arithmetic
+    examples/mgxs-part-i
+    examples/mgxs-part-ii
+    examples/mgxs-part-iii
+    examples/mgxs-part-iv
+
 ------------------------------------
 :mod:`openmc` -- Basic Functionality
 ------------------------------------
@@ -29,7 +44,7 @@ Classes
    :template: myclass.rst
 
    openmc.XSdata
-   openmc.MGXSLibraryFile
+   openmc.MGXSLibrary
 
 Functions
 +++++++++
@@ -50,7 +65,7 @@ Simulation Settings
 
    openmc.Source
    openmc.ResonanceScattering
-   openmc.SettingsFile
+   openmc.Settings
 
 Material Specification
 ----------------------
@@ -64,7 +79,7 @@ Material Specification
    openmc.Element
    openmc.Macroscopic
    openmc.Material
-   openmc.MaterialsFile
+   openmc.Materials
 
 Building geometry
 -----------------
@@ -96,7 +111,6 @@ Building geometry
    openmc.RectLattice
    openmc.HexLattice
    openmc.Geometry
-   openmc.GeometryFile
 
 Many of the above classes are derived from several abstract classes:
 
@@ -108,6 +122,16 @@ Many of the above classes are derived from several abstract classes:
    openmc.Surface
    openmc.Region
    openmc.Lattice
+
+One function is also available to create a hexagonal region defined by the
+intersection of six surface half-spaces.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.make_hexagon_region
 
 Constructing Tallies
 --------------------
@@ -121,7 +145,7 @@ Constructing Tallies
    openmc.Mesh
    openmc.Trigger
    openmc.Tally
-   openmc.TalliesFile
+   openmc.Tallies
 
 Coarse Mesh Finite Difference Acceleration
 ------------------------------------------
@@ -132,7 +156,7 @@ Coarse Mesh Finite Difference Acceleration
    :template: myclass.rst
 
    openmc.CMFDMesh
-   openmc.CMFDFile
+   openmc.CMFD
 
 Plotting
 --------
@@ -143,7 +167,7 @@ Plotting
    :template: myclass.rst
 
    openmc.Plot
-   openmc.PlotsFile
+   openmc.Plots
 
 Running OpenMC
 --------------
@@ -151,9 +175,10 @@ Running OpenMC
 .. autosummary::
    :toctree: generated
    :nosignatures:
-   :template: myclass.rst
+   :template: myfunction.rst
 
-   openmc.Executor
+   openmc.run
+   openmc.plot_geometry
 
 Post-processing
 ---------------
@@ -270,20 +295,6 @@ Multi-group Cross Section Libraries
     :template: myclass.rst
 
     openmc.mgxs.Library
-
--------------------------
-Example Jupyter Notebooks
--------------------------
-
-.. toctree::
-    :maxdepth: 1
-
-    examples/post-processing
-    examples/pandas-dataframes
-    examples/tally-arithmetic
-    examples/mgxs-part-i
-    examples/mgxs-part-ii
-    examples/mgxs-part-iii
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

@@ -393,9 +393,9 @@ def get_compatible_opencg_surfaces(opencg_surface):
         surfaces = [left, right, bottom, top]
 
     elif opencg_surface.type == 'z-squareprism':
-        x0 = opencg_surface.x0['x0']
-        y0 = opencg_surface.y0['y0']
-        R = opencg_surface.r['R']
+        x0 = opencg_surface.x0
+        y0 = opencg_surface.y0
+        R = opencg_surface.r
 
         # Create a list of the four planes we need
         left = opencg.XPlane(name=name, boundary=boundary, x0=x0-R)
@@ -528,7 +528,7 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
         # Get the compatible Surfaces (XPlanes and YPlanes)
         compatible_surfaces = get_compatible_opencg_surfaces(opencg_surface)
 
-        opencg_cell.removeSurface(opencg_surface)
+        opencg_cell.remove_surface(opencg_surface)
 
         # If Cell is inside SquarePrism, add "inside" of Surface halfspaces
         if halfspace == -1:
@@ -595,7 +595,7 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
 
     # Remove redundant Surfaces from the Cells
     for cell in compatible_cells:
-        cell.removeRedundantSurfaces()
+        cell.remove_redundant_surfaces()
 
     # Return the list of OpenMC compatible OpenCG Cells
     return compatible_cells
@@ -639,7 +639,7 @@ def make_opencg_cells_compatible(opencg_universe):
                                                      surface, halfspace)
 
                 # Remove the non-compatible OpenCG Cell from the Universe
-                opencg_universe.removeCell(opencg_cell)
+                opencg_universe.remove_cell(opencg_cell)
 
                 # Add the compatible OpenCG Cells to the Universe
                 opencg_universe.add_cells(cells)

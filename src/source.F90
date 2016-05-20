@@ -53,7 +53,7 @@ contains
       file_id = file_open(path_source, 'r', parallel=.true.)
 
       ! Read the file type
-      call read_dataset(file_id, "filetype", filetype)
+      call read_dataset(filetype, file_id, "filetype")
 
       ! Check to make sure this is a source file
       if (filetype /= 'source') then

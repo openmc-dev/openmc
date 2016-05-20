@@ -16,7 +16,7 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         self._input_set.settings.output = {'summary': True}
 
         # Initialize the tallies file
-        tallies_file = openmc.TalliesFile()
+        tallies_file = openmc.Tallies()
 
         # Initialize the nuclides
         u235 = openmc.Nuclide('U-235')
@@ -43,14 +43,13 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         tally.filters = [material_filter, energy_filter, distrib_filter]
         tally.scores = ['nu-fission', 'total']
         tally.nuclides = [u235, pu239]
-        tallies_file.add_tally(tally)
+        tallies_file.append(tally)
 
         tally = openmc.Tally(name='tally 2')
         tally.filters = [energy_filter, mesh_filter]
         tally.scores = ['total', 'fission']
         tally.nuclides = [u238, u235]
-        tallies_file.add_tally(tally)
-        tallies_file.add_mesh(mesh)
+        tallies_file.append(tally)
 
         # Export tallies to file
         self._input_set.tallies = tallies_file
@@ -62,11 +61,6 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = openmc.StatePoint(statepoint)
-
-        # Read the summary file.
-        summary = glob.glob(os.path.join(os.getcwd(), 'summary.h5'))[0]
-        su = openmc.Summary(summary)
-        sp.link_with_summary(su)
 
         # Load the tallies
         tally_1 = sp.get_tally(name='tally 1')

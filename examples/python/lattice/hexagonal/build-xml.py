@@ -35,15 +35,14 @@ iron = openmc.Material(material_id=3, name='iron')
 iron.set_density('g/cc', 7.9)
 iron.add_nuclide(fe56, 1.)
 
-# Instantiate a MaterialsFile, register all Materials, and export to XML
-materials_file = openmc.MaterialsFile()
+# Instantiate a Materials collection and export to XML
+materials_file = openmc.Materials([moderator, fuel, iron])
 materials_file.default_xs = '71c'
-materials_file.add_materials([moderator, fuel, iron])
 materials_file.export_to_xml()
 
 
 ###############################################################################
-#                 Exporting to OpenMC geometry.xml File
+#                 Exporting to OpenMC geometry.xml file
 ###############################################################################
 
 # Instantiate Surfaces
@@ -105,22 +104,18 @@ lattice.outer = univ2
 # Fill Cell with the Lattice
 cell1.fill = lattice
 
-# Instantiate a Geometry and register the root Universe
+# Instantiate a Geometry, register the root Universe, and export to XML
 geometry = openmc.Geometry()
 geometry.root_universe = root
-
-# Instantiate a GeometryFile, register Geometry, and export to XML
-geometry_file = openmc.GeometryFile()
-geometry_file.geometry = geometry
-geometry_file.export_to_xml()
+geometry.export_to_xml()
 
 
 ###############################################################################
-#                   Exporting to OpenMC settings.xml File
+#                   Exporting to OpenMC settings.xml file
 ###############################################################################
 
-# Instantiate a SettingsFile, set all runtime parameters, and export to XML
-settings_file = openmc.SettingsFile()
+# Instantiate a Settings object, set all runtime parameters, and export to XML
+settings_file = openmc.Settings()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
@@ -137,7 +132,7 @@ settings_file.export_to_xml()
 
 
 ###############################################################################
-#                   Exporting to OpenMC plots.xml File
+#                   Exporting to OpenMC plots.xml file
 ###############################################################################
 
 plot_xy = openmc.Plot(plot_id=1)
@@ -155,10 +150,8 @@ plot_yz.width = [8, 8]
 plot_yz.pixels = [400, 400]
 plot_yz.color = 'mat'
 
-# Instantiate a PlotsFile, add Plot, and export to XML
-plot_file = openmc.PlotsFile()
-plot_file.add_plot(plot_xy)
-plot_file.add_plot(plot_yz)
+# Instantiate a Plots collection, add plots, and export to XML
+plot_file = openmc.Plots((plot_xy, plot_yz))
 plot_file.export_to_xml()
 
 
@@ -171,7 +164,6 @@ tally = openmc.Tally(tally_id=1)
 tally.filters = [openmc.Filter(type='distribcell', bins=[cell2.id])]
 tally.scores = ['total']
 
-# Instantiate a TalliesFile, register Tally/Mesh, and export to XML
-tallies_file = openmc.TalliesFile()
-tallies_file.add_tally(tally)
+# Instantiate a Tallies collection and export to XML
+tallies_file = openmc.Tallies([tally])
 tallies_file.export_to_xml()

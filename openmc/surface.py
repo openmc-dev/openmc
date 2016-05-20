@@ -2,11 +2,12 @@ from abc import ABCMeta
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
+from math import sqrt
 
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_greater_than
-from openmc.region import Region
+from openmc.region import Region, Intersection
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -23,8 +24,11 @@ def reset_auto_surface_id():
 
 
 class Surface(object):
-    """A two-dimensional surface that can be used define regions of space with an
-    associated boundary condition.
+    """An implicit surface with an associated boundary condition.
+
+    An implicit surface is defined as the set of zeros of a function of the
+    three Cartesian coordinates. Surfaces in OpenMC are limited to a set of
+    algebraic surfaces, i.e., surfaces that are polynomial in x, y, and z.
 
     Parameters
     ----------
@@ -44,19 +48,18 @@ class Surface(object):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
-    coeffs : dict
+    coefficients : dict
         Dictionary of surface coefficients
     id : int
         Unique identifier for the surface
     name : str
         Name of the surface
     type : str
-        Type of the surface, e.g. 'x-plane'
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission', name=''):
-        # Initialize class attributes
         self.id = surface_id
         self.name = name
         self._type = ''
@@ -65,7 +68,7 @@ class Surface(object):
         # A dictionary of the quadratic surface coefficients
         # Key        - coefficeint name
         # Value    - coefficient value
-        self._coeffs = {}
+        self._coefficients = {}
 
         # An ordered list of the coefficient names to export to XML in the
         # proper order
@@ -84,12 +87,13 @@ class Surface(object):
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
         string += '{0: <16}{1}{2}\n'.format('\tBoundary', '=\t', self._boundary_type)
 
-        coeffs = '{0: <16}'.format('\tCoefficients') + '\n'
+        coefficients = '{0: <16}'.format('\tCoefficients') + '\n'
 
-        for coeff in self._coeffs:
-            coeffs += '{0: <16}{1}{2}\n'.format(coeff, '=\t', self._coeffs[coeff])
+        for coeff in self._coefficients:
+            coefficients += '{0: <16}{1}{2}\n'.format(
+                coeff, '=\t', self._coefficients[coeff])
 
-        string += coeffs
+        string += coefficients
 
         return string
 
@@ -110,8 +114,8 @@ class Surface(object):
         return self._boundary_type
 
     @property
-    def coeffs(self):
-        return self._coeffs
+    def coefficients(self):
+        return self._coefficients
 
     @id.setter
     def id(self, surface_id):
@@ -173,8 +177,9 @@ class Surface(object):
             element.set("name", str(self._name))
 
         element.set("type", self._type)
-        element.set("boundary", self._boundary_type)
-        element.set("coeffs", ' '.join([str(self._coeffs.setdefault(key, 0.0))
+        if self.boundary_type != 'transmission':
+            element.set("boundary", self.boundary_type)
+        element.set("coeffs", ' '.join([str(self._coefficients.setdefault(key, 0.0))
                                         for key in self._coeff_keys]))
 
         return element
@@ -185,22 +190,22 @@ class Plane(Surface):
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    A : float
-        The 'A' parameter for the plane
-    B : float
-        The 'B' parameter for the plane
-    C : float
-        The 'C' parameter for the plane
-    D : float
-        The 'D' parameter for the plane
-    name : str
+    A : float, optional
+        The 'A' parameter for the plane. Defaults to 1.
+    B : float, optional
+        The 'B' parameter for the plane. Defaults to 0.
+    C : float, optional
+        The 'C' parameter for the plane. Defaults to 0.
+    D : float, optional
+        The 'D' parameter for the plane. Defaults to 0.
+    name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
 
     Attributes
@@ -213,68 +218,66 @@ class Plane(Surface):
         The 'C' parameter for the plane
     d : float
         The 'D' parameter for the plane
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 A=None, B=None, C=None, D=None, name=''):
-        # Initialize Plane class attributes
+                 A=1., B=0., C=0., D=0., name=''):
         super(Plane, self).__init__(surface_id, boundary_type, name=name)
 
         self._type = 'plane'
         self._coeff_keys = ['A', 'B', 'C', 'D']
-        self._coeffs['A'] = 1.
-        self._coeffs['B'] = 0.
-        self._coeffs['C'] = 0.
-        self._coeffs['D'] = 0.
-
-        if A is not None:
-            self.a = A
-
-        if B is not None:
-            self.b = B
-
-        if C is not None:
-            self.c = C
-
-        if D is not None:
-            self.d = D
+        self.a = A
+        self.b = B
+        self.c = C
+        self.d = D
 
     @property
     def a(self):
-        return self.coeffs['A']
+        return self.coefficients['A']
 
     @property
     def b(self):
-        return self.coeffs['B']
+        return self.coefficients['B']
 
     @property
     def c(self):
-        return self.coeffs['C']
+        return self.coefficients['C']
 
     @property
     def d(self):
-        return self.coeffs['D']
+        return self.coefficients['D']
 
     @a.setter
     def a(self, A):
         check_type('A coefficient', A, Real)
-        self._coeffs['A'] = A
+        self._coefficients['A'] = A
 
     @b.setter
     def b(self, B):
         check_type('B coefficient', B, Real)
-        self._coeffs['B'] = B
+        self._coefficients['B'] = B
 
     @c.setter
     def c(self, C):
         check_type('C coefficient', C, Real)
-        self._coeffs['C'] = C
+        self._coefficients['C'] = C
 
     @d.setter
     def d(self, D):
         check_type('D coefficient', D, Real)
-        self._coeffs['D'] = D
+        self._coefficients['D'] = D
 
 
 class XPlane(Plane):
@@ -282,45 +285,52 @@ class XPlane(Plane):
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    x0 : float
-        Location of the plane
-    name : str
+    x0 : float, optional
+        Location of the plane. Defaults to 0.
+    name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
 
     Attributes
     ----------
     x0 : float
         Location of the plane
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=None, name=''):
-        # Initialize XPlane class attributes
+                 x0=0., name=''):
         super(XPlane, self).__init__(surface_id, boundary_type, name=name)
 
         self._type = 'x-plane'
         self._coeff_keys = ['x0']
-        self._coeffs['x0'] = 0.
-
-        if x0 is not None:
-            self.x0 = x0
+        self.x0 = x0
 
     @property
     def x0(self):
-        return self.coeffs['x0']
+        return self.coefficients['x0']
 
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
-        self._coeffs['x0'] = x0
+        self._coefficients['x0'] = x0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -359,45 +369,53 @@ class YPlane(Plane):
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    y0 : float
+    y0 : float, optional
         Location of the plane
-    name : str
+    name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
 
     Attributes
     ----------
     y0 : float
         Location of the plane
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 y0=None, name=''):
+                 y0=0., name=''):
         # Initialize YPlane class attributes
         super(YPlane, self).__init__(surface_id, boundary_type, name=name)
 
         self._type = 'y-plane'
         self._coeff_keys = ['y0']
-        self._coeffs['y0'] = 0.
-
-        if y0 is not None:
-            self.y0 = y0
+        self.y0 = y0
 
     @property
     def y0(self):
-        return self.coeffs['y0']
+        return self.coefficients['y0']
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
-        self._coeffs['y0'] = y0
+        self._coefficients['y0'] = y0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -436,45 +454,53 @@ class ZPlane(Plane):
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    z0 : float
-        Location of the plane
-    name : str
+    z0 : float, optional
+        Location of the plane. Defaults to 0.
+    name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
 
     Attributes
     ----------
     z0 : float
         Location of the plane
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 z0=None, name=''):
+                 z0=0., name=''):
         # Initialize ZPlane class attributes
         super(ZPlane, self).__init__(surface_id, boundary_type, name=name)
 
         self._type = 'z-plane'
         self._coeff_keys = ['z0']
-        self._coeffs['z0'] = 0.
-
-        if z0 is not None:
-            self.z0 = z0
+        self.z0 = z0
 
     @property
     def z0(self):
-        return self.coeffs['z0']
+        return self.coefficients['z0']
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
-        self._coeffs['z0'] = z0
+        self._coefficients['z0'] = z0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -513,16 +539,16 @@ class Cylinder(Surface):
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    R : float
-        Radius of the cylinder
-    name : str
+    R : float, optional
+        Radius of the cylinder. Defaults to 1.
+    name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
 
@@ -530,52 +556,59 @@ class Cylinder(Surface):
     ----------
     r : float
         Radius of the cylinder
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     __metaclass__ = ABCMeta
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 R=None, name=''):
-        # Initialize Cylinder class attributes
+                 R=1., name=''):
         super(Cylinder, self).__init__(surface_id, boundary_type, name=name)
 
         self._coeff_keys = ['R']
-        self._coeffs['R'] = 1.
-
-        if R is not None:
-            self.r = R
+        self.r = R
 
     @property
     def r(self):
-        return self.coeffs['R']
+        return self.coefficients['R']
 
     @r.setter
     def r(self, R):
         check_type('R coefficient', R, Real)
-        self._coeffs['R'] = R
+        self._coefficients['R'] = R
 
 
 class XCylinder(Cylinder):
-    """An infinite cylinder whose length is parallel to the x-axis. This is a
-    quadratic surface of the form :math:`(y - y_0)^2 + (z - z_0)^2 = R^2`.
+    """An infinite cylinder whose length is parallel to the x-axis of the form
+    :math:`(y - y_0)^2 + (z - z_0)^2 = R^2`.
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    y0 : float
-        y-coordinate of the center of the cylinder
-    z0 : float
-        z-coordinate of the center of the cylinder
-    R : float
-        Radius of the cylinder
-    name : str
+    y0 : float, optional
+        y-coordinate of the center of the cylinder. Defaults to 0.
+    z0 : float, optional
+        z-coordinate of the center of the cylinder. Defaults to 0.
+    R : float, optional
+        Radius of the cylinder. Defaults to 0.
+    name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
 
@@ -585,42 +618,46 @@ class XCylinder(Cylinder):
         y-coordinate of the center of the cylinder
     z0 : float
         z-coordinate of the center of the cylinder
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 y0=None, z0=None, R=None, name=''):
-        # Initialize XCylinder class attributes
+                 y0=0., z0=0., R=1., name=''):
         super(XCylinder, self).__init__(surface_id, boundary_type, R, name=name)
 
         self._type = 'x-cylinder'
         self._coeff_keys = ['y0', 'z0', 'R']
-        self._coeffs['y0'] = 0.
-        self._coeffs['z0'] = 0.
-
-        if y0 is not None:
-            self.y0 = y0
-
-        if z0 is not None:
-            self.z0 = z0
+        self.y0 = y0
+        self.z0 = z0
 
     @property
     def y0(self):
-        return self.coeffs['y0']
+        return self.coefficients['y0']
 
     @property
     def z0(self):
-        return self.coeffs['z0']
+        return self.coefficients['z0']
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
-        self._coeffs['y0'] = y0
+        self._coefficients['y0'] = y0
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
-        self._coeffs['z0'] = z0
+        self._coefficients['z0'] = z0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -656,25 +693,25 @@ class XCylinder(Cylinder):
 
 
 class YCylinder(Cylinder):
-    """An infinite cylinder whose length is parallel to the y-axis. This is a
-    quadratic surface of the form :math:`(x - x_0)^2 + (z - z_0)^2 = R^2`.
+    """An infinite cylinder whose length is parallel to the y-axis of the form
+    :math:`(x - x_0)^2 + (z - z_0)^2 = R^2`.
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    x0 : float
-        x-coordinate of the center of the cylinder
-    z0 : float
-        z-coordinate of the center of the cylinder
-    R : float
-        Radius of the cylinder
-    name : str
+    x0 : float, optional
+        x-coordinate of the center of the cylinder. Defaults to 0.
+    z0 : float, optional
+        z-coordinate of the center of the cylinder. Defaults to 0.
+    R : float, optional
+        Radius of the cylinder. Defaults to 1.
+    name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
 
@@ -684,42 +721,46 @@ class YCylinder(Cylinder):
         x-coordinate of the center of the cylinder
     z0 : float
         z-coordinate of the center of the cylinder
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=None, z0=None, R=None, name=''):
-        # Initialize YCylinder class attributes
+                 x0=0., z0=0., R=1., name=''):
         super(YCylinder, self).__init__(surface_id, boundary_type, R, name=name)
 
         self._type = 'y-cylinder'
         self._coeff_keys = ['x0', 'z0', 'R']
-        self._coeffs['x0'] = 0.
-        self._coeffs['z0'] = 0.
-
-        if x0 is not None:
-            self.x0 = x0
-
-        if z0 is not None:
-            self.z0 = z0
+        self.x0 = x0
+        self.z0 = z0
 
     @property
     def x0(self):
-        return self.coeffs['x0']
+        return self.coefficients['x0']
 
     @property
     def z0(self):
-        return self.coeffs['z0']
+        return self.coefficients['z0']
 
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
-        self._coeffs['x0'] = x0
+        self._coefficients['x0'] = x0
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
-        self._coeffs['z0'] = z0
+        self._coefficients['z0'] = z0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -755,25 +796,25 @@ class YCylinder(Cylinder):
 
 
 class ZCylinder(Cylinder):
-    """An infinite cylinder whose length is parallel to the z-axis. This is a
-    quadratic surface of the form :math:`(x - x_0)^2 + (y - y_0)^2 = R^2`.
+    """An infinite cylinder whose length is parallel to the z-axis of the form
+    :math:`(x - x_0)^2 + (y - y_0)^2 = R^2`.
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    x0 : float
-        x-coordinate of the center of the cylinder
-    y0 : float
-        y-coordinate of the center of the cylinder
-    R : float
-        Radius of the cylinder
-    name : str
+    x0 : float, optional
+        x-coordinate of the center of the cylinder. Defaults to 0.
+    y0 : float, optional
+        y-coordinate of the center of the cylinder. Defaults to 0.
+    R : float, optional
+        Radius of the cylinder. Defaults to 1.
+    name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
 
@@ -783,42 +824,46 @@ class ZCylinder(Cylinder):
         x-coordinate of the center of the cylinder
     y0 : float
         y-coordinate of the center of the cylinder
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=None, y0=None, R=None, name=''):
-        # Initialize ZCylinder class attributes
+                 x0=0., y0=0., R=1., name=''):
         super(ZCylinder, self).__init__(surface_id, boundary_type, R, name=name)
 
         self._type = 'z-cylinder'
         self._coeff_keys = ['x0', 'y0', 'R']
-        self._coeffs['x0'] = 0.
-        self._coeffs['y0'] = 0.
-
-        if x0 is not None:
-            self.x0 = x0
-
-        if y0 is not None:
-            self.y0 = y0
+        self.x0 = x0
+        self.y0 = y0
 
     @property
     def x0(self):
-        return self.coeffs['x0']
+        return self.coefficients['x0']
 
     @property
     def y0(self):
-        return self.coeffs['y0']
+        return self.coefficients['y0']
 
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
-        self._coeffs['x0'] = x0
+        self._coefficients['x0'] = x0
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
-        self._coeffs['y0'] = y0
+        self._coefficients['y0'] = y0
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -858,22 +903,22 @@ class Sphere(Surface):
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    x0 : float
-        x-coordinate of the center of the sphere
-    y0 : float
-        y-coordinate of the center of the sphere
-    z0 : float
-        z-coordinate of the center of the sphere
-    R : float
-        Radius of the sphere
-    name : str
+    x0 : float, optional
+        x-coordinate of the center of the sphere. Defaults to 0.
+    y0 : float, optional
+        y-coordinate of the center of the sphere. Defaults to 0.
+    z0 : float, optional
+        z-coordinate of the center of the sphere. Defaults to 0.
+    R : float, optional
+        Radius of the sphere. Defaults to 1.
+    name : str, optional
         Name of the sphere. If not specified, the name will be the empty string.
 
     Attributes
@@ -886,68 +931,66 @@ class Sphere(Surface):
         z-coordinate of the center of the sphere
     R : float
         Radius of the sphere
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=None, y0=None, z0=None, R=None, name=''):
-        # Initialize Sphere class attributes
+                 x0=0., y0=0., z0=0., R=1., name=''):
         super(Sphere, self).__init__(surface_id, boundary_type, name=name)
 
         self._type = 'sphere'
         self._coeff_keys = ['x0', 'y0', 'z0', 'R']
-        self._coeffs['x0'] = 0.
-        self._coeffs['y0'] = 0.
-        self._coeffs['z0'] = 0.
-        self._coeffs['R'] = 1.
-
-        if x0 is not None:
-            self.x0 = x0
-
-        if y0 is not None:
-            self.y0 = y0
-
-        if z0 is not None:
-            self.z0 = z0
-
-        if R is not None:
-            self.r = R
+        self.x0 = x0
+        self.y0 = y0
+        self.z0 = z0
+        self.r = R
 
     @property
     def x0(self):
-        return self.coeffs['x0']
+        return self.coefficients['x0']
 
     @property
     def y0(self):
-        return self.coeffs['y0']
+        return self.coefficients['y0']
 
     @property
     def z0(self):
-        return self.coeffs['z0']
+        return self.coefficients['z0']
 
     @property
     def r(self):
-        return self.coeffs['R']
+        return self.coefficients['R']
 
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
-        self._coeffs['x0'] = x0
+        self._coefficients['x0'] = x0
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
-        self._coeffs['y0'] = y0
+        self._coefficients['y0'] = y0
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
-        self._coeffs['z0'] = z0
+        self._coefficients['z0'] = z0
 
     @r.setter
     def r(self, R):
         check_type('R coefficient', R, Real)
-        self._coeffs['R'] = R
+        self._coefficients['R'] = R
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -988,21 +1031,21 @@ class Cone(Surface):
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    x0 : float
-        x-coordinate of the apex
+    x0 : float, optional
+        x-coordinate of the apex. Defaults to 0.
     y0 : float
-        y-coordinate of the apex
+        y-coordinate of the apex. Defaults to 0.
     z0 : float
-        z-coordinate of the apex
+        z-coordinate of the apex. Defaults to 0.
     R2 : float
-        Parameter related to the aperature
+        Parameter related to the aperature. Defaults to 1.
     name : str
         Name of the cone. If not specified, the name will be the empty string.
 
@@ -1016,69 +1059,67 @@ class Cone(Surface):
         z-coordinate of the apex
     R2 : float
         Parameter related to the aperature
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     __metaclass__ = ABCMeta
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=None, y0=None, z0=None, R2=None, name=''):
-        # Initialize Cone class attributes
+                 x0=0., y0=0., z0=0., R2=1., name=''):
         super(Cone, self).__init__(surface_id, boundary_type, name=name)
 
         self._coeff_keys = ['x0', 'y0', 'z0', 'R2']
-        self._coeffs['x0'] = 0.
-        self._coeffs['y0'] = 0.
-        self._coeffs['z0'] = 0.
-        self._coeffs['R2'] = 1.
-
-        if x0 is not None:
-            self.x0 = x0
-
-        if y0 is not None:
-            self.y0 = y0
-
-        if z0 is not None:
-            self.z0 = z0
-
-        if R2 is not None:
-            self.r2 = R2
+        self.x0 = x0
+        self.y0 = y0
+        self.z0 = z0
+        self.r2 = R2
 
     @property
     def x0(self):
-        return self.coeffs['x0']
+        return self.coefficients['x0']
 
     @property
     def y0(self):
-        return self.coeffs['y0']
+        return self.coefficients['y0']
 
     @property
     def z0(self):
-        return self.coeffs['z0']
+        return self.coefficients['z0']
 
     @property
     def r2(self):
-        return self.coeffs['r2']
+        return self.coefficients['r2']
 
     @x0.setter
     def x0(self, x0):
         check_type('x0 coefficient', x0, Real)
-        self._coeffs['x0'] = x0
+        self._coefficients['x0'] = x0
 
     @y0.setter
     def y0(self, y0):
         check_type('y0 coefficient', y0, Real)
-        self._coeffs['y0'] = y0
+        self._coefficients['y0'] = y0
 
     @z0.setter
     def z0(self, z0):
         check_type('z0 coefficient', z0, Real)
-        self._coeffs['z0'] = z0
+        self._coefficients['z0'] = z0
 
     @r2.setter
     def r2(self, R2):
         check_type('R^2 coefficient', R2, Real)
-        self._coeffs['R2'] = R2
+        self._coefficients['R2'] = R2
 
 
 class XCone(Cone):
@@ -1087,22 +1128,22 @@ class XCone(Cone):
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    x0 : float
-        x-coordinate of the apex
-    y0 : float
-        y-coordinate of the apex
-    z0 : float
-        z-coordinate of the apex
-    R2 : float
-        Parameter related to the aperature
-    name : str
+    x0 : float, optional
+        x-coordinate of the apex. Defaults to 0.
+    y0 : float, optional
+        y-coordinate of the apex. Defaults to 0.
+    z0 : float, optional
+        z-coordinate of the apex. Defaults to 0.
+    R2 : float, optional
+        Parameter related to the aperature. Defaults to 1.
+    name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
 
     Attributes
@@ -1115,12 +1156,22 @@ class XCone(Cone):
         z-coordinate of the apex
     R2 : float
         Parameter related to the aperature
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=None, y0=None, z0=None, R2=None, name=''):
-        # Initialize XCone class attributes
+                 x0=0., y0=0., z0=0., R2=1., name=''):
         super(XCone, self).__init__(surface_id, boundary_type, x0, y0,
                                     z0, R2, name=name)
 
@@ -1133,22 +1184,22 @@ class YCone(Cone):
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    x0 : float
-        x-coordinate of the apex
-    y0 : float
-        y-coordinate of the apex
-    z0 : float
-        z-coordinate of the apex
-    R2 : float
-        Parameter related to the aperature
-    name : str
+    x0 : float, optional
+        x-coordinate of the apex. Defaults to 0.
+    y0 : float, optional
+        y-coordinate of the apex. Defaults to 0.
+    z0 : float, optional
+        z-coordinate of the apex. Defaults to 0.
+    R2 : float, optional
+        Parameter related to the aperature. Defaults to 1.
+    name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
 
     Attributes
@@ -1161,12 +1212,22 @@ class YCone(Cone):
         z-coordinate of the apex
     R2 : float
         Parameter related to the aperature
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=None, y0=None, z0=None, R2=None, name=''):
-        # Initialize YCone class attributes
+                 x0=0., y0=0., z0=0., R2=1., name=''):
         super(YCone, self).__init__(surface_id, boundary_type, x0, y0, z0,
                                     R2, name=name)
 
@@ -1179,22 +1240,22 @@ class ZCone(Cone):
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    x0 : float
-        x-coordinate of the apex
-    y0 : float
-        y-coordinate of the apex
-    z0 : float
-        z-coordinate of the apex
-    R2 : float
-        Parameter related to the aperature
-    name : str
+    x0 : float, optional
+        x-coordinate of the apex. Defaults to 0.
+    y0 : float, optional
+        y-coordinate of the apex. Defaults to 0.
+    z0 : float, optional
+        z-coordinate of the apex. Defaults to 0.
+    R2 : float, optional
+        Parameter related to the aperature. Defaults to 1.
+    name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
 
     Attributes
@@ -1207,12 +1268,22 @@ class ZCone(Cone):
         z-coordinate of the apex
     R2 : float
         Parameter related to the aperature
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 x0=None, y0=None, z0=None, R2=None, name=''):
-        # Initialize ZCone class attributes
+                 x0=0., y0=0., z0=0., R2=1., name=''):
         super(ZCone, self).__init__(surface_id, boundary_type, x0, y0, z0,
                                     R2, name=name)
 
@@ -1220,151 +1291,148 @@ class ZCone(Cone):
 
 
 class Quadric(Surface):
-    """A sphere of the form :math:`Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy +
-    Jz + K`.
+    """A surface of the form :math:`Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy +
+    Jz + K = 0`.
 
     Parameters
     ----------
-    surface_id : int
+    surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
-    a, b, c, d, e, f, g, h, j, k : float
-        coefficients for the surface
-    name : str
+    a, b, c, d, e, f, g, h, j, k : float, optional
+        coefficients for the surface. All default to 0.
+    name : str, optional
         Name of the sphere. If not specified, the name will be the empty string.
 
     Attributes
     ----------
     a, b, c, d, e, f, g, h, j, k : float
         coefficients for the surface
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surface.
+    coefficients : dict
+        Dictionary of surface coefficients
+    id : int
+        Unique identifier for the surface
+    name : str
+        Name of the surface
+    type : str
+        Type of the surface
 
     """
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 a=None, b=None, c=None, d=None, e=None, f=None, g=None,
-                 h=None, j=None, k=None, name=''):
-        # Initialize Quadric class attributes
+                 a=0., b=0., c=0., d=0., e=0., f=0., g=0.,
+                 h=0., j=0., k=0., name=''):
         super(Quadric, self).__init__(surface_id, boundary_type, name=name)
 
         self._type = 'quadric'
         self._coeff_keys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k']
-        for key in self._coeff_keys:
-            self._coeffs[key] = 0.
-
-        if a is not None:
-            self.a = a
-        if b is not None:
-            self.b = b
-        if c is not None:
-            self.c = c
-        if d is not None:
-            self.d = d
-        if e is not None:
-            self.e = e
-        if f is not None:
-            self.f = f
-        if g is not None:
-            self.g = g
-        if h is not None:
-            self.h = h
-        if j is not None:
-            self.j = j
-        if k is not None:
-            self.k = k
+        self.a = a
+        self.b = b
+        self.c = c
+        self.d = d
+        self.e = e
+        self.f = f
+        self.g = g
+        self.h = h
+        self.j = j
+        self.k = k
 
     @property
     def a(self):
-        return self.coeffs['a']
+        return self.coefficients['a']
 
     @property
     def b(self):
-        return self.coeffs['b']
+        return self.coefficients['b']
 
     @property
     def c(self):
-        return self.coeffs['c']
+        return self.coefficients['c']
 
     @property
     def d(self):
-        return self.coeffs['d']
+        return self.coefficients['d']
 
     @property
     def e(self):
-        return self.coeffs['e']
+        return self.coefficients['e']
 
     @property
     def f(self):
-        return self.coeffs['f']
+        return self.coefficients['f']
 
     @property
     def g(self):
-        return self.coeffs['g']
+        return self.coefficients['g']
 
     @property
     def h(self):
-        return self.coeffs['h']
+        return self.coefficients['h']
 
     @property
     def j(self):
-        return self.coeffs['j']
+        return self.coefficients['j']
 
     @property
     def k(self):
-        return self.coeffs['k']
+        return self.coefficients['k']
 
     @a.setter
     def a(self, a):
         check_type('a coefficient', a, Real)
-        self._coeffs['a'] = a
+        self._coefficients['a'] = a
 
     @b.setter
     def b(self, b):
         check_type('b coefficient', b, Real)
-        self._coeffs['b'] = b
+        self._coefficients['b'] = b
 
     @c.setter
     def c(self, c):
         check_type('c coefficient', c, Real)
-        self._coeffs['c'] = c
+        self._coefficients['c'] = c
 
     @d.setter
     def d(self, d):
         check_type('d coefficient', d, Real)
-        self._coeffs['d'] = d
+        self._coefficients['d'] = d
 
     @e.setter
     def e(self, e):
         check_type('e coefficient', e, Real)
-        self._coeffs['e'] = e
+        self._coefficients['e'] = e
 
     @f.setter
     def f(self, f):
         check_type('f coefficient', f, Real)
-        self._coeffs['f'] = f
+        self._coefficients['f'] = f
 
     @g.setter
     def g(self, g):
         check_type('g coefficient', g, Real)
-        self._coeffs['g'] = g
+        self._coefficients['g'] = g
 
     @h.setter
     def h(self, h):
         check_type('h coefficient', h, Real)
-        self._coeffs['h'] = h
+        self._coefficients['h'] = h
 
     @j.setter
     def j(self, j):
         check_type('j coefficient', j, Real)
-        self._coeffs['j'] = j
+        self._coefficients['j'] = j
 
     @k.setter
     def k(self, k):
         check_type('k coefficient', k, Real)
-        self._coeffs['k'] = k
+        self._coefficients['k'] = k
 
 
 class Halfspace(Region):
@@ -1436,3 +1504,45 @@ class Halfspace(Region):
     def __str__(self):
         return '-' + str(self.surface.id) if self.side == '-' \
             else str(self.surface.id)
+
+
+def make_hexagon_region(edge_length=1., orientation='y'):
+    """Create a hexagon region from six surface planes.
+
+    Parameters
+    ----------
+    edge_length : float
+        Length of a side of the hexagon in cm
+    orientation : {'x', 'y'}
+        An 'x' orientation means that two sides of the hexagon are parallel to
+        the x-axis and a 'y' orientation means that two sides of the hexagon are
+        parallel to the y-axis.
+
+    Returns
+    -------
+    openmc.Region
+        The inside of a hexagonal prism
+
+    """
+
+    l = edge_length
+
+    if orientation == 'y':
+        right = XPlane(x0=sqrt(3.)/2.*l)
+        left = XPlane(x0=-sqrt(3.)/2.*l)
+        c = sqrt(3.)/3.
+        ur = Plane(A=c, B=1., D=l)  # y = -x/sqrt(3) + a
+        ul = Plane(A=-c, B=1., D=l)  # y = x/sqrt(3) + a
+        lr = Plane(A=-c, B=1., D=-l) # y = x/sqrt(3) - a
+        ll = Plane(A=c, B=1., D=-l)  # y = -x/sqrt(3) - a
+        return Intersection(-right, +left, -ur, -ul, +lr, +ll)
+
+    elif orientation == 'x':
+        top = YPlane(y0=sqrt(3.)/2.*l)
+        bottom = YPlane(y0=-sqrt(3.)/2.*l)
+        c = sqrt(3.)
+        ur = Plane(A=c, B=1., D=c*l)  # y = -sqrt(3)*(x - a)
+        lr = Plane(A=-c, B=1., D=-c*l)  # y = sqrt(3)*(x + a)
+        ll = Plane(A=c, B=1., D=-c*l) # y = -sqrt(3)*(x + a)
+        ul = Plane(A=-c, B=1., D=c*l)  # y = sqrt(3)*(x + a)
+        return Intersection(-top, +bottom, -ur, +lr, +ll, -ul)

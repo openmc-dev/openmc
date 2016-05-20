@@ -7,7 +7,7 @@ import sys
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.universe import Universe, AUTO_UNIVERSE_ID
+import openmc
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -30,13 +30,13 @@ class Lattice(object):
         Unique identifier for the lattice
     name : str
         Name of the lattice
-    pitch : float
-        Pitch of the lattice in cm
-    outer : int
-        The unique identifier of a universe to fill all space outside the
-        lattice
-    universes : numpy.ndarray of openmc.Universe
-        An array of universes filling each element of the lattice
+    pitch : Iterable of float
+        Pitch of the lattice in each direction in cm
+    outer : openmc.Universe
+        A universe to fill all space outside the lattice
+    universes : Iterable of Iterable of openmc.Universe
+        A two- or three-dimensional list/array of universes filling each element
+        of the lattice
 
     """
 
@@ -93,9 +93,8 @@ class Lattice(object):
     @id.setter
     def id(self, lattice_id):
         if lattice_id is None:
-            global AUTO_UNIVERSE_ID
-            self._id = AUTO_UNIVERSE_ID
-            AUTO_UNIVERSE_ID += 1
+            self._id = openmc.universe.AUTO_UNIVERSE_ID
+            openmc.universe.AUTO_UNIVERSE_ID += 1
         else:
             cv.check_type('lattice ID', lattice_id, Integral)
             cv.check_greater_than('lattice ID', lattice_id, 0, equality=True)
@@ -111,12 +110,12 @@ class Lattice(object):
 
     @outer.setter
     def outer(self, outer):
-        cv.check_type('outer universe', outer, Universe)
+        cv.check_type('outer universe', outer, openmc.Universe)
         self._outer = outer
 
     @universes.setter
     def universes(self, universes):
-        cv.check_iterable_type('lattice universes', universes, Universe,
+        cv.check_iterable_type('lattice universes', universes, openmc.Universe,
                                min_depth=2, max_depth=3)
         self._universes = np.asarray(universes)
 
@@ -127,20 +126,20 @@ class Lattice(object):
         -------
         universes : collections.OrderedDict
             Dictionary whose keys are universe IDs and values are
-            :class:`Universe` instances
+            :class:`openmc.Universe` instances
 
         """
 
         univs = OrderedDict()
         for k in range(len(self._universes)):
             for j in range(len(self._universes[k])):
-                if isinstance(self._universes[k][j], Universe):
+                if isinstance(self._universes[k][j], openmc.Universe):
                     u = self._universes[k][j]
                     univs[u._id] = u
                 else:
                     for i in range(len(self._universes[k][j])):
                         u = self._universes[k][j][i]
-                        assert isinstance(u, Universe)
+                        assert isinstance(u, openmc.Universe)
                         univs[u._id] = u
 
         if self.outer is not None:
@@ -260,6 +259,14 @@ class RectLattice(Lattice):
     lower_left : Iterable of float
         The coordinates of the lower-left corner of the lattice. If the lattice
         is two-dimensional, only the x- and y-coordinates are specified.
+    pitch : Iterable of float
+        Pitch of the lattice in the x, y, and (if applicable) z directions in
+        cm.
+    outer : openmc.Universe
+        A universe to fill all space outside the lattice
+    universes : Iterable of Iterable of openmc.Universe
+        A two- or three-dimensional list/array of universes filling each element
+        of the lattice
 
     """
 
@@ -506,6 +513,19 @@ class HexLattice(Lattice):
     center : Iterable of float
         Coordinates of the center of the lattice. If the lattice does not have
         axial sections then only the x- and y-coordinates are specified
+    pitch : Iterable of float
+        Pitch of the lattice in cm. The first item in the iterable specifies the
+        pitch in the radial direction and, if the lattice is 3D, the second item
+        in the iterable specifies the pitch in the axial direction.
+    outer : openmc.Universe
+        A universe to fill all space outside the lattice
+    universes : Iterable of Iterable of openmc.Universe
+        A two- or three-dimensional list/array of universes filling each element
+        of the lattice. Each sub-list corresponds to one ring of universes and
+        should be ordered from outermost ring to innermost ring. The universes
+        within each sub-list are ordered from the "top" and proceed in a
+        clockwise fashion. The :meth:`HexLattice.show_indices` method can be
+        used to help figure out indices for this property.
 
     """
 
@@ -615,10 +635,10 @@ class HexLattice(Lattice):
         # clockwise fashion.
 
         # Check to see if the given universes look like a 2D or a 3D array.
-        if isinstance(self._universes[0][0], Universe):
+        if isinstance(self._universes[0][0], openmc.Universe):
             n_dims = 2
 
-        elif isinstance(self._universes[0][0][0], Universe):
+        elif isinstance(self._universes[0][0][0], openmc.Universe):
             n_dims = 3
 
         else:
@@ -636,7 +656,7 @@ class HexLattice(Lattice):
         # Set the number of rings and make sure this number is consistent for
         # all axial positions.
         if n_dims == 3:
-            self.num_rings = len(self._universes)
+            self.num_rings = len(self._universes[0])
             for rings in self._universes:
                 if len(rings) != self._num_rings:
                     msg = 'HexLattice ID={0:d} has an inconsistent number of ' \
@@ -869,3 +889,107 @@ class HexLattice(Lattice):
         # Join the rows together and return the string.
         universe_ids = '\n'.join(rows)
         return universe_ids
+
+    @staticmethod
+    def show_indices(num_rings):
+        """Return a diagram of the hexagonal lattice layout with indices.
+
+        This method can be used to show the proper indices to be used when
+        setting the :attr:`HexLattice.universes` property. For example, running
+        this method with num_rings=3 will return the following diagram::
+
+                      (0, 0)
+                (0,11)      (0, 1)
+          (0,10)      (1, 0)      (0, 2)
+                (1, 5)      (1, 1)
+          (0, 9)      (2, 0)      (0, 3)
+                (1, 4)      (1, 2)
+          (0, 8)      (1, 3)      (0, 4)
+                (0, 7)      (0, 5)
+                      (0, 6)
+
+        Parameters
+        ----------
+        num_rings : int
+            Number of rings in the hexagonal lattice
+
+        Returns
+        -------
+        str
+            Diagram of the hexagonal lattice showing indices
+
+        """
+
+        # Find the largest string and count the number of digits so we can
+        # properly pad the output string later
+        largest_index = 6*(num_rings - 1)
+        n_digits_index = len(str(largest_index))
+        n_digits_ring = len(str(num_rings - 1))
+        str_form = '({{:{}}},{{:{}}})'.format(n_digits_ring, n_digits_index)
+        pad = ' '*(n_digits_index + n_digits_ring + 3)
+
+        # Initialize the list for each row.
+        rows = [[] for i in range(1 + 4 * (num_rings-1))]
+        middle = 2 * (num_rings - 1)
+
+        # Start with the degenerate first ring.
+        rows[middle] = [str_form.format(num_rings - 1, 0)]
+
+        # Add universes one ring at a time.
+        for r in range(1, num_rings):
+            # r_prime increments down while r increments up.
+            r_prime = num_rings - 1 - r
+            theta = 0
+            y = middle + 2*r
+
+            for i in range(r):
+                # Climb down the top-right.
+                rows[y].append(str_form.format(r_prime, theta))
+                y -= 1
+                theta += 1
+
+            for i in range(r):
+                # Climb down the right.
+                rows[y].append(str_form.format(r_prime, theta))
+                y -= 2
+                theta += 1
+
+            for i in range(r):
+                # Climb down the bottom-right.
+                rows[y].append(str_form.format(r_prime, theta))
+                y -= 1
+                theta += 1
+
+            for i in range(r):
+                # Climb up the bottom-left.
+                rows[y].insert(0, str_form.format(r_prime, theta))
+                y += 1
+                theta += 1
+
+            for i in range(r):
+                # Climb up the left.
+                rows[y].insert(0, str_form.format(r_prime, theta))
+                y += 2
+                theta += 1
+
+            for i in range(r):
+                # Climb up the top-left.
+                rows[y].insert(0, str_form.format(r_prime, theta))
+                y += 1
+                theta += 1
+
+        # Flip the rows and join each row into a single string.
+        rows = [pad.join(x) for x in rows[::-1]]
+
+        # Pad the beginning of the rows so they line up properly.
+        for y in range(num_rings - 1):
+            rows[y] = (num_rings - 1 - y)*pad + rows[y]
+            rows[-1 - y] = (num_rings - 1 - y)*pad + rows[-1 - y]
+
+        for y in range(num_rings % 2, num_rings, 2):
+            rows[middle + y] = pad + rows[middle + y]
+            if y != 0:
+                rows[middle - y] = pad + rows[middle - y]
+
+        # Join the rows together and return the string.
+        return '\n'.join(rows)

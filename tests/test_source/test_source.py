@@ -9,8 +9,6 @@ import numpy as np
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
 import openmc
-import openmc.stats
-from openmc.source import Source
 
 
 class SourceTestHarness(PyAPITestHarness):
@@ -18,8 +16,7 @@ class SourceTestHarness(PyAPITestHarness):
         mat1 = openmc.Material(material_id=1)
         mat1.set_density('g/cm3', 4.5)
         mat1.add_nuclide(openmc.Nuclide('U-235', '71c'), 1.0)
-        materials = openmc.MaterialsFile()
-        materials.add_material(mat1)
+        materials = openmc.Materials([mat1])
         materials.export_to_xml()
 
         sphere = openmc.Sphere(surface_id=1, R=10.0, boundary_type='vacuum')
@@ -31,9 +28,7 @@ class SourceTestHarness(PyAPITestHarness):
         root.add_cell(inside_sphere)
         geometry = openmc.Geometry()
         geometry.root_universe = root
-        geometry_xml = openmc.GeometryFile()
-        geometry_xml.geometry = geometry
-        geometry_xml.export_to_xml()
+        geometry.export_to_xml()
 
         # Create an array of different sources
         x_dist = openmc.stats.Uniform(-3., 3.)
@@ -56,11 +51,11 @@ class SourceTestHarness(PyAPITestHarness):
         energy2 = openmc.stats.Watt(0.988, 2.249)
         energy3 = openmc.stats.Tabular(E, p, interpolation='histogram')
 
-        source1 = Source(spatial1, angle1, energy1, strength=0.5)
-        source2 = Source(spatial2, angle2, energy2, strength=0.3)
-        source3 = Source(spatial3, angle3, energy3, strength=0.2)
+        source1 = openmc.Source(spatial1, angle1, energy1, strength=0.5)
+        source2 = openmc.Source(spatial2, angle2, energy2, strength=0.3)
+        source3 = openmc.Source(spatial3, angle3, energy3, strength=0.2)
 
-        settings = openmc.SettingsFile()
+        settings = openmc.Settings()
         settings.batches = 10
         settings.inactive = 5
         settings.particles = 1000

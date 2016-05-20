@@ -6,6 +6,7 @@ module multipole
   use hdf5_interface
   use multipole_header, only: MultipoleArray, FIT_T, FIT_A, FIT_F, &
                               MP_FISS, FORM_MLBW, FORM_RM
+  use search,           only: binary_search
 
   implicit none
 
@@ -23,25 +24,28 @@ contains
     type(MultipoleArray), intent(out), target :: multipole ! The object to fill
     integer, intent(in)                       :: i_table   ! index in nuclides/
                                                            !  sab_tables
-
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
-
-    ! Intermediate loading components
-    integer :: NMT
-    integer :: i, j
-    integer, allocatable :: MT(:)
-    logical :: accumulated_fission
-    character(len=24) :: MT_n ! Takes the form '/nuclide/reactions/MT???'
     integer :: is_fissionable
+    real(8) :: insert_pts(4)                ! New points in the energy grid
+    integer :: cut1, cut2                   ! Old indices just outside MP region
+    integer :: new_n_grid                   ! Number of points in new E grid
+    real(8), allocatable :: new_energy(:)   ! New energy grid
+    real(8) :: f1, f2                       ! Interpolation near cut1 & cut2
+    real(8), allocatable :: new_xs(:)       ! New cross sections
+    integer :: i
+    integer :: IE                           ! Reaction threshold
 
     associate (nuc => nuclides(i_table))
 
-      ! Open file for reading and move into the /isotope group
+      !=========================================================================
+      ! Copy in data from the file.
+
+      ! Open file for reading and move into the /isotope group.
       file_id = file_open(filename, 'r', parallel=.true.)
       group_id = open_group(file_id, "/nuclide")
 
-      ! Load in all the array size scalars
+      ! Load in all the array size scalars.
       call read_dataset(multipole % length, group_id, "length")
       call read_dataset(multipole % windows, group_id, "windows")
       call read_dataset(multipole % num_l, group_id, "num_l")
@@ -60,10 +64,10 @@ contains
       call read_dataset(multipole % start_E, group_id, "start_E")
       call read_dataset(multipole % end_E, group_id, "end_E")
 
-      ! Allocate the multipole array components
+      ! Allocate the multipole array components.
       call multipole % allocate()
 
-      ! Read in arrays
+      ! Read in arrays.
       call read_dataset(multipole % data, group_id, "data")
       call read_dataset(multipole % pseudo_k0RS, group_id, "pseudo_K0RS")
       call read_dataset(multipole % l_value, group_id, "l_value")
@@ -73,113 +77,138 @@ contains
 
       call read_dataset(multipole % curvefit, group_id, "curvefit")
 
-      ! Delete ACE pointwise data
-      call read_dataset(nuc % n_grid, group_id, "n_grid")
-
-      deallocate(nuc % energy)
-      deallocate(nuc % total)
-      deallocate(nuc % elastic)
-      deallocate(nuc % fission)
-      deallocate(nuc % nu_fission)
-      deallocate(nuc % absorption)
-
-      allocate(nuc % energy(nuc % n_grid))
-      allocate(nuc % total(nuc % n_grid))
-      allocate(nuc % elastic(nuc % n_grid))
-      allocate(nuc % fission(nuc % n_grid))
-      allocate(nuc % nu_fission(nuc % n_grid))
-      allocate(nuc % absorption(nuc % n_grid))
-
-      nuc % total(:) = ZERO
-      nuc % absorption(:) = ZERO
-      nuc % fission(:) = ZERO
-
-      ! Read in new energy axis (converting eV to MeV)
-      call read_dataset(nuc % energy, group_id, "energy_points")
-      nuc % energy = nuc % energy / 1.0e6_8
-
-      ! Get count and list of MT tables
-      call read_dataset(NMT, group_id, "MT_count")
-      allocate(MT(NMT))
-
-      call read_dataset(MT, group_id, "MT_list")
-
+      ! Close the file.
       call close_group(group_id)
+      call file_close(file_id)
 
-      accumulated_fission = .false.
+      !=========================================================================
+      ! Remove the uneeded/inconsitent pointwise data.  This step enforces the
+      ! assumption that no inelastic scattering reactions can occur in the
+      ! multipole region.  The energy grid is replaced with one that removes all
+      ! energies covered by multiple and adds four new points.  Two new points
+      ! mark the edges of the multipole region and cross sections will be
+      ! interpolated to these points.  The other two points are used to zero the
+      ! cross sections inside the multipole region.
 
-      ! Loop over each MT entry and load it into a reaction.
-      do i = 1, NMT
-        write(MT_n, '(A, I3.3)') '/nuclide/reactions/MT', MT(i)
+      ! Define the four new inserted points.
+      insert_pts(:) = [multipole % start_E / 1e6_8, &
+                       multipole % start_E / 1e6_8 + 1e-12_8, &
+                       multipole % end_E / 1e6_8 - 1e-12_8, &
+                       multipole % end_E / 1e6_8]
 
-        group_id = open_group(file_id, MT_n)
+      ! Find the points just outside the multipole region.
+      cut1 = binary_search(nuc % energy, nuc % n_grid, insert_pts(1))
+      cut2 = binary_search(nuc % energy, nuc % n_grid, insert_pts(4)) + 1
+      if (nuc % energy(cut1) == insert_pts(1)) cut1 = cut1 - 1
+      if (nuc % energy(cut2) == insert_pts(4)) cut2 = cut2 + 1
 
-        ! Each MT needs to be treated slightly differently.
-        select case (MT(i))
-          case(ELASTIC)
-            call read_dataset(nuc % elastic, group_id, "MT_sigma")
-            nuc % total(:) = nuc % total + nuc % elastic
-          case(N_FISSION)
-            call read_dataset(nuc % fission, group_id, "MT_sigma")
-            nuc % total(:) = nuc % total + nuc % fission
-            nuc % absorption(:) = nuc % absorption + nuc % fission
-            accumulated_fission = .true.
-          case default
-            ! Search through all of our secondary reactions
-            do j = 1, nuc % n_reaction
-              if (nuc % reactions(j) % MT == MT(i)) then
-                ! Match found
+      ! Generate the new energy grid.
+      new_n_grid = nuc % n_grid - (cut2 - cut1 - 1) + 4
+      allocate(new_energy(new_n_grid))
+      new_energy(1:cut1) = nuc % energy(1:cut1)
+      new_energy(cut1+1:cut1+4) = insert_pts(:)
+      new_energy(cut1+5:new_n_grid) = nuc % energy(cut2:nuc % n_grid)
 
-                ! Individual Fission components exist, so remove the combined
-                ! fission cross section.
-                if ( (MT(i) == N_F .or. MT(i) == N_NF .or. MT(i) == N_2NF &
-                      .or. MT(i) == N_3NF) .and. accumulated_fission) then
-                  nuc % total(:) = nuc % total - nuc % fission
-                  nuc % absorption(:) = nuc % absorption - nuc % fission
-                  nuc % fission(:) = ZERO
-                  accumulated_fission = .false.
-                end if
+      ! Compute interpolation factors for the new energy points.
+      f1 = (insert_pts(1) - nuc % energy(cut1)) &
+           / (nuc % energy(cut1+1) - nuc % energy(cut1))
+      f2 = (insert_pts(4) - nuc % energy(cut2-1)) &
+           / (nuc % energy(cut2) - nuc % energy(cut2-1))
 
-                deallocate(nuc % reactions(j) % sigma)
-                allocate(nuc % reactions(j) % sigma(nuc % n_grid))
+      ! Adjust the total cross section.
+      allocate(new_xs(new_n_grid))
+      new_xs(1:cut1) = nuc % total(1:cut1)
+      new_xs(cut1+1) = (ONE - f1) * nuc % total(cut1) &
+                       + f1 * nuc % total(cut1+1)
+      new_xs(cut1+2:cut1+3) = ZERO
+      new_xs(cut1+4) = (ONE - f2) * nuc % total(cut2-1) &
+                       + f2 * nuc % total(cut2)
+      new_xs(cut1+5:new_n_grid) = nuc % total(cut2:nuc % n_grid)
+      call move_alloc(new_xs, nuc % total)
 
-                call read_dataset(nuc % reactions(j) % sigma, &
-                                  group_id, "MT_sigma")
-                call read_dataset(nuc % reactions(j) % Q_value, &
-                                  group_id, "Q_value")
-                call read_dataset(nuc % reactions(j) % threshold, &
-                                  group_id, "threshold")
-                nuc % reactions(j) % threshold = 1 ! TODO: reconsider implications.
-                nuc % reactions(j) % Q_value = nuc % reactions(j) % Q_value &
-                                               / 1.0e6_8
+      ! Adjust the elastic cross section.
+      allocate(new_xs(new_n_grid))
+      new_xs(1:cut1) = nuc % elastic(1:cut1)
+      new_xs(cut1+1) = (ONE - f1) * nuc % elastic(cut1) &
+                       + f1 * nuc % elastic(cut1+1)
+      new_xs(cut1+2:cut1+3) = ZERO
+      new_xs(cut1+4) = (ONE - f2) * nuc % elastic(cut2-1) &
+                       + f2 * nuc % elastic(cut2)
+      new_xs(cut1+5:new_n_grid) = nuc % elastic(cut2:nuc % n_grid)
+      call move_alloc(new_xs, nuc % elastic)
 
-                ! Accumulate total
-                if (MT(i) /= N_LEVEL .and. MT(i) <= N_DA) then
-                  nuc % total(:) = nuc % total + nuc % reactions(j) % sigma
-                end if
+      ! Adjust the fission cross section.
+      allocate(new_xs(new_n_grid))
+      new_xs(1:cut1) = nuc % fission(1:cut1)
+      new_xs(cut1+1) = (ONE - f1) * nuc % fission(cut1) &
+                       + f1 * nuc % fission(cut1+1)
+      new_xs(cut1+2:cut1+3) = ZERO
+      new_xs(cut1+4) = (ONE - f2) * nuc % fission(cut2-1) &
+                       + f2 * nuc % fission(cut2)
+      new_xs(cut1+5:new_n_grid) = nuc % fission(cut2:nuc % n_grid)
+      call move_alloc(new_xs, nuc % fission)
 
-                ! Accumulate absorption
-                if (MT(i) >= N_GAMMA .and. MT(i) <= N_DA) then
-                  nuc % absorption(:) = nuc % absorption &
-                                        + nuc % reactions(j) % sigma
-                end if
+      ! Adjust the nu-fission cross section.
+      allocate(new_xs(new_n_grid))
+      new_xs(1:cut1) = nuc % nu_fission(1:cut1)
+      new_xs(cut1+1) = (ONE - f1) * nuc % nu_fission(cut1) &
+                       + f1 * nuc % nu_fission(cut1+1)
+      new_xs(cut1+2:cut1+3) = ZERO
+      new_xs(cut1+4) = (ONE - f2) * nuc % nu_fission(cut2-1) &
+                       + f2 * nuc % nu_fission(cut2)
+      new_xs(cut1+5:new_n_grid) = nuc % nu_fission(cut2:nuc % n_grid)
+      call move_alloc(new_xs, nuc % nu_fission)
 
-                ! Accumulate fission (if needed)
-                if ( (MT(i) == N_F .or. MT(i) == N_NF .or. MT(i) == N_2NF &
-                      .or. MT(i) == N_3NF) ) then
-                  nuc % fission(:) = nuc % fission + nuc % reactions(j) % sigma
-                  nuc % absorption(:) = nuc % absorption &
-                                        + nuc % reactions(j) % sigma
-                end if
-              end if
-            end do
-        end select
+      ! Adjust the absorption cross section.
+      allocate(new_xs(new_n_grid))
+      new_xs(1:cut1) = nuc % absorption(1:cut1)
+      new_xs(cut1+1) = (ONE - f1) * nuc % absorption(cut1) &
+                       + f1 * nuc % absorption(cut1+1)
+      new_xs(cut1+2:cut1+3) = ZERO
+      new_xs(cut1+4) = (ONE - f2) * nuc % absorption(cut2-1) &
+                       + f2 * nuc % absorption(cut2)
+      new_xs(cut1+5:new_n_grid) = nuc % absorption(cut2:nuc % n_grid)
+      call move_alloc(new_xs, nuc % absorption)
 
-        call close_group(group_id)
+      ! Adjust other cross sections.
+      do i = 1, nuc % n_reaction
+        associate (rxn => nuc % reactions(i))
+          if (.not. allocated(rxn % sigma)) cycle  ! Skip unallocated reactions
+          IE = rxn % threshold
+          if (rxn % threshold >= cut2) then
+            ! The threshold is above the multipole range.  All we need to do
+            ! is adjust the threshold index to match the new grid.
+            rxn % threshold = rxn % threshold - (cut2 - cut1 - 1) + 4
+          else if (rxn % threshold <= cut1) then
+            ! The threhold is below the multipole range.  Remove the multipole
+            ! region just like we did with the other reactions.
+            ! The new grid removed (cut2 - cut1 - 1) points and added 4.
+            allocate(new_xs(size(rxn % sigma) - (cut2 - cut1 - 1) + 4))
+            new_xs(1:cut1-IE+1) = rxn % sigma(1:cut1-IE+1)
+            new_xs(cut1-IE+2) = (ONE - f1) * rxn % sigma(cut1-IE+1) &
+                                + f1 * rxn % sigma(cut1-IE+2)
+            new_xs(cut1-IE+3:cut1-IE+4) = ZERO
+            new_xs(cut1-IE+5) = (ONE - f2) * rxn % sigma(cut2-IE) &
+                                + f2 * rxn % sigma(cut2-IE+1)
+            new_xs(cut1-IE+6:size(new_xs)) = &
+                 rxn % sigma(cut2-IE+1:size(rxn % sigma))
+            call move_alloc(new_xs, rxn % sigma)
+          else
+            ! The threshold lies within the multipole range.  Remove the first
+            ! cut2-IE points and add an interpolated point
+            allocate(new_xs(size(rxn % sigma) - (cut2-IE) + 1))
+            new_xs(1) = (ONE - f2) * rxn % sigma(cut2-IE) &
+                        + f2 * rxn % sigma(cut2-IE+1)
+            new_xs(2:size(new_xs)) = rxn % sigma(cut2-IE+1:size(rxn % sigma))
+            call move_alloc(new_xs, rxn % sigma)
+            rxn % threshold = cut1 + 4
+          end if
+        end associate
       end do
 
-      ! Close file
-      call file_close(file_id)
+      ! Apply the new energy grid.
+      nuc % n_grid = new_n_grid
+      call move_alloc(new_energy, nuc % energy)
 
     end associate
 

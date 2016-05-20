@@ -1,6 +1,7 @@
 from collections import OrderedDict, Iterable
 from numbers import Integral
 from xml.etree import ElementTree as ET
+import random
 import sys
 import warnings
 
@@ -123,6 +124,110 @@ class Universe(object):
             self._name = name
         else:
             self._name = ''
+
+    def find(self, point):
+        """Find cells/universes/lattices which contain a given point
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinatesof the point
+
+        Returns
+        -------
+        list
+            Sequence of universes, cells, and lattices which are traversed to
+            find the given point
+
+        """
+        p = np.asarray(point)
+        for cell in self._cells.values():
+            if p in cell:
+                if cell._type in ('normal', 'void'):
+                    return [self, cell]
+                elif cell._type == 'fill':
+                    if cell.translation is not None:
+                        p -= cell.translation
+                    if cell.rotation is not None:
+                        p[:] = cell.rotation_matrix.dot(p)
+                    return [self, cell] + cell.fill.find(p)
+                else:
+                    return [self, cell] + cell.fill.find(p)
+        return []
+
+    def plot(self, center=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
+             basis='xy', color_by='cell'):
+        """Display a slice plot of the universe.
+
+        Parameters
+        ----------
+        center : Iterable of float
+            Coordinates at the center of the plot
+        width : Iterable of float
+            Width of the plot in each basis direction
+        pixels : Iterable of int
+            Number of pixels to use in each basis direction
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        color_by : {'cell', 'material'}
+            Indicate whether the plot should be colored by cell or by material
+
+        """
+        import matplotlib.pyplot as plt
+
+        if basis == 'xy':
+            x_min = center[0] - 0.5*width[0]
+            x_max = center[0] + 0.5*width[0]
+            y_min = center[1] - 0.5*width[1]
+            y_max = center[1] + 0.5*width[1]
+        elif basis == 'yz':
+            # The x-axis will correspond to physical y and the y-axis will correspond to physical z
+            x_min = center[1] - 0.5*width[0]
+            x_max = center[1] + 0.5*width[0]
+            y_min = center[2] - 0.5*width[1]
+            y_max = center[2] + 0.5*width[1]
+        elif basis == 'xz':
+            # The y-axis will correspond to physical z
+            x_min = center[0] - 0.5*width[0]
+            x_max = center[0] + 0.5*width[0]
+            y_min = center[2] - 0.5*width[1]
+            y_max = center[2] + 0.5*width[1]
+
+        # Determine locations to determine cells at
+        x_coords = np.linspace(x_min, x_max, pixels[0], endpoint=False) + \
+                   0.5*(x_max - x_min)/pixels[0]
+        y_coords = np.linspace(y_max, y_min, pixels[1], endpoint=False) - \
+                   0.5*(y_max - y_min)/pixels[1]
+
+        colors = {}
+        img = np.zeros(pixels + (4,))  # Use RGBA form
+        for i, x in enumerate(x_coords):
+            for j, y in enumerate(y_coords):
+                if basis == 'xy':
+                    path = self.find((x, y, center[2]))
+                elif basis == 'yz':
+                    path = self.find((center[0], x, y))
+                elif basis == 'xz':
+                    path = self.find((x, center[1], y))
+
+                if len(path) > 0:
+                    try:
+                        if color_by == 'cell':
+                            uid = path[-1].id
+                        elif color_by == 'material':
+                            if path[-1].fill_type == 'material':
+                                uid = path[-1].fill.id
+                            else:
+                                continue
+                    except AttributeError:
+                        continue
+                    if uid not in colors:
+                        colors[uid] = (random.random(), random.random(),
+                                       random.random(), 1.0)
+                    img[j,i,:] = colors[uid]
+
+        plt.imshow(img, extent=(x_min, x_max, y_min, y_max))
+        plt.show()
 
     def add_cell(self, cell):
         """Add a cell to the universe.

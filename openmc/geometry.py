@@ -62,6 +62,23 @@ class Geometry(object):
         tree.write("geometry.xml", xml_declaration=True, encoding='utf-8',
                    method="xml")
 
+    def find(self, point):
+        """Find cells/universes/lattices which contain a given point
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinatesof the point
+
+        Returns
+        -------
+        list
+            Sequence of universes, cells, and lattices which are traversed to
+            find the given point
+
+        """
+        return self.root_universe.find(point)
+
     def get_cell_instance(self, path):
         """Return the instance number for the final cell in a geometry path.
 

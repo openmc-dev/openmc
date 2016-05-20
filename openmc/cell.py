@@ -97,7 +97,10 @@ class Cell(object):
             self.region = region
 
     def __contains__(self, point):
-        return point in self.region
+        if self.region is None:
+            return True
+        else:
+            return point in self.region
 
     def __eq__(self, other):
         if not isinstance(other, Cell):

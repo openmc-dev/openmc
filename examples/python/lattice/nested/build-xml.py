@@ -98,14 +98,12 @@ univ4.add_cell(cell2)
 
 # Instantiate nested Lattices
 lattice1 = openmc.RectLattice(lattice_id=4, name='4x4 assembly')
-lattice1.dimension = [2, 2]
 lattice1.lower_left = [-1., -1.]
 lattice1.pitch = [1., 1.]
 lattice1.universes = [[univ1, univ2],
                       [univ2, univ3]]
 
 lattice2 = openmc.RectLattice(lattice_id=6, name='4x4 core')
-lattice2.dimension = [2, 2]
 lattice2.lower_left = [-2., -2.]
 lattice2.pitch = [2., 2.]
 lattice2.universes = [[univ4, univ4],

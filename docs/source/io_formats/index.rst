@@ -1,13 +1,15 @@
-.. _usersguide_output:
+.. _io_file_formats:
 
-===================
-Output File Formats
-===================
+===============
+IO File Formats
+===============
 
 .. toctree::
    :numbered:
    :maxdepth: 3
 
+   data_wmp
+   mgxs_library
    statepoint
    source
    summary

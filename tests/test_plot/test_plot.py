@@ -9,7 +9,7 @@ from testing_harness import TestHarness
 
 import h5py
 
-from openmc import Executor
+import openmc
 
 
 class PlotTestHarness(TestHarness):
@@ -19,8 +19,7 @@ class PlotTestHarness(TestHarness):
         self._plot_names = plot_names
 
     def _run_openmc(self):
-        executor = Executor()
-        returncode = executor.plot_geometry(openmc_exec=self._opts.exe)
+        returncode = openmc.plot_geometry(openmc_exec=self._opts.exe)
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
     def _test_output_created(self):

@@ -1,4 +1,4 @@
-.. _usersguide_summary:
+.. _io_summary:
 
 ===================
 Summary File Format

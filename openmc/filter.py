@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections import Iterable, OrderedDict
 import copy
 from numbers import Real, Integral
 import sys
@@ -27,7 +27,8 @@ class Filter(object):
     type : str
         The type of the tally filter. Acceptable values are "universe",
         "material", "cell", "cellborn", "surface", "mesh", "energy",
-        "energyout", and "distribcell".
+        "energyout", "distribcell", "mu", "polar", "azimuthal", and
+        "delayedgroup".
     bins : Integral or Iterable of Integral or Iterable of Real
         The bins for the filter. This takes on different meaning for different
         filters. See the OpenMC online documentation for more details.
@@ -515,7 +516,7 @@ class Filter(object):
 
         return filter_bin
 
-    def get_pandas_dataframe(self, data_size, summary=None):
+    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -530,12 +531,13 @@ class Filter(object):
         ----------
         data_size : Integral
             The total number of bins in the tally corresponding to this filter
-        summary : None or openmc.Summary
-            An optional Summary object to be used to construct columns for
-            distribcell tally filters (default is None). The geometric
-            information in the Summary object is embedded into a Multi-index
-            column with a geometric "path" to each distribcell instance.
-            NOTE: This option requires the OpenCG Python package.
+        distribcell_paths : bool, optional
+            Construct columns for distribcell tally filters (default is True).
+            The geometric information in the Summary object is embedded into a
+            Multi-index column with a geometric "path" to each distribcell
+            instance. NOTE: This option assumes that all distribcell paths are
+            of the same length and do not have the same universes and cells but
+            different lattice cell indices.
 
         Returns
         -------
@@ -553,7 +555,7 @@ class Filter(object):
 
             1. a single column with the cell instance IDs (without summary info)
             2. separate columns for the cell IDs, universe IDs, and lattice IDs
-               and x,y,z cell indices corresponding to each (with summary info).
+               and x,y,z cell indices corresponding to each (distribcell paths).
 
             For 'energy' and 'energyout' filters, the DataFrame includes one
             column for the lower energy bound and one column for the upper
@@ -565,8 +567,7 @@ class Filter(object):
         Raises
         ------
         ImportError
-            When Pandas is not installed, or summary info is requested but
-            OpenCG is not installed.
+            When Pandas is not installed
 
         See also
         --------
@@ -625,106 +626,117 @@ class Filter(object):
         elif self.type == 'distribcell':
             level_df = None
 
-            if isinstance(summary, Summary):
-                # Attempt to import the OpenCG package
-                try:
-                    import opencg
-                except ImportError:
-                    msg = 'The OpenCG package must be installed ' \
-                          'to use a Summary for distribcell dataframes'
-                    raise ImportError(msg)
+            # Create Pandas Multi-index columns for each level in CSG tree
+            if distribcell_paths:
 
-                # Extract the OpenCG geometry from the Summary
-                opencg_geometry = summary.opencg_geometry
-                openmc_geometry = summary.openmc_geometry
+                # Distribcell paths require linked metadata from the Summary
+                if self.distribcell_paths is None:
+                    msg = 'Unable to construct distribcell paths since ' \
+                          'the Summary is not linked to the StatePoint'
+                    raise ValueError(msg)
 
-                # Use OpenCG to compute the number of regions
-                opencg_geometry.initialize_cell_offsets()
-                num_regions = opencg_geometry.num_regions
+                # Make copy of array of distribcell paths to use in
+                # Pandas Multi-index column construction
+                distribcell_paths = copy.deepcopy(self.distribcell_paths)
+                num_offsets = len(distribcell_paths)
 
-                # Initialize a dictionary mapping OpenMC distribcell
-                # offsets to OpenCG LocalCoords linked lists
-                offsets_to_coords = {}
-
-                for offset, path in enumerate(self.distribcell_paths):
-                    region = opencg_geometry.get_region_from_path(path)
-                    coords = opencg_geometry.find_region(region)
-                    offsets_to_coords[offset] = coords
-
-                # Each distribcell offset is a DataFrame bin
-                # Unravel the paths into DataFrame columns
-                num_offsets = len(offsets_to_coords)
-
-                # Initialize termination condition for while loop
+                # Loop over CSG levels in the distribcell paths
+                level_counter = 0
                 levels_remain = True
-                counter = 0
-
-                # Iterate over each level in the CSG tree hierarchy
                 while levels_remain:
-                    levels_remain = False
 
-                    # Initialize dictionary to build Pandas Multi-index
-                    # column for this level in the CSG tree hierarchy
-                    level_dict = {}
+                    # Use level key as first index in Pandas Multi-index column
+                    level_counter += 1
+                    level_key = 'level {}'.format(level_counter)
 
-                    # Initialize prefix Multi-index keys
-                    counter += 1
-                    level_key = 'level {0}'.format(counter)
-                    univ_key = (level_key, 'univ', 'id')
-                    cell_key = (level_key, 'cell', 'id')
-                    lat_id_key = (level_key, 'lat', 'id')
-                    lat_x_key = (level_key, 'lat', 'x')
-                    lat_y_key = (level_key, 'lat', 'y')
-                    lat_z_key = (level_key, 'lat', 'z')
+                    # Use the first distribcell path to determine if level
+                    # is a universe/cell or lattice level
+                    first_path = distribcell_paths[0]
+                    next_index = first_path.index('-')
+                    level = first_path[:next_index]
 
-                    # Allocate NumPy arrays for each CSG level and
-                    # each Multi-index column in the DataFrame
-                    level_dict[univ_key] = np.empty(num_offsets)
-                    level_dict[cell_key] = np.empty(num_offsets)
-                    level_dict[lat_id_key] = np.empty(num_offsets)
-                    level_dict[lat_x_key] = np.empty(num_offsets)
-                    level_dict[lat_y_key] = np.empty(num_offsets)
-                    level_dict[lat_z_key] = np.empty(num_offsets)
+                    # Trim universe/lattice info from path
+                    first_path = first_path[next_index+2:]
 
-                    # Initialize Multi-index columns to NaN - this is
-                    # necessary since some distribcell instances may
-                    # have very different LocalCoords linked lists
-                    level_dict[univ_key][:] = np.NAN
-                    level_dict[cell_key][:] = np.NAN
-                    level_dict[lat_id_key][:] = np.NAN
-                    level_dict[lat_x_key][:] = np.NAN
-                    level_dict[lat_y_key][:] = np.NAN
-                    level_dict[lat_z_key][:] = np.NAN
+                    # Create a dictionary for this level for Pandas Multi-index
+                    level_dict = OrderedDict()
 
-                    # Iterate over all regions (distribcell instances)
-                    for offset in range(num_offsets):
-                        coords = offsets_to_coords[offset]
+                    # This level is a lattice (e.g., ID(x,y,z))
+                    if '(' in level:
+                        level_type = 'lattice'
 
-                        # If entire LocalCoords has been unraveled into
-                        # Multi-index columns already, continue
-                        if coords is None:
-                            continue
+                        # Initialize prefix Multi-index keys
+                        lat_id_key = (level_key, 'lat', 'id')
+                        lat_x_key = (level_key, 'lat', 'x')
+                        lat_y_key = (level_key, 'lat', 'y')
+                        lat_z_key = (level_key, 'lat', 'z')
 
-                        # Assign entry to Universe Multi-index column
-                        if coords._type == 'universe':
-                            level_dict[univ_key][offset] = coords._universe._id
-                            level_dict[cell_key][offset] = coords._cell._id
+                        # Allocate NumPy arrays for each CSG level and
+                        # each Multi-index column in the DataFrame
+                        level_dict[lat_id_key] = np.empty(num_offsets)
+                        level_dict[lat_x_key] = np.empty(num_offsets)
+                        level_dict[lat_y_key] = np.empty(num_offsets)
+                        level_dict[lat_z_key] = np.empty(num_offsets)
 
-                        # Assign entry to Lattice Multi-index column
+                    # This level is a universe / cell (e.g., ID->ID)
+                    else:
+                        level_type = 'universe'
+
+                        # Initialize prefix Multi-index keys
+                        univ_key = (level_key, 'univ', 'id')
+                        cell_key = (level_key, 'cell', 'id')
+
+                        # Allocate NumPy arrays for each CSG level and
+                        # each Multi-index column in the DataFrame
+                        level_dict[univ_key] = np.empty(num_offsets)
+                        level_dict[cell_key] = np.empty(num_offsets)
+
+                        # Determine any levels remain in path
+                        if '-' not in first_path:
+                            levels_remain = False
+
+                    # Populate Multi-index arrays with all distribcell paths
+                    for i, path in enumerate(distribcell_paths):
+
+                        if level_type == 'lattice':
+                            # Extract lattice ID, indices from path
+                            next_index = path.index('-')
+                            lat_id_indices = path[:next_index]
+
+                            # Trim lattice info from distribcell path
+                            distribcell_paths[i] = path[next_index+2:]
+
+                            # Extract the lattice cell indices from the path
+                            i1 = lat_id_indices.index('(')
+                            i2 = lat_id_indices.index(')')
+                            i3 = lat_id_indices[i1+1:i2]
+
+                            # Assign entry to Lattice Multi-index column
+                            level_dict[lat_id_key][i] = path[:i1]
+                            level_dict[lat_x_key][i] = int(i3.split(',')[0]) - 1
+                            level_dict[lat_y_key][i] = int(i3.split(',')[1]) - 1
+                            level_dict[lat_z_key][i] = int(i3.split(',')[2]) - 1
+
                         else:
-                            # Reverse y index per lattice ordering in OpenCG
-                            level_dict[lat_id_key][offset] = coords._lattice._id
-                            level_dict[lat_x_key][offset] = coords._lat_x
-                            level_dict[lat_y_key][offset] = \
-                                coords._lattice.dimension[1] - coords._lat_y - 1
-                            level_dict[lat_z_key][offset] = coords._lat_z
+                            # Extract universe ID from path
+                            next_index = path.index('-')
+                            universe_id = int(path[:next_index])
 
-                        # Move to next node in LocalCoords linked list
-                        if coords._next is None:
-                            offsets_to_coords[offset] = None
-                        else:
-                            offsets_to_coords[offset] = coords._next
-                            levels_remain = True
+                            # Trim universe info from distribcell path
+                            path = path[next_index+2:]
+
+                            # Extract cell ID from path
+                            if '-' in path:
+                                next_index = path.index('-')
+                                cell_id = int(path[:next_index])
+                                distribcell_paths[i] = path[next_index+2:]
+                            else:
+                                cell_id = int(path)
+                                distribcell_paths[i] = ''
+
+                            # Assign entry to Universe, Cell Multi-index columns
+                            level_dict[univ_key][i] = universe_id
+                            level_dict[cell_key][i] = cell_id
 
                     # Tile the Multi-index columns
                     for level_key, level_bins in level_dict.items():
@@ -739,7 +751,7 @@ class Filter(object):
                     else:
                         level_df = pd.concat([level_df, pd.DataFrame(level_dict)], axis=1)
 
-            # Create DataFrame column for distribcell instances IDs
+            # Create DataFrame column for distribcell instance IDs
             # NOTE: This is performed regardless of whether the user
             # requests Summary geometric information
             filter_bins = np.arange(self.num_bins)

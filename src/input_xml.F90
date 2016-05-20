@@ -92,18 +92,22 @@ contains
     type(NodeList), pointer :: node_scat_list => null()
     type(NodeList), pointer :: node_source_list => null()
 
-    ! Display output message
-    call write_message("Reading settings XML file...", 5)
-
     ! Check if settings.xml exists
     filename = trim(path_input) // "settings.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      call fatal_error("Settings XML file '" // trim(filename) // "' does not &
-           &exist! In order to run OpenMC, you first need a set of input files;&
-           & at a minimum, this includes settings.xml, geometry.xml, and &
-           &materials.xml. Please consult the user's guide at &
-           &http://mit-crpg.github.io/openmc for further information.")
+      if (run_mode /= MODE_PLOTTING) then
+        call fatal_error("Settings XML file '" // trim(filename) // "' does &
+             &not exist! In order to run OpenMC, you first need a set of input &
+             &files; at a minimum, this includes settings.xml, geometry.xml, &
+             &and materials.xml. Please consult the user's guide at &
+             &http://mit-crpg.github.io/openmc for further information.")
+      else
+        ! The settings.xml file is optional if we just want to make a plot.
+        return
+      end if
+    else
+      call write_message("Reading settings XML file...", 5)
     end if
 
     ! Parse settings.xml file
@@ -150,7 +154,7 @@ contains
           call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", &
                                         env_variable)
           if (len_trim(env_variable) == 0) then
-            call fatal_error("No cross_sections.xml file was specified in &
+            call fatal_error("No mgxs.xml file was specified in &
                  &settings.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
                  &variable. OpenMC needs such a file to identify where to &
                  &find the cross section libraries. Please consult the user's &
@@ -184,9 +188,12 @@ contains
       if (check_for_node(doc, "max_order")) then
         call get_node_value(doc, "max_order", max_order)
       else
-        ! Set to default of largest int, which means to use whatever is
-        ! contained in library
-        max_order = huge(0)
+        ! Set to default of largest int - 1, which means to use whatever is
+        ! contained in library.
+        ! This is largest int - 1 because for legendre scattering, a value of
+        ! 1 is added to the order; adding 1 to huge(0) gets you the largest
+        ! negative integer, which is not what we want.
+        max_order = huge(0) - 1
       end if
     else
       max_order = 0
@@ -3011,11 +3018,15 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
+            ! We can save tallying time if we know that the tally bins
+            ! match the energy group structure.  In that case, the matching bin
+            ! index is simply the group (after flipping for the different
+            ! ordering of the library and tallying systems).
             if (.not. run_CE) then
-              if (n_words /= energy_groups + 1) then
-                t % energy_matches_groups = .false.
-              else if (all(t % filters(j) % real_bins == energy_bins)) then
-                t % energy_matches_groups = .false.
+              if (n_words == energy_groups + 1) then
+                if (all(t % filters(j) % real_bins == &
+                        energy_bins(energy_groups + 1:1:-1))) &
+                     t % energy_matches_groups = .true.
               end if
             end if
 
@@ -3030,11 +3041,15 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
+            ! We can save tallying time if we know that the tally bins
+            ! match the energy group structure.  In that case, the matching bin
+            ! index is simply the group (after flipping for the different
+            ! ordering of the library and tallying systems).
             if (.not. run_CE) then
-              if (n_words /= energy_groups + 1) then
-                t % energy_matches_groups = .false.
-              else if (all(t % filters(j) % real_bins == energy_bins)) then
-                t % energy_matches_groups = .false.
+              if (n_words == energy_groups + 1) then
+                if (all(t % filters(j) % real_bins == &
+                        energy_bins(energy_groups + 1:1:-1))) &
+                     t % energyout_matches_groups = .true.
               end if
             end if
 
@@ -3494,27 +3509,22 @@ contains
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
 
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
-          case ('scatter-n')
-            if (n_order == 0) then
-              t % score_bins(j) = SCORE_SCATTER
-            else
-              t % score_bins(j) = SCORE_SCATTER_N
-              ! Set tally estimator to analog
+            ! Set tally estimator to analog for CE mode
+            ! (MG mode has all data available without a collision being
+            ! necessary)
+            if (run_CE) then
               t % estimator = ESTIMATOR_ANALOG
             end if
+
+          case ('scatter-n')
+            t % score_bins(j) = SCORE_SCATTER_N
             t % moment_order(j) = n_order
+            t % estimator = ESTIMATOR_ANALOG
 
           case ('nu-scatter-n')
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
-            if (n_order == 0) then
-              t % score_bins(j) = SCORE_NU_SCATTER
-            else
-              t % score_bins(j) = SCORE_NU_SCATTER_N
-            end if
+            t % score_bins(j) = SCORE_NU_SCATTER_N
             t % moment_order(j) = n_order
+            t % estimator = ESTIMATOR_ANALOG
 
           case ('scatter-pn')
             t % estimator = ESTIMATOR_ANALOG
@@ -3553,10 +3563,14 @@ contains
             call fatal_error("Diffusion score no longer supported for tallies, &
                  &please remove")
           case ('n1n')
-            t % score_bins(j) = SCORE_N_1N
+            if (run_CE) then
+              t % score_bins(j) = SCORE_N_1N
 
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
+              ! Set tally estimator to analog
+              t % estimator = ESTIMATOR_ANALOG
+            else
+              call fatal_error("Cannot tally n1n rate in multi-group mode!")
+            end if
           case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
 
@@ -4690,23 +4704,24 @@ contains
   subroutine read_mg_cross_sections_xml()
 
     integer :: i           ! loop index
-    logical :: file_exists ! does cross_sections.xml exist?
+    logical :: file_exists ! does mgxs.xml exist?
     type(XsListing), pointer :: listing => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_xsdata => null()
     type(NodeList), pointer :: node_xsdata_list => null()
+    real(8), allocatable :: rev_energy_bins(:)
 
-    ! Check if cross_sections.xml exists
+    ! Check if mgxs.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-      ! Could not find cross_sections.xml file
+      ! Could not find mgxs.xml file
       call fatal_error("Cross sections XML file '" &
            // trim(path_cross_sections) // "' does not exist!")
     end if
 
     call write_message("Reading cross sections XML file...", 5)
 
-    ! Parse cross_sections.xml file
+    ! Parse mgxs.xml file
     call open_xmldoc(doc, path_cross_sections)
 
     if (check_for_node(doc, "groups")) then
@@ -4716,6 +4731,7 @@ contains
       call fatal_error("groups element must exist!")
     end if
 
+    allocate(rev_energy_bins(energy_groups + 1))
     allocate(energy_bins(energy_groups + 1))
     if (check_for_node(doc, "group_structure")) then
       ! Get neutron group structure
@@ -4723,6 +4739,9 @@ contains
     else
       call fatal_error("group_structures element must exist!")
     end if
+
+    ! First reverse the order of energy_groups
+    energy_bins = energy_bins(energy_groups + 1:1:-1)
 
     allocate(energy_bin_avg(energy_groups))
     do i = 1, energy_groups
@@ -4737,7 +4756,7 @@ contains
       ! If not given, estimate them by using average energy in group which is
       ! assumed to be the midpoint
       do i = 1, energy_groups
-        inverse_velocities(i) = &
+        inverse_velocities(i) = ONE / &
              (sqrt(TWO * energy_bin_avg(i) / (MASS_NEUTRON_MEV)) * &
               C_LIGHT * 100.0_8)
       end do
@@ -4750,7 +4769,7 @@ contains
     ! Allocate xs_listings array
     if (n_listings == 0) then
       call fatal_error("At least one <xsdata> element must be present in &
-                       &cross_sections.xml file!")
+                       &mgxs.xml file!")
     else
       allocate(xs_listings(n_listings))
     end if

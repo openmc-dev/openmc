@@ -53,7 +53,6 @@ class DistribmatTestHarness(PyAPITestHarness):
         fuel_univ.add_cells((c11, c12))
 
         lat = openmc.RectLattice(lattice_id=101)
-        lat.dimension = [2, 2]
         lat.lower_left = [-2.0, -2.0]
         lat.pitch = [2.0, 2.0]
         lat.universes = [[fuel_univ]*2]*2

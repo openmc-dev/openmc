@@ -975,14 +975,11 @@ class Library(object):
 
         return mgxs_file
 
-    def create_mg_library_and_materials(self, xsdata_names=None, xs_ids=None,
-                                        material_ids=None):
+    def create_mg_mode(self, xsdata_names=None, xs_ids=None):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC as well as the associated openmc.Materials
-        objects. This method cannot be used for Library objects with
-        `Library.by_nuclide == True` since the materials to output would be
-        problem dependent and thus any Materials object produced by this method
-        would not be useful.
+        and openmc.Geometry objects. This method only creates a macroscopic
+        MGXS Library even if nuclidic tallies are specified in the Library.
 
         Parameters
         ----------
@@ -993,18 +990,16 @@ class Library(object):
             Cross section set identifier (i.e., '71c') for all
             data sets (if only str) or for each individual one
             (if iterable of str). Defaults to '1m'.
-        material_ids : None or Iterable of Integral
-            An optional list of material IDs to pass to the materials in
-            materials_file.  Defaults to `None` implying the materials will be
-            given an ID number which matches the index of the domain in
-            `self.domains`
 
         Returns
         -------
         mgxs_file : openmc.MGXSLibrary
             Multi-Group Cross Section File that is ready to be printed to the
             file of choice by the user.
-        materials_file : openmc.Materials
+        materials : openmc.Materials
+            Materials file ready to be printed with all the macroscopic data
+            present within this Library.
+        geometry : openmc.Geometry
             Materials file ready to be printed with all the macroscopic data
             present within this Library.
 
@@ -1036,42 +1031,51 @@ class Library(object):
                 cv.check_iterable_type('xs_ids', xs_ids, basestring)
         else:
             xs_ids = ['1m' for i in range(len(self.domains))]
-        if material_ids is not None:
-            cv.check_iterable_type('material_ids', material_ids, Integral)
         xs_type = 'macro'
 
-        # Initialize files
+        # Initialize MGXS File
         mgxs_file = openmc.MGXSLibrary(self.energy_groups)
 
-        materials = []
-        macroscopics = []
-        nuclide = 'total'
+        # Create a copy of the Geometry to differentiate for these Macroscopics
+        geometry = copy.deepcopy(self.openmc_geometry)
+        materials = openmc.Materials()
+
+        # Get all Cells from the Geometry for differentiation
+        all_cells = geometry.get_all_material_cells()
+
         # Create the xsdata object and add it to the mgxs_file
         for i, domain in enumerate(self.domains):
+
             # Build & add metadata to XSdata object
             if xsdata_names is None:
                 xsdata_name = 'set' + str(i + 1)
             else:
                 xsdata_name = xsdata_names[i]
 
-            xsdata = self.get_xsdata(domain, xsdata_name, nuclide=nuclide,
+            # Create XSdata and Macroscopic for this domain
+            xsdata = self.get_xsdata(domain, xsdata_name, nuclide='total',
                                      xs_type=xs_type, xs_id=xs_ids[i])
-
             mgxs_file.add_xsdata(xsdata)
+            macroscopic = openmc.Macroscopic(name=xsdata_name, xs=xs_ids[i])
 
-            macroscopics.append(openmc.Macroscopic(name=xsdata_name,
-                                                   xs=xs_ids[i]))
-            if material_ids is not None:
-                mat_id = material_ids[i]
-            else:
-                mat_id = i
-            materials.append(openmc.Material(name=xsdata_name + '.' +
-                                             xs_ids[i], material_id=mat_id))
-            materials[-1].add_macroscopic(macroscopics[-1])
+            # Create Material and add to collection
+            material = openmc.Material(name=xsdata_name + '.' + xs_ids[i])
+            material.add_macroscopic(macroscopic)
+            materials.append(material)
 
-        materials_file = openmc.Materials(materials)
+            # Differentiate Geometry with new Material
+            if self.domain_type == 'material':
+                # Fill all appropriate Cells with new Material
+                for cell in all_cells:
+                    if cell.fill.id == domain.id:
+                        cell.fill = material
 
-        return (mgxs_file, materials_file)
+            elif self.domain_type == 'cell':
+                for cell in all_cells:
+                    if cell.id == domain.id:
+                        cell.fill = material
+
+        return mgxs_file, materials, geometry
 
     def check_library_for_openmc_mgxs(self):
         """This routine will check the MGXS Types within a Library
@@ -1101,6 +1105,7 @@ class Library(object):
         See also
         --------
         Library.create_mg_library()
+        Library.create_mg_mode()
 
         """
 

@@ -131,6 +131,8 @@ class XSdata(object):
     num_polar : int
         Number of equal width angular bins that the polar angular domain is
         subdivided into. This only applies when ``representation`` is "angle".
+    use_chi : bool
+        Whether or not a chi vector or nu-fission matrix was used.
     vector_shape : iterable of int
         Dimensionality of vector multi-group cross sections (e.g., the total
         cross section).  The return result depends on the value of
@@ -291,6 +293,10 @@ class XSdata(object):
     @property
     def num_azimuthal(self):
         return self._num_azimuthal
+
+    @property
+    def use_chi(self):
+        return self._use_chi
 
     @property
     def total(self):
@@ -461,6 +467,11 @@ class XSdata(object):
         check_greater_than('num_azimuthal', num_azimuthal, 0)
         self._num_azimuthal = num_azimuthal
 
+    @use_chi.setter
+    def use_chi(self, use_chi):
+        check_type('use_chi', use_chi, bool)
+        self._use_chi = use_chi
+
     @total.setter
     def total(self, total):
         check_type('total', total, Iterable, expected_iter_type=Real)
@@ -512,8 +523,8 @@ class XSdata(object):
 
     @chi.setter
     def chi(self, chi):
-        if self._use_chi is not None:
-            if not self._use_chi:
+        if self.use_chi is not None:
+            if not self.use_chi:
                 msg = 'Providing chi when nu_fission already provided as a' \
                       'matrix'
                 raise ValueError(msg)
@@ -529,8 +540,8 @@ class XSdata(object):
 
         self._chi = npchi
 
-        if self._use_chi is not None:
-            self._use_chi = True
+        if self.use_chi is not None:
+            self.use_chi = True
 
     @scatter.setter
     def scatter(self, scatter):
@@ -574,8 +585,8 @@ class XSdata(object):
         check_iterable_type('nu_fission', npnu_fission, Real,
                             max_depth=len(npnu_fission.shape))
 
-        if self._use_chi is not None:
-            if self._use_chi:
+        if self.use_chi is not None:
+            if self.use_chi:
                 check_value('nu_fission shape', npnu_fission.shape,
                             [self.vector_shape])
             else:
@@ -587,9 +598,9 @@ class XSdata(object):
             # Find out if we have a nu-fission matrix or vector
             # and set a flag to allow other methods to check this later.
             if npnu_fission.shape == self.vector_shape:
-                self._use_chi = True
+                self.use_chi = True
             else:
-                self._use_chi = False
+                self.use_chi = False
 
         self._nu_fission = npnu_fission
         if np.sum(self._nu_fission) > 0.0:
@@ -728,10 +739,8 @@ class XSdata(object):
 
         """
 
-        # The NuFissionXS class does not have the capability to produce
-        # a fission matrix and therefore if this path is pursued, we know
-        # chi must be used.
-        check_type('nu_fission', nu_fission, openmc.mgxs.NuFissionXS)
+        check_type('nu_fission', nu_fission, (openmc.mgxs.NuFissionXS,
+                                              openmc.mgxs.NuFissionMatrixXS))
         check_value('energy_groups', nu_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', nu_fission.domain_type,
@@ -744,7 +753,10 @@ class XSdata(object):
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-        self._use_chi = True
+        if type(nu_fission) is openmc.mgxs.NuFissionMatrixXS:
+            self.use_chi = False
+        else:
+            self.use_chi = True
 
         if np.sum(self._nu_fission) > 0.0:
             self._fissionable = True
@@ -809,8 +821,8 @@ class XSdata(object):
 
         """
 
-        if self._use_chi is not None:
-            if not self._use_chi:
+        if self.use_chi is not None:
+            if not self.use_chi:
                 msg = 'Providing chi when nu_fission already provided as a ' \
                       'matrix!'
                 raise ValueError(msg)
@@ -827,8 +839,8 @@ class XSdata(object):
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-        if self._use_chi is not None:
-            self._use_chi = True
+        if self.use_chi is not None:
+            self.use_chi = True
 
     def set_scatter_mgxs(self, scatter, nuclide='total', xs_type='macro'):
         """This method allows for an openmc.mgxs.ScatterMatrixXS

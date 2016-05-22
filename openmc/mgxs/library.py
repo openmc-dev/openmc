@@ -460,7 +460,10 @@ class Library(object):
         ----------
         domain : Material or Cell or Universe or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption',
+                     'capture', 'fission', 'nu-fission', 'kappa-fission',
+                     'scatter', 'nu-scatter', 'scatter matrix',
+                     'nu-scatter matrix', 'nu-fission matrix', chi'}
             The type of multi-group cross section object to return
 
         Returns
@@ -853,13 +856,20 @@ class Library(object):
             mymgxs = self.get_mgxs(domain, 'kappa-fission')
             xsdata.set_kappa_fission_mgxs(mymgxs, xs_type=xs_type,
                                           nuclide=[nuclide])
-        if 'chi' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'chi')
-            xsdata.set_chi_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide])
-        if 'nu-fission' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'nu-fission')
+        # For chi and nu-fission we can either have only a nu-fission matrix
+        # provided, or vectors of chi and nu-fission provided
+        if 'nu-fission matrix' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'nu-fission matrix')
             xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
                                        nuclide=[nuclide])
+        else:
+            if 'chi' in self.mgxs_types:
+                mymgxs = self.get_mgxs(domain, 'chi')
+                xsdata.set_chi_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide])
+            if 'nu-fission' in self.mgxs_types:
+                mymgxs = self.get_mgxs(domain, 'nu-fission')
+                xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+                                           nuclide=[nuclide])
         # multiplicity requires scatter and nu-scatter
         if ((('scatter matrix' in self.mgxs_types) and
              ('nu-scatter matrix' in self.mgxs_types))):

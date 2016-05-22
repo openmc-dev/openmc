@@ -870,9 +870,15 @@ class Library(object):
                 mymgxs = self.get_mgxs(domain, 'nu-fission')
                 xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
                                            nuclide=[nuclide])
-        # multiplicity requires scatter and nu-scatter
-        if ((('scatter matrix' in self.mgxs_types) and
-             ('nu-scatter matrix' in self.mgxs_types))):
+        # If multiplicity matrix is available, prefer that
+        if 'multiplicity matrix' in self.mgxs_types:
+            mult_mgxs = self.get_mgxs(domain, 'multiplicity matrix')
+            xsdata.set_multiplicity_mgxs(mult_mgxs, xs_type=xs_type,
+                                         nuclide=[nuclide])
+            using_multiplicity = True
+        # multiplicity wil fall back to using scatter and nu-scatter
+        elif ((('scatter matrix' in self.mgxs_types) and
+               ('nu-scatter matrix' in self.mgxs_types))):
             scatt_mgxs = self.get_mgxs(domain, 'scatter matrix')
             nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
             xsdata.set_multiplicity_mgxs(nuscatt_mgxs, scatt_mgxs,
@@ -1131,9 +1137,10 @@ class Library(object):
             msg = '"nu-scatter matrix" MGXS type is required but not provided.'
             warn(msg)
         else:
-            # Ok, now see the status of scatter
-            if 'scatter matrix' not in self.mgxs_types:
-                # We dont have both nu-scatter and scatter, therefore
+            # Ok, now see the status of scatter and/or multiplicity
+            if ((('scatter matrix' not in self.mgxs_types) and
+                 ('multiplicity matrix' not in self.mgxs_types))):
+                # We dont have data needed for multiplicity matrix, therefore
                 # we need total, and not transport.
                 if 'total' not in self.mgxs_types:
                     error_flag = True

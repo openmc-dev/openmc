@@ -3458,7 +3458,7 @@ contains
                 end if
               end associate
               score = score * (deriv % flux_deriv &
-                   + dsigT * atom_density / material_xs % total)
+                   + dsigT / micro_xs(i_nuclide) % total)
             else
               score = score * deriv % flux_deriv
             end if
@@ -3500,7 +3500,8 @@ contains
                 end if
               end associate
               score = score * (deriv % flux_deriv + (dsigT - dsigA) &
-                   / (material_xs % total - material_xs % absorption))
+                   / (micro_xs(i_nuclide) % total &
+                   - micro_xs(i_nuclide) % absorption))
             else
               score = score * deriv % flux_deriv
             end if
@@ -3538,7 +3539,7 @@ contains
                 end if
               end associate
               score = score * (deriv % flux_deriv &
-                   + dsigA * atom_density / material_xs % absorption)
+                   + dsigA / micro_xs(i_nuclide) % absorption)
             else
               score = score * deriv % flux_deriv
             end if
@@ -3576,7 +3577,7 @@ contains
                 end if
               end associate
               score = score * (deriv % flux_deriv &
-                   + dsigF * atom_density / material_xs % fission)
+                   + dsigF / micro_xs(i_nuclide) % fission)
             else
               score = score * deriv % flux_deriv
             end if
@@ -3616,9 +3617,7 @@ contains
                 end if
               end associate
               score = score * (deriv % flux_deriv &
-                   + dsigF * atom_density / material_xs % nu_fission &
-                   * micro_xs(i_nuclide) % nu_fission &
-                   / micro_xs(i_nuclide) % fission)
+                   + dsigF / micro_xs(i_nuclide) % fission)
             else
               score = score * deriv % flux_deriv
             end if

@@ -906,7 +906,7 @@ class XSdata(object):
     def set_multiplicity_mgxs(self, nuscatter, scatter=None, nuclide='total',
                               xs_type='macro'):
         """This method allows for either the direct use of only an
-        openmc.mgxs.MultiplicityMatrix OR an openmc.mgxs.NuScatterMatrixXS and
+        openmc.mgxs.MultiplicityMatrixXS OR an openmc.mgxs.NuScatterMatrixXS and
         openmc.mgxs.ScatterMatrixXS to be used to set the scattering
         multiplicity for this XSdata object. Multiplicity,
         in OpenMC parlance, is a factor used to account for the production
@@ -917,7 +917,7 @@ class XSdata(object):
         Parameters
         ----------
         nuscatter: {openmc.mgxs.NuScatterMatrixXS,
-                    openmc.mgxs.MultiplicityMatrix}
+                    openmc.mgxs.MultiplicityMatrixXS}
             MGXS Object containing the matrix cross section for the domain
             of interest.
         scatter: openmc.mgxs.ScatterMatrixXS
@@ -938,15 +938,15 @@ class XSdata(object):
         """
 
         check_type('nuscatter', nuscatter, (openmc.mgxs.NuScatterMatrixXS,
-                                            openmc.mgxs.MultiplicityMatrix))
+                                            openmc.mgxs.MultiplicityMatrixXS))
         check_value('energy_groups', nuscatter.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', nuscatter.domain_type,
                     ['universe', 'cell', 'material'])
         if scatter is not None:
             check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
-            if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrix):
-                msg = 'Either an MultiplicityMatrix object must be passed ' \
+            if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrixXS):
+                msg = 'Either an MultiplicityMatrixXS object must be passed ' \
                       'for "nuscatter" or the "scatter" argument must be ' \
                       'provided.'
                 raise ValueError(msg)
@@ -958,7 +958,7 @@ class XSdata(object):
         if self.representation is 'isotropic':
             nuscatt = nuscatter.get_xs(nuclides=nuclide,
                                        xs_type=xs_type, moment=0)
-            if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrix):
+            if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrixXS):
                 self._multiplicity = nuscatt
             else:
                 scatt = scatter.get_xs(nuclides=nuclide,

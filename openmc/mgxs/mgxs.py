@@ -480,7 +480,7 @@ class MGXS(object):
         elif mgxs_type == 'nu-scatter matrix':
             mgxs = NuScatterMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'multiplicity matrix':
-            mgxs = MultiplicityMatrix(domain, domain_type, energy_groups)
+            mgxs = MultiplicityMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'nu-fission matrix':
             mgxs = NuFissionMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'chi':
@@ -1654,9 +1654,10 @@ class MatrixMGXS(MGXS):
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
-            special string 'all' will return the cross sections for all nuclides
-            in the spatial domain. The special string 'sum' will return the
-            cross section summed over all nuclides. Defaults to 'all'.
+            special string 'all' will return the cross sections for all
+            nuclides in the spatial domain. The special string 'sum' will
+            return the cross section summed over all nuclides. Defaults to
+            'all'.
         xs_type: {'macro', 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
@@ -1694,7 +1695,8 @@ class MatrixMGXS(MGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=2)
+            cv.check_iterable_type('subdomains', subdomains, Integral,
+                                   max_depth=2)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
@@ -1704,14 +1706,16 @@ class MatrixMGXS(MGXS):
             cv.check_iterable_type('groups', in_groups, Integral)
             for group in in_groups:
                 filters.append('energy')
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+                filter_bins.append((
+                    self.energy_groups.get_group_bounds(group),))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(out_groups, basestring):
             cv.check_iterable_type('groups', out_groups, Integral)
             for group in out_groups:
                 filters.append('energyout')
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+                filter_bins.append((
+                    self.energy_groups.get_group_bounds(group),))
 
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
@@ -1840,8 +1844,9 @@ class MatrixMGXS(MGXS):
             The nuclides of the cross-sections to include in the report. This
             may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
             The special string 'all' will report the cross sections for all
-            nuclides in the spatial domain. The special string 'sum' will report
-            the cross sections summed over all nuclides. Defaults to 'all'.
+            nuclides in the spatial domain. The special string 'sum' will
+            report the cross sections summed over all nuclides. Defaults to
+            'all'.
         xs_type: {'macro', 'micro'}
             Return the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
@@ -1884,7 +1889,7 @@ class MatrixMGXS(MGXS):
         template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]\n'
 
         # Loop over energy groups ranges
-        for group in range(1, self.num_groups+1):
+        for group in range(1, self.num_groups + 1):
             bounds = self.energy_groups.get_group_bounds(group)
             string += template.format('', group, bounds[0], bounds[1])
 
@@ -1911,8 +1916,8 @@ class MatrixMGXS(MGXS):
                 template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
                 # Loop over incoming/outgoing energy groups ranges
-                for in_group in range(1, self.num_groups+1):
-                    for out_group in range(1, self.num_groups+1):
+                for in_group in range(1, self.num_groups + 1):
+                    for out_group in range(1, self.num_groups + 1):
                         string += template.format('', in_group, out_group)
                         average = \
                             self.get_xs([in_group], [out_group],
@@ -1924,7 +1929,8 @@ class MatrixMGXS(MGXS):
                                         xs_type=xs_type, value='rel_err')
                         average = average.flatten()[0]
                         rel_err = rel_err.flatten()[0] * 100.
-                        string += '{:1.2e} +/- {:1.2e}%'.format(average, rel_err)
+                        string += '{:1.2e} +/- {:1.2e}%'.format(average,
+                                                                rel_err)
                         string += '\n'
                     string += '\n'
                 string += '\n'
@@ -2864,7 +2870,7 @@ class NuScatterXS(MGXS):
         self._rxn_type = 'nu-scatter'
 
 
-class ScatterMatrixXS(MGXS):
+class ScatterMatrixXS(MatrixMGXS):
     """A scattering matrix multi-group cross section for one or more Legendre
     moments.
 
@@ -2997,10 +3003,6 @@ class ScatterMatrixXS(MGXS):
             filters = [[energy], [energy, energyout]]
 
         return filters
-
-    @property
-    def estimator(self):
-        return 'analog'
 
     @property
     def rxn_rate_tally(self):
@@ -3594,7 +3596,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         self._hdf5_key = 'nu-scatter matrix'
 
 
-class MultiplicityMatrix(MatrixMGXS):
+class MultiplicityMatrixXS(MatrixMGXS):
     """The scattering multiplicity matrix.
 
     This class can be used for both OpenMC input generation and tally data
@@ -3677,8 +3679,8 @@ class MultiplicityMatrix(MatrixMGXS):
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
-        super(MultiplicityMatrix, self).__init__(domain, domain_type, groups,
-                                                 by_nuclide, name)
+        super(MultiplicityMatrixXS, self).__init__(domain, domain_type, groups,
+                                                   by_nuclide, name)
         self._rxn_type = 'multiplicity'
 
     @property
@@ -3712,7 +3714,7 @@ class MultiplicityMatrix(MatrixMGXS):
 
             # Compute the multiplicity
             self._xs_tally = self.rxn_rate_tally / scatter
-            super(MultiplicityMatrix, self)._compute_xs()
+            super(MultiplicityMatrixXS, self)._compute_xs()
 
         return self._xs_tally
 

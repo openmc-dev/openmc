@@ -872,8 +872,8 @@ class Library(object):
                                            nuclide=[nuclide])
         # If multiplicity matrix is available, prefer that
         if 'multiplicity matrix' in self.mgxs_types:
-            mult_mgxs = self.get_mgxs(domain, 'multiplicity matrix')
-            xsdata.set_multiplicity_mgxs(mult_mgxs, xs_type=xs_type,
+            mymgxs = self.get_mgxs(domain, 'multiplicity matrix')
+            xsdata.set_multiplicity_mgxs(mymgxs, xs_type=xs_type,
                                          nuclide=[nuclide])
             using_multiplicity = True
         # multiplicity wil fall back to using scatter and nu-scatter

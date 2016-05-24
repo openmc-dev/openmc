@@ -942,6 +942,7 @@ class Library(object):
         See also
         --------
         Library.dump_to_file()
+        Library.create_mg_mode()
 
         """
 
@@ -994,7 +995,10 @@ class Library(object):
     def create_mg_mode(self, xsdata_names=None, xs_ids=None):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC as well as the associated openmc.Materials
-        and openmc.Geometry objects. This method only creates a macroscopic
+        and openmc.Geometry objects. The created Geometry is the same as that
+        used to generate the MGXS data, with the only differences being
+        modifications to point to newly-created Materials which point to the
+        multi-group data. This method only creates a macroscopic
         MGXS Library even if nuclidic tallies are specified in the Library.
 
         Parameters
@@ -1112,8 +1116,9 @@ class Library(object):
           needed to support tallies the user may wish to request.
         - A nu-scatter matrix is required.
 
+          - Having a multiplicity matrix is preferred.
           - Having both nu-scatter (of any order) and scatter
-            (at least isotropic) matrices is preferred
+            (at least isotropic) matrices is the second choice.
           - If only nu-scatter, need total (not transport), to
             be used in adjusting absorption
             (i.e., reduced_abs = tot - nuscatt)

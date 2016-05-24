@@ -427,11 +427,7 @@ class MGXS(object):
 
         Parameters
         ----------
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption',
-                     'capture', 'fission', 'nu-fission', 'kappa-fission',
-                     'scatter', 'nu-scatter', 'scatter matrix',
-                     'nu-scatter matrix', 'multiplicity matrix',
-                     'nu-fission matrix', chi'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi'}
             The type of multi-group cross section object to return
         domain : openmc.Material or openmc.Cell or openmc.Universe
             The domain for spatial homogenization
@@ -1810,8 +1806,7 @@ class MatrixMGXS(MGXS):
         """
 
         # Call super class method and null out derived tallies
-        slice_xs = super(NuFissionMatrixXS, self).get_slice(nuclides,
-                                                            in_groups)
+        slice_xs = super(MatrixMGXS, self).get_slice(nuclides, in_groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 

@@ -378,6 +378,7 @@ contains
     real(8) :: v         ! y-component of direction
     real(8) :: w         ! z-component of direction
     real(8) :: norm      ! "norm" of surface normal
+    real(8) :: xyz(3)    ! Saved global coordinate
     integer :: i_surface ! index in surfaces
     logical :: found     ! particle found in universe?
     class(Surface), pointer :: surf
@@ -435,9 +436,10 @@ contains
       ! case the surface crossing is coincident with a mesh boundary
 
       if (active_current_tallies % size() > 0) then
+        xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
         call score_surface_current(p)
-        p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
+        p % coord(1) % xyz = xyz
       end if
 
       ! Reflect particle off surface
@@ -481,8 +483,9 @@ contains
 
       ! Do not handle periodic boundary conditions on lower universes
       if (p % n_coord /= 1) then
-        call handle_lost_particle(p, "Cannot period particle " &
-             // trim(to_str(p % id)) // " off surface in a lower universe.")
+        call handle_lost_particle(p, "Cannot transfer particle " &
+             // trim(to_str(p % id)) // " across surface in a lower universe.&
+             & Boundary conditions must be applied to universe 0.")
         return
       end if
 
@@ -491,9 +494,10 @@ contains
       ! case the surface crossing is coincident with a mesh boundary
 
       if (active_current_tallies % size() > 0) then
+        xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
         call score_surface_current(p)
-        p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
+        p % coord(1) % xyz = xyz
       end if
 
       select type (surf)

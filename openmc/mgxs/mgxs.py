@@ -430,7 +430,8 @@ class MGXS(object):
         mgxs_type : {'total', 'transport', 'nu-transport', 'absorption',
                      'capture', 'fission', 'nu-fission', 'kappa-fission',
                      'scatter', 'nu-scatter', 'scatter matrix',
-                     'nu-scatter matrix', 'nu-fission matrix', 'chi'}
+                     'nu-scatter matrix', 'multiplicity matrix',
+                     'nu-fission matrix', chi'}
             The type of multi-group cross section object to return
         domain : openmc.Material or openmc.Cell or openmc.Universe
             The domain for spatial homogenization

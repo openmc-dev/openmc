@@ -525,7 +525,7 @@ class XSdata(object):
     def chi(self, chi):
         if self.use_chi is not None:
             if not self.use_chi:
-                msg = 'Providing chi when nu_fission already provided as a' \
+                msg = 'Providing "chi" when "nu-fission" already provided as a' \
                       'matrix'
                 raise ValueError(msg)
 
@@ -753,7 +753,7 @@ class XSdata(object):
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-        if type(nu_fission) is openmc.mgxs.NuFissionMatrixXS:
+        if isinstance(nu_fission, openmc.mgxs.NuFissionMatrixXS):
             self.use_chi = False
         else:
             self.use_chi = True

@@ -222,6 +222,9 @@ class Plane(Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    periodic_surface : openmc.Surface
+        If a periodic boundary condition is used, the surface with which this
+        one is periodic with
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -239,6 +242,7 @@ class Plane(Surface):
 
         self._type = 'plane'
         self._coeff_keys = ['A', 'B', 'C', 'D']
+        self._periodic_surface = None
         self.a = A
         self.b = B
         self.c = C
@@ -260,6 +264,10 @@ class Plane(Surface):
     def d(self):
         return self.coefficients['D']
 
+    @property
+    def periodic_surface(self):
+        return self._periodic_surface
+
     @a.setter
     def a(self, A):
         check_type('A coefficient', A, Real)
@@ -279,6 +287,21 @@ class Plane(Surface):
     def d(self, D):
         check_type('D coefficient', D, Real)
         self._coefficients['D'] = D
+
+    @periodic_surface.setter
+    def periodic_surface(self, periodic_surface):
+        check_type('periodic surface', periodic_surface, Plane)
+        self._periodic_surface = periodic_surface
+        periodic_surface._periodic_surface = self
+
+    def create_xml_subelement(self):
+        element = super(Plane, self).create_xml_subelement()
+
+        # Add periodic surface pair information
+        if self.boundary_type == 'periodic':
+            if self.periodic_surface is not None:
+                element.set("periodic_surface_id", str(self.periodic_surface.id))
+        return element
 
 
 class XPlane(Plane):
@@ -306,6 +329,9 @@ class XPlane(Plane):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    periodic_surface : openmc.Surface
+        If a periodic boundary condition is used, the surface with which this
+        one is periodic with
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -391,6 +417,9 @@ class YPlane(Plane):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    periodic_surface : openmc.Surface
+        If a periodic boundary condition is used, the surface with which this
+        one is periodic with
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -477,6 +506,9 @@ class ZPlane(Plane):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    periodic_surface : openmc.Surface
+        If a periodic boundary condition is used, the surface with which this
+        one is periodic with
     coefficients : dict
         Dictionary of surface coefficients
     id : int

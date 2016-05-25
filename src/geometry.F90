@@ -502,26 +502,26 @@ contains
 
       select type (surf)
       type is (SurfaceXPlane)
-        select type (opposite => surfaces(surf % opposite) % obj)
+        select type (opposite => surfaces(surf % i_periodic) % obj)
         type is (SurfaceXPlane)
           p % coord(1) % xyz(1) = opposite % x0
         end select
 
       type is (SurfaceYPlane)
-        select type (opposite => surfaces(surf % opposite) % obj)
+        select type (opposite => surfaces(surf % i_periodic) % obj)
         type is (SurfaceYPlane)
           p % coord(1) % xyz(2) = opposite % y0
         end select
 
       type is (SurfaceZPlane)
-        select type (opposite => surfaces(surf % opposite) % obj)
+        select type (opposite => surfaces(surf % i_periodic) % obj)
         type is (SurfaceZPlane)
           p % coord(1) % xyz(3) = opposite % z0
         end select
       end select
 
       ! Reassign particle's surface
-      p % surface = sign(surfaces(surf % opposite) % obj % id, p % surface)
+      p % surface = sign(surf % i_periodic, p % surface)
 
       ! Figure out what cell particle is in now
       p % n_coord = 1

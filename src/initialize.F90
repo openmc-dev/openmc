@@ -580,20 +580,6 @@ contains
     class(Lattice),    pointer :: lat => null()
     type(TallyObject), pointer :: t => null()
 
-    ! Adjust opposite surfaces for periodic boundaries
-    do i = 1, size(surfaces)
-      associate (surf => surfaces(i) % obj)
-        if (surf % bc == BC_PERIODIC) then
-          if (surface_dict % has_key(surf % opposite)) then
-            surf % opposite = surface_dict % get_key(surf % opposite)
-          else
-            call fatal_error("Could not find opposite surface " // &
-                 trim(to_str(surf % opposite)) // ".")
-          end if
-        end if
-      end associate
-    end do
-
     do i = 1, n_cells
       ! =======================================================================
       ! ADJUST REGION SPECIFICATION FOR EACH CELL

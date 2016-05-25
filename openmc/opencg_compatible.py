@@ -1,4 +1,5 @@
 import copy
+import operator
 
 import numpy as np
 
@@ -9,8 +10,6 @@ except ImportError:
     raise ImportError(msg)
 
 import openmc
-from openmc.region import Intersection
-from openmc.surface import Halfspace
 import openmc.checkvalue as cv
 
 
@@ -467,13 +466,13 @@ def get_opencg_cell(openmc_cell):
     # half-spaces, i.e., no complex cells.
     region = openmc_cell.region
     if region is not None:
-        if isinstance(region, Halfspace):
+        if isinstance(region, openmc.Halfspace):
             surface = region.surface
             halfspace = -1 if region.side == '-' else 1
             opencg_cell.add_surface(get_opencg_surface(surface), halfspace)
-        elif isinstance(region, Intersection):
+        elif isinstance(region, openmc.Intersection):
             for node in region.nodes:
-                if not isinstance(node, Halfspace):
+                if not isinstance(node, openmc.Halfspace):
                     raise NotImplementedError("Complex cells not yet "
                                               "supported in OpenCG.")
                 surface = node.surface
@@ -697,12 +696,13 @@ def get_openmc_cell(opencg_cell):
         translation = np.asarray(opencg_cell.translation, dtype=np.float64)
         openmc_cell.translation = translation
 
-    surfaces = opencg_cell.surfaces
-
-    for surface_id in surfaces:
-        surface = surfaces[surface_id][0]
-        halfspace = surfaces[surface_id][1]
-        openmc_cell.add_surface(get_openmc_surface(surface), halfspace)
+    surfaces = []
+    operators = []
+    for surface, halfspace in opencg_cell.surfaces.values():
+        surfaces.append(get_openmc_surface(surface))
+        operators.append(operator.neg if halfspace == -1 else operator.pos)
+    openmc_cell.region = openmc.Intersection(
+        *[op(s) for op, s in zip(operators, surfaces)])
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell

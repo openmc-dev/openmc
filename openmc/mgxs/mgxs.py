@@ -1774,7 +1774,7 @@ class MatrixMGXS(MGXS):
         return xs
 
     def get_slice(self, nuclides=[], in_groups=[], out_groups=[]):
-        """Build a sliced matrixMGXS object for the specified nuclides and
+        """Build a sliced MatrixMGXS object for the specified nuclides and
         energy groups.
 
         This method constructs a new MGXS to encapsulate a subset of the data
@@ -2862,6 +2862,10 @@ class NuScatterXS(MGXS):
         super(NuScatterXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name)
         self._rxn_type = 'nu-scatter'
+
+    @property
+    def estimator(self):
+        return 'analog'
 
 
 class ScatterMatrixXS(MatrixMGXS):

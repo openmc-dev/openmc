@@ -1578,6 +1578,12 @@ contains
       case ('periodic')
         s%bc = BC_PERIODIC
         boundary_exists = .true.
+
+        ! Check for specification of periodic surface
+        if (check_for_node(node_surf, "periodic_surface_id")) then
+          call get_node_value(node_surf, "periodic_surface_id", &
+               s % i_periodic)
+        end if
       case default
         call fatal_error("Unknown boundary condition '" // trim(word) // &
              &"' specified on surface " // trim(to_str(s%id)))
@@ -1597,33 +1603,45 @@ contains
       if (surfaces(i) % obj % bc == BC_PERIODIC) then
         select type (surf => surfaces(i) % obj)
         type is (SurfaceXPlane)
-          if (i == i_xmin) then
-            surf % opposite = i_xmax
-          elseif (i == i_xmax) then
-            surf % opposite = i_xmin
+          if (surf % i_periodic == NONE) then
+            if (i == i_xmin) then
+              surf % i_periodic = i_xmax
+            elseif (i == i_xmax) then
+              surf % i_periodic = i_xmin
+            else
+              call fatal_error("Periodic boundary condition applied to &
+                   &interior surface.")
+            end if
           else
-            call fatal_error("Periodic boundary condition applied to &
-                 &interior surface.")
+            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
           end if
 
         type is (SurfaceYPlane)
-          if (i == i_ymin) then
-            surf % opposite = i_ymax
-          elseif (i == i_ymax) then
-            surf % opposite = i_ymin
+          if (surf % i_periodic == NONE) then
+            if (i == i_ymin) then
+              surf % i_periodic = i_ymax
+            elseif (i == i_ymax) then
+              surf % i_periodic = i_ymin
+            else
+              call fatal_error("Periodic boundary condition applied to &
+                   &interior surface.")
+            end if
           else
-            call fatal_error("Periodic boundary condition applied to &
-                 &interior surface.")
+            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
           end if
 
         type is (SurfaceZPlane)
-          if (i == i_zmin) then
-            surf % opposite = i_zmax
-          elseif (i == i_zmax) then
-            surf % opposite = i_zmin
+          if (surf % i_periodic == NONE) then
+            if (i == i_zmin) then
+              surf % i_periodic = i_zmax
+            elseif (i == i_zmax) then
+              surf % i_periodic = i_zmin
+            else
+              call fatal_error("Periodic boundary condition applied to &
+                   &interior surface.")
+            end if
           else
-            call fatal_error("Periodic boundary condition applied to &
-                 &interior surface.")
+            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
           end if
 
         class default
@@ -1633,7 +1651,7 @@ contains
 
         ! Make sure opposite surface is also periodic
         associate (surf => surfaces(i) % obj)
-          if (surfaces(surf % opposite) % obj % bc /= BC_PERIODIC) then
+          if (surfaces(surf % i_periodic) % obj % bc /= BC_PERIODIC) then
             call fatal_error("Could not find matching surface for periodic &
                  &boundary on surface " // trim(to_str(surf % id)) // ".")
           end if

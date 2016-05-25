@@ -114,8 +114,7 @@ cell1.fill = lattice2
 cell2.fill = lattice1
 
 # Instantiate a Geometry, register the root Universe, and export to XML
-geometry = openmc.Geometry()
-geometry.root_universe = root
+geometry = openmc.Geometry(root)
 geometry.export_to_xml()
 
 

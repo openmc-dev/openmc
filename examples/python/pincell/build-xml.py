@@ -149,8 +149,7 @@ root = openmc.Universe(universe_id=0, name='root universe')
 root.add_cells([fuel, gap, clad, water])
 
 # Instantiate a Geometry, register the root Universe, and export to XML
-geometry = openmc.Geometry()
-geometry.root_universe = root
+geometry = openmc.Geometry(root)
 geometry.export_to_xml()
 
 

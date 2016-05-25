@@ -1,6 +1,6 @@
 module surface_header
 
-  use constants, only: ONE, TWO, ZERO, HALF, INFINITY, FP_COINCIDENT
+  use constants, only: NONE, ONE, TWO, ZERO, HALF, INFINITY, FP_COINCIDENT
 
   implicit none
 
@@ -15,7 +15,8 @@ module surface_header
          neighbor_pos(:), &           ! List of cells on positive side
          neighbor_neg(:)              ! List of cells on negative side
     integer :: bc                     ! Boundary condition
-    character(len=104) :: name = ""    ! User-defined name
+    integer :: i_periodic = NONE      ! Index of corresponding periodic surface
+    character(len=104) :: name = ""   ! User-defined name
   contains
     procedure :: sense
     procedure :: reflect

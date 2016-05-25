@@ -57,7 +57,7 @@ class MGXS(object):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     NOTE: Users should instantiate the subclasses of this abstract class.
 
@@ -727,9 +727,8 @@ class MGXS(object):
             Return the cross section indexed according to increasing or
             decreasing energy groups (decreasing or increasing energies).
             Defaults to 'increasing'.
-        value : str
-            A string for the type of value to return - 'mean', 'std_dev' or
-            'rel_err' are accepted. Defaults to 'mean'.
+        value : {'mean', 'std_dev', 'rel_err'}
+            A string for the type of value to return. Defaults to 'mean'.
 
         Returns
         -------
@@ -963,8 +962,9 @@ class MGXS(object):
         Returns
         -------
         openmc.mgxs.MGXS
-            A new tally which encapsulates the subset of data requested for the
-            nuclide(s) and/or energy group(s) requested in the parameters.
+            A new MGXS object which encapsulates the subset of data requested
+            for the nuclide(s) and/or energy group(s) requested in the
+            parameters.
 
         """
 
@@ -1536,7 +1536,7 @@ class MatrixMGXS(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     NOTE: Users should instantiate the subclasses of this abstract class.
 
@@ -1624,9 +1624,7 @@ class MatrixMGXS(MGXS):
         energy = openmc.Filter('energy', group_edges)
         energyout = openmc.Filter('energyout', group_edges)
 
-        filters = [[energy], [energy, energyout]]
-
-        return filters
+        return [[energy], [energy, energyout]]
 
     @property
     def estimator(self):
@@ -1636,10 +1634,10 @@ class MatrixMGXS(MGXS):
                subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
                row_column='inout', value='mean', **kwargs):
-        r"""Returns an array of multi-group cross sections.
+        """Returns an array of multi-group cross sections.
 
-        This method constructs a 2D NumPy array for the requested multiplicity
-        matrix data data for one or more energy groups and subdomains.
+        This method constructs a 2D NumPy array for the requested multi-group
+        matrix data for one or more energy groups and subdomains.
 
         Parameters
         ----------
@@ -1666,9 +1664,8 @@ class MatrixMGXS(MGXS):
             Return the cross section indexed first by incoming group and
             second by outgoing group ('inout'), or vice versa ('outin').
             Defaults to 'inout'.
-        value : str
-            A string for the type of value to return - 'mean', 'std_dev', or
-            'rel_err' are accepted. Defaults to the empty string.
+        value : {'mean', 'std_dev', 'rel_err'}
+            A string for the type of value to return. Defaults to 'mean'.
 
         Returns
         -------
@@ -1777,7 +1774,7 @@ class MatrixMGXS(MGXS):
         return xs
 
     def get_slice(self, nuclides=[], in_groups=[], out_groups=[]):
-        """Build a sliced NuFissionMatrix for the specified nuclides and
+        """Build a sliced matrixMGXS object for the specified nuclides and
         energy groups.
 
         This method constructs a new MGXS to encapsulate a subset of the data
@@ -1799,9 +1796,10 @@ class MatrixMGXS(MGXS):
 
         Returns
         -------
-        openmc.mgxs.MGXS
-            A new tally which encapsulates the subset of data requested for the
-            nuclide(s) and/or energy group(s) requested in the parameters.
+        openmc.mgxs.MatrixMGXS
+            A new MatrixMGXS object which encapsulates the subset of data
+            requested for the nuclide(s) and/or energy group(s) requested in
+            the parameters.
 
         """
 
@@ -1940,7 +1938,7 @@ class TotalXS(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -2028,7 +2026,7 @@ class TransportXS(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -2142,7 +2140,7 @@ class NuTransportXS(TransportXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -2238,7 +2236,7 @@ class AbsorptionXS(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -2331,7 +2329,7 @@ class CaptureXS(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -2431,7 +2429,7 @@ class FissionXS(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -2519,7 +2517,7 @@ class NuFissionXS(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -2607,7 +2605,7 @@ class KappaFissionXS(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -2695,7 +2693,7 @@ class ScatterXS(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -2783,7 +2781,7 @@ class NuScatterXS(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -2872,7 +2870,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -3116,9 +3114,10 @@ class ScatterMatrixXS(MatrixMGXS):
 
         Returns
         -------
-        openmc.mgxs.MGXS
-            A new tally which encapsulates the subset of data requested for the
-            nuclide(s) and/or energy group(s) requested in the parameters.
+        openmc.mgxs.MatrixMGXS
+            A new MatrixMGXS which encapsulates the subset of data requested
+            for the nuclide(s) and/or energy group(s) requested in the
+            parameters.
 
         """
 
@@ -3200,9 +3199,8 @@ class ScatterMatrixXS(MatrixMGXS):
             Return the cross section indexed first by incoming group and
             second by outgoing group ('inout'), or vice versa ('outin').
             Defaults to 'inout'.
-        value : str
-            A string for the type of value to return - 'mean', 'std_dev', or
-            'rel_err' are accepted. Defaults to the empty string.
+        value : {'mean', 'std_dev', 'rel_err'}
+            A string for the type of value to return. Defaults to 'mean'.
 
         Returns
         -------
@@ -3430,7 +3428,7 @@ class ScatterMatrixXS(MatrixMGXS):
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         if self.correction != 'P0':
-            rxn_type= '{0} (P{1})'.format(self.rxn_type, moment)
+            rxn_type = '{0} (P{1})'.format(self.rxn_type, moment)
         else:
             rxn_type = self.rxn_type
 
@@ -3449,7 +3447,7 @@ class ScatterMatrixXS(MatrixMGXS):
         template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]\n'
 
         # Loop over energy groups ranges
-        for group in range(1, self.num_groups+1):
+        for group in range(1, self.num_groups + 1):
             bounds = self.energy_groups.get_group_bounds(group)
             string += template.format('', group, bounds[0], bounds[1])
 
@@ -3476,8 +3474,8 @@ class ScatterMatrixXS(MatrixMGXS):
                 template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
                 # Loop over incoming/outgoing energy groups ranges
-                for in_group in range(1, self.num_groups+1):
-                    for out_group in range(1, self.num_groups+1):
+                for in_group in range(1, self.num_groups + 1):
+                    for out_group in range(1, self.num_groups + 1):
                         string += template.format('', in_group, out_group)
                         average = \
                             self.get_xs([in_group], [out_group],
@@ -3489,7 +3487,8 @@ class ScatterMatrixXS(MatrixMGXS):
                                         xs_type=xs_type, value='rel_err')
                         average = average.flatten()[0]
                         rel_err = rel_err.flatten()[0] * 100.
-                        string += '{:1.2e} +/- {:1.2e}%'.format(average, rel_err)
+                        string += '{:1.2e} +/- {:1.2e}%'.format(average,
+                                                                rel_err)
                         string += '\n'
                     string += '\n'
                 string += '\n'
@@ -3504,7 +3503,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -3597,7 +3596,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -3691,9 +3690,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
         energy = openmc.Filter('energy', group_edges)
         energyout = openmc.Filter('energyout', group_edges)
 
-        filters = [[energy, energyout], [energy, energyout]]
-
-        return filters
+        return [[energy, energyout], [energy, energyout]]
 
     @property
     def rxn_rate_tally(self):
@@ -3720,7 +3717,7 @@ class NuFissionMatrixXS(MatrixMGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -3800,19 +3797,8 @@ class NuFissionMatrixXS(MatrixMGXS):
                  groups=None, by_nuclide=False, name=''):
         super(NuFissionMatrixXS, self).__init__(domain, domain_type,
                                                 groups, by_nuclide, name)
-        self._rxn_type = 'nu-fission matrix'
-
-    @property
-    def scores(self):
-        scores = ['flux', 'nu-fission']
-        return scores
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['nu-fission']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
+        self._rxn_type = 'nu-fission'
+        self._hdf5_key = 'nu-fission matrix'
 
 
 class Chi(MGXS):
@@ -3820,7 +3806,7 @@ class Chi(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for deterministic neutronics calculations.
+    multi-group cross sections for multi-group neutronics calculations.
 
     Parameters
     ----------
@@ -3966,9 +3952,10 @@ class Chi(MGXS):
 
         Returns
         -------
-        MGXS
-            A new tally which encapsulates the subset of data requested for the
-            nuclide(s) and/or energy group(s) requested in the parameters.
+        openmc.mgxs.MGXS
+            A new MGXS which encapsulates the subset of data requested
+            for the nuclide(s) and/or energy group(s) requested in the
+            parameters.
 
         """
 
@@ -4080,9 +4067,8 @@ class Chi(MGXS):
             Return the cross section indexed according to increasing or
             decreasing energy groups (decreasing or increasing energies).
             Defaults to 'increasing'.
-        value : str
-            A string for the type of value to return - 'mean', 'std_dev', or
-            'rel_err' are accepted. Defaults to 'mean'.
+        value : {'mean', 'std_dev', 'rel_err'}
+            A string for the type of value to return. Defaults to 'mean'.
 
         Returns
         -------

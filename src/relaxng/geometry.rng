@@ -188,10 +188,10 @@
           </optional>
           <optional>
             <choice>
-              <element name="opposite">
+              <element name="periodic_surface_id">
                 <data type="int"/>
               </element>
-              <attribute name="opposite">
+              <attribute name="periodic_surface_id">
                 <data type="int"/>
               </attribute>
             </choice>

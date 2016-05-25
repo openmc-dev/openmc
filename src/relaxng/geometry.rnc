@@ -23,7 +23,7 @@ element geometry {
     (element coeffs { list { xsd:double+ } } | attribute coeffs { list { xsd:double+ } }) &
     (element boundary { ( "transmit" | "reflective" | "vacuum" | "periodic" ) } |
      attribute boundary { ( "transmit" | "reflective" | "vacuum" | "periodic" ) })? &
-    (element opposite { xsd:int } | attribute opposite { xsd:int })?
+    (element periodic_surface_id { xsd:int } | attribute periodic_surface_id { xsd:int })?
   }*
 
   & element lattice {

@@ -15,6 +15,11 @@ def reset_auto_ids():
 class Geometry(object):
     """Geometry representing a collection of surfaces, cells, and universes.
 
+    Parameters
+    ----------
+    root_universe : openmc.Universe, optional
+        Root universe which contains all others
+
     Attributes
     ----------
     root_universe : openmc.Universe
@@ -22,9 +27,11 @@ class Geometry(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, root_universe=None):
         self._root_universe = None
         self._offsets = {}
+        if root_universe is not None:
+            self.root_universe = root_universe
 
     @property
     def root_universe(self):

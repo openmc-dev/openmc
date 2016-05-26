@@ -296,6 +296,33 @@ Multi-group Cross Section Libraries
 
     openmc.mgxs.Library
 
+-------------------------------------
+:mod:`openmc.model` -- Model Building
+-------------------------------------
+
+TRISO Fuel Modeling
+-------------------
+
+Classes
++++++++
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.model.TRISO
+
+Functions
++++++++++
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   openmc.model.create_triso_lattice
+
+
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/
 .. _Codecademy: https://www.codecademy.com/tracks/python

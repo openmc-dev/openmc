@@ -3493,13 +3493,9 @@ contains
             j = j + n_bins - 1
 
           case('transport')
-            t % score_bins(j) = SCORE_TRANSPORT
-
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
-          case ('diffusion')
-            call fatal_error("Diffusion score no longer supported for tallies, &
+            call fatal_error("Transport score no longer supported for tallies, &
                  &please remove")
+
           case ('n1n')
             if (run_CE) then
               t % score_bins(j) = SCORE_N_1N

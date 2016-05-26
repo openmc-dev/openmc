@@ -161,7 +161,7 @@ class TalliesTestHarness(PyAPITestHarness):
         total_tallies[3].estimator = 'collision'
 
         questionable_tally = Tally()
-        questionable_tally.scores = ['transport', 'n1n']
+        questionable_tally.scores = ['n1n']
 
         all_nuclide_tallies = [Tally(), Tally()]
         for t in all_nuclide_tallies:

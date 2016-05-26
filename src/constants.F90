@@ -279,7 +279,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 22
+  integer, parameter :: N_SCORE_TYPES = 21
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -289,20 +289,19 @@ module constants
        SCORE_SCATTER_PN         = -6,  & ! system for scoring 0th through nth moment
        SCORE_NU_SCATTER_N       = -7,  & ! arbitrary nu-scattering moment
        SCORE_NU_SCATTER_PN      = -8,  & ! system for scoring 0th through nth nu-scatter moment
-       SCORE_TRANSPORT          = -9,  & ! transport reaction rate
-       SCORE_N_1N               = -10, & ! (n,1n) rate
-       SCORE_ABSORPTION         = -11, & ! absorption rate
-       SCORE_FISSION            = -12, & ! fission rate
-       SCORE_NU_FISSION         = -13, & ! neutron production rate
-       SCORE_KAPPA_FISSION      = -14, & ! fission energy production rate
-       SCORE_CURRENT            = -15, & ! partial current
-       SCORE_FLUX_YN            = -16, & ! angular moment of flux
-       SCORE_TOTAL_YN           = -17, & ! angular moment of total reaction rate
-       SCORE_SCATTER_YN         = -18, & ! angular flux-weighted scattering moment (0:N)
-       SCORE_NU_SCATTER_YN      = -19, & ! angular flux-weighted nu-scattering moment (0:N)
-       SCORE_EVENTS             = -20, & ! number of events
-       SCORE_DELAYED_NU_FISSION = -21, & ! delayed neutron production rate
-       SCORE_INVERSE_VELOCITY   = -22    ! flux-weighted inverse velocity
+       SCORE_N_1N               = -9,  & ! (n,1n) rate
+       SCORE_ABSORPTION         = -10, & ! absorption rate
+       SCORE_FISSION            = -11, & ! fission rate
+       SCORE_NU_FISSION         = -12, & ! neutron production rate
+       SCORE_KAPPA_FISSION      = -13, & ! fission energy production rate
+       SCORE_CURRENT            = -14, & ! partial current
+       SCORE_FLUX_YN            = -15, & ! angular moment of flux
+       SCORE_TOTAL_YN           = -16, & ! angular moment of total reaction rate
+       SCORE_SCATTER_YN         = -17, & ! angular flux-weighted scattering moment (0:N)
+       SCORE_NU_SCATTER_YN      = -18, & ! angular flux-weighted nu-scattering moment (0:N)
+       SCORE_EVENTS             = -19, & ! number of events
+       SCORE_DELAYED_NU_FISSION = -20, & ! delayed neutron production rate
+       SCORE_INVERSE_VELOCITY   = -21    ! flux-weighted inverse velocity
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10

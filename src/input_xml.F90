@@ -3493,22 +3493,12 @@ contains
             j = j + n_bins - 1
 
           case('transport')
-            t % score_bins(j) = SCORE_TRANSPORT
-
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
-          case ('diffusion')
-            call fatal_error("Diffusion score no longer supported for tallies, &
+            call fatal_error("Transport score no longer supported for tallies, &
                  &please remove")
-          case ('n1n')
-            if (run_CE) then
-              t % score_bins(j) = SCORE_N_1N
 
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
-            else
-              call fatal_error("Cannot tally n1n rate in multi-group mode!")
-            end if
+          case ('n1n')
+            call fatal_error("n1n score no longer supported for tallies, &
+                 &please remove")
           case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
 

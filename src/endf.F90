@@ -34,10 +34,6 @@ contains
       string = "nu-scatter-n"
     case (SCORE_NU_SCATTER_PN)
       string = "nu-scatter-pn"
-    case (SCORE_TRANSPORT)
-      string = "transport"
-    case (SCORE_N_1N)
-      string = "n1n"
     case (SCORE_ABSORPTION)
       string = "absorption"
     case (SCORE_FISSION)

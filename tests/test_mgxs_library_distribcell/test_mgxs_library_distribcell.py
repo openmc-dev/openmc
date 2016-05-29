@@ -59,7 +59,7 @@ class MGXSTestHarness(PyAPITestHarness):
             for mgxs_type in avg_lib.mgxs_types:
                 mgxs = avg_lib.get_mgxs(domain, mgxs_type)
                 df = mgxs.get_pandas_dataframe()
-                outstr += df.to_string()
+                outstr += df.to_string() + '\n'
 
         # Hash the results if necessary
         if hash_output:

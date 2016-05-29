@@ -26,7 +26,8 @@ class MGXSTestHarness(PyAPITestHarness):
         # self._input_set.settings.export_to_xml()
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6, 20.])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6,
+                                                              20.])
 
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
@@ -90,7 +91,8 @@ class MGXSTestHarness(PyAPITestHarness):
     def _cleanup(self):
         super(MGXSTestHarness, self)._cleanup()
         f = os.path.join(os.getcwd(), 'mgxs.xml')
-        if os.path.exists(f): os.remove(f)
+        if os.path.exists(f):
+            os.remove(f)
 
 
 if __name__ == '__main__':

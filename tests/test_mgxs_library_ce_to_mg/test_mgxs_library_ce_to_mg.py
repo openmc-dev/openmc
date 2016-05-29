@@ -83,7 +83,6 @@ class MGXSTestHarness(PyAPITestHarness):
 
     def _cleanup(self):
         super(MGXSTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
         f = os.path.join(os.getcwd(), 'mgxs.xml')
         if os.path.exists(f): os.remove(f)
 

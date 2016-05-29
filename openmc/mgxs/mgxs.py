@@ -3680,7 +3680,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
                  groups=None, by_nuclide=False, name=''):
         super(MultiplicityMatrixXS, self).__init__(domain, domain_type, groups,
                                                    by_nuclide, name)
-        self._rxn_type = 'multiplicity'
+        self._rxn_type = 'multiplicity matrix'
 
     @property
     def scores(self):

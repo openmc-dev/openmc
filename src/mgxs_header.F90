@@ -1485,8 +1485,13 @@ module mgxs_header
                    nuc % scatter % energy(gin) % data(gout)
               mult_num(gout, gin) = mult_num(gout, gin) + atom_density * &
                    nuscatt
-              mult_denom(gout, gin) = mult_denom(gout,gin) + atom_density * &
-                   nuscatt / nuc % scatter % mult(gin) % data(gout)
+              if (nuc % scatter % mult(gin) % data(gout) > ZERO) then
+                mult_denom(gout, gin) = mult_denom(gout,gin) + atom_density * &
+                     nuscatt / nuc % scatter % mult(gin) % data(gout)
+              else
+                ! Avoid division by zero
+                mult_denom(gout, gin) = mult_denom(gout,gin) + atom_density
+              end if
             end do
           end do
 
@@ -1722,10 +1727,16 @@ module mgxs_header
                        nuc % scatter(iazi, ipol) % obj % energy(gin) % data(gout)
                   mult_num(gout, gin, iazi, ipol) = mult_num(gout, gin, iazi, ipol) + &
                        atom_density * nuscatt
-                  mult_denom(gout, gin, iazi, ipol) = &
-                       mult_denom(gout, gin, iazi, ipol) + &
-                       atom_density * nuscatt / &
-                       nuc % scatter(iazi, ipol) % obj % mult(gin) % data(gout)
+                  if (nuc % scatter(iazi, ipol) % obj % mult(gin) % data(gout) > ZERO) then
+                    mult_denom(gout, gin, iazi, ipol) = &
+                         mult_denom(gout, gin, iazi, ipol) + &
+                         atom_density * nuscatt / &
+                         nuc % scatter(iazi, ipol) % obj % mult(gin) % data(gout)
+                  else
+                    ! Avoid division by zero
+                    mult_denom(gout, gin, iazi, ipol) = &
+                         mult_denom(gout,gin, iazi, ipol) + atom_density
+                  end if
                 end do
               end do
             end do

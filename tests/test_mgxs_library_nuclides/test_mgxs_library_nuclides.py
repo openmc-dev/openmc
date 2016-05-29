@@ -20,17 +20,14 @@ class MGXSTestHarness(PyAPITestHarness):
         super(MGXSTestHarness, self)._build_inputs()
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6, 20.])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6,
+                                                              20.])
 
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
         self.mgxs_lib.by_nuclide = True
-        self.mgxs_lib.mgxs_types = ['total', 'transport', 'nu-transport',
-                                    'absorption', 'capture', 'fission',
-                                    'nu-fission', 'kappa-fission', 'scatter',
-                                    'nu-scatter', 'scatter matrix',
-                                    'nu-scatter matrix', 'multiplicity matrix',
-                                    'nu-fission matrix', 'chi']
+        # Test all MGXS types
+        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'material'

@@ -34,7 +34,7 @@ class Library(object):
     Parameters
     ----------
     openmc_geometry : openmc.Geometry
-        An geometry which has been initialized with a root universe
+        A geometry which has been initialized with a root universe
     by_nuclide : bool
         If true, computes cross sections for each nuclide in each domain
     mgxs_types : Iterable of str

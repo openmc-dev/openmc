@@ -497,13 +497,17 @@ class StatePoint(object):
                 self.tallies[tally_id].sparse = self.sparse
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
-                  name=None, id=None, estimator=None):
+                  name=None, id=None, estimator=None, exact=False):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
         found which satisfies all of the input parameters.
-        NOTE: The input parameters do not need to match the complete Tally
-        specification and may only represent a subset of the Tally's properties.
+
+        NOTE: If the "exact" parameter is False (default), the input parameters
+        do not need to match the complete Tally specification and may only
+        represent a subset of the Tally's properties. If the "exact" parameter
+        is True then the scores, filters, nuclides and estimator parameters
+        must precisely match those of any matching Tally.
 
         Parameters
         ----------
@@ -519,6 +523,9 @@ class StatePoint(object):
             The id specified for the Tally (default is None).
         estimator: str, optional
             The type of estimator ('tracklength', 'analog'; default is None).
+        exact : bool
+            Whether to strictly enforce the match between the parameters and
+            the returned tally
 
         Returns
         -------
@@ -547,8 +554,17 @@ class StatePoint(object):
                 continue
 
             # Determine if Tally has queried estimator
-            if estimator and not estimator == test_tally.estimator:
+            if (estimator or exact) and estimator != test_tally.estimator:
                 continue
+
+            # The number of filters, nuclides and scores must exactly match
+            if exact:
+                if len(scores) != test_tally.num_scores:
+                    continue
+                if len(nuclides) != test_tally.num_nuclides:
+                    continue
+                if len(filters) != test_tally.num_filters:
+                    continue
 
             # Determine if Tally has the queried score(s)
             if scores:

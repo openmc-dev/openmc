@@ -16,18 +16,14 @@ class MGXSTestHarness(PyAPITestHarness):
         # Set the input set to use the pincell model
         self._input_set = PinCellInputSet()
 
+        # The openmc.mgxs module needs a summary.h5 file
+        self._input_set.settings.output = {'summary': True}
+
         # Generate inputs using parent class routine
         super(MGXSTestHarness, self)._build_inputs()
 
-        # The openmc.mgxs module needs a summary.h5 file
-        self._input_set.settings.output = {'summary': True}
-        # Use a larger history count to get some scores in every material
-        # self._input_set.settings.batches = 50
-        # self._input_set.settings.inactive = 10
-        # self._input_set.settings.particles = 1000
-        # self._sp_name = './statepoint.50.h5'
         # Rewrite file
-        self._input_set.settings.export_to_xml()
+        # self._input_set.settings.export_to_xml()
 
         # Initialize a two-group structure
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6, 20.])

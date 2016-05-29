@@ -13,7 +13,6 @@ import openmc.checkvalue as cv
 if sys.version_info[0] >= 3:
     basestring = str
 
-
 # A dictionary for storing IDs of cell elements that have already been written,
 # used to optimize the writing process
 WRITTEN_IDS = {}
@@ -156,7 +155,7 @@ class Universe(object):
         return []
 
     def plot(self, center=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
-             basis='xy', color_by='cell'):
+             basis='xy', color_by='cell', seed=None):
         """Display a slice plot of the universe.
 
         Parameters
@@ -171,9 +170,17 @@ class Universe(object):
             The basis directions for the plot
         color_by : {'cell', 'material'}
             Indicate whether the plot should be colored by cell or by material
+        seed : hashable object or None
+            Hashable object which is used to seed the random number generator
+            used to select colors. If None, the generator is seeded from the
+            current time.
 
         """
         import matplotlib.pyplot as plt
+
+        # Seed the random number generator
+        if seed is not None:
+            random.seed(seed)
 
         if basis == 'xy':
             x_min = center[0] - 0.5*width[0]

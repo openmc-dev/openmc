@@ -242,6 +242,14 @@ class RectLattice(Lattice):
     :attr:`RectLattice.outer`, and :attr:`RectLattice.universes` properties need
     to be set.
 
+    Most methods for this class use a natural indexing scheme wherein elements
+    are assigned an index corresponding to their position relative to the
+    (x,y,z) axes in a Cartesian coordinate system, i.e., an index of (0,0,0) in
+    the lattice gives the element whose x, y, and z coordinates are the
+    smallest. However, note that when universes are assigned to lattice elements
+    using the :attr:`RectLattice.universes` property, the array indices do not
+    correspond to natural indices.
+
     Parameters
     ----------
     lattice_id : int, optional
@@ -449,12 +457,12 @@ class RectLattice(Lattice):
             element coordinate system
 
         """
-        ix = floor((point[0] - self._lower_left[0])/self._pitch[0])
-        iy = floor((point[1] - self._lower_left[1])/self._pitch[1])
+        ix = floor((point[0] - self.lower_left[0])/self.pitch[0])
+        iy = floor((point[1] - self.lower_left[1])/self.pitch[1])
         if self.ndim == 2:
             idx = (ix, iy)
         else:
-            iz = floor((point[2] - self._lower_left[2])/self._pitch[2])
+            iz = floor((point[2] - self.lower_left[2])/self.pitch[2])
             idx = (ix, iy, iz)
         return idx, self.get_local_coordinates(point, idx)
 
@@ -476,12 +484,12 @@ class RectLattice(Lattice):
             system
 
         """
-        x = point[0] - (self._lower_left[0] + (idx[0] + 0.5)*self._pitch[0])
-        y = point[1] - (self._lower_left[1] + (idx[1] + 0.5)*self._pitch[1])
+        x = point[0] - (self.lower_left[0] + (idx[0] + 0.5)*self.pitch[0])
+        y = point[1] - (self.lower_left[1] + (idx[1] + 0.5)*self.pitch[1])
         if self.ndim == 2:
             z = point[2]
         else:
-            z = point[2] - (self._lower_left[2] + (idx[2] + 0.5)*self._pitch[2])
+            z = point[2] - (self.lower_left[2] + (idx[2] + 0.5)*self.pitch[2])
         return (x, y, z)
 
     def get_universe_index(self, idx):
@@ -636,11 +644,18 @@ class RectLattice(Lattice):
 
 
 class HexLattice(Lattice):
-    """A lattice consisting of hexagonal prisms.
+    r"""A lattice consisting of hexagonal prisms.
 
     To completely define a hexagonal lattice, the :attr:`HexLattice.center`,
     :attr:`HexLattice.pitch`, :attr:`HexLattice.universes`, and
     :attr:`HexLattice.outer` properties need to be set.
+
+    Most methods for this class use a natural indexing scheme wherein elements
+    are assigned an index corresponding to their position relative to skewed
+    :math:`(x,\alpha,z)` axes as described fully in
+    :ref:`hexagonal_indexing`. However, note that when universes are assigned to
+    lattice elements using the :attr:`RectLattice.universes` property, the array
+    indices do not correspond to natural indices.
 
     Parameters
     ----------
@@ -755,12 +770,12 @@ class HexLattice(Lattice):
     @property
     def indices(self):
         if self.num_axial is None:
-            return [(r, i) for r in range(self._num_rings)
-                    for i in range(max(6*(self._num_rings - 1 - r), 1))]
+            return [(r, i) for r in range(self.num_rings)
+                    for i in range(max(6*(self.num_rings - 1 - r), 1))]
         else:
-            return [(z, r, i) for z in range(self._num_axial)
-                    for r in range(self._num_rings)
-                    for i in range(max(6*(self._num_rings - 1 - r), 1))]
+            return [(z, r, i) for z in range(self.num_axial)
+                    for r in range(self.num_rings)
+                    for i in range(max(6*(self.num_rings - 1 - r), 1))]
 
     @center.setter
     def center(self, center):
@@ -860,7 +875,7 @@ class HexLattice(Lattice):
                     raise ValueError(msg)
 
     def find_element(self, point):
-        """Determine index of lattice element and local coordinates for a point
+        r"""Determine index of lattice element and local coordinates for a point
 
         Parameters
         ----------
@@ -870,7 +885,7 @@ class HexLattice(Lattice):
         Returns
         -------
         3-tuple of int
-            Indices of corresponding lattice element in (x,:math:`alpha`,z)
+            Indices of corresponding lattice element in :math:`(x,\alpha,z)`
             bases
         numpy.ndarray
             Carestian coordinates of the point in the corresponding lattice
@@ -878,16 +893,16 @@ class HexLattice(Lattice):
 
         """
         # Convert coordinates to skewed bases
-        x = point[0] - self._center[0]
-        y = point[1] - self._center[1]
+        x = point[0] - self.center[0]
+        y = point[1] - self.center[1]
         if self._num_axial is None:
             iz = 1
         else:
-            z = point[2] - self._center[2]
-            iz = floor(z/self._pitch[1] + 0.5*self._num_axial)
+            z = point[2] - self.center[2]
+            iz = floor(z/self.pitch[1] + 0.5*self.num_axial)
         alpha = y - x/sqrt(3.)
-        ix = floor(x/(sqrt(0.75) * self._pitch[0]))
-        ia = floor(alpha/self._pitch[0])
+        ix = floor(x/(sqrt(0.75) * self.pitch[0]))
+        ia = floor(alpha/self.pitch[0])
 
         # Check four lattice elements to see which one is closest based on local
         # coordinates
@@ -904,14 +919,14 @@ class HexLattice(Lattice):
         return idx_min, p_min
 
     def get_local_coordinates(self, point, idx):
-        """Determine local coordinates of a point within a lattice element
+        r"""Determine local coordinates of a point within a lattice element
 
         Parameters
         ----------
         point : Iterable of float
             Cartesian coordinates of point
         idx : Iterable of int
-            Indices of lattice element in (x,:math:`alpha`,z) bases
+            Indices of lattice element in :math:`(x,\alpha,z)` bases
 
         Returns
         -------
@@ -920,17 +935,17 @@ class HexLattice(Lattice):
             system
 
         """
-        x = point[0] - (self._center[0] + sqrt(0.75)*self._pitch[0]*idx[0])
-        y = point[1] - (self._center[1] + (0.5*idx[0] + idx[1])*self._pitch[0])
+        x = point[0] - (self.center[0] + sqrt(0.75)*self.pitch[0]*idx[0])
+        y = point[1] - (self.center[1] + (0.5*idx[0] + idx[1])*self.pitch[0])
         if self._num_axial is None:
             z = point[2]
         else:
-            z = point[2] - (self._center[2] + (idx[2] + 0.5 - 0.5*self._num_axial)*
-                            self._pitch[1])
+            z = point[2] - (self.center[2] + (idx[2] + 0.5 - 0.5*self.num_axial)*
+                            self.pitch[1])
         return (x, y, z)
 
     def get_universe_index(self, idx):
-        """Return index in the universes array corresponding to a lattice element index
+        r"""Return index in the universes array corresponding to a lattice element index
 
         Parameters
         ----------
@@ -970,7 +985,7 @@ class HexLattice(Lattice):
             return (idx[2], i_ring, i_within)
 
     def is_valid_index(self, idx):
-        """Determine whether lattice element index is within defined range
+        r"""Determine whether lattice element index is within defined range
 
         Parameters
         ----------

@@ -75,7 +75,7 @@ class Geometry(object):
         Parameters
         ----------
         point : 3-tuple of float
-            Cartesian coordinatesof the point
+            Cartesian coordinates of the point
 
         Returns
         -------

@@ -12,10 +12,6 @@ import openmc.mgxs
 
 class MGXSTestHarness(PyAPITestHarness):
     def _build_inputs(self):
-
-        # The openmc.mgxs module needs a summary.h5 file
-        self._input_set.settings.output = {'summary': True}
-
         # Generate inputs using parent class routine
         super(MGXSTestHarness, self)._build_inputs()
 
@@ -26,8 +22,8 @@ class MGXSTestHarness(PyAPITestHarness):
         # for one material-filled cell in the geometry
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
         self.mgxs_lib.by_nuclide = False
-        self.mgxs_lib.mgxs_types = ['transport', 'nu-fission',
-                                    'nu-scatter matrix', 'chi']
+        # Test all MGXS types
+        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'distribcell'

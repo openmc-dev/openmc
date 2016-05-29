@@ -6,15 +6,15 @@ import glob
 import hashlib
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
+from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
 
 
 class MGXSTestHarness(PyAPITestHarness):
     def _build_inputs(self):
-
-        # The openmc.mgxs module needs a summary.h5 file
-        self._input_set.settings.output = {'summary': True}
+        # Set the input set to use the pincell model
+        self._input_set = PinCellInputSet()
 
         # Generate inputs using parent class routine
         super(MGXSTestHarness, self)._build_inputs()

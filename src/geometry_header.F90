@@ -1,6 +1,6 @@
 module geometry_header
 
-  use constants, only: HALF, TWO, THREE
+  use constants, only: HALF, TWO, THREE, INFINITY
 
   implicit none
 
@@ -201,20 +201,22 @@ contains
     real(8),           intent(in) :: global_xyz(3)
     integer                       :: i_xyz(3)
 
-    real(8) :: xyz(3)    ! global_xyz alias
+    real(8) :: xyz(3)    ! global xyz relative to the center
     real(8) :: alpha     ! Skewed coord axis
     real(8) :: xyz_t(3)  ! Local xyz
-    real(8) :: dists(4)  ! Squared distances from cell centers
+    real(8) :: d, d_min  ! Squared distance from cell centers
     integer :: i, j, k   ! Iterators
-    integer :: loc(1)    ! Minimum distance index
+    integer :: k_min     ! Minimum distance index
 
-    xyz = global_xyz
+    xyz(1) = global_xyz(1) - this % center(1)
+    xyz(2) = global_xyz(2) - this % center(2)
 
     ! Index z direction.
     if (this % is_3d) then
-      i_xyz(3) = ceiling((xyz(3) - this % center(3))/this % pitch(2) + HALF)&
-           + this % n_axial/2
+      xyz(3) = global_xyz(3) - this % center(3)
+      i_xyz(3) = ceiling(xyz(3)/this % pitch(2) + HALF*this % n_axial)
     else
+      xyz(3) = global_xyz(3)
       i_xyz(3) = 1
     end if
 
@@ -233,28 +235,33 @@ contains
     ! the four possible cells.  Regular hexagonal tiles form a centroidal
     ! Voronoi tessellation so the global xyz should be in the hexagonal cell
     ! that it is closest to the center of.  This method is used over a
-    ! method that uses the remainders of the floor divisions above becasue it
+    ! method that uses the remainders of the floor divisions above because it
     ! provides better finite precision performance.  Squared distances are
     ! used becasue they are more computationally efficient than normal
     ! distances.
     k = 1
-    do i=0,1
-      do j=0,1
-        xyz_t = this % get_local_xyz(xyz, i_xyz + (/j, i, 0/))
-        dists(k) = xyz_t(1)**2 + xyz_t(2)**2
+    d_min = INFINITY
+    do i = 0, 1
+      do j = 0, 1
+        xyz_t = this % get_local_xyz(global_xyz, i_xyz + [j, i, 0])
+        d = xyz_t(1)**2 + xyz_t(2)**2
+        if (d < d_min) then
+          d_min = d
+          k_min = k
+        end if
         k = k + 1
       end do
     end do
 
     ! Select the minimum squared distance which corresponds to the cell the
     ! coordinates are in.
-    loc = minloc(dists)
-    if (loc(1) == 2) then
-      i_xyz = i_xyz + (/1, 0, 0/)
-    else if (loc(1) == 3) then
-      i_xyz = i_xyz + (/0, 1, 0/)
-    else if (loc(1) == 4) then
-      i_xyz = i_xyz + (/1, 1, 0/)
+    if (k_min == 2) then
+      i_xyz(1) = i_xyz(1) + 1
+    else if (k_min == 3) then
+      i_xyz(2) = i_xyz(2) + 1
+    else if (k_min == 4) then
+      i_xyz(1) = i_xyz(1) + 1
+      i_xyz(2) = i_xyz(2) + 1
     end if
   end function get_inds_hex
 
@@ -303,7 +310,7 @@ contains
          (i_xyz(1) - this % n_rings) * this % pitch(1) / TWO)
     if (this % is_3d) then
       local_xyz(3) = xyz(3) - this % center(3) &
-           + (this % n_axial/2 - i_xyz(3) + 1) * this % pitch(2)
+           + (HALF*this % n_axial - i_xyz(3) + HALF) * this % pitch(2)
     else
       local_xyz(3) = xyz(3)
     end if

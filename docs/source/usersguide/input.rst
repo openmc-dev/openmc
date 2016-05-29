@@ -897,10 +897,18 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
     *Default*: None
 
   :boundary:
-    The boundary condition for the surface. This can be "transmission",
-    "vacuum", or "reflective".
+     The boundary condition for the surface. This can be "transmission",
+     "vacuum", "reflective", or "periodic". Periodic boundary conditions can
+     only be applied to x-, y-, and z-planes. Only axis-aligned periodicity is
+     supported, i.e., x-planes can only be paired with x-planes. Specify which
+     planes are periodic and the code will automatically identify which planes
+     are paired together.
 
     *Default*: "transmission"
+
+  :periodic_surface_id:
+     If a periodic boundary condition is applied, this attribute identifies the
+     ``id`` of the corresponding periodic sufrace.
 
 The following quadratic surfaces can be modeled:
 

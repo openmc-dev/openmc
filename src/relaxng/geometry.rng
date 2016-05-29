@@ -173,6 +173,7 @@
                   <value>transmit</value>
                   <value>reflective</value>
                   <value>vacuum</value>
+                  <value>periodic</value>
                 </choice>
               </element>
               <attribute name="boundary">
@@ -180,7 +181,18 @@
                   <value>transmit</value>
                   <value>reflective</value>
                   <value>vacuum</value>
+                  <value>periodic</value>
                 </choice>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="periodic_surface_id">
+                <data type="int"/>
+              </element>
+              <attribute name="periodic_surface_id">
+                <data type="int"/>
               </attribute>
             </choice>
           </optional>

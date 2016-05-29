@@ -570,6 +570,105 @@ class InputSet(object):
 
         self.plots.add_plot(plot)
 
+class PinCellInputSet(object):
+    def __init__(self):
+        self.settings = openmc.Settings()
+        self.materials = openmc.Materials()
+        self.geometry = openmc.Geometry()
+        self.tallies = None
+        self.plots = None
+
+    def export(self):
+        self.settings.export_to_xml()
+        self.materials.export_to_xml()
+        self.geometry.export_to_xml()
+        if self.tallies is not None: self.tallies.export_to_xml()
+        if self.plots is not None: self.plots.export_to_xml()
+
+    def build_default_materials_and_geometry(self):
+        # Define materials.
+        fuel = openmc.Material(name='Fuel')
+        fuel.set_density('g/cm3', 10.29769)
+        fuel.add_nuclide("U-234", 4.4843e-6)
+        fuel.add_nuclide("U-235", 5.5815e-4)
+        fuel.add_nuclide("U-238", 2.2408e-2)
+        fuel.add_nuclide("O-16", 4.5829e-2)
+
+        clad = openmc.Material(name='Cladding')
+        clad.set_density('g/cm3', 6.55)
+        clad.add_nuclide("Zr-90", 2.1827e-2)
+        clad.add_nuclide("Zr-91", 4.7600e-3)
+        clad.add_nuclide("Zr-92", 7.2758e-3)
+        clad.add_nuclide("Zr-94", 7.3734e-3)
+        clad.add_nuclide("Zr-96", 1.1879e-3)
+
+        hot_water = openmc.Material(name='Hot borated water')
+        hot_water.set_density('g/cm3', 0.740582)
+        hot_water.add_nuclide("H-1", 4.9457e-2)
+        hot_water.add_nuclide("O-16", 2.4672e-2)
+        hot_water.add_nuclide("B-10", 8.0042e-6)
+        hot_water.add_nuclide("B-11", 3.2218e-5)
+        hot_water.add_s_alpha_beta('HH2O', '71t')
+
+        # Define the materials file.
+        self.materials.default_xs = '71c'
+        self.materials += (fuel, clad, hot_water)
+
+        # Instantiate ZCylinder surfaces
+        fuel_or = openmc.ZCylinder(x0=0, y0=0, R=0.39218, name='Fuel OR')
+        clad_or = openmc.ZCylinder(x0=0, y0=0, R=0.45720, name='Clad OR')
+        left = openmc.XPlane(x0=-0.63, name='left')
+        right = openmc.XPlane(x0=0.63, name='right')
+        bottom = openmc.YPlane(y0=-0.63, name='bottom')
+        top = openmc.YPlane(y0=0.63, name='top')
+
+        left.boundary_type = 'reflective'
+        right.boundary_type = 'reflective'
+        top.boundary_type = 'reflective'
+        bottom.boundary_type = 'reflective'
+
+        # Instantiate Cells
+        fuel_pin = openmc.Cell(name='cell 1')
+        cladding = openmc.Cell(name='cell 3')
+        water = openmc.Cell(name='cell 2')
+
+        # Use surface half-spaces to define regions
+        fuel_pin.region = -fuel_or
+        cladding.region = +fuel_or & -clad_or
+        water.region = +clad_or & +left & -right & +bottom & -top
+
+        # Register Materials with Cells
+        fuel_pin.fill = fuel
+        cladding.fill = clad
+        water.fill = hot_water
+
+        # Instantiate Universe
+        root = openmc.Universe(universe_id=0, name='root universe')
+
+        # Register Cells with Universe
+        root.add_cells([fuel_pin, cladding, water])
+
+        # Instantiate a Geometry, register the root Universe, and export to XML
+        self.geometry.root_universe = root
+
+    def build_default_settings(self):
+        self.settings.batches = 10
+        self.settings.inactive = 5
+        self.settings.particles = 100
+        self.settings.source = Source(space=Box([-0.63, -0.63, -1],
+                                                [0.63, 0.63, 1],
+                                                only_fissionable=True))
+
+    def build_defualt_plots(self):
+        plot = openmc.Plot()
+        plot.filename = 'mat'
+        plot.origin = (0.0, 0.0, 0)
+        plot.width = (1.26, 1.26)
+        plot.pixels = (300, 300)
+        plot.color = 'mat'
+
+        self.plots.add_plot(plot)
+
 class MGInputSet(InputSet):
     def build_default_materials_and_geometry(self):
         # Define materials needed for 1D/1G slab problem

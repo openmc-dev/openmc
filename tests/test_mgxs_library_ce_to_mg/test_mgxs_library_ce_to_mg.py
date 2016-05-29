@@ -6,12 +6,15 @@ import glob
 import hashlib
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
+from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
 
 
 class MGXSTestHarness(PyAPITestHarness):
     def _build_inputs(self):
+        # Set the input set to use the pincell model
+        self._input_set = PinCellInputSet()
 
         # Generate inputs using parent class routine
         super(MGXSTestHarness, self)._build_inputs()
@@ -19,10 +22,10 @@ class MGXSTestHarness(PyAPITestHarness):
         # The openmc.mgxs module needs a summary.h5 file
         self._input_set.settings.output = {'summary': True}
         # Use a larger history count to get some scores in every material
-        self._input_set.settings.batches = 50
-        self._input_set.settings.inactive = 10
-        self._input_set.settings.particles = 1000
-        self._sp_name = './statepoint.50.h5'
+        # self._input_set.settings.batches = 50
+        # self._input_set.settings.inactive = 10
+        # self._input_set.settings.particles = 1000
+        # self._sp_name = './statepoint.50.h5'
         # Rewrite file
         self._input_set.settings.export_to_xml()
 

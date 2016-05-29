@@ -25,8 +25,12 @@ class MGXSTestHarness(PyAPITestHarness):
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
         self.mgxs_lib.by_nuclide = True
-        self.mgxs_lib.mgxs_types = ['transport', 'nu-fission',
-                                    'nu-scatter matrix', 'chi']
+        self.mgxs_lib.mgxs_types = ['total', 'transport', 'nu-transport',
+                                    'absorption', 'capture', 'fission',
+                                    'nu-fission', 'kappa-fission', 'scatter',
+                                    'nu-scatter', 'scatter matrix',
+                                    'nu-scatter matrix', 'multiplicity matrix',
+                                    'nu-fission matrix', 'chi']
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'material'
@@ -53,7 +57,7 @@ class MGXSTestHarness(PyAPITestHarness):
             for mgxs_type in self.mgxs_lib.mgxs_types:
                 mgxs = self.mgxs_lib.get_mgxs(domain, mgxs_type)
                 df = mgxs.get_pandas_dataframe()
-                outstr += df.to_string()
+                outstr += df.to_string() + '\n'
 
         # Hash the results if necessary
         if hash_output:

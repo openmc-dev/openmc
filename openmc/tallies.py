@@ -827,9 +827,7 @@ class Tally(object):
 
         # Search for each of this tally's scores in the other tally
         for score in self.scores:
-            if score not in other.scores:
-                all_scores_match = False
-            else:
+            if score in other.scores:
                 no_scores_match = False
 
         # Search for each of the other tally's scores in this tally
@@ -3471,7 +3469,8 @@ class Tallies(cv.CheckedList):
 
         """
         if not isinstance(tally, Tally):
-            msg = 'Unable to add a non-Tally "{0}" to the Tallies instance'.format(tally)
+            msg = 'Unable to add a non-Tally "{0}" to the ' \
+                  'Tallies instance'.format(tally)
             raise TypeError(msg)
 
         if merge:
@@ -3482,13 +3481,13 @@ class Tallies(cv.CheckedList):
 
                 # If a mergeable tally is found
                 if tally2.can_merge(tally):
-                    # Replace tally 2 with the merged tally
+                    # Replace tally2 with the merged tally
                     merged_tally = tally2.merge(tally)
                     self[i] = merged_tally
                     merged = True
                     break
 
-            # If not mergeable tally was found, simply add this tally
+            # If no mergeable tally was found, simply add this tally
             if not merged:
                 super(Tallies, self).append(tally)
 

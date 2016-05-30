@@ -762,8 +762,6 @@ class Tally(object):
 
                 # If filters are the second mergeable filters encountered
                 elif filter1.can_merge(filter2) and merge_filters:
-                    merge_filters = True
-                    mergeable_filter = True
                     return False
 
             # If no mergeable filter was found, the tallies are not mergeable

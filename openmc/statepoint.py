@@ -504,16 +504,6 @@ class StatePoint(object):
         This routine searches the list of Tallies and returns the first Tally
         found which satisfies all of the input parameters.
 
-        If the "exactness" parameter is 0 (default), the input parameters
-        do not need to match the complete Tally specification and may only
-        represent a subset of the Tally's properties. If the "exactness"
-        parameter is 1 then the length of the scores, filters, nuclides
-        parameters must precisely match those of any matching Tally, but the
-        filter bins may represent a subset of those in any matching Tally
-        (useful if tallies are merged in the input). If the "exactness"
-        parameter is 2 then the values of the scores, nuclides and filters
-        parameters must precisely match those of any matching Tally.
-
         NOTE: If any of the "exact" parameters are False (default), the input
         parameters do not need to match the complete Tally specification and
         may only represent a subset of the Tally's properties. If an "exact"

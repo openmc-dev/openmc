@@ -497,8 +497,8 @@ class StatePoint(object):
                 self.tallies[tally_id].sparse = self.sparse
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
-                  name=None, id=None, estimator=None, exact_nuclides=False,
-                  exact_filters=False, exact_scores=False):
+                  name=None, id=None, estimator=None, exact_filters=False,
+                  exact_nuclides=False, exact_scores=False):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally

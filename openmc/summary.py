@@ -358,7 +358,6 @@ class Summary(object):
 
                 # Create the Lattice
                 lattice = openmc.RectLattice(lattice_id=lattice_id, name=name)
-                lattice.dimension = tuple(dimension)
                 lattice.lower_left = lower_left
                 lattice.pitch = pitch
 
@@ -368,7 +367,7 @@ class Summary(object):
 
                 # Build array of Universe pointers for the Lattice
                 universes = \
-                    np.ndarray(tuple(universe_ids.shape), dtype=openmc.Universe)
+                    np.empty(tuple(universe_ids.shape), dtype=openmc.Universe)
 
                 for z in range(universe_ids.shape[0]):
                     for y in range(universe_ids.shape[1]):
@@ -403,8 +402,6 @@ class Summary(object):
 
                 # Create the Lattice
                 lattice = openmc.HexLattice(lattice_id=lattice_id, name=name)
-                lattice.num_rings = n_rings
-                lattice.num_axial = n_axial
                 lattice.center = center
                 lattice.pitch = pitch
 
@@ -417,12 +414,12 @@ class Summary(object):
                 # (x, alpha, z) to the Python API's format of a ragged nested
                 # list of (z, ring, theta).
                 universes = []
-                for z in range(lattice.num_axial):
+                for z in range(n_axial):
                     # Add a list for this axial level.
                     universes.append([])
-                    x = lattice.num_rings - 1
-                    a = 2*lattice.num_rings - 2
-                    for r in range(lattice.num_rings - 1, 0, -1):
+                    x = n_rings - 1
+                    a = 2*n_rings - 2
+                    for r in range(n_rings - 1, 0, -1):
                         # Add a list for this ring.
                         universes[-1].append([])
 
@@ -496,13 +493,13 @@ class Summary(object):
             # Retrieve the object corresponding to the fill type and ID
             if fill_type == 'normal':
                 if isinstance(fill_id, Iterable):
-                    fill = [self.get_material_by_id(mat) if mat > 0 else 'void'
+                    fill = [self.get_material_by_id(mat) if mat > 0 else None
                             for mat in fill_id]
                 else:
                     if fill_id > 0:
                         fill = self.get_material_by_id(fill_id)
                     else:
-                        fill = 'void'
+                        fill = None
             elif fill_type == 'universe':
                 fill = self.get_universe_by_id(fill_id)
             else:

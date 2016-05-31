@@ -354,7 +354,6 @@ class InputSet(object):
         # Define fuel lattices.
         l100 = openmc.RectLattice(name='Fuel assembly (lower half)',
                                   lattice_id=100)
-        l100.dimension = (17, 17)
         l100.lower_left = (-10.71, -10.71)
         l100.pitch = (1.26, 1.26)
         l100.universes = [
@@ -388,7 +387,6 @@ class InputSet(object):
 
         l101 = openmc.RectLattice(name='Fuel assembly (upper half)',
                                   lattice_id=101)
-        l101.dimension = (17, 17)
         l101.lower_left = (-10.71, -10.71)
         l101.pitch = (1.26, 1.26)
         l101.universes = [
@@ -448,7 +446,6 @@ class InputSet(object):
         # Define core lattices
         l200 = openmc.RectLattice(name='Core lattice (lower half)',
                                   lattice_id=200)
-        l200.dimension = (21, 21)
         l200.lower_left = (-224.91, -224.91)
         l200.pitch = (21.42, 21.42)
         l200.universes = [
@@ -476,7 +473,6 @@ class InputSet(object):
 
         l201 = openmc.RectLattice(name='Core lattice (lower half)',
                                   lattice_id=201)
-        l201.dimension = (21, 21)
         l201.lower_left = (-224.91, -224.91)
         l201.pitch = (21.42, 21.42)
         l201.universes = [

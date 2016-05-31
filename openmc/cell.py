@@ -36,7 +36,7 @@ class Cell(object):
         automatically be assigned.
     name : str, optional
         Name of the cell. If not specified, the name is the empty string.
-    fill : openmc.Material or openmc.Universe or openmc.Lattice or 'void' or iterable of openmc.Material, optional
+    fill : openmc.Material or openmc.Universe or openmc.Lattice or None or iterable of openmc.Material, optional
         Indicates what the region of space is filled with
     region : openmc.Region, optional
         Region of space that is assigned to the cell.
@@ -47,9 +47,13 @@ class Cell(object):
         Unique identifier for the cell
     name : str
         Name of the cell
-    fill : openmc.Material or openmc.Universe or openmc.Lattice or 'void' or iterable of openmc.Material
-        Indicates what the region of space is filled with
-    region : openmc.Region
+    fill : openmc.Material or openmc.Universe or openmc.Lattice or None or iterable of openmc.Material
+        Indicates what the region of space is filled with. If None, the cell is
+        treated as a void. An iterable of materials is used to fill repeated
+        instances of a cell with different materials.
+    fill_type : {'material', 'universe', 'lattice', 'distribmat', 'void'}
+        Indicates what the cell is filled with.
+    region : openmc.Region or None
         Region of space that is assigned to the cell.
     rotation : Iterable of float
         If the cell is filled with a universe, this array specifies the angles
@@ -68,6 +72,9 @@ class Cell(object):
            \sin\theta \sin\psi \\ -\sin\theta & \sin\phi \cos\theta & \cos\phi
            \cos\theta \end{array} \right ]
 
+    rotation_matrix : numpy.ndarray
+        The rotation matrix defined by the angles specified in the
+        :attr:`Cell.rotation` property.
     translation : Iterable of float
         If the cell is filled with a universe, this array specifies a vector
         that is used to translate (shift) the universe.
@@ -82,19 +89,13 @@ class Cell(object):
         # Initialize Cell class attributes
         self.id = cell_id
         self.name = name
-        self._fill = None
-        self._type = None
-        self._region = None
+        self.fill = fill
+        self.region = region
         self._rotation = None
         self._rotation_matrix = None
         self._translation = None
         self._offsets = None
         self._distribcell_index = None
-
-        if fill is not None:
-            self.fill = fill
-        if region is not None:
-            self.region = region
 
     def __contains__(self, point):
         if self.region is None:
@@ -128,35 +129,24 @@ class Cell(object):
 
     def __repr__(self):
         string = 'Cell\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string += '{: <16}=\t{}\n'.format('\tName', self.name)
 
-        if isinstance(self._fill, openmc.Material):
-            string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
-                                                self._fill._id)
-        elif isinstance(self._fill, basestring):
-            string += '{0: <16}=\tvoid\n'.format('\tMaterial')
-        elif isinstance(self._fill, Iterable):
-            string += '{0: <16}{1}'.format('\tMaterial', '=\t')
-            string += '['
-            string += ', '.join(['void' if m == 'void' else str(m.id)
-                                 for m in self.fill])
-            string += ']\n'
-        elif isinstance(self._fill, (openmc.Universe, openmc.Lattice)):
-            string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t',
-                                                self._fill._id)
+        if self.fill_type == 'material':
+            string += '{: <16}=\tMaterial {}\n'.format('\tFill', self.fill.id)
+        elif self.fill_type == 'void':
+            string += '{: <16}=\tNone\n'.format('\tFill')
+        elif self.fill_type == 'distribmat':
+            string += '{: <16}=\t{}\n'.format('\tFill', list(map(
+                lambda m: m if m is None else m.id, self.fill)))
         else:
-            string += '{0: <16}{1}{2}\n'.format('\tFill', '=\t', self._fill)
+            string += '{: <16}=\t{}\n'.format('\tFill', self.fill.id)
 
-        string += '{0: <16}{1}{2}\n'.format('\tRegion', '=\t', self._region)
-
-        string += '{0: <16}{1}{2}\n'.format('\tRotation', '=\t',
-                                            self._rotation)
-        string += '{0: <16}{1}{2}\n'.format('\tTranslation', '=\t',
-                                            self._translation)
-        string += '{0: <16}{1}{2}\n'.format('\tOffset', '=\t', self._offsets)
-        string += '{0: <16}{1}{2}\n'.format('\tDistribcell index', '=\t',
-                                            self._distribcell_index)
+        string += '{: <16}=\t{}\n'.format('\tRegion', self.region)
+        string += '{: <16}=\t{}\n'.format('\tRotation', self.rotation)
+        string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
+        string += '{: <16}=\t{}\n'.format('\tOffset', self.offsets)
+        string += '{: <16}=\t{}\n'.format('\tDistribcell index', self.distribcell_index)
 
         return string
 
@@ -180,8 +170,10 @@ class Cell(object):
             return 'universe'
         elif isinstance(self.fill, openmc.Lattice):
             return 'lattice'
+        elif isinstance(self.fill, Iterable):
+            return 'distribmat'
         else:
-            return None
+            return 'void'
 
     @property
     def region(self):
@@ -228,32 +220,24 @@ class Cell(object):
 
     @fill.setter
     def fill(self, fill):
-        if isinstance(fill, basestring):
-            if fill.strip().lower() == 'void':
-                self._type = 'void'
-            else:
+        if fill is not None:
+            if isinstance(fill, basestring):
+                if fill.strip().lower() != 'void':
+                    msg = 'Unable to set Cell ID="{0}" to use a non-Material ' \
+                          'or Universe fill "{1}"'.format(self._id, fill)
+                    raise ValueError(msg)
+                fill = None
+
+            elif isinstance(fill, Iterable):
+                for i, f in enumerate(fill):
+                    if f is not None:
+                        cv.check_type('cell.fill[i]', f, openmc.Material)
+
+            elif not isinstance(fill, (openmc.Material, openmc.Lattice,
+                                       openmc.Universe)):
                 msg = 'Unable to set Cell ID="{0}" to use a non-Material or ' \
-                       'Universe fill "{1}"'.format(self._id, fill)
+                      'Universe fill "{1}"'.format(self._id, fill)
                 raise ValueError(msg)
-
-        elif isinstance(fill, openmc.Material):
-            self._type = 'normal'
-
-        elif isinstance(fill, Iterable):
-            cv.check_type('cell.fill', fill, Iterable,
-                          (openmc.Material, basestring))
-            self._type = 'normal'
-
-        elif isinstance(fill, openmc.Universe):
-            self._type = 'fill'
-
-        elif isinstance(fill, openmc.Lattice):
-            self._type = 'lattice'
-
-        else:
-            msg = 'Unable to set Cell ID="{0}" to use a non-Material or ' \
-                   'Universe fill "{1}"'.format(self._id, fill)
-            raise ValueError(msg)
 
         self._fill = fill
 
@@ -290,7 +274,8 @@ class Cell(object):
 
     @region.setter
     def region(self, region):
-        cv.check_type('cell region', region, Region)
+        if region is not None:
+            cv.check_type('cell region', region, Region)
         self._region = region
 
     @distribcell_index.setter
@@ -345,11 +330,11 @@ class Cell(object):
     def get_cell_instance(self, path, distribcell_index):
 
         # If the Cell is filled by a Material
-        if self._type == 'normal' or self._type == 'void':
+        if self.fill_type in ('material', 'distribmat', 'void'):
             offset = 0
 
         # If the Cell is filled by a Universe
-        elif self._type == 'fill':
+        elif self.fill_type == 'universe':
             offset = self.offsets[distribcell_index-1]
             offset += self.fill.get_cell_instance(path, distribcell_index)
 
@@ -372,8 +357,8 @@ class Cell(object):
 
         nuclides = OrderedDict()
 
-        if self._type != 'void':
-            nuclides.update(self._fill.get_all_nuclides())
+        if self.fill_type != 'void':
+            nuclides.update(self.fill.get_all_nuclides())
 
         return nuclides
 
@@ -391,8 +376,8 @@ class Cell(object):
 
         cells = OrderedDict()
 
-        if self._type == 'fill' or self._type == 'lattice':
-            cells.update(self._fill.get_all_cells())
+        if self.fill_type in ('universe', 'lattice'):
+            cells.update(self.fill.get_all_cells())
 
         return cells
 
@@ -432,11 +417,11 @@ class Cell(object):
 
         universes = OrderedDict()
 
-        if self._type == 'fill':
-            universes[self._fill._id] = self._fill
-            universes.update(self._fill.get_all_universes())
-        elif self._type == 'lattice':
-            universes.update(self._fill.get_all_universes())
+        if self.fill_type == 'universe':
+            universes[self.fill.id] = self.fill
+            universes.update(self.fill.get_all_universes())
+        elif self.fill_type == 'lattice':
+            universes.update(self.fill.get_all_universes())
 
         return universes
 
@@ -447,22 +432,18 @@ class Cell(object):
         if len(self._name) > 0:
             element.set("name", str(self.name))
 
-        if isinstance(self.fill, basestring):
+        if self.fill_type == 'void':
             element.set("material", "void")
 
-        elif isinstance(self.fill, openmc.Material):
+        elif self.fill_type == 'material':
             element.set("material", str(self.fill.id))
 
-        elif isinstance(self.fill, Iterable):
-            element.set("material", ' '.join([m if m == 'void' else str(m.id)
+        elif self.fill_type == 'distribmat':
+            element.set("material", ' '.join(['void' if m is None else str(m.id)
                                               for m in self.fill]))
 
-        elif isinstance(self.fill, (openmc.Universe, openmc.Lattice)):
+        elif self.fill_type in ('universe', 'lattice'):
             element.set("fill", str(self.fill.id))
-            self.fill.create_xml_subelement(xml_element)
-
-        else:
-            element.set("fill", str(self.fill))
             self.fill.create_xml_subelement(xml_element)
 
         if self.region is not None:

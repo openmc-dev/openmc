@@ -130,7 +130,7 @@ class Universe(object):
         Parameters
         ----------
         point : 3-tuple of float
-            Cartesian coordinatesof the point
+            Cartesian coordinates of the point
 
         Returns
         -------
@@ -142,9 +142,9 @@ class Universe(object):
         p = np.asarray(point)
         for cell in self._cells.values():
             if p in cell:
-                if cell._type in ('normal', 'void'):
+                if cell.fill_type in ('material', 'distribmat', 'void'):
                     return [self, cell]
-                elif cell._type == 'fill':
+                elif cell.fill_type == 'universe':
                     if cell.translation is not None:
                         p -= cell.translation
                     if cell.rotation is not None:

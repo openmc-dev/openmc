@@ -654,7 +654,7 @@ class HexLattice(Lattice):
     are assigned an index corresponding to their position relative to skewed
     :math:`(x,\alpha,z)` axes as described fully in
     :ref:`hexagonal_indexing`. However, note that when universes are assigned to
-    lattice elements using the :attr:`RectLattice.universes` property, the array
+    lattice elements using the :attr:`HexLattice.universes` property, the array
     indices do not correspond to natural indices.
 
     Parameters

@@ -493,13 +493,13 @@ class Summary(object):
             # Retrieve the object corresponding to the fill type and ID
             if fill_type == 'normal':
                 if isinstance(fill_id, Iterable):
-                    fill = [self.get_material_by_id(mat) if mat > 0 else 'void'
+                    fill = [self.get_material_by_id(mat) if mat > 0 else None
                             for mat in fill_id]
                 else:
                     if fill_id > 0:
                         fill = self.get_material_by_id(fill_id)
                     else:
-                        fill = 'void'
+                        fill = None
             elif fill_type == 'universe':
                 fill = self.get_universe_by_id(fill_id)
             else:

@@ -1,5 +1,4 @@
 from collections import Iterable
-import copy
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
@@ -82,28 +81,6 @@ class Mesh(object):
 
         else:
             return True
-
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._id = self._id
-            clone._name = self._name
-            clone._type = self._type
-            clone._dimension = copy.deepcopy(self._dimension, memo)
-            clone._lower_left = copy.deepcopy(self._lower_left, memo)
-            clone._upper_right = copy.deepcopy(self._upper_right, memo)
-            clone._width = copy.deepcopy(self._width, memo)
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
 
     @property
     def id(self):

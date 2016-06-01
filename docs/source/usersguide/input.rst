@@ -1598,7 +1598,8 @@ The ``<tally>`` element accepts the following sub-elements:
         |Score                 | Description                                       |
         +======================+===================================================+
         |absorption            |Total absorption rate. This accounts for all       |
-        |                      |reactions which do not produce secondary neutrons. |
+        |                      |reactions which do not produce secondary neutrons  |
+        |                      |as well as fission.                                |
         +----------------------+---------------------------------------------------+
         |elastic               |Elastic scattering reaction rate.                  |
         +----------------------+---------------------------------------------------+

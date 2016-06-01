@@ -271,14 +271,17 @@ Multi-group Cross Sections
 .. autosummary::
     :toctree: generated
     :nosignatures:
-    :template: myclass.rst
+    :template: myclassinherit.rst
 
     openmc.mgxs.MGXS
     openmc.mgxs.AbsorptionXS
     openmc.mgxs.CaptureXS
     openmc.mgxs.Chi
     openmc.mgxs.FissionXS
+    openmc.mgxs.KappaFissionXS
+    openmc.mgxs.MultiplicityMatrixXS
     openmc.mgxs.NuFissionXS
+    openmc.mgxs.NuFissionMatrixXS
     openmc.mgxs.NuScatterXS
     openmc.mgxs.NuScatterMatrixXS
     openmc.mgxs.ScatterXS

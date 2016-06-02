@@ -106,6 +106,11 @@ class StatePoint(object):
 
     def __init__(self, filename, autolink=True):
         import h5py
+        if h5py.__version__ == '2.6.0':
+            raise ImportError("h5py 2.6.0 has a known bug which makes it "
+                              "incompatible with OpenMC's HDF5 files. "
+                              "Please switch to a different version.")
+
         self._f = h5py.File(filename, 'r')
 
         # Ensure filetype and revision are correct

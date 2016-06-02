@@ -314,6 +314,10 @@ class Tally(object):
 
         if not self._results_read:
             import h5py
+            if h5py.__version__ == '2.6.0':
+                raise ImportError("h5py 2.6.0 has a known bug which makes it "
+                                  "incompatible with OpenMC's HDF5 files. "
+                                  "Please switch to a different version.")
 
             # Open the HDF5 statepoint file
             f = h5py.File(self._sp_filename, 'r')

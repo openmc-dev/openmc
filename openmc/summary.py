@@ -26,6 +26,10 @@ class Summary(object):
         # Python API so we'll only try to import h5py if the user actually inits
         # a Summary object.
         import h5py
+        if h5py.__version__ == '2.6.0':
+            raise ImportError("h5py 2.6.0 has a known bug which makes it "
+                              "incompatible with OpenMC's HDF5 files. "
+                              "Please switch to a different version.")
 
         openmc.reset_auto_ids()
 

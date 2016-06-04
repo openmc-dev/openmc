@@ -1950,13 +1950,13 @@ class TotalXS(MGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`TotalXS.xs_tally` property.
 
-    For a spatial domain :math:`D` and energy group :math:`[E_g,E_{g-1}]`, the
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
     total cross section is calculated as:
 
     .. math::
 
-       \frac{\int_{r \in D} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-       \sigma_t (r, E) \psi (r, E, \Omega)}{\int_{r \in D} dr \int_{4\pi}
+       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
+       \sigma_t (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
     Parameters
@@ -2059,20 +2059,20 @@ class TransportXS(MGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`TransportXS.xs_tally` property.
 
-    For a spatial domain :math:`D` and energy group :math:`[E_g,E_{g-1}]`, the
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
     transport-corrected total cross section is calculated as:
 
     .. math::
 
-       \langle \sigma_t \phi \rangle &= \int_{r \in D} dr \int_{4\pi}
+       \langle \sigma_t \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \sigma_t (r, E) \psi
        (r, E, \Omega) \\
-       \langle \sigma_{s1} \phi \rangle &= \int_{r \in D} dr
+       \langle \sigma_{s1} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \int_{4\pi}
        d\Omega' \int_0^\infty dE' \int_{-1}^1 d\mu \; \mu \sigma_s
        (r, E' \rightarrow E, \Omega' \cdot \Omega)
        \phi (r, E', \Omega) \\
-       \langle \phi \rangle &= \int_{r \in D} dr \int_{4\pi} d\Omega
+       \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \sigma_{tr} &= \frac{\langle \sigma_t \phi \rangle - \langle \sigma_{s1}
        \phi \rangle}{\langle \phi \rangle}
@@ -2319,13 +2319,13 @@ class AbsorptionXS(MGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`AbsorptionXS.xs_tally` property.
 
-    For a spatial domain :math:`D` and energy group :math:`[E_g,E_{g-1}]`, the
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
     absorption cross section is calculated as:
 
     .. math::
 
-       \frac{\int_{r \in D} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-       \sigma_a (r, E) \psi (r, E, \Omega)}{\int_{r \in D} dr \int_{4\pi}
+       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
+       \sigma_a (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
     Parameters
@@ -2434,14 +2434,14 @@ class CaptureXS(MGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`CaptureXS.xs_tally` property.
 
-    For a spatial domain :math:`D` and energy group :math:`[E_g,E_{g-1}]`, the
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
     capture cross section is calculated as:
 
     .. math::
 
-       \frac{\int_{r \in D} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
+       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
        \left [ \sigma_a (r, E) \psi (r, E, \Omega) - \sigma_f (r, E) \psi (r, E,
-       \Omega) \right ]}{\int_{r \in D} dr \int_{4\pi} d\Omega
+       \Omega) \right ]}{\int_{r \in V} dr \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
     Parameters
@@ -2557,13 +2557,13 @@ class FissionXS(MGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`FissionXS.xs_tally` property.
 
-    For a spatial domain :math:`D` and energy group :math:`[E_g,E_{g-1}]`, the
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
     fission cross section is calculated as:
 
     .. math::
 
-       \frac{\int_{r \in D} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-       \sigma_f (r, E) \psi (r, E, \Omega)}{\int_{r \in D} dr \int_{4\pi}
+       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
+       \sigma_f (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
     Parameters
@@ -2667,13 +2667,13 @@ class NuFissionXS(MGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`NuFissionXS.xs_tally` property.
 
-    For a spatial domain :math:`D` and energy group :math:`[E_g,E_{g-1}]`, the
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
     fission neutron production cross section is calculated as:
 
     .. math::
 
-       \frac{\int_{r \in D} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-       \nu\sigma_f (r, E) \psi (r, E, \Omega)}{\int_{r \in D} dr \int_{4\pi}
+       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
+       \nu\sigma_f (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
 
@@ -2784,13 +2784,13 @@ class KappaFissionXS(MGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`KappaFissionXS.xs_tally` property.
 
-    For a spatial domain :math:`D` and energy group :math:`[E_g,E_{g-1}]`, the
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
     recoverable fission energy production rate cross section is calculated as:
 
     .. math::
 
-       \frac{\int_{r \in D} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-       \kappa\sigma_f (r, E) \psi (r, E, \Omega)}{\int_{r \in D} dr \int_{4\pi}
+       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
+       \kappa\sigma_f (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
     Parameters
@@ -2896,14 +2896,14 @@ class ScatterXS(MGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`ScatterXS.xs_tally` property.
 
-    For a spatial domain :math:`D` and energy group :math:`[E_g,E_{g-1}]`, the
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
     scattering cross section is calculated as:
 
     .. math::
 
-       \frac{\int_{r \in D} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
+       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
        \left [ \sigma_t (r, E) \psi (r, E, \Omega) - \sigma_a (r, E) \psi (r, E,
-       \Omega) \right ]}{\int_{r \in D} dr \int_{4\pi} d\Omega
+       \Omega) \right ]}{\int_{r \in V} dr \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
     Parameters
@@ -3009,16 +3009,17 @@ class NuScatterXS(MGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`NuScatterXS.xs_tally` property.
 
-    For a spatial domain :math:`D` and energy group :math:`[E_g,E_{g-1}]`, the
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
     scattering neutron production cross section is calculated as:
 
     .. math::
 
-       \frac{\int_{r \in D} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-       \sum_i \upsilon_i \sigma_i (r, E) \psi (r, E, \Omega)}{\int_{r \in D} dr
+       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
+       \sum_i \upsilon_i \sigma_i (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr
        \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
-    where :math:`\upsilon_i` is the multiplicity of the :math:`i`-th reaction.
+    where :math:`\upsilon_i` is the multiplicity of the :math:`i`-th scattering
+    reaction.
 
     Parameters
     ----------
@@ -3125,17 +3126,17 @@ class ScatterMatrixXS(MatrixMGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`ScatterMatrixXS.xs_tally` property.
 
-    For a spatial domain :math:`D`, incoming energy group
+    For a spatial domain :math:`V`, incoming energy group
     :math:`[E_{g'},E_{g'-1}]`, and outgoing energy group :math:`[E_g,E_{g-1}]`,
     the scattering moments are calculated as:
 
     .. math::
 
-       \langle \sigma_{s,\ell,g'\rightarrow g} \phi \rangle &= \int_{r \in D} dr
+       \langle \sigma_{s,\ell,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; P_\ell (\Omega \cdot \Omega') \sigma_s (r, E'
        \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
-       \langle \phi \rangle &= \int_{r \in D} dr \int_{4\pi} d\Omega
+       \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \sigma_{s,\ell,g'\rightarrow g} &= \frac{\langle
        \sigma_{s,\ell,g'\rightarrow g} \phi \rangle}{\langle \phi \rangle}
@@ -3905,7 +3906,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
     can then be obtained from the :attr:`MultiplicityMatrixXS.xs_tally`
     property.
 
-    For a spatial domain :math:`D`, incoming energy group
+    For a spatial domain :math:`V`, incoming energy group
     :math:`[E_{g'},E_{g'-1}]`, and outgoing energy group :math:`[E_g,E_{g-1}]`,
     the multiplicity is calculated as:
 
@@ -4058,16 +4059,16 @@ class NuFissionMatrixXS(MatrixMGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`NuFissionMatrixXS.xs_tally` property.
 
-    For a spatial domain :math:`D`, incoming energy group
+    For a spatial domain :math:`V`, incoming energy group
     :math:`[E_{g'},E_{g'-1}]`, and outgoing energy group :math:`[E_g,E_{g-1}]`,
     the fission production is calculated as:
 
     .. math::
 
-       \langle \nu\sigma_{f,g'\rightarrow g} \phi \rangle &= \int_{r \in D} dr
+       \langle \nu\sigma_{f,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{E_g}^{E_{g-1}} dE
        \; \chi(E) \nu\sigma_f (r, E') \psi(r, E', \Omega')\\
-       \langle \phi \rangle &= \int_{r \in D} dr \int_{4\pi} d\Omega
+       \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \nu\sigma_{f,g'\rightarrow g} &= \frac{\langle \nu\sigma_{f,g'\rightarrow
        g} \phi \rangle}{\langle \phi \rangle}
@@ -4173,15 +4174,15 @@ class Chi(MGXS):
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`Chi.xs_tally` property.
 
-    For a spatial domain :math:`D` and energy group :math:`[E_g,E_{g-1}]`, the
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
     fission spectrum is calculated as:
 
     .. math::
 
-       \langle \nu\sigma_{f,\rightarrow g} \phi \rangle &= \int_{r \in D} dr
+       \langle \nu\sigma_{f,\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \; \chi(E)
        \nu\sigma_f (r, E') \psi(r, E', \Omega')\\
-       \langle \nu\sigma_f \phi \rangle &= \int_{r \in D} dr \int_{4\pi}
+       \langle \nu\sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu\sigma_f (r,
        E') \psi(r, E', \Omega') \\
        \chi_g &= \frac{\langle \nu\sigma_{f,\rightarrow g} \phi \rangle}{\langle

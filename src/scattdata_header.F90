@@ -329,7 +329,7 @@ contains
       real(8), intent(in)                    :: coeffs(:, :, :) ! Coefficients to use
 
       integer :: imu, gin, gout, groups, order
-      real(8) :: norm
+      real(8) :: norm, m, mu0, mu1, p0
       real(8), allocatable :: energy(:, :)
       real(8), allocatable :: matrix(:, :, :)
 
@@ -410,13 +410,17 @@ contains
                  this % fmu(gin) % data(:, gout) / norm
           end if
 
-          ! Now create CDF from fmu with trapezoidal rule
+          ! Now create CDF from fmu with the analytical integral
           this % dist(gin) % data(1, gout) = ZERO
           do imu = 2, order
-            this % dist(gin) % data(imu, gout) = &
-                 this % dist(gin) % data(imu - 1, gout) + &
-                 HALF * this % dmu * (this % fmu(gin) % data(imu - 1, gout) + &
-                                      this % fmu(gin) % data(imu, gout))
+            p0 = this % fmu(gin) % data(imu - 1, gout)
+            mu0 = this % mu(imu - 1)
+            mu1 = this % mu(imu)
+            m = (this % fmu(gin) % data(imu, gout) - p0) / (mu1 - mu0)
+            this % dist(gin) % data(imu, gout) = HALF * m * mu1 * mu1 + &
+                 (p0 - m * mu0) * mu1 + &
+                 (HALF * m * mu0 * mu0 - p0 * mu0)
+
           end do
           ! Ensure we normalize to 1 still
           norm = this % dist(gin) % data(order, gout)
@@ -628,11 +632,10 @@ contains
     p1  = this % fmu(gin) % data(k + 1, gout)
     mu1 = this % mu(k + 1)
 
-    frac = (p1 - p0) / (mu1 - mu0)
-
-    if (frac == ZERO) then
+    if (p0 == p1) then
       mu = mu0 + (xi - c_k) / p0
     else
+      frac = (p1 - p0) / (mu1 - mu0)
       mu = mu0 + &
            (sqrt(max(ZERO, p0 * p0 + TWO * frac * (xi - c_k))) - p0) / frac
     end if

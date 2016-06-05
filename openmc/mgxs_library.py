@@ -445,7 +445,7 @@ class XSdata(object):
             raise ValueError(msg)
         if 'num_points' in tabular_legendre:
             num_points = tabular_legendre['num_points']
-            check_value('num_points', num_points, Integral)
+            check_type('num_points', num_points, Integral)
             check_greater_than('num_points', num_points, 0)
         else:
             if not enable:

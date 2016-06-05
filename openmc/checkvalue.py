@@ -4,33 +4,6 @@ from numbers import Integral, Real
 
 import numpy as np
 
-def _isinstance(value, expected_type):
-    """A Numpy-aware replacement for isinstance
-
-    This function will be obsolete when Numpy v. >= 1.9 is established.
-    """
-
-    # Declare numpy numeric types.
-    np_ints = (np.int_, np.intc, np.intp, np.int8, np.int16, np.int32, np.int64,
-               np.uint8, np.uint16, np.uint32, np.uint64)
-    np_floats = (np.float_, np.float16, np.float32, np.float64)
-
-    # Include numpy integers, if necessary.
-    if type(expected_type) is tuple:
-        if Integral in expected_type:
-            expected_type = expected_type + np_ints
-    elif expected_type is Integral:
-        expected_type = (Integral, ) + np_ints
-
-    # Include numpy floats, if necessary.
-    if type(expected_type) is tuple:
-        if Real in expected_type:
-            expected_type = expected_type + np_floats
-    elif expected_type is Real:
-        expected_type = (Real, ) + np_floats
-
-    # Now, make the instance check.
-    return isinstance(value, expected_type)
 
 def check_type(name, value, expected_type, expected_iter_type=None):
     """Ensure that an object is of an expected type. Optionally, if the object is
@@ -50,7 +23,7 @@ def check_type(name, value, expected_type, expected_iter_type=None):
 
     """
 
-    if not _isinstance(value, expected_type):
+    if not isinstance(value, expected_type):
         if isinstance(expected_type, Iterable):
             msg = 'Unable to set "{0}" to "{1}" which is not one of the ' \
                   'following types: "{2}"'.format(name, value, ', '.join(
@@ -61,8 +34,16 @@ def check_type(name, value, expected_type, expected_iter_type=None):
         raise TypeError(msg)
 
     if expected_iter_type:
+        if isinstance(value, np.ndarray):
+            if not issubclass(value.dtype.type, expected_iter_type):
+                msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
+                      'of type "{2}"'.format(name, value,
+                                             expected_iter_type.__name__)
+            else:
+                return
+
         for item in value:
-            if not _isinstance(item, expected_iter_type):
+            if not isinstance(item, expected_iter_type):
                 if isinstance(expected_iter_type, Iterable):
                     msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
                           'one of the following types: "{2}"'.format(
@@ -118,7 +99,7 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
 
         # If this item is of the expected type, then we've reached the bottom
         # level of this branch.
-        if _isinstance(current_item, expected_type):
+        if isinstance(current_item, expected_type):
             # Is this deep enough?
             if len(tree) < min_depth:
                 msg = 'Error setting "{0}": The item at {1} does not meet the '\

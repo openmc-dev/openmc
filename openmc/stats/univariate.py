@@ -66,14 +66,14 @@ class Discrete(Univariate):
 
     @x.setter
     def x(self, x):
-        if cv._isinstance(x, Real):
+        if isinstance(x, Real):
             x = [x]
         cv.check_type('discrete values', x, Iterable, Real)
         self._x = x
 
     @p.setter
     def p(self, p):
-        if cv._isinstance(p, Real):
+        if isinstance(p, Real):
             p = [p]
         cv.check_type('discrete probabilities', p, Iterable, Real)
         for pk in p:

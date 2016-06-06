@@ -107,8 +107,6 @@ contains
     real(8) :: atom_density_        ! atom/b-cm
     real(8) :: f                    ! interpolation factor
     real(8) :: score                ! analog tally score
-    real(8) :: macro_total          ! material macro total xs
-    real(8) :: macro_scatt          ! material macro scatt xs
     real(8) :: E                    ! particle energy
 
     i = 0

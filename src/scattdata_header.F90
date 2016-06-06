@@ -420,7 +420,6 @@ contains
             this % dist(gin) % data(imu, gout) = HALF * m * mu1 * mu1 + &
                  (p0 - m * mu0) * mu1 + &
                  (HALF * m * mu0 * mu0 - p0 * mu0)
-
           end do
           ! Ensure we normalize to 1 still
           norm = this % dist(gin) % data(order, gout)

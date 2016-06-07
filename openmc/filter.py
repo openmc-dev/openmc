@@ -196,7 +196,7 @@ class Filter(object):
 
         elif self.type in ['energy', 'energyout']:
             for edge in bins:
-                if not cv._isinstance(edge, Real):
+                if not isinstance(edge, Real):
                     msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
                           'since it is a non-integer or floating point ' \
                           'value'.format(edge, self.type)
@@ -220,7 +220,7 @@ class Filter(object):
                 msg = 'Unable to add bins "{0}" to a mesh Filter since ' \
                       'only a single mesh can be used per tally'.format(bins)
                 raise ValueError(msg)
-            elif not cv._isinstance(bins[0], Integral):
+            elif not isinstance(bins[0], Integral):
                 msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
                        'is a non-integer'.format(bins[0])
                 raise ValueError(msg)

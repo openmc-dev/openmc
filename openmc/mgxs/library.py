@@ -484,7 +484,7 @@ class Library(object):
             cv.check_type('domain', domain, (openmc.Universe, Integral))
 
         # Check that requested domain is included in library
-        if cv._isinstance(domain, Integral):
+        if isinstance(domain, Integral):
             domain_id = domain
             for domain in self.domains:
                 if domain_id == domain.id:

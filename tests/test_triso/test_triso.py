@@ -50,22 +50,31 @@ class TRISOTestHarness(PyAPITestHarness):
         graphite.add_s_alpha_beta('Graph', '71t')
 
         # Create TRISO particles
-        materials = [fuel, porous_carbon, ipyc, sic, opyc]
-        radii = np.array([212.5, 312.5, 347.5, 382.5, 422.5])*1e-4
+        spheres = [openmc.Sphere(R=r*1e-4)
+                   for r in [212.5, 312.5, 347.5, 382.5]]
+        c1 = openmc.Cell(fill=fuel, region=-spheres[0])
+        c2 = openmc.Cell(fill=porous_carbon, region=+spheres[0] & -spheres[1])
+        c3 = openmc.Cell(fill=ipyc, region=+spheres[1] & -spheres[2])
+        c4 = openmc.Cell(fill=sic, region=+spheres[2] & -spheres[3])
+        c5 = openmc.Cell(fill=opyc, region=+spheres[3])
+        inner_univ = openmc.Universe(cells=[c1, c2, c3, c4, c5])
+
+        outer_radius = 422.5*1e-4
         trisos = []
         random.seed(1)
         for i in range(100):
             # Randomly sample location
-            x = random.uniform(-0.5, 0.5)
-            y = random.uniform(-0.5, 0.5)
-            z = random.uniform(-0.5, 0.5)
-            t = openmc.model.TRISO(materials, radii, (x, y, z))
+            lim = 0.5 - outer_radius*1.001
+            x = random.uniform(-lim, lim)
+            y = random.uniform(-lim, lim)
+            z = random.uniform(-lim, lim)
+            t = openmc.model.TRISO(outer_radius, inner_univ, (x, y, z))
 
             # Make sure TRISO doesn't overlap with another
             for tp in trisos:
                 xp, yp, zp = tp.center
                 distance = sqrt((x - xp)**2 + (y - yp)**2 + (z - zp)**2)
-                if distance <= 2*radii[-1]:
+                if distance <= 2*outer_radius:
                     break
             else:
                 trisos.append(t)
@@ -82,8 +91,9 @@ class TRISOTestHarness(PyAPITestHarness):
         # Create lattice
         ll, ur = box.region.bounding_box
         shape = (3, 3, 3)
+        pitch = (ur - ll) / shape
         lattice = openmc.model.create_triso_lattice(
-            trisos, ll, (ur - ll)/shape, shape, graphite)
+            trisos, ll, pitch, shape, graphite)
         box.fill = lattice
 
         root = openmc.Universe(0, cells=[box])
@@ -93,7 +103,7 @@ class TRISOTestHarness(PyAPITestHarness):
         settings = openmc.Settings()
         settings.batches = 5
         settings.inactive = 0
-        settings.particles = 50
+        settings.particles = 100
         settings.source = openmc.Source(space=openmc.stats.Point())
         settings.export_to_xml()
 

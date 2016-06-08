@@ -277,7 +277,7 @@ module mgxs_header
       real(8), allocatable    :: scatt_coeffs(:, :, :)
       real(8), allocatable    :: input_scatt(:, :, :)
       real(8), allocatable    :: temp_scatt(:, :, :)
-      real(8)                 :: dmu, mu, norm, p0, m, mu0
+      real(8)                 :: dmu, mu, norm
       integer                 :: order, order_dim, gin, gout, l, arr_len
       integer                 :: legendre_mu_points, imu
 
@@ -497,18 +497,6 @@ module mgxs_header
                   norm = norm + HALF * dmu * &
                        (scatt_coeffs(imu - 1, gout, gin) + &
                         scatt_coeffs(imu, gout, gin))
-                end if
-                ! Now create CDF from fmu with the analytical integral of a
-                ! piecewise linear function
-                if (imu > 1) then
-                  p0 = scatt_coeffs(imu - 1, gout, gin)
-                  mu0 = mu - dmu
-                  m = (scatt_coeffs(imu, gout, gin) - &
-                       scatt_coeffs(imu - 1, gout, gin)) / dmu
-                  norm = norm + &
-                       HALF * m * mu * mu + &
-                       (p0 - m * mu0) * mu + &
-                       (HALF * m * mu0 * mu0 - p0 * mu0)
                 end if
               end do
               ! Now that we have the integral, lets ensure that the distribution

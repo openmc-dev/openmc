@@ -778,18 +778,18 @@ class Library(object):
             Scattering order for this data entry.  Default is None,
             which will set the XSdata object to use the order of the
             Library.
-        tabular_legendre : {None, bool}
+        tabular_legendre : None or bool
             Flag to denote whether or not the Legendre expansion of the
             scattering angular distribution is to be converted to a tabular
             representation by OpenMC.  A value of `True` means that it is to be
-            converted while a value of 'False' means that it will not be.
+            converted while a value of `False` means that it will not be.
             Defaults to `None` which leaves the default behavior of OpenMC in
             place (the distribution is converted to a tabular representation).
-        tabular_points : {int}
-            This parameter is not used unless the `tabular_legendre` is set to
-            `True`.  In this case, this parameter sets the number of
-            equally-spaced points in the domain of [-1,1] to be used in
-            building the tabular distribution. Default is `33`.
+        tabular_points : int
+            This parameter is not used unless the ``tabular_legendre``
+            parameter is set to `True`.  In this case, this parameter sets the
+            number of equally-spaced points in the domain of [-1,1] to be used
+            in building the tabular distribution. Default is `33`.
 
         Returns
         -------
@@ -947,18 +947,18 @@ class Library(object):
             Cross section set identifier (i.e., '71c') for all
             data sets (if only str) or for each individual one
             (if iterable of str). Defaults to '1m'.
-        tabular_legendre : {None, bool}
+        tabular_legendre : None or bool
             Flag to denote whether or not the Legendre expansion of the
             scattering angular distribution is to be converted to a tabular
             representation by OpenMC.  A value of `True` means that it is to be
-            converted while a value of 'False' means that it will not be.
+            converted while a value of `False` means that it will not be.
             Defaults to `None` which leaves the default behavior of OpenMC in
             place (the distribution is converted to a tabular representation).
-        tabular_points : {int}
-            This parameter is not used unless the `tabular_legendre` is set to
-            `True`.  In this case, this parameter sets the number of
-            equally-spaced points in the domain of [-1,1] to be used in
-            building the tabular distribution. Default is `33`.
+        tabular_points : int
+            This parameter is not used unless the ``tabular_legendre``
+            parameter is set to `True`.  In this case, this parameter sets the
+            number of equally-spaced points in the domain of [-1,1] to be used
+            in building the tabular distribution. Default is `33`.
 
         Returns
         -------
@@ -1046,18 +1046,18 @@ class Library(object):
             Cross section set identifier (i.e., '71c') for all
             data sets (if only str) or for each individual one
             (if iterable of str). Defaults to '1m'.
-        tabular_legendre : {None, bool}
+        tabular_legendre : None or bool
             Flag to denote whether or not the Legendre expansion of the
             scattering angular distribution is to be converted to a tabular
             representation by OpenMC.  A value of `True` means that it is to be
-            converted while a value of 'False' means that it will not be.
+            converted while a value of `False` means that it will not be.
             Defaults to `None` which leaves the default behavior of OpenMC in
             place (the distribution is converted to a tabular representation).
-        tabular_points : {int}
-            This parameter is not used unless the `tabular_legendre` is set to
-            `True`.  In this case, this parameter sets the number of
-            equally-spaced points in the domain of [-1,1] to be used in
-            building the tabular distribution. Default is `33`.
+        tabular_points : int
+            This parameter is not used unless the ``tabular_legendre``
+            parameter is set to `True`.  In this case, this parameter sets the
+            number of equally-spaced points in the domain of [-1,1] to be used
+            in building the tabular distribution. Default is `33`.
 
         Returns
         -------

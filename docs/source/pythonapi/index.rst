@@ -27,6 +27,7 @@ Example Jupyter Notebooks
     examples/mgxs-part-ii
     examples/mgxs-part-iii
     examples/mgxs-part-iv
+    examples/nuclear-data
 
 ------------------------------------
 :mod:`openmc` -- Basic Functionality

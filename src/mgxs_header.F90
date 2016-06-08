@@ -387,11 +387,13 @@ module mgxs_header
 
       ! Get scattering treatment information
       ! Tabular_legendre tells us if we are to treat the provided
-      ! Legendre polynomials as tabular data (if enable is true) or leaving
-      ! them as Legendres (if enable is false, or the default)
+      ! Legendre polynomials as tabular data (if enable is true, default)
+      ! or leaving them as Legendres (if enable is false)
 
-      ! Set the default (leave as Legendre polynomials)
-      enable_leg_mu = .false.
+      ! Set the default (Convert to tabular format w/ 33 points)
+      enable_leg_mu = .true.
+      legendre_mu_points = 33
+      ! Get the user-provided values
       if (check_for_node(node_xsdata, "tabular_legendre")) then
         call get_node_ptr(node_xsdata, "tabular_legendre", node_legendre_mu)
         if (check_for_node(node_legendre_mu, "enable")) then

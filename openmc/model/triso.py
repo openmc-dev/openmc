@@ -1,6 +1,7 @@
 import copy
 from collections import Iterable
 from numbers import Real
+import warnings
 
 import numpy as np
 
@@ -132,6 +133,9 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
                 t_copy.cell.fill = t.cell.fill
                 t_copy._surface.id = None
                 triso_locations[idx].append(t_copy)
+            else:
+                warnings.warn('TRISO particle is partially or completely '
+                              'outside of the lattice.')
 
     # Create universes
     universes = np.empty(shape[::-1], dtype=openmc.Universe)

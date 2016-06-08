@@ -398,32 +398,18 @@ contains
           end do
 
           ! Re-normalize fmu for numerical integration issues and in case
-          ! the negative fix-up introduced un-normalized data
+          ! the negative fix-up introduced un-normalized data while
+          ! accruing the CDF
           norm = ZERO
           do imu = 2, order
             norm = norm + HALF * this % dmu * &
                  (this % fmu(gin) % data(imu - 1, gout) + &
                   this % fmu(gin) % data(imu, gout))
+            this % dist(gin) % data(imu, gout) = norm
           end do
           if (norm > ZERO) then
             this % fmu(gin) % data(:, gout) = &
                  this % fmu(gin) % data(:, gout) / norm
-          end if
-
-          ! Now create CDF from fmu with the analytical integral
-          this % dist(gin) % data(1, gout) = ZERO
-          do imu = 2, order
-            p0 = this % fmu(gin) % data(imu - 1, gout)
-            mu0 = this % mu(imu - 1)
-            mu1 = this % mu(imu)
-            m = (this % fmu(gin) % data(imu, gout) - p0) / (mu1 - mu0)
-            this % dist(gin) % data(imu, gout) = HALF * m * mu1 * mu1 + &
-                 (p0 - m * mu0) * mu1 + &
-                 (HALF * m * mu0 * mu0 - p0 * mu0)
-          end do
-          ! Ensure we normalize to 1 still
-          norm = this % dist(gin) % data(order, gout)
-          if (norm > ZERO) then
             this % dist(gin) % data(:, gout) = &
                  this % dist(gin) % data(:, gout) / norm
           end if

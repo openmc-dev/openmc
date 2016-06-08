@@ -784,8 +784,7 @@ class Library(object):
             representation by OpenMC.  A value of `True` means that it is to be
             converted while a value of 'False' means that it will not be.
             Defaults to `None` which leaves the default behavior of OpenMC in
-            place (the distribution is not converted to a tabular
-            representation).
+            place (the distribution is converted to a tabular representation).
         tabular_points : {int}
             This parameter is not used unless the `tabular_legendre` is set to
             `True`.  In this case, this parameter sets the number of
@@ -954,8 +953,7 @@ class Library(object):
             representation by OpenMC.  A value of `True` means that it is to be
             converted while a value of 'False' means that it will not be.
             Defaults to `None` which leaves the default behavior of OpenMC in
-            place (the distribution is not converted to a tabular
-            representation).
+            place (the distribution is converted to a tabular representation).
         tabular_points : {int}
             This parameter is not used unless the `tabular_legendre` is set to
             `True`.  In this case, this parameter sets the number of
@@ -1054,8 +1052,7 @@ class Library(object):
             representation by OpenMC.  A value of `True` means that it is to be
             converted while a value of 'False' means that it will not be.
             Defaults to `None` which leaves the default behavior of OpenMC in
-            place (the distribution is not converted to a tabular
-            representation).
+            place (the distribution is converted to a tabular representation).
         tabular_points : {int}
             This parameter is not used unless the `tabular_legendre` is set to
             `True`.  In this case, this parameter sets the number of

@@ -328,8 +328,11 @@ Core Classes
     :nosignatures:
     :template: myclass.rst
 
+    openmc.data.IncidentNeutron
+    openmc.data.Reaction
     openmc.data.Product
     openmc.data.Tabulated1D
+    openmc.data.ThermalScattering
     openmc.data.CoherentElastic
 
 Angle-Energy Distributions
@@ -370,11 +373,6 @@ Classes
 
    openmc.data.ace.Library
    openmc.data.ace.Table
-   openmc.data.ace.NeutronTable
-   openmc.data.ace.SabTable
-   openmc.data.ace.PhotoatomicTable
-   openmc.data.ace.PhotonuclearTable
-   openmc.data.ace.Reaction
 
 Functions
 +++++++++

@@ -4,7 +4,7 @@ from numbers import Real
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.stats import Univariate, Tabular
+from openmc.stats import Univariate, Tabular, Uniform
 from .container import interpolation_scheme
 
 
@@ -128,6 +128,72 @@ class AngleDistribution(object):
             interp = interpolation_scheme[interpolation[i]]
             mu_i = Tabular(data[0, j:j+n], data[1, j:j+n], interp)
             mu_i.c = data[2, j:j+n]
+
+            mu.append(mu_i)
+
+        return cls(energy, mu)
+
+    @classmethod
+    def from_ace(cls, ace, location_dist, location_start):
+        """Generate an angular distribution from ACE data
+
+        Parameters
+        ----------
+        ace : openmc.data.ace.Table
+            ACE table to read from
+        location_dist : int
+            Index in the XSS array corresponding to the start of a block,
+            e.g. JXS(9).
+        location_start : int
+            Index in the XSS array corresponding to the start of an angle
+            distribution array
+
+        Returns
+        -------
+        openmc.data.AngleDistribution
+            Angular distribution
+
+        """
+        # Set starting index for angle distribution
+        idx = location_dist + location_start - 1
+
+        # Number of energies at which angular distributions are tabulated
+        n_energies = int(ace.xss[idx])
+        idx += 1
+
+        # Incoming energy grid
+        energy = ace.xss[idx:idx + n_energies]
+        idx += n_energies
+
+        # Read locations for angular distributions
+        lc = ace.xss[idx:idx + n_energies].astype(int)
+        idx += n_energies
+
+        mu = []
+        for i in range(n_energies):
+            if lc[i] > 0:
+                # Equiprobable 32 bin distribution
+                idx = location_dist + abs(lc[i]) - 1
+                cos = ace.xss[idx:idx + 33]
+                pdf = np.zeros(33)
+                pdf[:32] = 1.0/(32.0*np.diff(cos))
+                cdf = np.linspace(0.0, 1.0, 33)
+
+                mu_i = Tabular(cos, pdf, 'histogram', ignore_negative=True)
+                mu_i.c = cdf
+            elif lc[i] < 0:
+                # Tabular angular distribution
+                idx = location_dist + abs(lc[i]) - 1
+                intt = int(ace.xss[idx])
+                n_points = int(ace.xss[idx + 1])
+                data = ace.xss[idx + 2:idx + 2 + 3*n_points]
+                data.shape = (3, n_points)
+
+                mu_i = Tabular(data[0], data[1], interpolation_scheme[intt])
+                mu_i.c = data[2]
+            else:
+                # Isotropic angular distribution
+                mu_i = Uniform(-1., 1.)
 
             mu.append(mu_i)
 

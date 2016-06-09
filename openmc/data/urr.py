@@ -169,3 +169,42 @@ class ProbabilityTables(object):
 
         return cls(energy, table, interpolation, inelastic_flag,
                    absorption_flag, multiply_smooth)
+
+    @classmethod
+    def from_ace(cls, ace):
+        """Generate probability tables from an ACE table
+
+        Parameters
+        ----------
+        ace : openmc.data.ace.Table
+            ACE table to read from
+
+        Returns
+        -------
+        openmc.data.ProbabilityTables
+            Unresolved resonance region probability tables
+
+        """
+        # Check if URR probability tables are present
+        idx = ace.jxs[23]
+        if idx == 0:
+            return None
+
+        N = int(ace.xss[idx])      # Number of incident energies
+        M = int(ace.xss[idx+1])    # Length of probability table
+        interpolation = int(ace.xss[idx+2])
+        inelastic_flag = int(ace.xss[idx+3])
+        absorption_flag = int(ace.xss[idx+4])
+        multiply_smooth = (int(ace.xss[idx+5]) == 1)
+        idx += 6
+
+        # Get energies at which tables exist
+        energy = ace.xss[idx : idx+N]
+        idx += N
+
+        # Get probability tables
+        table = ace.xss[idx : idx+N*6*M]
+        table.shape = (N, 6, M)
+
+        return cls(energy, table, interpolation, inelastic_flag,
+                   absorption_flag, multiply_smooth)

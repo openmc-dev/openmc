@@ -116,3 +116,27 @@ class NBodyPhaseSpace(AngleEnergy):
         awr = group.attrs['atomic_weight_ratio']
         q_value = group.attrs['q_value']
         return cls(total_mass, n_particles, awr, q_value)
+
+    @classmethod
+    def from_ace(cls, ace, idx, q_value):
+        """Generate N-body phase space distribution from ACE data
+
+        Parameters
+        ----------
+        ace : openmc.data.ace.Table
+            ACE table to read from
+        idx : int
+            Index in XSS array of the start of the energy distribution data
+            (LDIS + LOCC - 1)
+        q_value : float
+            Q-value for reaction in MeV
+
+        Returns
+        -------
+        openmc.data.NBodyPhaseSpace
+            N-body phase space distribution
+
+        """
+        n_particles = int(ace.xss[idx])
+        total_mass = ace.xss[idx + 1]
+        return cls(total_mass, n_particles, ace.atomic_weight_ratio, q_value)

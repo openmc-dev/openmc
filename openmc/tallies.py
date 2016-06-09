@@ -520,7 +520,7 @@ class Tally(object):
             Nuclide to add to the tally. The nuclide should be a Nuclide object
             when a user is adding nuclides to a Tally for input file generation.
             The nuclide is a str when a Tally is created from a StatePoint file
-            (e.g., 'H-1', 'U-235') unless a Summary has been linked with the
+            (e.g., 'H1', 'U235') unless a Summary has been linked with the
             StatePoint. The nuclide may be a CrossNuclide or AggregateNuclide
             for derived tallies created by tally arithmetic.
 
@@ -1166,7 +1166,7 @@ class Tally(object):
         Parameters
         ----------
         nuclide : str
-            The name of the Nuclide (e.g., 'H-1', 'U-238')
+            The name of the Nuclide (e.g., 'H1', 'U238')
 
         Returns
         -------
@@ -1342,7 +1342,7 @@ class Tally(object):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
 
         Returns
         -------
@@ -1435,7 +1435,7 @@ class Tally(object):
             the filter_types parameter.
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         value : str
             A string for the type of value to return  - 'mean' (default),
             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
@@ -2887,7 +2887,7 @@ class Tally(object):
             correspond to the filter_types parameter.
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
 
         Returns
         -------
@@ -3025,7 +3025,7 @@ class Tally(object):
             interest.
         nuclides : list of str
             A list of nuclide name strings to sum across
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         remove_filter : bool
             If a filter is being summed over, this bool indicates whether to
             remove that filter in the returned tally. Default is False.
@@ -3173,7 +3173,7 @@ class Tally(object):
             interest.
         nuclides : list of str
             A list of nuclide name strings to average across
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         remove_filter : bool
             If a filter is being averaged over, this bool indicates whether to
             remove that filter in the returned tally. Default is False.

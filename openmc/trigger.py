@@ -39,25 +39,6 @@ class Trigger(object):
         self.threshold = threshold
         self._scores = []
 
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._trigger_type = self._trigger_type
-            clone._threshold = self._threshold
-
-            clone.scores = self.scores
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
     def __eq__(self, other):
         if str(self) == str(other):
             return True

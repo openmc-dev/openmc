@@ -106,6 +106,11 @@ class StatePoint(object):
 
     def __init__(self, filename, autolink=True):
         import h5py
+        if h5py.__version__ == '2.6.0':
+            raise ImportError("h5py 2.6.0 has a known bug which makes it "
+                              "incompatible with OpenMC's HDF5 files. "
+                              "Please switch to a different version.")
+
         self._f = h5py.File(filename, 'r')
 
         # Ensure filetype and revision are correct
@@ -497,13 +502,18 @@ class StatePoint(object):
                 self.tallies[tally_id].sparse = self.sparse
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
-                  name=None, id=None, estimator=None):
+                  name=None, id=None, estimator=None, exact_filters=False,
+                  exact_nuclides=False, exact_scores=False):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
         found which satisfies all of the input parameters.
-        NOTE: The input parameters do not need to match the complete Tally
-        specification and may only represent a subset of the Tally's properties.
+
+        NOTE: If any of the "exact" parameters are False (default), the input
+        parameters do not need to match the complete Tally specification and
+        may only represent a subset of the Tally's properties. If an "exact"
+        parameter is True then number of scores, filters, or nuclides in the
+        parameters must precisely match those of any matching Tally.
 
         Parameters
         ----------
@@ -519,6 +529,18 @@ class StatePoint(object):
             The id specified for the Tally (default is None).
         estimator: str, optional
             The type of estimator ('tracklength', 'analog'; default is None).
+        exact_filters : bool
+            If True, the number of filters in the parameters must be identical
+            to those in the matching Tally. If False (default), the filters in
+            the parameters may be a subset of those in the matching Tally.
+        exact_nuclides : bool
+            If True, the number of nuclides in the parameters must be identical
+            to those in the matching Tally. If False (default), the nuclides in
+            the parameters may be a subset of those in the matching Tally.
+        exact_scores : bool
+            If True, the number of scores in the parameters must be identical
+            to those in the matching Tally. If False (default), the scores
+            in the parameters may be a subset of those in the matching Tally.
 
         Returns
         -------
@@ -547,7 +569,15 @@ class StatePoint(object):
                 continue
 
             # Determine if Tally has queried estimator
-            if estimator and not estimator == test_tally.estimator:
+            if estimator and estimator != test_tally.estimator:
+                continue
+
+            # The number of filters, nuclides and scores must exactly match
+            if exact_scores and len(scores) != test_tally.num_scores:
+                continue
+            if exact_nuclides and len(nuclides) != test_tally.num_nuclides:
+                continue
+            if exact_filters and len(filters) != test_tally.num_filters:
                 continue
 
             # Determine if Tally has the queried score(s)

@@ -45,7 +45,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         r0 = openmc.ZCylinder(R=0.3)
         c11 = openmc.Cell(cell_id=11)
         c11.region = -r0
-        c11.fill = [dense_fuel, light_fuel, 'void', dense_fuel]
+        c11.fill = [dense_fuel, light_fuel, None, dense_fuel]
         c12 = openmc.Cell(cell_id=12)
         c12.region = +r0
         c12.fill = moderator
@@ -53,7 +53,6 @@ class DistribmatTestHarness(PyAPITestHarness):
         fuel_univ.add_cells((c11, c12))
 
         lat = openmc.RectLattice(lattice_id=101)
-        lat.dimension = [2, 2]
         lat.lower_left = [-2.0, -2.0]
         lat.pitch = [2.0, 2.0]
         lat.universes = [[fuel_univ]*2]*2

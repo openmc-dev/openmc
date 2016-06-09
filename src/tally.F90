@@ -346,30 +346,6 @@ contains
         end if
 
 
-      case (SCORE_TRANSPORT)
-        ! Only analog estimators are available.
-        ! Skip any event where the particle didn't scatter
-        if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-        ! get material macros
-        macro_total = material_xs % total
-        macro_scatt = material_xs % total - material_xs % absorption
-        ! Score total rate - p1 scatter rate Note estimator needs to be
-        ! adjusted since tallying is only occuring when a scatter has
-        ! happened. Effectively this means multiplying the estimator by
-        ! total/scatter macro
-        score = (macro_total - p % mu * macro_scatt) * (ONE / macro_scatt)
-
-
-      case (SCORE_N_1N)
-        ! Only analog estimators are available.
-        ! Skip any event where the particle didn't scatter
-        if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-        ! Skip any events where weight of particle changed
-        if (p % wgt /= p % last_wgt) cycle SCORE_LOOP
-        ! All events that reach this point are (n,1n) reactions
-        score = p % last_wgt
-
-
       case (SCORE_ABSORPTION)
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
@@ -1018,20 +994,6 @@ contains
             ! Get the scattering x/s, which includes multiplication
             score = matxs % get_xs('scatter', p_g, UVW=p_uvw) * flux
           end if
-        end if
-
-
-      case (SCORE_TRANSPORT)
-        ! Only analog estimators are available.
-        ! Skip any event where the particle didn't scatter
-        if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-        ! Score total rate - p1 scatter rate Note estimator needs to be
-        ! adjusted since tallying is only occuring when a scatter has
-        ! happened. Effectively this means multiplying the estimator by
-        ! total/scatter macro
-        score = (material_xs % total - p % mu * material_xs % elastic)
-        if (material_xs % elastic /= ZERO) then
-          score = score / material_xs % elastic
         end if
 
 

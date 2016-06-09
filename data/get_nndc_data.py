@@ -11,8 +11,8 @@ import hashlib
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-b', '--batch', action = 'store_true',
-                    help = 'supresses standard in')
+parser.add_argument('-b', '--batch', action='store_true',
+                    help='supresses standard in')
 args = parser.parse_args()
 
 try:
@@ -90,7 +90,7 @@ for f, checksum in zip(files, checksums):
 # EXTRACT FILES FROM TGZ
 
 for f in files:
-    if not f in filesComplete:
+    if f not in filesComplete:
         continue
 
     # Extract files

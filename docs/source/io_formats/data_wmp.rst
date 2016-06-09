@@ -1,8 +1,10 @@
 .. _io_data_wmp:
 
-==========================================
-The Windowed Multipole Library Format v0.2
-==========================================
+=================================
+Windowed Multipole Library Format
+=================================
+
+Version 0.2
 
 **/nuclide/**
     - **broaden_poly** (*int[]*)
@@ -12,14 +14,17 @@ The Windowed Multipole Library Format v0.2
         Curve fit coefficients. Indexed by (reaction type, coefficient index,
         window index).
     - **data** (*complex[][]*)
-        Complex poles and residues.  Each pole has a corresponding set of
-        residues.  For example, the `i`th pole and corresponding residues are
-        stored as `data[:,i] = [pole, residue_1, residue_2, ...]`.  The 
-        residues are in the order: total, competitive if present, absorption,
-        fission. Complex numbers are stored by forming a type with `"r"` and
-        `"i"` identifiers, similar to how `h5py` does it.
-    - **start_E** (*double*)
-        Lowest energy the windowed multipole part of the library is valid for.
+        Complex poles and residues. Each pole has a corresponding set of
+        residues. For example, the :math:`i`-th pole and corresponding residues
+        are stored as
+        
+        .. math::
+        \text{data}[:,i] = [\text{pole},~\text{residue}_1,~\text{residue}_2,
+        ~\ldots]`
+
+        The residues are in the order: total, competitive if present,
+        absorption, fission. Complex numbers are stored by forming a type with
+        ":math:`r`" and ":math:`i`" identifiers, similar to how `h5py`_ does it.
     - **end_E** (*double*)
         Highest energy the windowed multipole part of the library is valid for.
     - **energy_points** (*double[]*)
@@ -59,24 +64,27 @@ The Windowed Multipole Library Format v0.2
         Number of possible :math:`l` quantum states for this nuclide.
     - **pseudo_K0RS** (*double[]*)
         :math:`l` dependent value of
-        
+
         .. math::
             \sqrt{\frac{2 m_n}{\hbar}}\frac{AWR}{AWR + 1} r_{s,l}
-        
+
         Where :math:`m_n` is mass of neutron, :math:`AWR` is the atomic weight
         ratio of the target to the neutron, and :math:`r_{s,l}` is the
         scattering radius for a given :math:`l`.
     - **spacing** (*double*)
         .. math::
             \frac{\sqrt{E_{max}}- \sqrt{E_{min}}}{n_w}
-        
+
         Where :math:`E_{max}` is the maximum energy the windows go up to.  This
         is not equivalent to the maximum energy for which the windowed multipole
         data is valid for.  It is slightly higher to ensure an integer number of
         windows. :math:`E_{min}` is the minimum energy and equivalent to
-        `start_E`, and :math:`n_w` is the number of windows, given by `windows`.
+        ``start_E``, and :math:`n_w` is the number of windows, given by
+        ``windows``.
     - **sqrtAWR** (*double*)
         Square root of the atomic weight ratio.
+    - **start_E** (*double*)
+        Lowest energy the windowed multipole part of the library is valid for.
     - **w_start** (*int[]*)
         The pole to start from for each window.
     - **w_end** (*int[]*)
@@ -87,6 +95,7 @@ The Windowed Multipole Library Format v0.2
 **/nuclide/reactions/MT<i>**
     - **MT_sigma** (*double[]*) -- Cross section value for this reaction.
     - **Q_value** (*double*) -- Energy released in this reaction, in eV.
-    - **threshold** (*int*) -- The first non-zero entry in `MT_sigma`.
+    - **threshold** (*int*) -- The first non-zero entry in ``MT_sigma``.
 
+.. _h5py: http://docs.h5py.org/en/latest/
 .. _ENDF-6: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf

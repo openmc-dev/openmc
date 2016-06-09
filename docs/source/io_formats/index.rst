@@ -1,8 +1,8 @@
 .. _io_file_formats:
 
-===============
-IO File Formats
-===============
+==========================
+File Format Specifications
+==========================
 
 .. toctree::
    :numbered:

@@ -78,7 +78,7 @@ class Settings(object):
     multipole_library : str
         Indicates the path to a directory containing a windowed multipole
         cross section library. If it is not set, the
-        :envvar:`OPENMC_MULTIPOLE_LIBRARY' environment variable will be used. A
+        :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used. A
         multipole library is optional.
     energy_grid : {'nuclide', 'logarithm', 'material-union'}
         Set the method used to search energy grids.

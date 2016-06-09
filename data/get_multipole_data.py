@@ -11,8 +11,8 @@ import hashlib
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-b', '--batch', action = 'store_true',
-                    help = 'supresses standard in')
+parser.add_argument('-b', '--batch', action='store_true',
+                    help='supresses standard in')
 args = parser.parse_args()
 
 try:
@@ -92,7 +92,7 @@ for f, checksum in zip(files, checksums):
 
 for f in files:
     fname = f[:-9] if f.endswith('?raw=true') else f
-    if not fname in filesComplete:
+    if fname not in filesComplete:
         continue
 
     # Extract files

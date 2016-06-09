@@ -8,52 +8,41 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 
-class TRISO(object):
+class TRISO(openmc.Cell):
     """Tristructural-isotopic (TRISO) micro fuel particle
 
     Parameters
     ----------
-    outer_radius : int
+    outer_radius : float
         Outer radius of TRISO particle
-    inner_univ : openmc.Universe
+    fill : openmc.Universe
         Universe which contains all layers of the TRISO particle
     center : Iterable of float
         Cartesian coordinates of the center of the TRISO particle in cm
 
     Attributes
     ----------
-    cell : opemc.Cell
-        Cell which contains the TRISO universe
+    id : int
+        Unique identifier for the TRISO cell
+    name : str
+        Name of the TRISO cell
     center : numpy.ndarray
         Cartesian coordinates of the center of the TRISO particle in cm
-    outside : openmc.Region
-        Region of space outside of the TRISO particle
-    bounding_box : tuple of numpy.ndarray
-        Lower-left and upper-right coordinates of an axis-aligned bounding box
-        for the TRISO particle
+    fill : openmc.Universe
+        Universe that contains the TRISO layers
+    region : openmc.Region
+        Region of space within the TRISO particle
 
     """
 
-    def __init__(self, outer_radius, inner_univ, center=(0., 0., 0.)):
+    def __init__(self, outer_radius, fill, center=(0., 0., 0.)):
         self._surface = openmc.Sphere(R=outer_radius)
-        self._cell = openmc.Cell(fill=inner_univ, region=-self._surface)
+        super(TRISO, self).__init__(fill=fill, region=-self._surface)
         self.center = np.asarray(center)
-
-    @property
-    def bounding_box(self):
-        return self.cell.region.bounding_box
-
-    @property
-    def cell(self):
-        return self._cell
 
     @property
     def center(self):
         return self._center
-
-    @property
-    def outside(self):
-        return +self._surface
 
     @center.setter
     def center(self, center):
@@ -61,7 +50,7 @@ class TRISO(object):
         self._surface.x0 = center[0]
         self._surface.y0 = center[1]
         self._surface.z0 = center[2]
-        self.cell.translation = center
+        self.translation = center
         self._center = center
 
     def classify(self, lattice):
@@ -80,7 +69,7 @@ class TRISO(object):
 
         """
 
-        ll, ur = self.bounding_box
+        ll, ur = self.region.bounding_box
         if lattice.ndim == 2:
             (i_min, j_min), p = lattice.find_element(ll)
             (i_max, j_max), p = lattice.find_element(ur)
@@ -129,8 +118,8 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
                 # Create copy of TRISO particle with materials preserved and
                 # different cell/surface IDs
                 t_copy = copy.deepcopy(t)
-                t_copy.cell.id = None
-                t_copy.cell.fill = t.cell.fill
+                t_copy.id = None
+                t_copy.fill = t.fill
                 t_copy._surface.id = None
                 triso_locations[idx].append(t_copy)
             else:
@@ -141,7 +130,7 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     universes = np.empty(shape[::-1], dtype=openmc.Universe)
     for idx, triso_list in sorted(triso_locations.items()):
         if len(triso_list) > 0:
-            outside_trisos = openmc.Intersection(*[t.outside for t in triso_list])
+            outside_trisos = openmc.Intersection(*[~t.region for t in triso_list])
             background_cell = openmc.Cell(fill=background, region=outside_trisos)
         else:
             background_cell = openmc.Cell(fill=background)
@@ -149,7 +138,7 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
         u = openmc.Universe()
         u.add_cell(background_cell)
         for t in triso_list:
-            u.add_cell(t.cell)
+            u.add_cell(t)
             iz, iy, ix = idx
             t.center = lattice.get_local_coordinates(t.center, (ix, iy, iz))
 

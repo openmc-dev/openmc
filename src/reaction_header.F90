@@ -38,7 +38,7 @@ contains
     integer(HSIZE_T) :: dims(1)
 
     call read_attribute(this % Q_value, group_id, 'Q_value')
-    call read_attribute(this % MT, group_id, 'MT')
+    call read_attribute(this % MT, group_id, 'mt')
     call read_attribute(this % threshold, group_id, 'threshold_idx')
     call read_attribute(cm, group_id, 'center_of_mass')
     this % scatter_in_cm = (cm == 1)

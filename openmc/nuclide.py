@@ -13,18 +13,18 @@ class Nuclide(object):
     Parameters
     ----------
     name : str
-        Name of the nuclide, e.g. U-235
+        Name of the nuclide, e.g. U235
     xs : str
         Cross section identifier, e.g. 71c
 
     Attributes
     ----------
     name : str
-        Name of the nuclide, e.g. U-235
+        Name of the nuclide, e.g. U235
     xs : str
         Cross section identifier, e.g. 71c
     zaid : int
-        1000*(atomic number) + mass number. As an example, the zaid of U-235
+        1000*(atomic number) + mass number. As an example, the zaid of U235
         would be 92235.
     scattering : 'data' or 'iso-in-lab' or None
         The type of angular scattering distribution to use

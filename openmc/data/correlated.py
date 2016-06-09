@@ -203,8 +203,8 @@ class CorrelatedAngleEnergy(AngleEnergy):
 
         """
         interp_data = group['energy'].attrs['interpolation']
-        energy_breakpoints = interp_data[0,:]
-        energy_interpolation = interp_data[1,:]
+        energy_breakpoints = interp_data[0, :]
+        energy_interpolation = interp_data[1, :]
         energy = group['energy'].value
 
         offsets = group['energy_out'].attrs['offsets']
@@ -289,3 +289,116 @@ class CorrelatedAngleEnergy(AngleEnergy):
 
         return cls(energy_breakpoints, energy_interpolation,
                    energy, energy_out, mu)
+
+    @classmethod
+    def from_ace(cls, ace, idx, ldis):
+        """Generate correlated angle-energy distribution from ACE data
+
+        Parameters
+        ----------
+        ace : openmc.data.ace.Table
+            ACE table to read from
+        idx : int
+            Index in XSS array of the start of the energy distribution data
+            (LDIS + LOCC - 1)
+        ldis : int
+            Index in XSS array of the start of the energy distribution block
+            (e.g. JXS[11])
+
+        Returns
+        -------
+        openmc.data.CorrelatedAngleEnergy
+            Correlated angle-energy distribution
+
+        """
+        # Read number of interpolation regions and incoming energies
+        n_regions = int(ace.xss[idx])
+        n_energy_in = int(ace.xss[idx + 1 + 2*n_regions])
+
+        # Get interpolation information
+        idx += 1
+        if n_regions > 0:
+            breakpoints = ace.xss[idx:idx + n_regions].astype(int)
+            interpolation = ace.xss[idx + n_regions:idx + 2*n_regions].astype(int)
+        else:
+            breakpoints = np.array([n_energy_in])
+            interpolation = np.array([2])
+
+        # Incoming energies at which distributions exist
+        idx += 2*n_regions + 1
+        energy = ace.xss[idx:idx + n_energy_in]
+
+        # Location of distributions
+        idx += n_energy_in
+        loc_dist = ace.xss[idx:idx + n_energy_in].astype(int)
+
+        # Initialize list of distributions
+        energy_out = []
+        mu = []
+
+        # Read each outgoing energy distribution
+        for i in range(n_energy_in):
+            idx = ldis + loc_dist[i] - 1
+
+            # intt = interpolation scheme (1=hist, 2=lin-lin)
+            INTTp = int(ace.xss[idx])
+            intt = INTTp % 10
+            n_discrete_lines = (INTTp - intt)//10
+            if intt not in (1, 2):
+                warn("Interpolation scheme for continuous tabular distribution "
+                     "is not histogram or linear-linear.")
+                intt = 2
+
+            # Secondary energy distribution
+            n_energy_out = int(ace.xss[idx + 1])
+            data = ace.xss[idx + 2:idx + 2 + 4*n_energy_out]
+            data.shape = (4, n_energy_out)
+
+            # Create continuous distribution
+            eout_continuous = Tabular(data[0][n_discrete_lines:],
+                                      data[1][n_discrete_lines:],
+                                      interpolation_scheme[intt],
+                                      ignore_negative=True)
+            eout_continuous.c = data[2][n_discrete_lines:]
+
+            # If discrete lines are present, create a mixture distribution
+            if n_discrete_lines > 0:
+                eout_discrete = Discrete(data[0][:n_discrete_lines],
+                                         data[1][:n_discrete_lines])
+                eout_discrete.c = data[2][:n_discrete_lines]
+                if n_discrete_lines == n_energy_out:
+                    eout_i = eout_discrete
+                else:
+                    p_discrete = min(sum(eout_discrete.p), 1.0)
+                    eout_i = Mixture([p_discrete, 1. - p_discrete],
+                                     [eout_discrete, eout_continuous])
+            else:
+                eout_i = eout_continuous
+
+            energy_out.append(eout_i)
+
+            lc = data[3].astype(int)
+
+            # Secondary angular distributions
+            mu_i = []
+            for j in range(n_energy_out):
+                if lc[j] > 0:
+                    idx = ldis + abs(lc[j]) - 1
+
+                    intt = int(ace.xss[idx])
+                    n_cosine = int(ace.xss[idx + 1])
+                    data = ace.xss[idx + 2:idx + 2 + 3*n_cosine]
+                    data.shape = (3, n_cosine)
+
+                    mu_ij = Tabular(data[0], data[1], interpolation_scheme[intt])
+                    mu_ij.c = data[2]
+                else:
+                    # Isotropic distribution
+                    mu_ij = Uniform(-1., 1.)
+
+                mu_i.append(mu_ij)
+
+            # Add cosine distributions for this incoming energy to list
+            mu.append(mu_i)
+
+        return cls(breakpoints, interpolation, energy, energy_out, mu)

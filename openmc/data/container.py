@@ -267,3 +267,42 @@ class Tabulated1D(object):
         breakpoints = dataset.attrs['breakpoints']
         interpolation = dataset.attrs['interpolation']
         return cls(x, y, breakpoints, interpolation)
+
+    @classmethod
+    def from_ace(cls, ace, idx=0):
+        """Create a Tabulated1D object from an ACE table.
+
+        Parameters
+        ----------
+        ace : openmc.data.ace.Table
+            An ACE table
+        idx : int
+            Offset to read from in XSS array (default of zero)
+
+        Returns
+        -------
+        openmc.data.Tabulated1D
+            Tabulated data object
+
+        """
+
+        # Get number of regions and pairs
+        n_regions = int(ace.xss[idx])
+        n_pairs = int(ace.xss[idx + 1 + 2*n_regions])
+
+        # Get interpolation information
+        idx += 1
+        if n_regions > 0:
+            breakpoints = ace.xss[idx:idx + n_regions].astype(int)
+            interpolation = ace.xss[idx + n_regions:idx + 2*n_regions].astype(int)
+        else:
+            # 0 regions implies linear-linear interpolation by default
+            breakpoints = np.array([n_pairs])
+            interpolation = np.array([2])
+
+        # Get (x,y) pairs
+        idx += 2*n_regions + 1
+        x = ace.xss[idx:idx + n_pairs]
+        y = ace.xss[idx + n_pairs:idx + 2*n_pairs]
+
+        return Tabulated1D(x, y, breakpoints, interpolation)

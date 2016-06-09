@@ -104,27 +104,6 @@ class Filter(object):
     def __hash__(self):
         return hash(repr(self))
 
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._type = self.type
-            clone._bins = copy.deepcopy(self.bins, memo)
-            clone._num_bins = self.num_bins
-            clone._mesh = copy.deepcopy(self.mesh, memo)
-            clone._stride = self.stride
-            clone._distribcell_paths = copy.deepcopy(self.distribcell_paths)
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
     def __repr__(self):
         string = 'Filter\n'
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)

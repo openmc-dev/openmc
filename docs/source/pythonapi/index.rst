@@ -271,14 +271,17 @@ Multi-group Cross Sections
 .. autosummary::
     :toctree: generated
     :nosignatures:
-    :template: myclass.rst
+    :template: myclassinherit.rst
 
     openmc.mgxs.MGXS
     openmc.mgxs.AbsorptionXS
     openmc.mgxs.CaptureXS
     openmc.mgxs.Chi
     openmc.mgxs.FissionXS
+    openmc.mgxs.KappaFissionXS
+    openmc.mgxs.MultiplicityMatrixXS
     openmc.mgxs.NuFissionXS
+    openmc.mgxs.NuFissionMatrixXS
     openmc.mgxs.NuScatterXS
     openmc.mgxs.NuScatterMatrixXS
     openmc.mgxs.ScatterXS
@@ -295,6 +298,33 @@ Multi-group Cross Section Libraries
     :template: myclass.rst
 
     openmc.mgxs.Library
+
+-------------------------------------
+:mod:`openmc.model` -- Model Building
+-------------------------------------
+
+TRISO Fuel Modeling
+-------------------
+
+Classes
++++++++
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.model.TRISO
+
+Functions
++++++++++
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   openmc.model.create_triso_lattice
+
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

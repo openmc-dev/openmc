@@ -160,9 +160,6 @@ class TalliesTestHarness(PyAPITestHarness):
         total_tallies[2].estimator = 'analog'
         total_tallies[3].estimator = 'collision'
 
-        questionable_tally = Tally()
-        questionable_tally.scores = ['transport', 'n1n']
-
         all_nuclide_tallies = [Tally(), Tally()]
         for t in all_nuclide_tallies:
             t.filters = [cell_filter]
@@ -182,7 +179,6 @@ class TalliesTestHarness(PyAPITestHarness):
         self._input_set.tallies += flux_tallies
         self._input_set.tallies += (scatter_tally1, scatter_tally2)
         self._input_set.tallies += total_tallies
-        self._input_set.tallies.append(questionable_tally)
         self._input_set.tallies += all_nuclide_tallies
 
         self._input_set.export()

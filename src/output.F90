@@ -777,8 +777,6 @@ contains
     score_names(abs(SCORE_TOTAL))              = "Total Reaction Rate"
     score_names(abs(SCORE_SCATTER))            = "Scattering Rate"
     score_names(abs(SCORE_NU_SCATTER))         = "Scattering Production Rate"
-    score_names(abs(SCORE_TRANSPORT))          = "Transport Rate"
-    score_names(abs(SCORE_N_1N))               = "(n,1n) Rate"
     score_names(abs(SCORE_ABSORPTION))         = "Absorption Rate"
     score_names(abs(SCORE_FISSION))            = "Fission Rate"
     score_names(abs(SCORE_NU_FISSION))         = "Nu-Fission Rate"

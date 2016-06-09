@@ -126,8 +126,8 @@ class Element(object):
         """
 
         isotopes = []
-        for isotope, abundance in natural_abundance.items():
-            if isotope.startswith(self.name):
+        for isotope, abundance in sorted(natural_abundance.items()):
+            if isotope.startswith(self.name + '-'):
                 nuc = openmc.Nuclide(isotope, self.xs)
                 isotopes.append((nuc, abundance))
         return isotopes

@@ -74,8 +74,7 @@ universe1.add_cells([cell2, cell3])
 root.add_cells([cell1, cell4])
 
 # Instantiate a Geometry, register the root Universe, and export to XML
-geometry = openmc.Geometry()
-geometry.root_universe = root
+geometry = openmc.Geometry(root)
 geometry.export_to_xml()
 
 

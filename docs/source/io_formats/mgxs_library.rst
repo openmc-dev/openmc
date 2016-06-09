@@ -172,7 +172,7 @@ attributes/sub-elements required to describe the meta-data:
     during the scattering process.  Specifically, the options are to either
     convert the Legendre expansion to a tabular representation or leave it as
     a set of Legendre coefficients.  Converting to a tabular representation will
-    cost memory but is likely to decrease runtime compared to leaving as a
+    cost memory but can allow for a decrease in runtime compared to leaving as a
     set of Legendre coefficients.  This element has the following
     attributes/sub-elements:
 
@@ -181,7 +181,7 @@ attributes/sub-elements required to describe the meta-data:
       tabular format should be performed or not.  A value of "true" means
       the conversion should be performed, "false" means it should not.
 
-      *Default*: "true"
+      *Default*: "false"
 
     :num_points:
       If the conversion is to take place the number of tabular points is

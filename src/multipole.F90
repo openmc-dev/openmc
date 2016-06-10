@@ -28,6 +28,7 @@ contains
     integer(HID_T) :: group_id
 
     ! Intermediate loading components
+    character(len=10) :: version
     integer :: NMT
     integer :: i, j
     integer, allocatable :: MT(:)
@@ -40,6 +41,12 @@ contains
       ! Open file for reading and move into the /isotope group
       file_id = file_open(filename, 'r', parallel=.true.)
       group_id = open_group(file_id, "/nuclide")
+
+      ! Check the file version number.
+      call read_dataset(version, file_id, "version")
+      if (version /= MULTIPOLE_VERSION) call fatal_error("The current multipole&
+           & format version is " // trim(MULTIPOLE_VERSION) // " but the file "&
+           // trim(filename) // " uses version " // trim(version))
 
       ! Load in all the array size scalars
       call read_dataset(multipole % length, group_id, "length")

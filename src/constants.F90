@@ -11,10 +11,11 @@ module constants
   integer, parameter :: VERSION_RELEASE = 1
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 15
-  integer, parameter :: REVISION_PARTICLE_RESTART = 1
-  integer, parameter :: REVISION_TRACK            = 1
-  integer, parameter :: REVISION_SUMMARY          = 3
+  integer,       parameter :: REVISION_STATEPOINT       = 15
+  integer,       parameter :: REVISION_PARTICLE_RESTART = 1
+  integer,       parameter :: REVISION_TRACK            = 1
+  integer,       parameter :: REVISION_SUMMARY          = 3
+  character(10), parameter :: MULTIPOLE_VERSION         = "v0.2"
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS

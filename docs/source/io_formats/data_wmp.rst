@@ -4,7 +4,8 @@
 Windowed Multipole Library Format
 =================================
 
-Version 0.2
+**/version** (*char[]*)
+  The format version of the file.  The current version is "v0.2"
 
 **/nuclide/**
     - **broaden_poly** (*int[]*)

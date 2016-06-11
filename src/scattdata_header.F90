@@ -329,7 +329,7 @@ contains
       real(8), intent(in)                    :: coeffs(:, :, :) ! Coefficients to use
 
       integer :: imu, gin, gout, groups, order
-      real(8) :: norm, m, mu0, mu1, p0
+      real(8) :: norm
       real(8), allocatable :: energy(:, :)
       real(8), allocatable :: matrix(:, :, :)
 

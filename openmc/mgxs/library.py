@@ -753,7 +753,8 @@ class Library(object):
         return pickle.load(open(full_filename, 'rb'))
 
     def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
-                   xs_id='1m', order=None):
+                   xs_id='1m', order=None, tabular_legendre=None,
+                   tabular_points=33):
         """Generates an openmc.XSdata object describing a multi-group cross section
         data set for eventual combination in to an openmc.MGXSLibrary object
         (i.e., the library).
@@ -773,9 +774,22 @@ class Library(object):
             nuclide this will be set to 'macro' regardless.
         xs_ids : str
             Cross section set identifier. Defaults to '1m'.
-        order : Scattering order for this data entry.  Default is None,
+        order : int
+            Scattering order for this data entry.  Default is None,
             which will set the XSdata object to use the order of the
             Library.
+        tabular_legendre : None or bool
+            Flag to denote whether or not the Legendre expansion of the
+            scattering angular distribution is to be converted to a tabular
+            representation by OpenMC.  A value of `True` means that it is to be
+            converted while a value of `False` means that it will not be.
+            Defaults to `None` which leaves the default behavior of OpenMC in
+            place (the distribution is converted to a tabular representation).
+        tabular_points : int
+            This parameter is not used unless the ``tabular_legendre``
+            parameter is set to `True`.  In this case, this parameter sets the
+            number of equally-spaced points in the domain of [-1,1] to be used
+            in building the tabular distribution. Default is `33`.
 
         Returns
         -------
@@ -804,6 +818,10 @@ class Library(object):
         if order is not None:
             cv.check_greater_than('order', order, 0, equality=True)
             cv.check_less_than('order', order, 10, equality=True)
+        cv.check_type('tabular_legendre', tabular_legendre,
+                      (type(None), bool))
+        if tabular_points is not None:
+            cv.check_greater_than('tabular_points', tabular_points, 1)
 
         # Make sure statepoint has been loaded
         if self._sp_filename is None:
@@ -829,6 +847,11 @@ class Library(object):
             # Set the order of the xsdata object to the minimum of
             # the provided order or the Library's order.
             xsdata.order = min(order, self.legendre_order)
+
+        # Set the tabular_legendre option if needed
+        if tabular_legendre is not None:
+            xsdata.tabular_legendre = {'enable': tabular_legendre,
+                                       'num_points': tabular_points}
 
         if nuclide is not 'total':
             xsdata.zaid = self._nuclides[nuclide][0]
@@ -906,7 +929,8 @@ class Library(object):
         return xsdata
 
     def create_mg_library(self, xs_type='macro', xsdata_names=None,
-                          xs_ids=None):
+                          xs_ids=None, tabular_legendre=None,
+                          tabular_points=33):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC.
 
@@ -923,6 +947,18 @@ class Library(object):
             Cross section set identifier (i.e., '71c') for all
             data sets (if only str) or for each individual one
             (if iterable of str). Defaults to '1m'.
+        tabular_legendre : None or bool
+            Flag to denote whether or not the Legendre expansion of the
+            scattering angular distribution is to be converted to a tabular
+            representation by OpenMC.  A value of `True` means that it is to be
+            converted while a value of `False` means that it will not be.
+            Defaults to `None` which leaves the default behavior of OpenMC in
+            place (the distribution is converted to a tabular representation).
+        tabular_points : int
+            This parameter is not used unless the ``tabular_legendre``
+            parameter is set to `True`.  In this case, this parameter sets the
+            number of equally-spaced points in the domain of [-1,1] to be used
+            in building the tabular distribution. Default is `33`.
 
         Returns
         -------
@@ -983,13 +1019,16 @@ class Library(object):
                     xsdata_name += '_' + nuclide
 
                 xsdata = self.get_xsdata(domain, xsdata_name, nuclide=nuclide,
-                                         xs_type=xs_type, xs_id=xs_ids[i])
+                                         xs_type=xs_type, xs_id=xs_ids[i],
+                                         tabular_legendre=tabular_legendre,
+                                         tabular_points=tabular_points)
 
                 mgxs_file.add_xsdata(xsdata)
 
         return mgxs_file
 
-    def create_mg_mode(self, xsdata_names=None, xs_ids=None):
+    def create_mg_mode(self, xsdata_names=None, xs_ids=None,
+                       tabular_legendre=None, tabular_points=33):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC as well as the associated openmc.Materials
         and openmc.Geometry objects. The created Geometry is the same as that
@@ -1007,6 +1046,18 @@ class Library(object):
             Cross section set identifier (i.e., '71c') for all
             data sets (if only str) or for each individual one
             (if iterable of str). Defaults to '1m'.
+        tabular_legendre : None or bool
+            Flag to denote whether or not the Legendre expansion of the
+            scattering angular distribution is to be converted to a tabular
+            representation by OpenMC.  A value of `True` means that it is to be
+            converted while a value of `False` means that it will not be.
+            Defaults to `None` which leaves the default behavior of OpenMC in
+            place (the distribution is converted to a tabular representation).
+        tabular_points : int
+            This parameter is not used unless the ``tabular_legendre``
+            parameter is set to `True`.  In this case, this parameter sets the
+            number of equally-spaced points in the domain of [-1,1] to be used
+            in building the tabular distribution. Default is `33`.
 
         Returns
         -------
@@ -1071,7 +1122,9 @@ class Library(object):
 
             # Create XSdata and Macroscopic for this domain
             xsdata = self.get_xsdata(domain, xsdata_name, nuclide='total',
-                                     xs_type=xs_type, xs_id=xs_ids[i])
+                                     xs_type=xs_type, xs_id=xs_ids[i],
+                                     tabular_legendre=tabular_legendre,
+                                     tabular_points=tabular_points)
             mgxs_file.add_xsdata(xsdata)
             macroscopic = openmc.Macroscopic(name=xsdata_name, xs=xs_ids[i])
 

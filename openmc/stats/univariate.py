@@ -37,16 +37,16 @@ class Discrete(Univariate):
 
     Parameters
     ----------
-    x : Iterable of Real
+    x : Iterable of float
         Values of the random variable
-    p : Iterable of Real
+    p : Iterable of float
         Discrete probability for each value
 
     Attributes
     ----------
-    x : Iterable of Real
+    x : Iterable of float
         Values of the random variable
-    p : Iterable of Real
+    p : Iterable of float
         Discrete probability for each value
 
     """
@@ -66,14 +66,14 @@ class Discrete(Univariate):
 
     @x.setter
     def x(self, x):
-        if cv._isinstance(x, Real):
+        if isinstance(x, Real):
             x = [x]
         cv.check_type('discrete values', x, Iterable, Real)
         self._x = x
 
     @p.setter
     def p(self, p):
-        if cv._isinstance(p, Real):
+        if isinstance(p, Real):
             p = [p]
         cv.check_type('discrete probabilities', p, Iterable, Real)
         for pk in p:
@@ -243,9 +243,9 @@ class Tabular(Univariate):
 
     Parameters
     ----------
-    x : Iterable of Real
+    x : Iterable of float
         Tabulated values of the random variable
-    p : Iterable of Real
+    p : Iterable of float
         Tabulated probabilities
     interpolation : {'histogram', 'linear-linear'}, optional
         Indicate whether the density function is constant between tabulated
@@ -253,9 +253,9 @@ class Tabular(Univariate):
 
     Attributes
     ----------
-    x : Iterable of Real
+    x : Iterable of float
         Tabulated values of the random variable
-    p : Iterable of Real
+    p : Iterable of float
         Tabulated probabilities
     interpolation : {'histogram', 'linear-linear'}, optional
         Indicate whether the density function is constant between tabulated

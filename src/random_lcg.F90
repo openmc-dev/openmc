@@ -24,9 +24,10 @@ module random_lcg
 !$omp threadprivate(prn_seed, stream)
 
   public :: prn
+  public :: future_prn
   public :: initialize_prng
   public :: set_particle_seed
-  public :: prn_skip
+  public :: advance_prn_seed
   public :: prn_set_stream
   public :: STREAM_TRACKING, STREAM_TALLIES
 
@@ -51,6 +52,21 @@ contains
     pseudo_rn = prn_seed(stream) * prn_norm
 
   end function prn
+
+!===============================================================================
+! FUTURE_PRN generates a pseudo-random number which is 'n' times ahead from the
+! current seed.
+!===============================================================================
+
+  function future_prn(n) result(pseudo_rn)
+
+    integer(8), intent(in) :: n        ! number of prns to skip
+
+    real(8) :: pseudo_rn
+
+    pseudo_rn  = future_seed(n, prn_seed(stream)) * prn_norm
+
+  end function future_prn
 
 !===============================================================================
 ! INITIALIZE_PRNG sets up the random number generator, determining the seed and
@@ -90,31 +106,32 @@ contains
     integer :: i
 
     do i = 1, N_STREAMS
-      prn_seed(i) = prn_skip_ahead(id*prn_stride, prn_seed0 + i - 1)
+      prn_seed(i) = future_seed(id*prn_stride, prn_seed0 + i - 1)
     end do
 
   end subroutine set_particle_seed
 
 !===============================================================================
-! PRN_SKIP advances the random number seed 'n' times from the current seed
+! ADVANCE_PRN_SEED advances the random number seed 'n' times from the current
+! seed.
 !===============================================================================
 
-  subroutine prn_skip(n)
+  subroutine advance_prn_seed(n)
 
     integer(8), intent(in) :: n ! number of seeds to skip
 
-    prn_seed(stream) = prn_skip_ahead(n, prn_seed(stream))
+    prn_seed(stream) = future_seed(n, prn_seed(stream))
 
-  end subroutine prn_skip
+  end subroutine advance_prn_seed
 
 !===============================================================================
-! PRN_SKIP_AHEAD advances the random number seed 'skip' times. This is usually
+! FUTURE_SEED advances the random number seed 'skip' times. This is usually
 ! used to skip a fixed number of random numbers (the stride) so that a given
 ! particle always has the same starting seed regardless of how many processors
 ! are used
 !===============================================================================
 
-  function prn_skip_ahead(n, seed) result(new_seed)
+  function future_seed(n, seed) result(new_seed)
 
     integer(8), intent(in) :: n        ! number of seeds to skip
     integer(8), intent(in) :: seed     ! original seed
@@ -166,7 +183,7 @@ contains
     ! With G and C, we can now find the new seed
     new_seed = iand(g_new*seed + c_new, prn_mask)
 
-  end function prn_skip_ahead
+  end function future_seed
 
 !===============================================================================
 ! PRN_SET_STREAM changes the random number stream. If random numbers are needed

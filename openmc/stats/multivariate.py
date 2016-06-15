@@ -22,12 +22,12 @@ class UnitSphere(object):
 
     Parameters
     ----------
-    reference_uvw : Iterable of Real
+    reference_uvw : Iterable of float
         Direction from which polar angle is measured
 
     Attributes
     ----------
-    reference_uvw : Iterable of Real
+    reference_uvw : Iterable of float
         Direction from which polar angle is measured
 
     """
@@ -62,19 +62,19 @@ class PolarAzimuthal(UnitSphere):
 
     Parameters
     ----------
-    mu : Univariate
+    mu : openmc.stats.Univariate
         Distribution of the cosine of the polar angle
-    phi : Univariate
+    phi : openmc.stats.Univariate
         Distribution of the azimuthal angle in radians
-    reference_uvw : Iterable of Real
+    reference_uvw : Iterable of float
         Direction from which polar angle is measured. Defaults to the positive
         z-direction.
 
     Attributes
     ----------
-    mu : Univariate
+    mu : openmc.stats.Univariate
         Distribution of the cosine of the polar angle
-    phi : Univariate
+    phi : openmc.stats.Univariate
         Distribution of the azimuthal angle in radians
 
     """
@@ -142,7 +142,7 @@ class Monodirectional(UnitSphere):
 
     Parameters
     ----------
-    reference_uvw : Iterable of Real
+    reference_uvw : Iterable of float
         Direction from which polar angle is measured. Defaults to the positive
         x-direction.
 
@@ -186,20 +186,20 @@ class CartesianIndependent(Spatial):
 
     Parameters
     ----------
-    x : Univariate
+    x : openmc.stats.Univariate
         Distribution of x-coordinates
-    y : Univariate
+    y : openmc.stats.Univariate
         Distribution of y-coordinates
-    z : Univariate
+    z : openmc.stats.Univariate
         Distribution of z-coordinates
 
     Attributes
     ----------
-    x : Univariate
+    x : openmc.stats.Univariate
         Distribution of x-coordinates
-    y : Univariate
+    y : openmc.stats.Univariate
         Distribution of y-coordinates
-    z : Univariate
+    z : openmc.stats.Univariate
         Distribution of z-coordinates
 
     """
@@ -252,9 +252,9 @@ class Box(Spatial):
 
     Parameters
     ----------
-    lower_left : Iterable of Real
+    lower_left : Iterable of float
         Lower-left coordinates of cuboid
-    upper_right : Iterable of Real
+    upper_right : Iterable of float
         Upper-right coordinates of cuboid
     only_fissionable : bool, optional
         Whether spatial sites should only be accepted if they occur in
@@ -262,9 +262,9 @@ class Box(Spatial):
 
     Attributes
     ----------
-    lower_left : Iterable of Real
+    lower_left : Iterable of float
         Lower-left coordinates of cuboid
-    upper_right : Iterable of Real
+    upper_right : Iterable of float
         Upper-right coordinates of cuboid
     only_fissionable : bool, optional
         Whether spatial sites should only be accepted if they occur in
@@ -328,17 +328,17 @@ class Point(Spatial):
 
     Parameters
     ----------
-    xyz : Iterable of Real
-        Cartesian coordinates of location
+    xyz : Iterable of float, optional
+        Cartesian coordinates of location. Defaults to (0., 0., 0.).
 
     Attributes
     ----------
-    xyz : Iterable of Real
+    xyz : Iterable of float
         Cartesian coordinates of location
 
     """
 
-    def __init__(self, xyz):
+    def __init__(self, xyz=(0., 0., 0.)):
         super(Point, self).__init__()
         self.xyz = xyz
 

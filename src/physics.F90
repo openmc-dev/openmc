@@ -1,13 +1,10 @@
 module physics
 
-  use ace_header,             only: Reaction
   use constants
   use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning
-  use fission,                only: nu_total, nu_delayed
   use global
-  use interpolation,          only: interpolate_tab1
   use material_header,        only: Material
   use math
   use mesh,                   only: get_mesh_indices
@@ -16,7 +13,8 @@ module physics
   use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart
   use physics_common
-  use random_lcg,             only: prn
+  use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
+  use reaction_header,        only: Reaction
   use search,                 only: binary_search
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use string,                 only: to_str
@@ -58,6 +56,13 @@ contains
       if (master) call warning("Killing neutron with extremely low energy")
     end if
 
+    ! Advance URR seed stream 'N' times after energy changes
+    if (p % E /= p % last_E) then
+      call prn_set_stream(STREAM_URR_PTABLE)
+      call advance_prn_seed(n_nuc_zaid_total)
+      call prn_set_stream(STREAM_TRACKING)
+    endif
+
   end subroutine collision
 
 !===============================================================================
@@ -75,7 +80,7 @@ contains
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_nuc_mat    ! index in material's nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
-    type(NuclideCE), pointer :: nuc
+    type(Nuclide), pointer :: nuc
 
     call sample_nuclide(p, 'total  ', i_nuclide, i_nuc_mat)
 
@@ -198,7 +203,7 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(NuclideCE),  pointer :: nuc
+    type(Nuclide), pointer :: nuc
 
     ! Get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -296,7 +301,7 @@ contains
     real(8) :: uvw_new(3) ! outgoing uvw for iso-in-lab scattering
     real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
     real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
-    type(NuclideCE),  pointer :: nuc
+    type(Nuclide),  pointer :: nuc
 
     ! copy incoming direction
     uvw_old(:) = p % coord(1) % uvw
@@ -411,7 +416,7 @@ contains
     real(8) :: v_cm(3)   ! velocity of center-of-mass
     real(8) :: v_t(3)    ! velocity of target nucleus
     real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
-    type(NuclideCE), pointer :: nuc
+    type(Nuclide), pointer :: nuc
 
     ! get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -440,9 +445,9 @@ contains
     vel = sqrt(dot_product(v_n, v_n))
 
     ! Sample scattering angle
-    select type (dist => rxn%secondary%distribution(1)%obj)
+    select type (dist => rxn % products(1) % distribution(1) % obj)
     type is (UncorrelatedAngleEnergy)
-      mu_cm = dist%angle%sample(E)
+      mu_cm = dist % angle % sample(E)
     end select
 
     ! Determine direction cosines in CM
@@ -737,7 +742,7 @@ contains
 !===============================================================================
 
   subroutine sample_target_velocity(nuc, v_target, E, uvw, v_neut, wgt, xs_eff)
-    type(NuclideCE), intent(in) :: nuc ! target nuclide at temperature T
+    type(Nuclide), intent(in) :: nuc ! target nuclide at temperature T
     real(8), intent(out)   :: v_target(3) ! target velocity
     real(8), intent(in)    :: v_neut(3)   ! neutron velocity
     real(8), intent(in)    :: E           ! particle energy
@@ -982,7 +987,7 @@ contains
 !===============================================================================
 
   subroutine sample_cxs_target_velocity(nuc, v_target, E, uvw)
-    type(NuclideCE), intent(in) :: nuc ! target nuclide at temperature
+    type(Nuclide), intent(in) :: nuc ! target nuclide at temperature
     real(8), intent(out)         :: v_target(3)
     real(8), intent(in)          :: E
     real(8), intent(in)          :: uvw(3)
@@ -1066,11 +1071,9 @@ contains
     integer :: nu                       ! actual number of neutrons produced
     integer :: ijk(3)                   ! indices in ufs mesh
     real(8) :: nu_t                     ! total nu
-    real(8) :: mu                       ! fission neutron angular cosine
-    real(8) :: phi                      ! fission neutron azimuthal angle
     real(8) :: weight                   ! weight adjustment for ufs method
     logical :: in_mesh                  ! source site in ufs mesh?
-    type(NuclideCE),  pointer :: nuc
+    type(Nuclide),  pointer :: nuc
 
     ! Get pointers
     nuc => nuclides(i_nuclide)
@@ -1138,25 +1141,12 @@ contains
       ! Set weight of fission bank site
       bank_array(i) % wgt = ONE/weight
 
-      ! Sample cosine of angle -- fission neutrons are always emitted
-      ! isotropically. Sometimes in ACE data, fission reactions actually have
-      ! an angular distribution listed, but for those that do, it's simply just
-      ! a uniform distribution in mu
-      mu = TWO * prn() - ONE
+      ! Sample delayed group and angle/energy for fission reaction
+      call sample_fission_neutron(nuc, nuc % reactions(i_reaction), &
+           p % E, bank_array(i))
 
-      ! Sample azimuthal angle uniformly in [0,2*pi)
-      phi = TWO*PI*prn()
-      bank_array(i) % uvw(1) = mu
-      bank_array(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-      bank_array(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
-
-      ! Sample secondary energy distribution for fission reaction and set energy
-      ! in fission bank
-      bank_array(i) % E = sample_fission_energy(nuc, &
-           nuc % reactions(i_reaction), p)
-
-      ! Set the delayed group of the neutron
-      bank_array(i) % delayed_group = p % delayed_group
+      ! Set delayed group on particle too
+      p % delayed_group = bank_array(i) % delayed_group
 
       ! Increment the number of neutrons born delayed
       if (p % delayed_group > 0) then
@@ -1175,35 +1165,41 @@ contains
   end subroutine create_fission_sites
 
 !===============================================================================
-! SAMPLE_FISSION_ENERGY
+! SAMPLE_FISSION_NEUTRON
 !===============================================================================
 
-  function sample_fission_energy(nuc, rxn, p) result(E_out)
+  subroutine sample_fission_neutron(nuc, rxn, E_in, site)
+    type(Nuclide),  intent(in)    :: nuc
+    type(Reaction), intent(in)    :: rxn
+    real(8),        intent(in)    :: E_in
+    type(Bank),     intent(inout) :: site
 
-    type(NuclideCE), intent(in) :: nuc
-    type(Reaction),   intent(in) :: rxn
-    type(Particle), intent(inout) :: p     ! Particle causing fission
-    real(8)                       :: E_out ! outgoing energy of fission neutron
-
-    integer :: j            ! index on nu energy grid / precursor group
-    integer :: lc           ! index before start of energies/nu values
-    integer :: NR           ! number of interpolation regions
-    integer :: NE           ! number of energies tabulated
-    integer :: n_sample     ! number of times resampling
+    integer :: group        ! index on nu energy grid / precursor group
+    integer :: n_sample     ! number of resamples
     real(8) :: nu_t         ! total nu
     real(8) :: nu_d         ! delayed nu
     real(8) :: beta         ! delayed neutron fraction
     real(8) :: xi           ! random number
     real(8) :: yield        ! delayed neutron precursor yield
     real(8) :: prob         ! cumulative probability
+    real(8) :: mu           ! cosine of scattering angle
+    real(8) :: phi          ! azimuthal angle
 
-    ! Determine total nu
-    nu_t = nu_total(nuc, p % E)
+    ! Sample cosine of angle -- fission neutrons are always emitted
+    ! isotropically. Sometimes in ACE data, fission reactions actually have
+    ! an angular distribution listed, but for those that do, it's simply just
+    ! a uniform distribution in mu
+    mu = TWO * prn() - ONE
 
-    ! Determine delayed nu
-    nu_d = nu_delayed(nuc, p % E)
+    ! Sample azimuthal angle uniformly in [0,2*pi)
+    phi = TWO*PI*prn()
+    site % uvw(1) = mu
+    site % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+    site % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
-    ! Determine delayed neutron fraction
+    ! Determine total nu, delayed nu, and delayed neutron fraction
+    nu_t = nuc % nu(E_in, EMISSION_TOTAL)
+    nu_d = nuc % nu(E_in, EMISSION_DELAYED)
     beta = nu_d / nu_t
 
     if (prn() < beta) then
@@ -1211,51 +1207,41 @@ contains
       ! DELAYED NEUTRON SAMPLED
 
       ! sampled delayed precursor group
-      xi = prn()
-      lc = 1
+      xi = prn()*nu_d
       prob = ZERO
-      do j = 1, nuc % n_precursor
-        ! determine number of interpolation regions and energies
-        NR = int(nuc % nu_d_precursor_data(lc + 1))
-        NE = int(nuc % nu_d_precursor_data(lc + 2 + 2*NR))
+      do group = 1, nuc % n_precursor
 
         ! determine delayed neutron precursor yield for group j
-        yield = interpolate_tab1(nuc % nu_d_precursor_data( &
-             lc+1:lc+2+2*NR+2*NE), p % E)
+        yield = rxn % products(1 + group) % yield % evaluate(E_in)
 
         ! Check if this group is sampled
         prob = prob + yield
         if (xi < prob) exit
-
-        ! advance pointer
-        lc = lc + 2 + 2*NR + 2*NE + 1
       end do
 
       ! if the sum of the probabilities is slightly less than one and the
       ! random number is greater, j will be greater than nuc %
       ! n_precursor -- check for this condition
-      j = min(j, nuc % n_precursor)
+      group = min(group, nuc % n_precursor)
 
       ! set the delayed group for the particle born from fission
-      p % delayed_group = j
+      site % delayed_group = group
 
-      ! sample from energy distribution
       n_sample = 0
       do
-        select type (aedist => nuc%nu_d_edist(j)%obj)
-        type is (UncorrelatedAngleEnergy)
-          E_out = aedist%energy%sample(p%E)
-        end select
+        ! sample from energy/angle distribution -- note that mu has already been
+        ! sampled above and doesn't need to be resampled
+        call rxn % products(1 + group) % sample(E_in, site % E, mu)
 
         ! resample if energy is greater than maximum neutron energy
-        if (E_out < energy_max_neutron) exit
+        if (site % E < energy_max_neutron) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
           call fatal_error("Resampled energy distribution maximum number of " &
-               &// "times for nuclide " // nuc % name)
+               // "times for nuclide " // nuc % name)
         end if
       end do
 
@@ -1264,28 +1250,27 @@ contains
       ! PROMPT NEUTRON SAMPLED
 
       ! set the delayed group for the particle born from fission to 0
-      p % delayed_group = 0
+      site % delayed_group = 0
 
       ! sample from prompt neutron energy distribution
       n_sample = 0
       do
-        call rxn%secondary%sample(p%E, E_out, prob)
+        call rxn % products(1) % sample(E_in, site % E, mu)
 
         ! resample if energy is greater than maximum neutron energy
-        if (E_out < energy_max_neutron) exit
+        if (site % E < energy_max_neutron) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
           call fatal_error("Resampled energy distribution maximum number of " &
-               &// "times for nuclide " // nuc % name)
+               // "times for nuclide " // nuc % name)
         end if
       end do
-
     end if
 
-  end function sample_fission_energy
+  end subroutine sample_fission_neutron
 
 !===============================================================================
 ! INELASTIC_SCATTER handles all reactions with a single secondary neutron (other
@@ -1293,7 +1278,7 @@ contains
 !===============================================================================
 
   subroutine inelastic_scatter(nuc, rxn, p)
-    type(NuclideCE), intent(in)    :: nuc
+    type(Nuclide), intent(in)    :: nuc
     type(Reaction),   intent(in)    :: rxn
     type(Particle),   intent(inout) :: p
 
@@ -1309,7 +1294,7 @@ contains
     E_in = p % E
 
     ! sample outgoing energy and scattering cosine
-    call rxn%secondary%sample(E_in, E, mu)
+    call rxn % products(1) % sample(E_in, E, mu)
 
     ! if scattering system is in center-of-mass, transfer cosine of scattering
     ! angle and outgoing energy from CM to LAB
@@ -1337,14 +1322,16 @@ contains
     ! change direction of particle
     p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
 
-    ! change weight of particle based on yield
-    if (rxn % multiplicity_with_E) then
-      yield = interpolate_tab1(rxn % multiplicity_E, E_in)
-      p % wgt = yield * p % wgt
-    else
-      do i = 1, rxn % multiplicity - 1
-        call p % create_secondary(p % coord(1) % uvw, NEUTRON, run_CE=.True.)
+    ! evaluate yield
+    yield = rxn % products(1) % yield % evaluate(E_in)
+    if (mod(yield, ONE) == ZERO) then
+      ! If yield is integral, create exactly that many secondary particles
+      do i = 1, nint(yield) - 1
+        call p % create_secondary(p % coord(1) % uvw, NEUTRON, run_CE=.true.)
       end do
+    else
+      ! Otherwise, change weight of particle based on yield
+      p % wgt = yield * p % wgt
     end if
 
   end subroutine inelastic_scatter

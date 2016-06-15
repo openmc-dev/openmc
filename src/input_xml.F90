@@ -92,18 +92,22 @@ contains
     type(NodeList), pointer :: node_scat_list => null()
     type(NodeList), pointer :: node_source_list => null()
 
-    ! Display output message
-    call write_message("Reading settings XML file...", 5)
-
     ! Check if settings.xml exists
     filename = trim(path_input) // "settings.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      call fatal_error("Settings XML file '" // trim(filename) // "' does not &
-           &exist! In order to run OpenMC, you first need a set of input files;&
-           & at a minimum, this includes settings.xml, geometry.xml, and &
-           &materials.xml. Please consult the user's guide at &
-           &http://mit-crpg.github.io/openmc for further information.")
+      if (run_mode /= MODE_PLOTTING) then
+        call fatal_error("Settings XML file '" // trim(filename) // "' does &
+             &not exist! In order to run OpenMC, you first need a set of input &
+             &files; at a minimum, this includes settings.xml, geometry.xml, &
+             &and materials.xml. Please consult the user's guide at &
+             &http://mit-crpg.github.io/openmc for further information.")
+      else
+        ! The settings.xml file is optional if we just want to make a plot.
+        return
+      end if
+    else
+      call write_message("Reading settings XML file...", 5)
     end if
 
     ! Parse settings.xml file
@@ -149,7 +153,7 @@ contains
         else
           call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", env_variable)
           if (len_trim(env_variable) == 0) then
-            call fatal_error("No cross_sections.xml file was specified in &
+            call fatal_error("No mgxs.xml file was specified in &
                  &settings.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
                  &variable. OpenMC needs such a file to identify where to &
                  &find the cross section libraries. Please consult the user's &
@@ -169,8 +173,12 @@ contains
       if (check_for_node(doc, "max_order")) then
         call get_node_value(doc, "max_order", max_order)
       else
-        ! Set to default of largest int, which means to use whatever is contained in library
-        max_order = huge(0)
+        ! Set to default of largest int - 1, which means to use whatever is
+        ! contained in library.
+        ! This is largest int - 1 because for legendre scattering, a value of
+        ! 1 is added to the order; adding 1 to huge(0) gets you the largest
+        ! negative integer, which is not what we want.
+        max_order = huge(0) - 1
       end if
     else
       max_order = 0
@@ -1105,6 +1113,8 @@ contains
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
+    integer :: i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax
+    real(8) :: xmin, xmax, ymin, ymax, zmin, zmax
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
     real(8), allocatable :: coeffs(:)
@@ -1383,6 +1393,13 @@ contains
       call fatal_error("No surfaces found in geometry.xml!")
     end if
 
+    xmin = INFINITY
+    xmax = -INFINITY
+    ymin = INFINITY
+    ymax = -INFINITY
+    zmin = INFINITY
+    zmax = -INFINITY
+
     ! Allocate cells array
     allocate(surfaces(n_surfaces))
 
@@ -1474,10 +1491,28 @@ contains
       select type(s)
       type is (SurfaceXPlane)
         s%x0 = coeffs(1)
+
+        ! Determine outer surfaces
+        xmin = min(xmin, s % x0)
+        xmax = max(xmax, s % x0)
+        if (xmin == s % x0) i_xmin = i
+        if (xmax == s % x0) i_xmax = i
       type is (SurfaceYPlane)
         s%y0 = coeffs(1)
+
+        ! Determine outer surfaces
+        ymin = min(ymin, s % y0)
+        ymax = max(ymax, s % y0)
+        if (ymin == s % y0) i_ymin = i
+        if (ymax == s % y0) i_ymax = i
       type is (SurfaceZPlane)
         s%z0 = coeffs(1)
+
+        ! Determine outer surfaces
+        zmin = min(zmin, s % z0)
+        zmax = max(zmax, s % z0)
+        if (zmin == s % z0) i_zmin = i
+        if (zmax == s % z0) i_zmax = i
       type is (SurfacePlane)
         s%A = coeffs(1)
         s%B = coeffs(2)
@@ -1544,11 +1579,19 @@ contains
       case ('reflective', 'reflect', 'reflecting')
         s%bc = BC_REFLECT
         boundary_exists = .true.
+      case ('periodic')
+        s%bc = BC_PERIODIC
+        boundary_exists = .true.
+
+        ! Check for specification of periodic surface
+        if (check_for_node(node_surf, "periodic_surface_id")) then
+          call get_node_value(node_surf, "periodic_surface_id", &
+               s % i_periodic)
+        end if
       case default
         call fatal_error("Unknown boundary condition '" // trim(word) // &
              &"' specified on surface " // trim(to_str(s%id)))
       end select
-
       ! Add surface to dictionary
       call surface_dict % add_key(s%id, i)
     end do
@@ -1558,6 +1601,67 @@ contains
     if (.not. boundary_exists) then
       call fatal_error("No boundary conditions were applied to any surfaces!")
     end if
+
+    ! Determine opposite side for periodic boundaries
+    do i = 1, size(surfaces)
+      if (surfaces(i) % obj % bc == BC_PERIODIC) then
+        select type (surf => surfaces(i) % obj)
+        type is (SurfaceXPlane)
+          if (surf % i_periodic == NONE) then
+            if (i == i_xmin) then
+              surf % i_periodic = i_xmax
+            elseif (i == i_xmax) then
+              surf % i_periodic = i_xmin
+            else
+              call fatal_error("Periodic boundary condition applied to &
+                   &interior surface.")
+            end if
+          else
+            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
+          end if
+
+        type is (SurfaceYPlane)
+          if (surf % i_periodic == NONE) then
+            if (i == i_ymin) then
+              surf % i_periodic = i_ymax
+            elseif (i == i_ymax) then
+              surf % i_periodic = i_ymin
+            else
+              call fatal_error("Periodic boundary condition applied to &
+                   &interior surface.")
+            end if
+          else
+            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
+          end if
+
+        type is (SurfaceZPlane)
+          if (surf % i_periodic == NONE) then
+            if (i == i_zmin) then
+              surf % i_periodic = i_zmax
+            elseif (i == i_zmax) then
+              surf % i_periodic = i_zmin
+            else
+              call fatal_error("Periodic boundary condition applied to &
+                   &interior surface.")
+            end if
+          else
+            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
+          end if
+
+        class default
+          call fatal_error("Periodic boundary condition applied to &
+               &non-planar surface.")
+        end select
+
+        ! Make sure opposite surface is also periodic
+        associate (surf => surfaces(i) % obj)
+          if (surfaces(surf % i_periodic) % obj % bc /= BC_PERIODIC) then
+            call fatal_error("Could not find matching surface for periodic &
+                 &boundary on surface " // trim(to_str(surf % id)) // ".")
+          end if
+        end associate
+      end if
+    end do
 
     ! ==========================================================================
     ! READ LATTICES FROM GEOMETRY.XML
@@ -1891,21 +1995,23 @@ contains
 
   subroutine read_materials_xml()
 
-    integer :: i             ! loop index for materials
-    integer :: j             ! loop index for nuclides
-    integer :: k             ! loop index for elements
-    integer :: n             ! number of nuclides
-    integer :: n_sab         ! number of sab tables for a material
-    integer :: n_nuc_ele     ! number of nuclides in an element
-    integer :: index_list    ! index in xs_listings array
-    integer :: index_nuclide ! index in nuclides
-    integer :: index_sab     ! index in sab_tables
-    real(8) :: val           ! value entered for density
-    real(8) :: temp_dble     ! temporary double prec. real
-    logical :: file_exists   ! does materials.xml exist?
-    logical :: sum_density   ! density is taken to be sum of nuclide densities
-    character(12) :: name    ! name of isotope, e.g. 92235.03c
-    character(12) :: alias   ! alias of nuclide, e.g. U-235.03c
+    integer :: i              ! loop index for materials
+    integer :: j              ! loop index for nuclides
+    integer :: k              ! loop index for elements
+    integer :: n              ! number of nuclides
+    integer :: n_sab          ! number of sab tables for a material
+    integer :: n_nuc_ele      ! number of nuclides in an element
+    integer :: index_list     ! index in xs_listings array
+    integer :: index_nuclide  ! index in nuclides
+    integer :: index_nuc_zaid ! index in nuclide ZAID
+    integer :: index_sab      ! index in sab_tables
+    real(8) :: val            ! value entered for density
+    real(8) :: temp_dble      ! temporary double prec. real
+    logical :: file_exists    ! does materials.xml exist?
+    logical :: sum_density    ! density is taken to be sum of nuclide densities
+    integer :: zaid           ! ZAID of nuclide
+    character(12) :: name     ! name of isotope, e.g. 92235.03c
+    character(12) :: alias    ! alias of nuclide, e.g. U-235.03c
     character(MAX_WORD_LEN) :: units    ! units on density
     character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
@@ -1955,6 +2061,7 @@ contains
 
     ! Initialize count for number of nuclides/S(a,b) tables
     index_nuclide = 0
+    index_nuc_zaid = 0
     index_sab = 0
 
     do i = 1, n_materials
@@ -2095,21 +2202,6 @@ contains
           end if
         end if
 
-        ! Check enforced isotropic lab scattering
-        if (check_for_node(node_nuc, "scattering")) then
-          call get_node_value(node_nuc, "scattering", temp_str)
-          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-            call list_iso_lab % append(1)
-          else if (adjustl(to_lower(temp_str)) == "data") then
-            call list_iso_lab % append(0)
-          else
-            call fatal_error("Scattering must be isotropic in lab or follow&
-                 & the ACE file data")
-          end if
-        else
-          call list_iso_lab % append(0)
-        end if
-
         ! store full name
         call get_node_value(node_nuc, "name", temp_str)
         if (check_for_node(node_nuc, "xs")) &
@@ -2151,6 +2243,23 @@ contains
                    &material " // trim(to_str(mat % id)))
             else
               name = to_lower(trim(default_xs))
+            end if
+          end if
+
+          ! Check enforced isotropic lab scattering
+          if (run_CE) then
+            if (check_for_node(node_nuc, "scattering")) then
+              call get_node_value(node_nuc, "scattering", temp_str)
+              if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+                call list_iso_lab % append(1)
+              else if (adjustl(to_lower(temp_str)) == "data") then
+                call list_iso_lab % append(0)
+              else
+                call fatal_error("Scattering must be isotropic in lab or follow&
+                     & the ACE file data")
+              end if
+            else
+              call list_iso_lab % append(0)
             end if
           end if
 
@@ -2248,23 +2357,25 @@ contains
         n_nuc_ele = list_names % size() - n_nuc_ele
 
         ! Check enforced isotropic lab scattering
-        if (check_for_node(node_ele, "scattering")) then
-          call get_node_value(node_ele, "scattering", temp_str)
-        else
-          temp_str = "data"
-        end if
-
-        ! Set ace or iso-in-lab scattering for each nuclide in element
-        do k = 1, n_nuc_ele
-          if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-            call list_iso_lab % append(1)
-          else if (adjustl(to_lower(temp_str)) == "data") then
-            call list_iso_lab % append(0)
+        if (run_CE) then
+          if (check_for_node(node_ele, "scattering")) then
+            call get_node_value(node_ele, "scattering", temp_str)
           else
-            call fatal_error("Scattering must be isotropic in lab or follow&
-                 & the ACE file data")
+            temp_str = "data"
           end if
-        end do
+
+          ! Set ace or iso-in-lab scattering for each nuclide in element
+          do k = 1, n_nuc_ele
+            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
+              call list_iso_lab % append(1)
+            else if (adjustl(to_lower(temp_str)) == "data") then
+              call list_iso_lab % append(0)
+            else
+              call fatal_error("Scattering must be isotropic in lab or follow&
+                   & the ACE file data")
+            end if
+          end do
+        end if
 
       end do NATURAL_ELEMENTS
 
@@ -2300,6 +2411,7 @@ contains
         index_list = xs_listing_dict % get_key(to_lower(name))
         name       = xs_listings(index_list) % name
         alias      = xs_listings(index_list) % alias
+        zaid       = xs_listings(index_list) % zaid
 
         ! If this nuclide hasn't been encountered yet, we need to add its name
         ! and alias to the nuclide_dict
@@ -2311,6 +2423,12 @@ contains
           call nuclide_dict % add_key(to_lower(alias), index_nuclide)
         else
           mat % nuclide(j) = nuclide_dict % get_key(to_lower(name))
+        end if
+
+        ! Construct dict of nuclide zaid
+        if (.not. nuc_zaid_dict % has_key(zaid)) then
+          index_nuc_zaid  = index_nuc_zaid + 1
+          call nuc_zaid_dict % add_key(zaid, index_nuc_zaid)
         end if
 
         ! Copy name and atom/weight percent
@@ -2407,6 +2525,7 @@ contains
     ! Set total number of nuclides and S(a,b) tables
     n_nuclides_total = index_nuclide
     n_sab_tables     = index_sab
+    n_nuc_zaid_total = index_nuc_zaid
 
     ! Close materials XML file
     call close_xmldoc(doc)
@@ -2838,11 +2957,15 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
+            ! We can save tallying time if we know that the tally bins
+            ! match the energy group structure.  In that case, the matching bin
+            ! index is simply the group (after flipping for the different
+            ! ordering of the library and tallying systems).
             if (.not. run_CE) then
-              if (n_words /= energy_groups + 1) then
-                t % energy_matches_groups = .false.
-              else if (all(t % filters(j) % real_bins == energy_bins)) then
-                t % energy_matches_groups = .false.
+              if (n_words == energy_groups + 1) then
+                if (all(t % filters(j) % real_bins == &
+                        energy_bins(energy_groups + 1:1:-1))) &
+                     t % energy_matches_groups = .true.
               end if
             end if
 
@@ -2857,11 +2980,15 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
+            ! We can save tallying time if we know that the tally bins
+            ! match the energy group structure.  In that case, the matching bin
+            ! index is simply the group (after flipping for the different
+            ! ordering of the library and tallying systems).
             if (.not. run_CE) then
-              if (n_words /= energy_groups + 1) then
-                t % energy_matches_groups = .false.
-              else if (all(t % filters(j) % real_bins == energy_bins)) then
-                t % energy_matches_groups = .false.
+              if (n_words == energy_groups + 1) then
+                if (all(t % filters(j) % real_bins == &
+                        energy_bins(energy_groups + 1:1:-1))) &
+                     t % energyout_matches_groups = .true.
               end if
             end if
 
@@ -3320,27 +3447,22 @@ contains
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
 
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
-          case ('scatter-n')
-            if (n_order == 0) then
-              t % score_bins(j) = SCORE_SCATTER
-            else
-              t % score_bins(j) = SCORE_SCATTER_N
-              ! Set tally estimator to analog
+            ! Set tally estimator to analog for CE mode
+            ! (MG mode has all data available without a collision being
+            ! necessary)
+            if (run_CE) then
               t % estimator = ESTIMATOR_ANALOG
             end if
+
+          case ('scatter-n')
+            t % score_bins(j) = SCORE_SCATTER_N
             t % moment_order(j) = n_order
+            t % estimator = ESTIMATOR_ANALOG
 
           case ('nu-scatter-n')
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
-            if (n_order == 0) then
-              t % score_bins(j) = SCORE_NU_SCATTER
-            else
-              t % score_bins(j) = SCORE_NU_SCATTER_N
-            end if
+            t % score_bins(j) = SCORE_NU_SCATTER_N
             t % moment_order(j) = n_order
+            t % estimator = ESTIMATOR_ANALOG
 
           case ('scatter-pn')
             t % estimator = ESTIMATOR_ANALOG
@@ -3371,18 +3493,12 @@ contains
             j = j + n_bins - 1
 
           case('transport')
-            t % score_bins(j) = SCORE_TRANSPORT
-
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
-          case ('diffusion')
-            call fatal_error("Diffusion score no longer supported for tallies, &
+            call fatal_error("Transport score no longer supported for tallies, &
                  &please remove")
-          case ('n1n')
-            t % score_bins(j) = SCORE_N_1N
 
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
+          case ('n1n')
+            call fatal_error("n1n score no longer supported for tallies, &
+                 &please remove")
           case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
 
@@ -4493,23 +4609,24 @@ contains
   subroutine read_mg_cross_sections_xml()
 
     integer :: i           ! loop index
-    logical :: file_exists ! does cross_sections.xml exist?
+    logical :: file_exists ! does mgxs.xml exist?
     type(XsListing), pointer :: listing => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_xsdata => null()
     type(NodeList), pointer :: node_xsdata_list => null()
+    real(8), allocatable :: rev_energy_bins(:)
 
-    ! Check if cross_sections.xml exists
+    ! Check if mgxs.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-      ! Could not find cross_sections.xml file
+      ! Could not find mgxs.xml file
       call fatal_error("Cross sections XML file '" &
            // trim(path_cross_sections) // "' does not exist!")
     end if
 
     call write_message("Reading cross sections XML file...", 5)
 
-    ! Parse cross_sections.xml file
+    ! Parse mgxs.xml file
     call open_xmldoc(doc, path_cross_sections)
 
     if (check_for_node(doc, "groups")) then
@@ -4519,6 +4636,7 @@ contains
       call fatal_error("groups element must exist!")
     end if
 
+    allocate(rev_energy_bins(energy_groups + 1))
     allocate(energy_bins(energy_groups + 1))
     if (check_for_node(doc, "group_structure")) then
       ! Get neutron group structure
@@ -4526,6 +4644,9 @@ contains
     else
       call fatal_error("group_structures element must exist!")
     end if
+
+    ! First reverse the order of energy_groups
+    energy_bins = energy_bins(energy_groups + 1:1:-1)
 
     allocate(energy_bin_avg(energy_groups))
     do i = 1, energy_groups
@@ -4540,7 +4661,7 @@ contains
       ! If not given, estimate them by using average energy in group which is
       ! assumed to be the midpoint
       do i = 1, energy_groups
-        inverse_velocities(i) = &
+        inverse_velocities(i) = ONE / &
              (sqrt(TWO * energy_bin_avg(i) / (MASS_NEUTRON_MEV)) * &
               C_LIGHT * 100.0_8)
       end do
@@ -4553,7 +4674,7 @@ contains
     ! Allocate xs_listings array
     if (n_listings == 0) then
       call fatal_error("At least one <xsdata> element must be present in &
-                       &cross_sections.xml file!")
+                       &mgxs.xml file!")
     else
       allocate(xs_listings(n_listings))
     end if

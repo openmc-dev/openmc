@@ -28,9 +28,8 @@ class DistribmatTestHarness(PyAPITestHarness):
         light_fuel.set_density('g/cc', 2.0)
         light_fuel.add_nuclide('U-235', 1.0)
 
-        mats_file = openmc.MaterialsFile()
+        mats_file = openmc.Materials([moderator, dense_fuel, light_fuel])
         mats_file.default_xs = '71c'
-        mats_file.add_materials([moderator, dense_fuel, light_fuel])
         mats_file.export_to_xml()
 
 
@@ -46,7 +45,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         r0 = openmc.ZCylinder(R=0.3)
         c11 = openmc.Cell(cell_id=11)
         c11.region = -r0
-        c11.fill = [dense_fuel, light_fuel, 'void', dense_fuel]
+        c11.fill = [dense_fuel, light_fuel, None, dense_fuel]
         c12 = openmc.Cell(cell_id=12)
         c12.region = +r0
         c12.fill = moderator
@@ -54,7 +53,6 @@ class DistribmatTestHarness(PyAPITestHarness):
         fuel_univ.add_cells((c11, c12))
 
         lat = openmc.RectLattice(lattice_id=101)
-        lat.dimension = [2, 2]
         lat.lower_left = [-2.0, -2.0]
         lat.pitch = [2.0, 2.0]
         lat.universes = [[fuel_univ]*2]*2
@@ -74,16 +72,14 @@ class DistribmatTestHarness(PyAPITestHarness):
 
         geometry = openmc.Geometry()
         geometry.root_universe = root_univ
-        geo_file = openmc.GeometryFile()
-        geo_file.geometry = geometry
-        geo_file.export_to_xml()
+        geometry.export_to_xml()
 
 
         ####################
         # Settings
         ####################
 
-        sets_file = openmc.SettingsFile()
+        sets_file = openmc.Settings()
         sets_file.batches = 5
         sets_file.inactive = 0
         sets_file.particles = 1000
@@ -96,7 +92,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         # Plots
         ####################
 
-        plots_file = openmc.PlotsFile()
+        plots_file = openmc.Plots()
 
         plot = openmc.Plot(plot_id=1)
         plot.basis = 'xy'

@@ -7,8 +7,6 @@ import hashlib
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
 import openmc
-from openmc.source import Source
-from openmc.stats import Box
 
 
 class AsymmetricLatticeTestHarness(PyAPITestHarness):
@@ -20,13 +18,12 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         self._input_set.build_default_materials_and_geometry()
 
         # Extract universes encapsulating fuel and water assemblies
-        geometry = self._input_set.geometry.geometry
+        geometry = self._input_set.geometry
         water = geometry.get_universes_by_name('water assembly (hot)')[0]
         fuel = geometry.get_universes_by_name('fuel assembly (hot)')[0]
 
         # Construct a 3x3 lattice of fuel assemblies
         core_lat = openmc.RectLattice(name='3x3 Core Lattice', lattice_id=202)
-        core_lat.dimension = (3, 3)
         core_lat.lower_left = (-32.13, -32.13)
         core_lat.pitch = (21.42, 21.42)
         core_lat.universes = [[fuel,  water, water],
@@ -49,19 +46,18 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         root_univ.add_cell(root_cell)
 
         # Over-ride geometry in the input set with this 3x3 lattice
-        self._input_set.geometry.geometry.root_universe = root_univ
+        self._input_set.geometry.root_universe = root_univ
 
         # Initialize a "distribcell" filter for the fuel pin cell
         distrib_filter = openmc.Filter(type='distribcell', bins=[27])
 
         # Initialize the tallies
         tally = openmc.Tally(name='distribcell tally', tally_id=27)
-        tally.add_filter(distrib_filter)
-        tally.add_score('nu-fission')
+        tally.filters.append(distrib_filter)
+        tally.scores.append('nu-fission')
 
         # Initialize the tallies file
-        tallies_file = openmc.TalliesFile()
-        tallies_file.add_tally(tally)
+        tallies_file = openmc.Tallies([tally])
 
         # Assign the tallies file to the input set
         self._input_set.tallies = tallies_file
@@ -70,7 +66,7 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         self._input_set.build_default_settings()
 
         # Specify summary output and correct source sampling box
-        source = Source(space=Box([-32, -32, 0], [32, 32, 32]))
+        source = openmc.Source(space=openmc.stats.Box([-32, -32, 0], [32, 32, 32]))
         source.space.only_fissionable = True
         self._input_set.settings.source = source
         self._input_set.settings.output = {'summary': True}
@@ -85,11 +81,6 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = openmc.StatePoint(statepoint)
 
-        # Read the summary file
-        summary = glob.glob(os.path.join(os.getcwd(), 'summary.h5'))[0]
-        su = openmc.Summary(summary)
-        sp.link_with_summary(su)
-
         # Extract the tally of interest
         tally = sp.get_tally(name='distribcell tally')
 
@@ -99,8 +90,8 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         outstr += ', '.join(map(str, tally.std_dev.flatten())) + '\n'
 
         # Extract fuel assembly lattices from the summary
-        core = su.get_cell_by_id(1)
-        fuel = su.get_cell_by_id(80)
+        core = sp.summary.get_cell_by_id(1)
+        fuel = sp.summary.get_cell_by_id(80)
         fuel = fuel.fill
         core = core.fill
 

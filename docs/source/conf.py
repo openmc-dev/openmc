@@ -24,13 +24,8 @@ except ImportError:
     from mock import Mock as MagicMock
 
 
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-        return Mock()
-
 MOCK_MODULES = ['numpy', 'h5py', 'pandas', 'opencg']
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -48,6 +43,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
               'sphinx.ext.mathjax',
               'sphinx.ext.autosummary',
+              'sphinx.ext.intersphinx',
+              'sphinx.ext.viewcode',
               'sphinx_numfig',
               'notebook_sphinxext']
 
@@ -65,7 +62,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'OpenMC'
-copyright = u'2011-2015, Massachusetts Institute of Technology'
+copyright = u'2011-2016, Massachusetts Institute of Technology'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -122,20 +119,13 @@ pygments_style = 'tango'
 
 # -- Options for HTML output ---------------------------------------------------
 
-# The theme to use for HTML and HTML Help pages.  Major themes that come with
-# Sphinx are currently 'default' and 'sphinxdoc'.
-if on_rtd:
-    html_theme = 'default'
-    html_logo = '_images/openmc200px.png'
-else:
-    html_theme = 'haiku'
-    html_theme_options = {'full_logo': True,
-                          'linkcolor': '#0c3762',
-                          'visitedlinkcolor': '#0c3762'}
-    html_logo = '_images/openmc.png'
+# The theme to use for HTML and HTML Help pages
+if not on_rtd:
+    import sphinx_rtd_theme
+    html_theme = 'sphinx_rtd_theme'
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
-# Add any paths that contain custom themes here, relative to this directory.
-#html_theme_path = ["_theme"]
+html_logo = '_images/openmc200px.png'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -248,4 +238,12 @@ latex_elements = {
 #Autodocumentation Flags
 #autodoc_member_order = "groupwise"
 #autoclass_content = "both"
-#autosummary_generate = []
+autosummary_generate = True
+
+napoleon_use_ivar = True
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('http://docs.scipy.org/doc/numpy/', None),
+    'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None)
+}

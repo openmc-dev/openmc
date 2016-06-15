@@ -2,8 +2,12 @@ import sys
 import os
 import copy
 import pickle
+import warnings
 from numbers import Integral
 from collections import OrderedDict
+from warnings import warn
+
+import numpy as np
 
 import openmc
 import openmc.mgxs
@@ -30,7 +34,7 @@ class Library(object):
     Parameters
     ----------
     openmc_geometry : openmc.Geometry
-        An geometry which has been initialized with a root universe
+        A geometry which has been initialized with a root universe
     by_nuclide : bool
         If true, computes cross sections for each nuclide in each domain
     mgxs_types : Iterable of str
@@ -53,22 +57,24 @@ class Library(object):
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     domain_type : {'material', 'cell', 'distribcell', 'universe'}
         Domain type for spatial homogenization
-    domains : Iterable of Material, Cell or Universe
+    domains : Iterable of openmc.Material, openmc.Cell or openmc.Universe
         The spatial domain(s) for which MGXS in the Library are computed
-    correction : 'P0' or None
+    correction : {'P0', None}
         Apply the P0 correction to scattering matrices if set to 'P0'
-    energy_groups : EnergyGroups
+    legendre_order : int
+        The highest legendre moment in the scattering matrices (default is 0)
+    energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    tally_trigger : Trigger
+    tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
-    all_mgxs : OrderedDict
+    all_mgxs : collections.OrderedDict
         MGXS objects keyed by domain ID and cross section type
     sp_filename : str
         The filename of the statepoint with tally data used to the
         compute cross sections
     keff : Real or None
-        The combined keff from the statepoint file with tally data used to 
+        The combined keff from the statepoint file with tally data used to
         compute cross sections (for eigenvalue calculations only)
     name : str, optional
         Name of the multi-group cross section library. Used as a label to
@@ -89,8 +95,9 @@ class Library(object):
         self._mgxs_types = []
         self._domain_type = None
         self._domains = 'all'
-        self._correction = 'P0'
         self._energy_groups = None
+        self._correction = 'P0'
+        self._legendre_order = 0
         self._tally_trigger = None
         self._all_mgxs = OrderedDict()
         self._sp_filename = None
@@ -118,6 +125,7 @@ class Library(object):
             clone._domain_type = self.domain_type
             clone._domains = copy.deepcopy(self.domains)
             clone._correction = self.correction
+            clone._legendre_order = self.legendre_order
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = copy.deepcopy(self.all_mgxs)
@@ -186,12 +194,16 @@ class Library(object):
             return self._domains
 
     @property
+    def energy_groups(self):
+        return self._energy_groups
+
+    @property
     def correction(self):
         return self._correction
 
     @property
-    def energy_groups(self):
-        return self._energy_groups
+    def legendre_order(self):
+        return self._legendre_order
 
     @property
     def tally_trigger(self):
@@ -245,7 +257,7 @@ class Library(object):
 
     @domain_type.setter
     def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, tuple(openmc.mgxs.DOMAIN_TYPES))
+        cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._domain_type = domain_type
 
     @domains.setter
@@ -280,15 +292,35 @@ class Library(object):
 
             self._domains = domains
 
-    @correction.setter
-    def correction(self, correction):
-        cv.check_value('correction', correction, ('P0', None))
-        self._correction = correction
-
     @energy_groups.setter
     def energy_groups(self, energy_groups):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
+
+    @correction.setter
+    def correction(self, correction):
+        cv.check_value('correction', correction, ('P0', None))
+
+        if correction == 'P0' and self.legendre_order > 0:
+            msg = 'The P0 correction will be ignored since the scattering ' \
+                  'order {} is greater than zero'.format(self.legendre_order)
+            warnings.warn(msg)
+
+        self._correction = correction
+
+    @legendre_order.setter
+    def legendre_order(self, legendre_order):
+        cv.check_type('legendre_order', legendre_order, Integral)
+        cv.check_greater_than('legendre_order', legendre_order, 0, equality=True)
+        cv.check_less_than('legendre_order', legendre_order, 10, equality=True)
+
+        if self.correction == 'P0' and legendre_order > 0:
+            msg = 'The P0 correction will be ignored since the scattering ' \
+                  'order {} is greater than zero'.format(self.legendre_order)
+            warnings.warn(msg, RuntimeWarning)
+            self.correction = None
+
+        self._legendre_order = legendre_order
 
     @tally_trigger.setter
     def tally_trigger(self, tally_trigger):
@@ -308,7 +340,7 @@ class Library(object):
         """
 
         cv.check_type('sparse', sparse, bool)
-        
+
         # Sparsify or densify each MGXS in the Library
         for domain in self.domains:
             for mgxs_type in self.mgxs_types:
@@ -344,33 +376,34 @@ class Library(object):
                 # Specify whether to use a transport ('P0') correction
                 if isinstance(mgxs, openmc.mgxs.ScatterMatrixXS):
                     mgxs.correction = self.correction
+                    mgxs.legendre_order = self.legendre_order
 
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 
     def add_to_tallies_file(self, tallies_file, merge=True):
         """Add all tallies from all MGXS objects to a tallies file.
 
-        NOTE: This assumes that build_library() has been called
+        NOTE: This assumes that :meth:`Library.build_library` has been called
 
         Parameters
         ----------
-        tallies_file : openmc.TalliesFile
-            A TalliesFile object to add each MGXS' tallies to generate a
-            "tallies.xml" input file for OpenMC
+        tallies_file : openmc.Tallies
+            A Tallies collection to add each MGXS' tallies to generate a
+            'tallies.xml' input file for OpenMC
         merge : bool
             Indicate whether tallies should be merged when possible. Defaults
             to True.
 
         """
 
-        cv.check_type('tallies_file', tallies_file, openmc.TalliesFile)
+        cv.check_type('tallies_file', tallies_file, openmc.Tallies)
 
         # Add tallies from each MGXS for each domain and mgxs type
         for domain in self.domains:
             for mgxs_type in self.mgxs_types:
                 mgxs = self.get_mgxs(domain, mgxs_type)
                 for tally_id, tally in mgxs.tallies.items():
-                    tallies_file.add_tally(tally, merge=merge)
+                    tallies_file.append(tally, merge=merge)
 
     def load_from_statepoint(self, statepoint):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
@@ -403,6 +436,7 @@ class Library(object):
 
         self._sp_filename = statepoint._f.filename
         self._openmc_geometry = statepoint.summary.openmc_geometry
+        self._nuclides = statepoint.summary.nuclides
 
         if statepoint.run_mode == 'k-eigenvalue':
             self._keff = statepoint.k_combined[0]
@@ -426,7 +460,7 @@ class Library(object):
         ----------
         domain : Material or Cell or Universe or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'absorption', 'capture', 'fission', 'nu-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'chi'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi'}
             The type of multi-group cross section object to return
 
         Returns
@@ -450,14 +484,14 @@ class Library(object):
             cv.check_type('domain', domain, (openmc.Universe, Integral))
 
         # Check that requested domain is included in library
-        if cv._isinstance(domain, Integral):
+        if isinstance(domain, Integral):
             domain_id = domain
             for domain in self.domains:
                 if domain_id == domain.id:
                     break
             else:
-                msg = 'Unable to find MGXS for {0} "{1}" in ' \
-                      'library'.format(self.domain_type, domain)
+                msg = 'Unable to find MGXS for "{0}" "{1}" in ' \
+                      'library'.format(self.domain_type, domain_id)
                 raise ValueError(msg)
         else:
             domain_id = domain.id
@@ -537,7 +571,7 @@ class Library(object):
 
         Returns
         -------
-        Library
+        openmc.mgxs.Library
             A new multi-group cross section library averaged across subdomains
 
         Raises
@@ -575,7 +609,8 @@ class Library(object):
         return subdomain_avg_library
 
     def build_hdf5_store(self, filename='mgxs.h5', directory='mgxs',
-                         subdomains='all', nuclides='all', xs_type='macro'):
+                         subdomains='all', nuclides='all', xs_type='macro',
+                         row_column='inout'):
         """Export the multi-group cross section library to an HDF5 binary file.
 
         This method constructs an HDF5 file which stores the library's
@@ -605,6 +640,10 @@ class Library(object):
         xs_type: {'macro', 'micro'}
             Store the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
+        row_column: {'inout', 'outin'}
+            Store scattering matrices indexed first by incoming group and
+            second by outgoing group ('inout'), or vice versa ('outin').
+            Defaults to 'inout'.
 
         Raises
         ------
@@ -635,7 +674,7 @@ class Library(object):
         full_filename = os.path.join(directory, filename)
         full_filename = full_filename.replace(' ', '-')
         f = h5py.File(full_filename, 'w')
-        f.attrs["# groups"] = self.num_groups
+        f.attrs['# groups'] = self.num_groups
         f.close()
 
         # Export MGXS for each domain and mgxs type to an HDF5 file
@@ -646,8 +685,8 @@ class Library(object):
                 if subdomains == 'avg':
                     mgxs = mgxs.get_subdomain_avg_xs()
 
-                mgxs.build_hdf5_store(filename, directory,
-                                      xs_type=xs_type, nuclides=nuclides)
+                mgxs.build_hdf5_store(filename, directory, xs_type=xs_type,
+                                      nuclides=nuclides, row_column=row_column)
 
     def dump_to_file(self, filename='mgxs', directory='mgxs'):
         """Store this Library object in a pickle binary file.
@@ -712,3 +751,419 @@ class Library(object):
 
         # Load and return pickled Library object
         return pickle.load(open(full_filename, 'rb'))
+
+    def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
+                   xs_id='1m', order=None):
+        """Generates an openmc.XSdata object describing a multi-group cross section
+        data set for eventual combination in to an openmc.MGXSLibrary object
+        (i.e., the library).
+
+        Parameters
+        ----------
+        domain : openmc.Material or openmc.Cell or openmc.Universe
+            The domain for spatial homogenization
+        xsdata_name : str
+            Name to apply to the "xsdata" entry produced by this method
+        nuclide : str
+            A nuclide name string (e.g., 'U-235').  Defaults to 'total' to
+            obtain a material-wise macroscopic cross section.
+        xs_type: {'macro', 'micro'}
+            Provide the macro or micro cross section in units of cm^-1 or
+            barns. Defaults to 'macro'. If the Library object is not tallied by
+            nuclide this will be set to 'macro' regardless.
+        xs_ids : str
+            Cross section set identifier. Defaults to '1m'.
+        order : Scattering order for this data entry.  Default is None,
+            which will set the XSdata object to use the order of the
+            Library.
+
+        Returns
+        -------
+        xsdata : openmc.XSdata
+            Multi-Group Cross Section data set object.
+
+        Raises
+        ------
+        ValueError
+            When the Library object is initialized with insufficient types of
+            cross sections for the Library.
+
+        See also
+        --------
+        Library.create_mg_library()
+
+        """
+
+        cv.check_type('domain', domain, (openmc.Material, openmc.Cell,
+                                         openmc.Cell))
+        cv.check_type('xsdata_name', xsdata_name, basestring)
+        cv.check_type('nuclide', nuclide, basestring)
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_type('xs_id', xs_id, basestring)
+        cv.check_type('order', order, (type(None), Integral))
+        if order is not None:
+            cv.check_greater_than('order', order, 0, equality=True)
+            cv.check_less_than('order', order, 10, equality=True)
+
+        # Make sure statepoint has been loaded
+        if self._sp_filename is None:
+            msg = 'A StatePoint must be loaded before calling ' \
+                  'the create_mg_library() function'
+            raise ValueError(msg)
+
+        # If gathering material-specific data, set the xs_type to macro
+        if not self.by_nuclide:
+            xs_type = 'macro'
+
+        # Build & add metadata to XSdata object
+        name = xsdata_name
+        if nuclide is not 'total':
+            name += '_' + nuclide
+        name += '.' + xs_id
+        xsdata = openmc.XSdata(name, self.energy_groups)
+
+        if order is None:
+            # Set the order to the Library's order (the defualt behavior)
+            xsdata.order = self.legendre_order
+        else:
+            # Set the order of the xsdata object to the minimum of
+            # the provided order or the Library's order.
+            xsdata.order = min(order, self.legendre_order)
+
+        if nuclide is not 'total':
+            xsdata.zaid = self._nuclides[nuclide][0]
+            xsdata.awr = self._nuclides[nuclide][1]
+
+        # Now get xs data itself
+        if 'nu-transport' in self.mgxs_types and self.correction == 'P0':
+            mymgxs = self.get_mgxs(domain, 'nu-transport')
+            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide])
+        elif 'total' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'total')
+            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide])
+        if 'absorption' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'absorption')
+            xsdata.set_absorption_mgxs(mymgxs, xs_type=xs_type,
+                                       nuclide=[nuclide])
+        if 'fission' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'fission')
+            xsdata.set_fission_mgxs(mymgxs, xs_type=xs_type,
+                                    nuclide=[nuclide])
+        if 'kappa-fission' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'kappa-fission')
+            xsdata.set_kappa_fission_mgxs(mymgxs, xs_type=xs_type,
+                                          nuclide=[nuclide])
+        # For chi and nu-fission we can either have only a nu-fission matrix
+        # provided, or vectors of chi and nu-fission provided
+        if 'nu-fission matrix' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'nu-fission matrix')
+            xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+                                       nuclide=[nuclide])
+        else:
+            if 'chi' in self.mgxs_types:
+                mymgxs = self.get_mgxs(domain, 'chi')
+                xsdata.set_chi_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide])
+            if 'nu-fission' in self.mgxs_types:
+                mymgxs = self.get_mgxs(domain, 'nu-fission')
+                xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+                                           nuclide=[nuclide])
+        # If multiplicity matrix is available, prefer that
+        if 'multiplicity matrix' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'multiplicity matrix')
+            xsdata.set_multiplicity_mgxs(mymgxs, xs_type=xs_type,
+                                         nuclide=[nuclide])
+            using_multiplicity = True
+        # multiplicity wil fall back to using scatter and nu-scatter
+        elif ((('scatter matrix' in self.mgxs_types) and
+               ('nu-scatter matrix' in self.mgxs_types))):
+            scatt_mgxs = self.get_mgxs(domain, 'scatter matrix')
+            nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
+            xsdata.set_multiplicity_mgxs(nuscatt_mgxs, scatt_mgxs,
+                                         xs_type=xs_type, nuclide=[nuclide])
+            using_multiplicity = True
+        else:
+            using_multiplicity = False
+
+        if using_multiplicity:
+            nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
+            xsdata.set_scatter_mgxs(nuscatt_mgxs, xs_type=xs_type,
+                                    nuclide=[nuclide])
+        else:
+            if 'nu-scatter matrix' in self.mgxs_types:
+                nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
+                xsdata.set_scatter_mgxs(nuscatt_mgxs, xs_type=xs_type,
+                                        nuclide=[nuclide])
+
+                # Since we are not using multiplicity, then
+                # scattering multiplication (nu-scatter) must be
+                # accounted for approximately by using an adjusted
+                # absorption cross section.
+                if 'total' in self.mgxs_types:
+                    xsdata._absorption = \
+                        np.subtract(xsdata.total,
+                                    np.sum(xsdata.scatter[0, :, :], axis=1))
+
+        return xsdata
+
+    def create_mg_library(self, xs_type='macro', xsdata_names=None,
+                          xs_ids=None):
+        """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
+        Multi-Group mode of OpenMC.
+
+        Parameters
+        ----------
+        xs_type: {'macro', 'micro'}
+            Provide the macro or micro cross section in units of cm^-1 or
+            barns. Defaults to 'macro'. If the Library object is not tallied by
+            nuclide this will be set to 'macro' regardless.
+        xsdata_names : Iterable of str
+            List of names to apply to the "xsdata" entries in the
+            resultant mgxs data file. Defaults to 'set1', 'set2', ...
+        xs_ids : str or Iterable of str
+            Cross section set identifier (i.e., '71c') for all
+            data sets (if only str) or for each individual one
+            (if iterable of str). Defaults to '1m'.
+
+        Returns
+        -------
+        mgxs_file : openmc.MGXSLibrary
+            Multi-Group Cross Section File that is ready to be printed to the
+            file of choice by the user.
+
+        Raises
+        ------
+        ValueError
+            When the Library object is initialized with insufficient types of
+            cross sections for the Library.
+
+        See also
+        --------
+        Library.dump_to_file()
+        Library.create_mg_mode()
+
+        """
+
+        # Check to ensure the Library contains the correct
+        # multi-group cross section types
+        self.check_library_for_openmc_mgxs()
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        if xsdata_names is not None:
+            cv.check_iterable_type('xsdata_names', xsdata_names, basestring)
+        if xs_ids is not None:
+            if isinstance(xs_ids, basestring):
+                # If we only have a string lets convert it now to a list
+                # of strings.
+                xs_ids = [xs_ids for i in range(len(self.domains))]
+            else:
+                cv.check_iterable_type('xs_ids', xs_ids, basestring)
+        else:
+            xs_ids = ['1m' for i in range(len(self.domains))]
+
+        # If gathering material-specific data, set the xs_type to macro
+        if not self.by_nuclide:
+            xs_type = 'macro'
+
+        # Initialize file
+        mgxs_file = openmc.MGXSLibrary(self.energy_groups)
+
+        # Create the xsdata object and add it to the mgxs_file
+        for i, domain in enumerate(self.domains):
+            if self.by_nuclide:
+                nuclides = list(domain.get_all_nuclides().keys())
+            else:
+                nuclides = ['total']
+            for nuclide in nuclides:
+                # Build & add metadata to XSdata object
+                if xsdata_names is None:
+                    xsdata_name = 'set' + str(i + 1)
+                else:
+                    xsdata_name = xsdata_names[i]
+                if nuclide is not 'total':
+                    xsdata_name += '_' + nuclide
+
+                xsdata = self.get_xsdata(domain, xsdata_name, nuclide=nuclide,
+                                         xs_type=xs_type, xs_id=xs_ids[i])
+
+                mgxs_file.add_xsdata(xsdata)
+
+        return mgxs_file
+
+    def create_mg_mode(self, xsdata_names=None, xs_ids=None):
+        """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
+        Multi-Group mode of OpenMC as well as the associated openmc.Materials
+        and openmc.Geometry objects. The created Geometry is the same as that
+        used to generate the MGXS data, with the only differences being
+        modifications to point to newly-created Materials which point to the
+        multi-group data. This method only creates a macroscopic
+        MGXS Library even if nuclidic tallies are specified in the Library.
+
+        Parameters
+        ----------
+        xsdata_names : Iterable of str
+            List of names to apply to the "xsdata" entries in the
+            resultant mgxs data file. Defaults to 'set1', 'set2', ...
+        xs_ids : str or Iterable of str
+            Cross section set identifier (i.e., '71c') for all
+            data sets (if only str) or for each individual one
+            (if iterable of str). Defaults to '1m'.
+
+        Returns
+        -------
+        mgxs_file : openmc.MGXSLibrary
+            Multi-Group Cross Section File that is ready to be printed to the
+            file of choice by the user.
+        materials : openmc.Materials
+            Materials file ready to be printed with all the macroscopic data
+            present within this Library.
+        geometry : openmc.Geometry
+            Materials file ready to be printed with all the macroscopic data
+            present within this Library.
+
+        Raises
+        ------
+        ValueError
+            When the Library object is initialized with insufficient types of
+            cross sections for the Library.
+
+        See also
+        --------
+        Library.create_mg_library()
+        Library.dump_to_file()
+
+        """
+
+        # Check to ensure the Library contains the correct
+        # multi-group cross section types
+        self.check_library_for_openmc_mgxs()
+
+        if xsdata_names is not None:
+            cv.check_iterable_type('xsdata_names', xsdata_names, basestring)
+        if xs_ids is not None:
+            if isinstance(xs_ids, basestring):
+                # If we only have a string lets convert it now to a list
+                # of strings.
+                xs_ids = [xs_ids for i in range(len(self.domains))]
+            else:
+                cv.check_iterable_type('xs_ids', xs_ids, basestring)
+        else:
+            xs_ids = ['1m' for i in range(len(self.domains))]
+        xs_type = 'macro'
+
+        # Initialize MGXS File
+        mgxs_file = openmc.MGXSLibrary(self.energy_groups)
+
+        # Create a copy of the Geometry to differentiate for these Macroscopics
+        geometry = copy.deepcopy(self.openmc_geometry)
+        materials = openmc.Materials()
+
+        # Get all Cells from the Geometry for differentiation
+        all_cells = geometry.get_all_material_cells()
+
+        # Create the xsdata object and add it to the mgxs_file
+        for i, domain in enumerate(self.domains):
+
+            # Build & add metadata to XSdata object
+            if xsdata_names is None:
+                xsdata_name = 'set' + str(i + 1)
+            else:
+                xsdata_name = xsdata_names[i]
+
+            # Create XSdata and Macroscopic for this domain
+            xsdata = self.get_xsdata(domain, xsdata_name, nuclide='total',
+                                     xs_type=xs_type, xs_id=xs_ids[i])
+            mgxs_file.add_xsdata(xsdata)
+            macroscopic = openmc.Macroscopic(name=xsdata_name, xs=xs_ids[i])
+
+            # Create Material and add to collection
+            material = openmc.Material(name=xsdata_name + '.' + xs_ids[i])
+            material.add_macroscopic(macroscopic)
+            materials.append(material)
+
+            # Differentiate Geometry with new Material
+            if self.domain_type == 'material':
+                # Fill all appropriate Cells with new Material
+                for cell in all_cells:
+                    if cell.fill.id == domain.id:
+                        cell.fill = material
+
+            elif self.domain_type == 'cell':
+                for cell in all_cells:
+                    if cell.id == domain.id:
+                        cell.fill = material
+
+        return mgxs_file, materials, geometry
+
+    def check_library_for_openmc_mgxs(self):
+        """This routine will check the MGXS Types within a Library
+        to ensure the MGXS types provided can be used to create
+        a MGXS Library for OpenMC's Multi-Group mode.
+
+        The rules to check include:
+
+        - Either total or transport should be present.
+
+          - Both can be available if one wants, but we should
+            use whatever corresponds to Library.correction (if P0: transport)
+
+        - Absorption and total (or transport) are required.
+        - A nu-fission cross section and chi values are not required as a
+          fixed source problem could be the target.
+        - Fission and kappa-fission are not required as they are only
+          needed to support tallies the user may wish to request.
+        - A nu-scatter matrix is required.
+
+          - Having a multiplicity matrix is preferred.
+          - Having both nu-scatter (of any order) and scatter
+            (at least isotropic) matrices is the second choice.
+          - If only nu-scatter, need total (not transport), to
+            be used in adjusting absorption
+            (i.e., reduced_abs = tot - nuscatt)
+
+        See also
+        --------
+        Library.create_mg_library()
+        Library.create_mg_mode()
+
+        """
+
+        error_flag = False
+        # Ensure absorption is present
+        if 'absorption' not in self.mgxs_types:
+            error_flag = True
+            msg = '"absorption" MGXS type is required but not provided.'
+            warn(msg)
+        # Ensure nu-scattering matrix is required
+        if 'nu-scatter matrix' not in self.mgxs_types:
+            error_flag = True
+            msg = '"nu-scatter matrix" MGXS type is required but not provided.'
+            warn(msg)
+        else:
+            # Ok, now see the status of scatter and/or multiplicity
+            if ((('scatter matrix' not in self.mgxs_types) and
+                 ('multiplicity matrix' not in self.mgxs_types))):
+                # We dont have data needed for multiplicity matrix, therefore
+                # we need total, and not transport.
+                if 'total' not in self.mgxs_types:
+                    error_flag = True
+                    msg = '"total" MGXS type is required if a ' \
+                          'scattering matrix is not provided.'
+                    warn(msg)
+        # Total or transport can be present, but if using
+        # self.correction=="P0", then we should use transport.
+        if (((self.correction is "P0") and
+             ('nu-transport' not in self.mgxs_types))):
+            error_flag = True
+            msg = 'A "nu-transport" MGXS type is required since a "P0" ' \
+                  'correction is applied, but a "nu-transport" MGXS is ' \
+                  'not provided.'
+            warn(msg)
+        elif (((self.correction is None) and
+               ('total' not in self.mgxs_types))):
+            error_flag = True
+            msg = '"total" MGXS type is required, but not provided.'
+            warn(msg)
+
+        if error_flag:
+            msg = 'Invalid MGXS configuration encountered.'
+            raise ValueError(msg)

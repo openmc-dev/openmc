@@ -245,7 +245,7 @@ chosen to be between 0 and the maximum value of :math:`f(\mu)` in the domain of
 -1 to 1.
 
 If the angular data is instead provided as a tabular representation, then the
-value of :math:`\mu` is selected as described in the later angle-tabular_
+value of :math:`\mu` is selected as described in the :ref:`angle-tabular`
 section with a linear-linear interpolation scheme.
 
 If the angular data is provided as a histogram representation, then

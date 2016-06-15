@@ -72,13 +72,13 @@ Multi-Group Data
 
 The data governing the interaction of particles with various nuclei or materials
 are represented using a multi-group library format specific to the OpenMC code.
-The format is described in the MGXS library specification_
-The data itself can be prepared via multiple paths including: generation via
-NJOY_ and TRANSX_, or directly from a continuous-energy OpenMC calculation by
-use of the Python API as is shown in the Python API example_ notebooks. This
-multi-group library consists of library meta-data (such as the energy group
-structure) and multiple `xsdata` objects which contains the required microscopic
-or macroscopic multi-group data.
+The format is described in the :ref:`mgxs_lib_spec`.
+The data itself can be prepared via traditional paths or directly from a
+continuous-energy OpenMC calculation by use of the Python API as is shown in the
+Python API :ref:`_notebook_mgxs_part_iv` example notebook. This multi-group
+library consists of library meta-data (such as the energy group structure) and
+multiple `xsdata` objects which contains the required microscopic or macroscopic
+multi-group data.
 
 At a minimum, the library must contain the absorption cross section
 (:math:`\sigma_{a,g}`) and a scattering matrix. If the problem is an eigenvalue
@@ -98,7 +98,7 @@ however, can be expressed either via Legendre expansion of the particle's
 change-in-angle (:math:`\mu`), a tabular representation of the probability of
 a particle experiencing a given :math:`\mu`, or a histogram representation of the
 probability of a particle experiencing a given :math:`\mu`. The formats used to
-represent these are described in the library format specification_.
+represent these are described in the :ref:`mgxs_lib_spec`.
 
 Unlike the continuous-energy mode, the multi-group mode does not explicitly
 track particles produced from scattering multiplication (i.e., :math:`(n,xn)`)
@@ -170,6 +170,3 @@ or even isotropic scattering.
 .. _NJOY: http://t2.lanl.gov/codes.shtml
 .. _ENDF/B data: http://www.nndc.bnl.gov/endf
 .. _Leppanen: http://dx.doi.org/10.1016/j.anucene.2009.03.019
-.. _specification: ENTER LINK
-.. _TRANSX: ENTER LINK
-.. _example: ENTER LINK

@@ -51,6 +51,7 @@ implement a method of reducing the number of energy grid searches in order to
 speed up the calculation.
 
 Logarithmic Mapping
++++++++++++++++++++
 
 To speed up energy grid searches, OpenMC uses logarithmic mapping technique
 [Brown]_ to limit the range of energies that must be searched for each
@@ -60,6 +61,7 @@ the nuclide energy grids. By default, OpenMC uses 8000 equal-lethargy segments
 as recommended by Brown.
 
 Other Methods
++++++++++++++
 
 A good survey of other energy grid techniques, including unionized energy grids,
 can be found in a paper by Leppanen_.
@@ -68,7 +70,7 @@ can be found in a paper by Leppanen_.
 Multi-Group Data
 ----------------
 
-The data governing the interaction of neutrons with various nuclei or materials
+The data governing the interaction of particles with various nuclei or materials
 are represented using a multi-group library format specific to the OpenMC code.
 The format is described in the MGXS library specification_
 The data itself can be prepared via multiple paths including: generation via
@@ -88,23 +90,23 @@ tallies are requested by the user, then the library must also contain the
 fission cross section (:math:`\sigma_{f,g}`) or the fission energy release
 cross section (:math:`\kappa\sigma_{f,g}`).
 
-After a scattering collision, the outgoing neutron experiences a change in both
-energy and angle. The probability of a neutron resulting in a given outgoing
+After a scattering collision, the outgoing particle experiences a change in both
+energy and angle. The probability of a particle resulting in a given outgoing
 energy group (`g'`) given a certain incoming energy group (`g`) is provided
 by the scattering matrix cross sections themselves.  The angular information,
-however, can be expressed either via Legendre expansion of the neutron's
+however, can be expressed either via Legendre expansion of the particle's
 change-in-angle (:math:`\mu`), a tabular representation of the probability of
-a neutron experiencing a given :math:`\mu`, or a histogram representation of the
-probability of a neutron experiencing a given :math:`\mu`. The formats used to
+a particle experiencing a given :math:`\mu`, or a histogram representation of the
+probability of a particle experiencing a given :math:`\mu`. The formats used to
 represent these are described in the library format specification_.
 
 Unlike the continuous-energy mode, the multi-group mode does not explicitly
-track neutrons produced from scattering multiplication (i.e., :math:`(n,xn)`)
+track particles produced from scattering multiplication (i.e., :math:`(n,xn)`)
 reactions.  These are instead accounted for by adjusting the weight of the
-neutron after the collision such that the correct total weight is maintained.
+particle after the collision such that the correct total weight is maintained.
 The information for how to adjust this weight is optionally provided by the
 `multiplicity` data which exists as a group-wise matrix. This data represents
-the average number of neutrons emitted from a scattering reaction, given a
+the average number of particles emitted from a scattering reaction, given a
 scattering reaction has occurred:
 
 .. math::
@@ -113,16 +115,16 @@ scattering reaction has occurred:
     								   \sigma_{s,g \arrow g'}}
 
 This data is provided as a group-wise matrix since the probability of producing
-multiple neutrons in a scattering reaction depends on both the incoming energy,
+multiple particles in a scattering reaction depends on both the incoming energy,
 `g`, and the sampled outgoing energy, `g'`.
 
 If this scattering multiplication information is not provided in the library
 then no weight adjustment will be performed. This is equivalent to neglecting
-any additional neutrons produced in scattering multiplication reactions.
+any additional particles produced in scattering multiplication reactions.
 However, this assumption will result in a loss of accuracy since the total
-neutron population would not be conserved. This reduction in accuracy due to
-the loss in neutron conservation can be mitigated by reducing the absorption
-cross section as needed to maintain neutron conservation. This adjustment can
+particle population would not be conserved. This reduction in accuracy due to
+the loss in particle conservation can be mitigated by reducing the absorption
+cross section as needed to maintain particle conservation. This adjustment can
 be done when generating the library, or by OpenMC. To have OpenMC perform the
 adjustment, the total cross section (:math:`\sigma_{t,g}`) must be provided.
 With this information, OpenMC will then adjust the absorption cross section as
@@ -135,12 +137,12 @@ follows:
 The above method is the same as is typically done with most deterministic methods.
 Note that this method is less accurate than using the scattering multiplication
 weight adjustment since simply reducing the absorption cross section does not
-include any information about the outgoing energy of the neutrons produced in
+include any information about the outgoing energy of the particles produced in
 these reactions.
 
 All of the data discussed in this section can be provided to the code
-independent of the neutron's direction of motion (i.e., isotropic), or the data
-can be provided as a tabular distribution of the polar and azimuthal neutron
+independent of the particle's direction of motion (i.e., isotropic), or the data
+can be provided as a tabular distribution of the polar and azimuthal particle
 direction angles. The isotropic representation is the most commonly used,
 however inaccuracies are to be expected especially near material interfaces
 where a material has a very large cross sections relative to the other material

@@ -4,6 +4,12 @@
 Physics
 =======
 
+There are limited differences between physics treatments used in the
+continuous-energy and multi-group modes.  If distinctions are necessary, each
+of the following sections will provide an explanation of the differences.
+Otherwise, replacing any references of the particle's energy (`E`) with
+references to the particle's energy group (`g) will suffice.
+
 -----------------------------------
 Sampling Distance to Next Collision
 -----------------------------------
@@ -78,6 +84,10 @@ originating from :math:`(n,\gamma)` and other reactions.
 ------------------
 Elastic Scattering
 ------------------
+
+Note that the multi-group mode makes no distinction between elastic or
+inelastic scattering reactions. The spceific multi-group scattering
+implementation is discussed in the multi-group-scatter_ section.
 
 Elastic scattering refers to the process by which a neutron scatters off a
 nucleus and does not leave it in an excited. It is referred to as "elastic"
@@ -170,6 +180,10 @@ final direction in the lab system.
 Inelastic Scattering
 --------------------
 
+Note that the multi-group mode makes no distinction between elastic or
+inelastic scattering reactions. The spceific multi-group scattering
+implementation is discussed in the multi-group-scatter_ section.
+
 The major algorithms for inelastic scattering were described in previous
 sections. First, a scattering cosine is sampled using the algorithms in
 :ref:`sample-angle`. Then an outgoing energy is sampled using the algorithms in
@@ -186,12 +200,67 @@ secondary photons from nuclear de-excitation are tracked in OpenMC.
 :math:`(n,xn)` Reactions
 ------------------------
 
+Note that the multi-group mode makes no distinction between elastic or
+inelastic scattering reactions. The specific multi-group scattering
+implementation is discussed in the multi-group-scatter_ section.
+
 These types of reactions are just treated as inelastic scattering and as such
 are subject to the same procedure as described in :ref:`inelastic-scatter`. For
 reactions with integral multiplicity, e.g., :math:`(n,2n)`, an appropriate
 number of secondary neutrons are created. For reactions that have a multiplicity
 given as a function of the incoming neutron energy (which occasionally occurs
-for MT=5), the weight of the outgoing neutron is multiplied by the multiplcity.
+for MT=5), the weight of the outgoing neutron is multiplied by the multiplicity.
+
+.. _multi-group-scatter:
+
+----------------------
+Multi-Group Scattering
+----------------------
+
+In multi-group mode, a scattering collision requires that the outgoing energy
+group of the simulated particle be selected from a probability distribution,
+then the change-in-angle selected from a probability distribution according to
+the outgoing energy group, and finally the particle's weight adjusted again
+according to the outgoing energy group.
+
+The first step in selecting an outgoing energy group for a particle in a given
+incoming energy group is to select a random number (:math:`\xi`) between 0 and
+1.  This number is then compared to the cumulative distribution function
+produced from the outgoing group (`g'`) data for the given incoming group (`g`):
+
+.. math::
+    CDF = \sum_{g'=0}^{h}\Sigma_{s,g \arrow g'}
+
+If the scattering data is represented as a Legendre expansion, then the
+value of :math:`\Sigma_{s,g \arrow g'}` above is simply the 0th order. If the
+data is provided as tabular or histogram data, then the value of
+:math:`\Sigma_{s,g \arrow g'}` is the sum of all bins of data for a given `g`
+and `g'` pair.
+
+Now that the outgoing energy is known the change-in-angle, :math:`\mu` can be
+determined. If the data is provided as a Legendre expansion, this is done by
+rejection sampling of the probability distribution represented by the Legendre
+series. For efficiency, the selected values of the PDF (:math:`f(\mu)`) are
+chosen to be between 0 and the maximum value of :math:`f(\mu)` in the domain of
+-1 to 1.
+
+If the angular data is instead provided as a tabular representation, then the
+value of :math:`\mu` is selected as described in the later angle-tabular_
+section with a linear-linear interpolation scheme.
+
+If the angular data is provided as a histogram representation, then
+the value of :math:`\mu` is selected in a similar fashion to that described for
+the selection of the outgoing energy (since the energy group representation is
+simply a histogram representation) except the CDF is composed of the angular
+bins and not the energy groups.  However, since we are interested in a specific
+value of :math:`\mu` instead of a group, then an angle selected from a uniform
+distribution within from the chosen histogram bin.
+
+The final step in the scattering treatment is to adjust the weight of the
+neutron to account for any production of neutrons due to :math:`(n,xn)`
+reactions. This data is obtained from the multiplicity data provided in the
+multi-group cross section library for the material of interest.
+The scaled value will default to 1.0 if no value is provided in the library.
 
 .. _fission:
 
@@ -271,9 +340,18 @@ position of the collision site are stored in an array called the fission
 bank. In a subsequent generation, these fission bank sites are used as starting
 source sites.
 
+The above description is similar for the multi-group mode except the data are
+provided as group-wise data instead of in a continuous-energy format. In this
+case, the outgoing energy of the fission neutrons are represented as histograms
+by way of either the nu-fission matrix or chi vector.
+
 -----------------------------------------
 Secondary Angles and Energy Distributions
 -----------------------------------------
+
+Note that this section is specific to continuous-energy mode since the
+multi-group scattering process has already been described including the
+secondary energy and angle sampling.
 
 For any reactions with secondary neutrons, it is necessary to sample secondary
 angle and energy distributions. This includes elastic and inelastic scattering,
@@ -890,6 +968,9 @@ space distribution at all, the :math:`(n,2n)` reaction with H-2.
 Transforming a Particle's Coordinates
 -------------------------------------
 
+Since all the multi-group data exists in the laboratory frame of reference, this
+section does not apply to the multi-group mode.
+
 Once the cosine of the scattering angle :math:`\mu` has been sampled either from
 a angle distribution or a correlated angle-energy distribution, we are still
 left with the task of transforming the particle's coordinates. If the outgoing
@@ -940,6 +1021,9 @@ the post-collision direction is calculated as
 ------------------------------------------
 Effect of Thermal Motion on Cross Sections
 ------------------------------------------
+
+Since all the multi-group data should be generated with thermal scattering
+treatments already, this section does not apply to the multi-group mode.
 
 When a neutron scatters off of a nucleus, it may often be assumed that the
 target nucleus is at rest. However, the target nucleus will have motion
@@ -1272,6 +1356,8 @@ described fully in `Walsh et al.`_
 |sab| Tables
 ------------
 
+Note that |sab| tables are only applicable to continuous-energy transport.
+
 For neutrons with thermal energies, generally less than 4 eV, the kinematics of
 scattering can be affected by chemical binding and crystalline effects of the
 target molecule. If these effects are not accounted for in a simulation, the
@@ -1460,6 +1546,9 @@ actual algorithm utilized to sample the outgoing angle is shown in equation
 ----------------------------------------------
 Unresolved Resonance Region Probability Tables
 ----------------------------------------------
+
+Note that unresolved resonance treatments are only applicable to
+continuous-energy transport.
 
 In the unresolved resonance energy range, resonances may be so closely spaced
 that it is not possible for experimental measurements to resolve all

@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.join(cwd, '..'))
 
 baseUrl = 'https://github.com/smharper/windowed_multipole_library/blob/master/'
 files = ['multipole_lib.tar.gz?raw=true']
-checksums = ['9f0307132fe5beca78b8fc7a01fb401c']
+checksums = ['3985aea96f7162a9419c7ed8352e6abb']
 block_size = 16384
 
 # ==============================================================================
@@ -81,6 +81,7 @@ print('Verifying MD5 checksums...')
 for f, checksum in zip(files, checksums):
     fname = f[:-9] if f.endswith('?raw=true') else f
     downloadsum = hashlib.md5(open(fname, 'rb').read()).hexdigest()
+    print(downloadsum)
     if downloadsum != checksum:
         raise IOError("MD5 checksum for {} does not match. If this is your first "
                       "time receiving this message, please re-run the script. "

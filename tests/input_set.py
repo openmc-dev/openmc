@@ -5,9 +5,9 @@ from openmc.stats import Box
 
 class InputSet(object):
     def __init__(self):
-        self.settings = openmc.SettingsFile()
-        self.materials = openmc.MaterialsFile()
-        self.geometry = openmc.GeometryFile()
+        self.settings = openmc.Settings()
+        self.materials = openmc.Materials()
+        self.geometry = openmc.Geometry()
         self.tallies = None
         self.plots = None
 
@@ -15,8 +15,10 @@ class InputSet(object):
         self.settings.export_to_xml()
         self.materials.export_to_xml()
         self.geometry.export_to_xml()
-        if self.tallies is not None: self.tallies.export_to_xml()
-        if self.plots is not None: self.plots.export_to_xml()
+        if self.tallies is not None:
+            self.tallies.export_to_xml()
+        if self.plots is not None:
+            self.plots.export_to_xml()
 
     def build_default_materials_and_geometry(self):
         # Define materials.
@@ -82,7 +84,7 @@ class InputSet(object):
         hot_water.add_s_alpha_beta('HH2O', '71t')
 
         rpv_steel = openmc.Material(name='Reactor pressure vessel steel',
-             material_id=5)
+                                    material_id=5)
         rpv_steel.set_density('g/cm3', 7.9)
         rpv_steel.add_nuclide("Fe-54", 0.05437098, 'wo')
         rpv_steel.add_nuclide("Fe-56", 0.88500663, 'wo')
@@ -113,7 +115,7 @@ class InputSet(object):
         rpv_steel.add_nuclide("Cu-65", 0.0006304, 'wo')
 
         lower_rad_ref = openmc.Material(name='Lower radial reflector',
-             material_id=6)
+                                        material_id=6)
         lower_rad_ref.set_density('g/cm3', 4.32)
         lower_rad_ref.add_nuclide("H-1", 0.0095661, 'wo')
         lower_rad_ref.add_nuclide("O-16", 0.0759107, 'wo')
@@ -189,7 +191,8 @@ class InputSet(object):
         bot_plate.add_nuclide("Cr-54", 0.004612692337, 'wo')
         bot_plate.add_s_alpha_beta('HH2O', '71t')
 
-        bot_nozzle = openmc.Material(name='Bottom nozzle region', material_id=9)
+        bot_nozzle = openmc.Material(name='Bottom nozzle region',
+                                     material_id=9)
         bot_nozzle.set_density('g/cm3', 2.53)
         bot_nozzle.add_nuclide("H-1", 0.0245014, 'wo')
         bot_nozzle.add_nuclide("O-16", 0.1944274, 'wo')
@@ -252,7 +255,8 @@ class InputSet(object):
         top_fa.add_nuclide("Zr-96", 0.02511169542, 'wo')
         top_fa.add_s_alpha_beta('HH2O', '71t')
 
-        bot_fa = openmc.Material(name='Bottom of fuel assemblies', material_id=12)
+        bot_fa = openmc.Material(name='Bottom of fuel assemblies',
+                                 material_id=12)
         bot_fa.set_density('g/cm3', 1.762)
         bot_fa.add_nuclide("H-1", 0.0292856, 'wo')
         bot_fa.add_nuclide("O-16", 0.2323919, 'wo')
@@ -267,9 +271,9 @@ class InputSet(object):
 
         # Define the materials file.
         self.materials.default_xs = '71c'
-        self.materials.add_materials((fuel, clad, cold_water, hot_water,
-             rpv_steel, lower_rad_ref, upper_rad_ref, bot_plate, bot_nozzle,
-             top_nozzle, top_fa, bot_fa))
+        self.materials += (fuel, clad, cold_water, hot_water, rpv_steel,
+                           lower_rad_ref, upper_rad_ref, bot_plate,
+                           bot_nozzle, top_nozzle, top_fa, bot_fa)
 
         # Define surfaces.
         s1 = openmc.ZCylinder(R=0.41, surface_id=1)
@@ -350,7 +354,6 @@ class InputSet(object):
         # Define fuel lattices.
         l100 = openmc.RectLattice(name='Fuel assembly (lower half)',
                                   lattice_id=100)
-        l100.dimension = (17, 17)
         l100.lower_left = (-10.71, -10.71)
         l100.pitch = (1.26, 1.26)
         l100.universes = [
@@ -384,7 +387,6 @@ class InputSet(object):
 
         l101 = openmc.RectLattice(name='Fuel assembly (upper half)',
                                   lattice_id=101)
-        l101.dimension = (17, 17)
         l101.lower_left = (-10.71, -10.71)
         l101.pitch = (1.26, 1.26)
         l101.universes = [
@@ -444,7 +446,6 @@ class InputSet(object):
         # Define core lattices
         l200 = openmc.RectLattice(name='Core lattice (lower half)',
                                   lattice_id=200)
-        l200.dimension = (21, 21)
         l200.lower_left = (-224.91, -224.91)
         l200.pitch = (21.42, 21.42)
         l200.universes = [
@@ -472,7 +473,6 @@ class InputSet(object):
 
         l201 = openmc.RectLattice(name='Core lattice (lower half)',
                                   lattice_id=201)
-        l201.dimension = (21, 21)
         l201.lower_left = (-224.91, -224.91)
         l201.pitch = (21.42, 21.42)
         l201.universes = [
@@ -550,11 +550,8 @@ class InputSet(object):
 
         root.add_cells((c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12))
 
-        # Define the geometry file.
-        geometry = openmc.Geometry()
-        geometry.root_universe = root
-
-        self.geometry.geometry = geometry
+        # Assign root universe to geometry
+        self.geometry.root_universe = root
 
     def build_default_settings(self):
         self.settings.batches = 10
@@ -572,6 +569,109 @@ class InputSet(object):
         plot.color = 'mat'
 
         self.plots.add_plot(plot)
+
+
+class PinCellInputSet(object):
+    def __init__(self):
+        self.settings = openmc.Settings()
+        self.materials = openmc.Materials()
+        self.geometry = openmc.Geometry()
+        self.tallies = None
+        self.plots = None
+
+    def export(self):
+        self.settings.export_to_xml()
+        self.materials.export_to_xml()
+        self.geometry.export_to_xml()
+        if self.tallies is not None:
+            self.tallies.export_to_xml()
+        if self.plots is not None:
+            self.plots.export_to_xml()
+
+    def build_default_materials_and_geometry(self):
+        # Define materials.
+        fuel = openmc.Material(name='Fuel')
+        fuel.set_density('g/cm3', 10.29769)
+        fuel.add_nuclide("U-234", 4.4843e-6)
+        fuel.add_nuclide("U-235", 5.5815e-4)
+        fuel.add_nuclide("U-238", 2.2408e-2)
+        fuel.add_nuclide("O-16", 4.5829e-2)
+
+        clad = openmc.Material(name='Cladding')
+        clad.set_density('g/cm3', 6.55)
+        clad.add_nuclide("Zr-90", 2.1827e-2)
+        clad.add_nuclide("Zr-91", 4.7600e-3)
+        clad.add_nuclide("Zr-92", 7.2758e-3)
+        clad.add_nuclide("Zr-94", 7.3734e-3)
+        clad.add_nuclide("Zr-96", 1.1879e-3)
+
+        hot_water = openmc.Material(name='Hot borated water')
+        hot_water.set_density('g/cm3', 0.740582)
+        hot_water.add_nuclide("H-1", 4.9457e-2)
+        hot_water.add_nuclide("O-16", 2.4672e-2)
+        hot_water.add_nuclide("B-10", 8.0042e-6)
+        hot_water.add_nuclide("B-11", 3.2218e-5)
+        hot_water.add_s_alpha_beta('HH2O', '71t')
+
+        # Define the materials file.
+        self.materials.default_xs = '71c'
+        self.materials += (fuel, clad, hot_water)
+
+        # Instantiate ZCylinder surfaces
+        fuel_or = openmc.ZCylinder(x0=0, y0=0, R=0.39218, name='Fuel OR')
+        clad_or = openmc.ZCylinder(x0=0, y0=0, R=0.45720, name='Clad OR')
+        left = openmc.XPlane(x0=-0.63, name='left')
+        right = openmc.XPlane(x0=0.63, name='right')
+        bottom = openmc.YPlane(y0=-0.63, name='bottom')
+        top = openmc.YPlane(y0=0.63, name='top')
+
+        left.boundary_type = 'reflective'
+        right.boundary_type = 'reflective'
+        top.boundary_type = 'reflective'
+        bottom.boundary_type = 'reflective'
+
+        # Instantiate Cells
+        fuel_pin = openmc.Cell(name='cell 1')
+        cladding = openmc.Cell(name='cell 3')
+        water = openmc.Cell(name='cell 2')
+
+        # Use surface half-spaces to define regions
+        fuel_pin.region = -fuel_or
+        cladding.region = +fuel_or & -clad_or
+        water.region = +clad_or & +left & -right & +bottom & -top
+
+        # Register Materials with Cells
+        fuel_pin.fill = fuel
+        cladding.fill = clad
+        water.fill = hot_water
+
+        # Instantiate Universe
+        root = openmc.Universe(universe_id=0, name='root universe')
+
+        # Register Cells with Universe
+        root.add_cells([fuel_pin, cladding, water])
+
+        # Instantiate a Geometry, register the root Universe, and export to XML
+        self.geometry.root_universe = root
+
+    def build_default_settings(self):
+        self.settings.batches = 10
+        self.settings.inactive = 5
+        self.settings.particles = 100
+        self.settings.source = Source(space=Box([-0.63, -0.63, -1],
+                                                [0.63, 0.63, 1],
+                                                only_fissionable=True))
+
+    def build_defualt_plots(self):
+        plot = openmc.Plot()
+        plot.filename = 'mat'
+        plot.origin = (0.0, 0.0, 0)
+        plot.width = (1.26, 1.26)
+        plot.pixels = (300, 300)
+        plot.color = 'mat'
+
+        self.plots.add_plot(plot)
+
 
 class MGInputSet(InputSet):
     def build_default_materials_and_geometry(self):
@@ -593,26 +693,26 @@ class MGInputSet(InputSet):
 
         # Define the materials file.
         self.materials.default_xs = '71c'
-        self.materials.add_materials((uo2, clad, water))
+        self.materials += (uo2, clad, water)
 
         # Define surfaces.
 
         # Assembly/Problem Boundary
-        left   = openmc.XPlane(x0=0.0, surface_id=200,
-                               boundary_type='reflective')
-        right  = openmc.XPlane(x0=10.0, surface_id=201,
-                               boundary_type='reflective')
+        left = openmc.XPlane(x0=0.0, surface_id=200,
+                             boundary_type='reflective')
+        right = openmc.XPlane(x0=10.0, surface_id=201,
+                              boundary_type='reflective')
         bottom = openmc.YPlane(y0=0.0, surface_id=300,
                                boundary_type='reflective')
-        top    = openmc.YPlane(y0=10.0, surface_id=301,
-                               boundary_type='reflective')
+        top = openmc.YPlane(y0=10.0, surface_id=301,
+                            boundary_type='reflective')
 
-        down   = openmc.ZPlane(z0=0.0, surface_id=0,
-                               boundary_type='reflective')
+        down = openmc.ZPlane(z0=0.0, surface_id=0,
+                             boundary_type='reflective')
         fuel_clad_intfc = openmc.ZPlane(z0=2.0, surface_id=1)
         clad_lwtr_intfc = openmc.ZPlane(z0=2.4, surface_id=2)
-        up     = openmc.ZPlane(z0=5.0, surface_id=3,
-                               boundary_type='reflective')
+        up = openmc.ZPlane(z0=5.0, surface_id=3,
+                           boundary_type='reflective')
 
         # Define cells
         c1 = openmc.Cell(cell_id=1)
@@ -628,14 +728,10 @@ class MGInputSet(InputSet):
         # Define root universe.
         root = openmc.Universe(universe_id=0, name='root universe')
 
-        root.add_cells((c1,c2,c3))
+        root.add_cells((c1, c2, c3))
 
-        # Define the geometry file.
-        geometry = openmc.Geometry()
-        geometry.root_universe = root
-
-        self.geometry.geometry = geometry
-
+        # Assign root universe to geometry
+        self.geometry.root_universe = root
 
     def build_default_settings(self):
         self.settings.batches = 10
@@ -656,8 +752,3 @@ class MGInputSet(InputSet):
         plot.color = 'mat'
 
         self.plots.add_plot(plot)
-
-
-
-
-

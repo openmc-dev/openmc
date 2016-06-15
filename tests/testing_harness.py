@@ -6,20 +6,18 @@ import hashlib
 from optparse import OptionParser
 import os
 import shutil
-from subprocess import Popen, STDOUT, PIPE, call
 import sys
 
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 from input_set import InputSet, MGInputSet
-from openmc.statepoint import StatePoint
-from openmc.executor import Executor
-import openmc.particle_restart as pr
+import openmc
 
 
 class TestHarness(object):
     """General class for running OpenMC regression tests."""
+
     def __init__(self, statepoint_name, tallies_present=False):
         self._sp_name = statepoint_name
         self._tallies = tallies_present
@@ -63,34 +61,32 @@ class TestHarness(object):
             self._cleanup()
 
     def _run_openmc(self):
-        executor = Executor()
-
         if self._opts.mpi_exec is not None:
-            returncode = executor.run_simulation(mpi_procs=self._opts.mpi_np,
-                                                 openmc_exec=self._opts.exe,
-                                                 mpi_exec=self._opts.mpi_exec)
+            returncode = openmc.run(mpi_procs=self._opts.mpi_np,
+                                    openmc_exec=self._opts.exe,
+                                    mpi_exec=self._opts.mpi_exec)
 
         else:
-            returncode = executor.run_simulation(openmc_exec=self._opts.exe)
+            returncode = openmc.run(openmc_exec=self._opts.exe)
 
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
     def _test_output_created(self):
         """Make sure statepoint.* and tallies.out have been created."""
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
-        assert len(statepoint) == 1, 'Either multiple or no statepoint files ' \
-             'exist.'
+        assert len(statepoint) == 1, 'Either multiple or no statepoint files' \
+            ' exist.'
         assert statepoint[0].endswith('h5'), \
-             'Statepoint file is not a HDF5 file.'
+            'Statepoint file is not a HDF5 file.'
         if self._tallies:
             assert os.path.exists(os.path.join(os.getcwd(), 'tallies.out')), \
-                 'Tally output file does not exist.'
+                'Tally output file does not exist.'
 
     def _get_results(self, hash_output=False):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = StatePoint(statepoint)
+        sp = openmc.StatePoint(statepoint)
 
         # Write out k-combined.
         outstr = 'k-combined:\n'
@@ -102,7 +98,7 @@ class TestHarness(object):
             tally_num = 1
             for tally_ind in sp.tallies:
                 tally = sp.tallies[tally_ind]
-                results = np.zeros((tally.sum.size*2, ))
+                results = np.zeros((tally.sum.size * 2, ))
                 results[0::2] = tally.sum.ravel()
                 results[1::2] = tally.sum_sq.ravel()
                 results = ['{0:12.6E}'.format(x) for x in results]
@@ -137,9 +133,10 @@ class TestHarness(object):
 
     def _cleanup(self):
         """Delete statepoints, tally, and test files."""
-        output = glob.glob(os.path.join(os.getcwd(), 'statepoint.*.*'))
+        output = glob.glob(os.path.join(os.getcwd(), 'statepoint.*.h5'))
         output.append(os.path.join(os.getcwd(), 'tallies.out'))
         output.append(os.path.join(os.getcwd(), 'results_test.dat'))
+        output.append(os.path.join(os.getcwd(), 'summary.h5'))
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
@@ -147,6 +144,7 @@ class TestHarness(object):
 
 class HashedTestHarness(TestHarness):
     """Specialized TestHarness that hashes the results."""
+
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         return super(HashedTestHarness, self)._get_results(True)
@@ -154,11 +152,12 @@ class HashedTestHarness(TestHarness):
 
 class CMFDTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC CMFD tests."""
+
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = StatePoint(statepoint)
+        sp = openmc.StatePoint(statepoint)
 
         # Write out the eigenvalue and tallies.
         outstr = super(CMFDTestHarness, self)._get_results()
@@ -187,6 +186,7 @@ class CMFDTestHarness(TestHarness):
 
 class ParticleRestartTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC particle restart tests."""
+
     def _run_openmc(self):
         # Set arguments
         args = {'openmc_exec': self._opts.exe}
@@ -195,28 +195,27 @@ class ParticleRestartTestHarness(TestHarness):
                          'mpi_exec': self._opts.mpi_exec})
 
         # Initial run
-        executor = Executor()
-        returncode = executor.run_simulation(**args)
+        returncode = openmc.run(**args)
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
         # Run particle restart
         args.update({'restart_file': self._sp_name})
-        returncode = executor.run_simulation(**args)
+        returncode = openmc.run(**args)
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
     def _test_output_created(self):
         """Make sure the restart file has been created."""
         particle = glob.glob(os.path.join(os.getcwd(), self._sp_name))
         assert len(particle) == 1, 'Either multiple or no particle restart ' \
-             'files exist.'
+            'files exist.'
         assert particle[0].endswith('h5'), \
-             'Particle restart file is not a HDF5 file.'
+            'Particle restart file is not a HDF5 file.'
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Read the particle restart file.
         particle = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        p = pr.Particle(particle)
+        p = openmc.Particle(particle)
 
         # Write out the properties.
         outstr = ''
@@ -233,10 +232,10 @@ class ParticleRestartTestHarness(TestHarness):
         outstr += 'particle energy:\n'
         outstr += "{0:12.6E}\n".format(p.energy)
         outstr += 'particle xyz:\n'
-        outstr += "{0:12.6E} {1:12.6E} {2:12.6E}\n".format(p.xyz[0],p.xyz[1],
+        outstr += "{0:12.6E} {1:12.6E} {2:12.6E}\n".format(p.xyz[0], p.xyz[1],
                                                            p.xyz[2])
         outstr += 'particle uvw:\n'
-        outstr += "{0:12.6E} {1:12.6E} {2:12.6E}\n".format(p.uvw[0],p.uvw[1],
+        outstr += "{0:12.6E} {1:12.6E} {2:12.6E}\n".format(p.uvw[0], p.uvw[1],
                                                            p.uvw[2])
 
         return outstr
@@ -244,13 +243,15 @@ class ParticleRestartTestHarness(TestHarness):
 
 class PyAPITestHarness(TestHarness):
     def __init__(self, statepoint_name, tallies_present=False, mg=False):
-        super(PyAPITestHarness, self).__init__(statepoint_name, tallies_present)
+        super(PyAPITestHarness, self).__init__(statepoint_name,
+                                               tallies_present)
         self.parser.add_option('--build-inputs', dest='build_only',
                                action='store_true', default=False)
         if mg:
             self._input_set = MGInputSet()
         else:
             self._input_set = InputSet()
+
     def main(self):
         """Accept commandline arguments and either run or update tests."""
         (self._opts, self._args) = self.parser.parse_args()
@@ -325,7 +326,8 @@ class PyAPITestHarness(TestHarness):
         compare = filecmp.cmp('inputs_test.dat', 'inputs_true.dat')
         if not compare:
             f = open('inputs_test.dat')
-            for line in f.readlines(): print(line)
+            for line in f.readlines():
+                print(line)
             f.close()
             os.rename('inputs_test.dat', 'inputs_error.dat')
         assert compare, 'Input files are broken.'

@@ -1,6 +1,8 @@
 import sys
 
-from openmc.checkvalue import check_type
+import openmc
+from openmc.checkvalue import check_type, check_length
+from openmc.data import natural_abundance
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -24,7 +26,7 @@ class Element(object):
         Chemical symbol of the element, e.g. Pu
     xs : str
         Cross section identifier, e.g. 71c
-    scattering : 'data' or 'iso-in-lab' or None
+    scattering : {'data', 'iso-in-lab', None}
         The type of angular scattering distribution to use
 
     """
@@ -97,7 +99,8 @@ class Element(object):
 
     @name.setter
     def name(self, name):
-        check_type('name', name, basestring)
+        check_type('element name', name, basestring)
+        check_length('element name', name, 1, 2)
         self._name = name
 
     @scattering.setter
@@ -109,3 +112,22 @@ class Element(object):
             raise ValueError(msg)
 
         self._scattering = scattering
+
+    def expand(self):
+        """Expand natural element into its naturally-occurring isotopes.
+
+        Returns
+        -------
+        isotopes : list
+            Naturally-occurring isotopes of the element. Each item of the list
+            is a tuple consisting of an openmc.Nuclide instance and the natural
+            abundance of the isotope.
+
+        """
+
+        isotopes = []
+        for isotope, abundance in natural_abundance.items():
+            if isotope.startswith(self.name + '-'):
+                nuc = openmc.Nuclide(isotope, self.xs)
+                isotopes.append((nuc, abundance))
+        return isotopes

@@ -437,6 +437,8 @@ where :math:`(x_0, y_0, z_0)` are the coordinates to the lower-left-bottom
 corner of the lattice, and :math:`p_0, p_1, p_2` are the pitches along the
 :math:`x`, :math:`y`, and :math:`z` axes, respectively.
 
+.. _hexagonal_indexing:
+
 Hexagonal Lattice Indexing
 --------------------------
 

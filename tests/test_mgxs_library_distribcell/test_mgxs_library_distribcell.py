@@ -12,10 +12,6 @@ import openmc.mgxs
 
 class MGXSTestHarness(PyAPITestHarness):
     def _build_inputs(self):
-
-        # The openmc.mgxs module needs a summary.h5 file
-        self._input_set.settings.output = {'summary': True}
-
         # Generate inputs using parent class routine
         super(MGXSTestHarness, self)._build_inputs()
 
@@ -24,18 +20,19 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Initialize MGXS Library for a few cross section types
         # for one material-filled cell in the geometry
-        self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry.geometry)
+        self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
         self.mgxs_lib.by_nuclide = False
-        self.mgxs_lib.mgxs_types = ['transport', 'nu-fission',
-                                    'nu-scatter matrix', 'chi']
+        # Test all MGXS types
+        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
+        self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'distribcell'
         material_cells = self.mgxs_lib.openmc_geometry.get_all_material_cells()
         self.mgxs_lib.domains = [material_cells[-1]]
         self.mgxs_lib.build_library()
 
         # Initialize a tallies file
-        self._input_set.tallies = openmc.TalliesFile()
+        self._input_set.tallies = openmc.Tallies()
         self.mgxs_lib.add_to_tallies_file(self._input_set.tallies, merge=False)
         self._input_set.tallies.export_to_xml()
 
@@ -45,11 +42,6 @@ class MGXSTestHarness(PyAPITestHarness):
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = openmc.StatePoint(statepoint)
-
-        # Read the summary file.
-        summary = glob.glob(os.path.join(os.getcwd(), 'summary.h5'))[0]
-        su = openmc.Summary(summary)
-        sp.link_with_summary(su)
 
         # Load the MGXS library from the statepoint
         self.mgxs_lib.load_from_statepoint(sp)
@@ -63,7 +55,7 @@ class MGXSTestHarness(PyAPITestHarness):
             for mgxs_type in avg_lib.mgxs_types:
                 mgxs = avg_lib.get_mgxs(domain, mgxs_type)
                 df = mgxs.get_pandas_dataframe()
-                outstr += df.to_string()
+                outstr += df.to_string() + '\n'
 
         # Hash the results if necessary
         if hash_output:

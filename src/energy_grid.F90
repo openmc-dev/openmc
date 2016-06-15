@@ -27,7 +27,7 @@ contains
     integer :: i ! index in nuclides array
     integer :: j ! index in materials array
     type(ListReal) :: list
-    type(NuclideCE),  pointer :: nuc
+    type(Nuclide),  pointer :: nuc
     type(Material), pointer :: mat
 
     call write_message("Creating unionized energy grid...", 5)
@@ -70,7 +70,7 @@ contains
     real(8) :: E_max                 ! Maximum energy in MeV
     real(8) :: E_min                 ! Minimum energy in MeV
     real(8), allocatable :: umesh(:) ! Equally log-spaced energy grid
-    type(NuclideCE), pointer :: nuc
+    type(Nuclide), pointer :: nuc
 
     ! Set minimum/maximum energies
     E_max = energy_max_neutron
@@ -179,7 +179,7 @@ contains
     integer :: index_e      ! index on union energy grid
     real(8) :: union_energy ! energy on union grid
     real(8) :: energy       ! energy on nuclide grid
-    type(NuclideCE),  pointer :: nuc
+    type(Nuclide),  pointer :: nuc
     type(Material), pointer :: mat
 
     do k = 1, n_materials

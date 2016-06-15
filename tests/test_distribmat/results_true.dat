@@ -1,9 +1,9 @@
 k-combined:
-1.309285E+00 1.263629E-02
+1.291341E+00 1.269369E-02
 Cell
 	ID             =	11
 	Name           =	
-	Material       =	[2, 3, void, 2]
+	Fill           =	[2, 3, None, 2]
 	Region         =	-10000
 	Rotation       =	None
 	Translation    =	None

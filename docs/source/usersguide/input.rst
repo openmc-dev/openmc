@@ -897,10 +897,18 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
     *Default*: None
 
   :boundary:
-    The boundary condition for the surface. This can be "transmission",
-    "vacuum", or "reflective".
+     The boundary condition for the surface. This can be "transmission",
+     "vacuum", "reflective", or "periodic". Periodic boundary conditions can
+     only be applied to x-, y-, and z-planes. Only axis-aligned periodicity is
+     supported, i.e., x-planes can only be paired with x-planes. Specify which
+     planes are periodic and the code will automatically identify which planes
+     are paired together.
 
     *Default*: "transmission"
+
+  :periodic_surface_id:
+     If a periodic boundary condition is applied, this attribute identifies the
+     ``id`` of the corresponding periodic sufrace.
 
 The following quadratic surfaces can be modeled:
 
@@ -1032,6 +1040,20 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     .. code-block:: xml
 
         <cell fill="..." rotation="0 0 90" />
+
+    The rotation applied is an intrinsic rotation whose Tait-Bryan angles are
+    given as those specified about the x, y, and z axes respectively. That is to
+    say, if the angles are :math:`(\phi, \theta, \psi)`, then the rotation
+    matrix applied is :math:`R_z(\psi) R_y(\theta) R_x(\phi)` or
+
+    .. math::
+
+       \left [ \begin{array}{ccc} \cos\theta \cos\psi & -\cos\theta \sin\psi +
+       \sin\phi \sin\theta \cos\psi & \sin\phi \sin\psi + \cos\phi \sin\theta
+       \cos\psi \\ \cos\theta \sin\psi & \cos\phi \cos\psi + \sin\phi \sin\theta
+       \sin\psi & -\sin\phi \cos\psi + \cos\phi \sin\theta \sin\psi \\
+       -\sin\theta & \sin\phi \cos\theta & \cos\phi \cos\theta \end{array}
+       \right ]
 
     *Default*: None
 
@@ -1215,11 +1237,10 @@ Each ``material`` element can have the following attributes or sub-elements:
     An element with attributes/sub-elements called ``value`` and ``units``. The
     ``value`` attribute is the numeric value of the density while the ``units``
     can be "g/cm3", "kg/m3", "atom/b-cm", "atom/cm3", or "sum". The "sum" unit
-    indicates that values appearing in ``ao`` attributes for ``<nuclide>`` and
-    ``<element>`` sub-elements are to be interpreted as nuclide/element
-    densities in atom/b-cm, and the total density of the material is taken as
-    the sum of all nuclides/elements. The "sum" option cannot be used in
-    conjunction with weight percents.  The "macro" unit is used with
+    indicates that values appearing in ``ao`` or ``wo`` attributes for ``<nuclide>``
+    and ``<element>`` sub-elements are to be interpreted as absolute nuclide/element
+    densities in atom/b-cm or g/cm3, and the total density of the material is
+    taken as the sum of all nuclides/elements. The "macro" unit is used with
     a ``macroscopic`` quantity to indicate that the density is already included
     in the library and thus not needed here.  However, if a value is provided
     for the ``value``, then this is treated as a number density multiplier on
@@ -1258,6 +1279,9 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+    .. note:: The ``scattering`` attribute/sub-element is not used in the
+              multi-group :ref:`energy_mode`.
+
   :element:
 
     Specifies that a natural element is present in the material. The natural
@@ -1293,6 +1317,9 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+    .. note:: The ``scattering`` attribute/sub-element is not used in the
+              multi-group :ref:`energy_mode`.
+
   :sab:
     Associates an S(a,b) table with the material. This element has
     attributes/sub-elements called ``name`` and ``xs``. The ``name`` attribute
@@ -1300,6 +1327,8 @@ Each ``material`` element can have the following attributes or sub-elements:
     and ``xs`` is the cross-section identifier for the table.
 
     *Default*: None
+
+    .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
   :macroscopic:
     The ``macroscopic`` element is similar to the ``nuclide`` element, but,
@@ -1569,7 +1598,8 @@ The ``<tally>`` element accepts the following sub-elements:
         |Score                 | Description                                       |
         +======================+===================================================+
         |absorption            |Total absorption rate. This accounts for all       |
-        |                      |reactions which do not produce secondary neutrons. |
+        |                      |reactions which do not produce secondary neutrons  |
+        |                      |as well as fission.                                |
         +----------------------+---------------------------------------------------+
         |elastic               |Elastic scattering reaction rate.                  |
         +----------------------+---------------------------------------------------+

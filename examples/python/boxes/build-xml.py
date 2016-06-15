@@ -1,8 +1,5 @@
 import numpy as np
-
 import openmc
-from openmc.source import Source
-from openmc.stats import Box
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -39,15 +36,14 @@ moderator.add_nuclide(h1, 2.)
 moderator.add_nuclide(o16, 1.)
 moderator.add_s_alpha_beta('HH2O', '71t')
 
-# Instantiate a MaterialsFile, register all Materials, and export to XML
-materials_file = openmc.MaterialsFile()
+# Instantiate a Materials collection and export to XML
+materials_file = openmc.Materials([fuel1, fuel2, moderator])
 materials_file.default_xs = '71c'
-materials_file.add_materials([fuel1, fuel2, moderator])
 materials_file.export_to_xml()
 
 
 ###############################################################################
-#                 Exporting to OpenMC geometry.xml File
+#                 Exporting to OpenMC geometry.xml file
 ###############################################################################
 
 # Instantiate planar surfaces
@@ -100,26 +96,25 @@ outer_box.fill = moderator
 root = openmc.Universe(universe_id=0, name='root universe')
 root.add_cells([inner_box, middle_box, outer_box])
 
-# Instantiate a Geometry and register the root Universe
-geometry = openmc.Geometry()
-geometry.root_universe = root
-
-# Instantiate a GeometryFile, register Geometry, and export to XML
-geometry_file = openmc.GeometryFile()
-geometry_file.geometry = geometry
-geometry_file.export_to_xml()
+# Instantiate a Geometry, register the root Universe, and export to XML
+geometry = openmc.Geometry(root)
+geometry.export_to_xml()
 
 
 ###############################################################################
 #                   Exporting to OpenMC settings.xml File
 ###############################################################################
 
-# Instantiate a SettingsFile, set all runtime parameters, and export to XML
-settings_file = openmc.SettingsFile()
+# Instantiate a Settings object, set all runtime parameters, and export to XML
+settings_file = openmc.Settings()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
-settings_file.source = Source(space=Box(*outer_cube.bounding_box))
+
+# Create an initial uniform spatial source distribution over fissionable zones
+uniform_dist = openmc.stats.Box(*outer_cube.bounding_box, only_fissionable=True)
+settings_file.source = openmc.source.Source(space=uniform_dist)
+
 settings_file.export_to_xml()
 
 ###############################################################################
@@ -132,7 +127,6 @@ plot.width = [20, 20]
 plot.pixels = [200, 200]
 plot.color = 'cell'
 
-# Instantiate a PlotsFile, add Plot, and export to XML
-plot_file = openmc.PlotsFile()
-plot_file.add_plot(plot)
+# Instantiate a Plots collection and export to XML
+plot_file = openmc.Plots([plot])
 plot_file.export_to_xml()

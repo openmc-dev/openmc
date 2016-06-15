@@ -702,31 +702,4 @@ contains
 
   end function watt_spectrum
 
-
-!===============================================================================
-! find_angle finds the closest angle on the data grid and returns that index
-!===============================================================================
-
-    pure subroutine find_angle(polar, azimuthal, uvw, i_azi, i_pol)
-      real(8), intent(in) :: polar(:)     ! Polar angles [0,pi]
-      real(8), intent(in) :: azimuthal(:) ! Azi. angles [-pi,pi]
-      real(8), intent(in) :: uvw(3)       ! Direction of motion
-      integer, intent(inout) :: i_pol     ! Closest polar bin
-      integer, intent(inout) :: i_azi     ! Closest azi bin
-
-      real(8) :: my_pol, my_azi, dangle
-
-      ! Convert uvw to polar and azi
-
-      my_pol = acos(uvw(3))
-      my_azi = atan2(uvw(2), uvw(1))
-
-      ! Search for equi-binned angles
-      dangle = PI / real(size(polar),8)
-      i_pol  = floor(my_pol / dangle + ONE)
-      dangle = TWO * PI / real(size(azimuthal),8)
-      i_azi  = floor((my_azi + PI) / dangle + ONE)
-
-    end subroutine find_angle
-
 end module math

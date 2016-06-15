@@ -155,7 +155,7 @@ class Universe(object):
         return []
 
     def plot(self, center=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
-             basis='xy', color_by='cell', seed=None):
+             basis='xy', color_by='cell', colors=None, filename=None, seed=None):
         """Display a slice plot of the universe.
 
         Parameters
@@ -170,6 +170,22 @@ class Universe(object):
             The basis directions for the plot
         color_by : {'cell', 'material'}
             Indicate whether the plot should be colored by cell or by material
+        colors : dict
+
+            Assigns colors to specific materials or cells. Keys are instances of
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples or RGBA
+            4-tuples. Red, green, blue, and alpha should all be floats in the
+            range [0.0, 1.0], for example:
+
+            .. code-block:: python
+
+               # Make water blue
+               water = openmc.Cell(fill=h2o)
+               universe.plot(..., colors={water: (0., 0., 1.))
+
+        filename : str or None
+            Filename to save plot to. If no filename is given, the plot will be
+            displayed using the currently enabled matplotlib backend.
         seed : hashable object or None
             Hashable object which is used to seed the random number generator
             used to select colors. If None, the generator is seeded from the
@@ -181,6 +197,15 @@ class Universe(object):
         # Seed the random number generator
         if seed is not None:
             random.seed(seed)
+
+        if colors is None:
+            # Create default dictionary if none supplied
+            colors = {}
+        else:
+            # Convert to RGBA if necessary
+            for obj, rgb in colors.items():
+                if len(rgb) == 3:
+                    colors[obj] = rgb + (1.0,)
 
         if basis == 'xy':
             x_min = center[0] - 0.5*width[0]
@@ -206,7 +231,7 @@ class Universe(object):
         y_coords = np.linspace(y_max, y_min, pixels[1], endpoint=False) - \
                    0.5*(y_max - y_min)/pixels[1]
 
-        colors = {}
+        # Search for locations and assign colors
         img = np.zeros(pixels + (4,))  # Use RGBA form
         for i, x in enumerate(x_coords):
             for j, y in enumerate(y_coords):
@@ -220,21 +245,27 @@ class Universe(object):
                 if len(path) > 0:
                     try:
                         if color_by == 'cell':
-                            uid = path[-1].id
+                            obj = path[-1]
                         elif color_by == 'material':
                             if path[-1].fill_type == 'material':
-                                uid = path[-1].fill.id
+                                obj = path[-1].fill
                             else:
                                 continue
                     except AttributeError:
                         continue
-                    if uid not in colors:
-                        colors[uid] = (random.random(), random.random(),
+                    if obj not in colors:
+                        colors[obj] = (random.random(), random.random(),
                                        random.random(), 1.0)
-                    img[j,i,:] = colors[uid]
+                    img[j,i,:] = colors[obj]
 
+        # Display image
         plt.imshow(img, extent=(x_min, x_max, y_min, y_max))
-        plt.show()
+
+        # Show or save the plot
+        if filename is None:
+            plt.show()
+        else:
+            plt.savefig(filename)
 
     def add_cell(self, cell):
         """Add a cell to the universe.

@@ -219,7 +219,7 @@ Multi-Group Scattering
 
 In multi-group mode, a scattering collision requires that the outgoing energy
 group of the simulated particle be selected from a probability distribution,
-then the change-in-angle selected from a probability distribution according to
+the change-in-angle selected from a probability distribution according to
 the outgoing energy group, and finally the particle's weight adjusted again
 according to the outgoing energy group.
 
@@ -232,17 +232,19 @@ produced from the outgoing group (`g'`) data for the given incoming group (`g`):
     CDF = \sum_{g'=0}^{h}\Sigma_{s,g \arrow g'}
 
 If the scattering data is represented as a Legendre expansion, then the
-value of :math:`\Sigma_{s,g \arrow g'}` above is simply the 0th order. If the
-data is provided as tabular or histogram data, then the value of
-:math:`\Sigma_{s,g \arrow g'}` is the sum of all bins of data for a given `g`
-and `g'` pair.
+value of :math:`\Sigma_{s,g \arrow g'}` above is simply the 0th order for the
+given group transfer. If the data is provided as tabular or histogram data, then
+the value of :math:`\Sigma_{s,g \arrow g'}` is the sum of all bins of data for a
+given `g` and `g'` pair.
 
 Now that the outgoing energy is known the change-in-angle, :math:`\mu` can be
 determined. If the data is provided as a Legendre expansion, this is done by
 rejection sampling of the probability distribution represented by the Legendre
 series. For efficiency, the selected values of the PDF (:math:`f(\mu)`) are
 chosen to be between 0 and the maximum value of :math:`f(\mu)` in the domain of
--1 to 1.
+-1 to 1. Note that this sampling scheme automatically forces negative values of
+the :math:`f(\mu)` probability distribution function to be treated as zero
+probabilities.
 
 If the angular data is instead provided as a tabular representation, then the
 value of :math:`\mu` is selected as described in the :ref:`angle-tabular`
@@ -254,7 +256,7 @@ the selection of the outgoing energy (since the energy group representation is
 simply a histogram representation) except the CDF is composed of the angular
 bins and not the energy groups.  However, since we are interested in a specific
 value of :math:`\mu` instead of a group, then an angle selected from a uniform
-distribution within from the chosen histogram bin.
+distribution within from the chosen angular bin.
 
 The final step in the scattering treatment is to adjust the weight of the
 neutron to account for any production of neutrons due to :math:`(n,xn)`

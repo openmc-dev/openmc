@@ -76,47 +76,45 @@ The format is described in the :ref:`mgxs_lib_spec`.
 The data itself can be prepared via traditional paths or directly from a
 continuous-energy OpenMC calculation by use of the Python API as is shown in the
 Python API :ref:`_notebook_mgxs_part_iv` example notebook. This multi-group
-library consists of library meta-data (such as the energy group structure) and
-multiple `xsdata` objects which contains the required microscopic or macroscopic
+library consists of meta-data (such as the energy group structure) and multiple
+`xsdata` objects which contains the required microscopic or macroscopic
 multi-group data.
 
 At a minimum, the library must contain the absorption cross section
 (:math:`\sigma_{a,g}`) and a scattering matrix. If the problem is an eigenvalue
-problem then all fissionable materials must also contain either fission spectrum
-data (:math:`\chi{g'}`) and a fission production cross section
-(:math:`\nu\sigma_{f,g}`), or, a fission production matrix cross section
-(:math:`\nu\sigma_{f,g\arrow\g'}`).  If fission or energy release from fission
-tallies are requested by the user, then the library must also contain the
-fission cross section (:math:`\sigma_{f,g}`) or the fission energy release
-cross section (:math:`\kappa\sigma_{f,g}`).
+problem then all fissionable materials must also contain either
+a fission production matrix cross section (:math:`\nu\sigma_{f,g\arrow\g'}`), or
+both the fission spectrum data (:math:`\chi{g'}`) and a fission production cross
+section (:math:`\nu\sigma_{f,g}`), or, .  The library must also contain
+the fission cross section (:math:`\sigma_{f,g}`) or the fission energy release
+cross section (:math:`\kappa\sigma_{f,g}`) if the associated tallies are
+required by the model using the library.
 
 After a scattering collision, the outgoing particle experiences a change in both
 energy and angle. The probability of a particle resulting in a given outgoing
 energy group (`g'`) given a certain incoming energy group (`g`) is provided
-by the scattering matrix cross sections themselves.  The angular information,
-however, can be expressed either via Legendre expansion of the particle's
-change-in-angle (:math:`\mu`), a tabular representation of the probability of
-a particle experiencing a given :math:`\mu`, or a histogram representation of the
-probability of a particle experiencing a given :math:`\mu`. The formats used to
+by the scattering matrix data.  The angular information can be expressed either
+via Legendre expansion of the particle's change-in-angle (:math:`\mu`), a
+tabular representation of the probability distribution function of :math:`\mu`,
+or a histogram representation of the same PDF. The formats used to
 represent these are described in the :ref:`mgxs_lib_spec`.
 
 Unlike the continuous-energy mode, the multi-group mode does not explicitly
 track particles produced from scattering multiplication (i.e., :math:`(n,xn)`)
 reactions.  These are instead accounted for by adjusting the weight of the
 particle after the collision such that the correct total weight is maintained.
-The information for how to adjust this weight is optionally provided by the
-`multiplicity` data which exists as a group-wise matrix. This data represents
-the average number of particles emitted from a scattering reaction, given a
-scattering reaction has occurred:
+The weight adjustment factor is optionally provided by the `multiplicity` data
+which is required to be provided in the form of a group-wise matrix.
+This data is provided as a group-wise matrix since the probability of producing
+multiple particles in a scattering reaction depends on both the incoming energy,
+`g`, and the sampled outgoing energy, `g'`. This data represents the average
+number of particles emitted from a scattering reaction, given a scattering
+reaction has occurred:
 
 .. math::
 
     multiplicity_{g \arrow g'} = \frac{\nu_{scatter}\sigma_{s,g \arrow g'}}{
     								   \sigma_{s,g \arrow g'}}
-
-This data is provided as a group-wise matrix since the probability of producing
-multiple particles in a scattering reaction depends on both the incoming energy,
-`g`, and the sampled outgoing energy, `g'`.
 
 If this scattering multiplication information is not provided in the library
 then no weight adjustment will be performed. This is equivalent to neglecting
@@ -134,7 +132,7 @@ follows:
 
     \sigma_{a,g} = \sigma_{t,g} - \sum_{g'}{\nu_{scatter}\sigma_{s,g \arrow g'}}
 
-The above method is the same as is typically done with most deterministic methods.
+The above method is the same as is usually done with most deterministic solvers.
 Note that this method is less accurate than using the scattering multiplication
 weight adjustment since simply reducing the absorption cross section does not
 include any information about the outgoing energy of the particles produced in

@@ -4,6 +4,10 @@
 Tallies
 =======
 
+Note that the methods discussed in this section are written specifically for
+continuous-energy mode but equivalent apply to the multi-group mode if the
+particle's energy is replaced with the particle's group
+
 ------------------
 Filters and Scores
 ------------------

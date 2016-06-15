@@ -75,7 +75,7 @@ are represented using a multi-group library format specific to the OpenMC code.
 The format is described in the :ref:`mgxs_lib_spec`.
 The data itself can be prepared via traditional paths or directly from a
 continuous-energy OpenMC calculation by use of the Python API as is shown in the
-Python API :ref:`_notebook_mgxs_part_iv` example notebook. This multi-group
+:ref:`notebook_mgxs_part_iv` example notebook. This multi-group
 library consists of meta-data (such as the energy group structure) and multiple
 `xsdata` objects which contains the required microscopic or macroscopic
 multi-group data.
@@ -83,9 +83,10 @@ multi-group data.
 At a minimum, the library must contain the absorption cross section
 (:math:`\sigma_{a,g}`) and a scattering matrix. If the problem is an eigenvalue
 problem then all fissionable materials must also contain either
-a fission production matrix cross section (:math:`\nu\sigma_{f,g\arrow\g'}`), or
-both the fission spectrum data (:math:`\chi{g'}`) and a fission production cross
-section (:math:`\nu\sigma_{f,g}`), or, .  The library must also contain
+a fission production matrix cross section
+(:math:`\nu\sigma_{f,g\rightarrow g'}`), or
+both the fission spectrum data (:math:`\chi_{g'}`) and a fission production
+cross section (:math:`\nu\sigma_{f,g}`), or, .  The library must also contain
 the fission cross section (:math:`\sigma_{f,g}`) or the fission energy release
 cross section (:math:`\kappa\sigma_{f,g}`) if the associated tallies are
 required by the model using the library.
@@ -113,8 +114,8 @@ reaction has occurred:
 
 .. math::
 
-    multiplicity_{g \arrow g'} = \frac{\nu_{scatter}\sigma_{s,g \arrow g'}}{
-    								   \sigma_{s,g \arrow g'}}
+    multiplicity_{g \rightarrow g'} = \frac{\nu_{scatter}\sigma_{s,g \rightarrow g'}}{
+    								   \sigma_{s,g \rightarrow g'}}
 
 If this scattering multiplication information is not provided in the library
 then no weight adjustment will be performed. This is equivalent to neglecting
@@ -130,7 +131,7 @@ follows:
 
 .. math::
 
-    \sigma_{a,g} = \sigma_{t,g} - \sum_{g'}{\nu_{scatter}\sigma_{s,g \arrow g'}}
+    \sigma_{a,g} = \sigma_{t,g} - \sum_{g'}\nu_{scatter}\sigma_{s,g \rightarrow g'}
 
 The above method is the same as is usually done with most deterministic solvers.
 Note that this method is less accurate than using the scattering multiplication

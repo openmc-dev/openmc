@@ -87,7 +87,7 @@ Elastic Scattering
 
 Note that the multi-group mode makes no distinction between elastic or
 inelastic scattering reactions. The spceific multi-group scattering
-implementation is discussed in the multi-group-scatter_ section.
+implementation is discussed in the :ref:`multi-group-scatter` section.
 
 Elastic scattering refers to the process by which a neutron scatters off a
 nucleus and does not leave it in an excited. It is referred to as "elastic"
@@ -182,7 +182,7 @@ Inelastic Scattering
 
 Note that the multi-group mode makes no distinction between elastic or
 inelastic scattering reactions. The spceific multi-group scattering
-implementation is discussed in the multi-group-scatter_ section.
+implementation is discussed in the :ref:`multi-group-scatter` section.
 
 The major algorithms for inelastic scattering were described in previous
 sections. First, a scattering cosine is sampled using the algorithms in
@@ -202,7 +202,7 @@ secondary photons from nuclear de-excitation are tracked in OpenMC.
 
 Note that the multi-group mode makes no distinction between elastic or
 inelastic scattering reactions. The specific multi-group scattering
-implementation is discussed in the multi-group-scatter_ section.
+implementation is discussed in the :ref:`multi-group-scatter` section.
 
 These types of reactions are just treated as inelastic scattering and as such
 are subject to the same procedure as described in :ref:`inelastic-scatter`. For
@@ -229,13 +229,13 @@ incoming energy group is to select a random number (:math:`\xi`) between 0 and
 produced from the outgoing group (`g'`) data for the given incoming group (`g`):
 
 .. math::
-    CDF = \sum_{g'=0}^{h}\Sigma_{s,g \arrow g'}
+    CDF = \sum_{g'=0}^{h}\Sigma_{s,g \rightarrow g'}
 
 If the scattering data is represented as a Legendre expansion, then the
-value of :math:`\Sigma_{s,g \arrow g'}` above is simply the 0th order for the
+value of :math:`\Sigma_{s,g \rightarrow g'}` above is the 0th order forthe
 given group transfer. If the data is provided as tabular or histogram data, then
-the value of :math:`\Sigma_{s,g \arrow g'}` is the sum of all bins of data for a
-given `g` and `g'` pair.
+:math:`\Sigma_{s,g \rightarrow g'}` is the sum of all bins of data for a given
+`g` and `g'` pair.
 
 Now that the outgoing energy is known the change-in-angle, :math:`\mu` can be
 determined. If the data is provided as a Legendre expansion, this is done by

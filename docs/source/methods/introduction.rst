@@ -56,9 +56,9 @@ following steps:
     combined to produce material-specific cross section data.
 
   - In a fixed source problem, source sites are sampled from the specified
-    source. In an eigenvalue problem, source sites are sampled from some initial
-    source distribution or from a source file. The source sites consist of
-    coordinates, a direction, and an energy.
+    source. In an eigenvalue problem, source sites are sampled from some
+    initial source distribution or from a source file. The source sites
+    consist of coordinates, a direction, and an energy.
 
 Once initialization is complete, the actual transport simulation can
 proceed. The life of a single particle will proceed as follows:

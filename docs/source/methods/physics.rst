@@ -8,7 +8,7 @@ There are limited differences between physics treatments used in the
 continuous-energy and multi-group modes.  If distinctions are necessary, each
 of the following sections will provide an explanation of the differences.
 Otherwise, replacing any references of the particle's energy (`E`) with
-references to the particle's energy group (`g) will suffice.
+references to the particle's energy group (`g`) will suffice.
 
 -----------------------------------
 Sampling Distance to Next Collision

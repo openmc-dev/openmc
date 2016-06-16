@@ -81,7 +81,6 @@ print('Verifying MD5 checksums...')
 for f, checksum in zip(files, checksums):
     fname = f[:-9] if f.endswith('?raw=true') else f
     downloadsum = hashlib.md5(open(fname, 'rb').read()).hexdigest()
-    print(downloadsum)
     if downloadsum != checksum:
         raise IOError("MD5 checksum for {} does not match. If this is your first "
                       "time receiving this message, please re-run the script. "

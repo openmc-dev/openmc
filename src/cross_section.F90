@@ -151,6 +151,7 @@ contains
                                        ! material union energy grid
     real(8), intent(in) :: sqrtkT    ! Square root of kT, material dependent
 
+    logical :: use_mp ! true if XS can be calculated with windowed multipole
     integer :: i_grid ! index on nuclide energy grid
     integer :: i_low  ! lower logarithmic mapping index
     integer :: i_high ! upper logarithmic mapping index
@@ -163,11 +164,17 @@ contains
     nuc => nuclides(i_nuclide)
     mat => materials(i_mat)
 
-    ! If MP, don't interpolate, it's all already baked in.
-    if (nuc % mp_present .and. &
-         (E >= nuc % multipole % start_E/1.0e6_8 .and.&
-          E <= nuc % multipole % end_E/1.0e6_8)) then
+    ! Check to see if there is multipole data present at this energy
+    use_mp = .false.
+    if (nuc % mp_present) then
+      if (E >= nuc % multipole % start_E/1.0e6_8 .and. &
+           E <= nuc % multipole % end_E/1.0e6_8) then
+        use_mp = .true.
+      end if
+    end if
 
+    ! Evaluate multipole or interpolate
+    if (use_mp) then
       ! Call multipole kernel
       call multipole_eval(nuc % multipole, E, sqrtkT, sigT, sigA, sigF)
 

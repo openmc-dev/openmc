@@ -20,8 +20,8 @@ Windowed Multipole Library Format
         are stored as
         
         .. math::
-        \text{data}[:,i] = [\text{pole},~\text{residue}_1,~\text{residue}_2,
-        ~\ldots]`
+            \text{data}[:,i] = [\text{pole},~\text{residue}_1,~\text{residue}_2,
+            ~\ldots]
 
         The residues are in the order: total, competitive if present,
         absorption, fission. Complex numbers are stored by forming a type with

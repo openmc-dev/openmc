@@ -3672,6 +3672,8 @@ contains
             t % score_bins(j) = N_PT
           case ('(n,da)')
             t % score_bins(j) = N_DA
+          case ('q')
+            t % score_bins(j) = SCORE_Q
 
           case default
             ! Assume that user has specified an MT number

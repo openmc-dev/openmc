@@ -58,6 +58,7 @@ class Cell(object):
     rotation : Iterable of float
         If the cell is filled with a universe, this array specifies the angles
         in degrees about the x, y, and z axes that the filled universe should be
+        rotated. The rotation applied is an intrinsic rotation with specified
         Tait-Bryan angles. That is to say, if the angles are :math:`(\phi,
         \theta, \psi)`, then the rotation matrix applied is :math:`R_z(\psi)
         R_y(\theta) R_x(\phi)` or

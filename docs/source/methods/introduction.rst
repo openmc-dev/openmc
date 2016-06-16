@@ -124,7 +124,7 @@ proceed. The life of a single particle will proceed as follows:
      continuous-energy simulation, reactions of type :math:`(n,xn)` are treated
      as scattering and any additional particles which may be created are added
      to a secondary particle bank to be tracked later. In a multi-group
-     simulation, this secondary bank is ont used but the particle weight is
+     simulation, this secondary bank is not used but the particle weight is
      increased accordingly.  The original particle then continues from step 3.
      If the reaction is absorption or fission, the particle dies and if
      necessary, fission sites are created and stored in the fission bank.

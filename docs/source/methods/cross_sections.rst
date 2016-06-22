@@ -63,6 +63,82 @@ Other Methods
 A good survey of other energy grid techniques, including unionized energy grids,
 can be found in a paper by Leppanen_.
 
+---------------------------------
+Windowed Multipole Representation
+---------------------------------
+
+In addition to the usual pointwise representation of cross sections, OpenMC
+offers support for an experimental data format called windowed multipole (WMP).
+This data format requires less memory than pointwise cross sections, and it
+allows on-the-fly Doppler broadening to arbitrary temperature.
+
+The multipole method was introduced by [Hwang]_ and the faster windowed
+multipole method by [Josey]_.  In the multipole format, cross section resonances
+are represented by poles, :math:`p_j`, and residues, :math:`r_j`, in the complex
+plane.  The 0K cross sections in the resolved resonance region can be computed
+by summing up a contribution from each pole:
+
+.. math::
+   \sigma(E, T=0\text{K}) = \frac{1}{E} \sum_j \text{Re} \left[
+   \frac{i r_j}{\sqrt{E} - p_j} \right]
+
+Assuming free-gas thermal motion, cross sections in the multipole form can be
+analytically Doppler broadened to give the form:
+
+.. math::
+   \sigma(E, T) = \frac{1}{2 E \sqrt{\xi}} \sum_j \text{Re} \left[i r_j
+   \sqrt{\pi} W_i(z) - \frac{r_j}{\sqrt{\pi}} C \left(\frac{p_j}{\sqrt{\xi}},
+   \frac{u}{2 \sqrt{\xi}}\right)\right]
+.. math::
+   W_i(z) = \frac{i}{\pi} \int_{-\infty}^\infty dt \frac{e^{-t^2}}{z - t}
+.. math::
+   C \left(\frac{p_j}{\sqrt{\xi}},\frac{u}{2 \sqrt{\xi}}\right) =
+   2p_j \int_0^\infty du' \frac{e^{-(u + u')^2/4\xi}}{p_j^2 - u'^2}
+.. math::
+   z = \frac{\sqrt{E} - p_j}{2 \sqrt{\xi}}
+.. math::
+   \xi = \frac{k_B T}{4 A}
+.. math::
+   u = \sqrt{E}
+
+where :math:`T` is the temperature of the resonant scatterer, :math:`k_B` is the
+Boltzmann constant, :math:`A` is the mass of the target nucleus. For
+:math:`E \gg k_b T/A`, the :math:`C` integral is approximately zero, simplifying
+the cross section to:
+
+.. math::
+   \sigma(E, T) = \frac{1}{2 E \sqrt{\xi}} \sum_j \text{Re} \left[i r_j
+   \sqrt{\pi} W_i(z)\right]
+
+The :math:`W_i` integral simplifies down to an analytic form.  We define the
+Faddeeva function, :math:`W` as:
+
+.. math::
+   W(z) = e^{-z^2} \text{Erfc}(-iz)
+
+Through this, the integral transforms as follows:
+
+.. math::
+   \text{Im} (z) > 0 : W_i(z) = W(z)
+.. math::
+   \text{Im} (z) < 0 : W_i(z) = -W(z^*)^*
+
+There are freely available algorithms_ to evaluate the Faddeeva function. For
+many nuclides, the Faddeeva function needs to be evaluated thousands of times to
+calculate a cross section.  To mitigate that computational cost, the WMP method
+only evaluates poles within a certain energy "window" around the incident
+neutron energy and accounts for the effect of resonances outside that window
+with a polynomial fit.  This polynomial fit is then broadened exactly. This
+exact broadening can make up for the removal of the :math:`C` integral, as
+typically at low energies, only curve fits are used.
+
+Note that the implementation of WMP in OpenMC currently assumes that inelastic
+scattering does not occur in the resolved resonance region.  This is usually,
+but not always the case.  Future library versions may eliminate this issue.
+
+The data format used by OpenMC to represent windowed multipole data is specified
+in :ref:`io_data_wmp`
+
 .. only:: html
 
    .. rubric:: References
@@ -70,8 +146,17 @@ can be found in a paper by Leppanen_.
 .. [Brown] Forrest B. Brown, "New Hash-based Energy Lookup Algorithm for Monte
            Carlo codes," LA-UR-14-24530, Los Alamos National Laboratory (2014).
 
+.. [Hwang] R. N. Hwang, "A Rigorous Pole Representation of Multilevel Cross
+           Sections and Its Practical Application,"  *Nucl. Sci. Eng.*, **96**,
+           192-209 (1987).
+
+.. [Josey] Colin Josey, Pablo Ducru, Benoit Forget, and Kord Smith, "Windowed
+           Multipole for Cross Section Doppler Broadening," *J. Comp. Phys*,
+           **307**, 715-727 (2016). http://dx.doi.org/10.1016/j.jcp.2015.08.013
+
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _NJOY: http://t2.lanl.gov/codes.shtml
 .. _ENDF/B data: http://www.nndc.bnl.gov/endf
 .. _Leppanen: http://dx.doi.org/10.1016/j.anucene.2009.03.019
+.. _algorithms: http://ab-initio.mit.edu/wiki/index.php/Faddeeva_Package

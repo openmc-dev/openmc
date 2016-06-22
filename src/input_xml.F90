@@ -140,9 +140,9 @@ contains
               call fatal_error("No cross_sections.xml file was specified in &
                    &settings.xml or in the OPENMC_CROSS_SECTIONS environment &
                    &variable. OpenMC needs such a file to identify where to &
-                   &find ACE cross section libraries. Please consult the user's &
-                   &guide at http://mit-crpg.github.io/openmc for information on &
-                   &how to set up ACE cross section libraries.")
+                   &find ACE cross section libraries. Please consult the &
+                   &user's guide at http://mit-crpg.github.io/openmc for &
+                   &information on how to set up ACE cross section libraries.")
             else
               call warning("The CROSS_SECTIONS environment variable is &
                    &deprecated. Please update your environment to use &
@@ -151,7 +151,8 @@ contains
           end if
           path_cross_sections = trim(env_variable)
         else
-          call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", env_variable)
+          call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", &
+                                        env_variable)
           if (len_trim(env_variable) == 0) then
             call fatal_error("No mgxs.xml file was specified in &
                  &settings.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
@@ -166,6 +167,20 @@ contains
       else
         call get_node_value(doc, "cross_sections", path_cross_sections)
       end if
+    end if
+
+    ! Find the windowed multipole library
+    if (run_mode /= MODE_PLOTTING) then
+      if (.not. check_for_node(doc, "multipole_library")) then
+        ! No library location specified in settings.xml, check
+        ! environment variable
+        call get_environment_variable("OPENMC_MULTIPOLE_LIBRARY", env_variable)
+        path_multipole = trim(env_variable)
+      else
+        call get_node_value(doc, "multipole_library", path_multipole)
+      end if
+      if (.not. ends_with(path_multipole, "/")) &
+           path_multipole = trim(path_multipole) // "/"
     end if
 
     if (.not. run_CE) then
@@ -1096,6 +1111,20 @@ contains
       end select
     end if
 
+    ! Check to see if windowed multipole functionality is requested
+    if (check_for_node(doc, "use_windowed_multipole")) then
+      call get_node_value(doc, "use_windowed_multipole", temp_str)
+      select case (to_lower(temp_str))
+      case ('true', '1')
+        multipole_active = .true.
+      case ('false', '0')
+        multipole_active = .false.
+      case default
+        call fatal_error("Unrecognized value for <use_windowed_multipole> in &
+             &settings.xml")
+      end select
+    end if
+
     ! Close settings XML file
     call close_xmldoc(doc)
 
@@ -1355,6 +1384,44 @@ contains
         ! Copy translation vector
         allocate(c % translation(3))
         call get_node_array(node_cell, "translation", c % translation)
+      end if
+
+      ! Read cell temperatures.  If the temperature is not specified, set it to
+      ! ERROR_REAL for now.  During initialization we'll replace ERROR_REAL with
+      ! the temperature from the material data.
+      if (.not. run_CE) then
+        ! Cell temperatures are not used for MG mode.
+        allocate(c % sqrtkT(1))
+        c % sqrtkT(1) = ZERO
+      else if (check_for_node(node_cell, "temperature")) then
+        n = get_arraysize_double(node_cell, "temperature")
+        if (n > 0) then
+          ! Make sure this is a "normal" cell.
+          if (c % material(1) == NONE) call fatal_error("Cell " &
+               // trim(to_str(c % id)) // " was specified with a temperature &
+               &but no material. Temperature specification is only valid for &
+               &cells filled with a material.")
+
+          ! Copy in temperatures
+          allocate(c % sqrtkT(n))
+          call get_node_array(node_cell, "temperature", c % sqrtkT)
+
+          ! Make sure all temperatues are positive
+          do j = 1, size(c % sqrtkT)
+            if (c % sqrtkT(j) < ZERO) call fatal_error("Cell " &
+                 // trim(to_str(c % id)) // " was specified with a negative &
+                 &temperature. All cell temperatures must be non-negative.")
+          end do
+
+          ! Convert to sqrt(kT)
+          c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
+        else
+          allocate(c % sqrtkT(1))
+          c % sqrtkT(1) = ERROR_REAL
+        end if
+      else
+        allocate(c % sqrtkT(1))
+        c % sqrtkT = ERROR_REAL
       end if
 
       ! Add cell to dictionary

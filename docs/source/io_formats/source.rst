@@ -1,4 +1,4 @@
-.. _usersguide_source:
+.. _io_source:
 
 ==================
 Source File Format

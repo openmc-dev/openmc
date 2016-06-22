@@ -45,6 +45,9 @@ before_script:
   - cat nndc_xs/nndc.tar.gza* | tar xzvf -
   - rm -rf nndc_xs
   - export OPENMC_CROSS_SECTIONS=$PWD/nndc/cross_sections.xml
+  - git clone --branch=master git://github.com/smharper/windowed_multipole_library.git wmp_lib
+  - tar xzvf wmp_lib/multipole_lib.tar.gz
+  - export OPENMC_MULTIPOLE_LIBRARY=$PWD/multipole_lib
   - cd ..
 
 script:

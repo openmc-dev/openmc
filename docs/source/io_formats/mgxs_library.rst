@@ -1,4 +1,4 @@
-.. _usersguide_mgxs_library:
+.. _io_mgxs_library:
 
 ========================================
 Multi-Group Cross Section Library Format

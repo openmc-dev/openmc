@@ -8,6 +8,10 @@ This page section discusses how nonlinear diffusion acceleration (NDA) using
 coarse mesh finite difference (CMFD) is implemented into OpenMC. Before we get
 into the theory, general notation for this section is discussed.
 
+Note that the methods discussed in this section are written specifically for
+continuous-energy mode but equivalent apply to the multi-group mode if the
+particle's energy is replaced with the particle's group
+
 --------
 Notation
 --------

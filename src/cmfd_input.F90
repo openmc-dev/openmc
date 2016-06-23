@@ -267,7 +267,9 @@ contains
     use mesh_header,      only: RegularMesh
     use string
     use tally,            only: setup_active_cmfdtallies
-    use tally_header,     only: TallyObject, TallyFilter
+    use tally_header,     only: TallyObject
+    use tally_filter_header
+    use tally_filter
     use tally_initialize, only: add_tallies
     use xml_interface
 
@@ -283,7 +285,7 @@ contains
     real(8) :: rarray3(3) ! temp double array
     type(TallyObject),    pointer :: t
     type(RegularMesh), pointer :: m
-    type(TallyFilter) :: filters(N_FILTER_TYPES) ! temporary filters
+    type(TallyFilterContainer) :: filters(N_FILTER_TYPES) ! temporary filters
     type(Node), pointer :: node_mesh
 
     ! Set global variables if they are 0 (this can happen if there is no tally
@@ -410,21 +412,25 @@ contains
 
       ! Set up mesh filter
       n_filters = 1
-      filters(n_filters) % type = FILTER_MESH
-      filters(n_filters) % n_bins = product(m % dimension)
-      allocate(filters(n_filters) % int_bins(1))
-      filters(n_filters) % int_bins(1) = n_user_meshes + 1
+      allocate(MeshFilter::filters(n_filters) % obj)
+      select type (filt => filters(n_filters) % obj)
+      type is (MeshFilter)
+        filt % n_bins = product(m % dimension)
+        filt % mesh = n_user_meshes + 1
+      end select
       t % find_filter(FILTER_MESH) = n_filters
 
       ! Read and set incoming energy mesh filter
       if (check_for_node(node_mesh, "energy")) then
         n_filters = n_filters + 1
-        filters(n_filters) % type = FILTER_ENERGYIN
-        ng = get_arraysize_double(node_mesh, "energy")
-        filters(n_filters) % n_bins = ng - 1
-        allocate(filters(n_filters) % real_bins(ng))
-        call get_node_array(node_mesh, "energy", &
-             filters(n_filters) % real_bins)
+        allocate(EnergyFilter::filters(n_filters) % obj)
+        select type (filt => filters(n_filters) % obj)
+        type is (EnergyFilter)
+          ng = get_arraysize_double(node_mesh, "energy")
+          filt % n_bins = ng - 1
+          allocate(filt % bins(ng))
+          call get_node_array(node_mesh, "energy", filt % bins)
+        end select
         t % find_filter(FILTER_ENERGYIN) = n_filters
       end if
 
@@ -481,12 +487,14 @@ contains
         ! read and set outgoing energy mesh filter
         if (check_for_node(node_mesh, "energy")) then
           n_filters = n_filters + 1
-          filters(n_filters) % type = FILTER_ENERGYOUT
-          ng = get_arraysize_double(node_mesh, "energy")
-          filters(n_filters) % n_bins = ng - 1
-          allocate(filters(n_filters) % real_bins(ng))
-          call get_node_array(node_mesh, "energy", &
-               filters(n_filters) % real_bins)
+          allocate(EnergyoutFilter::filters(n_filters) % obj)
+          select type (filt => filters(n_filters) % obj)
+          type is (EnergyoutFilter)
+            ng = get_arraysize_double(node_mesh, "energy")
+            filt % n_bins = ng - 1
+            allocate(filt % bins(ng))
+            call get_node_array(node_mesh, "energy", filt % bins)
+          end select
           t % find_filter(FILTER_ENERGYOUT) = n_filters
         end if
 
@@ -496,8 +504,12 @@ contains
         t % filters = filters(1:n_filters)
 
         ! deallocate filters bins array
-        if (check_for_node(node_mesh, "energy")) &
-             deallocate(filters(n_filters) % real_bins)
+        if (check_for_node(node_mesh, "energy")) then
+          select type (filt => filters(n_filters) % obj)
+          type is (EnergyoutFilter)
+            deallocate(filt % bins)
+          end select
+        end if
 
         ! Allocate macro reactions
         allocate(t % score_bins(2))
@@ -522,16 +534,18 @@ contains
 
         ! Add extra filter for surface
         n_filters = n_filters + 1
-        filters(n_filters) % type = FILTER_SURFACE
-        filters(n_filters) % n_bins = 2 * m % n_dimension
-        allocate(filters(n_filters) % int_bins(2 * m % n_dimension))
-        if (m % n_dimension == 2) then
-          filters(n_filters) % int_bins = (/ IN_RIGHT, OUT_RIGHT, IN_FRONT, &
-               OUT_FRONT /)
-        elseif (m % n_dimension == 3) then
-          filters(n_filters) % int_bins = (/ IN_RIGHT, OUT_RIGHT, IN_FRONT, &
-               OUT_FRONT, IN_TOP, OUT_TOP /)
-        end if
+        allocate(SurfaceFilter::filters(n_filters) % obj)
+        select type(filt => filters(n_filters) % obj)
+        type is(SurfaceFilter)
+          filt % n_bins = 2 * m % n_dimension
+          allocate(filt % surfaces(2 * m % n_dimension))
+          if (m % n_dimension == 2) then
+            filt % surfaces = (/ IN_RIGHT, OUT_RIGHT, IN_FRONT, OUT_FRONT /)
+          elseif (m % n_dimension == 3) then
+            filt % surfaces = (/ IN_RIGHT, OUT_RIGHT, IN_FRONT, OUT_FRONT, &
+                 IN_TOP, OUT_TOP /)
+          end if
+        end select
         t % find_filter(FILTER_SURFACE) = n_filters
 
         ! Allocate and set filters
@@ -540,7 +554,10 @@ contains
         t % filters = filters(1:n_filters)
 
         ! Deallocate filters bins array
-        deallocate(filters(n_filters) % int_bins)
+        select type(filt => filters(n_filters) % obj)
+        type is (SurfaceFilter)
+          deallocate(filt % surfaces)
+        end select
 
         ! Allocate macro reactions
         allocate(t % score_bins(1))
@@ -558,14 +575,17 @@ contains
         ! We need to increase the dimension by one since we also need
         ! currents coming into and out of the boundary mesh cells.
         i_filter_mesh = t % find_filter(FILTER_MESH)
-        t % filters(i_filter_mesh) % n_bins = product(m % dimension + 1)
+        t % filters(i_filter_mesh) % obj % n_bins = product(m % dimension + 1)
 
       end if
 
       ! Deallocate filter bins
-      deallocate(filters(1) % int_bins)
-      if (check_for_node(node_mesh, "energy")) &
-           deallocate(filters(2) % real_bins)
+      if (check_for_node(node_mesh, "energy")) then
+        select type(filt => filters(2) % obj)
+        type is (EnergyFilter)
+         deallocate(filt % bins)
+        end select
+      end if 
 
     end do
 

@@ -1,7 +1,9 @@
 module tally_header
 
-  use constants,          only: NONE, N_FILTER_TYPES
-  use trigger_header,     only: TriggerObject
+  use constants,           only: NONE, N_FILTER_TYPES
+  use tally_filter_header, only: TallyFilterContainer
+  use trigger_header,      only: TriggerObject
+
   use, intrinsic :: ISO_C_BINDING
 
   implicit none
@@ -52,12 +54,12 @@ module tally_header
 ! should score to the tally.
 !===============================================================================
 
-  type TallyFilter
-    integer :: type = NONE
-    integer :: n_bins = 0
-    integer, allocatable :: int_bins(:)
-    real(8), allocatable :: real_bins(:) ! Only used for energy filters
-  end type TallyFilter
+!  type TallyFilter
+!    integer :: type = NONE
+!    integer :: n_bins = 0
+!    integer, allocatable :: int_bins(:)
+!    real(8), allocatable :: real_bins(:) ! Only used for energy filters
+!  end type TallyFilter
 
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
@@ -77,7 +79,8 @@ module tally_header
     ! Information about what filters should be used
 
     integer                        :: n_filters    ! Number of filters
-    type(TallyFilter), allocatable :: filters(:)   ! Filter data (type/bins)
+    !type(TallyFilter), allocatable :: filters(:)   ! Filter data (type/bins)
+    type(TallyFilterContainer), allocatable :: filters(:)
 
     ! The stride attribute is used for determining the index in the results
     ! array for a matching_bin combination. Since multiple dimensions are

@@ -12,6 +12,7 @@ module trigger
   use mesh_header,    only: RegularMesh
   use trigger_header, only: TriggerObject
   use tally,          only: TallyObject
+  use tally_filter,   only: MeshFilter
 
   implicit none
 
@@ -300,7 +301,10 @@ contains
     ! Get pointer to mesh
     i_filter_mesh = t % find_filter(FILTER_MESH)
     i_filter_surf = t % find_filter(FILTER_SURFACE)
-    m => meshes(t % filters(i_filter_mesh) % int_bins(1))
+    select type(filt => t % filters(i_filter_mesh) % obj)
+    type is (MeshFilter)
+      m => meshes(filt % mesh)
+    end select
 
     ! initialize bins array
     matching_bins(1:t % n_filters) = 1
@@ -309,7 +313,7 @@ contains
     i_filter_ein = t % find_filter(FILTER_ENERGYIN)
     if (i_filter_ein > 0) then
       print_ebin = .true.
-      n = t % filters(i_filter_ein) % n_bins
+      n = t % filters(i_filter_ein) % obj % n_bins
     else
       print_ebin = .false.
       n = 1

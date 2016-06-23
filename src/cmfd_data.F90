@@ -6,6 +6,7 @@ module cmfd_data
 !==============================================================================
 
   use constants
+  use tally_filter, only: MeshFilter
 
   implicit none
   private
@@ -94,7 +95,10 @@ contains
 
     ! Associate tallies and mesh
     t => cmfd_tallies(1)
-    i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
+    select type(filt => t % filters(t % find_filter(FILTER_MESH)) % obj)
+    type is (MeshFilter)
+      i_mesh = filt % mesh
+    end select
     m => meshes(i_mesh)
 
     ! Set mesh widths
@@ -109,7 +113,10 @@ contains
 
       ! Associate tallies and mesh
       t => cmfd_tallies(ital)
-      i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
+      select type(filt => t % filters(t % find_filter(FILTER_MESH)) % obj)
+      type is (MeshFilter)
+        i_mesh = filt % mesh
+      end select
       m => meshes(i_mesh)
 
       i_filter_mesh = t % find_filter(FILTER_MESH)

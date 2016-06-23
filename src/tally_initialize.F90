@@ -55,7 +55,7 @@ contains
       n = 1
       STRIDE: do j = t % n_filters, 1, -1
         t % stride(j) = n
-        n = n * t % filters(j) % n_bins
+        n = n * t % filters(j) % obj % n_bins
       end do STRIDE
 
       ! Set total number of filter and scoring bins
@@ -83,49 +83,49 @@ contains
 
   subroutine setup_tally_maps()
 
-    integer :: i    ! loop index for tallies
-    integer :: j    ! loop index for filters
-    integer :: k    ! loop index for bins
-    integer :: bin  ! filter bin entries
-    integer :: type ! type of tally filter
-    type(TallyObject), pointer :: t
-
-    ! allocate tally map array -- note that we don't need a tally map for the
-    ! energy_in and energy_out filters
-    allocate(tally_maps(N_FILTER_TYPES - 3))
-
-    ! allocate list of items for each different filter type
-    allocate(tally_maps(FILTER_UNIVERSE) % items(n_universes))
-    allocate(tally_maps(FILTER_MATERIAL) % items(n_materials))
-    allocate(tally_maps(FILTER_CELL)     % items(n_cells))
-    allocate(tally_maps(FILTER_CELLBORN) % items(n_cells))
-    allocate(tally_maps(FILTER_SURFACE)  % items(n_surfaces))
-
-    TALLY_LOOP: do i = 1, n_tallies
-      ! Get pointer to tally
-      t => tallies(i)
-
-      ! No need to set up tally maps for surface current tallies
-      if (t % type == TALLY_SURFACE_CURRENT) cycle
-
-      FILTER_LOOP: do j = 1, t % n_filters
-        ! Determine type of filter
-        type = t % filters(j) % type
-
-        if (type == FILTER_CELL .or. type == FILTER_SURFACE .or. &
-             type == FILTER_MATERIAL .or. type == FILTER_UNIVERSE .or. &
-             type == FILTER_CELLBORN) then
-
-          ! Add map elements
-          BIN_LOOP: do k = 1, t % filters(j) % n_bins
-            bin = t % filters(j) % int_bins(k)
-            call add_map_element(tally_maps(type) % items(bin), i, k)
-          end do BIN_LOOP
-        end if
-
-      end do FILTER_LOOP
-
-    end do TALLY_LOOP
+!    integer :: i    ! loop index for tallies
+!    integer :: j    ! loop index for filters
+!    integer :: k    ! loop index for bins
+!    integer :: bin  ! filter bin entries
+!    integer :: type ! type of tally filter
+!    type(TallyObject), pointer :: t
+!
+!    ! allocate tally map array -- note that we don't need a tally map for the
+!    ! energy_in and energy_out filters
+!    allocate(tally_maps(N_FILTER_TYPES - 3))
+!
+!    ! allocate list of items for each different filter type
+!    allocate(tally_maps(FILTER_UNIVERSE) % items(n_universes))
+!    allocate(tally_maps(FILTER_MATERIAL) % items(n_materials))
+!    allocate(tally_maps(FILTER_CELL)     % items(n_cells))
+!    allocate(tally_maps(FILTER_CELLBORN) % items(n_cells))
+!    allocate(tally_maps(FILTER_SURFACE)  % items(n_surfaces))
+!
+!    TALLY_LOOP: do i = 1, n_tallies
+!      ! Get pointer to tally
+!      t => tallies(i)
+!
+!      ! No need to set up tally maps for surface current tallies
+!      if (t % type == TALLY_SURFACE_CURRENT) cycle
+!
+!      FILTER_LOOP: do j = 1, t % n_filters
+!        ! Determine type of filter
+!        type = t % filters(j) % type
+!
+!        if (type == FILTER_CELL .or. type == FILTER_SURFACE .or. &
+!             type == FILTER_MATERIAL .or. type == FILTER_UNIVERSE .or. &
+!             type == FILTER_CELLBORN) then
+!
+!          ! Add map elements
+!          BIN_LOOP: do k = 1, t % filters(j) % n_bins
+!            bin = t % filters(j) % int_bins(k)
+!            call add_map_element(tally_maps(type) % items(bin), i, k)
+!          end do BIN_LOOP
+!        end if
+!
+!      end do FILTER_LOOP
+!
+!    end do TALLY_LOOP
 
   end subroutine setup_tally_maps
 

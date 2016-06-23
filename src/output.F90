@@ -757,233 +757,233 @@ contains
     ! Skip if there are no tallies
     if (n_tallies == 0) return
 
-    ! Initialize names for tally filter types
-    filter_name(FILTER_UNIVERSE)     = "Universe"
-    filter_name(FILTER_MATERIAL)     = "Material"
-    filter_name(FILTER_DISTRIBCELL)  = "Distributed Cell"
-    filter_name(FILTER_CELL)         = "Cell"
-    filter_name(FILTER_CELLBORN)     = "Birth Cell"
-    filter_name(FILTER_SURFACE)      = "Surface"
-    filter_name(FILTER_MESH)         = "Mesh"
-    filter_name(FILTER_ENERGYIN)     = "Incoming Energy"
-    filter_name(FILTER_ENERGYOUT)    = "Outgoing Energy"
-    filter_name(FILTER_MU)           = "Change-in-Angle"
-    filter_name(FILTER_POLAR)        = "Polar Angle"
-    filter_name(FILTER_AZIMUTHAL)    = "Azimuthal Angle"
-    filter_name(FILTER_DELAYEDGROUP) = "Delayed Group"
-
-    ! Initialize names for scores
-    score_names(abs(SCORE_FLUX))               = "Flux"
-    score_names(abs(SCORE_TOTAL))              = "Total Reaction Rate"
-    score_names(abs(SCORE_SCATTER))            = "Scattering Rate"
-    score_names(abs(SCORE_NU_SCATTER))         = "Scattering Production Rate"
-    score_names(abs(SCORE_ABSORPTION))         = "Absorption Rate"
-    score_names(abs(SCORE_FISSION))            = "Fission Rate"
-    score_names(abs(SCORE_NU_FISSION))         = "Nu-Fission Rate"
-    score_names(abs(SCORE_KAPPA_FISSION))      = "Kappa-Fission Rate"
-    score_names(abs(SCORE_EVENTS))             = "Events"
-    score_names(abs(SCORE_FLUX_YN))            = "Flux Moment"
-    score_names(abs(SCORE_TOTAL_YN))           = "Total Reaction Rate Moment"
-    score_names(abs(SCORE_SCATTER_N))          = "Scattering Rate Moment"
-    score_names(abs(SCORE_SCATTER_PN))         = "Scattering Rate Moment"
-    score_names(abs(SCORE_SCATTER_YN))         = "Scattering Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_N))       = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_PN))      = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_NU_SCATTER_YN))      = "Scattering Prod. Rate Moment"
-    score_names(abs(SCORE_DELAYED_NU_FISSION)) = "Delayed-Nu-Fission Rate"
-    score_names(abs(SCORE_INVERSE_VELOCITY))   = "Flux-Weighted Inverse Velocity"
-
-    ! Create filename for tally output
-    filename = trim(path_output) // "tallies.out"
-
-    ! Open tally file for writing
-    open(FILE=filename, NEWUNIT=unit_tally, STATUS='replace', ACTION='write')
-
-    ! Calculate t-value for confidence intervals
-    if (confidence_intervals) then
-      alpha = ONE - CONFIDENCE_LEVEL
-      t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
-    end if
-
-    TALLY_LOOP: do i = 1, n_tallies
-      t => tallies(i)
-
-      if (confidence_intervals) then
-        ! Calculate t-value for confidence intervals
-        if (confidence_intervals) then
-          alpha = ONE - CONFIDENCE_LEVEL
-          t_value = t_percentile(ONE - alpha/TWO, t % n_realizations - 1)
-        end if
-
-        ! Multiply uncertainty by t-value
-        t % results % sum_sq = t_value * t % results % sum_sq
-      end if
-
-      ! Write header block
-      if (t % name == "") then
-        call header("TALLY " // trim(to_str(t % id)), unit=unit_tally, &
-             level=3)
-      else
-        call header("TALLY " // trim(to_str(t % id)) // ": " &
-             // trim(t % name), unit=unit_tally, level=3)
-      endif
-
-      ! Handle surface current tallies separately
-      if (t % type == TALLY_SURFACE_CURRENT) then
-        call write_surface_current(t, unit_tally)
-        cycle
-      end if
-
-      ! WARNING: Admittedly, the logic for moving for printing results is
-      ! extremely confusing and took quite a bit of time to get correct. The
-      ! logic is structured this way since it is not practical to have a do
-      ! loop for each filter variable (given that only a few filters are likely
-      ! to be used for a given tally.
-
-      ! Initialize bins, filter level, and indentation
-      matching_bins(1:t%n_filters) = 0
-      j = 1
-      indent = 0
-
-      print_bin: do
-        find_bin: do
-          ! Check for no filters
-          if (t % n_filters == 0) exit find_bin
-
-          ! Increment bin combination
-          matching_bins(j) = matching_bins(j) + 1
-
-          ! =================================================================
-          ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
-
-          if (matching_bins(j) > t % filters(j) % n_bins) then
-            ! If this is the first filter, then exit
-            if (j == 1) exit print_bin
-
-            matching_bins(j) = 0
-            j = j - 1
-            indent = indent - 2
-
-            ! =================================================================
-            ! VALID BIN -- WRITE FILTER INFORMATION OR EXIT TO WRITE RESULTS
-
-          else
-            ! Check if this is last filter
-            if (j == t % n_filters) exit find_bin
-
-            ! Print current filter information
-            type = t % filters(j) % type
-            write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-                 trim(filter_name(type)), trim(get_label(t, j))
-            indent = indent + 2
-            j = j + 1
-          end if
-
-        end do find_bin
-
-        ! Print filter information
-        if (t % n_filters > 0) then
-          type = t % filters(j) % type
-          write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-               trim(filter_name(type)), trim(get_label(t, j))
-        end if
-
-        ! Determine scoring index for this bin combination -- note that unlike
-        ! in the score_tally subroutine, we have to use max(bins,1) since all
-        ! bins below the lowest filter level will be zeros
-
-        if (t % n_filters > 0) then
-          filter_index = sum((max(matching_bins(1:t%n_filters),1) - 1) * t % stride) + 1
-        else
-          filter_index = 1
-        end if
-
-        ! Write results for this filter bin combination
-        score_index = 0
-        if (t % n_filters > 0) indent = indent + 2
-        do n = 1, t % n_nuclide_bins
-          ! Write label for nuclide
-          i_nuclide = t % nuclide_bins(n)
-          if (i_nuclide == -1) then
-            write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-                 "Total Material"
-          else
-            if (run_CE) then
-              i_listing = nuclides(i_nuclide) % listing
-            else
-              i_listing = nuclides_MG(i_nuclide) % obj % listing
-            end if
-            write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-                 trim(xs_listings(i_listing) % alias)
-          end if
-
-          indent = indent + 2
-          k = 0
-          do l = 1, t % n_user_score_bins
-            k = k + 1
-            score_index = score_index + 1
-            select case(t % score_bins(k))
-            case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-              score_name = 'P' // trim(to_str(t % moment_order(k))) // " " // &
-                   score_names(abs(t % score_bins(k)))
-              write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                   repeat(" ", indent), score_name, &
-                   to_str(t % results(score_index,filter_index) % sum), &
-                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
-            case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
-              score_index = score_index - 1
-              do n_order = 0, t % moment_order(k)
-                score_index = score_index + 1
-                score_name = 'P' // trim(to_str(n_order)) //  " " //&
-                     score_names(abs(t % score_bins(k)))
-                write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                     repeat(" ", indent), score_name, &
-                     to_str(t % results(score_index,filter_index) % sum), &
-                     trim(to_str(t % results(score_index,filter_index) &
-                     % sum_sq))
-              end do
-              k = k + t % moment_order(k)
-            case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
-                  SCORE_TOTAL_YN)
-              score_index = score_index - 1
-              do n_order = 0, t % moment_order(k)
-                do nm_order = -n_order, n_order
-                  score_index = score_index + 1
-                  score_name = 'Y' // trim(to_str(n_order)) // ',' // &
-                       trim(to_str(nm_order)) // " " &
-                       // score_names(abs(t % score_bins(k)))
-                  write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                       repeat(" ", indent), score_name, &
-                       to_str(t % results(score_index,filter_index) % sum), &
-                       trim(to_str(t % results(score_index,filter_index)&
-                       % sum_sq))
-                end do
-              end do
-              k = k + (t % moment_order(k) + 1)**2 - 1
-            case default
-              if (t % score_bins(k) > 0) then
-                score_name = reaction_name(t % score_bins(k))
-              else
-                score_name = score_names(abs(t % score_bins(k)))
-              end if
-              write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                   repeat(" ", indent), score_name, &
-                   to_str(t % results(score_index,filter_index) % sum), &
-                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
-            end select
-          end do
-          indent = indent - 2
-
-        end do
-        indent = indent - 2
-
-        if (t % n_filters == 0) exit print_bin
-
-      end do print_bin
-
-    end do TALLY_LOOP
-
-    close(UNIT=unit_tally)
+!    ! Initialize names for tally filter types
+!    filter_name(FILTER_UNIVERSE)     = "Universe"
+!    filter_name(FILTER_MATERIAL)     = "Material"
+!    filter_name(FILTER_DISTRIBCELL)  = "Distributed Cell"
+!    filter_name(FILTER_CELL)         = "Cell"
+!    filter_name(FILTER_CELLBORN)     = "Birth Cell"
+!    filter_name(FILTER_SURFACE)      = "Surface"
+!    filter_name(FILTER_MESH)         = "Mesh"
+!    filter_name(FILTER_ENERGYIN)     = "Incoming Energy"
+!    filter_name(FILTER_ENERGYOUT)    = "Outgoing Energy"
+!    filter_name(FILTER_MU)           = "Change-in-Angle"
+!    filter_name(FILTER_POLAR)        = "Polar Angle"
+!    filter_name(FILTER_AZIMUTHAL)    = "Azimuthal Angle"
+!    filter_name(FILTER_DELAYEDGROUP) = "Delayed Group"
+!
+!    ! Initialize names for scores
+!    score_names(abs(SCORE_FLUX))               = "Flux"
+!    score_names(abs(SCORE_TOTAL))              = "Total Reaction Rate"
+!    score_names(abs(SCORE_SCATTER))            = "Scattering Rate"
+!    score_names(abs(SCORE_NU_SCATTER))         = "Scattering Production Rate"
+!    score_names(abs(SCORE_ABSORPTION))         = "Absorption Rate"
+!    score_names(abs(SCORE_FISSION))            = "Fission Rate"
+!    score_names(abs(SCORE_NU_FISSION))         = "Nu-Fission Rate"
+!    score_names(abs(SCORE_KAPPA_FISSION))      = "Kappa-Fission Rate"
+!    score_names(abs(SCORE_EVENTS))             = "Events"
+!    score_names(abs(SCORE_FLUX_YN))            = "Flux Moment"
+!    score_names(abs(SCORE_TOTAL_YN))           = "Total Reaction Rate Moment"
+!    score_names(abs(SCORE_SCATTER_N))          = "Scattering Rate Moment"
+!    score_names(abs(SCORE_SCATTER_PN))         = "Scattering Rate Moment"
+!    score_names(abs(SCORE_SCATTER_YN))         = "Scattering Rate Moment"
+!    score_names(abs(SCORE_NU_SCATTER_N))       = "Scattering Prod. Rate Moment"
+!    score_names(abs(SCORE_NU_SCATTER_PN))      = "Scattering Prod. Rate Moment"
+!    score_names(abs(SCORE_NU_SCATTER_YN))      = "Scattering Prod. Rate Moment"
+!    score_names(abs(SCORE_DELAYED_NU_FISSION)) = "Delayed-Nu-Fission Rate"
+!    score_names(abs(SCORE_INVERSE_VELOCITY))   = "Flux-Weighted Inverse Velocity"
+!
+!    ! Create filename for tally output
+!    filename = trim(path_output) // "tallies.out"
+!
+!    ! Open tally file for writing
+!    open(FILE=filename, NEWUNIT=unit_tally, STATUS='replace', ACTION='write')
+!
+!    ! Calculate t-value for confidence intervals
+!    if (confidence_intervals) then
+!      alpha = ONE - CONFIDENCE_LEVEL
+!      t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+!    end if
+!
+!    TALLY_LOOP: do i = 1, n_tallies
+!      t => tallies(i)
+!
+!      if (confidence_intervals) then
+!        ! Calculate t-value for confidence intervals
+!        if (confidence_intervals) then
+!          alpha = ONE - CONFIDENCE_LEVEL
+!          t_value = t_percentile(ONE - alpha/TWO, t % n_realizations - 1)
+!        end if
+!
+!        ! Multiply uncertainty by t-value
+!        t % results % sum_sq = t_value * t % results % sum_sq
+!      end if
+!
+!      ! Write header block
+!      if (t % name == "") then
+!        call header("TALLY " // trim(to_str(t % id)), unit=unit_tally, &
+!             level=3)
+!      else
+!        call header("TALLY " // trim(to_str(t % id)) // ": " &
+!             // trim(t % name), unit=unit_tally, level=3)
+!      endif
+!
+!      ! Handle surface current tallies separately
+!      if (t % type == TALLY_SURFACE_CURRENT) then
+!        call write_surface_current(t, unit_tally)
+!        cycle
+!      end if
+!
+!      ! WARNING: Admittedly, the logic for moving for printing results is
+!      ! extremely confusing and took quite a bit of time to get correct. The
+!      ! logic is structured this way since it is not practical to have a do
+!      ! loop for each filter variable (given that only a few filters are likely
+!      ! to be used for a given tally.
+!
+!      ! Initialize bins, filter level, and indentation
+!      matching_bins(1:t%n_filters) = 0
+!      j = 1
+!      indent = 0
+!
+!      print_bin: do
+!        find_bin: do
+!          ! Check for no filters
+!          if (t % n_filters == 0) exit find_bin
+!
+!          ! Increment bin combination
+!          matching_bins(j) = matching_bins(j) + 1
+!
+!          ! =================================================================
+!          ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
+!
+!          if (matching_bins(j) > t % filters(j) % n_bins) then
+!            ! If this is the first filter, then exit
+!            if (j == 1) exit print_bin
+!
+!            matching_bins(j) = 0
+!            j = j - 1
+!            indent = indent - 2
+!
+!            ! =================================================================
+!            ! VALID BIN -- WRITE FILTER INFORMATION OR EXIT TO WRITE RESULTS
+!
+!          else
+!            ! Check if this is last filter
+!            if (j == t % n_filters) exit find_bin
+!
+!            ! Print current filter information
+!            type = t % filters(j) % type
+!            write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
+!                 trim(filter_name(type)), trim(get_label(t, j))
+!            indent = indent + 2
+!            j = j + 1
+!          end if
+!
+!        end do find_bin
+!
+!        ! Print filter information
+!        if (t % n_filters > 0) then
+!          type = t % filters(j) % type
+!          write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
+!               trim(filter_name(type)), trim(get_label(t, j))
+!        end if
+!
+!        ! Determine scoring index for this bin combination -- note that unlike
+!        ! in the score_tally subroutine, we have to use max(bins,1) since all
+!        ! bins below the lowest filter level will be zeros
+!
+!        if (t % n_filters > 0) then
+!          filter_index = sum((max(matching_bins(1:t%n_filters),1) - 1) * t % stride) + 1
+!        else
+!          filter_index = 1
+!        end if
+!
+!        ! Write results for this filter bin combination
+!        score_index = 0
+!        if (t % n_filters > 0) indent = indent + 2
+!        do n = 1, t % n_nuclide_bins
+!          ! Write label for nuclide
+!          i_nuclide = t % nuclide_bins(n)
+!          if (i_nuclide == -1) then
+!            write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
+!                 "Total Material"
+!          else
+!            if (run_CE) then
+!              i_listing = nuclides(i_nuclide) % listing
+!            else
+!              i_listing = nuclides_MG(i_nuclide) % obj % listing
+!            end if
+!            write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
+!                 trim(xs_listings(i_listing) % alias)
+!          end if
+!
+!          indent = indent + 2
+!          k = 0
+!          do l = 1, t % n_user_score_bins
+!            k = k + 1
+!            score_index = score_index + 1
+!            select case(t % score_bins(k))
+!            case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+!              score_name = 'P' // trim(to_str(t % moment_order(k))) // " " // &
+!                   score_names(abs(t % score_bins(k)))
+!              write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
+!                   repeat(" ", indent), score_name, &
+!                   to_str(t % results(score_index,filter_index) % sum), &
+!                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
+!            case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+!              score_index = score_index - 1
+!              do n_order = 0, t % moment_order(k)
+!                score_index = score_index + 1
+!                score_name = 'P' // trim(to_str(n_order)) //  " " //&
+!                     score_names(abs(t % score_bins(k)))
+!                write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
+!                     repeat(" ", indent), score_name, &
+!                     to_str(t % results(score_index,filter_index) % sum), &
+!                     trim(to_str(t % results(score_index,filter_index) &
+!                     % sum_sq))
+!              end do
+!              k = k + t % moment_order(k)
+!            case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+!                  SCORE_TOTAL_YN)
+!              score_index = score_index - 1
+!              do n_order = 0, t % moment_order(k)
+!                do nm_order = -n_order, n_order
+!                  score_index = score_index + 1
+!                  score_name = 'Y' // trim(to_str(n_order)) // ',' // &
+!                       trim(to_str(nm_order)) // " " &
+!                       // score_names(abs(t % score_bins(k)))
+!                  write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
+!                       repeat(" ", indent), score_name, &
+!                       to_str(t % results(score_index,filter_index) % sum), &
+!                       trim(to_str(t % results(score_index,filter_index)&
+!                       % sum_sq))
+!                end do
+!              end do
+!              k = k + (t % moment_order(k) + 1)**2 - 1
+!            case default
+!              if (t % score_bins(k) > 0) then
+!                score_name = reaction_name(t % score_bins(k))
+!              else
+!                score_name = score_names(abs(t % score_bins(k)))
+!              end if
+!              write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
+!                   repeat(" ", indent), score_name, &
+!                   to_str(t % results(score_index,filter_index) % sum), &
+!                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
+!            end select
+!          end do
+!          indent = indent - 2
+!
+!        end do
+!        indent = indent - 2
+!
+!        if (t % n_filters == 0) exit print_bin
+!
+!      end do print_bin
+!
+!    end do TALLY_LOOP
+!
+!    close(UNIT=unit_tally)
 
   end subroutine write_tallies
 
@@ -1011,151 +1011,151 @@ contains
     character(MAX_LINE_LEN) :: string
     type(RegularMesh), pointer :: m
 
-    ! Get pointer to mesh
-    i_filter_mesh = t % find_filter(FILTER_MESH)
-    i_filter_surf = t % find_filter(FILTER_SURFACE)
-    m => meshes(t % filters(i_filter_mesh) % int_bins(1))
-
-    ! initialize bins array
-    matching_bins(1:t%n_filters) = 1
-
-    ! determine how many energy in bins there are
-    i_filter_ein = t % find_filter(FILTER_ENERGYIN)
-    if (i_filter_ein > 0) then
-      print_ebin = .true.
-      n = t % filters(i_filter_ein) % n_bins
-    else
-      print_ebin = .false.
-      n = 1
-    end if
-
-    do i = 1, m % dimension(1)
-      string = "Mesh Index (" // trim(to_str(i)) // ", "
-      len1 = len_trim(string)
-      do j = 1, m % dimension(2)
-        string = string(1:len1+1) // trim(to_str(j)) // ", "
-        len2 = len_trim(string)
-        do k = 1, m % dimension(3)
-          ! Write mesh cell index
-          string = string(1:len2+1) // trim(to_str(k)) // ")"
-          write(UNIT=unit_tally, FMT='(1X,A)') trim(string)
-
-          do l = 1, n
-            if (print_ebin) then
-              ! Set incoming energy bin
-              matching_bins(i_filter_ein) = l
-
-              ! Write incoming energy bin
-              write(UNIT=unit_tally, FMT='(3X,A,1X,A)') &
-                   "Incoming Energy", trim(get_label(t, i_filter_ein))
-            end if
-
-            ! Left Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i-1, j, k /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_RIGHT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Left", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            matching_bins(i_filter_surf) = OUT_RIGHT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Left", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            ! Right Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_RIGHT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Right", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            matching_bins(i_filter_surf) = OUT_RIGHT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Right", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            ! Back Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j-1, k /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_FRONT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Back", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            matching_bins(i_filter_surf) = OUT_FRONT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Back", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            ! Front Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_FRONT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Front", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            matching_bins(i_filter_surf) = OUT_FRONT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Front", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            ! Bottom Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_TOP
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Bottom", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            matching_bins(i_filter_surf) = OUT_TOP
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Bottom", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            ! Top Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_TOP
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Top", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            matching_bins(i_filter_surf) = OUT_TOP
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Top", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-          end do
-
-        end do
-      end do
-    end do
+!    ! Get pointer to mesh
+!    i_filter_mesh = t % find_filter(FILTER_MESH)
+!    i_filter_surf = t % find_filter(FILTER_SURFACE)
+!    m => meshes(t % filters(i_filter_mesh) % int_bins(1))
+!
+!    ! initialize bins array
+!    matching_bins(1:t%n_filters) = 1
+!
+!    ! determine how many energy in bins there are
+!    i_filter_ein = t % find_filter(FILTER_ENERGYIN)
+!    if (i_filter_ein > 0) then
+!      print_ebin = .true.
+!      n = t % filters(i_filter_ein) % n_bins
+!    else
+!      print_ebin = .false.
+!      n = 1
+!    end if
+!
+!    do i = 1, m % dimension(1)
+!      string = "Mesh Index (" // trim(to_str(i)) // ", "
+!      len1 = len_trim(string)
+!      do j = 1, m % dimension(2)
+!        string = string(1:len1+1) // trim(to_str(j)) // ", "
+!        len2 = len_trim(string)
+!        do k = 1, m % dimension(3)
+!          ! Write mesh cell index
+!          string = string(1:len2+1) // trim(to_str(k)) // ")"
+!          write(UNIT=unit_tally, FMT='(1X,A)') trim(string)
+!
+!          do l = 1, n
+!            if (print_ebin) then
+!              ! Set incoming energy bin
+!              matching_bins(i_filter_ein) = l
+!
+!              ! Write incoming energy bin
+!              write(UNIT=unit_tally, FMT='(3X,A,1X,A)') &
+!                   "Incoming Energy", trim(get_label(t, i_filter_ein))
+!            end if
+!
+!            ! Left Surface
+!            matching_bins(i_filter_mesh) = &
+!                 mesh_indices_to_bin(m, (/ i-1, j, k /) + 1, .true.)
+!            matching_bins(i_filter_surf) = IN_RIGHT
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Outgoing Current to Left", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!
+!            matching_bins(i_filter_surf) = OUT_RIGHT
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Incoming Current from Left", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!
+!            ! Right Surface
+!            matching_bins(i_filter_mesh) = &
+!                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
+!            matching_bins(i_filter_surf) = IN_RIGHT
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Incoming Current from Right", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!
+!            matching_bins(i_filter_surf) = OUT_RIGHT
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Outgoing Current to Right", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!
+!            ! Back Surface
+!            matching_bins(i_filter_mesh) = &
+!                 mesh_indices_to_bin(m, (/ i, j-1, k /) + 1, .true.)
+!            matching_bins(i_filter_surf) = IN_FRONT
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Outgoing Current to Back", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!
+!            matching_bins(i_filter_surf) = OUT_FRONT
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Incoming Current from Back", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!
+!            ! Front Surface
+!            matching_bins(i_filter_mesh) = &
+!                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
+!            matching_bins(i_filter_surf) = IN_FRONT
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Incoming Current from Front", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!
+!            matching_bins(i_filter_surf) = OUT_FRONT
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Outgoing Current to Front", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!
+!            ! Bottom Surface
+!            matching_bins(i_filter_mesh) = &
+!                 mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1, .true.)
+!            matching_bins(i_filter_surf) = IN_TOP
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Outgoing Current to Bottom", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!
+!            matching_bins(i_filter_surf) = OUT_TOP
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Incoming Current from Bottom", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!
+!            ! Top Surface
+!            matching_bins(i_filter_mesh) = &
+!                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
+!            matching_bins(i_filter_surf) = IN_TOP
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Incoming Current from Top", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!
+!            matching_bins(i_filter_surf) = OUT_TOP
+!            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+!                 "Outgoing Current to Top", &
+!                 to_str(t % results(1,filter_index) % sum), &
+!                 trim(to_str(t % results(1,filter_index) % sum_sq))
+!          end do
+!
+!        end do
+!      end do
+!    end do
 
   end subroutine write_surface_current
 
@@ -1178,47 +1178,47 @@ contains
     type(RegularMesh), pointer :: m
     type(Universe), pointer :: univ
 
-    bin = matching_bins(i_filter)
-
-    select case(t % filters(i_filter) % type)
-    case (FILTER_UNIVERSE)
-      i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(universes(i) % id)
-    case (FILTER_MATERIAL)
-      i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(materials(i) % id)
-    case (FILTER_CELL, FILTER_CELLBORN)
-      i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(cells(i) % id)
-    case (FILTER_DISTRIBCELL)
-      label = ''
-      univ => universes(BASE_UNIVERSE)
-      offset = 0
-      call find_offset(t % filters(i_filter) % int_bins(1), &
-           univ, bin-1, offset, label)
-    case (FILTER_SURFACE)
-      i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(surfaces(i)%obj%id)
-    case (FILTER_MESH)
-      m => meshes(t % filters(i_filter) % int_bins(1))
-      allocate(ijk(m % n_dimension))
-      call bin_to_mesh_indices(m, bin, ijk)
-      if (m % n_dimension == 2) then
-        label = "Index (" // trim(to_str(ijk(1))) // ", " // &
-             trim(to_str(ijk(2))) // ")"
-      elseif (m % n_dimension == 3) then
-        label = "Index (" // trim(to_str(ijk(1))) // ", " // &
-             trim(to_str(ijk(2))) // ", " // trim(to_str(ijk(3))) // ")"
-      end if
-    case (FILTER_ENERGYIN, FILTER_ENERGYOUT, FILTER_MU, FILTER_POLAR, &
-          FILTER_AZIMUTHAL)
-      E0 = t % filters(i_filter) % real_bins(bin)
-      E1 = t % filters(i_filter) % real_bins(bin + 1)
-      label = "[" // trim(to_str(E0)) // ", " // trim(to_str(E1)) // ")"
-    case (FILTER_DELAYEDGROUP)
-      i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(i)
-    end select
+!    bin = matching_bins(i_filter)
+!
+!    select case(t % filters(i_filter) % type)
+!    case (FILTER_UNIVERSE)
+!      i = t % filters(i_filter) % int_bins(bin)
+!      label = to_str(universes(i) % id)
+!    case (FILTER_MATERIAL)
+!      i = t % filters(i_filter) % int_bins(bin)
+!      label = to_str(materials(i) % id)
+!    case (FILTER_CELL, FILTER_CELLBORN)
+!      i = t % filters(i_filter) % int_bins(bin)
+!      label = to_str(cells(i) % id)
+!    case (FILTER_DISTRIBCELL)
+!      label = ''
+!      univ => universes(BASE_UNIVERSE)
+!      offset = 0
+!      call find_offset(t % filters(i_filter) % int_bins(1), &
+!           univ, bin-1, offset, label)
+!    case (FILTER_SURFACE)
+!      i = t % filters(i_filter) % int_bins(bin)
+!      label = to_str(surfaces(i)%obj%id)
+!    case (FILTER_MESH)
+!      m => meshes(t % filters(i_filter) % int_bins(1))
+!      allocate(ijk(m % n_dimension))
+!      call bin_to_mesh_indices(m, bin, ijk)
+!      if (m % n_dimension == 2) then
+!        label = "Index (" // trim(to_str(ijk(1))) // ", " // &
+!             trim(to_str(ijk(2))) // ")"
+!      elseif (m % n_dimension == 3) then
+!        label = "Index (" // trim(to_str(ijk(1))) // ", " // &
+!             trim(to_str(ijk(2))) // ", " // trim(to_str(ijk(3))) // ")"
+!      end if
+!    case (FILTER_ENERGYIN, FILTER_ENERGYOUT, FILTER_MU, FILTER_POLAR, &
+!          FILTER_AZIMUTHAL)
+!      E0 = t % filters(i_filter) % real_bins(bin)
+!      E1 = t % filters(i_filter) % real_bins(bin + 1)
+!      label = "[" // trim(to_str(E0)) // ", " // trim(to_str(E1)) // ")"
+!    case (FILTER_DELAYEDGROUP)
+!      i = t % filters(i_filter) % int_bins(bin)
+!      label = to_str(i)
+!    end select
 
   end function get_label
 

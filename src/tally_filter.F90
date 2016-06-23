@@ -1,0 +1,913 @@
+module tally_filter
+
+  use constants, only: ONE, NO_BIN_FOUND
+  use geometry_header, only: BASE_UNIVERSE
+  use global
+  use hdf5_interface
+  use mesh_header, only: RegularMesh
+  use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
+                              get_mesh_indices, mesh_indices_to_bin, &
+                              mesh_intersects_2d, mesh_intersects_3d
+  use output,          only: find_offset
+  use particle_header, only: Particle
+  use search, only: binary_search
+  use string, only: to_str
+  use tally_filter_header
+
+  implicit none
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: MeshFilter
+    integer :: mesh
+  contains
+    procedure :: get_next_bin => get_next_bin_mesh
+    procedure :: get_score => get_score_mesh
+    procedure :: to_statepoint => to_statepoint_mesh
+    procedure :: to_summary => to_statepoint_mesh
+    procedure :: initialize => initialize_mesh
+  end type MeshFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: UniverseFilter
+    integer, allocatable :: universes(:)
+  contains
+    procedure :: get_next_bin => get_next_bin_universe
+    procedure :: get_score => get_score_universe
+    procedure :: to_statepoint => to_statepoint_universe
+    procedure :: to_summary => to_statepoint_universe
+    procedure :: initialize => initialize_universe
+  end type UniverseFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: MaterialFilter
+    integer, allocatable :: materials(:)
+  contains
+    procedure :: get_next_bin => get_next_bin_material
+    procedure :: get_score => get_score_material
+    procedure :: to_statepoint => to_statepoint_material
+    procedure :: to_summary => to_statepoint_material
+    procedure :: initialize => initialize_material
+  end type MaterialFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: CellFilter
+    integer, allocatable :: cells(:)
+  contains
+    procedure :: get_next_bin => get_next_bin_cell
+    procedure :: get_score => get_score_cell
+    procedure :: to_statepoint => to_statepoint_cell
+    procedure :: to_summary => to_statepoint_cell
+    procedure :: initialize => initialize_cell
+  end type CellFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: DistribcellFilter
+    integer :: cell
+  contains
+    procedure :: get_next_bin => get_next_bin_distribcell
+    procedure :: get_score => get_score_distribcell
+    procedure :: to_statepoint => to_statepoint_distribcell
+    procedure :: to_summary => to_summary_distribcell
+    procedure :: initialize => initialize_distribcell
+  end type DistribcellFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: CellbornFilter
+    integer, allocatable :: cells(:)
+  contains
+    procedure :: get_next_bin => get_next_bin_cellborn
+    procedure :: get_score => get_score_cellborn
+    procedure :: to_statepoint => to_statepoint_cellborn
+    procedure :: to_summary => to_statepoint_cellborn
+    procedure :: initialize => initialize_cellborn
+  end type CellbornFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: SurfaceFilter
+    integer, allocatable :: surfaces(:)
+  contains
+    procedure :: get_next_bin => get_next_bin_surface
+    procedure :: get_score => get_score_surface
+    procedure :: to_statepoint => to_statepoint_surface
+    procedure :: to_summary => to_statepoint_surface
+    procedure :: initialize => initialize_surface
+  end type SurfaceFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: EnergyFilter
+    real(8), allocatable :: bins(:)
+  contains
+    procedure :: get_next_bin => get_next_bin_energy
+    procedure :: get_score => get_score_energy
+    procedure :: to_statepoint => to_statepoint_energy
+    procedure :: to_summary => to_statepoint_energy
+    procedure :: initialize => initialize_energy
+  end type EnergyFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: EnergyoutFilter
+    real(8), allocatable :: bins(:)
+  contains
+    procedure :: get_next_bin => get_next_bin_energyout
+    procedure :: get_score => get_score_energyout
+    procedure :: to_statepoint => to_statepoint_energyout
+    procedure :: to_summary => to_statepoint_energyout
+    procedure :: initialize => initialize_energyout
+  end type EnergyoutFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: DelayedGroupFilter
+    integer, allocatable :: groups(:)
+  contains
+    procedure :: get_next_bin => get_next_bin_dg
+    procedure :: get_score => get_score_dg
+    procedure :: to_statepoint => to_statepoint_dg
+    procedure :: to_summary => to_statepoint_dg
+    procedure :: initialize => initialize_dg
+  end type DelayedGroupFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: MuFilter
+    real(8), allocatable :: bins(:)
+  contains
+    procedure :: get_next_bin => get_next_bin_mu
+    procedure :: get_score => get_score_mu
+    procedure :: to_statepoint => to_statepoint_mu
+    procedure :: to_summary => to_statepoint_mu
+    procedure :: initialize => initialize_mu
+  end type MuFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: PolarFilter
+    real(8), allocatable :: bins(:)
+  contains
+    procedure :: get_next_bin => get_next_bin_polar
+    procedure :: get_score => get_score_polar
+    procedure :: to_statepoint => to_statepoint_polar
+    procedure :: to_summary => to_statepoint_polar
+    procedure :: initialize => initialize_polar
+  end type PolarFilter
+
+!===============================================================================
+!===============================================================================
+  type, extends(TallyFilter) :: AzimuthalFilter
+    real(8), allocatable :: bins(:)
+  contains
+    procedure :: get_next_bin => get_next_bin_azimuthal
+    procedure :: get_score => get_score_azimuthal
+    procedure :: to_statepoint => to_statepoint_azimuthal
+    procedure :: to_summary => to_statepoint_azimuthal
+    procedure :: initialize => initialize_azimuthal
+  end type AzimuthalFilter
+
+contains
+
+
+
+
+
+
+
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_mesh(this, p, estimator, current_bin) result(next_bin)
+    class(MeshFilter), intent(in) :: this
+    type(Particle),    intent(in) :: p
+    integer,           intent(in) :: estimator
+    integer,           intent(in) :: current_bin
+    integer                       :: next_bin
+
+    type(RegularMesh), pointer    :: m
+
+    m => meshes(this % mesh)
+    call get_mesh_bin(m, p % coord(1) % xyz, next_bin)
+  end function get_next_bin_mesh
+
+  function get_score_mesh(this, bin) result(score)
+    class(MeshFilter), intent(in) :: this
+    integer,           intent(in) :: bin
+    real(8)                       :: score
+  end function get_score_mesh
+
+  subroutine to_statepoint_mesh(this, filter_group)
+    class(MeshFilter), intent(in) :: this
+    integer(HID_T),    intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "mesh")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % mesh )
+  end subroutine to_statepoint_mesh
+
+  subroutine initialize_mesh(this)
+    class(MeshFilter), intent(inout) :: this
+  end subroutine initialize_mesh
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_universe(this, p, estimator, current_bin) &
+       result(next_bin)
+    class(UniverseFilter), intent(in) :: this
+    type(Particle),        intent(in) :: p
+    integer,               intent(in) :: estimator
+    integer,               intent(in) :: current_bin
+    integer                           :: next_bin
+
+    integer :: i, j, start
+    logical :: bin_found
+
+    if (current_bin == NO_BIN_FOUND) then
+      start = 1
+    else
+      start = current_bin + 1
+    end if
+
+    bin_found = .false.
+    do i = start, this % n_bins
+      do j = 1, p % n_coord
+        if (p % coord(j) % universe == this % universes(i)) then
+          next_bin = i
+          bin_found = .true.
+          exit
+        end if
+      end do
+      if (bin_found) exit
+    end do
+
+    if (.not. bin_found) next_bin = NO_BIN_FOUND
+  end function get_next_bin_universe
+
+  function get_score_universe(this, bin) result(score)
+    class(UniverseFilter), intent(in) :: this
+    integer,               intent(in) :: bin
+    real(8)                           :: score
+  end function get_score_universe
+
+  subroutine to_statepoint_universe(this, filter_group)
+    class(UniverseFilter), intent(in) :: this
+    integer(HID_T),        intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "universe")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % universes )
+  end subroutine to_statepoint_universe
+
+  subroutine initialize_universe(this)
+    class(UniverseFilter), intent(inout) :: this
+
+    integer :: i, id
+
+    do i = 1, this % n_bins
+      id = this % universes(i)
+      if (universe_dict % has_key(id)) then
+        this % universes(i) = universe_dict % get_key(id)
+      else
+        call fatal_error("Could not find universe " // trim(to_str(id)) &
+             &// " specified on a tally filter.")
+      end if
+    end do
+  end subroutine initialize_universe
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_material(this, p, estimator, current_bin) &
+       result(next_bin)
+    class(MaterialFilter), intent(in) :: this
+    type(Particle),        intent(in) :: p
+    integer,               intent(in) :: estimator
+    integer,               intent(in) :: current_bin
+    integer                           :: next_bin
+
+    integer :: i
+    logical :: bin_found
+
+    if (current_bin == NO_BIN_FOUND) then
+      bin_found = .false.
+      do i = 1, this % n_bins
+        if (p % material == this % materials(i)) then
+          next_bin = i
+          bin_found = .true.
+          exit
+        end if
+      end do
+      if (.not. bin_found) next_bin = NO_BIN_FOUND
+    else
+      next_bin = NO_BIN_FOUND
+    end if
+  end function get_next_bin_material
+
+  function get_score_material(this, bin) result(score)
+    class(MaterialFilter), intent(in) :: this
+    integer,               intent(in) :: bin
+    real(8)                           :: score
+  end function get_score_material
+
+  subroutine to_statepoint_material(this, filter_group)
+    class(MaterialFilter), intent(in) :: this
+    integer(HID_T),        intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "material")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % materials )
+  end subroutine to_statepoint_material
+
+  subroutine initialize_material(this)
+    class(MaterialFilter), intent(inout) :: this
+
+    integer :: i, id
+
+    do i = 1, this % n_bins
+      id = this % materials(i)
+      if (material_dict % has_key(id)) then
+        this % materials(i) = material_dict % get_key(id)
+      else
+        call fatal_error("Could not find material " // trim(to_str(id)) &
+             &// " specified on a tally filter.")
+      end if
+    end do
+  end subroutine initialize_material
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_cell(this, p, estimator, current_bin) result(next_bin)
+    class(CellFilter), intent(in) :: this
+    type(Particle),    intent(in) :: p
+    integer,           intent(in) :: estimator
+    integer,           intent(in) :: current_bin
+    integer                       :: next_bin
+
+    integer :: i, j, start
+    logical :: bin_found
+
+    if (current_bin == NO_BIN_FOUND) then
+      start = 1
+    else
+      start = current_bin + 1
+    end if
+
+    bin_found = .false.
+    do i = start, this % n_bins
+      do j = 1, p % n_coord
+        if (p % coord(j) % cell == this % cells(i)) then
+          next_bin = i
+          bin_found = .true.
+          exit
+        end if
+      end do
+      if (bin_found) exit
+    end do
+
+    if (.not. bin_found) next_bin = NO_BIN_FOUND
+  end function get_next_bin_cell
+
+  function get_score_cell(this, bin) result(score)
+    class(CellFilter), intent(in) :: this
+    integer,           intent(in) :: bin
+    real(8)                       :: score
+  end function get_score_cell
+
+  subroutine to_statepoint_cell(this, filter_group)
+    class(CellFilter), intent(in) :: this
+    integer(HID_T),    intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "cell")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % cells )
+  end subroutine to_statepoint_cell
+
+  subroutine initialize_cell(this)
+    class(CellFilter), intent(inout) :: this
+
+    integer :: i, id
+
+    do i = 1, this % n_bins
+      id = this % cells(i)
+      if (cell_dict % has_key(id)) then
+        this % cells(i) = cell_dict % get_key(id)
+      else
+        call fatal_error("Could not find cell " // trim(to_str(id)) &
+             &// " specified on tally filter.")
+      end if
+    end do
+  end subroutine initialize_cell
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_distribcell(this, p, estimator, current_bin) &
+       result(next_bin)
+    class(DistribcellFilter), intent(in) :: this
+    type(Particle),           intent(in) :: p
+    integer,                  intent(in) :: estimator
+    integer,                  intent(in) :: current_bin
+    integer                              :: next_bin
+
+    integer :: distribcell_index, offset, i
+
+    distribcell_index = cells(this % cell) % distribcell_index
+
+    if (current_bin == NO_BIN_FOUND) then
+      offset = 0
+      do i = 1, p % n_coord
+        if (cells(p % coord(i) % cell) % type == CELL_FILL) then
+          offset = offset + cells(p % coord(i) % cell) % &
+               offset(distribcell_index)
+        elseif (cells(p % coord(i) % cell) % type == CELL_LATTICE) then
+          if (lattices(p % coord(i + 1) % lattice) % obj &
+               % are_valid_indices([&
+               p % coord(i + 1) % lattice_x, &
+               p % coord(i + 1) % lattice_y, &
+               p % coord(i + 1) % lattice_z])) then
+            offset = offset + lattices(p % coord(i + 1) % lattice) % obj % &
+                 offset(distribcell_index, &
+                 p % coord(i + 1) % lattice_x, &
+                 p % coord(i + 1) % lattice_y, &
+                 p % coord(i + 1) % lattice_z)
+          end if
+        end if
+        if (this % cell == p % coord(i) % cell) then
+          next_bin = offset + 1
+          exit
+        end if
+      end do
+    else
+      next_bin = NO_BIN_FOUND
+    end if
+  end function get_next_bin_distribcell
+
+  function get_score_distribcell(this, bin) result(score)
+    class(DistribcellFilter), intent(in) :: this
+    integer,                  intent(in) :: bin
+    real(8)                              :: score
+  end function get_score_distribcell
+
+  subroutine to_statepoint_distribcell(this, filter_group)
+    class(DistribcellFilter), intent(in) :: this
+    integer(HID_T),           intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "distribcell")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % cell )
+  end subroutine to_statepoint_distribcell
+
+  subroutine to_summary_distribcell(this, filter_group)
+    class(DistribcellFilter), intent(in) :: this
+    integer(HID_T),           intent(in) :: filter_group
+
+    integer                              :: offset, k
+    character(MAX_LINE_LEN), allocatable :: paths(:)
+    character(MAX_LINE_LEN)              :: path
+
+    call write_dataset(filter_group, "type", "distribcell")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % cell )
+
+    ! Write paths to reach each distribcell instance
+
+    ! Allocate array of strings for each distribcell path
+    allocate(paths(this % n_bins))
+
+    ! Store path for each distribcell instance
+    do k = 1, this % n_bins
+      path = ''
+      offset = 1
+      call find_offset(this % cell, universes(BASE_UNIVERSE), k, offset, path)
+      paths(k) = path
+    end do
+
+    ! Write array of distribcell paths to summary file
+    call write_dataset(filter_group, "paths", paths)
+    deallocate(paths)
+  end subroutine to_summary_distribcell
+
+  subroutine initialize_distribcell(this)
+    class(DistribcellFilter), intent(inout) :: this
+
+    integer :: i, id
+
+    do i = 1, this % n_bins
+      id = this % cell
+      if (cell_dict % has_key(id)) then
+        this % cell = cell_dict % get_key(id)
+      else
+        call fatal_error("Could not find cell " // trim(to_str(id)) &
+             &// " specified on tally filter.")
+      end if
+    end do
+  end subroutine initialize_distribcell
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_cellborn(this, p, estimator, current_bin) &
+       result(next_bin)
+    class(CellbornFilter), intent(in) :: this
+    type(Particle),        intent(in) :: p
+    integer,               intent(in) :: estimator
+    integer,               intent(in) :: current_bin
+    integer                           :: next_bin
+
+    integer :: i
+    logical :: bin_found
+
+    if (current_bin == NO_BIN_FOUND) then
+      bin_found = .false.
+      do i = 1, this % n_bins
+        if (p % cell_born == this % cells(i)) then
+          next_bin = i
+          bin_found = .true.
+          exit
+        end if
+      end do
+      if (.not. bin_found) next_bin = NO_BIN_FOUND
+    else
+      next_bin = NO_BIN_FOUND
+    end if
+  end function get_next_bin_cellborn
+
+  function get_score_cellborn(this, bin) result(score)
+    class(CellbornFilter), intent(in) :: this
+    integer,               intent(in) :: bin
+    real(8)                           :: score
+  end function get_score_cellborn
+
+  subroutine to_statepoint_cellborn(this, filter_group)
+    class(CellbornFilter), intent(in) :: this
+    integer(HID_T),        intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "cellborn")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % cells )
+  end subroutine to_statepoint_cellborn
+
+  subroutine initialize_cellborn(this)
+    class(CellbornFilter), intent(inout) :: this
+
+    integer :: i, id
+
+    do i = 1, this % n_bins
+      id = this % cells(i)
+      if (cell_dict % has_key(id)) then
+        this % cells(i) = cell_dict % get_key(id)
+      else
+        call fatal_error("Could not find cell " // trim(to_str(id)) &
+             &// " specified on tally filter.")
+      end if
+    end do
+  end subroutine initialize_cellborn
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_surface(this, p, estimator, current_bin) &
+       result(next_bin)
+    class(SurfaceFilter), intent(in) :: this
+    type(Particle),       intent(in) :: p
+    integer,              intent(in) :: estimator
+    integer,              intent(in) :: current_bin
+    integer                          :: next_bin
+
+    integer :: i
+    logical :: bin_found
+
+    if (current_bin == NO_BIN_FOUND) then
+      bin_found = .false.
+      do i = 1, this % n_bins
+        if (p % surface == this % surfaces(i)) then
+          next_bin = i
+          bin_found = .true.
+          exit
+        end if
+      end do
+      if (.not. bin_found) next_bin = NO_BIN_FOUND
+    else
+      next_bin = NO_BIN_FOUND
+    end if
+  end function get_next_bin_surface
+
+  function get_score_surface(this, bin) result(score)
+    class(SurfaceFilter), intent(in) :: this
+    integer,              intent(in) :: bin
+    real(8)                          :: score
+  end function get_score_surface
+
+  subroutine to_statepoint_surface(this, filter_group)
+    class(SurfaceFilter), intent(in) :: this
+    integer(HID_T),       intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "surface")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % surfaces )
+  end subroutine to_statepoint_surface
+
+  subroutine initialize_surface(this)
+    class(SurfaceFilter), intent(inout) :: this
+
+    integer :: i, id
+
+    do i = 1, this % n_bins
+      id = this % surfaces(i)
+      if (surface_dict % has_key(id)) then
+        this % surfaces(i) = surface_dict % get_key(id)
+      else
+        call fatal_error("Could not find surface " // trim(to_str(id)) &
+             &// " specified on tally filter.")
+      end if
+    end do
+  end subroutine initialize_surface
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_energy(this, p, estimator, current_bin) result(next_bin)
+    class(EnergyFilter), intent(in) :: this
+    type(Particle),      intent(in) :: p
+    integer,             intent(in) :: estimator
+    integer,             intent(in) :: current_bin
+    integer                         :: next_bin
+
+    integer :: n
+    real(8) :: E
+
+    if (current_bin == NO_BIN_FOUND) then
+      n = this % n_bins
+
+      ! Make sure the correct energy is used.
+      if (estimator == ESTIMATOR_TRACKLENGTH) then
+        E = p % E
+      else
+        E = p % last_E
+      end if
+
+      ! Check if energy of the particle is within energy bins.
+      if (E < this % bins(1) .or. E > this % bins(n + 1)) then
+        next_bin = NO_BIN_FOUND
+      else
+        ! Search to find incoming energy bin.
+        next_bin = binary_search(this % bins, n + 1, E)
+      end if
+
+    else
+      next_bin = NO_BIN_FOUND
+    end if
+  end function get_next_bin_energy
+
+  function get_score_energy(this, bin) result(score)
+    class(EnergyFilter), intent(in) :: this
+    integer,             intent(in) :: bin
+    real(8)                         :: score
+  end function get_score_energy
+
+  subroutine to_statepoint_energy(this, filter_group)
+    class(EnergyFilter), intent(in) :: this
+    integer(HID_T),      intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "energy")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % bins )
+  end subroutine to_statepoint_energy
+
+  subroutine initialize_energy(this)
+    class(EnergyFilter), intent(inout) :: this
+  end subroutine initialize_energy
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_energyout(this, p, estimator, current_bin) &
+       result(next_bin)
+    class(EnergyoutFilter), intent(in) :: this
+    type(Particle),         intent(in) :: p
+    integer,                intent(in) :: estimator
+    integer,                intent(in) :: current_bin
+    integer                            :: next_bin
+
+    integer :: n
+
+    if (current_bin == NO_BIN_FOUND) then
+      n = this % n_bins
+
+      ! Check if energy of the particle is within energy bins.
+      if (p % E < this % bins(1) .or. p % E > this % bins(n + 1)) then
+        next_bin = NO_BIN_FOUND
+      else
+        ! Search to find incoming energy bin.
+        next_bin = binary_search(this % bins, n + 1, p % E)
+      end if
+
+    else
+      next_bin = NO_BIN_FOUND
+    end if
+  end function get_next_bin_energyout
+
+  function get_score_energyout(this, bin) result(score)
+    class(EnergyoutFilter), intent(in) :: this
+    integer,                intent(in) :: bin
+    real(8)                            :: score
+  end function get_score_energyout
+
+  subroutine to_statepoint_energyout(this, filter_group)
+    class(EnergyoutFilter), intent(in) :: this
+    integer(HID_T),         intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "energyout")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % bins )
+  end subroutine to_statepoint_energyout
+
+  subroutine initialize_energyout(this)
+    class(EnergyoutFilter), intent(inout) :: this
+  end subroutine initialize_energyout
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_dg(this, p, estimator, current_bin) result(next_bin)
+    class(DelayedGroupFilter), intent(in) :: this
+    type(Particle),            intent(in) :: p
+    integer,                   intent(in) :: estimator
+    integer,                   intent(in) :: current_bin
+    integer                               :: next_bin
+  end function get_next_bin_dg
+
+  function get_score_dg(this, bin) result(score)
+    class(DelayedGroupFilter), intent(in) :: this
+    integer,                   intent(in) :: bin
+    real(8)                               :: score
+  end function get_score_dg
+
+  subroutine to_statepoint_dg(this, filter_group)
+    class(DelayedGroupFilter), intent(in) :: this
+    integer(HID_T),            intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "delayedgroup")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % groups )
+  end subroutine to_statepoint_dg
+
+  subroutine initialize_dg(this)
+    class(DelayedGroupFilter), intent(inout) :: this
+  end subroutine initialize_dg
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_mu(this, p, estimator, current_bin) result(next_bin)
+    class(MuFilter), intent(in) :: this
+    type(Particle),  intent(in) :: p
+    integer,         intent(in) :: estimator
+    integer,         intent(in) :: current_bin
+    integer                     :: next_bin
+
+    integer :: n
+
+    if (current_bin == NO_BIN_FOUND) then
+      n = this % n_bins
+
+      ! Check if energy of the particle is within energy bins.
+      if (p % mu < this % bins(1) .or. p % mu > this % bins(n + 1)) then
+        next_bin = NO_BIN_FOUND
+      else
+        ! Search to find incoming energy bin.
+        next_bin = binary_search(this % bins, n + 1, p % mu)
+      end if
+
+    else
+      next_bin = NO_BIN_FOUND
+    end if
+  end function get_next_bin_mu
+
+  function get_score_mu(this, bin) result(score)
+    class(MuFilter), intent(in) :: this
+    integer,         intent(in) :: bin
+    real(8)                     :: score
+  end function get_score_mu
+
+  subroutine to_statepoint_mu(this, filter_group)
+    class(MuFilter), intent(in) :: this
+    integer(HID_T),  intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "mu")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % bins )
+  end subroutine to_statepoint_mu
+
+  subroutine initialize_mu(this)
+    class(MuFilter), intent(inout) :: this
+  end subroutine initialize_mu
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_polar(this, p, estimator, current_bin) result(next_bin)
+    class(PolarFilter), intent(in) :: this
+    type(Particle),     intent(in) :: p
+    integer,            intent(in) :: estimator
+    integer,            intent(in) :: current_bin
+    integer                        :: next_bin
+
+    integer :: n
+    real(8) :: theta
+
+    if (current_bin == NO_BIN_FOUND) then
+      n = this % n_bins
+
+      ! Make sure the correct direction vector is used.
+      if (estimator == ESTIMATOR_TRACKLENGTH) then
+        theta = acos(p % coord(1) % uvw(3))
+      else
+        theta = acos(p % last_uvw(3))
+      end if
+
+      ! Check if particle is within polar angle bins.
+      if (theta < this % bins(1) .or. theta > this % bins(n + 1)) then
+        next_bin = NO_BIN_FOUND
+      else
+        ! Search to find polar angle bin.
+        next_bin = binary_search(this % bins, n + 1, theta)
+      end if
+
+    else
+      next_bin = NO_BIN_FOUND
+    end if
+  end function get_next_bin_polar
+
+  function get_score_polar(this, bin) result(score)
+    class(PolarFilter), intent(in) :: this
+    integer,            intent(in) :: bin
+    real(8)                        :: score
+  end function get_score_polar
+
+  subroutine to_statepoint_polar(this, filter_group)
+    class(PolarFilter), intent(in) :: this
+    integer(HID_T),     intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "polar")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % bins )
+  end subroutine to_statepoint_polar
+
+  subroutine initialize_polar(this)
+    class(PolarFilter), intent(inout) :: this
+  end subroutine initialize_polar
+
+!===============================================================================
+!===============================================================================
+  function get_next_bin_azimuthal(this, p, estimator, current_bin) &
+       result(next_bin)
+    class(AzimuthalFilter), intent(in) :: this
+    type(Particle),         intent(in) :: p
+    integer,                intent(in) :: estimator
+    integer,                intent(in) :: current_bin
+    integer                            :: next_bin
+
+    integer :: n
+    real(8) :: phi
+
+    if (current_bin == NO_BIN_FOUND) then
+      n = this % n_bins
+
+      ! Make sure the correct direction vector is used.
+      if (estimator == ESTIMATOR_TRACKLENGTH) then
+        phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
+      else
+        phi = atan2(p % last_uvw(2), p % last_uvw(1))
+      end if
+
+      ! Check if particle is within azimuthal angle bins.
+      if (phi < this % bins(1) .or. phi > this % bins(n + 1)) then
+        next_bin = NO_BIN_FOUND
+      else
+        ! Search to find azimuthal angle bin.
+        next_bin = binary_search(this % bins, n + 1, phi)
+      end if
+
+    else
+      next_bin = NO_BIN_FOUND
+    end if
+  end function get_next_bin_azimuthal
+
+  function get_score_azimuthal(this, bin) result(score)
+    class(AzimuthalFilter), intent(in) :: this
+    integer,                intent(in) :: bin
+    real(8)                            :: score
+  end function get_score_azimuthal
+
+  subroutine to_statepoint_azimuthal(this, filter_group)
+    class(AzimuthalFilter), intent(in) :: this
+    integer(HID_T),         intent(in) :: filter_group
+
+    call write_dataset(filter_group, "type", "azimuthal")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % bins )
+  end subroutine to_statepoint_azimuthal
+
+  subroutine initialize_azimuthal(this)
+    class(AzimuthalFilter), intent(inout) :: this
+  end subroutine initialize_azimuthal
+
+end module tally_filter

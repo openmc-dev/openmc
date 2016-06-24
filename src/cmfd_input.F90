@@ -276,7 +276,7 @@ contains
     type(Node), pointer :: doc ! pointer to XML doc info
 
     character(MAX_LINE_LEN) :: temp_str ! temp string
-    integer :: i           ! loop counter
+    integer :: i, j        ! loop counter
     integer :: n           ! size of arrays in mesh specification
     integer :: ng          ! number of energy groups (default 1)
     integer :: n_filters   ! number of filters
@@ -415,6 +415,7 @@ contains
       allocate(MeshFilter::filters(n_filters) % obj)
       select type (filt => filters(n_filters) % obj)
       type is (MeshFilter)
+        filt % type = FILTER_MESH
         filt % n_bins = product(m % dimension)
         filt % mesh = n_user_meshes + 1
       end select
@@ -426,6 +427,7 @@ contains
         allocate(EnergyFilter::filters(n_filters) % obj)
         select type (filt => filters(n_filters) % obj)
         type is (EnergyFilter)
+          filt % type = FILTER_ENERGYIN
           ng = get_arraysize_double(node_mesh, "energy")
           filt % n_bins = ng - 1
           allocate(filt % bins(ng))
@@ -456,7 +458,9 @@ contains
         ! Allocate and set filters
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
-        t % filters = filters(1:n_filters)
+        do j = 1, n_filters
+          call move_alloc(filters(j) % obj, t % filters(j) % obj)
+        end do
 
         ! Allocate scoring bins
         allocate(t % score_bins(3))
@@ -490,6 +494,7 @@ contains
           allocate(EnergyoutFilter::filters(n_filters) % obj)
           select type (filt => filters(n_filters) % obj)
           type is (EnergyoutFilter)
+            filt % type = FILTER_ENERGYOUT
             ng = get_arraysize_double(node_mesh, "energy")
             filt % n_bins = ng - 1
             allocate(filt % bins(ng))
@@ -501,15 +506,9 @@ contains
         ! Allocate and set filters
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
-        t % filters = filters(1:n_filters)
-
-        ! deallocate filters bins array
-        if (check_for_node(node_mesh, "energy")) then
-          select type (filt => filters(n_filters) % obj)
-          type is (EnergyoutFilter)
-            deallocate(filt % bins)
-          end select
-        end if
+        do j = 1, n_filters
+          call move_alloc(filters(j) % obj, t % filters(j) % obj)
+        end do
 
         ! Allocate macro reactions
         allocate(t % score_bins(2))
@@ -537,6 +536,7 @@ contains
         allocate(SurfaceFilter::filters(n_filters) % obj)
         select type(filt => filters(n_filters) % obj)
         type is(SurfaceFilter)
+          filt % type = FILTER_SURFACE
           filt % n_bins = 2 * m % n_dimension
           allocate(filt % surfaces(2 * m % n_dimension))
           if (m % n_dimension == 2) then
@@ -551,13 +551,9 @@ contains
         ! Allocate and set filters
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
-        t % filters = filters(1:n_filters)
-
-        ! Deallocate filters bins array
-        select type(filt => filters(n_filters) % obj)
-        type is (SurfaceFilter)
-          deallocate(filt % surfaces)
-        end select
+        do j = 1, n_filters
+          call move_alloc(filters(j) % obj, t % filters(j) % obj)
+        end do
 
         ! Allocate macro reactions
         allocate(t % score_bins(1))
@@ -577,14 +573,6 @@ contains
         i_filter_mesh = t % find_filter(FILTER_MESH)
         t % filters(i_filter_mesh) % obj % n_bins = product(m % dimension + 1)
 
-      end if
-
-      ! Deallocate filter bins
-      if (check_for_node(node_mesh, "energy")) then
-        select type(filt => filters(2) % obj)
-        type is (EnergyFilter)
-          deallocate(filt % bins)
-        end select
       end if
 
     end do

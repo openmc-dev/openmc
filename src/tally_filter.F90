@@ -112,6 +112,7 @@ module tally_filter
 !===============================================================================
   type, extends(TallyFilter) :: EnergyFilter
     real(8), allocatable :: bins(:)
+    logical              :: matches_transport_groups = .false.
   contains
     procedure :: get_next_bin => get_next_bin_energy
     procedure :: get_score => get_score_energy
@@ -125,6 +126,7 @@ module tally_filter
 !===============================================================================
   type, extends(TallyFilter) :: EnergyoutFilter
     real(8), allocatable :: bins(:)
+    logical              :: matches_transport_groups = .false.
   contains
     procedure :: get_next_bin => get_next_bin_energyout
     procedure :: get_score => get_score_energyout
@@ -728,19 +730,32 @@ contains
     if (current_bin == NO_BIN_FOUND) then
       n = this % n_bins
 
-      ! Make sure the correct energy is used.
-      if (estimator == ESTIMATOR_TRACKLENGTH) then
-        E = p % E
-      else
-        E = p % last_E
-      end if
+      if ((.not. run_CE) .and. this % matches_transport_groups) then
+        if (estimator == ESTIMATOR_TRACKLENGTH) then
+          next_bin = p % g
+        else
+          next_bin = p % last_g
+        end if
 
-      ! Check if energy of the particle is within energy bins.
-      if (E < this % bins(1) .or. E > this % bins(n + 1)) then
-        next_bin = NO_BIN_FOUND
+        ! Tallies are ordered in increasing groups, group indices
+        ! however are the opposite, so switch
+        next_bin = energy_groups - next_bin + 1
+
       else
-        ! Search to find incoming energy bin.
-        next_bin = binary_search(this % bins, n + 1, E)
+        ! Make sure the correct energy is used.
+        if (estimator == ESTIMATOR_TRACKLENGTH) then
+          E = p % E
+        else
+          E = p % last_E
+        end if
+
+        ! Check if energy of the particle is within energy bins.
+        if (E < this % bins(1) .or. E > this % bins(n + 1)) then
+          next_bin = NO_BIN_FOUND
+        else
+          ! Search to find incoming energy bin.
+          next_bin = binary_search(this % bins, n + 1, E)
+        end if
       end if
 
     else
@@ -795,12 +810,21 @@ contains
     if (current_bin == NO_BIN_FOUND) then
       n = this % n_bins
 
-      ! Check if energy of the particle is within energy bins.
-      if (p % E < this % bins(1) .or. p % E > this % bins(n + 1)) then
-        next_bin = NO_BIN_FOUND
+      if ((.not. run_CE) .and. this % matches_transport_groups) then
+        next_bin = p % g
+
+        ! Tallies are ordered in increasing groups, group indices
+        ! however are the opposite, so switch
+        next_bin = energy_groups - next_bin + 1
+
       else
-        ! Search to find incoming energy bin.
-        next_bin = binary_search(this % bins, n + 1, p % E)
+        ! Check if energy of the particle is within energy bins.
+        if (p % E < this % bins(1) .or. p % E > this % bins(n + 1)) then
+          next_bin = NO_BIN_FOUND
+        else
+          ! Search to find incoming energy bin.
+          next_bin = binary_search(this % bins, n + 1, p % E)
+        end if
       end if
 
     else

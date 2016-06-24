@@ -1538,52 +1538,56 @@ contains
     type(TallyObject), intent(inout) :: t
     integer, intent(in)        :: i_score ! index for score
 
-!    integer :: i             ! index of outgoing energy filter
-!    integer :: n             ! number of energies on filter
-!    integer :: k             ! loop index for bank sites
-!    integer :: bin_energyout ! original outgoing energy bin
-!    integer :: i_filter      ! index for matching filter bin combination
-!    real(8) :: score         ! actual score
-!    real(8) :: E_out         ! energy of fission bank site
-!
-!    ! save original outgoing energy bin and score index
-!    i = t % find_filter(FILTER_ENERGYOUT)
-!    bin_energyout = matching_bins(i)
-!
-!    ! Get number of energies on filter
-!    n = size(t % filters(i) % real_bins)
-!
-!    ! Since the creation of fission sites is weighted such that it is
-!    ! expected to create n_particles sites, we need to multiply the
-!    ! score by keff to get the true nu-fission rate. Otherwise, the sum
-!    ! of all nu-fission rates would be ~1.0.
-!
-!    ! loop over number of particles banked
-!    do k = 1, p % n_bank
-!      ! determine score based on bank site weight and keff
-!      score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
-!
-!      ! determine outgoing energy from fission bank
-!      E_out = fission_bank(n_bank - p % n_bank + k) % E
-!
-!      ! check if outgoing energy is within specified range on filter
-!      if (E_out < t % filters(i) % real_bins(1) .or. &
-!           E_out > t % filters(i) % real_bins(n)) cycle
-!
-!      ! change outgoing energy bin
-!      matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
-!
-!      ! determine scoring index
-!      i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-!
-!      ! Add score to tally
-!!$omp atomic
-!      t % results(i_score, i_filter) % value = &
-!           t % results(i_score, i_filter) % value + score
-!    end do
-!
-!    ! reset outgoing energy bin and score index
-!    matching_bins(i) = bin_energyout
+    integer :: i             ! index of outgoing energy filter
+    integer :: n             ! number of energies on filter
+    integer :: k             ! loop index for bank sites
+    integer :: bin_energyout ! original outgoing energy bin
+    integer :: i_filter      ! index for matching filter bin combination
+    real(8) :: score         ! actual score
+    real(8) :: E_out         ! energy of fission bank site
+
+    ! save original outgoing energy bin and score index
+    i = t % find_filter(FILTER_ENERGYOUT)
+    bin_energyout = matching_bins(i)
+
+    ! Declare the filter type
+    select type(filt => t % filters(i) % obj)
+    type is (EnergyoutFilter)
+
+      ! Get number of energies on filter
+      n = size(filt % bins)
+
+      ! Since the creation of fission sites is weighted such that it is
+      ! expected to create n_particles sites, we need to multiply the
+      ! score by keff to get the true nu-fission rate. Otherwise, the sum
+      ! of all nu-fission rates would be ~1.0.
+
+      ! loop over number of particles banked
+      do k = 1, p % n_bank
+        ! determine score based on bank site weight and keff
+        score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
+
+        ! determine outgoing energy from fission bank
+        E_out = fission_bank(n_bank - p % n_bank + k) % E
+
+        ! check if outgoing energy is within specified range on filter
+        if (E_out < filt % bins(1) .or. E_out > filt % bins(n)) cycle
+
+        ! change outgoing energy bin
+        matching_bins(i) = binary_search(filt % bins, n, E_out)
+
+        ! determine scoring index
+        i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+
+        ! Add score to tally
+!$omp atomic
+        t % results(i_score, i_filter) % value = &
+             t % results(i_score, i_filter) % value + score
+      end do
+    end select
+
+    ! reset outgoing energy bin and score index
+    matching_bins(i) = bin_energyout
 
   end subroutine score_fission_eout_ce
 
@@ -1917,274 +1921,205 @@ contains
     integer,        intent(in) :: i_tally
     real(8),        intent(in) :: d_track
 
-!    integer :: i                    ! loop index for filter/score bins
-!    integer :: j                    ! loop index for direction
-!    integer :: k                    ! loop index for mesh cell crossings
-!    integer :: b                    ! loop index for nuclide bins
-!    integer :: ijk0(3)              ! indices of starting coordinates
-!    integer :: ijk1(3)              ! indices of ending coordinates
-!    integer :: ijk_cross(3)         ! indices of mesh cell crossed
-!    integer :: n_cross              ! number of surface crossings
-!    integer :: filter_index         ! single index for single bin
-!    integer :: i_nuclide            ! index in nuclides array
-!    integer :: i_filter_mesh        ! index of mesh filter in filters array
-!    real(8) :: atom_density         ! density of individual nuclide in atom/b-cm
-!    real(8) :: flux                 ! tracklength estimate of flux
-!    real(8) :: uvw(3)               ! cosine of angle of particle
-!    real(8) :: xyz0(3)              ! starting/intermediate coordinates
-!    real(8) :: xyz1(3)              ! ending coordinates of particle
-!    real(8) :: xyz_cross(3)         ! coordinates of next boundary
-!    real(8) :: d(3)                 ! distance to each bounding surface
-!    real(8) :: distance             ! distance traveled in mesh cell
-!    logical :: found_bin            ! was a scoring bin found?
-!    logical :: start_in_mesh        ! starting coordinates inside mesh?
-!    logical :: end_in_mesh          ! ending coordinates inside mesh?
-!    real(8) :: theta
-!    real(8) :: phi
-!    type(TallyObject), pointer :: t
-!    type(RegularMesh), pointer :: m
-!    type(Material),    pointer :: mat
-!
-!    t => tallies(i_tally)
-!    matching_bins(1:t%n_filters) = 1
-!
-!    ! ==========================================================================
-!    ! CHECK IF THIS TRACK INTERSECTS THE MESH
-!
-!    ! Copy starting and ending location of particle
-!    xyz0 = p % coord(1) % xyz - (d_track - TINY_BIT) * p % coord(1) % uvw
-!    xyz1 = p % coord(1) % xyz  - TINY_BIT * p % coord(1) % uvw
-!
-!    ! Get index for mesh filter
-!    i_filter_mesh = t % find_filter(FILTER_MESH)
-!
-!    ! Determine indices for starting and ending location
-!    m => meshes(t % filters(i_filter_mesh) % int_bins(1))
-!    call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-!    call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
-!
-!    ! Check if start or end is in mesh -- if not, check if track still
-!    ! intersects with mesh
-!    if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-!      if (m % n_dimension == 2) then
-!        if (.not. mesh_intersects_2d(m, xyz0, xyz1)) return
-!      else
-!        if (.not. mesh_intersects_3d(m, xyz0, xyz1)) return
-!      end if
-!    end if
-!
-!    ! Reset starting and ending location
-!    xyz0 = p % coord(1) % xyz - d_track * p % coord(1) % uvw
-!    xyz1 = p % coord(1) % xyz
-!
-!    ! =========================================================================
-!    ! CHECK FOR SCORING COMBINATION FOR FILTERS OTHER THAN MESH
-!
-!    FILTER_LOOP: do i = 1, t % n_filters
-!
-!      select case (t % filters(i) % type)
-!      case (FILTER_UNIVERSE)
-!        ! determine next universe bin
-!        ! TODO: Account for multiple universes when performing this filter
-!        matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
-!             p % coord(p % n_coord) % universe, i_tally)
-!
-!      case (FILTER_MATERIAL)
-!        matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
-!             p % material, i_tally)
-!
-!      case (FILTER_CELL)
-!        ! determine next cell bin
-!        do j = 1, p % n_coord
-!          position(FILTER_CELL) = 0
-!          matching_bins(i) = get_next_bin(FILTER_CELL, &
-!               p % coord(j) % cell, i_tally)
-!          if (matching_bins(i) /= NO_BIN_FOUND) exit
-!        end do
-!
-!      case (FILTER_CELLBORN)
-!        ! determine next cellborn bin
-!        matching_bins(i) = get_next_bin(FILTER_CELLBORN, &
-!             p % cell_born, i_tally)
-!
-!      case (FILTER_SURFACE)
-!        ! determine next surface bin
-!        matching_bins(i) = get_next_bin(FILTER_SURFACE, &
-!             p % surface, i_tally)
-!
-!      case (FILTER_ENERGYIN)
-!        ! determine incoming energy bin
-!        k = t % filters(i) % n_bins
-!
-!        ! check if energy of the particle is within energy bins
-!        if (p % E < t % filters(i) % real_bins(1) .or. &
-!             p % E > t % filters(i) % real_bins(k + 1)) then
-!          matching_bins(i) = NO_BIN_FOUND
-!        else
-!          ! search to find incoming energy bin
-!          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-!               k + 1, p % E)
-!        end if
-!
-!      case (FILTER_POLAR)
-!        ! Get theta value
-!        theta = acos(p % coord(1) % uvw(3))
-!
-!        ! determine polar angle bin
-!        k = t % filters(i) % n_bins
-!
-!        ! check if particle is within polar angle bins
-!        if (theta < t % filters(i) % real_bins(1) .or. &
-!             theta > t % filters(i) % real_bins(k + 1)) then
-!          matching_bins(i) = NO_BIN_FOUND
-!        else
-!          ! search to find polar angle bin
-!          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-!               k + 1, theta)
-!        end if
-!
-!      case (FILTER_AZIMUTHAL)
-!        ! make sure the correct direction vector is used
-!        phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
-!
-!        ! determine mu bin
-!        k = t % filters(i) % n_bins
-!
-!        ! check if particle is within azimuthal angle bins
-!        if (phi < t % filters(i) % real_bins(1) .or. &
-!             phi > t % filters(i) % real_bins(k + 1)) then
-!          matching_bins(i) = NO_BIN_FOUND
-!        else
-!          ! search to find azimuthal angle bin
-!          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-!               k + 1, phi)
-!        end if
-!
-!      end select
-!
-!      ! Check if no matching bin was found
-!      if (matching_bins(i) == NO_BIN_FOUND) return
-!
-!    end do FILTER_LOOP
-!
-!    ! ==========================================================================
-!    ! DETERMINE WHICH MESH CELLS TO SCORE TO
-!
-!    ! Calculate number of surface crossings
-!    n_cross = sum(abs(ijk1(:m % n_dimension) - ijk0(:m % n_dimension))) + 1
-!
-!    ! Copy particle's direction
-!    uvw = p % coord(1) % uvw
-!
-!    ! Bounding coordinates
-!    do j = 1, m % n_dimension
-!      if (uvw(j) > 0) then
-!        xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
-!      else
-!        xyz_cross(j) = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
-!      end if
-!    end do
-!
-!    MESH_LOOP: do k = 1, n_cross
-!      found_bin = .false.
-!
-!      ! Calculate distance to each bounding surface. We need to treat special
-!      ! case where the cosine of the angle is zero since this would result in a
-!      ! divide-by-zero.
-!
-!      if (k == n_cross) xyz_cross = xyz1
-!
-!      do j = 1, m % n_dimension
-!        if (uvw(j) == 0) then
-!          d(j) = INFINITY
-!        else
-!          d(j) = (xyz_cross(j) - xyz0(j))/uvw(j)
-!        end if
-!      end do
-!
-!      ! Determine the closest bounding surface of the mesh cell by calculating
-!      ! the minimum distance
-!
-!      j = minloc(d(:m % n_dimension), 1)
-!      distance = d(j)
-!
-!      ! Now use the minimum distance and diretion of the particle to determine
-!      ! which surface was crossed
-!
-!      if (all(ijk0(:m % n_dimension) >= 1) .and. all(ijk0(:m % n_dimension) <= m % dimension)) then
-!        ijk_cross = ijk0
-!        found_bin = .true.
-!      end if
-!
-!      ! Increment indices and determine new crossing point
-!      if (uvw(j) > 0) then
-!        ijk0(j) = ijk0(j) + 1
-!        xyz_cross(j) = xyz_cross(j) + m % width(j)
-!      else
-!        ijk0(j) = ijk0(j) - 1
-!        xyz_cross(j) = xyz_cross(j) - m % width(j)
-!      end if
-!
-!      ! =======================================================================
-!      ! SCORE TO THIS MESH CELL
-!
-!      if (found_bin) then
-!        ! Calculate track-length estimate of flux
-!        flux = p % wgt * distance
-!
-!        ! Determine mesh bin
-!        matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, ijk_cross)
-!
-!        ! Determining scoring index
-!        filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-!
-!        if (t % all_nuclides) then
-!          if (p % material /= MATERIAL_VOID) then
-!            ! Score reaction rates for each nuclide in material
-!            call score_all_nuclides(p, i_tally, flux, filter_index)
-!          end if
-!        else
-!          NUCLIDE_BIN_LOOP: do b = 1, t % n_nuclide_bins
-!            ! Get index of nuclide in nuclides array
-!            i_nuclide = t % nuclide_bins(b)
-!
-!            if (i_nuclide > 0) then
-!              if (p % material /= MATERIAL_VOID) then
-!                ! Get pointer to current material
-!                mat => materials(p % material)
-!
-!                ! Determine if nuclide is actually in material
-!                NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-!                  ! If index of nuclide matches the j-th nuclide listed in
-!                  ! the material, break out of the loop
-!                  if (i_nuclide == mat % nuclide(j)) exit
-!
-!                  ! If we've reached the last nuclide in the material, it
-!                  ! means the specified nuclide to be tallied is not in this
-!                  ! material
-!                  if (j == mat % n_nuclides) then
-!                    cycle NUCLIDE_BIN_LOOP
-!                  end if
-!                end do NUCLIDE_MAT_LOOP
-!
-!                atom_density = mat % atom_density(j)
-!              else
-!                atom_density = ZERO
-!              end if
-!            end if
-!
-!            ! Determine score for each bin
-!            call score_general(p, t, (b-1)*t % n_score_bins, filter_index, &
-!                 i_nuclide, atom_density, flux)
-!
-!          end do NUCLIDE_BIN_LOOP
-!        end if
-!      end if
-!
-!      ! Calculate new coordinates
-!      xyz0 = xyz0 + distance * uvw
-!
-!    end do MESH_LOOP
+    integer :: i                    ! loop index for filter/score bins
+    integer :: j                    ! loop index for direction
+    integer :: k                    ! loop index for mesh cell crossings
+    integer :: b                    ! loop index for nuclide bins
+    integer :: ijk0(3)              ! indices of starting coordinates
+    integer :: ijk1(3)              ! indices of ending coordinates
+    integer :: ijk_cross(3)         ! indices of mesh cell crossed
+    integer :: n_cross              ! number of surface crossings
+    integer :: filter_index         ! single index for single bin
+    integer :: i_nuclide            ! index in nuclides array
+    integer :: i_filter_mesh        ! index of mesh filter in filters array
+    real(8) :: atom_density         ! density of individual nuclide in atom/b-cm
+    real(8) :: flux                 ! tracklength estimate of flux
+    real(8) :: uvw(3)               ! cosine of angle of particle
+    real(8) :: xyz0(3)              ! starting/intermediate coordinates
+    real(8) :: xyz1(3)              ! ending coordinates of particle
+    real(8) :: xyz_cross(3)         ! coordinates of next boundary
+    real(8) :: d(3)                 ! distance to each bounding surface
+    real(8) :: distance             ! distance traveled in mesh cell
+    logical :: found_bin            ! was a scoring bin found?
+    logical :: start_in_mesh        ! starting coordinates inside mesh?
+    logical :: end_in_mesh          ! ending coordinates inside mesh?
+    real(8) :: theta
+    real(8) :: phi
+    type(TallyObject), pointer :: t
+    type(RegularMesh), pointer :: m
+    type(Material),    pointer :: mat
+
+    t => tallies(i_tally)
+    matching_bins(1:t%n_filters) = 1
+
+    ! ==========================================================================
+    ! CHECK IF THIS TRACK INTERSECTS THE MESH
+
+    ! Copy starting and ending location of particle
+    xyz0 = p % coord(1) % xyz - (d_track - TINY_BIT) * p % coord(1) % uvw
+    xyz1 = p % coord(1) % xyz  - TINY_BIT * p % coord(1) % uvw
+
+    ! Get index for mesh filter
+    i_filter_mesh = t % find_filter(FILTER_MESH)
+
+    ! Get pointer to mesh
+    select type(filt => t % filters(i_filter_mesh) % obj)
+    type is (MeshFilter)
+      m => meshes(filt % mesh)
+    end select
+
+    ! Determine indices for starting and ending location
+    call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
+    call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
+
+    ! Check if start or end is in mesh -- if not, check if track still
+    ! intersects with mesh
+    if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
+      if (m % n_dimension == 2) then
+        if (.not. mesh_intersects_2d(m, xyz0, xyz1)) return
+      else
+        if (.not. mesh_intersects_3d(m, xyz0, xyz1)) return
+      end if
+    end if
+
+    ! Reset starting and ending location
+    xyz0 = p % coord(1) % xyz - d_track * p % coord(1) % uvw
+    xyz1 = p % coord(1) % xyz
+
+    ! =========================================================================
+    ! CHECK FOR SCORING COMBINATION FOR FILTERS OTHER THAN MESH
+
+    FILTER_LOOP: do i = 1, t % n_filters
+
+      ! Ignore this filter if it's the mesh filter
+      if (i == i_filter_mesh) cycle
+
+      matching_bins(i) = t % filters(i) % obj % get_next_bin(p, t % estimator, &
+           NO_BIN_FOUND)
+
+      ! Check if no matching bin was found
+      if (matching_bins(i) == NO_BIN_FOUND) return
+
+    end do FILTER_LOOP
+
+    ! ==========================================================================
+    ! DETERMINE WHICH MESH CELLS TO SCORE TO
+
+    ! Calculate number of surface crossings
+    n_cross = sum(abs(ijk1(:m % n_dimension) - ijk0(:m % n_dimension))) + 1
+
+    ! Copy particle's direction
+    uvw = p % coord(1) % uvw
+
+    ! Bounding coordinates
+    do j = 1, m % n_dimension
+      if (uvw(j) > 0) then
+        xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
+      else
+        xyz_cross(j) = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
+      end if
+    end do
+
+    MESH_LOOP: do k = 1, n_cross
+      found_bin = .false.
+
+      ! Calculate distance to each bounding surface. We need to treat special
+      ! case where the cosine of the angle is zero since this would result in a
+      ! divide-by-zero.
+
+      if (k == n_cross) xyz_cross = xyz1
+
+      do j = 1, m % n_dimension
+        if (uvw(j) == 0) then
+          d(j) = INFINITY
+        else
+          d(j) = (xyz_cross(j) - xyz0(j))/uvw(j)
+        end if
+      end do
+
+      ! Determine the closest bounding surface of the mesh cell by calculating
+      ! the minimum distance
+
+      j = minloc(d(:m % n_dimension), 1)
+      distance = d(j)
+
+      ! Now use the minimum distance and diretion of the particle to determine
+      ! which surface was crossed
+
+      if (all(ijk0(:m % n_dimension) >= 1) .and. all(ijk0(:m % n_dimension) <= m % dimension)) then
+        ijk_cross = ijk0
+        found_bin = .true.
+      end if
+
+      ! Increment indices and determine new crossing point
+      if (uvw(j) > 0) then
+        ijk0(j) = ijk0(j) + 1
+        xyz_cross(j) = xyz_cross(j) + m % width(j)
+      else
+        ijk0(j) = ijk0(j) - 1
+        xyz_cross(j) = xyz_cross(j) - m % width(j)
+      end if
+
+      ! =======================================================================
+      ! SCORE TO THIS MESH CELL
+
+      if (found_bin) then
+        ! Calculate track-length estimate of flux
+        flux = p % wgt * distance
+
+        ! Determine mesh bin
+        matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, ijk_cross)
+
+        ! Determining scoring index
+        filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+
+        if (t % all_nuclides) then
+          if (p % material /= MATERIAL_VOID) then
+            ! Score reaction rates for each nuclide in material
+            call score_all_nuclides(p, i_tally, flux, filter_index)
+          end if
+        else
+          NUCLIDE_BIN_LOOP: do b = 1, t % n_nuclide_bins
+            ! Get index of nuclide in nuclides array
+            i_nuclide = t % nuclide_bins(b)
+
+            if (i_nuclide > 0) then
+              if (p % material /= MATERIAL_VOID) then
+                ! Get pointer to current material
+                mat => materials(p % material)
+
+                ! Determine if nuclide is actually in material
+                NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
+                  ! If index of nuclide matches the j-th nuclide listed in
+                  ! the material, break out of the loop
+                  if (i_nuclide == mat % nuclide(j)) exit
+
+                  ! If we've reached the last nuclide in the material, it
+                  ! means the specified nuclide to be tallied is not in this
+                  ! material
+                  if (j == mat % n_nuclides) then
+                    cycle NUCLIDE_BIN_LOOP
+                  end if
+                end do NUCLIDE_MAT_LOOP
+
+                atom_density = mat % atom_density(j)
+              else
+                atom_density = ZERO
+              end if
+            end if
+
+            ! Determine score for each bin
+            call score_general(p, t, (b-1)*t % n_score_bins, filter_index, &
+                 i_nuclide, atom_density, flux)
+
+          end do NUCLIDE_BIN_LOOP
+        end if
+      end if
+
+      ! Calculate new coordinates
+      xyz0 = xyz0 + distance * uvw
+
+    end do MESH_LOOP
 
   end subroutine score_tl_on_mesh
 

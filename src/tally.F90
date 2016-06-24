@@ -1682,86 +1682,96 @@ contains
     type(TallyObject), intent(inout) :: t
     integer, intent(in)              :: i_score ! index for score
 
-!    integer :: i             ! index of outgoing energy filter
-!    integer :: j             ! index of delayedgroup filter
-!    integer :: d             ! delayed group
-!    integer :: g             ! another delayed group
-!    integer :: d_bin         ! delayed group bin index
-!    integer :: n             ! number of energies on filter
-!    integer :: k             ! loop index for bank sites
-!    integer :: bin_energyout ! original outgoing energy bin
-!    integer :: i_filter      ! index for matching filter bin combination
-!    real(8) :: score         ! actual score
-!    real(8) :: E_out         ! energy of fission bank site
-!
-!    ! Save original outgoing energy bin
-!    i = t % find_filter(FILTER_ENERGYOUT)
-!    bin_energyout = matching_bins(i)
-!
-!    ! Get the index of delayed group filter
-!    j = t % find_filter(FILTER_DELAYEDGROUP)
-!
-!    ! Get number of energies on filter
-!    n = size(t % filters(i) % real_bins)
-!
-!    ! Since the creation of fission sites is weighted such that it is
-!    ! expected to create n_particles sites, we need to multiply the
-!    ! score by keff to get the true delayed-nu-fission rate.
-!
-!    ! loop over number of particles banked
-!    do k = 1, p % n_bank
-!
-!      ! get the delayed group
-!      g = fission_bank(n_bank - p % n_bank + k) % delayed_group
-!
-!      ! check if the particle was born delayed
-!      if (g /= 0) then
-!
-!        ! determine score based on bank site weight and keff
-!        score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
-!
-!        ! determine outgoing energy from fission bank
-!        E_out = fission_bank(n_bank - p % n_bank + k) % E
-!
-!        ! check if outgoing energy is within specified range on filter
-!        if (E_out < t % filters(i) % real_bins(1) .or. &
-!             E_out > t % filters(i) % real_bins(n)) cycle
-!
-!        ! change outgoing energy bin
-!        matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
-!
-!        ! if the delayed group filter is present, tally to corresponding
-!        ! delayed group bin if it exists
-!        if (j > 0) then
-!
-!          ! loop over delayed group bins until the corresponding bin is found
-!          do d_bin = 1, t % filters(j) % n_bins
-!            d = t % filters(j) % int_bins(d_bin)
-!
-!            ! check whether the delayed group of the particle is equal to the
-!            ! delayed group of this bin
-!            if (d == g) then
-!              call score_fission_delayed_dg(t, d_bin, score, i_score)
-!            end if
-!          end do
-!
-!        ! if the delayed group filter is not present, add score to tally
-!        else
-!
-!          ! determine scoring index
-!          i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-!
-!          ! Add score to tally
-!!$omp atomic
-!          t % results(i_score, i_filter) % value = &
-!               t % results(i_score, i_filter) % value + score
-!        end if
-!      end if
-!    end do
-!
-!    ! reset outgoing energy bin
-!    matching_bins(i) = bin_energyout
-!
+    integer :: i             ! index of outgoing energy filter
+    integer :: j             ! index of delayedgroup filter
+    integer :: d             ! delayed group
+    integer :: g             ! another delayed group
+    integer :: d_bin         ! delayed group bin index
+    integer :: n             ! number of energies on filter
+    integer :: k             ! loop index for bank sites
+    integer :: bin_energyout ! original outgoing energy bin
+    integer :: i_filter      ! index for matching filter bin combination
+    real(8) :: score         ! actual score
+    real(8) :: E_out         ! energy of fission bank site
+
+    ! Save original outgoing energy bin
+    i = t % find_filter(FILTER_ENERGYOUT)
+    bin_energyout = matching_bins(i)
+
+    ! Get the index of delayed group filter
+    j = t % find_filter(FILTER_DELAYEDGROUP)
+
+    ! Declare the energyout filter type
+    select type(eo_filt => t % filters(i) % obj)
+    type is (EnergyoutFilter)
+
+      ! Get number of energies on filter
+      n = size(eo_filt % bins)
+
+      ! Since the creation of fission sites is weighted such that it is
+      ! expected to create n_particles sites, we need to multiply the
+      ! score by keff to get the true delayed-nu-fission rate.
+
+      ! loop over number of particles banked
+      do k = 1, p % n_bank
+
+        ! get the delayed group
+        g = fission_bank(n_bank - p % n_bank + k) % delayed_group
+
+        ! check if the particle was born delayed
+        if (g /= 0) then
+
+          ! determine score based on bank site weight and keff
+          score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
+
+          ! determine outgoing energy from fission bank
+          E_out = fission_bank(n_bank - p % n_bank + k) % E
+
+          ! check if outgoing energy is within specified range on filter
+          if (E_out < eo_filt % bins(1) .or. E_out > eo_filt % bins(n)) cycle
+
+          ! change outgoing energy bin
+          matching_bins(i) = binary_search(eo_filt % bins, n, E_out)
+
+          ! if the delayed group filter is present, tally to corresponding
+          ! delayed group bin if it exists
+          if (j > 0) then
+
+            ! Declare the delayed group filter type
+            select type(dg_filt => t % filters(j) % obj)
+            type is (DelayedGroupFilter)
+
+              ! loop over delayed group bins until the corresponding bin is
+              ! found
+              do d_bin = 1, dg_filt % n_bins
+                d = dg_filt % groups(d_bin)
+
+                ! check whether the delayed group of the particle is equal to
+                ! the delayed group of this bin
+                if (d == g) then
+                  call score_fission_delayed_dg(t, d_bin, score, i_score)
+                end if
+              end do
+            end select
+
+          ! if the delayed group filter is not present, add score to tally
+          else
+
+            ! determine scoring index
+            i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+
+            ! Add score to tally
+!$omp atomic
+            t % results(i_score, i_filter) % value = &
+                 t % results(i_score, i_filter) % value + score
+          end if
+        end if
+      end do
+    end select
+
+    ! reset outgoing energy bin
+    matching_bins(i) = bin_energyout
+
   end subroutine score_fission_delayed_eout
 
 !===============================================================================
@@ -1776,22 +1786,22 @@ contains
     real(8), intent(in)              :: score       ! actual score
     integer, intent(in)              :: d_bin       ! delayed group bin index
 
-!    integer :: bin_original  ! original bin index
-!    integer :: filter_index  ! index for matching filter bin combination
-!
-!    ! save original delayed group bin
-!    bin_original = matching_bins(t % find_filter(FILTER_DELAYEDGROUP))
-!    matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = d_bin
-!
-!    ! Compute the filter index based on the modified matching_bins
-!    filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-!
-!!$omp atomic
-!    t % results(score_index, filter_index) % value = &
-!         t % results(score_index, filter_index) % value + score
-!
-!    ! reset original delayed group bin
-!    matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = bin_original
+    integer :: bin_original  ! original bin index
+    integer :: filter_index  ! index for matching filter bin combination
+
+    ! save original delayed group bin
+    bin_original = matching_bins(t % find_filter(FILTER_DELAYEDGROUP))
+    matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = d_bin
+
+    ! Compute the filter index based on the modified matching_bins
+    filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+
+!$omp atomic
+    t % results(score_index, filter_index) % value = &
+         t % results(score_index, filter_index) % value + score
+
+    ! reset original delayed group bin
+    matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = bin_original
 
   end subroutine score_fission_delayed_dg
 

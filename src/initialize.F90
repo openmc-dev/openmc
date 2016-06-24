@@ -731,7 +731,7 @@ contains
           if (.not. any(t%score_bins == SCORE_CURRENT)) &
                call filt % initialize()
         class default
-         call filt % initialize()
+          call filt % initialize()
         end select
 
       end do FILTER_LOOP
@@ -1005,7 +1005,7 @@ contains
       do j = 1, tallies(i) % n_filters
         select type(filt => tallies(i) % filters(j) % obj)
         type is (DistribcellFilter)
-          call cell_list % add(filt % cell) 
+          call cell_list % add(filt % cell)
         end select
       end do
     end do

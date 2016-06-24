@@ -583,9 +583,9 @@ contains
       if (check_for_node(node_mesh, "energy")) then
         select type(filt => filters(2) % obj)
         type is (EnergyFilter)
-         deallocate(filt % bins)
+          deallocate(filt % bins)
         end select
-      end if 
+      end if
 
     end do
 

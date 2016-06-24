@@ -475,6 +475,8 @@ contains
 
     integer :: distribcell_index, offset, i
 
+    next_bin = NO_BIN_FOUND
+
     distribcell_index = cells(this % cell) % distribcell_index
 
     if (current_bin == NO_BIN_FOUND) then
@@ -501,8 +503,6 @@ contains
           exit
         end if
       end do
-    else
-      next_bin = NO_BIN_FOUND
     end if
   end function get_next_bin_distribcell
 
@@ -556,15 +556,13 @@ contains
 
     integer :: i, id
 
-    do i = 1, this % n_bins
-      id = this % cell
-      if (cell_dict % has_key(id)) then
-        this % cell = cell_dict % get_key(id)
-      else
-        call fatal_error("Could not find cell " // trim(to_str(id)) &
-             &// " specified on tally filter.")
-      end if
-    end do
+    id = this % cell
+    if (cell_dict % has_key(id)) then
+      this % cell = cell_dict % get_key(id)
+    else
+      call fatal_error("Could not find cell " // trim(to_str(id)) &
+           &// " specified on tally filter.")
+    end if
   end subroutine initialize_distribcell
 
   function text_label_distribcell(this, bin) result(label)
@@ -577,6 +575,7 @@ contains
 
     univ => universes(BASE_UNIVERSE)
     offset = 0
+    label = ''
     call find_offset(this % cell, univ, bin-1, offset, label)
     label = "Distributed Cell " // label
   end function text_label_distribcell

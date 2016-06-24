@@ -3037,7 +3037,10 @@ contains
               if (.not. run_CE) then
                 if (n_words == energy_groups + 1) then
                   if (all(filt % bins == energy_bins(energy_groups + 1:1:-1))) &
-                       t % energy_matches_groups = .true.
+                       then
+                    t % energy_matches_groups = .true.
+                    filt % matches_transport_groups = .true.
+                  end if
                 end if
               end if
             end select
@@ -3060,7 +3063,10 @@ contains
               if (.not. run_CE) then
                 if (n_words == energy_groups + 1) then
                   if (all(filt % bins == energy_bins(energy_groups + 1:1:-1))) &
-                       t % energy_matches_groups = .true.
+                       then
+                    t % energyout_matches_groups = .true.
+                    filt % matches_transport_groups = .true.
+                  end if
                 end if
               end if
             end select

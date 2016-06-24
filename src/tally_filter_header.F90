@@ -1,5 +1,6 @@
 module tally_filter_header
 
+  use constants, only: MAX_LINE_LEN
   use particle_header, only: Particle
 
   use hdf5
@@ -15,6 +16,7 @@ module tally_filter_header
     procedure(to_statepoint_), deferred :: to_statepoint
     procedure(to_summary_), deferred :: to_summary
     procedure(initialize_), deferred :: initialize
+    procedure(text_label_), deferred :: text_label
   end type TallyFilter
 
   type TallyFilterContainer
@@ -58,6 +60,14 @@ module tally_filter_header
       import TallyFilter
       class(TallyFilter), intent(inout) :: this
     end subroutine initialize_
+
+    function text_label_(this, bin) result(label)
+      import TallyFilter
+      import MAX_LINE_LEN
+      class(TallyFilter), intent(in) :: this
+      integer,            intent(in) :: bin
+      character(MAX_LINE_LEN)        :: label
+    end function text_label_
 
   end interface
 

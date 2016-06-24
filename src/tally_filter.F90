@@ -1,18 +1,19 @@
 module tally_filter
 
   use constants, only: ONE, NO_BIN_FOUND
-  use geometry_header, only: BASE_UNIVERSE
+  use geometry_header, only: BASE_UNIVERSE, RectLattice, HexLattice
   use global
   use hdf5_interface
   use mesh_header, only: RegularMesh
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
                               get_mesh_indices, mesh_indices_to_bin, &
                               mesh_intersects_2d, mesh_intersects_3d
-  use output,          only: find_offset
   use particle_header, only: Particle
   use search, only: binary_search
   use string, only: to_str
-  use tally_filter_header
+  use tally_filter_header, only: TallyFilter, TallyFilterContainer
+
+  use hdf5, only: HID_T
 
   implicit none
 
@@ -26,6 +27,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_mesh
     procedure :: to_summary => to_statepoint_mesh
     procedure :: initialize => initialize_mesh
+    procedure :: text_label => text_label_mesh
   end type MeshFilter
 
 !===============================================================================
@@ -38,6 +40,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_universe
     procedure :: to_summary => to_statepoint_universe
     procedure :: initialize => initialize_universe
+    procedure :: text_label => text_label_universe
   end type UniverseFilter
 
 !===============================================================================
@@ -50,6 +53,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_material
     procedure :: to_summary => to_statepoint_material
     procedure :: initialize => initialize_material
+    procedure :: text_label => text_label_material
   end type MaterialFilter
 
 !===============================================================================
@@ -62,6 +66,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_cell
     procedure :: to_summary => to_statepoint_cell
     procedure :: initialize => initialize_cell
+    procedure :: text_label => text_label_cell
   end type CellFilter
 
 !===============================================================================
@@ -74,6 +79,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_distribcell
     procedure :: to_summary => to_summary_distribcell
     procedure :: initialize => initialize_distribcell
+    procedure :: text_label => text_label_distribcell
   end type DistribcellFilter
 
 !===============================================================================
@@ -86,6 +92,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_cellborn
     procedure :: to_summary => to_statepoint_cellborn
     procedure :: initialize => initialize_cellborn
+    procedure :: text_label => text_label_cellborn
   end type CellbornFilter
 
 !===============================================================================
@@ -98,6 +105,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_surface
     procedure :: to_summary => to_statepoint_surface
     procedure :: initialize => initialize_surface
+    procedure :: text_label => text_label_surface
   end type SurfaceFilter
 
 !===============================================================================
@@ -110,6 +118,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_energy
     procedure :: to_summary => to_statepoint_energy
     procedure :: initialize => initialize_energy
+    procedure :: text_label => text_label_energy
   end type EnergyFilter
 
 !===============================================================================
@@ -122,6 +131,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_energyout
     procedure :: to_summary => to_statepoint_energyout
     procedure :: initialize => initialize_energyout
+    procedure :: text_label => text_label_energyout
   end type EnergyoutFilter
 
 !===============================================================================
@@ -134,6 +144,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_dg
     procedure :: to_summary => to_statepoint_dg
     procedure :: initialize => initialize_dg
+    procedure :: text_label => text_label_dg
   end type DelayedGroupFilter
 
 !===============================================================================
@@ -146,6 +157,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_mu
     procedure :: to_summary => to_statepoint_mu
     procedure :: initialize => initialize_mu
+    procedure :: text_label => text_label_mu
   end type MuFilter
 
 !===============================================================================
@@ -158,6 +170,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_polar
     procedure :: to_summary => to_statepoint_polar
     procedure :: initialize => initialize_polar
+    procedure :: text_label => text_label_polar
   end type PolarFilter
 
 !===============================================================================
@@ -170,6 +183,7 @@ module tally_filter
     procedure :: to_statepoint => to_statepoint_azimuthal
     procedure :: to_summary => to_statepoint_azimuthal
     procedure :: initialize => initialize_azimuthal
+    procedure :: text_label => text_label_azimuthal
   end type AzimuthalFilter
 
 contains
@@ -214,6 +228,26 @@ contains
   subroutine initialize_mesh(this)
     class(MeshFilter), intent(inout) :: this
   end subroutine initialize_mesh
+
+  function text_label_mesh(this, bin) result(label)
+    class(MeshFilter), intent(in) :: this
+    integer,           intent(in) :: bin
+    character(MAX_LINE_LEN)       :: label
+
+    integer, allocatable       :: ijk(:)
+    type(RegularMesh), pointer :: m
+
+    m => meshes(this % mesh)
+    allocate(ijk(m % n_dimension))
+    call bin_to_mesh_indices(m, bin, ijk)
+    if (m % n_dimension == 2) then
+      label = "Mesh Index (" // trim(to_str(ijk(1))) // ", " // &
+           trim(to_str(ijk(2))) // ")"
+    elseif (m % n_dimension == 3) then
+      label = "Mesh Index (" // trim(to_str(ijk(1))) // ", " // &
+           trim(to_str(ijk(2))) // ", " // trim(to_str(ijk(3))) // ")"
+    end if
+  end function text_label_mesh
 
 !===============================================================================
 !===============================================================================
@@ -280,6 +314,14 @@ contains
     end do
   end subroutine initialize_universe
 
+  function text_label_universe(this, bin) result(label)
+    class(UniverseFilter), intent(in) :: this
+    integer,               intent(in) :: bin
+    character(MAX_LINE_LEN)           :: label
+
+    label = "Universe " // to_str(universes(this % universes(bin)) % id)
+  end function text_label_universe
+
 !===============================================================================
 !===============================================================================
   function get_next_bin_material(this, p, estimator, current_bin) &
@@ -338,6 +380,14 @@ contains
       end if
     end do
   end subroutine initialize_material
+
+  function text_label_material(this, bin) result(label)
+    class(MaterialFilter), intent(in) :: this
+    integer,               intent(in) :: bin
+    character(MAX_LINE_LEN)           :: label
+
+    label = "Material " // to_str(materials(this % materials(bin)) % id)
+  end function text_label_material
 
 !===============================================================================
 !===============================================================================
@@ -402,6 +452,14 @@ contains
       end if
     end do
   end subroutine initialize_cell
+
+  function text_label_cell(this, bin) result(label)
+    class(CellFilter), intent(in) :: this
+    integer,           intent(in) :: bin
+    character(MAX_LINE_LEN)       :: label
+
+    label = "Cell " // to_str(cells(this % cells(bin)) % id)
+  end function text_label_cell
 
 !===============================================================================
 !===============================================================================
@@ -507,6 +565,20 @@ contains
     end do
   end subroutine initialize_distribcell
 
+  function text_label_distribcell(this, bin) result(label)
+    class(DistribcellFilter), intent(in) :: this
+    integer,                  intent(in) :: bin
+    character(MAX_LINE_LEN)              :: label
+
+    integer                 :: offset
+    type(Universe), pointer :: univ
+
+    univ => universes(BASE_UNIVERSE)
+    offset = 0
+    call find_offset(this % cell, univ, bin-1, offset, label)
+    label = "Distributed Cell " // label
+  end function text_label_distribcell
+
 !===============================================================================
 !===============================================================================
   function get_next_bin_cellborn(this, p, estimator, current_bin) &
@@ -565,6 +637,14 @@ contains
       end if
     end do
   end subroutine initialize_cellborn
+
+  function text_label_cellborn(this, bin) result(label)
+    class(CellbornFilter), intent(in) :: this
+    integer,               intent(in) :: bin
+    character(MAX_LINE_LEN)           :: label
+
+    label = "Birth Cell " // to_str(cells(this % cells(bin)) % id)
+  end function text_label_cellborn
 
 !===============================================================================
 !===============================================================================
@@ -625,6 +705,14 @@ contains
     end do
   end subroutine initialize_surface
 
+  function text_label_surface(this, bin) result(label)
+    class(SurfaceFilter), intent(in) :: this
+    integer,              intent(in) :: bin
+    character(MAX_LINE_LEN)          :: label
+
+    label = "Surface " // to_str(surfaces(this % surfaces(bin)) % obj % id)
+  end function text_label_surface
+
 !===============================================================================
 !===============================================================================
   function get_next_bin_energy(this, p, estimator, current_bin) result(next_bin)
@@ -679,6 +767,19 @@ contains
     class(EnergyFilter), intent(inout) :: this
   end subroutine initialize_energy
 
+  function text_label_energy(this, bin) result(label)
+    class(EnergyFilter), intent(in) :: this
+    integer,             intent(in) :: bin
+    character(MAX_LINE_LEN)         :: label
+
+    real(8) :: E0, E1
+
+    E0 = this % bins(bin)
+    E1 = this % bins(bin + 1)
+    label = "Incoming Energy [" // trim(to_str(E0)) // ", " &
+         // trim(to_str(E1)) // ")"
+  end function text_label_energy
+
 !===============================================================================
 !===============================================================================
   function get_next_bin_energyout(this, p, estimator, current_bin) &
@@ -726,6 +827,19 @@ contains
     class(EnergyoutFilter), intent(inout) :: this
   end subroutine initialize_energyout
 
+  function text_label_energyout(this, bin) result(label)
+    class(EnergyoutFilter), intent(in) :: this
+    integer,                intent(in) :: bin
+    character(MAX_LINE_LEN)            :: label
+
+    real(8) :: E0, E1
+
+    E0 = this % bins(bin)
+    E1 = this % bins(bin + 1)
+    label = "Outgoing Energy [" // trim(to_str(E0)) // ", " &
+         // trim(to_str(E1)) // ")"
+  end function text_label_energyout
+
 !===============================================================================
 !===============================================================================
   function get_next_bin_dg(this, p, estimator, current_bin) result(next_bin)
@@ -754,6 +868,14 @@ contains
   subroutine initialize_dg(this)
     class(DelayedGroupFilter), intent(inout) :: this
   end subroutine initialize_dg
+
+  function text_label_dg(this, bin) result(label)
+    class(DelayedGroupFilter), intent(in) :: this
+    integer,                   intent(in) :: bin
+    character(MAX_LINE_LEN)               :: label
+
+    label = "Delayed Group " // to_str(this % groups(bin))
+  end function text_label_dg
 
 !===============================================================================
 !===============================================================================
@@ -800,6 +922,19 @@ contains
   subroutine initialize_mu(this)
     class(MuFilter), intent(inout) :: this
   end subroutine initialize_mu
+
+  function text_label_mu(this, bin) result(label)
+    class(MuFilter), intent(in) :: this
+    integer,         intent(in) :: bin
+    character(MAX_LINE_LEN)     :: label
+
+    real(8) :: E0, E1
+
+    E0 = this % bins(bin)
+    E1 = this % bins(bin + 1)
+    label = "Change-in-Angle [" // trim(to_str(E0)) // ", " &
+         // trim(to_str(E1)) // ")"
+  end function text_label_mu
 
 !===============================================================================
 !===============================================================================
@@ -855,6 +990,19 @@ contains
     class(PolarFilter), intent(inout) :: this
   end subroutine initialize_polar
 
+  function text_label_polar(this, bin) result(label)
+    class(PolarFilter), intent(in) :: this
+    integer,            intent(in) :: bin
+    character(MAX_LINE_LEN)        :: label
+
+    real(8) :: E0, E1
+
+    E0 = this % bins(bin)
+    E1 = this % bins(bin + 1)
+    label = "Polar Angle [" // trim(to_str(E0)) // ", " // trim(to_str(E1)) &
+         // ")"
+  end function text_label_polar
+
 !===============================================================================
 !===============================================================================
   function get_next_bin_azimuthal(this, p, estimator, current_bin) &
@@ -909,5 +1057,280 @@ contains
   subroutine initialize_azimuthal(this)
     class(AzimuthalFilter), intent(inout) :: this
   end subroutine initialize_azimuthal
+
+  function text_label_azimuthal(this, bin) result(label)
+    class(AzimuthalFilter), intent(in) :: this
+    integer,                intent(in) :: bin
+    character(MAX_LINE_LEN)            :: label
+
+    real(8) :: E0, E1
+
+    E0 = this % bins(bin)
+    E1 = this % bins(bin + 1)
+    label = "Azimuthal Angle [" // trim(to_str(E0)) // ", " &
+         // trim(to_str(E1)) // ")"
+  end function text_label_azimuthal
+
+!===============================================================================
+! FIND_OFFSET uses a given map number, a target cell ID, and a target offset
+! to build a string which is the path from the base universe to the target cell
+! with the given offset
+!===============================================================================
+
+  recursive subroutine find_offset(goal, univ, final, offset, path)
+
+    integer, intent(in) :: goal         ! The target cell index
+    type(Universe), intent(in) :: univ  ! Universe to begin search
+    integer, intent(in) :: final        ! Target offset
+    integer, intent(inout) :: offset    ! Current offset
+    character(*), intent(inout) :: path ! Path to offset
+
+    integer :: map                  ! Index in maps vector
+    integer :: i, j                 ! Index over cells
+    integer :: k, l, m              ! Indices in lattice
+    integer :: old_k, old_l, old_m  ! Previous indices in lattice
+    integer :: n_x, n_y, n_z        ! Lattice cell array dimensions
+    integer :: n                    ! Number of cells to search
+    integer :: cell_index           ! Index in cells array
+    integer :: lat_offset           ! Offset from lattice
+    integer :: temp_offset          ! Looped sum of offsets
+    logical :: this_cell = .false.  ! Advance in this cell?
+    logical :: later_cell = .false. ! Fill cells after this one?
+    type(Cell), pointer :: c           ! Pointer to current cell
+    type(Universe), pointer :: next_univ  ! Next universe to loop through
+    class(Lattice), pointer :: lat        ! Pointer to current lattice
+
+    ! Get the distribcell index for this cell
+    map = cells(goal) % distribcell_index
+
+    n = univ % n_cells
+
+    ! Write to the geometry stack
+    if (univ%id == 0) then
+      path = trim(path) // to_str(univ%id)
+    else
+      path = trim(path) // "->" // to_str(univ%id)
+    end if
+
+    ! Look through all cells in this universe
+    do i = 1, n
+      ! If the cell matches the goal and the offset matches final, write to the
+      ! geometry stack
+      if (univ % cells(i) == goal .and. offset == final) then
+        c => cells(univ % cells(i))
+        path = trim(path) // "->" // to_str(c % id)
+        return
+      end if
+    end do
+
+    ! Find the fill cell or lattice cell that we need to enter
+    do i = 1, n
+
+      later_cell = .false.
+
+      cell_index = univ % cells(i)
+      c => cells(cell_index)
+
+      this_cell = .false.
+
+      ! If we got here, we still think the target is in this universe
+      ! or further down, but it's not this exact cell.
+      ! Compare offset to next cell to see if we should enter this cell
+      if (i /= n) then
+
+        do j = i+1, n
+
+          cell_index = univ % cells(j)
+          c => cells(cell_index)
+
+          ! Skip normal cells which do not have offsets
+          if (c % type == CELL_NORMAL) then
+            cycle
+          end if
+
+          ! Break loop once we've found the next cell with an offset
+          exit
+        end do
+
+        ! Ensure we didn't just end the loop by iteration
+        if (c % type /= CELL_NORMAL) then
+
+          ! There are more cells in this universe that it could be in
+          later_cell = .true.
+
+          ! Two cases, lattice or fill cell
+          if (c % type == CELL_FILL) then
+            temp_offset = c % offset(map)
+
+          ! Get the offset of the first lattice location
+          else
+            lat => lattices(c % fill) % obj
+            temp_offset = lat % offset(map, 1, 1, 1)
+          end if
+
+          ! If the final offset is in the range of offset - temp_offset+offset
+          ! then the goal is in this cell
+          if (final < temp_offset + offset) then
+            this_cell = .true.
+          end if
+        end if
+      end if
+
+      if (n == 1 .and. c % type /= CELL_NORMAL) then
+        this_cell = .true.
+      end if
+
+      if (.not. later_cell) then
+        this_cell = .true.
+      end if
+
+      ! Get pointer to THIS cell because target must be in this cell
+      if (this_cell) then
+
+        cell_index = univ % cells(i)
+        c => cells(cell_index)
+
+        path = trim(path) // "->" // to_str(c%id)
+
+        ! ====================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+        if (c % type == CELL_FILL) then
+
+          ! Enter this cell to update the current offset
+          offset = c % offset(map) + offset
+
+          next_univ => universes(c % fill)
+          call find_offset(goal, next_univ, final, offset, path)
+          return
+
+        ! ====================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+        elseif (c % type == CELL_LATTICE) then
+
+          ! Set current lattice
+          lat => lattices(c % fill) % obj
+
+          select type (lat)
+
+          ! ==================================================================
+          ! RECTANGULAR LATTICES
+          type is (RectLattice)
+
+            ! Write to the geometry stack
+            path = trim(path) // "->" // to_str(lat%id)
+
+            n_x = lat % n_cells(1)
+            n_y = lat % n_cells(2)
+            n_z = lat % n_cells(3)
+            old_m = 1
+            old_l = 1
+            old_k = 1
+
+            ! Loop over lattice coordinates
+            do k = 1, n_x
+              do l = 1, n_y
+                do m = 1, n_z
+
+                  if (final >= lat % offset(map, k, l, m) + offset) then
+                    if (k == n_x .and. l == n_y .and. m == n_z) then
+                      ! This is last lattice cell, so target must be here
+                      lat_offset = lat % offset(map, k, l, m)
+                      offset = offset + lat_offset
+                      next_univ => universes(lat % universes(k, l, m))
+                      path = trim(path) // "(" // trim(to_str(k)) // &
+                           "," // trim(to_str(l)) // "," // &
+                           trim(to_str(m)) // ")"
+                      call find_offset(goal, next_univ, final, offset, path)
+                      return
+                    else
+                      old_m = m
+                      old_l = l
+                      old_k = k
+                      cycle
+                    end if
+                  else
+                    ! Target is at this lattice position
+                    lat_offset = lat % offset(map, old_k, old_l, old_m)
+                    offset = offset + lat_offset
+                    next_univ => universes(lat % universes(old_k, old_l, old_m))
+                    path = trim(path) // "(" // trim(to_str(old_k)) // &
+                         "," // trim(to_str(old_l)) // "," // &
+                         trim(to_str(old_m)) // ")"
+                    call find_offset(goal, next_univ, final, offset, path)
+                    return
+                  end if
+
+                end do
+              end do
+            end do
+
+          ! ==================================================================
+          ! HEXAGONAL LATTICES
+          type is (HexLattice)
+
+            ! Write to the geometry stack
+            path = trim(path) // "->" // to_str(lat%id)
+
+            n_z = lat % n_axial
+            n_y = 2 * lat % n_rings - 1
+            n_x = 2 * lat % n_rings - 1
+            old_m = 1
+            old_l = 1
+            old_k = 1
+
+            ! Loop over lattice coordinates
+            do m = 1, n_z
+              do l = 1, n_y
+                do k = 1, n_x
+
+                  ! This array position is never used
+                  if (k + l < lat % n_rings + 1) then
+                    cycle
+                  ! This array position is never used
+                  else if (k + l > 3*lat % n_rings - 1) then
+                    cycle
+                  end if
+
+                  if (final >= lat % offset(map, k, l, m) + offset) then
+                    if (k == lat % n_rings .and. l == n_y .and. m == n_z) then
+                      ! This is last lattice cell, so target must be here
+                      lat_offset = lat % offset(map, k, l, m)
+                      offset = offset + lat_offset
+                      next_univ => universes(lat % universes(k, l, m))
+                      path = trim(path) // "(" // &
+                           trim(to_str(k - lat % n_rings)) // "," // &
+                           trim(to_str(l - lat % n_rings)) // "," // &
+                           trim(to_str(m)) // ")"
+                      call find_offset(goal, next_univ, final, offset, path)
+                      return
+                    else
+                      old_m = m
+                      old_l = l
+                      old_k = k
+                      cycle
+                    end if
+                  else
+                    ! Target is at this lattice position
+                    lat_offset = lat % offset(map, old_k, old_l, old_m)
+                    offset = offset + lat_offset
+                    next_univ => universes(lat % universes(old_k, old_l, old_m))
+                    path = trim(path) // "(" // &
+                         trim(to_str(old_k - lat % n_rings)) // "," // &
+                         trim(to_str(old_l - lat % n_rings)) // "," // &
+                         trim(to_str(old_m)) // ")"
+                    call find_offset(goal, next_univ, final, offset, path)
+                    return
+                  end if
+
+                end do
+              end do
+            end do
+
+          end select
+
+        end if
+      end if
+    end do
+  end subroutine find_offset
 
 end module tally_filter

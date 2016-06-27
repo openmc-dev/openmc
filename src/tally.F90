@@ -2345,11 +2345,12 @@ contains
       ! Copy particle's direction
       uvw = p % coord(1) % uvw
 
-      ! determine incoming energy bin
+      ! Determine incoming energy bin.  We need to tell the energy filter this
+      ! is a tracklength tally so it uses the pre-collision energy.
       j = t % find_filter(FILTER_ENERGYIN)
       if (j > 0) then
         matching_bins(j) = t % filters(j) % obj &
-             % get_next_bin(p, ESTIMATOR_COLLISION, NO_BIN_FOUND)
+             % get_next_bin(p, ESTIMATOR_TRACKLENGTH, NO_BIN_FOUND)
         if (matching_bins(j) == NO_BIN_FOUND) cycle
       end if
 

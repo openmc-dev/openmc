@@ -737,7 +737,6 @@ contains
     integer :: k            ! loop index for scoring bins
     integer :: n            ! loop index for nuclides
     integer :: l            ! loop index for user scores
-    integer :: type         ! type of tally filter
     integer :: indent       ! number of spaces to preceed output
     integer :: filter_index ! index in results array for filters
     integer :: score_index  ! scoring bin index
@@ -1033,8 +1032,8 @@ contains
 
               ! Write incoming energy bin
               write(UNIT=unit_tally, FMT='(3X,A)') &
-                   t % filters(i_filter_ein) % obj % text_label( &
-                   matching_bins(i_filter_ein))
+                   trim(t % filters(i_filter_ein) % obj % text_label( &
+                   matching_bins(i_filter_ein)))
             end if
 
             ! Left Surface

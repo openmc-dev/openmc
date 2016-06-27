@@ -12,7 +12,6 @@ module tally_filter_header
     integer :: type
   contains
     procedure(get_next_bin_), deferred :: get_next_bin
-    procedure(get_score_), deferred :: get_score
     procedure(to_statepoint_), deferred :: to_statepoint
     procedure(to_summary_), deferred :: to_summary
     procedure(initialize_), deferred :: initialize
@@ -25,22 +24,16 @@ module tally_filter_header
 
   abstract interface
 
-    function get_next_bin_(this, p, estimator, current_bin) result(next_bin)
+    subroutine get_next_bin_(this, p, estimator, current_bin, next_bin, score)
       import TallyFilter
       import Particle
-      class(TallyFilter), intent(in) :: this
-      type(Particle),     intent(in) :: p
-      integer,            intent(in) :: estimator
-      integer,            intent(in) :: current_bin
-      integer                        :: next_bin
-    end function get_next_bin_
-
-    function get_score_(this, bin) result(score)
-      import TallyFilter
-      class(TallyFilter), intent(in) :: this
-      integer,            intent(in) :: bin
-      real(8)                        :: score
-    end function get_score_
+      class(TallyFilter), intent(in)  :: this
+      type(Particle),     intent(in)  :: p
+      integer,            intent(in)  :: estimator
+      integer,            intent(in)  :: current_bin
+      integer,            intent(out) :: next_bin
+      real(8),            intent(out) :: score
+    end subroutine get_next_bin_
 
     subroutine to_statepoint_(this, filter_group)
       import TallyFilter

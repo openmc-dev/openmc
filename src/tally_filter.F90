@@ -23,7 +23,6 @@ module tally_filter
     integer :: mesh
   contains
     procedure :: get_next_bin => get_next_bin_mesh
-    procedure :: get_score => get_score_mesh
     procedure :: to_statepoint => to_statepoint_mesh
     procedure :: to_summary => to_statepoint_mesh
     procedure :: initialize => initialize_mesh
@@ -36,7 +35,6 @@ module tally_filter
     integer, allocatable :: universes(:)
   contains
     procedure :: get_next_bin => get_next_bin_universe
-    procedure :: get_score => get_score_universe
     procedure :: to_statepoint => to_statepoint_universe
     procedure :: to_summary => to_statepoint_universe
     procedure :: initialize => initialize_universe
@@ -49,7 +47,6 @@ module tally_filter
     integer, allocatable :: materials(:)
   contains
     procedure :: get_next_bin => get_next_bin_material
-    procedure :: get_score => get_score_material
     procedure :: to_statepoint => to_statepoint_material
     procedure :: to_summary => to_statepoint_material
     procedure :: initialize => initialize_material
@@ -62,7 +59,6 @@ module tally_filter
     integer, allocatable :: cells(:)
   contains
     procedure :: get_next_bin => get_next_bin_cell
-    procedure :: get_score => get_score_cell
     procedure :: to_statepoint => to_statepoint_cell
     procedure :: to_summary => to_statepoint_cell
     procedure :: initialize => initialize_cell
@@ -75,7 +71,6 @@ module tally_filter
     integer :: cell
   contains
     procedure :: get_next_bin => get_next_bin_distribcell
-    procedure :: get_score => get_score_distribcell
     procedure :: to_statepoint => to_statepoint_distribcell
     procedure :: to_summary => to_summary_distribcell
     procedure :: initialize => initialize_distribcell
@@ -88,7 +83,6 @@ module tally_filter
     integer, allocatable :: cells(:)
   contains
     procedure :: get_next_bin => get_next_bin_cellborn
-    procedure :: get_score => get_score_cellborn
     procedure :: to_statepoint => to_statepoint_cellborn
     procedure :: to_summary => to_statepoint_cellborn
     procedure :: initialize => initialize_cellborn
@@ -101,7 +95,6 @@ module tally_filter
     integer, allocatable :: surfaces(:)
   contains
     procedure :: get_next_bin => get_next_bin_surface
-    procedure :: get_score => get_score_surface
     procedure :: to_statepoint => to_statepoint_surface
     procedure :: to_summary => to_statepoint_surface
     procedure :: initialize => initialize_surface
@@ -115,7 +108,6 @@ module tally_filter
     logical              :: matches_transport_groups = .false.
   contains
     procedure :: get_next_bin => get_next_bin_energy
-    procedure :: get_score => get_score_energy
     procedure :: to_statepoint => to_statepoint_energy
     procedure :: to_summary => to_statepoint_energy
     procedure :: initialize => initialize_energy
@@ -129,7 +121,6 @@ module tally_filter
     logical              :: matches_transport_groups = .false.
   contains
     procedure :: get_next_bin => get_next_bin_energyout
-    procedure :: get_score => get_score_energyout
     procedure :: to_statepoint => to_statepoint_energyout
     procedure :: to_summary => to_statepoint_energyout
     procedure :: initialize => initialize_energyout
@@ -142,7 +133,6 @@ module tally_filter
     integer, allocatable :: groups(:)
   contains
     procedure :: get_next_bin => get_next_bin_dg
-    procedure :: get_score => get_score_dg
     procedure :: to_statepoint => to_statepoint_dg
     procedure :: to_summary => to_statepoint_dg
     procedure :: initialize => initialize_dg
@@ -155,7 +145,6 @@ module tally_filter
     real(8), allocatable :: bins(:)
   contains
     procedure :: get_next_bin => get_next_bin_mu
-    procedure :: get_score => get_score_mu
     procedure :: to_statepoint => to_statepoint_mu
     procedure :: to_summary => to_statepoint_mu
     procedure :: initialize => initialize_mu
@@ -168,7 +157,6 @@ module tally_filter
     real(8), allocatable :: bins(:)
   contains
     procedure :: get_next_bin => get_next_bin_polar
-    procedure :: get_score => get_score_polar
     procedure :: to_statepoint => to_statepoint_polar
     procedure :: to_summary => to_statepoint_polar
     procedure :: initialize => initialize_polar
@@ -181,7 +169,6 @@ module tally_filter
     real(8), allocatable :: bins(:)
   contains
     procedure :: get_next_bin => get_next_bin_azimuthal
-    procedure :: get_score => get_score_azimuthal
     procedure :: to_statepoint => to_statepoint_azimuthal
     procedure :: to_summary => to_statepoint_azimuthal
     procedure :: initialize => initialize_azimuthal
@@ -199,24 +186,21 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_mesh(this, p, estimator, current_bin) result(next_bin)
-    class(MeshFilter), intent(in) :: this
-    type(Particle),    intent(in) :: p
-    integer,           intent(in) :: estimator
-    integer,           intent(in) :: current_bin
-    integer                       :: next_bin
+  subroutine get_next_bin_mesh(this, p, estimator, current_bin, next_bin, score)
+    class(MeshFilter), intent(in)  :: this
+    type(Particle),    intent(in)  :: p
+    integer,           intent(in)  :: estimator
+    integer,           intent(in)  :: current_bin
+    integer,           intent(out) :: next_bin
+    real(8),           intent(out) :: score
 
     type(RegularMesh), pointer    :: m
 
     m => meshes(this % mesh)
     call get_mesh_bin(m, p % coord(1) % xyz, next_bin)
-  end function get_next_bin_mesh
 
-  function get_score_mesh(this, bin) result(score)
-    class(MeshFilter), intent(in) :: this
-    integer,           intent(in) :: bin
-    real(8)                       :: score
-  end function get_score_mesh
+    score = ONE
+  end subroutine get_next_bin_mesh
 
   subroutine to_statepoint_mesh(this, filter_group)
     class(MeshFilter), intent(in) :: this
@@ -253,13 +237,14 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_universe(this, p, estimator, current_bin) &
-       result(next_bin)
-    class(UniverseFilter), intent(in) :: this
-    type(Particle),        intent(in) :: p
-    integer,               intent(in) :: estimator
-    integer,               intent(in) :: current_bin
-    integer                           :: next_bin
+  subroutine get_next_bin_universe(this, p, estimator, current_bin, next_bin, &
+       score)
+    class(UniverseFilter), intent(in)  :: this
+    type(Particle),        intent(in)  :: p
+    integer,               intent(in)  :: estimator
+    integer,               intent(in)  :: current_bin
+    integer,               intent(out) :: next_bin
+    real(8),               intent(out) :: score
 
     integer :: i, j, start
     logical :: bin_found
@@ -283,13 +268,8 @@ contains
     end do
 
     if (.not. bin_found) next_bin = NO_BIN_FOUND
-  end function get_next_bin_universe
-
-  function get_score_universe(this, bin) result(score)
-    class(UniverseFilter), intent(in) :: this
-    integer,               intent(in) :: bin
-    real(8)                           :: score
-  end function get_score_universe
+    score = ONE
+  end subroutine get_next_bin_universe
 
   subroutine to_statepoint_universe(this, filter_group)
     class(UniverseFilter), intent(in) :: this
@@ -326,13 +306,14 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_material(this, p, estimator, current_bin) &
-       result(next_bin)
-    class(MaterialFilter), intent(in) :: this
-    type(Particle),        intent(in) :: p
-    integer,               intent(in) :: estimator
-    integer,               intent(in) :: current_bin
-    integer                           :: next_bin
+  subroutine get_next_bin_material(this, p, estimator, current_bin, next_bin, &
+       score)
+    class(MaterialFilter), intent(in)  :: this
+    type(Particle),        intent(in)  :: p
+    integer,               intent(in)  :: estimator
+    integer,               intent(in)  :: current_bin
+    integer,               intent(out) :: next_bin
+    real(8),               intent(out) :: score
 
     integer :: i
     logical :: bin_found
@@ -350,13 +331,8 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-  end function get_next_bin_material
-
-  function get_score_material(this, bin) result(score)
-    class(MaterialFilter), intent(in) :: this
-    integer,               intent(in) :: bin
-    real(8)                           :: score
-  end function get_score_material
+    score = ONE
+  end subroutine get_next_bin_material
 
   subroutine to_statepoint_material(this, filter_group)
     class(MaterialFilter), intent(in) :: this
@@ -393,12 +369,13 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_cell(this, p, estimator, current_bin) result(next_bin)
-    class(CellFilter), intent(in) :: this
-    type(Particle),    intent(in) :: p
-    integer,           intent(in) :: estimator
-    integer,           intent(in) :: current_bin
-    integer                       :: next_bin
+  subroutine get_next_bin_cell(this, p, estimator, current_bin, next_bin, score)
+    class(CellFilter), intent(in)  :: this
+    type(Particle),    intent(in)  :: p
+    integer,           intent(in)  :: estimator
+    integer,           intent(in)  :: current_bin
+    integer,           intent(out) :: next_bin
+    real(8),           intent(out) :: score
 
     integer :: i, j, start
     logical :: bin_found
@@ -422,13 +399,8 @@ contains
     end do
 
     if (.not. bin_found) next_bin = NO_BIN_FOUND
-  end function get_next_bin_cell
-
-  function get_score_cell(this, bin) result(score)
-    class(CellFilter), intent(in) :: this
-    integer,           intent(in) :: bin
-    real(8)                       :: score
-  end function get_score_cell
+    score = ONE
+  end subroutine get_next_bin_cell
 
   subroutine to_statepoint_cell(this, filter_group)
     class(CellFilter), intent(in) :: this
@@ -465,13 +437,14 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_distribcell(this, p, estimator, current_bin) &
-       result(next_bin)
-    class(DistribcellFilter), intent(in) :: this
-    type(Particle),           intent(in) :: p
-    integer,                  intent(in) :: estimator
-    integer,                  intent(in) :: current_bin
-    integer                              :: next_bin
+  subroutine get_next_bin_distribcell(this, p, estimator, current_bin, &
+       next_bin, score)
+    class(DistribcellFilter), intent(in)  :: this
+    type(Particle),           intent(in)  :: p
+    integer,                  intent(in)  :: estimator
+    integer,                  intent(in)  :: current_bin
+    integer,                  intent(out) :: next_bin
+    real(8),                  intent(out) :: score
 
     integer :: distribcell_index, offset, i
 
@@ -504,13 +477,8 @@ contains
         end if
       end do
     end if
-  end function get_next_bin_distribcell
-
-  function get_score_distribcell(this, bin) result(score)
-    class(DistribcellFilter), intent(in) :: this
-    integer,                  intent(in) :: bin
-    real(8)                              :: score
-  end function get_score_distribcell
+    score = ONE
+  end subroutine get_next_bin_distribcell
 
   subroutine to_statepoint_distribcell(this, filter_group)
     class(DistribcellFilter), intent(in) :: this
@@ -582,13 +550,14 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_cellborn(this, p, estimator, current_bin) &
-       result(next_bin)
-    class(CellbornFilter), intent(in) :: this
-    type(Particle),        intent(in) :: p
-    integer,               intent(in) :: estimator
-    integer,               intent(in) :: current_bin
-    integer                           :: next_bin
+  subroutine get_next_bin_cellborn(this, p, estimator, current_bin, next_bin, &
+       score)
+    class(CellbornFilter), intent(in)  :: this
+    type(Particle),        intent(in)  :: p
+    integer,               intent(in)  :: estimator
+    integer,               intent(in)  :: current_bin
+    integer,               intent(out) :: next_bin
+    real(8),               intent(out) :: score
 
     integer :: i
     logical :: bin_found
@@ -606,13 +575,8 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-  end function get_next_bin_cellborn
-
-  function get_score_cellborn(this, bin) result(score)
-    class(CellbornFilter), intent(in) :: this
-    integer,               intent(in) :: bin
-    real(8)                           :: score
-  end function get_score_cellborn
+    score = ONE
+  end subroutine get_next_bin_cellborn
 
   subroutine to_statepoint_cellborn(this, filter_group)
     class(CellbornFilter), intent(in) :: this
@@ -649,13 +613,14 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_surface(this, p, estimator, current_bin) &
-       result(next_bin)
-    class(SurfaceFilter), intent(in) :: this
-    type(Particle),       intent(in) :: p
-    integer,              intent(in) :: estimator
-    integer,              intent(in) :: current_bin
-    integer                          :: next_bin
+  subroutine get_next_bin_surface(this, p, estimator, current_bin, next_bin, &
+       score)
+    class(SurfaceFilter), intent(in)  :: this
+    type(Particle),       intent(in)  :: p
+    integer,              intent(in)  :: estimator
+    integer,              intent(in)  :: current_bin
+    integer,              intent(out) :: next_bin
+    real(8),              intent(out) :: score
 
     integer :: i
     logical :: bin_found
@@ -673,13 +638,8 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-  end function get_next_bin_surface
-
-  function get_score_surface(this, bin) result(score)
-    class(SurfaceFilter), intent(in) :: this
-    integer,              intent(in) :: bin
-    real(8)                          :: score
-  end function get_score_surface
+    score = ONE
+  end subroutine get_next_bin_surface
 
   subroutine to_statepoint_surface(this, filter_group)
     class(SurfaceFilter), intent(in) :: this
@@ -716,12 +676,14 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_energy(this, p, estimator, current_bin) result(next_bin)
-    class(EnergyFilter), intent(in) :: this
-    type(Particle),      intent(in) :: p
-    integer,             intent(in) :: estimator
-    integer,             intent(in) :: current_bin
-    integer                         :: next_bin
+  subroutine get_next_bin_energy(this, p, estimator, current_bin, next_bin, &
+       score)
+    class(EnergyFilter), intent(in)  :: this
+    type(Particle),      intent(in)  :: p
+    integer,             intent(in)  :: estimator
+    integer,             intent(in)  :: current_bin
+    integer,             intent(out) :: next_bin
+    real(8),             intent(out) :: score
 
     integer :: n
     real(8) :: E
@@ -760,13 +722,8 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-  end function get_next_bin_energy
-
-  function get_score_energy(this, bin) result(score)
-    class(EnergyFilter), intent(in) :: this
-    integer,             intent(in) :: bin
-    real(8)                         :: score
-  end function get_score_energy
+    score = ONE
+  end subroutine get_next_bin_energy
 
   subroutine to_statepoint_energy(this, filter_group)
     class(EnergyFilter), intent(in) :: this
@@ -796,13 +753,14 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_energyout(this, p, estimator, current_bin) &
-       result(next_bin)
-    class(EnergyoutFilter), intent(in) :: this
-    type(Particle),         intent(in) :: p
-    integer,                intent(in) :: estimator
-    integer,                intent(in) :: current_bin
-    integer                            :: next_bin
+  subroutine get_next_bin_energyout(this, p, estimator, current_bin, next_bin, &
+       score)
+    class(EnergyoutFilter), intent(in)  :: this
+    type(Particle),         intent(in)  :: p
+    integer,                intent(in)  :: estimator
+    integer,                intent(in)  :: current_bin
+    integer,                intent(out) :: next_bin
+    real(8),                intent(out) :: score
 
     integer :: n
 
@@ -829,13 +787,8 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-  end function get_next_bin_energyout
-
-  function get_score_energyout(this, bin) result(score)
-    class(EnergyoutFilter), intent(in) :: this
-    integer,                intent(in) :: bin
-    real(8)                            :: score
-  end function get_score_energyout
+    score = ONE
+  end subroutine get_next_bin_energyout
 
   subroutine to_statepoint_energyout(this, filter_group)
     class(EnergyoutFilter), intent(in) :: this
@@ -865,19 +818,15 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_dg(this, p, estimator, current_bin) result(next_bin)
-    class(DelayedGroupFilter), intent(in) :: this
-    type(Particle),            intent(in) :: p
-    integer,                   intent(in) :: estimator
-    integer,                   intent(in) :: current_bin
-    integer                               :: next_bin
-  end function get_next_bin_dg
-
-  function get_score_dg(this, bin) result(score)
-    class(DelayedGroupFilter), intent(in) :: this
-    integer,                   intent(in) :: bin
-    real(8)                               :: score
-  end function get_score_dg
+  subroutine get_next_bin_dg(this, p, estimator, current_bin, next_bin, score)
+    class(DelayedGroupFilter), intent(in)  :: this
+    type(Particle),            intent(in)  :: p
+    integer,                   intent(in)  :: estimator
+    integer,                   intent(in)  :: current_bin
+    integer,                   intent(out) :: next_bin
+    real(8),                   intent(out) :: score
+    score = ONE
+  end subroutine get_next_bin_dg
 
   subroutine to_statepoint_dg(this, filter_group)
     class(DelayedGroupFilter), intent(in) :: this
@@ -902,12 +851,13 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_mu(this, p, estimator, current_bin) result(next_bin)
-    class(MuFilter), intent(in) :: this
-    type(Particle),  intent(in) :: p
-    integer,         intent(in) :: estimator
-    integer,         intent(in) :: current_bin
-    integer                     :: next_bin
+  subroutine get_next_bin_mu(this, p, estimator, current_bin, next_bin, score)
+    class(MuFilter), intent(in)  :: this
+    type(Particle),  intent(in)  :: p
+    integer,         intent(in)  :: estimator
+    integer,         intent(in)  :: current_bin
+    integer,         intent(out) :: next_bin
+    real(8),         intent(out) :: score
 
     integer :: n
 
@@ -925,13 +875,8 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-  end function get_next_bin_mu
-
-  function get_score_mu(this, bin) result(score)
-    class(MuFilter), intent(in) :: this
-    integer,         intent(in) :: bin
-    real(8)                     :: score
-  end function get_score_mu
+    score = ONE
+  end subroutine get_next_bin_mu
 
   subroutine to_statepoint_mu(this, filter_group)
     class(MuFilter), intent(in) :: this
@@ -961,12 +906,13 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_polar(this, p, estimator, current_bin) result(next_bin)
-    class(PolarFilter), intent(in) :: this
-    type(Particle),     intent(in) :: p
-    integer,            intent(in) :: estimator
-    integer,            intent(in) :: current_bin
-    integer                        :: next_bin
+  subroutine get_next_bin_polar(this, p, estimator, current_bin, next_bin, score)
+    class(PolarFilter), intent(in)  :: this
+    type(Particle),     intent(in)  :: p
+    integer,            intent(in)  :: estimator
+    integer,            intent(in)  :: current_bin
+    integer,            intent(out) :: next_bin
+    real(8),            intent(out) :: score
 
     integer :: n
     real(8) :: theta
@@ -992,13 +938,8 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-  end function get_next_bin_polar
-
-  function get_score_polar(this, bin) result(score)
-    class(PolarFilter), intent(in) :: this
-    integer,            intent(in) :: bin
-    real(8)                        :: score
-  end function get_score_polar
+    score = ONE
+  end subroutine get_next_bin_polar
 
   subroutine to_statepoint_polar(this, filter_group)
     class(PolarFilter), intent(in) :: this
@@ -1028,13 +969,14 @@ contains
 
 !===============================================================================
 !===============================================================================
-  function get_next_bin_azimuthal(this, p, estimator, current_bin) &
-       result(next_bin)
-    class(AzimuthalFilter), intent(in) :: this
-    type(Particle),         intent(in) :: p
-    integer,                intent(in) :: estimator
-    integer,                intent(in) :: current_bin
-    integer                            :: next_bin
+  subroutine get_next_bin_azimuthal(this, p, estimator, current_bin, next_bin, &
+       score)
+    class(AzimuthalFilter), intent(in)  :: this
+    type(Particle),         intent(in)  :: p
+    integer,                intent(in)  :: estimator
+    integer,                intent(in)  :: current_bin
+    integer,                intent(out) :: next_bin
+    real(8),                intent(out) :: score
 
     integer :: n
     real(8) :: phi
@@ -1060,13 +1002,8 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-  end function get_next_bin_azimuthal
-
-  function get_score_azimuthal(this, bin) result(score)
-    class(AzimuthalFilter), intent(in) :: this
-    integer,                intent(in) :: bin
-    real(8)                            :: score
-  end function get_score_azimuthal
+    score = ONE
+  end subroutine get_next_bin_azimuthal
 
   subroutine to_statepoint_azimuthal(this, filter_group)
     class(AzimuthalFilter), intent(in) :: this

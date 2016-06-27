@@ -1944,6 +1944,7 @@ contains
     real(8) :: xyz_cross(3)         ! coordinates of next boundary
     real(8) :: d(3)                 ! distance to each bounding surface
     real(8) :: distance             ! distance traveled in mesh cell
+    real(8) :: filt_score           ! score applied by filters
     logical :: found_bin            ! was a scoring bin found?
     logical :: start_in_mesh        ! starting coordinates inside mesh?
     logical :: end_in_mesh          ! ending coordinates inside mesh?
@@ -1996,8 +1997,8 @@ contains
       ! Ignore this filter if it's the mesh filter
       if (i == i_filter_mesh) cycle
 
-      matching_bins(i) = t % filters(i) % obj % get_next_bin(p, t % estimator, &
-           NO_BIN_FOUND)
+      call t % filters(i) % obj % get_next_bin(p, t % estimator, NO_BIN_FOUND, &
+           matching_bins(i), filt_score)
 
       ! Check if no matching bin was found
       if (matching_bins(i) == NO_BIN_FOUND) return
@@ -2249,6 +2250,7 @@ contains
     logical,        intent(out) :: found_bin
 
     integer :: i
+    real(8) :: filt_score            ! score applied by filters
     type(TallyObject), pointer :: t
 
     found_bin = .true.
@@ -2257,8 +2259,8 @@ contains
 
     FILTER_LOOP: do i = 1, t % n_filters
 
-      matching_bins(i) = t % filters(i) % obj % get_next_bin(p, t % estimator, &
-           NO_BIN_FOUND)
+      call t % filters(i) % obj % get_next_bin(p, t % estimator, NO_BIN_FOUND, &
+           matching_bins(i), filt_score)
 
       ! If the current filter didn't match, exit this subroutine
       if (matching_bins(i) == NO_BIN_FOUND) then
@@ -2295,6 +2297,7 @@ contains
     real(8) :: xyz_cross(3)         ! coordinates of bounding surfaces
     real(8) :: d(3)                 ! distance to each bounding surface
     real(8) :: distance             ! actual distance traveled
+    real(8) :: filt_score           ! score applied by filters
     logical :: start_in_mesh        ! particle's starting xyz in mesh?
     logical :: end_in_mesh          ! particle's ending xyz in mesh?
     logical :: x_same               ! same starting/ending x index (i)
@@ -2349,8 +2352,8 @@ contains
       ! is a tracklength tally so it uses the pre-collision energy.
       j = t % find_filter(FILTER_ENERGYIN)
       if (j > 0) then
-        matching_bins(j) = t % filters(j) % obj &
-             % get_next_bin(p, ESTIMATOR_TRACKLENGTH, NO_BIN_FOUND)
+        call t % filters(i) % obj % get_next_bin(p, ESTIMATOR_TRACKLENGTH, &
+             & NO_BIN_FOUND, matching_bins(j), filt_score)
         if (matching_bins(j) == NO_BIN_FOUND) cycle
       end if
 

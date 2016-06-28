@@ -141,6 +141,7 @@ module global
   type(RegularMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
   integer, allocatable :: matching_bins(:)
+  real(8), allocatable :: filter_weights(:)
 
   ! Pointers for different tallies
   type(TallyObject), pointer :: user_tallies(:) => null()
@@ -447,7 +448,8 @@ module global
   type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
 
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
-!$omp&              trace, thread_id, current_work, matching_bins)
+!$omp&              trace, thread_id, current_work, matching_bins, &
+!$omp&              filter_weights)
 
 contains
 
@@ -514,6 +516,7 @@ contains
     if (allocated(meshes)) deallocate(meshes)
     if (allocated(tallies)) deallocate(tallies)
     if (allocated(matching_bins)) deallocate(matching_bins)
+    if (allocated(filter_weights)) deallocate(filter_weights)
     if (allocated(tally_maps)) deallocate(tally_maps)
 
     ! Deallocate fission and source bank and entropy

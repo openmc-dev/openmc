@@ -55,9 +55,10 @@ class Library(object):
         If true, computes cross sections for each nuclide in each domain
     mgxs_types : Iterable of str
         The types of cross sections in the library (e.g., ['total', 'scatter'])
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
-    domains : Iterable of openmc.Material, openmc.Cell or openmc.Universe
+    domains : Iterable of openmc.Material, openmc.Cell, openmc.Universe, or
+        openmc.Mesh
         The spatial domain(s) for which MGXS in the Library are computed
     correction : {'P0', None}
         Apply the P0 correction to scattering matrices if set to 'P0'
@@ -188,6 +189,10 @@ class Library(object):
                 return self.openmc_geometry.get_all_material_cells()
             elif self.domain_type == 'universe':
                 return self.openmc_geometry.get_all_universes()
+            # FIXME: Change to get tuples of all domain cells
+            elif self.domain_type == 'mesh':
+                raise ValueError('Unable to get all domains for a mesh domain ' +
+                                 'type. The domains must be set to [openmc.Mesh]')
             else:
                 raise ValueError('Unable to get domains without a domain type')
         else:
@@ -253,11 +258,21 @@ class Library(object):
     @by_nuclide.setter
     def by_nuclide(self, by_nuclide):
         cv.check_type('by_nuclide', by_nuclide, bool)
+
+        if by_nuclide == True and self.domain_type == 'mesh':
+            raise ValueError('Unable to create MGXS library by nuclide with ' +
+                             'mesh domain')
+
         self._by_nuclide = by_nuclide
 
     @domain_type.setter
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
+
+        if by_nuclide == True and domain_type == 'mesh':
+            raise ValueError('Unable to create MGXS library by nuclide with ' +
+                             'mesh domain')
+
         self._domain_type = domain_type
 
     @domains.setter
@@ -278,6 +293,9 @@ class Library(object):
             elif self.domain_type == 'universe':
                 cv.check_iterable_type('domain', domains, openmc.Universe)
                 all_domains = self.openmc_geometry.get_all_universes()
+            elif self.domain_type == 'mesh':
+                cv.check_iterable_type('domain', domains, openmc.Mesh)
+                all_domains = domains
             else:
                 msg = 'Unable to set domains with ' \
                       'domain type "{}"'.format(self.domain_type)
@@ -458,9 +476,13 @@ class Library(object):
 
         Parameters
         ----------
-        domain : Material or Cell or Universe or Integral
-            The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi'}
+        domain : Material or Cell or Universe or Mesh or Integral
+            The material, cell, universe, or mesh object of interest (or its ID)
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption',
+                     'capture', 'fission', 'nu-fission', 'kappa-fission',
+                     'scatter', 'nu-scatter', 'scatter matrix',
+                     'nu-scatter matrix', 'multiplicity matrix',
+                     'nu-fission matrix', chi'}
             The type of multi-group cross section object to return
 
         Returns
@@ -482,6 +504,8 @@ class Library(object):
             cv.check_type('domain', domain, (openmc.Cell, Integral))
         elif self.domain_type == 'universe':
             cv.check_type('domain', domain, (openmc.Universe, Integral))
+        elif self.domain_type == 'mesh':
+            cv.check_type('domain', domain, (openmc.Mesh, Integral))
 
         # Check that requested domain is included in library
         if isinstance(domain, Integral):
@@ -761,7 +785,7 @@ class Library(object):
 
         Parameters
         ----------
-        domain : openmc.Material or openmc.Cell or openmc.Universe
+        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
             The domain for spatial homogenization
         xsdata_name : str
             Name to apply to the "xsdata" entry produced by this method
@@ -809,7 +833,7 @@ class Library(object):
         """
 
         cv.check_type('domain', domain, (openmc.Material, openmc.Cell,
-                                         openmc.Cell))
+                                         openmc.Cell, openmc.Mesh))
         cv.check_type('xsdata_name', xsdata_name, basestring)
         cv.check_type('nuclide', nuclide, basestring)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])

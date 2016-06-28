@@ -70,6 +70,7 @@ contains
     ! Allocate array for matching filter bins
 !$omp parallel
     allocate(matching_bins(max_n_filters))
+    allocate(filter_weights(max_n_filters))
 !$omp end parallel
 
   end subroutine setup_tally_arrays

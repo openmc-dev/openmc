@@ -275,8 +275,8 @@ contains
       if (master .and. current_gen /= gen_per_batch) call print_generation()
     elseif (run_mode == MODE_FIXEDSOURCE) then
       ! For fixed-source mode, we need to sample the external source
-      call set_particle_seed(overall_gen*n_particles)
       do i = 1, work
+        call set_particle_seed(overall_gen*n_particles + work_index(rank) + i)
         call sample_external_source(source_bank(i))
       end do
     end if

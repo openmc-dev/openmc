@@ -7,5 +7,5 @@ from testing_harness import ParticleRestartTestHarness
 
 
 if __name__ == '__main__':
-    harness = ParticleRestartTestHarness('particle_9_590.h5')
+    harness = ParticleRestartTestHarness('particle_7_144.h5')
     harness.main()

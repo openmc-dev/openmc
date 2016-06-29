@@ -913,7 +913,7 @@ contains
 
         ! Skip total inelastic level scattering, gas production cross sections
         ! (MT=200+), etc.
-        if (rxn % MT == N_LEVEL) cycle
+        if (rxn % MT == N_LEVEL .or. rxn % MT == N_NONELASTIC) cycle
         if (rxn % MT > N_5N2P .and. rxn % MT < N_P0) cycle
 
         ! Skip level cross sections if total is available

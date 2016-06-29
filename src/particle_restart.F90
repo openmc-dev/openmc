@@ -97,9 +97,14 @@ contains
     call read_dataset(p % id, file_id, 'id')
     call read_dataset(p % wgt, file_id, 'weight')
     call read_dataset(p % E, file_id, 'energy')
-    call read_dataset(p % g, file_id, 'energy_group')
     call read_dataset(p % coord(1) % xyz, file_id, 'xyz')
     call read_dataset(p % coord(1) % uvw, file_id, 'uvw')
+
+    ! Set energy group and average energy in multi-group mode
+    if (.not. run_CE) then
+      p % g = int(p % E)
+      p % E = energy_bin_avg(p % g)
+    end if
 
     ! Set particle last attributes
     p % last_wgt = p % wgt

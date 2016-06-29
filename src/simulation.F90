@@ -17,7 +17,7 @@ module simulation
                              print_batch_keff, print_generation
   use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed
-  use source,          only: initialize_source
+  use source,          only: initialize_source, sample_external_source
   use state_point,     only: write_state_point, write_source_point
   use string,          only: to_str
   use tally,           only: synchronize_tallies, setup_active_usertallies, &
@@ -227,6 +227,8 @@ contains
 
   subroutine finalize_generation()
 
+    integer(8) :: i
+
     ! Update global tallies with the omp private accumulation variables
 !$omp parallel
 !$omp critical
@@ -271,6 +273,12 @@ contains
 
       ! Write generation output
       if (master .and. current_gen /= gen_per_batch) call print_generation()
+    elseif (run_mode == MODE_FIXEDSOURCE) then
+      ! For fixed-source mode, we need to sample the external source
+      do i = 1, work
+        call set_particle_seed(overall_gen*n_particles + work_index(rank) + i)
+        call sample_external_source(source_bank(i))
+      end do
     end if
 
   end subroutine finalize_generation

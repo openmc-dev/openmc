@@ -186,28 +186,28 @@ module constants
 
   ! Reaction types
   integer, parameter :: &
-       TOTAL_XS = 1,  ELASTIC = 2,  N_LEVEL = 4,   MISC = 5,      N_2ND   = 11, &
-       N_2N    = 16,  N_3N   = 17,  N_FISSION = 18, N_F    = 19,  N_NF    = 20, &
-       N_2NF   = 21,  N_NA   = 22,  N_N3A   = 23,  N_2NA   = 24,  N_3NA   = 25, &
-       N_NP    = 28,  N_N2A  = 29,  N_2N2A  = 30,  N_ND    = 32,  N_NT    = 33, &
-       N_N3HE  = 34,  N_ND2A = 35,  N_NT2A  = 36,  N_4N    = 37,  N_3NF   = 38, &
-       N_2NP   = 41,  N_3NP  = 42,  N_N2P   = 44,  N_NPA   = 45,  N_N1    = 51, &
-       N_N40   = 90,  N_NC   = 91,  N_DISAPPEAR = 101, N_GAMMA = 102, N_P = 103, &
-       N_D     = 104, N_T    = 105, N_3HE   = 106, N_A     = 107, N_2A    = 108, &
-       N_3A    = 109, N_2P   = 111, N_PA    = 112, N_T2A   = 113, N_D2A   = 114, &
-       N_PD    = 115, N_PT   = 116, N_DA    = 117, N_5N    = 152, N_6N    = 153, &
-       N_2NT   = 154, N_TA   = 155, N_4NP   = 156, N_3ND   = 157, N_NDA   = 158, &
-       N_2NPA  = 159, N_7N   = 160, N_8N    = 161, N_5NP   = 162, N_6NP   = 163, &
-       N_7NP   = 164, N_4NA  = 165, N_5NA   = 166, N_6NA   = 167, N_7NA   = 168, &
-       N_4ND   = 169, N_5ND  = 170, N_6ND   = 171, N_3NT   = 172, N_4NT   = 173, &
-       N_5NT   = 174, N_6NT  = 175, N_2N3HE = 176, N_3N3HE = 177, N_4N3HE = 178, &
-       N_3N2P  = 179, N_3N3A = 180, N_3NPA  = 181, N_DT    = 182, N_NPD   = 183, &
-       N_NPT   = 184, N_NDT  = 185, N_NP3HE = 186, N_ND3HE = 187, N_NT3HE = 188, &
-       N_NTA   = 189, N_2N2P = 190, N_P3HE  = 191, N_D3HE  = 192, N_3HEA  = 193, &
-       N_4N2P  = 194, N_4N2A = 195, N_4NPA  = 196, N_3P    = 197, N_N3P   = 198, &
-       N_3N2PA = 199, N_5N2P = 200, N_P0    = 600, N_PC    = 649, N_D0    = 650, &
-       N_DC    = 699, N_T0   = 700, N_TC    = 749, N_3HE0  = 750, N_3HEC  = 799, &
-       N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891
+       TOTAL_XS = 1,  ELASTIC = 2,   N_NONELASTIC = 3, N_LEVEL = 4, MISC  = 5,   &
+       N_2ND   = 11,  N_2N    = 16,  N_3N   = 17,  N_FISSION = 18, N_F    = 19,  &
+       N_NF    = 20,  N_2NF   = 21,  N_NA   = 22,  N_N3A   = 23,  N_2NA   = 24,  &
+       N_3NA   = 25,  N_NP    = 28,  N_N2A  = 29,  N_2N2A  = 30,  N_ND    = 32,  &
+       N_NT    = 33,  N_N3HE  = 34,  N_ND2A = 35,  N_NT2A  = 36,  N_4N    = 37,  &
+       N_3NF   = 38,  N_2NP   = 41,  N_3NP  = 42,  N_N2P   = 44,  N_NPA   = 45,  &
+       N_N1    = 51,  N_N40   = 90,  N_NC   = 91,  N_DISAPPEAR = 101, N_GAMMA = 102, &
+       N_P     = 103, N_D     = 104, N_T    = 105, N_3HE   = 106, N_A     = 107, &
+       N_2A    = 108, N_3A    = 109, N_2P   = 111, N_PA    = 112, N_T2A   = 113, &
+       N_D2A   = 114, N_PD    = 115, N_PT   = 116, N_DA    = 117, N_5N    = 152, &
+       N_6N    = 153, N_2NT   = 154, N_TA   = 155, N_4NP   = 156, N_3ND   = 157, &
+       N_NDA   = 158, N_2NPA  = 159, N_7N   = 160, N_8N    = 161, N_5NP   = 162, &
+       N_6NP   = 163, N_7NP   = 164, N_4NA  = 165, N_5NA   = 166, N_6NA   = 167, &
+       N_7NA   = 168, N_4ND   = 169, N_5ND  = 170, N_6ND   = 171, N_3NT   = 172, &
+       N_4NT   = 173, N_5NT   = 174, N_6NT  = 175, N_2N3HE = 176, N_3N3HE = 177, &
+       N_4N3HE = 178, N_3N2P  = 179, N_3N3A = 180, N_3NPA  = 181, N_DT    = 182, &
+       N_NPD   = 183, N_NPT   = 184, N_NDT  = 185, N_NP3HE = 186, N_ND3HE = 187, &
+       N_NT3HE = 188, N_NTA   = 189, N_2N2P = 190, N_P3HE  = 191, N_D3HE  = 192, &
+       N_3HEA  = 193, N_4N2P  = 194, N_4N2A = 195, N_4NPA  = 196, N_3P    = 197, &
+       N_N3P   = 198, N_3N2PA = 199, N_5N2P = 200, N_P0    = 600, N_PC    = 649, &
+       N_D0    = 650, N_DC    = 699, N_T0   = 700, N_TC    = 749, N_3HE0  = 750, &
+       N_3HEC  = 799, N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891
 
   ! ACE table types
   integer, parameter :: &

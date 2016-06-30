@@ -605,8 +605,10 @@ contains
     integer,                  intent(out) :: next_bin
     real(8),                  intent(out) :: score
 
+    logical :: cell_found
     integer :: distribcell_index, offset, i
 
+    cell_found = .false.
     if (current_bin == NO_BIN_FOUND) then
       distribcell_index = cells(this % cell) % distribcell_index
       offset = 0
@@ -629,12 +631,14 @@ contains
         end if
         if (this % cell == p % coord(i) % cell) then
           next_bin = offset + 1
+          cell_found = .true.
           exit
         end if
       end do
     else
       next_bin = NO_BIN_FOUND
     end if
+    if (.not. cell_found) next_bin = NO_BIN_FOUND
     score = ONE
   end subroutine get_next_bin_distribcell
 

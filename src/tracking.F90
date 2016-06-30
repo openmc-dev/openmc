@@ -191,7 +191,7 @@ contains
         p % fission = .false.
 
         ! Save coordinates for tallying purposes
-        p % last_xyz = p % coord(1) % xyz
+        p % last_xyz_current = p % coord(1) % xyz
 
         ! Set last material to none since cross sections will need to be
         ! re-evaluated
@@ -210,6 +210,9 @@ contains
           end if
         end do
       end if
+
+      ! Save coordinates for tallying purposes
+      p % last_xyz = p % coord(1) % xyz
 
       ! If particle has too many events, display warning and kill it
       n_event = n_event + 1

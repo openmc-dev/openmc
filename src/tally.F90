@@ -1378,6 +1378,7 @@ contains
       ! ========================================================================
       ! Loop until we've covered all valid bins on each of the filters.
 
+      filter_weight = ONE
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
@@ -1516,6 +1517,7 @@ contains
       ! ========================================================================
       ! Loop until we've covered all valid bins on each of the filters.
 
+      filter_weight = ONE
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
@@ -1926,6 +1928,7 @@ contains
       ! ========================================================================
       ! Loop until we've covered all valid bins on each of the filters.
 
+      filter_weight = ONE
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
@@ -2078,6 +2081,7 @@ contains
       ! ========================================================================
       ! Loop until we've covered all valid bins on each of the filters.
 
+      filter_weight = ONE
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
@@ -2245,7 +2249,7 @@ contains
 
     TALLY_LOOP: do i = 1, active_current_tallies % size()
       ! Copy starting and ending location of particle
-      xyz0 = p % last_xyz
+      xyz0 = p % last_xyz_current
       xyz1 = p % coord(1) % xyz
 
       ! Get pointer to tally

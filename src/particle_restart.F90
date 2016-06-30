@@ -102,11 +102,12 @@ contains
     call read_dataset(p % coord(1) % uvw, file_id, 'uvw')
 
     ! Set particle last attributes
-    p % last_wgt = p % wgt
-    p % last_xyz = p % coord(1)%xyz
-    p % last_uvw = p % coord(1)%uvw
-    p % last_E   = p % E
-    p % last_g   = p % g
+    p % last_wgt         = p % wgt
+    p % last_xyz_current = p % coord(1)%xyz
+    p % last_xyz         = p % coord(1)%xyz
+    p % last_uvw         = p % coord(1)%uvw
+    p % last_E           = p % E
+    p % last_g           = p % g
 
     ! Close hdf5 file
     call file_close(file_id)

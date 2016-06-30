@@ -607,11 +607,8 @@ contains
 
     integer :: distribcell_index, offset, i
 
-    next_bin = NO_BIN_FOUND
-
-    distribcell_index = cells(this % cell) % distribcell_index
-
     if (current_bin == NO_BIN_FOUND) then
+      distribcell_index = cells(this % cell) % distribcell_index
       offset = 0
       do i = 1, p % n_coord
         if (cells(p % coord(i) % cell) % type == CELL_FILL) then
@@ -635,6 +632,8 @@ contains
           exit
         end if
       end do
+    else
+      next_bin = NO_BIN_FOUND
     end if
     score = ONE
   end subroutine get_next_bin_distribcell
@@ -984,6 +983,12 @@ contains
     integer,                   intent(in)  :: current_bin
     integer,                   intent(out) :: next_bin
     real(8),                   intent(out) :: score
+
+    if (current_bin == NO_BIN_FOUND) then
+      next_bin = 1
+    else
+      next_bin = NO_BIN_FOUND
+    end if
     score = ONE
   end subroutine get_next_bin_dg
 

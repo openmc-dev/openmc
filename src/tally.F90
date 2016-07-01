@@ -14,7 +14,7 @@ module tally
   use particle_header,  only: LocalCoord, Particle
   use search,           only: binary_search
   use string,           only: to_str
-  use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
+  use tally_header,     only: TallyResult
   use tally_filter
 
 #ifdef MPI
@@ -1711,7 +1711,7 @@ contains
                                                      UVW=p % last_uvw)
         end if
 
-        if (t % energyout_matches_groups) then
+        if (filt % matches_transport_groups) then
           ! determine outgoing energy from fission bank
           gout = int(fission_bank(n_bank - p % n_bank + k) % E)
 

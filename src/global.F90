@@ -14,7 +14,7 @@ module global
   use set_header,       only: SetInt
   use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
-  use tally_header,     only: TallyObject, TallyMap, TallyResult
+  use tally_header,     only: TallyObject, TallyResult
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
 
@@ -180,9 +180,6 @@ module global
   real(8) :: global_tally_leakage     = ZERO
 !$omp threadprivate(global_tally_collision, global_tally_absorption, &
 !$omp&              global_tally_tracklength, global_tally_leakage)
-
-  ! Tally map structure
-  type(TallyMap), allocatable :: tally_maps(:)
 
   integer :: n_meshes       = 0 ! # of structured meshes
   integer :: n_user_meshes  = 0 ! # of structured user meshes
@@ -517,7 +514,6 @@ contains
     if (allocated(tallies)) deallocate(tallies)
     if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(filter_weights)) deallocate(filter_weights)
-    if (allocated(tally_maps)) deallocate(tally_maps)
 
     ! Deallocate fission and source bank and entropy
 !$omp parallel

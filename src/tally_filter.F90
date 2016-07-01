@@ -1,16 +1,16 @@
 module tally_filter
 
-  use constants, only: ONE, NO_BIN_FOUND, FP_PRECISION
-  use geometry_header, only: BASE_UNIVERSE, RectLattice, HexLattice
+  use constants,           only: ONE, NO_BIN_FOUND, FP_PRECISION
+  use geometry_header,     only: BASE_UNIVERSE, RectLattice, HexLattice
   use global
   use hdf5_interface
-  use mesh_header, only: RegularMesh
-  use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
-                              get_mesh_indices, mesh_indices_to_bin, &
-                              mesh_intersects_2d, mesh_intersects_3d
-  use particle_header, only: Particle
-  use search, only: binary_search
-  use string, only: to_str
+  use mesh_header,         only: RegularMesh
+  use mesh,                only: get_mesh_bin, bin_to_mesh_indices, &
+                                 get_mesh_indices, mesh_indices_to_bin, &
+                                 mesh_intersects_2d, mesh_intersects_3d
+  use particle_header,     only: Particle
+  use search,              only: binary_search
+  use string,              only: to_str
   use tally_filter_header, only: TallyFilter, TallyFilterContainer
 
   use hdf5, only: HID_T
@@ -18,54 +18,57 @@ module tally_filter
   implicit none
 
 !===============================================================================
+! MESHFILTER indexes the location of particle events to a regular mesh.  For
+! tracklength tallies, it will produce multiple valid bins and the bin weight
+! will correspond to the fraction of the track length that lies in that bin.
 !===============================================================================
   type, extends(TallyFilter) :: MeshFilter
     integer :: mesh
   contains
     procedure :: get_next_bin => get_next_bin_mesh
     procedure :: to_statepoint => to_statepoint_mesh
-    procedure :: to_summary => to_statepoint_mesh
-    procedure :: initialize => initialize_mesh
     procedure :: text_label => text_label_mesh
   end type MeshFilter
 
 !===============================================================================
+! UNIVERSEFILTER specifies which geometric universes tally events reside in.
 !===============================================================================
   type, extends(TallyFilter) :: UniverseFilter
     integer, allocatable :: universes(:)
   contains
     procedure :: get_next_bin => get_next_bin_universe
     procedure :: to_statepoint => to_statepoint_universe
-    procedure :: to_summary => to_statepoint_universe
-    procedure :: initialize => initialize_universe
     procedure :: text_label => text_label_universe
+    procedure :: initialize => initialize_universe
   end type UniverseFilter
 
 !===============================================================================
+! MATERIAL specifies which material tally events reside in.
 !===============================================================================
   type, extends(TallyFilter) :: MaterialFilter
     integer, allocatable :: materials(:)
   contains
     procedure :: get_next_bin => get_next_bin_material
     procedure :: to_statepoint => to_statepoint_material
-    procedure :: to_summary => to_statepoint_material
-    procedure :: initialize => initialize_material
     procedure :: text_label => text_label_material
+    procedure :: initialize => initialize_material
   end type MaterialFilter
 
 !===============================================================================
+! CELLFILTER specifies which geometric cells tally events reside in.
 !===============================================================================
   type, extends(TallyFilter) :: CellFilter
     integer, allocatable :: cells(:)
   contains
     procedure :: get_next_bin => get_next_bin_cell
     procedure :: to_statepoint => to_statepoint_cell
-    procedure :: to_summary => to_statepoint_cell
-    procedure :: initialize => initialize_cell
     procedure :: text_label => text_label_cell
+    procedure :: initialize => initialize_cell
   end type CellFilter
 
 !===============================================================================
+! DISTRIBCELLFILTER specifies which distributed geometric cells tally events
+! reside in.
 !===============================================================================
   type, extends(TallyFilter) :: DistribcellFilter
     integer :: cell
@@ -73,134 +76,147 @@ module tally_filter
     procedure :: get_next_bin => get_next_bin_distribcell
     procedure :: to_statepoint => to_statepoint_distribcell
     procedure :: to_summary => to_summary_distribcell
-    procedure :: initialize => initialize_distribcell
     procedure :: text_label => text_label_distribcell
+    procedure :: initialize => initialize_distribcell
   end type DistribcellFilter
 
 !===============================================================================
+! CELLBORNFILTER specifies which cell the particle was born in.
 !===============================================================================
   type, extends(TallyFilter) :: CellbornFilter
     integer, allocatable :: cells(:)
   contains
     procedure :: get_next_bin => get_next_bin_cellborn
     procedure :: to_statepoint => to_statepoint_cellborn
-    procedure :: to_summary => to_statepoint_cellborn
-    procedure :: initialize => initialize_cellborn
     procedure :: text_label => text_label_cellborn
+    procedure :: initialize => initialize_cellborn
   end type CellbornFilter
 
 !===============================================================================
+! SURFACEFILTER is currently not implemented for usual geometric surfaces, but
+! it is used as a placeholder for mesh surfaces used in current tallies.
 !===============================================================================
   type, extends(TallyFilter) :: SurfaceFilter
     integer, allocatable :: surfaces(:)
   contains
     procedure :: get_next_bin => get_next_bin_surface
     procedure :: to_statepoint => to_statepoint_surface
-    procedure :: to_summary => to_statepoint_surface
-    procedure :: initialize => initialize_surface
     procedure :: text_label => text_label_surface
+    procedure :: initialize => initialize_surface
   end type SurfaceFilter
 
 !===============================================================================
+! ENERGYFILTER bins the incident neutron energy.
 !===============================================================================
   type, extends(TallyFilter) :: EnergyFilter
     real(8), allocatable :: bins(:)
+
+    ! True if transport group number can be used directly to get bin number
     logical              :: matches_transport_groups = .false.
+
   contains
     procedure :: get_next_bin => get_next_bin_energy
     procedure :: to_statepoint => to_statepoint_energy
-    procedure :: to_summary => to_statepoint_energy
-    procedure :: initialize => initialize_energy
     procedure :: text_label => text_label_energy
   end type EnergyFilter
 
 !===============================================================================
+! ENERGYOUTFILTER bins the outgoing neutron energy.  Only scattering events use
+! the get_next_bin functionality.  Nu-fission tallies manually iterate over the
+! filter bins.
 !===============================================================================
   type, extends(TallyFilter) :: EnergyoutFilter
     real(8), allocatable :: bins(:)
+
+    ! True if transport group number can be used directly to get bin number
     logical              :: matches_transport_groups = .false.
+
   contains
     procedure :: get_next_bin => get_next_bin_energyout
     procedure :: to_statepoint => to_statepoint_energyout
-    procedure :: to_summary => to_statepoint_energyout
-    procedure :: initialize => initialize_energyout
     procedure :: text_label => text_label_energyout
   end type EnergyoutFilter
 
 !===============================================================================
+! DELAYEDGROUPFILTER bins outgoing fission neutrons in their delayed groups.
+! The get_next_bin functionality is not actually used.  The bins are manually
+! iterated over in the scoring subroutines.
 !===============================================================================
   type, extends(TallyFilter) :: DelayedGroupFilter
     integer, allocatable :: groups(:)
   contains
     procedure :: get_next_bin => get_next_bin_dg
     procedure :: to_statepoint => to_statepoint_dg
-    procedure :: to_summary => to_statepoint_dg
-    procedure :: initialize => initialize_dg
     procedure :: text_label => text_label_dg
   end type DelayedGroupFilter
 
 !===============================================================================
+! MUFILTER bins the incoming-outgoing direction cosine.  This is only used for
+! scatter reactions.
 !===============================================================================
   type, extends(TallyFilter) :: MuFilter
     real(8), allocatable :: bins(:)
   contains
     procedure :: get_next_bin => get_next_bin_mu
     procedure :: to_statepoint => to_statepoint_mu
-    procedure :: to_summary => to_statepoint_mu
-    procedure :: initialize => initialize_mu
     procedure :: text_label => text_label_mu
   end type MuFilter
 
 !===============================================================================
+! POLARFILTER bins the incident neutron polar angle (relative to the global
+! z-axis).
 !===============================================================================
   type, extends(TallyFilter) :: PolarFilter
     real(8), allocatable :: bins(:)
   contains
     procedure :: get_next_bin => get_next_bin_polar
     procedure :: to_statepoint => to_statepoint_polar
-    procedure :: to_summary => to_statepoint_polar
-    procedure :: initialize => initialize_polar
     procedure :: text_label => text_label_polar
   end type PolarFilter
 
 !===============================================================================
+! AZIMUTHALFILTER bins the incident neutron azimuthal angle (relative to the
+! global xy-plane).
 !===============================================================================
   type, extends(TallyFilter) :: AzimuthalFilter
     real(8), allocatable :: bins(:)
   contains
     procedure :: get_next_bin => get_next_bin_azimuthal
     procedure :: to_statepoint => to_statepoint_azimuthal
-    procedure :: to_summary => to_statepoint_azimuthal
-    procedure :: initialize => initialize_azimuthal
     procedure :: text_label => text_label_azimuthal
   end type AzimuthalFilter
 
 contains
 
-
-
-
-
-
-
+!===============================================================================
+! METHODS: for a description of these methods, see their counterparts bound to
+! the abstract TallyFilter class.
+!===============================================================================
 
 !===============================================================================
+! MeshFilter methods
 !===============================================================================
-  subroutine get_next_bin_mesh(this, p, estimator, current_bin, next_bin, score)
+  subroutine get_next_bin_mesh(this, p, estimator, current_bin, next_bin, &
+       weight)
     class(MeshFilter), intent(in)  :: this
     type(Particle),    intent(in)  :: p
     integer,           intent(in)  :: estimator
     integer,           intent(in)  :: current_bin
     integer,           intent(out) :: next_bin
-    real(8),           intent(out) :: score
+    real(8),           intent(out) :: weight
+
+    integer, parameter :: MAX_SEARCH_ITER = 100 ! Maximum number of times we can
+                                                !  can loop while trying to find
+                                                !  the first intersection.
 
     integer :: j                    ! loop index for direction
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
+    integer :: search_iter          ! loop count for intersection search
     real(8) :: uvw(3)               ! cosine of angle of particle
     real(8) :: xyz0(3)              ! starting/intermediate coordinates
     real(8) :: xyz1(3)              ! ending coordinates of particle
-    real(8) :: xyz_cross(3)         ! coordinates of next boundary
+    real(8) :: xyz_cross            ! coordinates of next boundary
     real(8) :: d(3)                 ! distance to each bounding surface
     real(8) :: total_distance       ! distance of entire particle track
     real(8) :: distance             ! distance traveled in mesh cell
@@ -212,15 +228,23 @@ contains
     m => meshes(this % mesh)
 
     if (estimator /= ESTIMATOR_TRACKLENGTH) then
+      ! If this is an analog or collision tally, then there can only be one
+      ! valid mesh bin.
       if (current_bin == NO_BIN_FOUND) then
         call get_mesh_bin(m, p % coord(1) % xyz, next_bin)
       else
         next_bin = NO_BIN_FOUND
       end if
-      score = ONE
+      weight = ONE
 
     else
-      ! Copy starting and ending location of particle.
+      ! A track can span multiple mesh bins so we need to handle a lot of
+      ! intersection logic for tracklength tallies.
+
+      ! Copy the starting and ending coordinates of the particle.  Offset these
+      ! just a bit for the purposes of determining if there was an intersection
+      ! in case the mesh surfaces coincide with lattice/geometric surfaces which
+      ! might produce finite-precision errors.
       xyz0 = p % last_xyz + TINY_BIT * p % coord(1) % uvw
       xyz1 = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
 
@@ -246,7 +270,7 @@ contains
         end if
       end if
 
-      ! Reset starting, ending locations and particle direction.
+      ! Copy the un-modified coordinates the particle direction.
       xyz0 = p % last_xyz
       xyz1 = p % coord(1) % xyz
       uvw = p % coord(1) % uvw
@@ -254,20 +278,30 @@ contains
       ! Compute the length of the entire track.
       total_distance = sqrt(sum((xyz1 - xyz0)**2))
 
+      ! If we're looking for the first valid bin, check to see if the particle
+      ! starts inside the mesh.
       if (current_bin == NO_BIN_FOUND) then
         if (any(ijk0(:m % n_dimension) < 1) &
              .or. any(ijk0(:m % n_dimension) > m % dimension)) then
+
+          ! The particle does not start in the mesh so keep iterating the ijk0
+          ! indices to cross the nearest mesh surface until we've found a valid
+          ! bin.  MAX_SEARCH_ITER prevents an infinite loop.
+          search_iter = 0
           do while (any(ijk0(:m % n_dimension) < 1) &
                .or. any(ijk0(:m % n_dimension) > m % dimension))
+            if (search_iter == MAX_SEARCH_ITER) call fatal_error("Failed to &
+                 &find a mesh intersection on a tally mesh filter.")
+
             do j = 1, m % n_dimension
               if (abs(uvw(j)) < FP_PRECISION) then
                 d(j) = INFINITY
               else if (uvw(j) > 0) then
-                xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
-                d(j) = (xyz_cross(j) - xyz0(j)) / uvw(j)
+                xyz_cross = m % lower_left(j) + ijk0(j) * m % width(j)
+                d(j) = (xyz_cross - xyz0(j)) / uvw(j)
               else
-                xyz_cross(j) = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
-                d(j) = (xyz_cross(j) - xyz0(j)) / uvw(j)
+                xyz_cross = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
+                d(j) = (xyz_cross - xyz0(j)) / uvw(j)
               end if
             end do
             j = minloc(d(:m % n_dimension), 1)
@@ -279,9 +313,9 @@ contains
           end do
           distance = d(j)
           xyz0 = xyz0 + distance * uvw
+
         end if
       end if
-
 
       ! ========================================================================
       ! If we've already scored some mesh bins, figure out which mesh cell is
@@ -304,11 +338,11 @@ contains
           if (abs(uvw(j)) < FP_PRECISION) then
             d(j) = INFINITY
           else if (uvw(j) > 0) then
-            xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
-            d(j) = (xyz_cross(j) - xyz0(j)) / uvw(j)
+            xyz_cross = m % lower_left(j) + ijk0(j) * m % width(j)
+            d(j) = (xyz_cross - xyz0(j)) / uvw(j)
           else
-            xyz_cross(j) = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
-            d(j) = (xyz_cross(j) - xyz0(j)) / uvw(j)
+            xyz_cross = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
+            d(j) = (xyz_cross - xyz0(j)) / uvw(j)
           end if
         end do
         j = minloc(d(:m % n_dimension), 1)
@@ -322,10 +356,8 @@ contains
         ! Increment the indices into the next mesh cell.
         if (uvw(j) > ZERO) then
           ijk0(j) = ijk0(j) + 1
-          xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
         else
           ijk0(j) = ijk0(j) - 1
-          xyz_cross(j) = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
         end if
 
         ! If the next indices are invalid, then the track has left the mesh and
@@ -339,17 +371,20 @@ contains
 
       ! Compute the length of the track segment in this mesh cell.
       if (all(ijk0(:m % n_dimension) == ijk1(:m % n_dimension))) then
+        ! The track ends in this cell.  Use the particle end location rather
+        ! than the mesh surface.
         distance = sqrt(sum((xyz1 - xyz0)**2))
       else
+        ! The track exits this cell.  Use the distance to the mesh surface.
         do j = 1, m % n_dimension
           if (abs(uvw(j)) < FP_PRECISION) then
             d(j) = INFINITY
           else if (uvw(j) > 0) then
-            xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
-            d(j) = (xyz_cross(j) - xyz0(j)) / uvw(j)
+            xyz_cross = m % lower_left(j) + ijk0(j) * m % width(j)
+            d(j) = (xyz_cross - xyz0(j)) / uvw(j)
           else
-            xyz_cross(j) = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
-            d(j) = (xyz_cross(j) - xyz0(j)) / uvw(j)
+            xyz_cross = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
+            d(j) = (xyz_cross - xyz0(j)) / uvw(j)
           end if
         end do
         distance = minval(d(:m % n_dimension))
@@ -357,7 +392,7 @@ contains
 
       ! Assign the next tally bin and the score
       next_bin = mesh_indices_to_bin(m, ijk0(:m % n_dimension))
-      score = distance / total_distance
+      weight = distance / total_distance
     endif
   end subroutine get_next_bin_mesh
 
@@ -369,10 +404,6 @@ contains
     call write_dataset(filter_group, "n_bins", this % n_bins)
     call write_dataset(filter_group, "bins", this % mesh )
   end subroutine to_statepoint_mesh
-
-  subroutine initialize_mesh(this)
-    class(MeshFilter), intent(inout) :: this
-  end subroutine initialize_mesh
 
   function text_label_mesh(this, bin) result(label)
     class(MeshFilter), intent(in) :: this
@@ -395,15 +426,16 @@ contains
   end function text_label_mesh
 
 !===============================================================================
+! UniverseFilter methods
 !===============================================================================
   subroutine get_next_bin_universe(this, p, estimator, current_bin, next_bin, &
-       score)
+       weight)
     class(UniverseFilter), intent(in)  :: this
     type(Particle),        intent(in)  :: p
     integer,               intent(in)  :: estimator
     integer,               intent(in)  :: current_bin
     integer,               intent(out) :: next_bin
-    real(8),               intent(out) :: score
+    real(8),               intent(out) :: weight 
 
     integer :: i, j, start
     logical :: bin_found
@@ -427,7 +459,7 @@ contains
     end do
 
     if (.not. bin_found) next_bin = NO_BIN_FOUND
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_universe
 
   subroutine to_statepoint_universe(this, filter_group)
@@ -444,6 +476,7 @@ contains
 
     integer :: i, id
 
+    ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % universes(i)
       if (universe_dict % has_key(id)) then
@@ -464,15 +497,16 @@ contains
   end function text_label_universe
 
 !===============================================================================
+! MaterialFilter methods
 !===============================================================================
   subroutine get_next_bin_material(this, p, estimator, current_bin, next_bin, &
-       score)
+       weight)
     class(MaterialFilter), intent(in)  :: this
     type(Particle),        intent(in)  :: p
     integer,               intent(in)  :: estimator
     integer,               intent(in)  :: current_bin
     integer,               intent(out) :: next_bin
-    real(8),               intent(out) :: score
+    real(8),               intent(out) :: weight
 
     integer :: i
     logical :: bin_found
@@ -490,7 +524,7 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_material
 
   subroutine to_statepoint_material(this, filter_group)
@@ -507,6 +541,7 @@ contains
 
     integer :: i, id
 
+    ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % materials(i)
       if (material_dict % has_key(id)) then
@@ -527,14 +562,16 @@ contains
   end function text_label_material
 
 !===============================================================================
+! CellFilter methods
 !===============================================================================
-  subroutine get_next_bin_cell(this, p, estimator, current_bin, next_bin, score)
+  subroutine get_next_bin_cell(this, p, estimator, current_bin, next_bin, &
+       weight)
     class(CellFilter), intent(in)  :: this
     type(Particle),    intent(in)  :: p
     integer,           intent(in)  :: estimator
     integer,           intent(in)  :: current_bin
     integer,           intent(out) :: next_bin
-    real(8),           intent(out) :: score
+    real(8),           intent(out) :: weight
 
     integer :: i, j, start
     logical :: bin_found
@@ -558,7 +595,7 @@ contains
     end do
 
     if (.not. bin_found) next_bin = NO_BIN_FOUND
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_cell
 
   subroutine to_statepoint_cell(this, filter_group)
@@ -575,6 +612,7 @@ contains
 
     integer :: i, id
 
+    ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % cells(i)
       if (cell_dict % has_key(id)) then
@@ -595,15 +633,16 @@ contains
   end function text_label_cell
 
 !===============================================================================
+! DistribcellFilter methods
 !===============================================================================
   subroutine get_next_bin_distribcell(this, p, estimator, current_bin, &
-       next_bin, score)
+       next_bin, weight)
     class(DistribcellFilter), intent(in)  :: this
     type(Particle),           intent(in)  :: p
     integer,                  intent(in)  :: estimator
     integer,                  intent(in)  :: current_bin
     integer,                  intent(out) :: next_bin
-    real(8),                  intent(out) :: score
+    real(8),                  intent(out) :: weight
 
     logical :: cell_found
     integer :: distribcell_index, offset, i
@@ -639,7 +678,7 @@ contains
       next_bin = NO_BIN_FOUND
     end if
     if (.not. cell_found) next_bin = NO_BIN_FOUND
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_distribcell
 
   subroutine to_statepoint_distribcell(this, filter_group)
@@ -684,8 +723,9 @@ contains
   subroutine initialize_distribcell(this)
     class(DistribcellFilter), intent(inout) :: this
 
-    integer :: i, id
+    integer :: id
 
+    ! Convert id to index.
     id = this % cell
     if (cell_dict % has_key(id)) then
       this % cell = cell_dict % get_key(id)
@@ -711,15 +751,16 @@ contains
   end function text_label_distribcell
 
 !===============================================================================
+! CellbornFilter methods
 !===============================================================================
   subroutine get_next_bin_cellborn(this, p, estimator, current_bin, next_bin, &
-       score)
+       weight)
     class(CellbornFilter), intent(in)  :: this
     type(Particle),        intent(in)  :: p
     integer,               intent(in)  :: estimator
     integer,               intent(in)  :: current_bin
     integer,               intent(out) :: next_bin
-    real(8),               intent(out) :: score
+    real(8),               intent(out) :: weight
 
     integer :: i
     logical :: bin_found
@@ -737,7 +778,7 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_cellborn
 
   subroutine to_statepoint_cellborn(this, filter_group)
@@ -754,6 +795,7 @@ contains
 
     integer :: i, id
 
+    ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % cells(i)
       if (cell_dict % has_key(id)) then
@@ -774,15 +816,16 @@ contains
   end function text_label_cellborn
 
 !===============================================================================
+! SurfaceFilter methods
 !===============================================================================
   subroutine get_next_bin_surface(this, p, estimator, current_bin, next_bin, &
-       score)
+       weight)
     class(SurfaceFilter), intent(in)  :: this
     type(Particle),       intent(in)  :: p
     integer,              intent(in)  :: estimator
     integer,              intent(in)  :: current_bin
     integer,              intent(out) :: next_bin
-    real(8),              intent(out) :: score
+    real(8),              intent(out) :: weight
 
     integer :: i
     logical :: bin_found
@@ -800,7 +843,7 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_surface
 
   subroutine to_statepoint_surface(this, filter_group)
@@ -817,6 +860,7 @@ contains
 
     integer :: i, id
 
+    ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % surfaces(i)
       if (surface_dict % has_key(id)) then
@@ -837,15 +881,16 @@ contains
   end function text_label_surface
 
 !===============================================================================
+! EnergyFilter methods
 !===============================================================================
   subroutine get_next_bin_energy(this, p, estimator, current_bin, next_bin, &
-       score)
+       weight)
     class(EnergyFilter), intent(in)  :: this
     type(Particle),      intent(in)  :: p
     integer,             intent(in)  :: estimator
     integer,             intent(in)  :: current_bin
     integer,             intent(out) :: next_bin
-    real(8),             intent(out) :: score
+    real(8),             intent(out) :: weight
 
     integer :: n
     real(8) :: E
@@ -884,7 +929,7 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_energy
 
   subroutine to_statepoint_energy(this, filter_group)
@@ -895,10 +940,6 @@ contains
     call write_dataset(filter_group, "n_bins", this % n_bins)
     call write_dataset(filter_group, "bins", this % bins )
   end subroutine to_statepoint_energy
-
-  subroutine initialize_energy(this)
-    class(EnergyFilter), intent(inout) :: this
-  end subroutine initialize_energy
 
   function text_label_energy(this, bin) result(label)
     class(EnergyFilter), intent(in) :: this
@@ -914,15 +955,16 @@ contains
   end function text_label_energy
 
 !===============================================================================
+! EnergyoutFilter methods
 !===============================================================================
   subroutine get_next_bin_energyout(this, p, estimator, current_bin, next_bin, &
-       score)
+       weight)
     class(EnergyoutFilter), intent(in)  :: this
     type(Particle),         intent(in)  :: p
     integer,                intent(in)  :: estimator
     integer,                intent(in)  :: current_bin
     integer,                intent(out) :: next_bin
-    real(8),                intent(out) :: score
+    real(8),                intent(out) :: weight
 
     integer :: n
 
@@ -949,7 +991,7 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_energyout
 
   subroutine to_statepoint_energyout(this, filter_group)
@@ -960,10 +1002,6 @@ contains
     call write_dataset(filter_group, "n_bins", this % n_bins)
     call write_dataset(filter_group, "bins", this % bins )
   end subroutine to_statepoint_energyout
-
-  subroutine initialize_energyout(this)
-    class(EnergyoutFilter), intent(inout) :: this
-  end subroutine initialize_energyout
 
   function text_label_energyout(this, bin) result(label)
     class(EnergyoutFilter), intent(in) :: this
@@ -979,21 +1017,22 @@ contains
   end function text_label_energyout
 
 !===============================================================================
+! DelayedGroupFilter methods
 !===============================================================================
-  subroutine get_next_bin_dg(this, p, estimator, current_bin, next_bin, score)
+  subroutine get_next_bin_dg(this, p, estimator, current_bin, next_bin, weight)
     class(DelayedGroupFilter), intent(in)  :: this
     type(Particle),            intent(in)  :: p
     integer,                   intent(in)  :: estimator
     integer,                   intent(in)  :: current_bin
     integer,                   intent(out) :: next_bin
-    real(8),                   intent(out) :: score
+    real(8),                   intent(out) :: weight
 
     if (current_bin == NO_BIN_FOUND) then
       next_bin = 1
     else
       next_bin = NO_BIN_FOUND
     end if
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_dg
 
   subroutine to_statepoint_dg(this, filter_group)
@@ -1005,10 +1044,6 @@ contains
     call write_dataset(filter_group, "bins", this % groups )
   end subroutine to_statepoint_dg
 
-  subroutine initialize_dg(this)
-    class(DelayedGroupFilter), intent(inout) :: this
-  end subroutine initialize_dg
-
   function text_label_dg(this, bin) result(label)
     class(DelayedGroupFilter), intent(in) :: this
     integer,                   intent(in) :: bin
@@ -1018,14 +1053,15 @@ contains
   end function text_label_dg
 
 !===============================================================================
+! MuFilter methods
 !===============================================================================
-  subroutine get_next_bin_mu(this, p, estimator, current_bin, next_bin, score)
+  subroutine get_next_bin_mu(this, p, estimator, current_bin, next_bin, weight)
     class(MuFilter), intent(in)  :: this
     type(Particle),  intent(in)  :: p
     integer,         intent(in)  :: estimator
     integer,         intent(in)  :: current_bin
     integer,         intent(out) :: next_bin
-    real(8),         intent(out) :: score
+    real(8),         intent(out) :: weight
 
     integer :: n
 
@@ -1043,7 +1079,7 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_mu
 
   subroutine to_statepoint_mu(this, filter_group)
@@ -1054,10 +1090,6 @@ contains
     call write_dataset(filter_group, "n_bins", this % n_bins)
     call write_dataset(filter_group, "bins", this % bins )
   end subroutine to_statepoint_mu
-
-  subroutine initialize_mu(this)
-    class(MuFilter), intent(inout) :: this
-  end subroutine initialize_mu
 
   function text_label_mu(this, bin) result(label)
     class(MuFilter), intent(in) :: this
@@ -1073,14 +1105,16 @@ contains
   end function text_label_mu
 
 !===============================================================================
+! PolarFilter methods
 !===============================================================================
-  subroutine get_next_bin_polar(this, p, estimator, current_bin, next_bin, score)
+  subroutine get_next_bin_polar(this, p, estimator, current_bin, next_bin, &
+       weight)
     class(PolarFilter), intent(in)  :: this
     type(Particle),     intent(in)  :: p
     integer,            intent(in)  :: estimator
     integer,            intent(in)  :: current_bin
     integer,            intent(out) :: next_bin
-    real(8),            intent(out) :: score
+    real(8),            intent(out) :: weight
 
     integer :: n
     real(8) :: theta
@@ -1106,7 +1140,7 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_polar
 
   subroutine to_statepoint_polar(this, filter_group)
@@ -1117,10 +1151,6 @@ contains
     call write_dataset(filter_group, "n_bins", this % n_bins)
     call write_dataset(filter_group, "bins", this % bins )
   end subroutine to_statepoint_polar
-
-  subroutine initialize_polar(this)
-    class(PolarFilter), intent(inout) :: this
-  end subroutine initialize_polar
 
   function text_label_polar(this, bin) result(label)
     class(PolarFilter), intent(in) :: this
@@ -1136,15 +1166,16 @@ contains
   end function text_label_polar
 
 !===============================================================================
+! AzimuthalFilter methods
 !===============================================================================
   subroutine get_next_bin_azimuthal(this, p, estimator, current_bin, next_bin, &
-       score)
+       weight)
     class(AzimuthalFilter), intent(in)  :: this
     type(Particle),         intent(in)  :: p
     integer,                intent(in)  :: estimator
     integer,                intent(in)  :: current_bin
     integer,                intent(out) :: next_bin
-    real(8),                intent(out) :: score
+    real(8),                intent(out) :: weight
 
     integer :: n
     real(8) :: phi
@@ -1170,7 +1201,7 @@ contains
     else
       next_bin = NO_BIN_FOUND
     end if
-    score = ONE
+    weight = ONE
   end subroutine get_next_bin_azimuthal
 
   subroutine to_statepoint_azimuthal(this, filter_group)
@@ -1181,10 +1212,6 @@ contains
     call write_dataset(filter_group, "n_bins", this % n_bins)
     call write_dataset(filter_group, "bins", this % bins )
   end subroutine to_statepoint_azimuthal
-
-  subroutine initialize_azimuthal(this)
-    class(AzimuthalFilter), intent(inout) :: this
-  end subroutine initialize_azimuthal
 
   function text_label_azimuthal(this, bin) result(label)
     class(AzimuthalFilter), intent(in) :: this
@@ -1200,9 +1227,9 @@ contains
   end function text_label_azimuthal
 
 !===============================================================================
-! FIND_OFFSET uses a given map number, a target cell ID, and a target offset
-! to build a string which is the path from the base universe to the target cell
-! with the given offset
+! FIND_OFFSET (for distribcell) uses a given map number, a target cell ID, and
+! a target offset to build a string which is the path from the base universe to
+! the target cell with the given offset
 !===============================================================================
 
   recursive subroutine find_offset(goal, univ, final, offset, path)

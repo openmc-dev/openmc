@@ -3038,7 +3038,6 @@ contains
                 if (n_words == energy_groups + 1) then
                   if (all(filt % bins == energy_bins(energy_groups + 1:1:-1))) &
                        then
-                    t % energy_matches_groups = .true.
                     filt % matches_transport_groups = .true.
                   end if
                 end if
@@ -3064,7 +3063,6 @@ contains
                 if (n_words == energy_groups + 1) then
                   if (all(filt % bins == energy_bins(energy_groups + 1:1:-1))) &
                        then
-                    t % energyout_matches_groups = .true.
                     filt % matches_transport_groups = .true.
                   end if
                 end if

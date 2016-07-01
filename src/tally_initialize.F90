@@ -2,7 +2,7 @@ module tally_initialize
 
   use constants
   use global
-  use tally_header, only: TallyObject, TallyMapElement, TallyMapItem
+  use tally_header, only: TallyObject
 
   implicit none
   private
@@ -23,7 +23,6 @@ contains
     allocate(global_tallies(N_GLOBAL_TALLIES))
 
     call setup_tally_arrays()
-    call setup_tally_maps()
 
   end subroutine configure_tallies
 
@@ -74,97 +73,6 @@ contains
 !$omp end parallel
 
   end subroutine setup_tally_arrays
-
-!===============================================================================
-! SETUP_TALLY_MAPS creates a map that allows a quick determination of which
-! tallies and bins need to be scored to when a particle makes a collision. This
-! subroutine also sets the stride attribute for each tally as well as allocating
-! storage for the results array.
-!===============================================================================
-
-  subroutine setup_tally_maps()
-
-!    integer :: i    ! loop index for tallies
-!    integer :: j    ! loop index for filters
-!    integer :: k    ! loop index for bins
-!    integer :: bin  ! filter bin entries
-!    integer :: type ! type of tally filter
-!    type(TallyObject), pointer :: t
-!
-!    ! allocate tally map array -- note that we don't need a tally map for the
-!    ! energy_in and energy_out filters
-!    allocate(tally_maps(N_FILTER_TYPES - 3))
-!
-!    ! allocate list of items for each different filter type
-!    allocate(tally_maps(FILTER_UNIVERSE) % items(n_universes))
-!    allocate(tally_maps(FILTER_MATERIAL) % items(n_materials))
-!    allocate(tally_maps(FILTER_CELL)     % items(n_cells))
-!    allocate(tally_maps(FILTER_CELLBORN) % items(n_cells))
-!    allocate(tally_maps(FILTER_SURFACE)  % items(n_surfaces))
-!
-!    TALLY_LOOP: do i = 1, n_tallies
-!      ! Get pointer to tally
-!      t => tallies(i)
-!
-!      ! No need to set up tally maps for surface current tallies
-!      if (t % type == TALLY_SURFACE_CURRENT) cycle
-!
-!      FILTER_LOOP: do j = 1, t % n_filters
-!        ! Determine type of filter
-!        type = t % filters(j) % type
-!
-!        if (type == FILTER_CELL .or. type == FILTER_SURFACE .or. &
-!             type == FILTER_MATERIAL .or. type == FILTER_UNIVERSE .or. &
-!             type == FILTER_CELLBORN) then
-!
-!          ! Add map elements
-!          BIN_LOOP: do k = 1, t % filters(j) % n_bins
-!            bin = t % filters(j) % int_bins(k)
-!            call add_map_element(tally_maps(type) % items(bin), i, k)
-!          end do BIN_LOOP
-!        end if
-!
-!      end do FILTER_LOOP
-!
-!    end do TALLY_LOOP
-
-  end subroutine setup_tally_maps
-
-!===============================================================================
-! ADD_MAP_ELEMENT adds a pair of tally and bin indices to the list for a given
-! cell/surface/etc.
-!===============================================================================
-
-  subroutine add_map_element(item, index_tally, index_bin)
-
-    type(TallyMapItem), intent(inout) :: item
-    integer, intent(in) :: index_tally ! index in tallies array
-    integer, intent(in) :: index_bin   ! index in bins array
-
-    integer :: n                       ! size of elements array
-    type(TallyMapElement), allocatable :: temp(:)
-
-    if (.not. allocated(item % elements)) then
-      allocate(item % elements(1))
-      item % elements(1) % index_tally = index_tally
-      item % elements(1) % index_bin   = index_bin
-    else
-      ! determine size of elements array
-      n = size(item % elements)
-
-      ! allocate temporary storage and copy elements
-      allocate(temp(n+1))
-      temp(1:n) = item % elements
-
-      ! move allocation back to main array
-      call move_alloc(FROM=temp, TO=item%elements)
-
-      ! set new element
-      item % elements(n+1) % index_tally = index_tally
-      item % elements(n+1) % index_bin   = index_bin
-    end if
-
-  end subroutine add_map_element
 
 !===============================================================================
 ! ADD_TALLIES extends the tallies array with a new group of tallies and assigns

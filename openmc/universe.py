@@ -1,6 +1,7 @@
 from collections import OrderedDict, Iterable
 from numbers import Integral
 from xml.etree import ElementTree as ET
+import random
 import sys
 import warnings
 
@@ -11,7 +12,6 @@ import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
     basestring = str
-
 
 # A dictionary for storing IDs of cell elements that have already been written,
 # used to optimize the writing process
@@ -36,6 +36,8 @@ class Universe(object):
         automatically be assigned
     name : str, optional
         Name of the universe. If not specified, the name is the empty string.
+    cells : Iterable of openmc.Cell, optional
+        Cells to add to the universe. By default no cells are added.
 
     Attributes
     ----------
@@ -49,7 +51,7 @@ class Universe(object):
 
     """
 
-    def __init__(self, universe_id=None, name=''):
+    def __init__(self, universe_id=None, name='', cells=None):
         # Initialize Cell class attributes
         self.id = universe_id
         self.name = name
@@ -61,7 +63,9 @@ class Universe(object):
         # Keys     - Cell IDs
         # Values - Offsets
         self._cell_offsets = OrderedDict()
-        self._num_regions = 0
+
+        if cells is not None:
+            self.add_cells(cells)
 
     def __eq__(self, other):
         if not isinstance(other, Universe):
@@ -87,8 +91,6 @@ class Universe(object):
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
         string += '{0: <16}{1}{2}\n'.format('\tCells', '=\t',
                                             list(self._cells.keys()))
-        string += '{0: <16}{1}{2}\n'.format('\t# Regions', '=\t',
-                                            self._num_regions)
         return string
 
     @property
@@ -121,6 +123,149 @@ class Universe(object):
             self._name = name
         else:
             self._name = ''
+
+    def find(self, point):
+        """Find cells/universes/lattices which contain a given point
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinates of the point
+
+        Returns
+        -------
+        list
+            Sequence of universes, cells, and lattices which are traversed to
+            find the given point
+
+        """
+        p = np.asarray(point)
+        for cell in self._cells.values():
+            if p in cell:
+                if cell.fill_type in ('material', 'distribmat', 'void'):
+                    return [self, cell]
+                elif cell.fill_type == 'universe':
+                    if cell.translation is not None:
+                        p -= cell.translation
+                    if cell.rotation is not None:
+                        p[:] = cell.rotation_matrix.dot(p)
+                    return [self, cell] + cell.fill.find(p)
+                else:
+                    return [self, cell] + cell.fill.find(p)
+        return []
+
+    def plot(self, center=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
+             basis='xy', color_by='cell', colors=None, filename=None, seed=None):
+        """Display a slice plot of the universe.
+
+        Parameters
+        ----------
+        center : Iterable of float
+            Coordinates at the center of the plot
+        width : Iterable of float
+            Width of the plot in each basis direction
+        pixels : Iterable of int
+            Number of pixels to use in each basis direction
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        color_by : {'cell', 'material'}
+            Indicate whether the plot should be colored by cell or by material
+        colors : dict
+
+            Assigns colors to specific materials or cells. Keys are instances of
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples or RGBA
+            4-tuples. Red, green, blue, and alpha should all be floats in the
+            range [0.0, 1.0], for example:
+
+            .. code-block:: python
+
+               # Make water blue
+               water = openmc.Cell(fill=h2o)
+               universe.plot(..., colors={water: (0., 0., 1.))
+
+        filename : str or None
+            Filename to save plot to. If no filename is given, the plot will be
+            displayed using the currently enabled matplotlib backend.
+        seed : hashable object or None
+            Hashable object which is used to seed the random number generator
+            used to select colors. If None, the generator is seeded from the
+            current time.
+
+        """
+        import matplotlib.pyplot as plt
+
+        # Seed the random number generator
+        if seed is not None:
+            random.seed(seed)
+
+        if colors is None:
+            # Create default dictionary if none supplied
+            colors = {}
+        else:
+            # Convert to RGBA if necessary
+            for obj, rgb in colors.items():
+                if len(rgb) == 3:
+                    colors[obj] = rgb + (1.0,)
+
+        if basis == 'xy':
+            x_min = center[0] - 0.5*width[0]
+            x_max = center[0] + 0.5*width[0]
+            y_min = center[1] - 0.5*width[1]
+            y_max = center[1] + 0.5*width[1]
+        elif basis == 'yz':
+            # The x-axis will correspond to physical y and the y-axis will correspond to physical z
+            x_min = center[1] - 0.5*width[0]
+            x_max = center[1] + 0.5*width[0]
+            y_min = center[2] - 0.5*width[1]
+            y_max = center[2] + 0.5*width[1]
+        elif basis == 'xz':
+            # The y-axis will correspond to physical z
+            x_min = center[0] - 0.5*width[0]
+            x_max = center[0] + 0.5*width[0]
+            y_min = center[2] - 0.5*width[1]
+            y_max = center[2] + 0.5*width[1]
+
+        # Determine locations to determine cells at
+        x_coords = np.linspace(x_min, x_max, pixels[0], endpoint=False) + \
+                   0.5*(x_max - x_min)/pixels[0]
+        y_coords = np.linspace(y_max, y_min, pixels[1], endpoint=False) - \
+                   0.5*(y_max - y_min)/pixels[1]
+
+        # Search for locations and assign colors
+        img = np.zeros(pixels + (4,))  # Use RGBA form
+        for i, x in enumerate(x_coords):
+            for j, y in enumerate(y_coords):
+                if basis == 'xy':
+                    path = self.find((x, y, center[2]))
+                elif basis == 'yz':
+                    path = self.find((center[0], x, y))
+                elif basis == 'xz':
+                    path = self.find((x, center[1], y))
+
+                if len(path) > 0:
+                    try:
+                        if color_by == 'cell':
+                            obj = path[-1]
+                        elif color_by == 'material':
+                            if path[-1].fill_type == 'material':
+                                obj = path[-1].fill
+                            else:
+                                continue
+                    except AttributeError:
+                        continue
+                    if obj not in colors:
+                        colors[obj] = (random.random(), random.random(),
+                                       random.random(), 1.0)
+                    img[j,i,:] = colors[obj]
+
+        # Display image
+        plt.imshow(img, extent=(x_min, x_max, y_min, y_max))
+
+        # Show or save the plot
+        if filename is None:
+            plt.show()
+        else:
+            plt.savefig(filename)
 
     def add_cell(self, cell):
         """Add a cell to the universe.

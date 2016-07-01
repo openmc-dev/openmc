@@ -1,4 +1,4 @@
-.. _usersguide_mgxs_library:
+.. _io_mgxs_library:
 
 ========================================
 Multi-Group Cross Section Library Format
@@ -8,10 +8,10 @@ OpenMC can be run in continuous-energy mode or multi-group mode, provided the
 nuclear data is available.  In continuous-energy mode, the
 ``cross_sections.xml`` file contains necessary meta-data for each data set,
 including the name and a file system location where the complete library
-can be found.  In multi-group mode, this ``cross_sections.xml`` file contains
+can be found.  In multi-group mode, this ``mgxs.xml`` file contains
 this same meta-data describing the nuclide or material, but also contains the
 group-wise nuclear data.  This portion of the manual describes the format of
-the multi-group data library required to be used in the ``cross_sections.xml``
+the multi-group data library required to be used in the ``mgxs.xml``
 file.
 
 Similar to the other input file types, the multi-group library is provided in
@@ -22,9 +22,11 @@ materials.
 
 .. _XML: http://www.w3.org/XML/
 
-------------------------------------------------
-MGXS Library Specification -- cross_sections.xml
-------------------------------------------------
+.. _mgxs_lib_spec:
+
+--------------------------
+MGXS Library Specification
+--------------------------
 
 The multi-group library meta-data is contained within the groups_,
 group_structure_, and inverse_velocities_ elements.
@@ -33,7 +35,7 @@ The actual multi-group data itself is contained within the xsdata_ element.
 .. _groups:
 
 ``<groups>`` Element
-----------------------------------
+--------------------
 
 The ``<groups>`` element has no attributes and simply provides the number of
 energy groups contained within the library.
@@ -171,9 +173,9 @@ attributes/sub-elements required to describe the meta-data:
     provided via the ``scatt_type`` element above, is represented and thus used
     during the scattering process.  Specifically, the options are to either
     convert the Legendre expansion to a tabular representation or leave it as
-    a set of Legendre coefficients.  Converting to a tabular representation will
-    cost memory but is likely to decrease runtime compared to leaving as a
-    set of Legendre coefficients.  This element has the following
+    a set of Legendre coefficients.  Converting to a tabular representation
+    will cost memory but can allow for a decrease in runtime compared to
+    leaving as a set of Legendre coefficients.  This element has the following
     attributes/sub-elements:
 
     :enable:

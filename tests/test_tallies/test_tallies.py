@@ -4,7 +4,7 @@ import os
 import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from openmc import Filter, Mesh, Tally, TalliesFile
+from openmc import Filter, Mesh, Tally, Tallies
 from openmc.source import Source
 from openmc.stats import Box
 
@@ -42,7 +42,8 @@ class TalliesTestHarness(PyAPITestHarness):
         mesh_2x2.lower_left  = [-182.07, -182.07]
         mesh_2x2.upper_right = [182.07,  182.07]
         mesh_2x2.dimension = [2, 2]
-        mesh_filter = Filter(type='mesh', bins=(1,))
+        mesh_filter = Filter(type='mesh')
+        mesh_filter.mesh = mesh_2x2
         azimuthal_tally4 = Tally()
         azimuthal_tally4.filters = [azimuthal_filter2, mesh_filter]
         azimuthal_tally4.scores = ['flux']
@@ -159,9 +160,6 @@ class TalliesTestHarness(PyAPITestHarness):
         total_tallies[2].estimator = 'analog'
         total_tallies[3].estimator = 'collision'
 
-        questionable_tally = Tally()
-        questionable_tally.scores = ['transport', 'n1n']
-
         all_nuclide_tallies = [Tally(), Tally()]
         for t in all_nuclide_tallies:
             t.filters = [cell_filter]
@@ -170,33 +168,18 @@ class TalliesTestHarness(PyAPITestHarness):
         all_nuclide_tallies[0].estimator = 'tracklength'
         all_nuclide_tallies[0].estimator = 'collision'
 
-        self._input_set.tallies = TalliesFile()
-        self._input_set.tallies.add_tally(azimuthal_tally1)
-        self._input_set.tallies.add_tally(azimuthal_tally2)
-        self._input_set.tallies.add_tally(azimuthal_tally3)
-        self._input_set.tallies.add_tally(azimuthal_tally4)
-        self._input_set.tallies.add_tally(cellborn_tally)
-        self._input_set.tallies.add_tally(dg_tally)
-        self._input_set.tallies.add_tally(energy_tally)
-        self._input_set.tallies.add_tally(energyout_tally)
-        self._input_set.tallies.add_tally(transfer_tally)
-        self._input_set.tallies.add_tally(material_tally)
-        self._input_set.tallies.add_tally(mu_tally1)
-        self._input_set.tallies.add_tally(mu_tally2)
-        self._input_set.tallies.add_tally(mu_tally3)
-        self._input_set.tallies.add_tally(polar_tally1)
-        self._input_set.tallies.add_tally(polar_tally2)
-        self._input_set.tallies.add_tally(polar_tally3)
-        self._input_set.tallies.add_tally(polar_tally4)
-        self._input_set.tallies.add_tally(universe_tally)
-        [self._input_set.tallies.add_tally(t) for t in score_tallies]
-        [self._input_set.tallies.add_tally(t) for t in flux_tallies]
-        self._input_set.tallies.add_tally(scatter_tally1)
-        self._input_set.tallies.add_tally(scatter_tally2)
-        [self._input_set.tallies.add_tally(t) for t in total_tallies]
-        self._input_set.tallies.add_tally(questionable_tally)
-        [self._input_set.tallies.add_tally(t) for t in all_nuclide_tallies]
-        self._input_set.tallies.add_mesh(mesh_2x2)
+        self._input_set.tallies = Tallies()
+        self._input_set.tallies += (
+            [azimuthal_tally1, azimuthal_tally2, azimuthal_tally3,
+             azimuthal_tally4, cellborn_tally, dg_tally, energy_tally,
+             energyout_tally, transfer_tally, material_tally, mu_tally1,
+             mu_tally2, mu_tally3, polar_tally1, polar_tally2, polar_tally3,
+             polar_tally4, universe_tally])
+        self._input_set.tallies += score_tallies
+        self._input_set.tallies += flux_tallies
+        self._input_set.tallies += (scatter_tally1, scatter_tally2)
+        self._input_set.tallies += total_tallies
+        self._input_set.tallies += all_nuclide_tallies
 
         self._input_set.export()
 

@@ -11,6 +11,7 @@ module ace
   use global
   use list_header, only: ListInt
   use material_header, only: Material
+  use multipole,        only: multipole_read
   use nuclide_header
   use output, only: write_message
   use product_header, only: ReactionProduct
@@ -54,8 +55,9 @@ contains
     integer :: temp_table   ! temporary value for sorting
     character(12)  :: name  ! name of isotope, e.g. 92235.03c
     character(12)  :: alias ! alias of nuclide, e.g. U-235.03c
+    logical :: mp_found     ! if windowed multipole libraries were found
     type(Material),   pointer :: mat
-    type(NuclideCE), pointer :: nuc
+    type(Nuclide), pointer :: nuc
     type(SAlphaBeta), pointer :: sab
     type(SetChar) :: already_read
 
@@ -113,6 +115,9 @@ contains
               end if
             end do
           end if
+
+          ! Read multipole file into the appropriate entry on the nuclides array
+          if (multipole_active) call read_multipole_data(i_nuclide)
 
           ! Add name and alias to dictionary
           call already_read % add(name)
@@ -234,6 +239,21 @@ contains
       end if
     end do
 
+    ! If the user wants multipole, make sure we found a multipole library.
+    if (multipole_active) then
+      mp_found = .false.
+      do i = 1, n_nuclides_total
+        if (nuclides(i) % mp_present) then
+          mp_found = .true.
+          exit
+        end if
+      end do
+      if (.not. mp_found) call warning("Windowed multipole functionality is &
+           &turned on, but no multipole libraries were found.  Set the &
+           &<multipole_library> element in settings.xml or the &
+           &OPENMC_MULTIPOLE_LIBRARY environment variable.")
+    end if
+
   end subroutine read_ace_xs
 
 !===============================================================================
@@ -266,7 +286,7 @@ contains
     character(10) :: mat           ! material identifier
     character(70) :: comment       ! comment for ACE table
     character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
-    type(NuclideCE), pointer :: nuc
+    type(Nuclide), pointer :: nuc
     type(SAlphaBeta), pointer :: sab
     type(XsListing),  pointer :: listing
 
@@ -418,12 +438,61 @@ contains
   end subroutine read_ace_table
 
 !===============================================================================
+! READ_MULTIPOLE_DATA checks for the existence of a multipole library in the
+! directory and loads it using multipole_read
+!===============================================================================
+
+  subroutine read_multipole_data(i_table)
+
+    integer, intent(in) :: i_table  ! index in nuclides/sab_tables
+
+    logical :: file_exists                 ! Does multipole library exist?
+    character(7) :: readable               ! Is multipole library readable?
+    character(6) :: zaid_string            ! String of the ZAID
+    character(MAX_FILE_LEN+9) :: filename  ! Path to multipole xs library
+
+    ! For the time being, and I know this is a bit hacky, we just assume
+    ! that the file will be zaid.h5.
+    associate (nuc => nuclides(i_table))
+
+      write(zaid_string, '(I6.6)') nuc % zaid
+      filename = trim(path_multipole) // zaid_string // ".h5"
+
+      ! Check if Multipole library exists and is readable
+      inquire(FILE=filename, EXIST=file_exists, READ=readable)
+      if (.not. file_exists) then
+        nuc % mp_present = .false.
+        return
+      elseif (readable(1:3) == 'NO') then
+        call fatal_error("Multipole library '" // trim(filename) // "' is not &
+             &readable! Change file permissions with chmod command.")
+      end if
+
+      ! Display message
+      call write_message("Loading Multipole XS table: " // filename, 6)
+
+      allocate(nuc % multipole)
+
+      ! Call the read routine
+      call multipole_read(filename, nuc % multipole, i_table)
+      nuc % mp_present = .true.
+
+      ! Recreate nu-fission tables
+      if (nuc % fissionable) then
+        call generate_nu_fission(nuc)
+      end if
+
+    end associate
+
+  end subroutine read_multipole_data
+
+!===============================================================================
 ! READ_ESZ - reads through the ESZ block. This block contains the energy grid,
 ! total xs, absorption xs, elastic scattering xs, and heating numbers.
 !===============================================================================
 
   subroutine read_esz(nuc, data_0K)
-    type(NuclideCE), intent(inout) :: nuc
+    type(Nuclide), intent(inout) :: nuc
     logical,          intent(in)    :: data_0K ! are we reading 0K data?
 
     integer :: NE ! number of energy points for total and elastic cross sections
@@ -511,7 +580,7 @@ contains
 !===============================================================================
 
   subroutine read_nu_data(nuc)
-    type(NuclideCE), intent(inout) :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i, j   ! loop index
     integer :: idx    ! index in XSS
@@ -726,7 +795,7 @@ contains
 !===============================================================================
 
   subroutine read_reactions(nuc)
-    type(NuclideCE), intent(inout) :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i         ! loop indices
     integer :: i_fission ! index in nuc % index_fission
@@ -844,7 +913,7 @@ contains
 
         ! Skip total inelastic level scattering, gas production cross sections
         ! (MT=200+), etc.
-        if (rxn % MT == N_LEVEL) cycle
+        if (rxn % MT == N_LEVEL .or. rxn % MT == N_NONELASTIC) cycle
         if (rxn % MT > N_5N2P .and. rxn % MT < N_P0) cycle
 
         ! Skip level cross sections if total is available
@@ -902,7 +971,7 @@ contains
 !===============================================================================
 
   subroutine read_angular_dist(nuc)
-    type(NuclideCE), intent(inout) :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: LOCB   ! location of angular distribution for given MT
     integer :: NE     ! number of incoming energies
@@ -1006,7 +1075,7 @@ contains
 !===============================================================================
 
   subroutine read_energy_dist(nuc)
-    type(NuclideCE), intent(inout) :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i     ! loop index
     integer :: n
@@ -1395,7 +1464,7 @@ contains
 !===============================================================================
 
   subroutine read_unr_res(nuc)
-    type(NuclideCE), intent(inout) :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: JXS23 ! location of URR data
     integer :: lc    ! locator
@@ -1482,7 +1551,7 @@ contains
 !===============================================================================
 
   subroutine generate_nu_fission(nuc)
-    type(NuclideCE), intent(inout) :: nuc
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i  ! index on nuclide energy grid
 

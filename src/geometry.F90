@@ -279,6 +279,36 @@ contains
           p % material = c % material(offset + 1)
         end if
 
+        ! Set the particle temperature
+        if (size(c % sqrtkT) == 1) then
+          ! Only one temperature for this cell; assign that one to the particle.
+          p % sqrtkT = c % sqrtkT(1)
+        else
+          ! Distributed instances of this cell have different temperatures.
+          ! Determine which instance this is and assign the matching temp.
+          distribcell_index = c % distribcell_index
+          offset = 0
+          do k = 1, p % n_coord
+            if (cells(p % coord(k) % cell) % type == CELL_FILL) then
+              offset = offset + cells(p % coord(k) % cell) % &
+                   offset(distribcell_index)
+            elseif (cells(p % coord(k) % cell) % type == CELL_LATTICE) then
+              if (lattices(p % coord(k + 1) % lattice) % obj &
+                   % are_valid_indices([&
+                   p % coord(k + 1) % lattice_x, &
+                   p % coord(k + 1) % lattice_y, &
+                   p % coord(k + 1) % lattice_z])) then
+                offset = offset + lattices(p % coord(k + 1) % lattice) % obj % &
+                     offset(distribcell_index, &
+                     p % coord(k + 1) % lattice_x, &
+                     p % coord(k + 1) % lattice_y, &
+                     p % coord(k + 1) % lattice_z)
+              end if
+            end if
+          end do
+          p % sqrtkT = c % sqrtkT(offset + 1)
+        end if
+
       elseif (c % type == CELL_FILL) then CELL_TYPE
         ! ======================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
@@ -378,6 +408,7 @@ contains
     real(8) :: v         ! y-component of direction
     real(8) :: w         ! z-component of direction
     real(8) :: norm      ! "norm" of surface normal
+    real(8) :: xyz(3)    ! Saved global coordinate
     integer :: i_surface ! index in surfaces
     logical :: found     ! particle found in universe?
     class(Surface), pointer :: surf
@@ -432,12 +463,13 @@ contains
 
       ! Score surface currents since reflection causes the direction of the
       ! particle to change -- artificially move the particle slightly back in
-      ! case the surface crossing in coincident with a mesh boundary
+      ! case the surface crossing is coincident with a mesh boundary
 
       if (active_current_tallies % size() > 0) then
+        xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
         call score_surface_current(p)
-        p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
+        p % coord(1) % xyz = xyz
       end if
 
       ! Reflect particle off surface
@@ -473,6 +505,70 @@ contains
       if (verbosity >= 10 .or. trace) then
         call write_message("    Reflected from surface " &
              &// trim(to_str(surf%id)))
+      end if
+      return
+    elseif (surf % bc == BC_PERIODIC .and. run_mode /= MODE_PLOTTING) then
+      ! =======================================================================
+      ! PERIODIC BOUNDARY
+
+      ! Do not handle periodic boundary conditions on lower universes
+      if (p % n_coord /= 1) then
+        call handle_lost_particle(p, "Cannot transfer particle " &
+             // trim(to_str(p % id)) // " across surface in a lower universe.&
+             & Boundary conditions must be applied to universe 0.")
+        return
+      end if
+
+      ! Score surface currents since reflection causes the direction of the
+      ! particle to change -- artificially move the particle slightly back in
+      ! case the surface crossing is coincident with a mesh boundary
+
+      if (active_current_tallies % size() > 0) then
+        xyz = p % coord(1) % xyz
+        p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
+        call score_surface_current(p)
+        p % coord(1) % xyz = xyz
+      end if
+
+      select type (surf)
+      type is (SurfaceXPlane)
+        select type (opposite => surfaces(surf % i_periodic) % obj)
+        type is (SurfaceXPlane)
+          p % coord(1) % xyz(1) = opposite % x0
+        end select
+
+      type is (SurfaceYPlane)
+        select type (opposite => surfaces(surf % i_periodic) % obj)
+        type is (SurfaceYPlane)
+          p % coord(1) % xyz(2) = opposite % y0
+        end select
+
+      type is (SurfaceZPlane)
+        select type (opposite => surfaces(surf % i_periodic) % obj)
+        type is (SurfaceZPlane)
+          p % coord(1) % xyz(3) = opposite % z0
+        end select
+      end select
+
+      ! Reassign particle's surface
+      p % surface = sign(surf % i_periodic, p % surface)
+
+      ! Figure out what cell particle is in now
+      p % n_coord = 1
+      call find_cell(p, found)
+      if (.not. found) then
+        call handle_lost_particle(p, "Couldn't find particle after hitting &
+             &periodic boundary on surface " // trim(to_str(surf%id)) // ".")
+        return
+      end if
+
+      ! Set previous coordinate going slightly past surface crossing
+      p % last_xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
+
+      ! Diagnostic message
+      if (verbosity >= 10 .or. trace) then
+        call write_message("    Hit periodic boundary on surface " &
+             // trim(to_str(surf%id)))
       end if
       return
     end if

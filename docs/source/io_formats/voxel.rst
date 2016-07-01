@@ -1,4 +1,4 @@
-.. _usersguide_voxel:
+.. _io_voxel:
 
 ======================
 Voxel Plot File Format

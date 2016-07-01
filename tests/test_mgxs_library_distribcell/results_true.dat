@@ -1,5 +1,36 @@
                                     avg(distribcell)  group in nuclide      mean  std. dev.
-0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.718919   0.520644                                    avg(distribcell)  group in nuclide  mean  std. dev.
-0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total   0.0        0.0                                    avg(distribcell)  group in  group out nuclide      mean  std. dev.
-0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total  0.695166   0.510606                                    avg(distribcell)  group out nuclide  mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  1.145934   0.553822
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.718919   0.520644
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.718919   0.520644
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.019762   0.010629
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.019762   0.010629
+                                    avg(distribcell)  group in nuclide  mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total   0.0        0.0
+                                    avg(distribcell)  group in nuclide  mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total   0.0        0.0
+                                    avg(distribcell)  group in nuclide  mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total   0.0        0.0
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  1.126172    0.54344
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  1.142547   0.570131
+                                    avg(distribcell)  group in  group out nuclide moment      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P0  1.142547   0.570131
+1  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P1  0.447381   0.216322
+2  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P2  0.141202   0.066504
+3  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P3  0.039228   0.024621
+                                    avg(distribcell)  group in  group out nuclide moment      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P0  1.142547   0.570131
+1  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P1  0.447381   0.216322
+2  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P2  0.141202   0.066504
+3  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P3  0.039228   0.024621
+                                    avg(distribcell)  group in  group out nuclide  mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total   1.0   0.529717
+                                    avg(distribcell)  group in  group out nuclide  mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total   0.0        0.0
+                                    avg(distribcell)  group out nuclide  mean  std. dev.
 0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...          1   total   0.0        0.0

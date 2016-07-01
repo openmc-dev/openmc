@@ -16,7 +16,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-class SettingsFile(object):
+class Settings(object):
     """Settings file used for an OpenMC simulation. Corresponds directly to the
     settings.xml input file.
 
@@ -70,10 +70,16 @@ class SettingsFile(object):
         deviation.
     cross_sections : str
         Indicates the path to an XML cross section listing file (usually named
-        cross_sections.xml). If it is not set, the :envvar:`CROSS_SECTIONS`
-        environment variable will be used for continuous-energy calculations
-        and :envvar:`MG_CROSS_SECTIONS` will be used for multi-group
+        cross_sections.xml). If it is not set, the
+        :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used for
+        continuous-energy calculations and
+        :envvar:`OPENMC_MG_CROSS_SECTIONS` will be used for multi-group
         calculations to find the path to the XML cross section file.
+    multipole_library : str
+        Indicates the path to a directory containing a windowed multipole
+        cross section library. If it is not set, the
+        :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used. A
+        multipole library is optional.
     energy_grid : {'nuclide', 'logarithm', 'material-union'}
         Set the method used to search energy grids.
     energy_mode : {'continuous-energy', 'multi-group'}
@@ -126,6 +132,9 @@ class SettingsFile(object):
         Coordinates of the lower-left point of the UFS mesh
     ufs_upper_right : tuple or list
         Coordinates of the upper-right point of the UFS mesh
+    use_windowed_multipole : bool
+        Whether or not windowed multipole can be used to evaluate resolved
+        resonance cross sections.
     resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
         The elastic scattering model to use for resonant isotopes
 
@@ -150,6 +159,7 @@ class SettingsFile(object):
 
         self._confidence_intervals = None
         self._cross_sections = None
+        self._multipole_library = None
         self._energy_grid = None
         self._ptables = None
         self._run_cmfd = None
@@ -207,6 +217,7 @@ class SettingsFile(object):
         self._settings_file = ET.Element("settings")
         self._run_mode_subelement = None
         self._source_element = None
+        self._multipole_active = None
 
         self._resonance_scattering = None
 
@@ -253,6 +264,10 @@ class SettingsFile(object):
     @property
     def cross_sections(self):
         return self._cross_sections
+
+    @property
+    def multipole_library(self):
+        return self._multipole_library
 
     @property
     def energy_grid(self):
@@ -397,6 +412,10 @@ class SettingsFile(object):
     @property
     def dd_count_interactions(self):
         return self._dd_count_interactions
+
+    @property
+    def use_windowed_multipole(self):
+        return self._multipole_active
 
     @property
     def resonance_scattering(self):
@@ -564,6 +583,11 @@ class SettingsFile(object):
     def cross_sections(self, cross_sections):
         check_type('cross sections', cross_sections, basestring)
         self._cross_sections = cross_sections
+
+    @multipole_library.setter
+    def multipole_library(self, multipole_library):
+        check_type('cross sections', multipole_library, basestring)
+        self._multipole_library = multipole_library
 
     @energy_grid.setter
     def energy_grid(self, energy_grid):
@@ -773,6 +797,11 @@ class SettingsFile(object):
 
         self._dd_count_interactions = interactions
 
+    @use_windowed_multipole.setter
+    def use_windowed_multipole(self, active):
+        check_type('use_windowed_multipole', active, bool)
+        self._multipole_active = active
+
     @resonance_scattering.setter
     def resonance_scattering(self, res):
         if isinstance(res, Iterable):
@@ -918,6 +947,11 @@ class SettingsFile(object):
             element = ET.SubElement(self._settings_file, "cross_sections")
             element.text = str(self._cross_sections)
 
+    def _create_multipole_library_subelement(self):
+        if self._multipole_library is not None:
+            element = ET.SubElement(self._settings_file, "multipole_library")
+            element.text = str(self._multipole_library)
+
     def _create_energy_grid_subelement(self):
         if self._energy_grid is not None:
             element = ET.SubElement(self._settings_file, "energy_grid")
@@ -1062,6 +1096,12 @@ class SettingsFile(object):
             subelement = ET.SubElement(element, "count_interactions")
             subelement.text = str(self._dd_count_interactions).lower()
 
+    def _create_use_multipole_subelement(self):
+        if self._multipole_active is not None:
+            element = ET.SubElement(self._settings_file,
+                                    "use_windowed_multipole")
+            element.text = str(self._multipole_active)
+
     def _create_resonance_scattering_element(self):
         if self.resonance_scattering is None: return
 
@@ -1092,6 +1132,7 @@ class SettingsFile(object):
         self._create_sourcepoint_subelement()
         self._create_confidence_intervals()
         self._create_cross_sections_subelement()
+        self._create_multipole_library_subelement()
         self._create_energy_grid_subelement()
         self._create_energy_mode_subelement()
         self._create_max_order_subelement()
@@ -1109,6 +1150,7 @@ class SettingsFile(object):
         self._create_track_subelement()
         self._create_ufs_subelement()
         self._create_dd_subelement()
+        self._create_use_multipole_subelement()
         self._create_resonance_scattering_element()
 
         # Clean the indentation in the file to be user-readable

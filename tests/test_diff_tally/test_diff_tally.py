@@ -12,7 +12,7 @@ import pandas as pd
 
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from openmc import Filter, Mesh, Tally, TalliesFile, Summary, StatePoint, \
+from openmc import Filter, Mesh, Tally, Tallies, Summary, StatePoint, \
                    TallyDerivative
 from openmc.source import Source
 from openmc.stats import Box
@@ -28,9 +28,8 @@ class DiffTallyTestHarness(PyAPITestHarness):
         self._input_set.settings.particles = 400
         self._input_set.settings.source = Source(space=Box(
             [-160, -160, -183], [160, 160, 183]))
-        self._input_set.settings.output = {'summary': True}
 
-        self._input_set.tallies = TalliesFile()
+        self._input_set.tallies = Tallies()
 
         filt_mats = Filter(type='material', bins=(1, 3))
         filt_eout = Filter(type='energyout', bins=(0.0, 1.0, 20.0))
@@ -66,7 +65,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
             t.add_score('flux')
             t.add_filter(filt_mats)
             t.derivative = derivs[i]
-            self._input_set.tallies.add_tally(t)
+            self._input_set.tallies.append(t)
 
         # Cover supported scores with a collision estimator.
         for i in range(4):
@@ -79,7 +78,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
             t.add_nuclide('total')
             t.add_nuclide('U-235')
             t.derivative = derivs[i]
-            self._input_set.tallies.add_tally(t)
+            self._input_set.tallies.append(t)
 
         # Cover an analog estimator.
         for i in range(4):
@@ -88,7 +87,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
             t.add_filter(filt_mats)
             t.estimator = 'analog'
             t.derivative = derivs[i]
-            self._input_set.tallies.add_tally(t)
+            self._input_set.tallies.append(t)
 
         # And the special fission with energyout filter.
         for i in range(4):
@@ -97,7 +96,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
             t.add_filter(filt_mats)
             t.add_filter(filt_eout)
             t.derivative = derivs[i]
-            self._input_set.tallies.add_tally(t)
+            self._input_set.tallies.append(t)
 
         self._input_set.export()
 
@@ -105,8 +104,6 @@ class DiffTallyTestHarness(PyAPITestHarness):
         # Read the statepoint and summary files.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = StatePoint(statepoint)
-        su = Summary('summary.h5')
-        sp.link_with_summary(su)
 
         # Extract the tally data as a Pandas DataFrame.
         df = pd.DataFrame()

@@ -15,6 +15,11 @@ def reset_auto_ids():
 class Geometry(object):
     """Geometry representing a collection of surfaces, cells, and universes.
 
+    Parameters
+    ----------
+    root_universe : openmc.Universe, optional
+        Root universe which contains all others
+
     Attributes
     ----------
     root_universe : openmc.Universe
@@ -22,10 +27,11 @@ class Geometry(object):
 
     """
 
-    def __init__(self):
-        # Initialize Geometry class attributes
+    def __init__(self, root_universe=None):
         self._root_universe = None
         self._offsets = {}
+        if root_universe is not None:
+            self.root_universe = root_universe
 
     @property
     def root_universe(self):
@@ -41,6 +47,44 @@ class Geometry(object):
             raise ValueError(msg)
 
         self._root_universe = root_universe
+
+    def export_to_xml(self):
+        """Create a geometry.xml file that can be used for a simulation.
+
+        """
+
+        # Clear OpenMC written IDs used to optimize XML generation
+        openmc.universe.WRITTEN_IDS = {}
+
+        # Create XML representation
+        geometry_file = ET.Element("geometry")
+        self.root_universe.create_xml_subelement(geometry_file)
+
+        # Clean the indentation in the file to be user-readable
+        sort_xml_elements(geometry_file)
+        clean_xml_indentation(geometry_file)
+
+        # Write the XML Tree to the geometry.xml file
+        tree = ET.ElementTree(geometry_file)
+        tree.write("geometry.xml", xml_declaration=True, encoding='utf-8',
+                   method="xml")
+
+    def find(self, point):
+        """Find cells/universes/lattices which contain a given point
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinates of the point
+
+        Returns
+        -------
+        list
+            Sequence of universes, cells, and lattices which are traversed to
+            find the given point
+
+        """
+        return self.root_universe.find(point)
 
     def get_cell_instance(self, path):
         """Return the instance number for the final cell in a geometry path.
@@ -100,14 +144,8 @@ class Geometry(object):
 
         """
 
-        all_cells = self._root_universe.get_all_cells()
-        cells = set()
-
-        for cell in all_cells.values():
-            if cell._type == 'normal':
-                cells.add(cell)
-
-        cells = list(cells)
+        all_cells = self.root_universe.get_all_cells()
+        cells = list(set(all_cells.values()))
         cells.sort(key=lambda x: x.id)
         return cells
 
@@ -122,12 +160,7 @@ class Geometry(object):
         """
 
         all_universes = self._root_universe.get_all_universes()
-        universes = set()
-
-        for universe in all_universes.values():
-            universes.add(universe)
-
-        universes = list(universes)
+        universes = list(set(all_universes.values()))
         universes.sort(key=lambda x: x.id)
         return universes
 
@@ -160,15 +193,17 @@ class Geometry(object):
         """
 
         material_cells = self.get_all_material_cells()
-        materials = set()
+        materials = []
 
         for cell in material_cells:
-            if isinstance(cell.fill, Iterable):
-                for m in cell.fill: materials.add(m)
-            else:
-                materials.add(cell.fill)
+            if cell.fill_type == 'distribmat':
+                for m in cell.fill:
+                    if m is not None and m not in materials:
+                        materials.append(m)
+            elif cell.fill_type == 'material':
+                if cell.fill not in materials:
+                    materials.append(cell.fill)
 
-        materials = list(materials)
         materials.sort(key=lambda x: x.id)
         return materials
 
@@ -183,13 +218,13 @@ class Geometry(object):
         """
 
         all_cells = self.get_all_cells()
-        material_cells = set()
+        material_cells = []
 
         for cell in all_cells:
-            if cell._type == 'normal':
-                material_cells.add(cell)
+            if cell.fill_type in ('material', 'distribmat'):
+                if cell not in material_cells:
+                    material_cells.append(cell)
 
-        material_cells = list(material_cells)
         material_cells.sort(key=lambda x: x.id)
         return material_cells
 
@@ -204,15 +239,15 @@ class Geometry(object):
         """
 
         all_universes = self.get_all_universes()
-        material_universes = set()
+        material_universes = []
 
         for universe in all_universes:
             cells = universe.cells
             for cell in cells:
-                if cell._type == 'normal':
-                    material_universes.add(universe)
+                if cell.fill_type in ('material', 'distribmat', 'void'):
+                    if universe not in material_universes:
+                        material_universes.append(universe)
 
-        material_universes = list(material_universes)
         material_universes.sort(key=lambda x: x.id)
         return material_universes
 
@@ -227,13 +262,13 @@ class Geometry(object):
         """
 
         cells = self.get_all_cells()
-        lattices = set()
+        lattices = []
 
         for cell in cells:
-            if isinstance(cell.fill, openmc.Lattice):
-                lattices.add(cell.fill)
+            if cell.fill_type == 'lattice':
+                if cell.fill not in lattices:
+                    lattices.append(cell.fill)
 
-        lattices = list(lattices)
         lattices.sort(key=lambda x: x.id)
         return lattices
 
@@ -436,52 +471,3 @@ class Geometry(object):
         lattices = list(lattices)
         lattices.sort(key=lambda x: x.id)
         return lattices
-
-
-class GeometryFile(object):
-    """Geometry file used for an OpenMC simulation. Corresponds directly to the
-    geometry.xml input file.
-
-    Attributes
-    ----------
-    geometry : openmc.Geometry
-        The geometry to be used
-
-    """
-
-    def __init__(self):
-        # Initialize GeometryFile class attributes
-        self._geometry = None
-        self._geometry_file = ET.Element("geometry")
-
-    @property
-    def geometry(self):
-        return self._geometry
-
-    @geometry.setter
-    def geometry(self, geometry):
-        check_type('the geometry', geometry, Geometry)
-        self._geometry = geometry
-
-    def export_to_xml(self):
-        """Create a geometry.xml file that can be used for a simulation.
-
-        """
-
-        # Clear OpenMC written IDs used to optimize XML generation
-        openmc.universe.WRITTEN_IDS = {}
-
-        # Reset xml element tree
-        self._geometry_file.clear()
-
-        root_universe = self.geometry.root_universe
-        root_universe.create_xml_subelement(self._geometry_file)
-
-        # Clean the indentation in the file to be user-readable
-        sort_xml_elements(self._geometry_file)
-        clean_xml_indentation(self._geometry_file)
-
-        # Write the XML Tree to the geometry.xml file
-        tree = ET.ElementTree(self._geometry_file)
-        tree.write("geometry.xml", xml_declaration=True,
-                             encoding='utf-8', method="xml")

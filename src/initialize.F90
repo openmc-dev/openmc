@@ -124,6 +124,9 @@ contains
 
       ! Construct information needed for nuclear data
       if (run_CE) then
+        ! Set undefined cell temperatures to match the material data.
+        call lookup_material_temperatures()
+
         ! Construct unionized or log energy grid for cross-sections
         select case (grid_method)
         case (GRID_NUCLIDE)
@@ -375,7 +378,7 @@ contains
 
           ! Check what type of file this is
           file_id = file_open(argv(i), 'r', parallel=.true.)
-          call read_dataset(file_id, 'filetype', filetype)
+          call read_dataset(filetype, file_id, 'filetype')
           call file_close(file_id)
 
           ! Set path and flag for type of run
@@ -401,7 +404,7 @@ contains
 
               ! Check file type is a source file
               file_id = file_open(argv(i), 'r', parallel=.true.)
-              call read_dataset(file_id, 'filetype', filetype)
+              call read_dataset(filetype, file_id, 'filetype')
               call file_close(file_id)
               if (filetype /= 'source') then
                 call fatal_error("Second file after restart flag must be a &
@@ -987,10 +990,11 @@ contains
       end do
     end do
 
-    ! We also need distribcell if any distributed materials are present.
+    ! We also need distribcell if any distributed materials or distributed
+    ! temperatues are present.
     if (.not. distribcell_active) then
       do i = 1, n_cells
-        if (size(cells(i) % material) > 1) then
+        if (size(cells(i) % material) > 1 .or. size(cells(i) % sqrtkT) > 1) then
           distribcell_active = .true.
           exit
         end if
@@ -1015,8 +1019,8 @@ contains
       end do
     end do
 
-    ! Make sure the number of materials matches the number of cell instances for
-    ! distributed materials.
+    ! Make sure the number of materials and temperatures matches the number of
+    ! cell instances.
     do i = 1, n_cells
       associate (c => cells(i))
         if (size(c % material) > 1) then
@@ -1025,6 +1029,15 @@ contains
                  &specified with " // trim(to_str(size(c % material))) &
                  // " materials but has " // trim(to_str(c % instances)) &
                  // " distributed instances. The number of materials must &
+                 &equal one or the number of instances.")
+          end if
+        end if
+        if (size(c % sqrtkT) > 1) then
+          if (size(c % sqrtkT) /= c % instances) then
+            call fatal_error("Cell " // trim(to_str(c % id)) // " was &
+                 &specified with " // trim(to_str(size(c % sqrtkT))) &
+                 // " temperatures but has " // trim(to_str(c % instances)) &
+                 // " distributed instances. The number of temperatures must &
                  &equal one or the number of instances.")
           end if
         end if
@@ -1069,9 +1082,9 @@ contains
       end do
     end do
 
-    ! List all cells with multiple (distributed) materials.
+    ! List all cells with multiple (distributed) materials or temperatures.
     do i = 1, n_cells
-      if (size(cells(i) % material) > 1) then
+      if (size(cells(i) % material) > 1 .or. size(cells(i) % sqrtkT) > 1) then
         call cell_list % add(i)
       end if
     end do
@@ -1139,5 +1152,58 @@ contains
     call cell_list % clear()
 
   end subroutine allocate_offsets
+
+!===============================================================================
+! LOOKUP_MATERIAL_TEMPERATURES If any cells have undefined temperatures, try to
+! find their temperatures from material data.
+!===============================================================================
+
+  subroutine lookup_material_temperatures()
+    integer :: i, j, k
+    real(8) :: min_temp
+    logical :: warning_given
+
+    warning_given = .false.
+    do i = 1, n_cells
+      ! Ignore non-normal cells and cells with defined temperature.
+      if (cells(i) % type /= CELL_NORMAL) cycle
+      if (cells(i) % sqrtkT(1) /= ERROR_REAL) cycle
+
+      ! Set the number of temperatures equal to the number of materials.
+      deallocate(cells(i) % sqrtkT)
+      allocate(cells(i) % sqrtkT(size(cells(i) % material)))
+
+      ! Check each of the cell materials for temperature data.
+      do j = 1, size(cells(i) % material)
+        ! Arbitrarily set void regions to 0K.
+        if (cells(i) % material(j) == MATERIAL_VOID) then
+          cells(i) % sqrtkT(j) = ZERO
+          cycle
+        end if
+
+        associate (mat => materials(cells(i) % material(j)))
+          ! Find the temperature of the coldest nuclide.
+          min_temp = nuclides(mat % nuclide(1)) % kT
+          do k = 2, mat % n_nuclides
+            ! Warn the user if the nuclides don't have identical temperatues.
+            if (nuclides(mat % nuclide(k)) % kT /= min_temp &
+                 .and. .not. warning_given .and. multipole_active) then
+              call warning("OpenMC cannot &
+                   &identify the temperature of at least one cell. For the &
+                   &purposes of multipole cross section evaluations, all cells &
+                   &with unknown temperature will be set to the coldest &
+                   &temperature found in the nuclear data for that cell's &
+                   &material")
+              warning_given = .true.
+            end if
+            min_temp = min(min_temp, nuclides(mat % nuclide(k)) % kT)
+          end do
+
+          ! Set the temperature for this cell instance.
+          cells(i) % sqrtkT(j) = sqrt(min_temp)
+        end associate
+      end do
+    end do
+  end subroutine lookup_material_temperatures
 
 end module initialize

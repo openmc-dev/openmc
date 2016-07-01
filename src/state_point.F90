@@ -326,7 +326,11 @@ contains
           NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
             if (tally % nuclide_bins(j) > 0) then
               ! Get index in cross section listings for this nuclide
-              i_list = nuclides(tally % nuclide_bins(j)) % listing
+              if (run_CE) then
+                i_list = nuclides(tally % nuclide_bins(j)) % listing
+              else
+                i_list = nuclides_MG(tally % nuclide_bins(j)) % obj % listing
+              end if
 
               ! Determine position of . in alias string (e.g. "U-235.71c"). If
               ! no . is found, just use the entire string.
@@ -367,11 +371,11 @@ contains
           MOMENT_LOOP: do j = 1, tally % n_user_score_bins
             select case(tally % score_bins(k))
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
-              str_array(k) = 'P' // trim(to_str(tally % moment_order(k)))
+              str_array(k) = trim(to_str(tally % moment_order(k)))
               k = k + 1
             case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
               do n_order = 0, tally % moment_order(k)
-                str_array(k) = 'P' // trim(to_str(n_order))
+                str_array(k) = trim(to_str(n_order))
                 k = k + 1
               end do
             case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
@@ -736,25 +740,25 @@ contains
     file_id = file_open(path_state_point, 'r', parallel=.true.)
 
     ! Read filetype
-    call read_dataset(file_id, "filetype", word)
+    call read_dataset(word, file_id, "filetype")
     if (word /= 'statepoint') then
       call fatal_error("OpenMC tried to restart from a non-statepoint file.")
     end if
 
     ! Read revision number for state point file and make sure it matches with
     ! current version
-    call read_dataset(file_id, "revision", int_array(1))
+    call read_dataset(int_array(1), file_id, "revision")
     if (int_array(1) /= REVISION_STATEPOINT) then
       call fatal_error("State point version does not match current version &
            &in OpenMC.")
     end if
 
     ! Read and overwrite random number seed
-    call read_dataset(file_id, "seed", seed)
+    call read_dataset(seed, file_id, "seed")
 
     ! It is not impossible for a state point to be generated from a CE run but
     ! to be loaded in to an MG run (or vice versa), check to prevent that.
-    call read_dataset(file_id, "run_CE", sp_run_CE)
+    call read_dataset(sp_run_CE, file_id, "run_CE")
     if (sp_run_CE == 0 .and. run_CE) then
       call fatal_error("State point file is from multi-group run but &
                        & current run is continous-energy!")
@@ -764,24 +768,24 @@ contains
     end if
 
     ! Read and overwrite run information except number of batches
-    call read_dataset(file_id, "run_mode", word)
+    call read_dataset(word, file_id, "run_mode")
     select case(word)
     case ('fixed source')
       run_mode = MODE_FIXEDSOURCE
     case ('k-eigenvalue')
       run_mode = MODE_EIGENVALUE
     end select
-    call read_dataset(file_id, "n_particles", n_particles)
-    call read_dataset(file_id, "n_batches", int_array(1))
+    call read_dataset(n_particles, file_id, "n_particles")
+    call read_dataset(int_array(1), file_id, "n_batches")
 
     ! Take maximum of statepoint n_batches and input n_batches
     n_batches = max(n_batches, int_array(1))
 
     ! Read batch number to restart at
-    call read_dataset(file_id, "current_batch", restart_batch)
+    call read_dataset(restart_batch, file_id, "current_batch")
 
     ! Check for source in statepoint if needed
-    call read_dataset(file_id, "source_present", int_array(1))
+    call read_dataset(int_array(1), file_id, "source_present")
     if (int_array(1) == 1) then
       source_present = .true.
     else
@@ -795,37 +799,37 @@ contains
 
     ! Read information specific to eigenvalue run
     if (run_mode == MODE_EIGENVALUE) then
-      call read_dataset(file_id, "n_inactive", int_array(1))
-      call read_dataset(file_id, "gen_per_batch", gen_per_batch)
-      call read_dataset(file_id, "k_generation", &
-           k_generation(1:restart_batch*gen_per_batch))
-      call read_dataset(file_id, "entropy", &
-           entropy(1:restart_batch*gen_per_batch))
-      call read_dataset(file_id, "k_col_abs", k_col_abs)
-      call read_dataset(file_id, "k_col_tra", k_col_tra)
-      call read_dataset(file_id, "k_abs_tra", k_abs_tra)
-      call read_dataset(file_id, "k_combined", real_array(1:2))
+      call read_dataset(int_array(1), file_id, "n_inactive")
+      call read_dataset(gen_per_batch, file_id, "gen_per_batch")
+      call read_dataset(k_generation(1:restart_batch*gen_per_batch), &
+           file_id, "k_generation")
+      call read_dataset(entropy(1:restart_batch*gen_per_batch), &
+           file_id, "entropy")
+      call read_dataset(k_col_abs, file_id, "k_col_abs")
+      call read_dataset(k_col_tra, file_id, "k_col_tra")
+      call read_dataset(k_abs_tra, file_id, "k_abs_tra")
+      call read_dataset(real_array(1:2), file_id, "k_combined")
 
       ! Take maximum of statepoint n_inactive and input n_inactive
       n_inactive = max(n_inactive, int_array(1))
 
       ! Read in to see if CMFD was on
-      call read_dataset(file_id, "cmfd_on", int_array(1))
+      call read_dataset(int_array(1), file_id, "cmfd_on")
 
       ! Read in CMFD info
       if (int_array(1) == 1) then
         cmfd_group = open_group(file_id, "cmfd")
-        call read_dataset(cmfd_group, "indices", cmfd%indices)
-        call read_dataset(cmfd_group, "k_cmfd", cmfd%k_cmfd(1:restart_batch))
-        call read_dataset(cmfd_group, "cmfd_src", cmfd%cmfd_src)
-        call read_dataset(cmfd_group, "cmfd_entropy", &
-             cmfd%entropy(1:restart_batch))
-        call read_dataset(cmfd_group, "cmfd_balance", &
-             cmfd%balance(1:restart_batch))
-        call read_dataset(cmfd_group, "cmfd_dominance", &
-             cmfd%dom(1:restart_batch))
-        call read_dataset(cmfd_group, "cmfd_srccmp", &
-             cmfd%src_cmp(1:restart_batch))
+        call read_dataset(cmfd % indices, cmfd_group, "indices")
+        call read_dataset(cmfd % k_cmfd(1:restart_batch), cmfd_group, "k_cmfd")
+        call read_dataset(cmfd % cmfd_src, cmfd_group, "cmfd_src")
+        call read_dataset(cmfd % entropy(1:restart_batch), cmfd_group, &
+             "cmfd_entropy")
+        call read_dataset(cmfd % balance(1:restart_batch), cmfd_group, &
+             "cmfd_balance")
+        call read_dataset(cmfd % dom(1:restart_batch), cmfd_group, &
+             "cmfd_dominance")
+        call read_dataset(cmfd % src_cmp(1:restart_batch), cmfd_group, &
+             "cmfd_srccmp")
         call close_group(cmfd_group)
       end if
     end if
@@ -845,14 +849,14 @@ contains
 #endif
 
       ! Read number of realizations for global tallies
-      call read_dataset(file_id, "n_realizations", n_realizations, indep=.true.)
+      call read_dataset(n_realizations, file_id, "n_realizations", indep=.true.)
 
       ! Read global tally data
       call read_dataset(file_id, "global_tallies", global_tallies)
 
       ! Check if tally results are present
       tallies_group = open_group(file_id, "tallies")
-      call read_dataset(tallies_group, "tallies_present", int_array(1), &
+      call read_dataset(int_array(1), tallies_group, "tallies_present", &
                         indep=.true.)
 
       ! Read in sum and sum squared
@@ -865,8 +869,8 @@ contains
           tally_group = open_group(tallies_group, "tally " // &
                trim(to_str(tally % id)))
           call read_dataset(tally_group, "results", tally % results)
-          call read_dataset(tally_group, "n_realizations", &
-               tally % n_realizations)
+          call read_dataset(tally % n_realizations, tally_group, &
+               "n_realizations")
           call close_group(tally_group)
         end do TALLY_RESULTS
       end if
@@ -892,7 +896,7 @@ contains
         file_id = file_open(path_source_point, 'r', parallel=.true.)
 
         ! Read file type
-        call read_dataset(file_id, "filetype", int_array(1))
+        call read_dataset(int_array(1), file_id, "filetype")
 
       end if
 

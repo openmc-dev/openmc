@@ -68,6 +68,7 @@ contains
            "description", "Number of generations per batch")
     end if
 
+    call write_nuclides(file_id)
     call write_geometry(file_id)
     call write_materials(file_id)
     if (n_tallies > 0) then
@@ -106,6 +107,49 @@ contains
   end subroutine write_header
 
 !===============================================================================
+! WRITE_NUCLIDES
+!===============================================================================
+
+  subroutine write_nuclides(file_id)
+    integer(HID_T), intent(in) :: file_id
+    integer(HID_T) :: nuclide_group
+    integer :: i
+    character(12), allocatable :: nucnames(:)
+    real(8), allocatable :: awrs(:)
+    integer, allocatable :: zaids(:)
+
+    ! Write useful data from nuclide objects
+    nuclide_group = create_group(file_id, "nuclides")
+    call write_dataset(nuclide_group, "n_nuclides_total", n_nuclides_total)
+
+    ! Build array of nuclide names, awrs, and zaids
+    allocate(nucnames(n_nuclides_total))
+    allocate(awrs(n_nuclides_total))
+    allocate(zaids(n_nuclides_total))
+    do i = 1, n_nuclides_total
+      if (run_CE) then
+        nucnames(i) = xs_listings(nuclides(i) % listing) % alias
+        awrs(i)     = nuclides(i) % awr
+        zaids(i)    = nuclides(i) % zaid
+      else
+        nucnames(i) = xs_listings(nuclides_MG(i) % obj % listing) % alias
+        awrs(i)     = nuclides_MG(i) % obj % awr
+        zaids(i)    = nuclides_MG(i) % obj % zaid
+      end if
+    end do
+
+    ! Write nuclide names, awrs and zaids
+    call write_dataset(nuclide_group, "names", nucnames)
+    call write_dataset(nuclide_group, "awrs", awrs)
+    call write_dataset(nuclide_group, "zaids", zaids)
+
+    call close_group(nuclide_group)
+
+    deallocate(nucnames, awrs, zaids)
+
+  end subroutine write_nuclides
+
+!===============================================================================
 ! WRITE_GEOMETRY
 !===============================================================================
 
@@ -115,6 +159,7 @@ contains
     integer          :: i, j, k, m
     integer, allocatable :: lattice_universes(:,:,:)
     integer, allocatable :: cell_materials(:)
+    real(8), allocatable :: cell_temperatures(:)
     integer(HID_T) :: geom_group
     integer(HID_T) :: cells_group, cell_group
     integer(HID_T) :: surfaces_group, surface_group
@@ -158,6 +203,7 @@ contains
       select case (c%type)
       case (CELL_NORMAL)
         call write_dataset(cell_group, "fill_type", "normal")
+
         if (size(c % material) == 1) then
           if (c % material(1) == MATERIAL_VOID) then
             call write_dataset(cell_group, "material", MATERIAL_VOID)
@@ -177,6 +223,12 @@ contains
           call write_dataset(cell_group, "material", cell_materials)
           deallocate(cell_materials)
         end if
+
+        allocate(cell_temperatures(size(c % sqrtkT)))
+        cell_temperatures(:) = c % sqrtkT(:)
+        cell_temperatures(:) = cell_temperatures(:)**2 / K_BOLTZMANN
+        call write_dataset(cell_group, "temperature", cell_temperatures)
+        deallocate(cell_temperatures)
 
       case (CELL_FILL)
         call write_dataset(cell_group, "fill_type", "universe")
@@ -653,7 +705,11 @@ contains
       allocate(str_array(t%n_nuclide_bins))
       NUCLIDE_LOOP: do j = 1, t%n_nuclide_bins
         if (t%nuclide_bins(j) > 0) then
-          i_list = nuclides(t%nuclide_bins(j))%listing
+          if (run_CE) then
+            i_list = nuclides(t % nuclide_bins(j)) % listing
+          else
+            i_list = nuclides_MG(t % nuclide_bins(j)) % obj % listing
+          end if
           i_xs = index(xs_listings(i_list)%alias, '.')
           if (i_xs > 0) then
             str_array(j) = xs_listings(i_list)%alias(1:i_xs - 1)

@@ -187,7 +187,7 @@ class CMFDMesh(object):
         return element
 
 
-class CMFDFile(object):
+class CMFD(object):
     """Parameters that control the use of coarse-mesh finite difference acceleration
     in OpenMC. This corresponds directly to the cmfd.xml input file.
 

@@ -1,4 +1,5 @@
 import copy
+import operator
 
 import numpy as np
 
@@ -9,8 +10,6 @@ except ImportError:
     raise ImportError(msg)
 
 import openmc
-from openmc.region import Intersection
-from openmc.surface import Halfspace
 import openmc.checkvalue as cv
 
 
@@ -393,9 +392,9 @@ def get_compatible_opencg_surfaces(opencg_surface):
         surfaces = [left, right, bottom, top]
 
     elif opencg_surface.type == 'z-squareprism':
-        x0 = opencg_surface.x0['x0']
-        y0 = opencg_surface.y0['y0']
-        R = opencg_surface.r['R']
+        x0 = opencg_surface.x0
+        y0 = opencg_surface.y0
+        R = opencg_surface.r
 
         # Create a list of the four planes we need
         left = opencg.XPlane(name=name, boundary=boundary, x0=x0-R)
@@ -467,13 +466,13 @@ def get_opencg_cell(openmc_cell):
     # half-spaces, i.e., no complex cells.
     region = openmc_cell.region
     if region is not None:
-        if isinstance(region, Halfspace):
+        if isinstance(region, openmc.Halfspace):
             surface = region.surface
             halfspace = -1 if region.side == '-' else 1
             opencg_cell.add_surface(get_opencg_surface(surface), halfspace)
-        elif isinstance(region, Intersection):
+        elif isinstance(region, openmc.Intersection):
             for node in region.nodes:
-                if not isinstance(node, Halfspace):
+                if not isinstance(node, openmc.Halfspace):
                     raise NotImplementedError("Complex cells not yet "
                                               "supported in OpenCG.")
                 surface = node.surface
@@ -528,7 +527,7 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
         # Get the compatible Surfaces (XPlanes and YPlanes)
         compatible_surfaces = get_compatible_opencg_surfaces(opencg_surface)
 
-        opencg_cell.removeSurface(opencg_surface)
+        opencg_cell.remove_surface(opencg_surface)
 
         # If Cell is inside SquarePrism, add "inside" of Surface halfspaces
         if halfspace == -1:
@@ -595,7 +594,7 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
 
     # Remove redundant Surfaces from the Cells
     for cell in compatible_cells:
-        cell.removeRedundantSurfaces()
+        cell.remove_redundant_surfaces()
 
     # Return the list of OpenMC compatible OpenCG Cells
     return compatible_cells
@@ -639,7 +638,7 @@ def make_opencg_cells_compatible(opencg_universe):
                                                      surface, halfspace)
 
                 # Remove the non-compatible OpenCG Cell from the Universe
-                opencg_universe.removeCell(opencg_cell)
+                opencg_universe.remove_cell(opencg_cell)
 
                 # Add the compatible OpenCG Cells to the Universe
                 opencg_universe.add_cells(cells)
@@ -697,12 +696,13 @@ def get_openmc_cell(opencg_cell):
         translation = np.asarray(opencg_cell.translation, dtype=np.float64)
         openmc_cell.translation = translation
 
-    surfaces = opencg_cell.surfaces
-
-    for surface_id in surfaces:
-        surface = surfaces[surface_id][0]
-        halfspace = surfaces[surface_id][1]
-        openmc_cell.add_surface(get_openmc_surface(surface), halfspace)
+    surfaces = []
+    operators = []
+    for surface, halfspace in opencg_cell.surfaces.values():
+        surfaces.append(get_openmc_surface(surface))
+        operators.append(operator.neg if halfspace == -1 else operator.pos)
+    openmc_cell.region = openmc.Intersection(
+        *[op(s) for op, s in zip(operators, surfaces)])
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell
@@ -861,8 +861,8 @@ def get_opencg_lattice(openmc_lattice):
         universes = new_universes
 
     # Initialize an empty array for the OpenCG nested Universes in this Lattice
-    universe_array = np.ndarray(tuple(np.array(dimension)[::-1]),
-                                dtype=opencg.Universe)
+    universe_array = np.empty(tuple(np.array(dimension)[::-1]),
+                              dtype=opencg.Universe)
 
     # Create OpenCG Universes for each unique nested Universe in this Lattice
     unique_universes = openmc_lattice.get_unique_universes()
@@ -929,8 +929,8 @@ def get_openmc_lattice(opencg_lattice):
     outer = opencg_lattice.outside
 
     # Initialize an empty array for the OpenMC nested Universes in this Lattice
-    universe_array = np.ndarray(tuple(np.array(dimension)[::-1]),
-                                dtype=openmc.Universe)
+    universe_array = np.empty(tuple(np.array(dimension)[::-1]),
+                              dtype=openmc.Universe)
 
     # Create OpenMC Universes for each unique nested Universe in this Lattice
     unique_universes = opencg_lattice.get_unique_universes()
@@ -953,7 +953,6 @@ def get_openmc_lattice(opencg_lattice):
                    np.array(dimension, dtype=np.float64))) / -2.0
 
     openmc_lattice = openmc.RectLattice(lattice_id=lattice_id)
-    openmc_lattice.dimension = dimension
     openmc_lattice.pitch = width
     openmc_lattice.universes = universe_array
     openmc_lattice.lower_left = lower_left

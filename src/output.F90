@@ -52,9 +52,9 @@ contains
 
     ! Write version information
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     Copyright:      2011-2015 Massachusetts Institute of Technology'
+         '     Copyright:      2011-2016 Massachusetts Institute of Technology'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     License:        http://mit-crpg.github.io/openmc/license.html'
+         '     License:        http://openmc.readthedocs.io/en/latest/license.html'
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",8X,I1,".",I1,".",I1)') &
          VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1
@@ -335,10 +335,10 @@ contains
     ! Open log file for writing
     open(NEWUNIT=unit_xs, FILE=path, STATUS='replace', ACTION='write')
 
-    ! Write header
-    call header("CROSS SECTION TABLES", unit=unit_xs)
-
     if (run_CE) then
+      ! Write header
+      call header("CROSS SECTION TABLES", unit=unit_xs)
+
       NUCLIDE_LOOP: do i = 1, n_nuclides_total
         ! Print information about nuclide
         call nuclides(i) % print(unit=unit_xs)
@@ -349,10 +349,17 @@ contains
         call sab_tables(i) % print(unit=unit_xs)
       end do SAB_TABLES_LOOP
     else
+      ! Write header
+      call header("MGXS LIBRARY TABLES", unit=unit_xs)
       NuclideMG_LOOP: do i = 1, n_nuclides_total
         ! Print information about nuclide
         call nuclides_mg(i) % obj % print(unit=unit_xs)
       end do NuclideMG_LOOP
+      call header("MATERIAL MGXS TABLES", unit=unit_xs)
+      MATERIAL_LOOP: do i = 1, n_materials
+        ! Print information about Materials
+        call macro_xs(i) % obj % print(unit=unit_xs)
+      end do MATERIAL_LOOP
     end if
 
     ! Close cross section summary file
@@ -770,8 +777,6 @@ contains
     score_names(abs(SCORE_TOTAL))              = "Total Reaction Rate"
     score_names(abs(SCORE_SCATTER))            = "Scattering Rate"
     score_names(abs(SCORE_NU_SCATTER))         = "Scattering Production Rate"
-    score_names(abs(SCORE_TRANSPORT))          = "Transport Rate"
-    score_names(abs(SCORE_N_1N))               = "(n,1n) Rate"
     score_names(abs(SCORE_ABSORPTION))         = "Absorption Rate"
     score_names(abs(SCORE_FISSION))            = "Fission Rate"
     score_names(abs(SCORE_NU_FISSION))         = "Nu-Fission Rate"
@@ -920,7 +925,11 @@ contains
             write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                  "Total Material"
           else
-            i_listing = nuclides(i_nuclide) % listing
+            if (run_CE) then
+              i_listing = nuclides(i_nuclide) % listing
+            else
+              i_listing = nuclides_MG(i_nuclide) % obj % listing
+            end if
             write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                  trim(xs_listings(i_listing) % alias)
           end if
@@ -1275,7 +1284,7 @@ contains
     do i = 1, n
       ! If the cell matches the goal and the offset matches final, write to the
       ! geometry stack
-      if (univ % cells(i) == goal .AND. offset == final) then
+      if (univ % cells(i) == goal .and. offset == final) then
         c => cells(univ % cells(i))
         path = trim(path) // "->" // to_str(c % id)
         return

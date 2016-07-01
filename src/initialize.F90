@@ -861,6 +861,15 @@ contains
 
       ! Calculate nuclide atom densities
       mat%atom_density = mat%density * mat%atom_density
+
+      ! Calculate density in g/cm^3.
+      mat % density_gpcc = ZERO
+      do j = 1, mat % n_nuclides
+        index_list = xs_listing_dict % get_key(mat % names(j))
+        awr = xs_listings(index_list) % awr
+        mat % density_gpcc = mat % density_gpcc &
+             + mat % atom_density(j) * awr * MASS_NEUTRON / N_AVOGADRO
+      end do
     end do
 
   end subroutine normalize_ao

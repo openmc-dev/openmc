@@ -1844,6 +1844,13 @@ The ``<tally>`` element accepts the following sub-elements:
 
      *Default*: "all"
 
+  :derivative:
+    The id of a ``derivative`` element. This derivative will be applied to all
+    scores in the tally. Differential tallies are currently only implemented
+    for collision and analog estimators.
+
+     *Default*: None
+
 ``<mesh>`` Element
 ------------------
 
@@ -1871,6 +1878,34 @@ attributes/sub-elements:
   .. note::
       One of ``<upper_right>`` or ``<width>`` must be specified, but not both
       (even if they are consistent with one another).
+
+``<derivative>`` Element
+------------------------
+
+OpenMC can take the first-order derivative of many tallies with respect to
+material perturbations. It works by propagating a derivative through the
+transport equation. Essentially, OpenMC keeps track of how each particle's
+weight would change as materials are perturbed, and then accounts for that
+weight change in the tallies. Note that this assumes material perturbations are
+small enough not to change the distribution of fission sites. This element has
+the following attributes/sub-elements:
+
+  :id:
+    A unique integer that can be used to identify the derivative.
+
+  :variable:
+    The independent variable of the derivative. Accepted options are
+    "density" and "nuclide_density". A "density" derivative will give the
+    derivative with respect to the density of the material in [g / cm^3]. A
+    "nuclide_density" derivative will give the derivative with respect to
+    the density of a particular nuclide in units of [atom / b / cm].
+
+  :material:
+    The perturbed material. (Necessary for both "density" and
+    "nuclide_density")
+
+  :nuclide:
+    The perturbed nuclide. (Necessary only for "nuclide_density")
 
 ``<assume_separate>`` Element
 -----------------------------

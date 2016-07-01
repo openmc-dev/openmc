@@ -14,7 +14,8 @@ module global
   use set_header,       only: SetInt
   use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
-  use tally_header,     only: TallyObject, TallyMap, TallyResult
+  use tally_header,     only: TallyObject, TallyMap, TallyResult, &
+                              TallyDerivative
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
 
@@ -187,6 +188,10 @@ module global
   integer :: n_user_meshes  = 0 ! # of structured user meshes
   integer :: n_tallies      = 0 ! # of tallies
   integer :: n_user_tallies = 0 ! # of user tallies
+
+  ! Tally derivatives
+  type(TallyDerivative), allocatable :: tally_derivs(:)
+!$omp threadprivate(tally_derivs)
 
   ! Normalization for statistics
   integer :: n_realizations = 0 ! # of independent realizations

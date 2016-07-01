@@ -59,6 +59,20 @@ module tally_header
     real(8), allocatable :: real_bins(:) ! Only used for energy filters
   end type TallyFilter
 
+
+!===============================================================================
+! TALLYDERIVATIVE describes a first-order derivative that can be applied to
+! tallies.
+!===============================================================================
+
+  type TallyDerivative
+    integer :: id
+    real(8) :: flux_deriv
+    integer :: variable
+    integer :: diff_material
+    integer :: diff_nuclide
+  end type TallyDerivative
+
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
 ! tally in is given by the TallyFilters and the results are stored in a
@@ -128,6 +142,9 @@ module tally_header
     ! Multi-Group Specific Information To Enable Rapid Tallying
     logical :: energy_matches_groups    = .false.
     logical :: energyout_matches_groups = .false.
+
+    ! Index for the TallyDerivative for differential tallies.
+    integer :: deriv = NONE
   end type TallyObject
 
 end module tally_header

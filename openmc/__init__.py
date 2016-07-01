@@ -13,6 +13,7 @@ from openmc.mgxs_library import *
 from openmc.mesh import *
 from openmc.filter import *
 from openmc.trigger import *
+from openmc.tally_derivative import *
 from openmc.tallies import *
 from openmc.cmfd import *
 from openmc.executor import *

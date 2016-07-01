@@ -13,7 +13,7 @@ from xml.etree import ElementTree as ET
 
 import numpy as np
 
-from openmc import Mesh, Filter, Trigger, Nuclide
+from openmc import Mesh, Filter, Trigger, Nuclide, TallyDerivative
 from openmc.arithmetic import *
 from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
@@ -102,6 +102,8 @@ class Tally(object):
     sparse : bool
         Whether or not the tally uses SciPy's LIL sparse matrix format for
         compressed data storage
+    derivative : openmc.tally_derivative.TallyDerivative
+        A material perturbation derivative to apply to all scores in the tally.
 
     """
 
@@ -113,6 +115,7 @@ class Tally(object):
         self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides')
         self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores')
         self._estimator = None
+        self._derivative = None
         self._triggers = cv.CheckedList(Trigger, 'tally triggers')
 
         self._num_realizations = 0
@@ -149,6 +152,10 @@ class Tally(object):
             if nuclide not in other.nuclides:
                 return False
 
+        # Check derivatives
+        if self.derivative != other.derivative:
+            return False
+
         # Check all scores
         if len(self.scores) != len(other.scores):
             return False
@@ -172,6 +179,10 @@ class Tally(object):
         string = 'Tally\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
+
+        if self.derivative is not None:
+            string += '{0: <16}id =\t{1}\n'.format('\tDerivative', '=\t',
+                                                   str(self.derivative.id))
 
         string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
 
@@ -380,6 +391,10 @@ class Tally(object):
         return self._derived
 
     @property
+    def derivative(self):
+        return self._derivative
+
+    @property
     def sparse(self):
         return self._sparse
 
@@ -432,6 +447,12 @@ class Tally(object):
             self._name = name
         else:
             self._name = ''
+
+    @derivative.setter
+    def derivative(self, deriv):
+        if deriv is not None:
+            cv.check_type('tally derivative', deriv, TallyDerivative)
+            self._derivative = deriv
 
     @filters.setter
     def filters(self, filters):
@@ -1070,6 +1091,11 @@ class Tally(object):
         for trigger in self.triggers:
             trigger.get_trigger_xml(element)
 
+        # Optional derivatives
+        if self.derivative is not None:
+            subelement = ET.SubElement(element, "derivative")
+            subelement.text = str(self.derivative.id)
+
         return element
 
     def contains_filter(self, filter_type):
@@ -1496,7 +1522,8 @@ class Tally(object):
         return data
 
     def get_pandas_dataframe(self, filters=True, nuclides=True, scores=True,
-                             distribcell_paths=True, float_format='{:.2e}'):
+                             derivative=True, distribcell_paths=True,
+                             float_format='{:.2e}'):
         """Build a Pandas DataFrame for the Tally data.
 
         This method constructs a Pandas DataFrame object for the Tally data
@@ -1514,6 +1541,8 @@ class Tally(object):
             Include columns with nuclide bin information (default is True).
         scores : bool
             Include columns with score bin information (default is True).
+        derivative : bool
+            Include columns with differential tally info (default is True).
         distribcell_paths : bool, optional
             Construct columns for distribcell tally filters (default is True).
             The geometric information in the Summary object is embedded into a
@@ -1593,6 +1622,14 @@ class Tally(object):
 
             tile_factor = data_size / len(self.scores)
             df[column_name] = np.tile(scores, int(tile_factor))
+
+        # Include columns for derivatives if user requested it
+        if derivative and (self.derivative is not None):
+            df['d_variable'] = self.derivative.variable
+            if self.derivative.material is not None:
+                df['d_material'] = self.derivative.material
+            if self.derivative.nuclide is not None:
+                df['d_nuclide'] = self.derivative.nuclide
 
         # Append columns with mean, std. dev. for each tally bin
         df['mean'] = self.mean.ravel()
@@ -3560,6 +3597,18 @@ class Tallies(cv.CheckedList):
                     self._tallies_file.append(xml_element)
                     already_written.add(f.mesh)
 
+    def _create_derivative_subelements(self):
+        # Get a list of all derivatives referenced in a tally.
+        derivs = []
+        for tally in self:
+            deriv = tally.derivative
+            if deriv is not None and deriv not in derivs:
+                derivs.append(deriv)
+
+        # Add the derivatives to the XML tree.
+        for d in derivs:
+            self._tallies_file.append(d.get_derivative_xml())
+
     def export_to_xml(self):
         """Create a tallies.xml file that can be used for a simulation.
 
@@ -3570,6 +3619,7 @@ class Tallies(cv.CheckedList):
 
         self._create_mesh_subelements()
         self._create_tally_subelements()
+        self._create_derivative_subelements()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._tallies_file)

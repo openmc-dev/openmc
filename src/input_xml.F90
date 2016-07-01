@@ -2921,60 +2921,65 @@ contains
             allocate(DistribcellFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (DistribcellFilter)
-              filt % type = FILTER_DISTRIBCELL
               if (n_words /= 1) call fatal_error("Only one cell can be &
                    &specified per distribcell filter.")
               ! Store bins
               call get_node_value(node_filt, "bins", filt % cell)
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_DISTRIBCELL) = j
 
           case ('cell')
             ! Allocate and declare the filter type
             allocate(CellFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (CellFilter)
-              filt % type = FILTER_CELL
               ! Allocate and store bins
               filt % n_bins = n_words
               allocate(filt % cells(n_words))
               call get_node_array(node_filt, "bins", filt % cells)
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_CELL) = j
 
           case ('cellborn')
             ! Allocate and declare the filter type
             allocate(CellbornFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (CellbornFilter)
-              filt % type = FILTER_CELLBORN
               ! Allocate and store bins
               filt % n_bins = n_words
               allocate(filt % cells(n_words))
               call get_node_array(node_filt, "bins", filt % cells)
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_CELLBORN) = j
 
           case ('material')
             ! Allocate and declare the filter type
             allocate(MaterialFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (MaterialFilter)
-              filt % type = FILTER_MATERIAL
               ! Allocate and store bins
               filt % n_bins = n_words
               allocate(filt % materials(n_words))
               call get_node_array(node_filt, "bins", filt % materials)
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_MATERIAL) = j
 
           case ('universe')
             ! Allocate and declare the filter type
             allocate(UniverseFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (UniverseFilter)
-              filt % type = FILTER_UNIVERSE
               ! Allocate and store bins
               filt % n_bins = n_words
               allocate(filt % universes(n_words))
               call get_node_array(node_filt, "bins", filt % universes)
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_UNIVERSE) = j
 
           case ('surface')
             call fatal_error("Surface filter is not yet supported!")
@@ -2982,19 +2987,19 @@ contains
             allocate(SurfaceFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (SurfaceFilter)
-              filt % type = FILTER_SURFACE
               ! Allocate and store bins
               filt % n_bins = n_words
               allocate(filt % surfaces(n_words))
               call get_node_array(node_filt, "bins", filt % surfaces)
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_SURFACE) = j
 
           case ('mesh')
             ! Allocate and declare the filter type
             allocate(MeshFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (MeshFilter)
-              filt % type = FILTER_MESH
               if (n_words /= 1) call fatal_error("Only one mesh can be &
                    &specified per mesh filter.")
 
@@ -3018,13 +3023,14 @@ contains
               ! Store the index of the mesh
               filt % mesh = i_mesh
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_MESH) = j
 
           case ('energy')
             ! Allocate and declare the filter type
             allocate(EnergyFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (EnergyFilter)
-              filt % type = FILTER_ENERGYIN
               ! Allocate and store bins
               filt % n_bins = n_words - 1
               allocate(filt % bins(n_words))
@@ -3043,13 +3049,14 @@ contains
                 end if
               end if
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_ENERGYIN) = j
 
           case ('energyout')
             ! Allocate and declare the filter type
             allocate(EnergyoutFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (EnergyoutFilter)
-              filt % type = FILTER_ENERGYOUT
               ! Allocate and store bins
               filt % n_bins = n_words - 1
               allocate(filt % bins(n_words))
@@ -3068,6 +3075,8 @@ contains
                 end if
               end if
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_ENERGYOUT) = j
 
             ! Set to analog estimator
             t % estimator = ESTIMATOR_ANALOG
@@ -3086,7 +3095,6 @@ contains
             allocate(DelayedGroupFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (DelayedGroupFilter)
-              filt % type = FILTER_DELAYEDGROUP
               ! Allocate and store bins
               filt % n_bins = n_words
               allocate(filt % groups(n_words))
@@ -3103,13 +3111,14 @@ contains
                 end if
               end do
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_DELAYEDGROUP) = j
 
           case ('mu')
             ! Allocate and declare the filter type
             allocate(MuFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (MuFilter)
-              filt % type = FILTER_MU
               ! Allocate and store bins
               filt % n_bins = n_words - 1
               allocate(filt % bins(n_words))
@@ -3135,6 +3144,8 @@ contains
                 end if
               end if
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_MU) = j
 
             ! Set to analog estimator
             t % estimator = ESTIMATOR_ANALOG
@@ -3144,7 +3155,6 @@ contains
             allocate(PolarFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (PolarFilter)
-              filt % type = FILTER_POLAR
               ! Allocate and store bins
               filt % n_bins = n_words - 1
               allocate(filt % bins(n_words))
@@ -3170,13 +3180,14 @@ contains
                 end if
               end if
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_POLAR) = j
 
           case ('azimuthal')
             ! Allocate and declare the filter type
             allocate(AzimuthalFilter::t % filters(j) % obj)
             select type (filt => t % filters(j) % obj)
             type is (AzimuthalFilter)
-              filt % type = FILTER_AZIMUTHAL
               ! Allocate and store bins
               filt % n_bins = n_words - 1
               allocate(filt % bins(n_words))
@@ -3203,6 +3214,8 @@ contains
                 end if
               end if
             end select
+            ! Set the filter index in the tally find_filter array
+            t % find_filter(FILTER_AZIMUTHAL) = j
 
           case default
             ! Specified tally filter is invalid, raise error
@@ -3211,11 +3224,6 @@ contains
                  // trim(to_str(t % id)) // ".")
 
           end select
-
-          ! Set find_filter, e.g. if filter(3) has type FILTER_CELL, then
-          ! find_filter(FILTER_CELL) would be set to 3.
-
-          t % find_filter(t % filters(j) % obj % type) = j
 
         end do READ_FILTERS
 
@@ -3265,7 +3273,8 @@ contains
 
               ! Check if a delayedgroup filter is present for this tally
               do l = 1, t % n_filters
-                if (t % filters(l) % obj % type == FILTER_DELAYEDGROUP) then
+                select type(filt => t % filters(l) % obj)
+                type is (DelayedGroupFilter)
                   call warning("A delayedgroup filter was used on a total &
                        &nuclide tally. Cross section libraries are not &
                        &guaranteed to have the same delayed group structure &
@@ -3274,7 +3283,7 @@ contains
                        &all isotopes while the JEFF 3.1.1 library has the same &
                        &delayed group structure across all isotopes. Use with &
                        &caution!")
-                end if
+                end select
               end do
 
               t % nuclide_bins(j) = -1
@@ -3329,7 +3338,8 @@ contains
 
         ! Check if a delayedgroup filter is present for this tally
         do l = 1, t % n_filters
-          if (t % filters(l) % obj % type == FILTER_DELAYEDGROUP) then
+          select type(filt => t % filters(l) % obj)
+          type is (DelayedGroupFilter)
             call warning("A delayedgroup filter was used on a total nuclide &
                  &tally. Cross section libraries are not guaranteed to have the&
                  & same delayed group structure across all isotopes. In &
@@ -3337,7 +3347,7 @@ contains
                  &group structure across all isotopes while the JEFF 3.1.1 &
                  &library has the same delayed group structure across all &
                  &isotopes. Use with caution!")
-          end if
+          end select
         end do
       end if
 
@@ -3673,7 +3683,6 @@ contains
             allocate(SurfaceFilter::t % filters(t % n_filters) % obj)
             select type (filt => t % filters(t % n_filters) % obj)
             type is (SurfaceFilter)
-              filt % type = FILTER_SURFACE
               filt % n_bins = 2 * m % n_dimension
               allocate(filt % surfaces(2 * m % n_dimension))
               if (m % n_dimension == 2) then

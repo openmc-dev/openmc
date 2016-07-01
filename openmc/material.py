@@ -1,16 +1,16 @@
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
 from copy import deepcopy
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
 import sys
-if sys.version_info[0] >= 3:
-    basestring = str
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.clean_xml import *
-from openmc.data import natural_abundance
+from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 
 # A static variable for auto-generated Material IDs
@@ -18,6 +18,7 @@ AUTO_MATERIAL_ID = 10000
 
 
 def reset_auto_material_id():
+    """Reset counter for auto-generated material IDs."""
     global AUTO_MATERIAL_ID
     AUTO_MATERIAL_ID = 10000
 
@@ -352,8 +353,8 @@ class Material(object):
             self._macroscopic = macroscopic
         else:
             msg = 'Unable to add a Macroscopic to Material ID="{0}", ' \
-                  'Only One Macroscopic allowed per ' \
-                  'Material!'.format(self._id, macroscopic)
+                  'Only one Macroscopic allowed per ' \
+                  'Material!'.format(self._id)
             raise ValueError(msg)
 
         # Generally speaking, the density for a macroscopic object will
@@ -380,7 +381,7 @@ class Material(object):
             raise ValueError(msg)
 
         # If the Material contains the Macroscopic, delete it
-        if macroscopic._name == self._macroscopic.name:
+        if macroscopic.name == self._macroscopic.name:
             self._macroscopic = None
 
     def add_element(self, element, percent, percent_type='ao', expand=False):
@@ -446,7 +447,7 @@ class Material(object):
 
         """
 
-        if not isinstance(nuclide, openmc.Element):
+        if not isinstance(element, openmc.Element):
             msg = 'Unable to remove "{0}" in Material ID="{1}" ' \
                   'since it is not an Element'.format(self.id, element)
             raise ValueError(msg)
@@ -534,7 +535,7 @@ class Material(object):
 
     def _get_macroscopic_xml(self, macroscopic):
         xml_element = ET.Element("macroscopic")
-        xml_element.set("name", macroscopic._name)
+        xml_element.set("name", macroscopic.name)
 
         if macroscopic.xs is not None:
             xml_element.set("xs", macroscopic.xs)
@@ -640,7 +641,7 @@ class Material(object):
 
             if self._macroscopic is None:
                 # Create nuclide XML subelements
-                subelements = self.get_nuclides_xml(self._nuclides, distrib=True)
+                subelements = self._get_nuclides_xml(self._nuclides, distrib=True)
                 for subelement_nuc in subelements:
                     subelement.append(subelement_nuc)
 
@@ -650,8 +651,7 @@ class Material(object):
                     subelement.append(subsubelement)
             else:
                 # Create macroscopic XML subelements
-                subsubelement = self._get_macroscopic_xml(self._macroscopic,
-                                                          distrib=True)
+                subsubelement = self._get_macroscopic_xml(self._macroscopic)
                 subelement.append(subsubelement)
 
         if len(self._sab) > 0:

@@ -1,6 +1,5 @@
 import copy
 from collections import Iterable
-from numbers import Integral, Real
 
 import numpy as np
 
@@ -162,7 +161,7 @@ def check_length(name, value, length_min, length_max=None):
         else:
             msg = 'Unable to set "{0}" to "{1}" since it must have length ' \
                   'between "{2}" and "{3}"'.format(name, value, length_min,
-                                               length_max)
+                                                   length_max)
         raise ValueError(msg)
 
 
@@ -255,6 +254,7 @@ class CheckedList(list):
     """
 
     def __init__(self, expected_type, name, items=[]):
+        super(CheckedList, self).__init__()
         self.expected_type = expected_type
         self.name = name
         for item in items:

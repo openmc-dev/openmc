@@ -1,9 +1,7 @@
 from collections import OrderedDict, Iterable
 from numbers import Integral
-from xml.etree import ElementTree as ET
 import random
 import sys
-import warnings
 
 import numpy as np
 
@@ -22,6 +20,7 @@ AUTO_UNIVERSE_ID = 10000
 
 
 def reset_auto_universe_id():
+    """Reset counter for auto-generated universe IDs."""
     global AUTO_UNIVERSE_ID
     AUTO_UNIVERSE_ID = 10000
 
@@ -256,7 +255,7 @@ class Universe(object):
                     if obj not in colors:
                         colors[obj] = (random.random(), random.random(),
                                        random.random(), 1.0)
-                    img[j,i,:] = colors[obj]
+                    img[j, i, :] = colors[obj]
 
         # Display image
         plt.imshow(img, extent=(x_min, x_max, y_min, y_max))
@@ -282,7 +281,7 @@ class Universe(object):
                   'a Cell'.format(self._id, cell)
             raise ValueError(msg)
 
-        cell_id = cell._id
+        cell_id = cell.id
 
         if cell_id not in self._cells:
             self._cells[cell_id] = cell
@@ -364,7 +363,7 @@ class Universe(object):
         nuclides = OrderedDict()
 
         # Append all Nuclides in each Cell in the Universe to the dictionary
-        for cell_id, cell in self._cells.items():
+        for cell in self._cells.values():
             nuclides.update(cell.get_all_nuclides())
 
         return nuclides
@@ -386,7 +385,7 @@ class Universe(object):
         cells.update(self._cells)
 
         # Append all Cells in each Cell in the Universe to the dictionary
-        for cell_id, cell in self._cells.items():
+        for cell in self._cells.values():
             cells.update(cell.get_all_cells())
 
         return cells
@@ -406,7 +405,7 @@ class Universe(object):
 
         # Append all Cells in each Cell in the Universe to the dictionary
         cells = self.get_all_cells()
-        for cell_id, cell in cells.items():
+        for cell in cells.values():
             materials.update(cell.get_all_materials())
 
         return materials
@@ -428,7 +427,7 @@ class Universe(object):
         universes = OrderedDict()
 
         # Append all Universes containing each Cell to the dictionary
-        for cell_id, cell in cells.items():
+        for cell in cells.values():
             universes.update(cell.get_all_universes())
 
         return universes

@@ -1,4 +1,3 @@
-from numbers import Integral
 import sys
 
 from openmc.checkvalue import check_type
@@ -39,9 +38,9 @@ class Macroscopic(object):
 
     def __eq__(self, other):
         if isinstance(other, Macroscopic):
-            if self._name != other._name:
+            if self._name != other.name:
                 return False
-            elif self._xs != other._xs:
+            elif self._xs != other.xs:
                 return False
             else:
                 return True
@@ -78,8 +77,3 @@ class Macroscopic(object):
     def xs(self, xs):
         check_type('cross-section identifier', xs, basestring)
         self._xs = xs
-
-    def __repr__(self):
-        string = 'Macroscopic    -    {0}\n'.format(self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self.xs)
-        return string

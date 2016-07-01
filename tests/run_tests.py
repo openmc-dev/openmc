@@ -42,6 +42,7 @@ parser.add_option("-s", "--script", action="store_true", dest="script",
 
 # Default compiler paths
 FC='gfortran'
+CC='gcc'
 MPI_DIR='/opt/mpich/3.2-gnu'
 HDF5_DIR='/opt/hdf5/1.8.16-gnu'
 PHDF5_DIR='/opt/phdf5/1.8.16-gnu'
@@ -52,6 +53,8 @@ script_mode = False
 # Override default compiler paths if environmental vars are found
 if 'FC' in os.environ:
     FC = os.environ['FC']
+if 'CC' in os.environ:
+    CC = os.environ['CC']
 if 'MPI_DIR' in os.environ:
     MPI_DIR = os.environ['MPI_DIR']
 if 'HDF5_DIR' in os.environ:
@@ -158,8 +161,10 @@ class Test(object):
                 self.fc = os.path.join(MPI_DIR, 'bin', 'mpifort')
             else:
                 self.fc = os.path.join(MPI_DIR, 'bin', 'mpif90')
+            self.cc = os.path.join(MPI_DIR, 'bin', 'mpicc')
         else:
             self.fc = FC
+            self.cc = CC
 
     # Sets the build name that will show up on the CDash
     def get_build_name(self):
@@ -189,6 +194,7 @@ class Test(object):
     # Runs the ctest script which performs all the cmake/ctest/cdash
     def run_ctest_script(self):
         os.environ['FC'] = self.fc
+        os.environ['CC'] = self.cc
         if self.mpi:
             os.environ['MPI_DIR'] = MPI_DIR
         if self.phdf5:
@@ -203,6 +209,7 @@ class Test(object):
     # Runs cmake when in non-script mode
     def run_cmake(self):
         os.environ['FC'] = self.fc
+        os.environ['CC'] = self.cc
         if self.mpi:
             os.environ['MPI_DIR'] = MPI_DIR
         if self.phdf5:

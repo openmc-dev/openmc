@@ -415,7 +415,6 @@ contains
       allocate(MeshFilter::filters(n_filters) % obj)
       select type (filt => filters(n_filters) % obj)
       type is (MeshFilter)
-        filt % type = FILTER_MESH
         filt % n_bins = product(m % dimension)
         filt % mesh = n_user_meshes + 1
       end select
@@ -427,7 +426,6 @@ contains
         allocate(EnergyFilter::filters(n_filters) % obj)
         select type (filt => filters(n_filters) % obj)
         type is (EnergyFilter)
-          filt % type = FILTER_ENERGYIN
           ng = get_arraysize_double(node_mesh, "energy")
           filt % n_bins = ng - 1
           allocate(filt % bins(ng))
@@ -494,7 +492,6 @@ contains
           allocate(EnergyoutFilter::filters(n_filters) % obj)
           select type (filt => filters(n_filters) % obj)
           type is (EnergyoutFilter)
-            filt % type = FILTER_ENERGYOUT
             ng = get_arraysize_double(node_mesh, "energy")
             filt % n_bins = ng - 1
             allocate(filt % bins(ng))
@@ -536,7 +533,6 @@ contains
         allocate(SurfaceFilter::filters(n_filters) % obj)
         select type(filt => filters(n_filters) % obj)
         type is(SurfaceFilter)
-          filt % type = FILTER_SURFACE
           filt % n_bins = 2 * m % n_dimension
           allocate(filt % surfaces(2 * m % n_dimension))
           if (m % n_dimension == 2) then

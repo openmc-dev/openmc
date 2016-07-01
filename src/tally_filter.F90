@@ -435,7 +435,7 @@ contains
     integer,               intent(in)  :: estimator
     integer,               intent(in)  :: current_bin
     integer,               intent(out) :: next_bin
-    real(8),               intent(out) :: weight 
+    real(8),               intent(out) :: weight
 
     integer :: i, j, start
     logical :: bin_found

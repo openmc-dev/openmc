@@ -2180,40 +2180,6 @@ contains
   end subroutine score_collision_tally
 
 !===============================================================================
-! GET_SCORING_BINS determines a combination of filter bins that should be scored
-! for a tally based on the particle's current attributes.
-!===============================================================================
-
-  subroutine get_scoring_bins(p, i_tally, found_bin)
-
-    type(Particle), intent(in)  :: p
-    integer,        intent(in)  :: i_tally
-    logical,        intent(out) :: found_bin
-
-    integer :: i
-    real(8) :: filt_score            ! score applied by filters
-    type(TallyObject), pointer :: t
-
-    found_bin = .true.
-    t => tallies(i_tally)
-    matching_bins(1:t%n_filters) = 1
-
-    FILTER_LOOP: do i = 1, t % n_filters
-
-      call t % filters(i) % obj % get_next_bin(p, t % estimator, NO_BIN_FOUND, &
-           matching_bins(i), filt_score)
-
-      ! If the current filter didn't match, exit this subroutine
-      if (matching_bins(i) == NO_BIN_FOUND) then
-        found_bin = .false.
-        return
-      end if
-
-    end do FILTER_LOOP
-
-  end subroutine get_scoring_bins
-
-!===============================================================================
 ! SCORE_SURFACE_CURRENT tallies surface crossings in a mesh tally by manually
 ! determining which mesh surfaces were crossed
 !===============================================================================

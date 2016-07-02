@@ -352,9 +352,9 @@ class Material(object):
         if self._macroscopic is None:
             self._macroscopic = macroscopic
         else:
-            msg = 'Unable to add a Macroscopic to Material ID="{0}", ' \
+            msg = 'Unable to add a Macroscopic to Material ID="{0}". ' \
                   'Only one Macroscopic allowed per ' \
-                  'Material!'.format(self._id)
+                  'Material.'.format(self._id)
             raise ValueError(msg)
 
         # Generally speaking, the density for a macroscopic object will

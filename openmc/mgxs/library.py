@@ -296,7 +296,7 @@ class Library(object):
 
         if correction == 'P0' and self.legendre_order > 0:
             warn('The P0 correction will be ignored since the scattering '
-                 'order {} is greater than zero'.format(self.legendre_order))
+                 'order "{}" is greater than zero'.format(self.legendre_order))
 
         self._correction = correction
 
@@ -1176,11 +1176,11 @@ class Library(object):
         # Ensure absorption is present
         if 'absorption' not in self.mgxs_types:
             error_flag = True
-            warn('"absorption" MGXS type is required but not provided.')
+            warn('An "absorption" MGXS type is required but not provided.')
         # Ensure nu-scattering matrix is required
         if 'nu-scatter matrix' not in self.mgxs_types:
             error_flag = True
-            warn('"nu-scatter matrix" MGXS type is required but not provided.')
+            warn('A "nu-scatter matrix" MGXS type is required but not provided.')
         else:
             # Ok, now see the status of scatter and/or multiplicity
             if ((('scatter matrix' not in self.mgxs_types) and
@@ -1189,7 +1189,7 @@ class Library(object):
                 # we need total, and not transport.
                 if 'total' not in self.mgxs_types:
                     error_flag = True
-                    warn('"total" MGXS type is required if a '
+                    warn('A "total" MGXS type is required if a '
                          'scattering matrix is not provided.')
         # Total or transport can be present, but if using
         # self.correction=="P0", then we should use transport.
@@ -1202,7 +1202,7 @@ class Library(object):
         elif (((self.correction is None) and
                ('total' not in self.mgxs_types))):
             error_flag = True
-            warn('"total" MGXS type is required, but not provided.')
+            warn('A "total" MGXS type is required, but not provided.')
 
         if error_flag:
             raise ValueError('Invalid MGXS configuration encountered.')

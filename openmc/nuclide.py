@@ -46,9 +46,9 @@ class Nuclide(object):
 
     def __eq__(self, other):
         if isinstance(other, Nuclide):
-            if self._name != other.name:
+            if self.name != other.name:
                 return False
-            elif self._xs != other.xs:
+            elif self.xs != other.xs:
                 return False
             else:
                 return True

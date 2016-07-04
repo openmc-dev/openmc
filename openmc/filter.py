@@ -564,7 +564,7 @@ class Filter(object):
             # Initialize dictionary to build Pandas Multi-index column
             filter_dict = {}
 
-            # Append Mesh ID as outermost index of mult-index
+            # Append Mesh ID as outermost index of multi-index
             mesh_key = 'mesh {0}'.format(self.mesh.id)
 
             # Find mesh dimensions - use 3D indices for simplicity

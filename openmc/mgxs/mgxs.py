@@ -4790,7 +4790,7 @@ class ChiPrompt(Chi):
         return self._xs_tally
 
     def get_slice(self, nuclides=[], groups=[]):
-        """Build a sliced ChiDelayed for the specified nuclides and energy
+        """Build a sliced ChiPrompt for the specified nuclides and energy
            groups.
 
         This method constructs a new MGXS to encapsulate a subset of the data
@@ -5082,7 +5082,7 @@ class Velocity(MGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`AbsorptionXS.tally_keys` property and
+        are strings listed in the :attr:`Velocity.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -5307,8 +5307,8 @@ class PromptNeutronLifetime(MGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`ChiDelayed.tally_keys` property and
-        values are instances of :class:`openmc.Tally`.
+        are strings listed in the :attr:`PromptNeutronLifetime.tally_keys`
+        property and values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None

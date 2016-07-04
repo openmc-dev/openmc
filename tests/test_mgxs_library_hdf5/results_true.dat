@@ -69,9 +69,9 @@ domain=10000 type=chi-prompt
 domain=10000 type=velocity
 [ 17515210.62039676    350171.99519401]
 [ 1438175.27389879    29945.93169673]
-domain=10000 type=prompt-neutron-lifetime
-[  2.93814305e-06   6.07895452e-06]
-[  2.76620532e-07   6.43372639e-07]
+domain=10000 type=prompt-nu-fission
+[ 0.01923926  0.46671903]
+[ 0.00131949  0.04161421]
 domain=10001 type=total
 [ 0.31373767  0.3008214 ]
 [ 0.0155819   0.02805245]
@@ -143,7 +143,7 @@ domain=10001 type=chi-prompt
 domain=10001 type=velocity
 [ 16677839.49736621    334953.36760125]
 [ 1266444.30951813    38336.78162568]
-domain=10001 type=prompt-neutron-lifetime
+domain=10001 type=prompt-nu-fission
 [ 0.  0.]
 [ 0.  0.]
 domain=10002 type=total
@@ -217,6 +217,6 @@ domain=10002 type=chi-prompt
 domain=10002 type=velocity
 [ 16605562.87322708    328412.03865003]
 [ 1042435.52374238    38828.43572983]
-domain=10002 type=prompt-neutron-lifetime
+domain=10002 type=prompt-nu-fission
 [ 0.  0.]
 [ 0.  0.]

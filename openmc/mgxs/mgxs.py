@@ -37,7 +37,7 @@ MGXS_TYPES = ['total',
               'chi',
               'chi-prompt',
               'velocity',
-              'prompt-neutron-lifetime']
+              'prompt-nu-fission']
 
 
 # Supported domain types
@@ -434,7 +434,7 @@ class MGXS(object):
             'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter',
             'nu-scatter', 'scatter matrix', 'nu-scatter matrix',
             'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt',
-            'velocity', 'prompt-neutron-lifetime'}
+            'velocity', 'prompt-nu-fission'}
             The type of multi-group cross section object to return
         domain : openmc.Material or openmc.Cell or openmc.Universe
             The domain for spatial homogenization
@@ -493,8 +493,8 @@ class MGXS(object):
             mgxs = ChiPrompt(domain, domain_type, energy_groups)
         elif mgxs_type == 'velocity':
             mgxs = Velocity(domain, domain_type, energy_groups)
-        elif mgxs_type == 'prompt-neutron-lifetime':
-            mgxs = PromptNeutronLifetime(domain, domain_type, energy_groups)
+        elif mgxs_type == 'prompt-nu-fission':
+            mgxs = PromptNuFissionXS(domain, domain_type, energy_groups)
 
         mgxs.by_nuclide = by_nuclide
         mgxs.name = name
@@ -5127,10 +5127,6 @@ class Velocity(MGXS):
         return ['inverse-velocity', 'flux']
 
     @property
-    def tally_keys(self):
-        return ['inverse-velocity', 'flux']
-
-    @property
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
             self._rxn_rate_tally = self.tallies['flux']
@@ -5238,32 +5234,36 @@ class Velocity(MGXS):
         print(string)
 
 
-class PromptNeutronLifetime(MGXS):
-    """The prompt neutron lifetime.
+class PromptNuFissionXS(MGXS):
+    """A prompt fission neutron production multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations. At a
-    minimum, one needs to set the :attr:`PromptNeutronLifetime.energy_groups`
-    and :attr:`PromptNeutronLifetime.domain` properties. Tallies for the flux
-    and appropriate reaction rates over the specified domain are generated
-    automatically via the :attr:`PromptNeutronLifetime.tallies` property, which
-    can then be appended to a :class:`openmc.Tallies` instance.
+    minimum, one needs to set the :attr:`PromptNuFissionXS.energy_groups` and
+    :attr:`PromptNuFissionXS.domain` properties. Tallies for the flux and
+    appropriate reaction rates over the specified domain are generated
+    automatically via the :attr:`PromptNuFissionXS.tallies` property, which can
+    then be appended to a :class:`openmc.Tallies` instance.
 
     For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`PromptNeutronLifetime.xs_tally`
-    property.
+    can then be obtained from the :attr:`PromptNuFissionXS.xs_tally` property.
 
     For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
     fission spectrum is calculated as:
 
     .. math::
 
-       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-       \frac{\psi (r, E, \Omega)}{v (r, E)}}{\int_{r \in V} dr \int_{4\pi}
-       d\Omega \int_{E_g}^{E_{g-1}} dE \; \nu\sigma_f (r, E') \psi(r, E', \Omega')}.
+       \langle \nu\sigma_{f,\rightarrow g}^p \phi \rangle &= \int_{r \in V} dr
+       \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \; \chi(E)
+       \nu\sigma_f (r, E') \psi(r, E', \Omega')\\
+       \langle \nu\sigma_f^p \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
+       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu\sigma_f^p (r,
+       E') \psi(r, E', \Omega') \\
+       \chi_g^p &= \frac{\langle \nu\sigma_{f,\rightarrow g}^p \phi \rangle}{\langle
+       \nu\sigma_f^p \phi \rangle}
 
     Parameters
     ----------
@@ -5307,8 +5307,8 @@ class PromptNeutronLifetime(MGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`PromptNeutronLifetime.tally_keys`
-        property and values are instances of :class:`openmc.Tally`.
+        are strings listed in the :attr:`PromptNuFissionXS.tally_keys` property
+        and values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
@@ -5343,121 +5343,18 @@ class PromptNeutronLifetime(MGXS):
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
-        super(PromptNeutronLifetime, self).__init__(domain, domain_type, groups,
-                                                    by_nuclide, name)
-        self._rxn_type = 'prompt-neutron-lifetime'
+        super(PromptNuFissionXS, self).__init__(domain, domain_type, groups,
+                                                by_nuclide, name)
+        self._rxn_type = 'prompt-nu-fission'
 
     @property
     def scores(self):
-        return ['nu-fission', 'inverse-velocity']
-
-    @property
-    def tally_keys(self):
-        return ['nu-fission', 'inverse-velocity']
+        return ['flux', 'nu-fission', 'delayed-nu-fission']
 
     @property
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['inverse-velocity']
+            self._rxn_rate_tally = self.tallies['nu-fission'] - \
+                                   self.tallies['delayed-nu-fission']
             self._rxn_rate_tally.sparse = self.sparse
         return self._rxn_rate_tally
-
-    @property
-    def xs_tally(self):
-
-        if self._xs_tally is None:
-            nu_fission = self.tallies['nu-fission']
-
-            # Compute the prompt neutron lifetime
-            self._xs_tally = self.rxn_rate_tally / nu_fission
-            super(PromptNeutronLifetime, self)._compute_xs()
-
-        return self._xs_tally
-
-    def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
-        """Print a string representation for the multi-group cross section.
-
-        Parameters
-        ----------
-        subdomains : Iterable of Integral or 'all'
-            The subdomain IDs of the cross sections to include in the report.
-            Defaults to 'all'.
-        nuclides : Iterable of str or 'all' or 'sum'
-            The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
-            The special string 'all' will report the cross sections for all
-            nuclides in the spatial domain. The special string 'sum' will report
-            the cross sections summed over all nuclides. Defaults to 'all'.
-        xs_type: {'macro', 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns.
-            Defaults to 'macro'.
-
-        """
-
-        # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
-        elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
-        else:
-            subdomains = [self.domain.id]
-
-        # Construct a collection of the nuclides to report
-        if self.by_nuclide:
-            if nuclides == 'all':
-                nuclides = self.get_all_nuclides()
-            elif nuclides == 'sum':
-                nuclides = ['sum']
-            else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
-        else:
-            nuclides = ['sum']
-
-        cv.check_value('xs_type', xs_type, ['macro'])
-
-        # Build header for string with type and domain info
-        string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
-
-        # If cross section data has not been computed, only print string header
-        if self.tallies is None:
-            print(string)
-            return
-
-        # Loop over all subdomains
-        for subdomain in subdomains:
-
-            if self.domain_type == 'distribcell':
-                string += '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
-
-            # Loop over all Nuclides
-            for nuclide in nuclides:
-
-                # Build header for nuclide type
-                if nuclide != 'sum':
-                    string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
-
-                # Build header for cross section type
-                string += '{0: <16}\n'.format\
-                          ('\tPrompt Neutron Lifetime [seconds]:')
-
-                template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]:\t'
-
-                # Loop over energy groups ranges
-                for group in range(1, self.num_groups+1):
-                    bounds = self.energy_groups.get_group_bounds(group)
-                    string += template.format('', group, bounds[0], bounds[1])
-                    average = self.get_xs([group], [subdomain], [nuclide],
-                                          xs_type=xs_type, value='mean')
-                    rel_err = self.get_xs([group], [subdomain], [nuclide],
-                                          xs_type=xs_type, value='rel_err')
-                    average = average.flatten()[0]
-                    rel_err = rel_err.flatten()[0] * 100.
-                    string += '{:.2e} +/- {:1.2e}%'.format(average, rel_err)
-                    string += '\n'
-                string += '\n'
-            string += '\n'
-
-        print(string)

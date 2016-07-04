@@ -4936,7 +4936,7 @@ class ChiPrompt(Chi):
                 filters.append('energyout')
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
-        # If chi delayed was computed for each nuclide in the domain
+        # If chi prompt was computed for each nuclide in the domain
         if self.by_nuclide:
 
             # Get the sum as the fission source weighted average chi for all
@@ -4960,8 +4960,8 @@ class ChiPrompt(Chi):
                 energy_filter = prompt_nu_fission_in.find_filter('energy')
                 prompt_nu_fission_in.remove_filter(energy_filter)
 
-                # Compute chi and store it as the xs_tally attribute so we can
-                # use the generic get_xs(...) method
+                # Compute chi prompt and store it as the xs_tally attribute so
+                # we can use the generic get_xs(...) method
                 xs_tally = prompt_nu_fission_out / prompt_nu_fission_in
 
                 # Add the coarse energy filter back to the nu-fission tally
@@ -4970,7 +4970,7 @@ class ChiPrompt(Chi):
                 xs = xs_tally.get_values(filters=filters,
                                          filter_bins=filter_bins, value=value)
 
-            # Get chi delayed for all nuclides in the domain
+            # Get chi prompt for all nuclides in the domain
             elif nuclides == 'all':
                 nuclides = self.get_all_nuclides()
                 xs = self.xs_tally.get_values(filters=filters,

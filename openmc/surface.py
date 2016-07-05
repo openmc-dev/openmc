@@ -19,6 +19,7 @@ _BC_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic']
 
 
 def reset_auto_surface_id():
+    """Reset counters for all auto-generated surface IDs"""
     global AUTO_SURFACE_ID
     AUTO_SURFACE_ID = 10000
 
@@ -1814,18 +1815,20 @@ def make_hexagon_region(edge_length=1., orientation='y'):
         right = XPlane(x0=sqrt(3.)/2.*l)
         left = XPlane(x0=-sqrt(3.)/2.*l)
         c = sqrt(3.)/3.
-        ur = Plane(A=c, B=1., D=l)  # y = -x/sqrt(3) + a
-        ul = Plane(A=-c, B=1., D=l)  # y = x/sqrt(3) + a
-        lr = Plane(A=-c, B=1., D=-l) # y = x/sqrt(3) - a
-        ll = Plane(A=c, B=1., D=-l)  # y = -x/sqrt(3) - a
-        return Intersection(-right, +left, -ur, -ul, +lr, +ll)
+        upper_right = Plane(A=c, B=1., D=l)  # y = -x/sqrt(3) + a
+        upper_left = Plane(A=-c, B=1., D=l)  # y = x/sqrt(3) + a
+        lower_right = Plane(A=-c, B=1., D=-l) # y = x/sqrt(3) - a
+        lower_left = Plane(A=c, B=1., D=-l)  # y = -x/sqrt(3) - a
+        return Intersection(-right, +left, -upper_right, -upper_left,
+                            +lower_right, +lower_left)
 
     elif orientation == 'x':
         top = YPlane(y0=sqrt(3.)/2.*l)
         bottom = YPlane(y0=-sqrt(3.)/2.*l)
         c = sqrt(3.)
-        ur = Plane(A=c, B=1., D=c*l)  # y = -sqrt(3)*(x - a)
-        lr = Plane(A=-c, B=1., D=-c*l)  # y = sqrt(3)*(x + a)
-        ll = Plane(A=c, B=1., D=-c*l) # y = -sqrt(3)*(x + a)
-        ul = Plane(A=-c, B=1., D=c*l)  # y = sqrt(3)*(x + a)
-        return Intersection(-top, +bottom, -ur, +lr, +ll, -ul)
+        upper_right = Plane(A=c, B=1., D=c*l)  # y = -sqrt(3)*(x - a)
+        lower_right = Plane(A=-c, B=1., D=-c*l)  # y = sqrt(3)*(x + a)
+        lower_left = Plane(A=c, B=1., D=-c*l) # y = -sqrt(3)*(x + a)
+        upper_left = Plane(A=-c, B=1., D=c*l)  # y = sqrt(3)*(x + a)
+        return Intersection(-top, +bottom, -upper_right, +lower_right,
+                            +lower_left, -upper_left)

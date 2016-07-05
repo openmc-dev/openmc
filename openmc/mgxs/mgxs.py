@@ -1,6 +1,6 @@
 from __future__ import division
 
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
 from numbers import Integral
 import warnings
 import os
@@ -412,7 +412,7 @@ class MGXS(object):
             self.rxn_rate_tally.sparse = sparse
 
         for tally_name in self.tallies:
-                self.tallies[tally_name].sparse = sparse
+            self.tallies[tally_name].sparse = sparse
 
         self._sparse = sparse
 
@@ -852,7 +852,7 @@ class MGXS(object):
         fine_edges = self.energy_groups.group_edges
 
         # Condense each of the tallies to the coarse group structure
-        for tally_type, tally in condensed_xs.tallies.items():
+        for tally in condensed_xs.tallies.values():
 
             # Make condensed tally derived and null out sum, sum_sq
             tally._derived = True
@@ -993,7 +993,8 @@ class MGXS(object):
             slice_nuclides = [nuc for nuc in nuclides if nuc in tally.nuclides]
             if len(groups) != 0 and tally.contains_filter('energy'):
                 tally_slice = tally.get_slice(filters=filters,
-                    filter_bins=filter_bins, nuclides=slice_nuclides)
+                                              filter_bins=filter_bins,
+                                              nuclides=slice_nuclides)
             else:
                 tally_slice = tally.get_slice(nuclides=slice_nuclides)
             slice_xs.tallies[tally_type] = tally_slice
@@ -1286,7 +1287,7 @@ class MGXS(object):
         num_digits = len(str(self.num_subdomains))
 
         # Create a separate HDF5 group for each subdomain
-        for i, subdomain in enumerate(subdomains):
+        for subdomain in subdomains:
 
             # Create an HDF5 group for the subdomain
             if self.domain_type == 'distribcell':
@@ -1311,9 +1312,11 @@ class MGXS(object):
 
                 # Extract the cross section for this subdomain and nuclide
                 average = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
-                    xs_type=xs_type, value='mean', row_column=row_column)
+                                      xs_type=xs_type, value='mean',
+                                      row_column=row_column)
                 std_dev = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
-                    xs_type=xs_type, value='std_dev', row_column=row_column)
+                                      xs_type=xs_type, value='std_dev',
+                                      row_column=row_column)
                 average = average.squeeze()
                 std_dev = std_dev.squeeze()
 
@@ -1386,9 +1389,9 @@ class MGXS(object):
                         longtable=True, index=False)
 
             # Surround LaTeX table with code needed to run pdflatex
-            with open(filename + '.tex','r') as original:
+            with open(filename + '.tex', 'r') as original:
                 data = original.read()
-            with open(filename + '.tex','w') as modified:
+            with open(filename + '.tex', 'w') as modified:
                 modified.write(
                     '\\documentclass[preview, 12pt, border=1mm]{standalone}\n')
                 modified.write('\\usepackage{caption}\n')
@@ -1451,7 +1454,7 @@ class MGXS(object):
             query_nuclides = self.get_all_nuclides()
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
             df = xs_tally.get_pandas_dataframe(
-                    distribcell_paths=distribcell_paths)
+                distribcell_paths=distribcell_paths)
 
             # Remove nuclide column since it is homogeneous and redundant
             df.drop('nuclide', axis=1, inplace=True)
@@ -1460,12 +1463,12 @@ class MGXS(object):
         elif self.by_nuclide and nuclides != 'all':
             xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
             df = xs_tally.get_pandas_dataframe(
-                    distribcell_paths=distribcell_paths)
+                distribcell_paths=distribcell_paths)
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
             df = self.xs_tally.get_pandas_dataframe(
-                    distribcell_paths=distribcell_paths)
+                distribcell_paths=distribcell_paths)
 
         # Remove the score column since it is homogeneous and redundant
         df = df.drop('score', axis=1)
@@ -3443,7 +3446,7 @@ class ScatterMatrixXS(MatrixMGXS):
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all', moment='all',
                xs_type='macro', order_groups='increasing',
-               row_column='inout', value='mean', **kwargs):
+               row_column='inout', value='mean'):
         r"""Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested scattering
@@ -3530,7 +3533,7 @@ class ScatterMatrixXS(MatrixMGXS):
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
             cv.check_less_than(
-                    'moment', moment, self.legendre_order, equality=True)
+                'moment', moment, self.legendre_order, equality=True)
             scores = [self.xs_tally.scores[moment]]
         else:
             scores = []
@@ -3641,7 +3644,7 @@ class ScatterMatrixXS(MatrixMGXS):
         """
 
         df = super(ScatterMatrixXS, self).get_pandas_dataframe(
-                groups, nuclides, xs_type, distribcell_paths)
+            groups, nuclides, xs_type, distribcell_paths)
 
         # Add a moment column to dataframe
         if self.legendre_order > 0:
@@ -3660,7 +3663,7 @@ class ScatterMatrixXS(MatrixMGXS):
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
             cv.check_less_than(
-                    'moment', moment, self.legendre_order, equality=True)
+                'moment', moment, self.legendre_order, equality=True)
             df = df[df['moment'] == 'P{}'.format(moment)]
 
         return df
@@ -4601,7 +4604,7 @@ class Chi(MGXS):
 
         # Build the dataframe using the parent class method
         df = super(Chi, self).get_pandas_dataframe(
-                groups, nuclides, xs_type, distribcell_paths=distribcell_paths)
+            groups, nuclides, xs_type, distribcell_paths=distribcell_paths)
 
         # If user requested micro cross sections, multiply by the atom
         # densities to cancel out division made by the parent class method

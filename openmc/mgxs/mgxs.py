@@ -13,7 +13,7 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 from openmc.mgxs import EnergyGroups
-
+from openmc import Mesh
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -45,13 +45,15 @@ MGXS_TYPES = ['total',
 DOMAIN_TYPES = ['cell',
                 'distribcell',
                 'universe',
-                'material']
+                'material',
+                'mesh']
 
 # Supported domain classes
 # TODO: Implement Mesh domains
 _DOMAINS = (openmc.Cell,
             openmc.Universe,
-            openmc.Material)
+            openmc.Material,
+            openmc.Mesh)
 
 
 class MGXS(object):
@@ -66,9 +68,9 @@ class MGXS(object):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -86,9 +88,9 @@ class MGXS(object):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -115,9 +117,10 @@ class MGXS(object):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
-        tally data from a statepoint file).
+        tally data from a statepoint file) and the number of mesh cells for
+        'mesh' domain types.
     num_nuclides : int
         The number of nuclides for which the multi-group cross section is
         being tracked. This is unity if the by_nuclide attribute is False.
@@ -263,6 +266,10 @@ class MGXS(object):
             # Create a domain Filter object
             domain_filter = openmc.Filter(self.domain_type, self.domain.id)
 
+            # If a mesh domain, give the mesh to the domain filter
+            if self.domain_type == 'mesh':
+                domain_filter.mesh = self.domain
+
             # Create each Tally needed to compute the multi group cross section
             tally_metadata = zip(self.scores, self.tally_keys, self.filters)
             for score, key, filters in tally_metadata:
@@ -378,6 +385,8 @@ class MGXS(object):
                 self._domain_type = 'cell'
             elif isinstance(domain, openmc.Universe):
                 self._domain_type = 'universe'
+            elif isinstance(domain, openmc.Mesh):
+                self._domain_type = 'mesh'
 
     @domain_type.setter
     def domain_type(self, domain_type):
@@ -432,9 +441,10 @@ class MGXS(object):
         ----------
         mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'velocity', 'prompt-nu-fission'}
             The type of multi-group cross section object to return
-        domain : openmc.Material or openmc.Cell or openmc.Universe
+        domain : openmc.Material or openmc.Cell or openmc.Universe or
+            openmc.Mesh
             The domain for spatial homogenization
-        domain_type : {'material', 'cell', 'distribcell', 'universe'}
+        domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
             The domain type for spatial homogenization
         energy_groups : openmc.mgxs.EnergyGroups
             The energy group structure for energy condensation
@@ -675,6 +685,8 @@ class MGXS(object):
             self.domain = statepoint.summary.get_universe_by_id(self.domain.id)
         elif self.domain_type == 'material':
             self.domain = statepoint.summary.get_material_by_id(self.domain.id)
+        elif self.domain_type == 'mesh':
+            self.domain = statepoint.meshes[self.domain.id]
         else:
             msg = 'Unable to load data from a statepoint for domain type {0} ' \
                   'which is not yet supported'.format(self.domain_type)
@@ -682,7 +694,23 @@ class MGXS(object):
 
         # Use tally "slicing" to ensure that tallies correspond to our domain
         # NOTE: This is important if tally merging was used
-        if self.domain_type != 'distribcell':
+        if self.domain_type == 'mesh':
+            filters = [self.domain_type]
+            bins = []
+            if (len(self.domain.dimension) == 3):
+                nx, ny, nz = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        for z in range(1,nz+1):
+                            bins.append((x, y, z))
+            else:
+                nx, ny = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        bins.append((x, y, 1))
+
+            filter_bins = [tuple(bins)]
+        elif self.domain_type != 'distribcell':
             filters = [self.domain_type]
             filter_bins = [(self.domain.id,)]
         # Distribcell filters only accept single cell - neglect it when slicing
@@ -761,7 +789,7 @@ class MGXS(object):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=2)
+            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
@@ -981,16 +1009,16 @@ class MGXS(object):
         cv.check_iterable_type('energy_groups', groups, Integral)
 
         # Build lists of filters and filter bins to slice
-        if len(groups) == 0:
-            filters = []
-            filter_bins = []
-        else:
-            filter_bins = []
+        filters = []
+        filter_bins = []
+
+        if len(groups) != 0:
+            energy_bins = []
             for group in groups:
                 group_bounds = self.energy_groups.get_group_bounds(group)
-                filter_bins.append(group_bounds)
-            filter_bins = [tuple(filter_bins)]
-            filters = ['energy']
+                energy_bins.append(group_bounds)
+            filter_bins.append(tuple(energy_bins))
+            filters.append('energy')
 
         # Clone this MGXS to initialize the sliced version
         slice_xs = copy.deepcopy(self)
@@ -1134,6 +1162,19 @@ class MGXS(object):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
+        elif self.domain_type == 'mesh':
+            subdomains = []
+            if (len(self.domain.dimension) == 3):
+                nx, ny, nz = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        for z in range(1,nz+1):
+                            subdomains.append((x, y, z))
+            else:
+                nx, ny = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        subdomains.append((x, y, 1))
         else:
             subdomains = [self.domain.id]
 
@@ -1270,6 +1311,19 @@ class MGXS(object):
         elif self.domain_type == 'avg(distribcell)':
             domain_filter = self.xs_tally.find_filter('avg(distribcell)')
             subdomains = domain_filter.bins
+        elif self.domain_type == 'mesh':
+            subdomains = []
+            if (len(self.domain.dimension) == 3):
+                nx, ny, nz = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        for z in range(1,nz+1):
+                            subdomains.append((x, y, z))
+            else:
+                nx, ny = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        subdomains.append((x, y, 1))
         else:
             subdomains = [self.domain.id]
 
@@ -1375,8 +1429,8 @@ class MGXS(object):
         df = self.get_pandas_dataframe(groups=groups, xs_type=xs_type)
 
         # Capitalize column label strings
-        df.columns = df.columns.astype(str)
-        df.columns = map(str.title, df.columns)
+        #df.columns = df.columns.astype(str)
+        #df.columns = map(str.title, df.columns)
 
         # Export the data using Pandas IO API
         if format == 'csv':
@@ -1477,7 +1531,10 @@ class MGXS(object):
                     distribcell_paths=distribcell_paths)
 
         # Remove the score column since it is homogeneous and redundant
-        df = df.drop('score', axis=1)
+        if self.domain_type == 'mesh':
+            df = df.drop('score', axis=1, level=0)
+        else:
+            df = df.drop('score', axis=1)
 
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
@@ -1533,7 +1590,12 @@ class MGXS(object):
 
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal
-        df.sort_values(by=[self.domain_type] + columns, inplace=True)
+        if self.domain_type == 'mesh':
+            mesh_str = 'mesh {0}'.format(self.domain.id)
+            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'), \
+                               (mesh_str, 'z')] + columns, inplace=True)
+        else:
+            df.sort_values(by=[self.domain_type] + columns, inplace=True)
         return df
 
 
@@ -1552,9 +1614,9 @@ class MatrixMGXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -1572,9 +1634,9 @@ class MatrixMGXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -1601,9 +1663,10 @@ class MatrixMGXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
-        tally data from a statepoint file).
+        tally data from a statepoint file) and the number of mesh cells for
+        'mesh' domain types.
     num_nuclides : int
         The number of nuclides for which the multi-group cross section is
         being tracked. This is unity if the by_nuclide attribute is False.
@@ -1700,7 +1763,7 @@ class MatrixMGXS(MGXS):
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral,
-                                   max_depth=2)
+                                   max_depth=3)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
@@ -1862,6 +1925,19 @@ class MatrixMGXS(MGXS):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
+        elif self.domain_type == 'mesh':
+            subdomains = []
+            if (len(self.domain.dimension) == 3):
+                nx, ny, nz = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        for z in range(1,nz+1):
+                            subdomains.append((x, y, z))
+            else:
+                nx, ny = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        subdomains.append((x, y, 1))
         else:
             subdomains = [self.domain.id]
 
@@ -1971,9 +2047,9 @@ class TotalXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -1991,9 +2067,9 @@ class TotalXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -2022,7 +2098,7 @@ class TotalXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2089,9 +2165,9 @@ class TransportXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -2109,9 +2185,9 @@ class TransportXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -2140,7 +2216,7 @@ class TransportXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2219,9 +2295,9 @@ class NuTransportXS(TransportXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -2239,9 +2315,9 @@ class NuTransportXS(TransportXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -2270,7 +2346,7 @@ class NuTransportXS(TransportXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2340,9 +2416,9 @@ class AbsorptionXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -2360,9 +2436,9 @@ class AbsorptionXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -2391,7 +2467,7 @@ class AbsorptionXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2456,9 +2532,9 @@ class CaptureXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -2476,9 +2552,9 @@ class CaptureXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -2507,7 +2583,7 @@ class CaptureXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2578,9 +2654,9 @@ class FissionXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -2598,9 +2674,9 @@ class FissionXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -2629,7 +2705,7 @@ class FissionXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2689,9 +2765,9 @@ class NuFissionXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -2709,9 +2785,9 @@ class NuFissionXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -2740,7 +2816,7 @@ class NuFissionXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2805,9 +2881,9 @@ class KappaFissionXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -2825,9 +2901,9 @@ class KappaFissionXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -2856,7 +2932,7 @@ class KappaFissionXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2918,9 +2994,9 @@ class ScatterXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -2938,9 +3014,9 @@ class ScatterXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -2969,7 +3045,7 @@ class ScatterXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -3033,9 +3109,9 @@ class NuScatterXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -3053,9 +3129,9 @@ class NuScatterXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -3084,7 +3160,7 @@ class NuScatterXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -3163,9 +3239,9 @@ class ScatterMatrixXS(MatrixMGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -3187,9 +3263,9 @@ class ScatterMatrixXS(MatrixMGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -3218,7 +3294,7 @@ class ScatterMatrixXS(MatrixMGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -3515,7 +3591,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=2)
+            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
@@ -3702,6 +3778,19 @@ class ScatterMatrixXS(MatrixMGXS):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
+        elif self.domain_type == 'mesh':
+            subdomains = []
+            if (len(self.domain.dimension) == 3):
+                nx, ny, nz = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        for z in range(1,nz+1):
+                            subdomains.append((x, y, z))
+            else:
+                nx, ny = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        subdomains.append((x, y, 1))
         else:
             subdomains = [self.domain.id]
 
@@ -3812,9 +3901,9 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -3836,9 +3925,9 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -3867,7 +3956,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -3938,9 +4027,9 @@ class MultiplicityMatrixXS(MatrixMGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -3958,9 +4047,9 @@ class MultiplicityMatrixXS(MatrixMGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -3989,7 +4078,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -4085,9 +4174,9 @@ class NuFissionMatrixXS(MatrixMGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -4105,9 +4194,9 @@ class NuFissionMatrixXS(MatrixMGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -4136,7 +4225,7 @@ class NuFissionMatrixXS(MatrixMGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -4200,9 +4289,9 @@ class Chi(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -4220,9 +4309,9 @@ class Chi(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -4251,7 +4340,7 @@ class Chi(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -4484,7 +4573,7 @@ class Chi(MGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=2)
+            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
@@ -4659,9 +4748,9 @@ class ChiPrompt(Chi):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -4679,9 +4768,9 @@ class ChiPrompt(Chi):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -4710,7 +4799,7 @@ class ChiPrompt(Chi):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -4796,9 +4885,9 @@ class Velocity(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -4816,9 +4905,9 @@ class Velocity(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -4921,6 +5010,19 @@ class Velocity(MGXS):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
+        elif self.domain_type == 'mesh':
+            subdomains = []
+            if (len(self.domain.dimension) == 3):
+                nx, ny, nz = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        for z in range(1,nz+1):
+                            subdomains.append((x, y, z))
+            else:
+                nx, ny = self.domain.dimension
+                for x in range(1,nx+1):
+                    for y in range(1,ny+1):
+                        subdomains.append((x, y, 1))
         else:
             subdomains = [self.domain.id]
 
@@ -5011,9 +5113,9 @@ class PromptNuFissionXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -5031,9 +5133,9 @@ class PromptNuFissionXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -5062,7 +5164,7 @@ class PromptNuFissionXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int

@@ -2983,7 +2983,7 @@ class Tally(object):
                         bin_indices.extend([bin_index])
                         bin_indices.extend([bin_index, bin_index+1])
                         num_bins += 1
-                    elif filter_type == 'distribcell':
+                    elif filter_type in ['distribcell', 'mesh']:
                         bin_indices = [0]
                         num_bins = find_filter.num_bins
                     else:

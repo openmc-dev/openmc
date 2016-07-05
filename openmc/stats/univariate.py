@@ -24,7 +24,7 @@ class Univariate(object):
         pass
 
     @abstractmethod
-    def to_xml(self):
+    def to_xml(self, element_name):
         return ''
 
 
@@ -180,7 +180,7 @@ class Maxwell(Univariate):
 
 
 class Watt(Univariate):
-    """Watt fission energy spectrum.
+    r"""Watt fission energy spectrum.
 
     The Watt fission energy spectrum is characterized by two parameters
     :math:`a` and :math:`b` and has density function :math:`p(E) dE = c e^{-E/a}

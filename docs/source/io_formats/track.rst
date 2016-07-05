@@ -1,4 +1,4 @@
-.. _usersguide_track:
+.. _io_track:
 
 =================
 Track File Format

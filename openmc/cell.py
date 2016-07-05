@@ -71,10 +71,12 @@ class Cell(object):
            \sin\phi \sin\theta \sin\psi & -\sin\phi \cos\psi + \cos\phi
            \sin\theta \sin\psi \\ -\sin\theta & \sin\phi \cos\theta & \cos\phi
            \cos\theta \end{array} \right ]
-
     rotation_matrix : numpy.ndarray
         The rotation matrix defined by the angles specified in the
         :attr:`Cell.rotation` property.
+    temperature : float or iterable of float
+        Temperature of the cell in Kelvin.  Multiple temperatures can be given
+        to give each distributed cell instance a unique temperature.
     translation : Iterable of float
         If the cell is filled with a universe, this array specifies a vector
         that is used to translate (shift) the universe.
@@ -93,6 +95,7 @@ class Cell(object):
         self.region = region
         self._rotation = None
         self._rotation_matrix = None
+        self._temperature = None
         self._translation = None
         self._offsets = None
         self._distribcell_index = None
@@ -115,6 +118,8 @@ class Cell(object):
         elif self.region != other.region:
             return False
         elif self.rotation != other.rotation:
+            return False
+        elif self.temperature != other.temperature:
             return False
         elif self.translation != other.translation:
             return False
@@ -144,6 +149,9 @@ class Cell(object):
 
         string += '{: <16}=\t{}\n'.format('\tRegion', self.region)
         string += '{: <16}=\t{}\n'.format('\tRotation', self.rotation)
+        if self.fill_type == 'material':
+            string += '\t{0: <15}=\t{1}\n'.format('Temperature',
+                                                  self.temperature)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
         string += '{: <16}=\t{}\n'.format('\tOffset', self.offsets)
         string += '{: <16}=\t{}\n'.format('\tDistribcell index', self.distribcell_index)
@@ -186,6 +194,10 @@ class Cell(object):
     @property
     def rotation_matrix(self):
         return self._rotation_matrix
+
+    @property
+    def temperature(self):
+        return self._temperature
 
     @property
     def translation(self):
@@ -266,6 +278,17 @@ class Cell(object):
         cv.check_type('cell translation', translation, Iterable, Real)
         cv.check_length('cell translation', translation, 3)
         self._translation = np.asarray(translation)
+
+    @temperature.setter
+    def temperature(self, temperature):
+        cv.check_type('cell temperature', temperature, (Iterable, Real))
+        if isinstance(temperature, Iterable):
+            cv.check_type('cell temperature', temperature, Iterable, Real)
+            for T in temperature:
+                cv.check_greater_than('cell temperature', T, 0.0, True)
+        else:
+            cv.check_greater_than('cell temperature', temperature, 0.0, True)
+        self._temperature = temperature
 
     @offsets.setter
     def offsets(self, offsets):
@@ -470,6 +493,13 @@ class Cell(object):
 
             # Call the recursive function from the top node
             create_surface_elements(self.region, xml_element)
+
+        if self.temperature is not None:
+            if isinstance(self.temperature, Iterable):
+                element.set("temperature", ' '.join(
+                            str(t) for t in self.temperature))
+            else:
+                element.set("temperature", str(self.temperature))
 
         if self.translation is not None:
             element.set("translation", ' '.join(map(str, self.translation)))

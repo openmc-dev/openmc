@@ -9,6 +9,7 @@ module nuclide_header
   use error,       only: fatal_error, warning
   use list_header, only: ListInt
   use math,        only: evaluate_legendre
+  use multipole_header, only: MultipoleArray
   use product_header, only: AngleEnergyContainer
   use reaction_header, only: Reaction
   use stl_vector,  only: VectorInt
@@ -70,6 +71,10 @@ module nuclide_header
     integer                :: urr_inelastic
     type(UrrData), pointer :: urr_data => null()
 
+    ! Multipole data
+    logical                       :: mp_present = .false.
+    type(MultipoleArray), pointer :: multipole => null()
+
     ! Reactions
     integer :: n_reaction ! # of reactions
     type(Reaction), allocatable :: reactions(:)
@@ -119,6 +124,10 @@ module nuclide_header
 
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
+
+    ! Information for Doppler broadening
+    real(8) :: last_sqrtkT = ZERO  ! Last temperature in sqrt(Boltzmann
+                                   ! constant * temperature (MeV))
   end type NuclideMicroXS
 
 !===============================================================================
@@ -160,17 +169,16 @@ module nuclide_header
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide
 !===============================================================================
 
-    subroutine nuclide_clear(this)
+  subroutine nuclide_clear(this)
+    class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
 
-      class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
+    if (associated(this % urr_data)) deallocate(this % urr_data)
 
-      integer :: i ! Loop counter
+    call this % reaction_index % clear()
 
-      if (associated(this % urr_data)) deallocate(this % urr_data)
+    if (associated(this % multipole)) deallocate(this % multipole)
 
-      call this % reaction_index % clear()
-
-    end subroutine nuclide_clear
+  end subroutine nuclide_clear
 
 !===============================================================================
 ! NUCLIDE_NU is an interface to the number of fission neutrons produced

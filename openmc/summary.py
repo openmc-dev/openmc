@@ -286,6 +286,10 @@ class Summary(object):
                     rotation = np.asarray(rotation, dtype=np.int)
                     cell._rotation = rotation
 
+            elif fill_type == 'normal':
+                cell.temperature = \
+                  self._f['geometry/cells'][key]['temperature'][...]
+
             # Store Cell fill information for after Universe/Lattice creation
             self._cell_fills[index] = (fill_type, fill)
 

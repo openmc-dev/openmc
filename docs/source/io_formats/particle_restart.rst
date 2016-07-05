@@ -1,4 +1,4 @@
-.. _usersguide_particle_restart:
+.. _io_particle_restart:
 
 ============================
 Particle Restart File Format

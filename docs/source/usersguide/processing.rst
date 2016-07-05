@@ -161,7 +161,7 @@ or
 * `VTK <http://www.vtk.org/>`_ with python bindings. On debian derivatives,
   these are easily obtained with ``sudo apt-get install python-vtk``
 
-For the HDF5 file structure, see :ref:`usersguide_voxel`.
+For the HDF5 file structure, see :ref:`io_voxel`.
 
 Once processed into a standard 3D file format, colors and masks can be defined
 using the stored id numbers to better explore the geometry. The process for
@@ -195,7 +195,7 @@ Data Extraction
 ---------------
 
 A great deal of information is available in statepoint files (See
-:ref:`usersguide_statepoint`), all of which is accessible through the Python
+:ref:`io_statepoint`), all of which is accessible through the Python
 API. The :class:`openmc.StatePoint` class can load statepoints and access data
 as requested; it is used in many of the provided plotting utilities, OpenMC's
 regression test suite, and can be used in user-created scripts to carry out

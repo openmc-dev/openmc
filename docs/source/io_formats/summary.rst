@@ -1,4 +1,4 @@
-.. _usersguide_summary:
+.. _io_summary:
 
 ===================
 Summary File Format
@@ -97,6 +97,10 @@ The current revision of the summary file format is 1.
     only if fill_type is set to 'normal'.  The value '-1' signifies void
     material.  The data is an array if the cell uses distributed materials,
     otherwise it is a scalar.
+
+**/geometry/cells/cell <uid>/temperature** (*double[]*)
+
+    Temperature of the cell in Kelvin.
 
 **/geometry/cells/cell <uid>/offset** (*int[]*)
 

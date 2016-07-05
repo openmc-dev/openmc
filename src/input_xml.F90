@@ -3599,6 +3599,12 @@ contains
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
+          case ('prompt-nu-fission')
+            t % score_bins(j) = SCORE_PROMPT_NU_FISSION
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              ! Set tally estimator to analog
+              t % estimator = ESTIMATOR_ANALOG
+            end if
 
             ! Disallow for MG mode since data not present
             if (.not. run_CE) then

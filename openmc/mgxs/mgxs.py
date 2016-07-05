@@ -733,6 +733,8 @@ class MGXS(object):
             sp_tally = statepoint.get_tally(
                 tally.scores, tally.filters, tally.nuclides,
                 estimator=tally.estimator, exact_filters=True)
+            print(filters)
+            print(filter_bins)
             sp_tally = sp_tally.get_slice(
                 tally.scores, filters, filter_bins, tally.nuclides)
             sp_tally.sparse = self.sparse

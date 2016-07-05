@@ -713,7 +713,7 @@ class MGXS(object):
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
                value='mean', **kwargs):
-        """Returns an array of multi-group cross sections.
+        r"""Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested multi-group
         cross section data data for one or more energy groups and subdomains.
@@ -3789,7 +3789,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
 
 class NuScatterMatrixXS(ScatterMatrixXS):
-    r"""A scattering production matrix multi-group cross section for one or
+    """A scattering production matrix multi-group cross section for one or
     more Legendre moments.
 
     This class can be used for both OpenMC input generation and tally data
@@ -4650,7 +4650,7 @@ class ChiPrompt(Chi):
 
        \langle \nu\sigma_{f,\rightarrow g}^p \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \; \chi(E)
-       \nu\sigma_f (r, E') \psi(r, E', \Omega')\\
+       \nu\sigma_f^p (r, E') \psi(r, E', \Omega')\\
        \langle \nu\sigma_f^p \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu\sigma_f^p (r,
        E') \psi(r, E', \Omega') \\
@@ -4770,13 +4770,12 @@ class Velocity(MGXS):
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group velocity cross sections for multi-group neutronics
-    calculations. At a minimum, one needs to set the
-    :attr:`Velocity.energy_groups` and :attr:`Velocity.domain`
-    properties. Tallies for the flux and appropriate reaction rates over the
-    specified domain are generated automatically via the
-    :attr:`Velocity.tallies` property, which can then be appended to a
-    :class:`openmc.Tallies` instance.
+    multi-group neutron velocities for multi-group neutronics calculations.
+    The units of velocity are cm per second. At a minimum, one needs to set the
+    :attr:`Velocity.energy_groups` and :attr:`Velocity.domain` properties.
+    Tallies for the flux and appropriate reaction rates over the specified
+    domain are generated automatically via the :attr:`Velocity.tallies`
+    property, which can then be appended to a :class:`openmc.Tallies` instance.
 
     For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
@@ -4784,7 +4783,10 @@ class Velocity(MGXS):
     can then be obtained from the :attr:`Velocity.xs_tally` property.
 
     For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
-    velocity cross section is calculated as:
+    neutron velocities are calculated by tallying the flux-weighted inverse
+    velocity and the flux. The velocity is then the inverse of the flux-weighted
+    inverse velocity divided by the flux. This equates to dividing the
+    spatially-homogenized and energy-integrated flux by the inverse velocity:
 
     .. math::
 
@@ -4897,7 +4899,7 @@ class Velocity(MGXS):
 
         return self._xs_tally
 
-    def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
+    def print_xs(self, subdomains='all', nuclides='all'):
         """Print a string representation for the multi-group cross section.
 
         Parameters
@@ -4911,9 +4913,6 @@ class Velocity(MGXS):
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
-        xs_type: {'macro', 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns.
-            Defaults to 'macro'.
 
         """
 
@@ -4935,8 +4934,6 @@ class Velocity(MGXS):
                 cv.check_iterable_type('nuclides', nuclides, basestring)
         else:
             nuclides = ['sum']
-
-        cv.check_value('xs_type', xs_type, ['macro'])
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
@@ -4973,9 +4970,9 @@ class Velocity(MGXS):
                     bounds = self.energy_groups.get_group_bounds(group)
                     string += template.format('', group, bounds[0], bounds[1])
                     average = self.get_xs([group], [subdomain], [nuclide],
-                                          xs_type=xs_type, value='mean')
+                                          xs_type='macro', value='mean')
                     rel_err = self.get_xs([group], [subdomain], [nuclide],
-                                          xs_type=xs_type, value='rel_err')
+                                          xs_type='macro', value='rel_err')
                     average = average.flatten()[0]
                     rel_err = rel_err.flatten()[0] * 100.
                     string += '{:.2e} +/- {:1.2e}%'.format(average, rel_err)

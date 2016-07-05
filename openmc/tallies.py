@@ -2983,18 +2983,13 @@ class Tally(object):
                         bin_indices.extend([bin_index])
                         bin_indices.extend([bin_index, bin_index+1])
                         num_bins += 1
-                    elif filter_type == 'distribcell':
+                    elif filter_type in ['distribcell', 'mesh']:
                         bin_indices = [0]
                         num_bins = find_filter.num_bins
-                    elif filter_type == 'mesh':
-                        bin_indices = [0]
-                        num_bins = find_filter.mesh.num_mesh_cells
                     else:
                         bin_indices.append(bin_index)
                         num_bins += 1
 
-                print(bin_indices)
-                print(find_filter.bins)
                 find_filter.bins = np.unique(find_filter.bins[bin_indices])
                 find_filter.num_bins = num_bins
 

@@ -37,6 +37,7 @@ the latest developmental version of the develop branch can be found on
     usersguide/index
     devguide/index
     pythonapi/index
+    io_formats/index
     publications
     license
     developers

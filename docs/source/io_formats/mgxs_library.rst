@@ -1,4 +1,4 @@
-.. _usersguide_mgxs_library:
+.. _io_mgxs_library:
 
 ========================================
 Multi-Group Cross Section Library Format
@@ -22,9 +22,11 @@ materials.
 
 .. _XML: http://www.w3.org/XML/
 
---------------------------------------
-MGXS Library Specification -- mgxs.xml
---------------------------------------
+.. _mgxs_lib_spec:
+
+--------------------------
+MGXS Library Specification
+--------------------------
 
 The multi-group library meta-data is contained within the groups_,
 group_structure_, and inverse_velocities_ elements.

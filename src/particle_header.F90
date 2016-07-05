@@ -2,7 +2,7 @@ module particle_header
 
   use bank_header,     only: Bank
   use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
-                             MAX_DELAYED_GROUPS
+                             MAX_DELAYED_GROUPS, ERROR_REAL
   use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
 
@@ -83,6 +83,9 @@ module particle_header
     integer    :: material      ! index for current material
     integer    :: last_material ! index for last material
 
+    ! Temperature of the current cell
+    real(8)    :: sqrtkT        ! sqrt(k_Boltzmann * temperature) in MeV
+
     ! Statistical data
     integer    :: n_collision   ! # of collisions
 
@@ -128,6 +131,7 @@ contains
     this % absorb_wgt        = ZERO
     this % n_bank            = 0
     this % wgt_bank          = ZERO
+    this % sqrtkT            = ERROR_REAL
     this % n_collision       = 0
     this % fission           = .false.
     this % delayed_group     = 0

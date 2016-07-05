@@ -279,6 +279,36 @@ contains
           p % material = c % material(offset + 1)
         end if
 
+        ! Set the particle temperature
+        if (size(c % sqrtkT) == 1) then
+          ! Only one temperature for this cell; assign that one to the particle.
+          p % sqrtkT = c % sqrtkT(1)
+        else
+          ! Distributed instances of this cell have different temperatures.
+          ! Determine which instance this is and assign the matching temp.
+          distribcell_index = c % distribcell_index
+          offset = 0
+          do k = 1, p % n_coord
+            if (cells(p % coord(k) % cell) % type == CELL_FILL) then
+              offset = offset + cells(p % coord(k) % cell) % &
+                   offset(distribcell_index)
+            elseif (cells(p % coord(k) % cell) % type == CELL_LATTICE) then
+              if (lattices(p % coord(k + 1) % lattice) % obj &
+                   % are_valid_indices([&
+                   p % coord(k + 1) % lattice_x, &
+                   p % coord(k + 1) % lattice_y, &
+                   p % coord(k + 1) % lattice_z])) then
+                offset = offset + lattices(p % coord(k + 1) % lattice) % obj % &
+                     offset(distribcell_index, &
+                     p % coord(k + 1) % lattice_x, &
+                     p % coord(k + 1) % lattice_y, &
+                     p % coord(k + 1) % lattice_z)
+              end if
+            end if
+          end do
+          p % sqrtkT = c % sqrtkT(offset + 1)
+        end if
+
       elseif (c % type == CELL_FILL) then CELL_TYPE
         ! ======================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL

@@ -15,9 +15,7 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
-import numpy as np
-
-from openmc.clean_xml import *
+from openmc.clean_xml import clean_xml_indentation
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
 
@@ -188,7 +186,7 @@ class CMFDMesh(object):
 
 
 class CMFD(object):
-    """Parameters that control the use of coarse-mesh finite difference acceleration
+    r"""Parameters that control the use of coarse-mesh finite difference acceleration
     in OpenMC. This corresponds directly to the cmfd.xml input file.
 
     Attributes

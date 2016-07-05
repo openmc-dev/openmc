@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import glob
-import os
 try:
     from setuptools import setup
     have_setuptools = True

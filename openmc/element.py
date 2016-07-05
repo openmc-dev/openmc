@@ -45,9 +45,9 @@ class Element(object):
 
     def __eq__(self, other):
         if isinstance(other, Element):
-            if self._name != other._name:
+            if self.name != other.name:
                 return False
-            elif self._xs != other._xs:
+            elif self.xs != other.xs:
                 return False
             else:
                 return True
@@ -64,9 +64,6 @@ class Element(object):
 
     def __lt__(self, other):
         return not self > other
-
-    def __hash__(self):
-        return hash(repr(self))
 
     def __hash__(self):
         return hash(repr(self))

@@ -430,11 +430,7 @@ class MGXS(object):
 
         Parameters
         ----------
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption',
-            'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter',
-            'nu-scatter', 'scatter matrix', 'nu-scatter matrix',
-            'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt',
-            'velocity', 'prompt-nu-fission'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'velocity', 'prompt-nu-fission'}
             The type of multi-group cross section object to return
         domain : openmc.Material or openmc.Cell or openmc.Universe
             The domain for spatial homogenization
@@ -1948,7 +1944,7 @@ class MatrixMGXS(MGXS):
 
 
 class TotalXS(MGXS):
-    """A total multi-group cross section.
+    r"""A total multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -2057,7 +2053,7 @@ class TotalXS(MGXS):
 
 
 class TransportXS(MGXS):
-    """A transport-corrected total multi-group cross section.
+    r"""A transport-corrected total multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -2200,7 +2196,7 @@ class TransportXS(MGXS):
 
 
 class NuTransportXS(TransportXS):
-    """A transport-corrected total multi-group cross section which
+    r"""A transport-corrected total multi-group cross section which
     accounts for neutron multiplicity in scattering reactions.
 
     This class can be used for both OpenMC input generation and tally data
@@ -2313,7 +2309,7 @@ class NuTransportXS(TransportXS):
 
 
 class AbsorptionXS(MGXS):
-    """An absorption multi-group cross section.
+    r"""An absorption multi-group cross section.
 
     Absorption is defined as all reactions that do not produce secondary
     neutrons (disappearance) plus fission reactions.
@@ -2426,7 +2422,7 @@ class AbsorptionXS(MGXS):
 
 
 class CaptureXS(MGXS):
-    """A capture multi-group cross section.
+    r"""A capture multi-group cross section.
 
     The neutron capture reaction rate is defined as the difference between
     OpenMC's 'absorption' and 'fission' reaction rate score types. This includes
@@ -2554,7 +2550,7 @@ class CaptureXS(MGXS):
 
 
 class FissionXS(MGXS):
-    """A fission multi-group cross section.
+    r"""A fission multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -2664,7 +2660,7 @@ class FissionXS(MGXS):
 
 
 class NuFissionXS(MGXS):
-    """A fission neutron production multi-group cross section.
+    r"""A fission neutron production multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -2775,7 +2771,7 @@ class NuFissionXS(MGXS):
 
 
 class KappaFissionXS(MGXS):
-    """A recoverable fission energy production rate multi-group cross section.
+    r"""A recoverable fission energy production rate multi-group cross section.
 
     The recoverable energy per fission, :math:`\kappa`, is defined as the
     fission product kinetic energy, prompt and delayed neutron kinetic energies,
@@ -2891,7 +2887,7 @@ class KappaFissionXS(MGXS):
 
 
 class ScatterXS(MGXS):
-    """A scattering multi-group cross section.
+    r"""A scattering multi-group cross section.
 
     The scattering cross section is defined as the difference between the total
     and absorption cross sections.
@@ -3004,7 +3000,7 @@ class ScatterXS(MGXS):
 
 
 class NuScatterXS(MGXS):
-    """A scattering neutron production multi-group cross section.
+    r"""A scattering neutron production multi-group cross section.
 
     The neutron production from scattering is defined as the average number of
     neutrons produced from all neutron-producing reactions except for fission.
@@ -3123,7 +3119,7 @@ class NuScatterXS(MGXS):
 
 
 class ScatterMatrixXS(MatrixMGXS):
-    """A scattering matrix multi-group cross section for one or more Legendre
+    r"""A scattering matrix multi-group cross section for one or more Legendre
     moments.
 
     This class can be used for both OpenMC input generation and tally data
@@ -3793,7 +3789,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
 
 class NuScatterMatrixXS(ScatterMatrixXS):
-    """A scattering production matrix multi-group cross section for one or
+    r"""A scattering production matrix multi-group cross section for one or
     more Legendre moments.
 
     This class can be used for both OpenMC input generation and tally data
@@ -3903,7 +3899,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
 
 class MultiplicityMatrixXS(MatrixMGXS):
-    """The scattering multiplicity matrix.
+    r"""The scattering multiplicity matrix.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -4057,7 +4053,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
 
 
 class NuFissionMatrixXS(MatrixMGXS):
-    """A fission production matrix multi-group cross section.
+    r"""A fission production matrix multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -4172,7 +4168,7 @@ class NuFissionMatrixXS(MatrixMGXS):
 
 
 class Chi(MGXS):
-    """The fission spectrum.
+    r"""The fission spectrum.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -4631,7 +4627,7 @@ class Chi(MGXS):
 
 
 class ChiPrompt(Chi):
-    """The prompt fission spectrum.
+    r"""The prompt fission spectrum.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -4744,112 +4740,7 @@ class ChiPrompt(Chi):
 
     @property
     def scores(self):
-        return ['delayed-nu-fission', 'delayed-nu-fission',
-                'nu-fission', 'nu-fission']
-
-    @property
-    def filters(self):
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energyout = openmc.Filter('energyout', group_edges)
-        energyin = openmc.Filter('energy', [group_edges[0], group_edges[-1]])
-        return [[energyin], [energyout], [energyin], [energyout]]
-
-    @property
-    def tally_keys(self):
-        return ['delayed-nu-fission-in', 'delayed-nu-fission-out',
-                'nu-fission-in', 'nu-fission-out']
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['nu-fission-out'] - \
-                                   self.tallies['delayed-nu-fission-out']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
-
-    @property
-    def xs_tally(self):
-
-        if self._xs_tally is None:
-            delayed_nu_fission_in = self.tallies['delayed-nu-fission-in']
-            nu_fission_in = self.tallies['nu-fission-in']
-            prompt_nu_fission_in = nu_fission_in - delayed_nu_fission_in
-
-            # Remove coarse energy filter to keep it out of tally arithmetic
-            energy_filter = prompt_nu_fission_in.find_filter('energy')
-            prompt_nu_fission_in.remove_filter(energy_filter)
-
-            # Compute chi
-            self._xs_tally = self.rxn_rate_tally / prompt_nu_fission_in
-            super(ChiPrompt, self)._compute_xs()
-
-            # Add the coarse energy filter back to the nu-fission tally
-            prompt_nu_fission_in.filters.append(energy_filter)
-
-        return self._xs_tally
-
-    def get_slice(self, nuclides=[], groups=[]):
-        """Build a sliced ChiPrompt for the specified nuclides and energy
-           groups.
-
-        This method constructs a new MGXS to encapsulate a subset of the data
-        represented by this MGXS. The subset of data to include in the tally
-        slice is determined by the nuclides and energy groups specified in
-        the input parameters.
-
-        Parameters
-        ----------
-        nuclides : list of str
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
-        groups : list of Integral
-            A list of energy group indices starting at 1 for the high energies
-            (e.g., [1, 2, 3]; default is [])
-
-        Returns
-        -------
-        openmc.mgxs.MGXS
-            A new MGXS which encapsulates the subset of data requested
-            for the nuclide(s) and/or energy group(s) requested in the
-            parameters.
-
-        """
-
-        # Temporarily remove energy filter from delayed-nu-fission-in since its
-        # group structure will work in super MGXS.get_slice(...) method
-        delayed_nu_fission_in = self.tallies['delayed-nu-fission-in']
-        nu_fission_in = self.tallies['nu-fission-in']
-        prompt_nu_fission_in = nu_fission_in - delayed_nu_fission_in
-        energy_filter = prompt_nu_fission_in.find_filter('energy')
-        prompt_nu_fission_in.remove_filter(energy_filter)
-
-        # Call super class method and null out derived tallies
-        slice_xs = super(ChiPrompt, self).get_slice(nuclides, groups)
-        slice_xs._rxn_rate_tally = None
-        slice_xs._xs_tally = None
-
-        # Slice energy groups if needed
-        if len(groups) != 0:
-            filter_bins = []
-            for group in groups:
-                group_bounds = self.energy_groups.get_group_bounds(group)
-                filter_bins.append(group_bounds)
-            filter_bins = [tuple(filter_bins)]
-
-            # Slice nu-fission-out tally along energyout filter
-            prompt_nu_fission_out = slice_xs.tallies['nu-fission-out'] - \
-                                    slice_xs.tallies['delayed-nu-fission-out']
-            tally_slice = prompt_nu_fission_out\
-                          .get_slice(filters=['energyout'],
-                                     filter_bins=filter_bins)
-            slice_xs._tallies['prompt-nu-fission-out'] = tally_slice
-
-        # Add energy filter back to nu-fission-in tallies
-        slice_xs._tallies['prompt-nu-fission-in'].add_filter(energy_filter)
-
-        slice_xs.sparse = self.sparse
-        return slice_xs
+        return ['prompt-nu-fission', 'prompt-nu-fission']
 
     def merge(self, other):
         """Merge another ChiPrompt with this one
@@ -4873,148 +4764,9 @@ class ChiPrompt(Chi):
 
         return super(ChiPrompt, self).merge(other)
 
-    def get_xs(self, groups='all', subdomains='all', nuclides='all',
-               xs_type='macro', order_groups='increasing',
-               value='mean', **kwargs):
-        """Returns an array of the fission spectrum.
-
-        This method constructs a 2D NumPy array for the requested multi-group
-        cross section data data for one or more energy groups and subdomains.
-
-        Parameters
-        ----------
-        groups : Iterable of Integral or 'all'
-            Energy groups of interest. Defaults to 'all'.
-        subdomains : Iterable of Integral or 'all'
-            Subdomain IDs of interest. Defaults to 'all'.
-        nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
-            special string 'all' will return the cross sections for all nuclides
-            in the spatial domain. The special string 'sum' will return the
-            cross section summed over all nuclides. Defaults to 'all'.
-        xs_type: {'macro', 'micro'}
-            This parameter is not relevant for chi but is included here to
-            mirror the parent MGXS.get_xs(...) class method
-        order_groups: {'increasing', 'decreasing'}
-            Return the cross section indexed according to increasing or
-            decreasing energy groups (decreasing or increasing energies).
-            Defaults to 'increasing'.
-        value : {'mean', 'std_dev', 'rel_err'}
-            A string for the type of value to return. Defaults to 'mean'.
-
-        Returns
-        -------
-        numpy.ndarray
-            A NumPy array of the multi-group cross section indexed in the order
-            each group, subdomain and nuclide is listed in the parameters.
-
-        Raises
-        ------
-        ValueError
-            When this method is called before the multi-group cross section is
-            computed from tally data.
-
-        """
-
-        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-
-        filters = []
-        filter_bins = []
-
-        # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=2)
-            for subdomain in subdomains:
-                filters.append(self.domain_type)
-                filter_bins.append((subdomain,))
-
-        # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(groups, basestring):
-            cv.check_iterable_type('groups', groups, Integral)
-            for group in groups:
-                filters.append('energyout')
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
-
-        # If chi prompt was computed for each nuclide in the domain
-        if self.by_nuclide:
-
-            # Get the sum as the fission source weighted average chi for all
-            # nuclides in the domain
-            if nuclides == 'sum' or nuclides == ['sum']:
-
-                # Retrieve the fission production tallies
-                prompt_nu_fission_in = self.tallies['nu-fission-in'] - \
-                                       self.tallies['delayed-nu-fission-in']
-                prompt_nu_fission_out = self.tallies['nu-fission-out'] - \
-                                        self.tallies['delayed-nu-fission-out']
-
-                # Sum out all nuclides
-                nuclides = self.get_all_nuclides()
-                prompt_nu_fission_in = prompt_nu_fission_in.summation\
-                                       (nuclides=nuclides)
-                prompt_nu_fission_out = prompt_nu_fission_out.summation\
-                                        (nuclides=nuclides)
-
-                # Remove coarse energy filter to keep it out of tally arithmetic
-                energy_filter = prompt_nu_fission_in.find_filter('energy')
-                prompt_nu_fission_in.remove_filter(energy_filter)
-
-                # Compute chi prompt and store it as the xs_tally attribute so
-                # we can use the generic get_xs(...) method
-                xs_tally = prompt_nu_fission_out / prompt_nu_fission_in
-
-                # Add the coarse energy filter back to the nu-fission tally
-                prompt_nu_fission_in.filters.append(energy_filter)
-
-                xs = xs_tally.get_values(filters=filters,
-                                         filter_bins=filter_bins, value=value)
-
-            # Get chi prompt for all nuclides in the domain
-            elif nuclides == 'all':
-                nuclides = self.get_all_nuclides()
-                xs = self.xs_tally.get_values(filters=filters,
-                                              filter_bins=filter_bins,
-                                              nuclides=nuclides, value=value)
-
-            # Get chi prompt for user-specified nuclides in the domain
-            else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
-                xs = self.xs_tally.get_values(filters=filters,
-                                              filter_bins=filter_bins,
-                                              nuclides=nuclides, value=value)
-
-        # If chi prompt was computed as an average of nuclides in the domain
-        else:
-            xs = self.xs_tally.get_values(filters=filters,
-                                          filter_bins=filter_bins, value=value)
-
-        # Reverse data if user requested increasing energy groups since
-        # tally data is stored in order of increasing energies
-        if order_groups == 'increasing':
-
-            # Reshape tally data array with separate axes for domain and energy
-            if groups == 'all':
-                num_groups = self.num_groups
-            else:
-                num_groups = len(groups)
-            num_subdomains = int(xs.shape[0] / num_groups)
-            new_shape = (num_subdomains, num_groups) + xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Reverse energies to align with increasing energy groups
-            xs = xs[:, ::-1, :]
-
-            # Eliminate trivial dimensions
-            xs = np.squeeze(xs)
-            xs = np.atleast_1d(xs)
-
-        xs = np.nan_to_num(xs)
-        return xs
-
 
 class Velocity(MGXS):
-    """A velocity multi-group cross section.
+    r"""A velocity multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -5235,7 +4987,7 @@ class Velocity(MGXS):
 
 
 class PromptNuFissionXS(MGXS):
-    """A prompt fission neutron production multi-group cross section.
+    r"""A prompt fission neutron production multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -5341,15 +5093,3 @@ class PromptNuFissionXS(MGXS):
         super(PromptNuFissionXS, self).__init__(domain, domain_type, groups,
                                                 by_nuclide, name)
         self._rxn_type = 'prompt-nu-fission'
-
-    @property
-    def scores(self):
-        return ['flux', 'nu-fission', 'delayed-nu-fission']
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['nu-fission'] - \
-                                   self.tallies['delayed-nu-fission']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally

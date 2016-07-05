@@ -1,6 +1,7 @@
 from collections import Iterable
-import numpy as np
 import re
+
+import numpy as np
 
 import openmc
 from openmc.region import Region
@@ -301,7 +302,7 @@ class Summary(object):
             # Get the distribcell index
             ind = self._f['geometry/cells'][key]['distribcell_index'].value
             if ind != 0:
-               cell.distribcell_index = ind
+                cell.distribcell_index = ind
 
             # Add the Cell to the global dictionary of all Cells
             self.cells[index] = cell
@@ -608,7 +609,7 @@ class Summary(object):
 
         """
 
-        for index, material in self.materials.items():
+        for material in self.materials.values():
             if material.id == material_id:
                 return material
 
@@ -629,7 +630,7 @@ class Summary(object):
 
         """
 
-        for index, surface in self.surfaces.items():
+        for surface in self.surfaces.values():
             if surface.id == surface_id:
                 return surface
 
@@ -650,7 +651,7 @@ class Summary(object):
 
         """
 
-        for index, cell in self.cells.items():
+        for cell in self.cells.values():
             if cell.id == cell_id:
                 return cell
 
@@ -671,7 +672,7 @@ class Summary(object):
 
         """
 
-        for index, universe in self.universes.items():
+        for universe in self.universes.values():
             if universe.id == universe_id:
                 return universe
 
@@ -692,7 +693,7 @@ class Summary(object):
 
         """
 
-        for index, lattice in self.lattices.items():
+        for lattice in self.lattices.values():
             if lattice.id == lattice_id:
                 return lattice
 

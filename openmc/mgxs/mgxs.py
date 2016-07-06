@@ -4774,11 +4774,12 @@ class Velocity(MGXS):
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group neutron velocities for multi-group neutronics calculations.
-    The units of velocity are cm per second. At a minimum, one needs to set the
-    :attr:`Velocity.energy_groups` and :attr:`Velocity.domain` properties.
-    Tallies for the flux and appropriate reaction rates over the specified
-    domain are generated automatically via the :attr:`Velocity.tallies`
-    property, which can then be appended to a :class:`openmc.Tallies` instance.
+    The units of velocity are centimeters per second. At a minimum, one needs to
+    set the :attr:`Velocity.energy_groups` and :attr:`Velocity.domain`
+    properties. Tallies for the flux and appropriate reaction rates over the
+    specified domain are generated automatically via the
+    :attr:`Velocity.tallies` property, which can then be appended to a
+    :class:`openmc.Tallies` instance.
 
     For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a

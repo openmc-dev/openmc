@@ -3958,6 +3958,18 @@ contains
         end select
       end if
 
+      ! Make sure SCORE_Q wasn't specified for an analog estimator.  When a
+      ! capture reaction occurs, we don't actually pick a specific MT so we
+      ! don't know e.g. if a (n, gamma) or (n, alpha) reaction occured.  Hence,
+      ! we can't use an analog estimator with SCORE_Q.
+      if (t % estimator == ESTIMATOR_ANALOG) then
+        do j = 1, t % n_score_bins
+          if (t % score_bins(j) == SCORE_Q) then
+            call fatal_error("Q scores cannot be used with analog estimators.")
+          end if
+        end do
+      end if
+
       ! Add tally to dictionary
       call tally_dict % add_key(t % id, i)
 

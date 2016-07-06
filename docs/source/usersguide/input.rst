@@ -1772,6 +1772,14 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |:math:`\gamma`-rays are assumed to deposit their   |
         |                      |energy locally. Units are MeV per source particle. |
         +----------------------+---------------------------------------------------+
+        |q                     |Energy production rate due to non-fission          |
+        |                      |reactions. This is computed using the Q-value for  |
+        |                      |all capture and inelastic scatter reactions. Note  |
+        |                      |that incident neutron energy is not included in    |
+        |                      |this quantity. Note that :math:`\gamma`-rays are   |
+        |                      |assumed to deposit their energy locally. Units are |
+        |                      |MeV per source particle.                           |
+        +----------------------+---------------------------------------------------+
 
     .. note::
        The ``analog`` estimator is actually identical to the ``collision``

@@ -58,6 +58,8 @@ contains
       string = "events"
     case (SCORE_INVERSE_VELOCITY)
       string = "inverse-velocity"
+    case (SCORE_Q)
+      string = "Q"
 
     ! Normal ENDF-based reactions
     case (TOTAL_XS)

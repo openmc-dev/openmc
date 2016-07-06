@@ -697,6 +697,9 @@ contains
 
       case (SCORE_Q)
         if (t % estimator == ESTIMATOR_ANALOG) then
+          ! When a capture reaction occurs, we don't actually pick a specific
+          ! MT so we don't know e.g. if a (n, gamma) or (n, alpha) reaction
+          ! occured.  Hence, we can't use an analog estimator with SCORE_Q.
           call fatal_error('Q-value tallies are not supported for analog &
                &estimators')
         else

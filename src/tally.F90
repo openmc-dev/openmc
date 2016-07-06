@@ -463,7 +463,9 @@ contains
                      * nuclides(p % event_nuclide) % nu(E, EMISSION_PROMPT) &
                      / micro_xs(p % event_nuclide) % absorption
             else
+
               score = ZERO
+
             end if
           else
             ! Skip any non-fission events

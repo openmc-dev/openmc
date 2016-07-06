@@ -260,6 +260,7 @@ contains
     real(8)       :: awr           ! atomic weight ratio for table
     logical       :: file_exists   ! does ACE library exist?
     logical       :: data_0K       ! are we reading 0K data?
+    logical       :: score_Q_pres  ! are there SCORE_Q tallies?
     character(7)  :: readable      ! is ACE library readable?
     character(10) :: name          ! name of ACE table
     character(10) :: date_         ! date ACE library was processed
@@ -393,6 +394,21 @@ contains
 
       if (nuc % fissionable .and. .not. data_0K) then
         call generate_nu_fission(nuc)
+      end if
+
+      ! If there are any tallies for Q-values, precompute the cross section
+      ! weighted Qs.
+      if (.not. data_0K) then
+        score_Q_pres = .false.
+        TALLY_LOOP: do i = 1, n_tallies
+          do j = 1, tallies(i) % n_score_bins
+            if (tallies(i) % score_bins(j) == SCORE_Q) then
+              score_Q_pres = .true.
+              exit TALLY_LOOP
+            end if
+          end do
+        end do TALLY_LOOP
+        if (score_Q_pres) call generate_nf_heating(nuc)
       end if
 
     case (ACE_THERMAL)
@@ -1491,6 +1507,147 @@ contains
            nuc % fission(i)
     end do
   end subroutine generate_nu_fission
+
+!===============================================================================
+! GENERATE_NF_HEATING precalculates the cross-section weighted reaction Q-values
+! for non-fission heating tallies.
+!===============================================================================
+
+  subroutine generate_nf_heating(nuc)
+    type(Nuclide), intent(inout) :: nuc
+
+    integer :: MT, i_rxn, thres
+
+    ! Initialize the heating array.
+    allocate(nuc % nf_heat(size(nuc % energy)))
+    nuc % nf_heat(:) = ZERO
+
+    ! Add (n,n').
+    if (nuc % reaction_index % has_key(N_N1)) then
+      ! Level-specific data is available.  Use that data to compute heating.
+      do MT = N_N1, N_NC
+        call add_mt_heat(nuc, MT)
+      end do
+    else if (nuc % reaction_index % has_key(N_LEVEL)) then
+      ! Level-specific data is not available.  Use the data summed over all
+      ! levels and hope that the error on the Q-value isn't large.
+      call add_mt_heat(nuc, N_LEVEL)
+    end if
+
+    ! Add (n,2nd).
+    call add_mt_heat(nuc, N_2ND)
+
+    ! Add (n,2n).
+    if (nuc % reaction_index % has_key(N_2N0)) then
+      do MT = N_2N0, N_2NC
+        call add_mt_heat(nuc, MT)
+      end do
+    else if (nuc % reaction_index % has_key(N_2N)) then
+      call add_mt_heat(nuc, N_2N)
+    end if
+
+    ! Add (n,3n).
+    call add_mt_heat(nuc, N_3N)
+
+    ! Add MT=22 through MT=45 (except MT=38 (fourth-chance fission)).
+    call add_mt_heat(nuc, N_NA)
+    call add_mt_heat(nuc, N_N3A)
+    call add_mt_heat(nuc, N_2NA)
+    call add_mt_heat(nuc, N_3NA)
+    call add_mt_heat(nuc, N_NP)
+    call add_mt_heat(nuc, N_N2A)
+    call add_mt_heat(nuc, N_2N2A)
+    call add_mt_heat(nuc, N_D)
+    call add_mt_heat(nuc, N_T)
+    call add_mt_heat(nuc, N_N3HE)
+    call add_mt_heat(nuc, N_ND2A)
+    call add_mt_heat(nuc, N_NT2A)
+    call add_mt_heat(nuc, N_4N)
+    call add_mt_heat(nuc, N_2NP)
+    call add_mt_heat(nuc, N_3NP)
+    call add_mt_heat(nuc, N_N2P)
+    call add_mt_heat(nuc, N_NPA)
+
+    ! Add (n,gamma).
+    call add_mt_heat(nuc, N_GAMMA)
+
+    ! Add (n,p).
+    if (nuc % reaction_index % has_key(N_P0)) then
+      do MT = N_P0, N_PC
+        call add_mt_heat(nuc, MT)
+      end do
+    else if (nuc % reaction_index % has_key(N_P)) then
+      call add_mt_heat(nuc, N_P)
+    end if
+
+    ! Add (n,d).
+    if (nuc % reaction_index % has_key(N_D0)) then
+      do MT = N_D0, N_DC
+        call add_mt_heat(nuc, MT)
+      end do
+    else if (nuc % reaction_index % has_key(N_D)) then
+      call add_mt_heat(nuc, N_D)
+    end if
+
+    ! Add (n,t).
+    if (nuc % reaction_index % has_key(N_T0)) then
+      do MT = N_T0, N_TC
+        call add_mt_heat(nuc, MT)
+      end do
+    else if (nuc % reaction_index % has_key(N_T)) then
+      call add_mt_heat(nuc, N_T)
+    end if
+
+    ! Add (n,3He).
+    if (nuc % reaction_index % has_key(N_3HE0)) then
+      do MT = N_3HE0, N_3HEC
+        call add_mt_heat(nuc, MT)
+      end do
+    else if (nuc % reaction_index % has_key(N_3HE)) then
+      call add_mt_heat(nuc, N_3HE)
+    end if
+
+    ! Add (n,a).
+    if (nuc % reaction_index % has_key(N_A0)) then
+      do MT = N_A0, N_AC
+        call add_mt_heat(nuc, MT)
+      end do
+    else if (nuc % reaction_index % has_key(N_A)) then
+      call add_mt_heat(nuc, N_A)
+    end if
+
+    ! Add MT=108 through MT=117.
+    call add_mt_heat(nuc, N_2A)
+    call add_mt_heat(nuc, N_3A)
+    call add_mt_heat(nuc, N_2P)
+    call add_mt_heat(nuc, N_PA)
+    call add_mt_heat(nuc, N_T2A)
+    call add_mt_heat(nuc, N_D2A)
+    call add_mt_heat(nuc, N_PD)
+    call add_mt_heat(nuc, N_PT)
+    call add_mt_heat(nuc, N_DA)
+  end subroutine generate_nf_heating
+
+!===============================================================================
+! ADD_MT_HEAT Adds the cross-section weighted reaction Q-value for a specific
+! MT number to the nuclide.
+!===============================================================================
+
+  subroutine add_mt_heat(nuc, MT)
+    type(Nuclide), intent(inout) :: nuc
+    integer,       intent(in)    :: MT
+
+    integer :: i_rxn, thresh
+
+    if (nuc % reaction_index % has_key(MT)) then
+      i_rxn = nuc % reaction_index % get_key(MT)
+      associate(rxn => nuc % reactions(i_rxn))
+        thresh = rxn % threshold
+        nuc % nf_heat(thresh:) = nuc % nf_heat(thresh:) &
+             + rxn % sigma(:) * rxn % Q_value
+      end associate
+    end if
+  end subroutine add_mt_heat
 
 !===============================================================================
 ! READ_THERMAL_DATA reads elastic and inelastic cross sections and corresponding

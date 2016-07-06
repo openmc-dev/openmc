@@ -696,58 +696,26 @@ contains
         end if
 
       case (SCORE_Q)
-        score = ZERO
         if (t % estimator == ESTIMATOR_ANALOG) then
           call fatal_error('Q-value tallies are not supported for analog &
                &estimators')
         else
           if (i_nuclide > 0) then
-            ! Loop over disappearance reactions.
-            do mt = N_GAMMA, N_DA
-              if (nuclides(i_nuclide)%reaction_index%has_key(mt)) then
-                m = nuclides(i_nuclide)%reaction_index%get_key(mt)
-                associate (rxn => nuclides(i_nuclide) % reactions(m))
-                  ! Retrieve index on nuclide energy grid and interpolation
-                  ! factor
-                  i_energy = micro_xs(i_nuclide) % index_grid
-                  f = micro_xs(i_nuclide) % interp_factor
-                  if (i_energy >= rxn % threshold) then
-                    if (rxn % sigma(i_energy-rxn%threshold+1) /= ZERO .or. &
-                         rxn % sigma(i_energy-rxn%threshold+2) /= ZERO) then
-                      score = score + ((ONE - f) * rxn % sigma(i_energy - &
-                           rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                           rxn%threshold + 2)) * atom_density * flux &
-                           * rxn%Q_value
-                    end if
-                  end if
-                end associate
-              end if
-            end do
+            i_energy = micro_xs(i_nuclide) % index_grid
+            f = micro_xs(i_nuclide) % interp_factor
+            score = ((ONE - f) * nuclides(i_nuclide) % nf_heat(i_energy) &
+                 + f * nuclides(i_nuclide) % nf_heat(i_energy + 1)) &
+                 * atom_density * flux
           else
+            score = ZERO
             do l = 1, materials(p % material) % n_nuclides
               atom_density_ = materials(p % material) % atom_density(l)
               i_nuc = materials(p % material) % nuclide(l)
-              ! Loop over disappearance reactions.
-              do mt = N_GAMMA, N_DA
-                if (nuclides(i_nuc)%reaction_index%has_key(mt)) then
-                  m = nuclides(i_nuc)%reaction_index%get_key(mt)
-                  associate (rxn => nuclides(i_nuc) % reactions(m))
-                    ! Retrieve index on nuclide energy grid and interpolation
-                    ! factor
-                    i_energy = micro_xs(i_nuc) % index_grid
-                    f = micro_xs(i_nuc) % interp_factor
-                    if (i_energy >= rxn % threshold) then
-                      if (rxn % sigma(i_energy-rxn%threshold+1) /= ZERO .or. &
-                           rxn % sigma(i_energy-rxn%threshold+2) /= ZERO) then
-                        score = score + ((ONE - f) * rxn % sigma(i_energy - &
-                             rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                             rxn%threshold + 2)) * atom_density_ * flux &
-                             * rxn%Q_value
-                      end if
-                    end if
-                  end associate
-                end if
-              end do
+              i_energy = micro_xs(i_nuc) % index_grid
+              f = micro_xs(i_nuc) % interp_factor
+              score = score + ((ONE - f) * nuclides(i_nuc) % nf_heat(i_energy) &
+                   + f * nuclides(i_nuc) % nf_heat(i_energy + 1)) &
+                   * atom_density_ * flux
             end do
           end if
         end if

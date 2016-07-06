@@ -45,7 +45,7 @@ module nuclide_header
     real(8), allocatable :: fission(:)    ! fission
     real(8), allocatable :: nu_fission(:) ! neutron production
     real(8), allocatable :: absorption(:) ! absorption (MT > 100)
-    real(8), allocatable :: heating(:)    ! heating
+    real(8), allocatable :: nf_heat(:)    ! non-fission heating
 
     ! Resonance scattering info
     logical              :: resonant = .false. ! resonant scatterer?

@@ -98,7 +98,6 @@ contains
     integer :: q                    ! loop index for scoring bins
     integer :: i_nuc                ! index in nuclides array (from material)
     integer :: i_energy             ! index in nuclide energy grid
-    integer :: mt                   ! reaction MT identifier
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: score_index          ! scoring bin index
     integer :: d                    ! delayed neutron index
@@ -711,15 +710,18 @@ contains
                  * atom_density * flux
           else
             score = ZERO
-            do l = 1, materials(p % material) % n_nuclides
-              atom_density_ = materials(p % material) % atom_density(l)
-              i_nuc = materials(p % material) % nuclide(l)
-              i_energy = micro_xs(i_nuc) % index_grid
-              f = micro_xs(i_nuc) % interp_factor
-              score = score + ((ONE - f) * nuclides(i_nuc) % nf_heat(i_energy) &
-                   + f * nuclides(i_nuc) % nf_heat(i_energy + 1)) &
-                   * atom_density_ * flux
-            end do
+            if (p % material /= MATERIAL_VOID) then
+              do l = 1, materials(p % material) % n_nuclides
+                atom_density_ = materials(p % material) % atom_density(l)
+                i_nuc = materials(p % material) % nuclide(l)
+                i_energy = micro_xs(i_nuc) % index_grid
+                f = micro_xs(i_nuc) % interp_factor
+                score = score &
+                     + ((ONE - f) * nuclides(i_nuc) % nf_heat(i_energy) &
+                     + f * nuclides(i_nuc) % nf_heat(i_energy + 1)) &
+                     * atom_density_ * flux
+              end do
+            end if
           end if
         end if
 

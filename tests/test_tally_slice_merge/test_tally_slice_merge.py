@@ -33,13 +33,21 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         cell_27 = openmc.Filter(type='cell', bins=[27])
         distribcell_filter = openmc.Filter(type='distribcell', bins=[21])
 
+        mesh = openmc.Mesh(name='mesh')
+        mesh.type = 'regular'
+        mesh.dimension = [2, 2]
+        mesh.lower_left = [-50., -50.]
+        mesh.upper_right = [+50., +50.]
+        mesh_filter = openmc.Filter(type='mesh', bins=[mesh.id])
+        mesh_filter.mesh = mesh
+
         self.cell_filters = [cell_21, cell_27]
         self.energy_filters = [low_energy, high_energy]
 
         # Initialize cell tallies with filters, nuclides and scores
         tallies = []
-        for cell_filter in self.energy_filters:
-            for energy_filter in self.cell_filters:
+        for energy_filter in self.energy_filters:
+            for cell_filter in self.cell_filters:
                 for nuclide in self.nuclides:
                     for score in self.scores:
                         tally = openmc.Tally()
@@ -69,8 +77,18 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         for nuclide in self.nuclides:
             distribcell_tally.add_nuclide(nuclide)
 
+        mesh_tally = openmc.Tally(name='mesh tally')
+        mesh_tally.estimator = 'tracklength'
+        mesh_tally.add_filter(mesh_filter)
+        mesh_tally.add_filter(merged_energies)
+        for score in self.scores:
+            mesh_tally.add_score(score)
+        for nuclide in self.nuclides:
+            mesh_tally.add_nuclide(nuclide)
+
         # Add tallies to a Tallies object
-        tallies_file = openmc.Tallies((tallies[0], distribcell_tally))
+        tallies_file = openmc.Tallies((tallies[0], distribcell_tally,
+                                       mesh_tally))
 
         # Export tallies to file
         self._input_set.tallies = tallies_file
@@ -121,7 +139,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
         # Append merged Tally Pandas DataFrame to output string
         df = tallies[0].get_pandas_dataframe()
-        outstr += df.to_string()
+        outstr += df.to_string() + '\n'
 
         # Extract the distribcell tally
         distribcell_tally = sp.get_tally(name='distribcell tally')
@@ -138,7 +156,24 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
         # Append merged Tally Pandas DataFrame to output string
         df = merge_tally.get_pandas_dataframe()
-        outstr += df.to_string()
+        outstr += df.to_string() + '\n'
+
+        # Extract the mesh tally
+        mesh_tally = sp.get_tally(name='mesh tally')
+
+        # Sum up a few subdomains from the mesh tally
+        sum1 = mesh_tally.summation(filter_type='mesh',
+                                    filter_bins=[(1,1,1), (1,2,1)])
+        # Sum up a few subdomains from the mesh tally
+        sum2 = mesh_tally.summation(filter_type='mesh',
+                                    filter_bins=[(2,1,1), (2,2,1)])
+
+        # Merge the distribcell tally slices
+        merge_tally = sum1.merge(sum2)
+
+        # Append merged Tally Pandas DataFrame to output string
+        df = merge_tally.get_pandas_dataframe()
+        outstr += df.to_string() + '\n'
 
         # Hash the results if necessary
         if hash_output:

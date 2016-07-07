@@ -168,7 +168,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         sum2 = mesh_tally.summation(filter_type='mesh',
                                     filter_bins=[(2,1,1), (2,2,1)])
 
-        # Merge the distribcell tally slices
+        # Merge the mesh tally slices
         merge_tally = sum1.merge(sum2)
 
         # Append merged Tally Pandas DataFrame to output string

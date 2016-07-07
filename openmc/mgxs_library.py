@@ -9,7 +9,7 @@ import openmc
 import openmc.mgxs
 from openmc.checkvalue import check_type, check_value, check_greater_than, \
     check_iterable_type
-from openmc.clean_xml import *
+from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -376,7 +376,7 @@ class XSdata(object):
         # Check validity of energy_groups
         check_type('energy_groups', energy_groups, openmc.mgxs.EnergyGroups)
 
-        if energy_group.group_edges is None:
+        if energy_groups.group_edges is None:
             msg = 'Unable to assign an EnergyGroups object ' \
                   'with uninitialized group edges'
             raise ValueError(msg)
@@ -597,10 +597,7 @@ class XSdata(object):
                         [self.vector_shape, self.matrix_shape])
             # Find out if we have a nu-fission matrix or vector
             # and set a flag to allow other methods to check this later.
-            if npnu_fission.shape == self.vector_shape:
-                self.use_chi = True
-            else:
-                self.use_chi = False
+            self.use_chi = (npnu_fission.shape == self.vector_shape)
 
         self._nu_fission = npnu_fission
         if np.sum(self._nu_fission) > 0.0:
@@ -873,7 +870,7 @@ class XSdata(object):
         check_value('domain_type', scatter.domain_type,
                     ['universe', 'cell', 'material'])
 
-        if (self.scatt_type != 'legendre'):
+        if self.scatt_type != 'legendre':
             msg = 'Anisotropic scattering representations other than ' \
                   'Legendre expansions have not yet been implemented in ' \
                   'openmc.mgxs.'
@@ -1090,9 +1087,9 @@ class MGXSLibrary(object):
 
     @inverse_velocities.setter
     def inverse_velocities(self, inverse_velocities):
-        cv.check_type('inverse_velocities', inverse_velocities, Iterable, Real)
-        cv.check_greater_than('number of inverse_velocities',
-                              len(inverse_velocities), 0.0)
+        check_type('inverse_velocities', inverse_velocities, Iterable, Real)
+        check_greater_than('number of inverse_velocities',
+                           len(inverse_velocities), 0.0)
         self._inverse_velocities = np.array(inverse_velocities)
 
     @energy_groups.setter

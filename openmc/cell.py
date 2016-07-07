@@ -21,6 +21,7 @@ AUTO_CELL_ID = 10000
 
 
 def reset_auto_cell_id():
+    """Reset counter for auto-generated cell IDs."""
     global AUTO_CELL_ID
     AUTO_CELL_ID = 10000
 
@@ -421,7 +422,7 @@ class Cell(object):
 
         # Append all Cells in each Cell in the Universe to the dictionary
         cells = self.get_all_cells()
-        for cell_id, cell in cells.items():
+        for cell in cells.values():
             materials.update(cell.get_all_materials())
 
         return materials
@@ -497,7 +498,7 @@ class Cell(object):
         if self.temperature is not None:
             if isinstance(self.temperature, Iterable):
                 element.set("temperature", ' '.join(
-                            str(t) for t in self.temperature))
+                    str(t) for t in self.temperature))
             else:
                 element.set("temperature", str(self.temperature))
 

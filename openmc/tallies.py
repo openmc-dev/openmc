@@ -1,6 +1,6 @@
 from __future__ import division
 
-from collections import Iterable, MutableSequence, defaultdict
+from collections import Iterable, MutableSequence
 import copy
 from functools import partial
 import os
@@ -13,11 +13,12 @@ from xml.etree import ElementTree as ET
 
 import numpy as np
 
-from openmc import Mesh, Filter, Trigger, Nuclide
-from openmc.arithmetic import *
+from openmc import Filter, Trigger, Nuclide
+from openmc.arithmetic import CrossScore, CrossNuclide, CrossFilter, \
+    AggregateScore, AggregateNuclide, AggregateFilter
 from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
-from openmc.clean_xml import *
+from openmc.clean_xml import clean_xml_indentation
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -41,6 +42,7 @@ _FILTER_CLASSES = (Filter, CrossFilter, AggregateFilter)
 
 
 def reset_auto_tally_id():
+    """Reset counter for auto-generated tally IDs."""
     global AUTO_TALLY_ID
     AUTO_TALLY_ID = 10000
 
@@ -177,7 +179,7 @@ class Tally(object):
 
         for self_filter in self.filters:
             string += '{0: <16}\t\t{1}\t{2}\n'.format('', self_filter.type,
-                                                          self_filter.bins)
+                                                      self_filter.bins)
 
         string += '{0: <16}{1}'.format('\tNuclides', '=\t')
 
@@ -386,7 +388,7 @@ class Tally(object):
     @estimator.setter
     def estimator(self, estimator):
         cv.check_value('estimator', estimator,
-                    ['analog', 'tracklength', 'collision'])
+                       ['analog', 'tracklength', 'collision'])
         self._estimator = estimator
 
     @triggers.setter
@@ -762,10 +764,7 @@ class Tally(object):
                 no_nuclides_match = False
 
         # Either all nuclides should match, or none should
-        if no_nuclides_match or all_nuclides_match:
-            return True
-        else:
-            return False
+        return no_nuclides_match or all_nuclides_match
 
     def _can_merge_scores(self, other):
         """Determine if another tally's scores can be merged with this one's
@@ -802,10 +801,7 @@ class Tally(object):
                 return False
 
         # Either all scores should match, or none should
-        if no_scores_match or all_scores_match:
-            return True
-        else:
-            return False
+        return no_scores_match or all_scores_match
 
     def can_merge(self, other):
         """Determine if another tally can be merged with this one
@@ -901,7 +897,7 @@ class Tally(object):
 
             # Search for mergeable filters
             for i, filter1 in enumerate(self.filters):
-                for j, filter2 in enumerate(other.filters):
+                for filter2 in other.filters:
                     if filter1 != filter2 and filter1.can_merge(filter2):
                         other_copy._swap_filters(other_copy.filters[i], filter2)
                         merged_tally.filters[i] = filter1.merge(filter2)
@@ -1058,7 +1054,7 @@ class Tally(object):
             for score in self.scores:
                 scores += '{0} '.format(score)
 
-            subelement = ET.SubElement(element,    "scores")
+            subelement = ET.SubElement(element, "scores")
             subelement.text = scores.rstrip(' ')
 
         # Tally estimator type
@@ -1192,7 +1188,7 @@ class Tally(object):
 
             # If the Summary was linked, then values are Nuclide objects
             if isinstance(test_nuclide, Nuclide):
-                if test_nuclide._name == nuclide:
+                if test_nuclide.name == nuclide:
                     nuclide_index = i
                     break
 
@@ -1557,7 +1553,7 @@ class Tally(object):
             # Append each Filter's DataFrame to the overall DataFrame
             for self_filter in self.filters:
                 filter_df = self_filter.get_pandas_dataframe(
-                        data_size, distribcell_paths)
+                    data_size, distribcell_paths)
                 df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it
@@ -1673,7 +1669,7 @@ class Tally(object):
         return data
 
     def export_results(self, filename='tally-results', directory='.',
-                      format='hdf5', append=True):
+                       format='hdf5', append=True):
         """Exports tallly results to an HDF5 or Python pickle binary file.
 
         Parameters
@@ -1719,7 +1715,7 @@ class Tally(object):
 
         elif not isinstance(append, bool):
             msg = 'Unable to export the results for Tally ID="{0}" since the ' \
-                  'append parameter is not True/False'.format(self.id, append)
+                  'append parameter is not True/False'.format(self.id)
             raise ValueError(msg)
 
         # Make directory if it does not exist
@@ -1776,7 +1772,7 @@ class Tally(object):
             filename = directory + '/' + filename + '.pkl'
 
             if os.path.exists(filename) and append:
-                tally_results = pickle.load(file(filename, 'rb'))
+                tally_results = pickle.load(open(filename, 'rb'))
             else:
                 tally_results = {}
 
@@ -1815,7 +1811,7 @@ class Tally(object):
             pickle.dump(tally_results, open(filename, 'wb'))
 
     def hybrid_product(self, other, binary_op, filter_product=None,
-                        nuclide_product=None, score_product=None):
+                       nuclide_product=None, score_product=None):
         """Combines filters, scores and nuclides with another tally.
 
         This is a helper method for the tally arithmetic operator overloaded
@@ -2451,7 +2447,7 @@ class Tally(object):
             new_tally._std_dev = self.std_dev
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
+            new_tally.num_realizations = self.num_realizations
 
             new_tally.filters = copy.deepcopy(self.filters)
             new_tally.nuclides = copy.deepcopy(self.nuclides)
@@ -2522,7 +2518,7 @@ class Tally(object):
             new_tally._std_dev = self.std_dev
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
+            new_tally.num_realizations = self.num_realizations
 
             new_tally.filters = copy.deepcopy(self.filters)
             new_tally.nuclides = copy.deepcopy(self.nuclides)
@@ -2594,7 +2590,7 @@ class Tally(object):
             new_tally._std_dev = self.std_dev * np.abs(other)
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
+            new_tally.num_realizations = self.num_realizations
 
             new_tally.filters = copy.deepcopy(self.filters)
             new_tally.nuclides = copy.deepcopy(self.nuclides)
@@ -2666,7 +2662,7 @@ class Tally(object):
             new_tally._std_dev = self.std_dev * np.abs(1. / other)
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
+            new_tally.num_realizations = self.num_realizations
 
             new_tally.filters = copy.deepcopy(self.filters)
             new_tally.nuclides = copy.deepcopy(self.nuclides)
@@ -2742,7 +2738,7 @@ class Tally(object):
             new_tally._std_dev = np.abs(new_tally._mean * power * self_rel_err)
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
+            new_tally.num_realizations = self.num_realizations
 
             new_tally.filters = copy.deepcopy(self.filters)
             new_tally.nuclides = copy.deepcopy(self.nuclides)
@@ -3149,7 +3145,7 @@ class Tally(object):
         return tally_sum
 
     def average(self, scores=[], filter_type=None,
-                  filter_bins=[], nuclides=[], remove_filter=False):
+                filter_bins=[], nuclides=[], remove_filter=False):
         """Vectorized average of tally data across scores, filter bins and/or
         nuclides using tally aggregation.
 
@@ -3577,4 +3573,4 @@ class Tallies(cv.CheckedList):
         # Write the XML Tree to the tallies.xml file
         tree = ET.ElementTree(self._tallies_file)
         tree.write("tallies.xml", xml_declaration=True,
-                             encoding='utf-8', method="xml")
+                   encoding='utf-8', method="xml")

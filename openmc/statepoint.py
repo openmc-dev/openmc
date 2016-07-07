@@ -558,7 +558,7 @@ class StatePoint(object):
         tally = None
 
         # Iterate over all tallies to find the appropriate one
-        for tally_id, test_tally in self.tallies.items():
+        for test_tally in self.tallies.values():
 
             # Determine if Tally has queried name
             if name and name != test_tally.name:

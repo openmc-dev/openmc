@@ -9,6 +9,7 @@ import copy
 import abc
 
 import numpy as np
+np.set_printoptions(formatter={'float': lambda x: format(x, '8.6E')})
 
 import openmc
 import openmc.checkvalue as cv

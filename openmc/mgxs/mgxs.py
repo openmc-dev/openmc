@@ -7,6 +7,7 @@ import os
 import sys
 import copy
 import abc
+import itertools
 
 import numpy as np
 
@@ -701,20 +702,8 @@ class MGXS(object):
         # NOTE: This is important if tally merging was used
         if self.domain_type == 'mesh':
             filters = [self.domain_type]
-            bins = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            bins.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        bins.append((x, y, 1))
-
-            filter_bins = [tuple(bins)]
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            filter_bins = [tuple(itertools.product(*xyz))]
         elif self.domain_type != 'distribcell':
             filters = [self.domain_type]
             filter_bins = [(self.domain.id,)]
@@ -1169,18 +1158,8 @@ class MGXS(object):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            subdomains = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            subdomains.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        subdomains.append((x, y, 1))
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
 
@@ -1318,18 +1297,8 @@ class MGXS(object):
             domain_filter = self.xs_tally.find_filter('avg(distribcell)')
             subdomains = domain_filter.bins
         elif self.domain_type == 'mesh':
-            subdomains = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            subdomains.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        subdomains.append((x, y, 1))
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
 
@@ -1934,18 +1903,8 @@ class MatrixMGXS(MGXS):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            subdomains = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            subdomains.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        subdomains.append((x, y, 1))
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
 
@@ -3787,18 +3746,8 @@ class ScatterMatrixXS(MatrixMGXS):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            subdomains = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            subdomains.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        subdomains.append((x, y, 1))
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
 
@@ -5020,18 +4969,8 @@ class Velocity(MGXS):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            subdomains = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            subdomains.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        subdomains.append((x, y, 1))
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
 

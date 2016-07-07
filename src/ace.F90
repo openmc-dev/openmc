@@ -1516,40 +1516,24 @@ contains
   subroutine generate_nf_heating(nuc)
     type(Nuclide), intent(inout) :: nuc
 
-    integer :: MT, i_rxn, thres
-
     ! Initialize the heating array.
     allocate(nuc % nf_heat(size(nuc % energy)))
     nuc % nf_heat(:) = ZERO
 
-    ! Add (n,n').
-    if (nuc % reaction_index % has_key(N_N1)) then
-      ! Level-specific data is available.  Use that data to compute heating.
-      do MT = N_N1, N_NC
-        call add_mt_heat(nuc, MT)
-      end do
-    else if (nuc % reaction_index % has_key(N_LEVEL)) then
-      ! Level-specific data is not available.  Use the data summed over all
-      ! levels and hope that the error on the Q-value isn't large.
-      call add_mt_heat(nuc, N_LEVEL)
-    end if
+    ! Skip MT=1 through MT=10 because they are summations of other reactions,
+    ! are Q=0, or are ill-defined.
 
-    ! Add (n,2nd).
     call add_mt_heat(nuc, N_2ND)
 
-    ! Add (n,2n).
-    if (nuc % reaction_index % has_key(N_2N0)) then
-      do MT = N_2N0, N_2NC
-        call add_mt_heat(nuc, MT)
-      end do
-    else if (nuc % reaction_index % has_key(N_2N)) then
-      call add_mt_heat(nuc, N_2N)
-    end if
+    ! For many of the following reactions, we may have level-specific data
+    ! avialable, e.g. MT=N_2N0 through MT=N_2NC, but we will always use the
+    ! summed-up MT number, e.g. MT=N_2N, because that will give us the Q-value
+    ! for the ground state.  Essentially, we are assuming that excited nuclei
+    ! instantly decay and release their excitation energy.
 
-    ! Add (n,3n).
+    call add_mt_heat(nuc, N_2N)
     call add_mt_heat(nuc, N_3N)
-
-    ! Add MT=22 through MT=45 (except MT=38 (fourth-chance fission)).
+    ! Skip fission reactions, MT=18 through MT=21.
     call add_mt_heat(nuc, N_NA)
     call add_mt_heat(nuc, N_N3A)
     call add_mt_heat(nuc, N_2NA)
@@ -1563,60 +1547,17 @@ contains
     call add_mt_heat(nuc, N_ND2A)
     call add_mt_heat(nuc, N_NT2A)
     call add_mt_heat(nuc, N_4N)
+    ! Skip fourth-chance fission, MT=38.
     call add_mt_heat(nuc, N_2NP)
     call add_mt_heat(nuc, N_3NP)
     call add_mt_heat(nuc, N_N2P)
     call add_mt_heat(nuc, N_NPA)
-
-    ! Add (n,gamma).
     call add_mt_heat(nuc, N_GAMMA)
-
-    ! Add (n,p).
-    if (nuc % reaction_index % has_key(N_P0)) then
-      do MT = N_P0, N_PC
-        call add_mt_heat(nuc, MT)
-      end do
-    else if (nuc % reaction_index % has_key(N_P)) then
-      call add_mt_heat(nuc, N_P)
-    end if
-
-    ! Add (n,d).
-    if (nuc % reaction_index % has_key(N_D0)) then
-      do MT = N_D0, N_DC
-        call add_mt_heat(nuc, MT)
-      end do
-    else if (nuc % reaction_index % has_key(N_D)) then
-      call add_mt_heat(nuc, N_D)
-    end if
-
-    ! Add (n,t).
-    if (nuc % reaction_index % has_key(N_T0)) then
-      do MT = N_T0, N_TC
-        call add_mt_heat(nuc, MT)
-      end do
-    else if (nuc % reaction_index % has_key(N_T)) then
-      call add_mt_heat(nuc, N_T)
-    end if
-
-    ! Add (n,3He).
-    if (nuc % reaction_index % has_key(N_3HE0)) then
-      do MT = N_3HE0, N_3HEC
-        call add_mt_heat(nuc, MT)
-      end do
-    else if (nuc % reaction_index % has_key(N_3HE)) then
-      call add_mt_heat(nuc, N_3HE)
-    end if
-
-    ! Add (n,a).
-    if (nuc % reaction_index % has_key(N_A0)) then
-      do MT = N_A0, N_AC
-        call add_mt_heat(nuc, MT)
-      end do
-    else if (nuc % reaction_index % has_key(N_A)) then
-      call add_mt_heat(nuc, N_A)
-    end if
-
-    ! Add MT=108 through MT=117.
+    call add_mt_heat(nuc, N_P)
+    call add_mt_heat(nuc, N_D)
+    call add_mt_heat(nuc, N_T)
+    call add_mt_heat(nuc, N_3HE)
+    call add_mt_heat(nuc, N_A)
     call add_mt_heat(nuc, N_2A)
     call add_mt_heat(nuc, N_3A)
     call add_mt_heat(nuc, N_2P)

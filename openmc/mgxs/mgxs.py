@@ -9,6 +9,10 @@ import copy
 import abc
 
 import numpy as np
+
+# Require numpy to print output in scientific notation to 6 decimal places.
+# This is needed to avoid round off error when large numbers are printed,
+# which can cause tests to fail for different build configurations.
 np.set_printoptions(formatter={'float': lambda x: format(x, '8.6E')})
 
 import openmc

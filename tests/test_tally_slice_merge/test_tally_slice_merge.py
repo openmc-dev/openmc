@@ -79,12 +79,9 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
         mesh_tally = openmc.Tally(name='mesh tally')
         mesh_tally.estimator = 'tracklength'
-        mesh_tally.add_filter(mesh_filter)
-        mesh_tally.add_filter(merged_energies)
-        for score in self.scores:
-            mesh_tally.add_score(score)
-        for nuclide in self.nuclides:
-            mesh_tally.add_nuclide(nuclide)
+        mesh_tally.filters = [mesh_filter, merged_energies]
+        mesh_tally.scores = self.scores
+        mesh_tally.nuclides = self.nuclides
 
         # Add tallies to a Tallies object
         tallies_file = openmc.Tallies((tallies[0], distribcell_tally,

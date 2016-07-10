@@ -473,8 +473,8 @@ contains
             ! score the number of particles that were banked in the fission
             ! bank as prompt neutrons. Since this was weighted by 1/keff, we
             ! multiply by keff to get the proper score.
-            score = keff * p % wgt_bank * (1 - sum(p % n_delayed_bank) &
-                 / p % n_bank)
+            score = keff * p % wgt_bank * (1.0 - sum(p % n_delayed_bank) &
+                 / real(p % n_bank))
           end if
 
         else

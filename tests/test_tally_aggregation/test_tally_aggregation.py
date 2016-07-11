@@ -69,6 +69,8 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         outstr += ', '.join(map(str, tally_sum.mean))
         outstr += ', '.join(map(str, tally_sum.std_dev))
 
+        print(outstr)
+
         # Hash the results if necessary
         if hash_output:
             sha512 = hashlib.sha512()

@@ -1539,9 +1539,7 @@ class MGXS(object):
         return df
 
     def get_units(self, xs_type='macro'):
-        r"""Returns the units of a MGXS.
-
-        This method returns the units of a MGXS based on a desired xs_type.
+        """This method returns the units of a MGXS based on a desired xs_type.
 
         Parameters
         ----------
@@ -1558,10 +1556,7 @@ class MGXS(object):
 
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
-        if xs_type == 'macro':
-            return 'cm^-1'
-        else:
-            return 'barns'
+        return 'cm^-1' if xs_type == 'macro' else 'barns'
 
 
 class MatrixMGXS(MGXS):
@@ -4651,7 +4646,7 @@ class Chi(MGXS):
         return df
 
     def get_units(self, xs_type='macro'):
-        r"""Returns the units of Chi.
+        """Returns the units of Chi.
 
         This method returns the units of Chi, which is "%" for both macro
         and micro xs types.
@@ -4928,7 +4923,7 @@ class Velocity(MGXS):
         return self._xs_tally
 
     def get_units(self, xs_type='macro'):
-        r"""Returns the units of Velocity.
+        """Returns the units of Velocity.
 
         This method returns the units of a Velocity based on a desired xs_type.
 
@@ -4950,7 +4945,7 @@ class Velocity(MGXS):
         if xs_type == 'macro':
             return 'cm/second'
         else:
-            raise ValueError('Unable to return the units of Velocity for ' +
+            raise ValueError('Unable to return the units of Velocity for '
                              'xs_type other than "macro"')
 
 

@@ -15,8 +15,8 @@ import pandas as pd
 # scientific notation with 10 significant figures. This is needed to avoid round
 # off error when large numbers are printed, which can cause tests to fail for
 # different build configurations.
-np.set_printoptions(formatter={'float': lambda x: format(np.around(x, 10), '11.9E')})
-pd.set_option('display.float_format', lambda x: '%11.9E' % np.around(x,10))
+np.set_printoptions(formatter={'float': lambda x: format(np.around(x, 9), '10.8E')})
+pd.set_option('display.float_format', lambda x: '%10.8E' % np.around(x, 9))
 
 sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 from input_set import InputSet, MGInputSet

@@ -11,12 +11,12 @@ import sys
 import numpy as np
 import pandas as pd
 
-# Require numpy and pandas to print output in scientific notation with 10
-# significant figures. This is needed to avoid round off error when large
-# numbers are printed, which can cause tests to fail for different build
-# configurations.
-np.set_printoptions(formatter={'float': '{:.9e}'.format})
-pd.options.display.float_format = '{:.9e}'.format
+# Require numpy and pandas to print output rounded to 12 decimal places and in
+# scientific notation with 12 significant figures. This is needed to avoid round
+# off error when large numbers are printed, which can cause tests to fail for
+# different build configurations.
+np.set_printoptions(formatter={'float': lambda x: format(np.around(x, 12), '13.11E')})
+pd.set_option('display.float_format', lambda x: '%13.11E' % np.around(x,12))
 
 sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 from input_set import InputSet, MGInputSet

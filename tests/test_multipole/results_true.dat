@@ -1,12 +1,12 @@
 k-combined:
-1.457760E+00 1.119659E-02
+1.434998E+00 9.402333E-03
 Cell
 	ID             =	11
 	Name           =	
 	Fill           =	Material 2
 	Region         =	-10000
 	Rotation       =	None
-	Temperature    =	[5.00000e+02 0.00000e+00 7.00000e+02 8.00000e+02]
+	Temperature    =	[5.0000000e+02 0.0000000e+00 7.0000000e+02 8.0000000e+02]
 	Translation    =	None
 	Offset         =	None
 	Distribcell index=	1

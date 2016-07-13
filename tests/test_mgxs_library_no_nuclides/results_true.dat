@@ -1,258 +1,258 @@
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 4.1482549e-01 2.2792909e-02
-0     10000         2   total 6.6016992e-01 4.7518928e-02
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 3.5685964e-01 2.5493596e-02
-0     10000         2   total 6.4764766e-01 2.3703735e-02
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 3.5685964e-01 2.5493596e-02
-0     10000         2   total 6.4764766e-01 2.3703735e-02
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 2.7407845e-02 2.6924971e-03
-0     10000         2   total 2.6451074e-01 2.3367077e-02
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 1.9844550e-02 2.6433043e-03
-0     10000         2   total 7.1719353e-02 2.5207859e-02
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 7.5632950e-03 5.0848368e-04
-0     10000         2   total 1.9279139e-01 1.7105922e-02
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 1.9431740e-02 1.3229756e-03
-0     10000         2   total 4.6977478e-01 4.1682000e-02
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 1.4745698e+00 9.9235321e-02
-0     10000         2   total 3.7286896e+01 3.3083777e+00
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 3.8741765e-01 2.0625732e-02
-0     10000         2   total 3.9565918e-01 2.5125057e-02
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 3.8518839e-01 2.6945621e-02
-0     10000         2   total 4.1238940e-01 1.5425277e-02
-    material  group in  group out nuclide moment           mean     std. dev.
-12     10000         1          1   total     P0  3.8419946e-01 2.7001014e-02
-13     10000         1          1   total     P1  5.1870284e-02 6.9825489e-03
-14     10000         1          1   total     P2  2.0068845e-02 2.8464952e-03
-15     10000         1          1   total     P3  9.4777157e-03 2.2335198e-03
-8      10000         1          2   total     P0  9.8893039e-04 4.8241945e-04
-9      10000         1          2   total     P1 -2.0723460e-04 1.4901078e-04
-10     10000         1          2   total     P2 -1.0336618e-04 1.8431631e-04
-11     10000         1          2   total     P3  2.3429062e-04 1.2817311e-04
-4      10000         2          1   total     P0  9.2463991e-04 9.2488346e-04
-5      10000         2          1   total     P1 -7.6770497e-04 7.6790719e-04
-6      10000         2          1   total     P2  4.9378887e-04 4.9391894e-04
-7      10000         2          1   total     P3 -1.7149723e-04 1.7154240e-04
-0      10000         2          2   total     P0  4.1146476e-01 1.5244935e-02
-1      10000         2          2   total     P1  1.6481728e-02 4.5017280e-03
-2      10000         2          2   total     P2  6.3714905e-03 1.0550749e-02
-3      10000         2          2   total     P3 -1.0499122e-02 1.0438188e-02
-    material  group in  group out nuclide moment           mean     std. dev.
-12     10000         1          1   total     P0  3.8419946e-01 2.7001014e-02
-13     10000         1          1   total     P1  5.1870284e-02 6.9825489e-03
-14     10000         1          1   total     P2  2.0068845e-02 2.8464952e-03
-15     10000         1          1   total     P3  9.4777157e-03 2.2335198e-03
-8      10000         1          2   total     P0  9.8893039e-04 4.8241945e-04
-9      10000         1          2   total     P1 -2.0723460e-04 1.4901078e-04
-10     10000         1          2   total     P2 -1.0336618e-04 1.8431631e-04
-11     10000         1          2   total     P3  2.3429062e-04 1.2817311e-04
-4      10000         2          1   total     P0  9.2463991e-04 9.2488346e-04
-5      10000         2          1   total     P1 -7.6770497e-04 7.6790719e-04
-6      10000         2          1   total     P2  4.9378887e-04 4.9391894e-04
-7      10000         2          1   total     P3 -1.7149723e-04 1.7154240e-04
-0      10000         2          2   total     P0  4.1146476e-01 1.5244935e-02
-1      10000         2          2   total     P1  1.6481728e-02 4.5017280e-03
-2      10000         2          2   total     P2  6.3714905e-03 1.0550749e-02
-3      10000         2          2   total     P3 -1.0499122e-02 1.0438188e-02
-   material  group in  group out nuclide          mean     std. dev.
-3     10000         1          1   total 1.0000000e+00 7.8516455e-02
-2     10000         1          2   total 1.0000000e+00 6.8718427e-01
-1     10000         2          1   total 1.0000000e+00 1.4142136e+00
-0     10000         2          2   total 1.0000000e+00 4.1130349e-02
-   material  group in  group out nuclide          mean     std. dev.
-3     10000         1          1   total 2.0142428e-02 3.1490917e-03
-2     10000         1          2   total 0.0000000e+00 0.0000000e+00
-1     10000         2          1   total 4.5436647e-01 2.7425507e-02
-0     10000         2          2   total 0.0000000e+00 0.0000000e+00
-   material  group out nuclide          mean     std. dev.
-1     10000          1   total 1.0000000e+00 4.6070523e-02
-0     10000          2   total 0.0000000e+00 0.0000000e+00
-   material  group out nuclide          mean     std. dev.
-1     10000          1   total 1.0000000e+00 5.1471457e-02
-0     10000          2   total 0.0000000e+00 0.0000000e+00
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 1.7515211e+07 1.4381753e+06
-0     10000         2   total 3.5017200e+05 2.9945932e+04
-   material  group in nuclide          mean     std. dev.
-1     10000         1   total 1.9239222e-02 1.3095060e-03
-0     10000         2   total 4.6671903e-01 4.1410870e-02
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 3.1373767e-01 1.5581902e-02
-0     10001         2   total 3.0082140e-01 2.8052448e-02
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 2.7322787e-01 3.3115366e-02
-0     10001         2   total 3.1237484e-01 4.9605832e-02
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 2.7322787e-01 3.3115366e-02
-0     10001         2   total 3.1237484e-01 4.9605832e-02
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 1.5749914e-03 3.2254789e-04
-0     10001         2   total 5.4003788e-03 6.1813831e-04
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 1.5749914e-03 3.2254789e-04
-0     10001         2   total 5.4003788e-03 6.1813831e-04
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 0.0000000e+00 0.0000000e+00
-0     10001         2   total 0.0000000e+00 0.0000000e+00
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 0.0000000e+00 0.0000000e+00
-0     10001         2   total 0.0000000e+00 0.0000000e+00
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 0.0000000e+00 0.0000000e+00
-0     10001         2   total 0.0000000e+00 0.0000000e+00
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 3.1216268e-01 1.5321923e-02
-0     10001         2   total 2.9542102e-01 2.7445489e-02
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 3.1012074e-01 3.3788106e-02
-0     10001         2   total 2.9626427e-01 4.3792226e-02
-    material  group in  group out nuclide moment           mean     std. dev.
-12     10001         1          1   total     P0  3.1012074e-01 3.3788106e-02
-13     10001         1          1   total     P1  3.8229590e-02 8.4839971e-03
-14     10001         1          1   total     P2  2.0744942e-02 4.6956107e-03
-15     10001         1          1   total     P3  7.9642968e-03 3.7316226e-03
-8      10001         1          2   total     P0  0.0000000e+00 0.0000000e+00
-9      10001         1          2   total     P1  0.0000000e+00 0.0000000e+00
-10     10001         1          2   total     P2  0.0000000e+00 0.0000000e+00
-11     10001         1          2   total     P3  0.0000000e+00 0.0000000e+00
-4      10001         2          1   total     P0  0.0000000e+00 0.0000000e+00
-5      10001         2          1   total     P1  0.0000000e+00 0.0000000e+00
-6      10001         2          1   total     P2  0.0000000e+00 0.0000000e+00
-7      10001         2          1   total     P3  0.0000000e+00 0.0000000e+00
-0      10001         2          2   total     P0  2.9626427e-01 4.3792226e-02
-1      10001         2          2   total     P1 -1.1213636e-02 1.6180366e-02
-2      10001         2          2   total     P2  8.8365663e-03 1.1503964e-02
-3      10001         2          2   total     P3 -3.2700673e-03 7.3288458e-03
-    material  group in  group out nuclide moment           mean     std. dev.
-12     10001         1          1   total     P0  3.1012074e-01 3.3788106e-02
-13     10001         1          1   total     P1  3.8229590e-02 8.4839971e-03
-14     10001         1          1   total     P2  2.0744942e-02 4.6956107e-03
-15     10001         1          1   total     P3  7.9642968e-03 3.7316226e-03
-8      10001         1          2   total     P0  0.0000000e+00 0.0000000e+00
-9      10001         1          2   total     P1  0.0000000e+00 0.0000000e+00
-10     10001         1          2   total     P2  0.0000000e+00 0.0000000e+00
-11     10001         1          2   total     P3  0.0000000e+00 0.0000000e+00
-4      10001         2          1   total     P0  0.0000000e+00 0.0000000e+00
-5      10001         2          1   total     P1  0.0000000e+00 0.0000000e+00
-6      10001         2          1   total     P2  0.0000000e+00 0.0000000e+00
-7      10001         2          1   total     P3  0.0000000e+00 0.0000000e+00
-0      10001         2          2   total     P0  2.9626427e-01 4.3792226e-02
-1      10001         2          2   total     P1 -1.1213636e-02 1.6180366e-02
-2      10001         2          2   total     P2  8.8365663e-03 1.1503964e-02
-3      10001         2          2   total     P3 -3.2700673e-03 7.3288458e-03
-   material  group in  group out nuclide          mean     std. dev.
-3     10001         1          1   total 1.0000000e+00 1.0877870e-01
-2     10001         1          2   total 0.0000000e+00 0.0000000e+00
-1     10001         2          1   total 0.0000000e+00 0.0000000e+00
-0     10001         2          2   total 1.0000000e+00 1.4242717e-01
-   material  group in  group out nuclide          mean     std. dev.
-3     10001         1          1   total 0.0000000e+00 0.0000000e+00
-2     10001         1          2   total 0.0000000e+00 0.0000000e+00
-1     10001         2          1   total 0.0000000e+00 0.0000000e+00
-0     10001         2          2   total 0.0000000e+00 0.0000000e+00
-   material  group out nuclide          mean     std. dev.
-1     10001          1   total 0.0000000e+00 0.0000000e+00
-0     10001          2   total 0.0000000e+00 0.0000000e+00
-   material  group out nuclide          mean     std. dev.
-1     10001          1   total 0.0000000e+00 0.0000000e+00
-0     10001          2   total 0.0000000e+00 0.0000000e+00
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 1.6677839e+07 1.2664443e+06
-0     10001         2   total 3.3495337e+05 3.8336782e+04
-   material  group in nuclide          mean     std. dev.
-1     10001         1   total 0.0000000e+00 0.0000000e+00
-0     10001         2   total 0.0000000e+00 0.0000000e+00
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 6.6457226e-01 3.1214752e-02
-0     10002         2   total 2.0523840e+00 2.2434291e-01
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 2.9056526e-01 2.3851855e-02
-0     10002         2   total 1.5164380e+00 2.3519727e-01
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 2.9056526e-01 2.3851855e-02
-0     10002         2   total 1.5164380e+00 2.3519727e-01
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 6.9039952e-04 4.4147569e-05
-0     10002         2   total 3.1687257e-02 3.7465586e-03
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 6.9039952e-04 4.4147569e-05
-0     10002         2   total 3.1687257e-02 3.7465586e-03
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 0.0000000e+00 0.0000000e+00
-0     10002         2   total 0.0000000e+00 0.0000000e+00
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 0.0000000e+00 0.0000000e+00
-0     10002         2   total 0.0000000e+00 0.0000000e+00
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 0.0000000e+00 0.0000000e+00
-0     10002         2   total 0.0000000e+00 0.0000000e+00
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 6.6388186e-01 3.1172684e-02
-0     10002         2   total 2.0206968e+00 2.2060445e-01
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 6.7126920e-01 2.6186371e-02
-0     10002         2   total 2.0353883e+00 2.5806033e-01
-    material  group in  group out nuclide moment           mean     std. dev.
-12     10002         1          1   total     P0  6.3990148e-01 2.4709123e-02
-13     10002         1          1   total     P1  3.8116745e-01 1.6243265e-02
-14     10002         1          1   total     P2  1.5239190e-01 8.1562777e-03
-15     10002         1          1   total     P3  9.1480223e-03 3.8885621e-03
-8      10002         1          2   total     P0  3.1367720e-02 1.7281129e-03
-9      10002         1          2   total     P1  8.7577232e-03 9.2567050e-04
-10     10002         1          2   total     P2 -2.5679011e-03 1.0139848e-03
-11     10002         1          2   total     P3 -3.7848029e-03 8.1707557e-04
-4      10002         2          1   total     P0  4.4334313e-04 4.4485039e-04
-5      10002         2          1   total     P1  3.9996041e-04 4.0132018e-04
-6      10002         2          1   total     P2  3.1956271e-04 3.2064914e-04
-7      10002         2          1   total     P3  2.1384697e-04 2.1457400e-04
-0      10002         2          2   total     P0  2.0349450e+00 2.5779989e-01
-1      10002         2          2   total     P1  5.0994051e-01 5.1235906e-02
-2      10002         2          2   total     P2  1.1117461e-01 1.3019817e-02
-3      10002         2          2   total     P3  2.4988436e-02 8.3123526e-03
-    material  group in  group out nuclide moment           mean     std. dev.
-12     10002         1          1   total     P0  6.3990148e-01 2.4709123e-02
-13     10002         1          1   total     P1  3.8116745e-01 1.6243265e-02
-14     10002         1          1   total     P2  1.5239190e-01 8.1562777e-03
-15     10002         1          1   total     P3  9.1480223e-03 3.8885621e-03
-8      10002         1          2   total     P0  3.1367720e-02 1.7281129e-03
-9      10002         1          2   total     P1  8.7577232e-03 9.2567050e-04
-10     10002         1          2   total     P2 -2.5679011e-03 1.0139848e-03
-11     10002         1          2   total     P3 -3.7848029e-03 8.1707557e-04
-4      10002         2          1   total     P0  4.4334313e-04 4.4485039e-04
-5      10002         2          1   total     P1  3.9996041e-04 4.0132018e-04
-6      10002         2          1   total     P2  3.1956271e-04 3.2064914e-04
-7      10002         2          1   total     P3  2.1384697e-04 2.1457400e-04
-0      10002         2          2   total     P0  2.0349450e+00 2.5779989e-01
-1      10002         2          2   total     P1  5.0994051e-01 5.1235906e-02
-2      10002         2          2   total     P2  1.1117461e-01 1.3019817e-02
-3      10002         2          2   total     P3  2.4988436e-02 8.3123526e-03
-   material  group in  group out nuclide          mean     std. dev.
-3     10002         1          1   total 1.0000000e+00 3.8609191e-02
-2     10002         1          2   total 1.0000000e+00 6.7667348e-02
-1     10002         2          1   total 1.0000000e+00 1.4142136e+00
-0     10002         2          2   total 1.0000000e+00 1.3592921e-01
-   material  group in  group out nuclide          mean     std. dev.
-3     10002         1          1   total 0.0000000e+00 0.0000000e+00
-2     10002         1          2   total 0.0000000e+00 0.0000000e+00
-1     10002         2          1   total 0.0000000e+00 0.0000000e+00
-0     10002         2          2   total 0.0000000e+00 0.0000000e+00
-   material  group out nuclide          mean     std. dev.
-1     10002          1   total 0.0000000e+00 0.0000000e+00
-0     10002          2   total 0.0000000e+00 0.0000000e+00
-   material  group out nuclide          mean     std. dev.
-1     10002          1   total 0.0000000e+00 0.0000000e+00
-0     10002          2   total 0.0000000e+00 0.0000000e+00
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 1.6605563e+07 1.0424355e+06
-0     10002         2   total 3.2841204e+05 3.8828436e+04
-   material  group in nuclide          mean     std. dev.
-1     10002         1   total 0.0000000e+00 0.0000000e+00
-0     10002         2   total 0.0000000e+00 0.0000000e+00
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 4.14825490214e-01 2.27929090938e-02
+0     10000         2   total 6.60169918628e-01 4.75189279082e-02
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 3.56859637119e-01 2.54935955781e-02
+0     10000         2   total 6.47647660079e-01 2.37037352047e-02
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 3.56859637119e-01 2.54935955781e-02
+0     10000         2   total 6.47647660079e-01 2.37037352047e-02
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 2.74078449200e-02 2.69249710935e-03
+0     10000         2   total 2.64510741628e-01 2.33670773915e-02
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 1.98445499412e-02 2.64330432866e-03
+0     10000         2   total 7.17193529235e-02 2.52078593512e-02
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 7.56329497887e-03 5.08483677909e-04
+0     10000         2   total 1.92791388704e-01 1.71059218667e-02
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 1.94317403720e-02 1.32297561222e-03
+0     10000         2   total 4.69774777026e-01 4.16819997832e-02
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 1.47456982255e+00 9.92353210963e-02
+0     10000         2   total 3.72868964072e+01 3.30837772453e+00
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 3.87417645294e-01 2.06257321021e-02
+0     10000         2   total 3.95659177000e-01 2.51250567894e-02
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 3.85188388202e-01 2.69456210647e-02
+0     10000         2   total 4.12389399309e-01 1.54252769583e-02
+    material  group in  group out nuclide moment               mean         std. dev.
+12     10000         1          1   total     P0  3.84199457809e-01 2.70010135610e-02
+13     10000         1          1   total     P1  5.18702843460e-02 6.98254887613e-03
+14     10000         1          1   total     P2  2.00688453200e-02 2.84649518329e-03
+15     10000         1          1   total     P3  9.47771570559e-03 2.23351977181e-03
+8      10000         1          2   total     P0  9.88930393331e-04 4.82419445120e-04
+9      10000         1          2   total     P1 -2.07234596475e-04 1.49010775362e-04
+10     10000         1          2   total     P2 -1.03366180541e-04 1.84316311924e-04
+11     10000         1          2   total     P3  2.34290623037e-04 1.28173110834e-04
+4      10000         2          1   total     P0  9.24639908764e-04 9.24883463644e-04
+5      10000         2          1   total     P1 -7.67704968439e-04 7.67907185854e-04
+6      10000         2          1   total     P2  4.93788871844e-04 4.93918938358e-04
+7      10000         2          1   total     P3 -1.71497229323e-04 1.71542402570e-04
+0      10000         2          2   total     P0  4.11464759400e-01 1.52449353958e-02
+1      10000         2          2   total     P1  1.64817280067e-02 4.50172796078e-03
+2      10000         2          2   total     P2  6.37149049282e-03 1.05507493414e-02
+3      10000         2          2   total     P3 -1.04991220898e-02 1.04381877194e-02
+    material  group in  group out nuclide moment               mean         std. dev.
+12     10000         1          1   total     P0  3.84199457809e-01 2.70010135610e-02
+13     10000         1          1   total     P1  5.18702843460e-02 6.98254887613e-03
+14     10000         1          1   total     P2  2.00688453200e-02 2.84649518329e-03
+15     10000         1          1   total     P3  9.47771570559e-03 2.23351977181e-03
+8      10000         1          2   total     P0  9.88930393331e-04 4.82419445120e-04
+9      10000         1          2   total     P1 -2.07234596475e-04 1.49010775362e-04
+10     10000         1          2   total     P2 -1.03366180541e-04 1.84316311924e-04
+11     10000         1          2   total     P3  2.34290623037e-04 1.28173110834e-04
+4      10000         2          1   total     P0  9.24639908764e-04 9.24883463644e-04
+5      10000         2          1   total     P1 -7.67704968439e-04 7.67907185854e-04
+6      10000         2          1   total     P2  4.93788871844e-04 4.93918938358e-04
+7      10000         2          1   total     P3 -1.71497229323e-04 1.71542402570e-04
+0      10000         2          2   total     P0  4.11464759400e-01 1.52449353958e-02
+1      10000         2          2   total     P1  1.64817280067e-02 4.50172796078e-03
+2      10000         2          2   total     P2  6.37149049282e-03 1.05507493414e-02
+3      10000         2          2   total     P3 -1.04991220898e-02 1.04381877194e-02
+   material  group in  group out nuclide              mean         std. dev.
+3     10000         1          1   total 1.00000000000e+00 7.85164550057e-02
+2     10000         1          2   total 1.00000000000e+00 6.87184270936e-01
+1     10000         2          1   total 1.00000000000e+00 1.41421356237e+00
+0     10000         2          2   total 1.00000000000e+00 4.11303488039e-02
+   material  group in  group out nuclide              mean         std. dev.
+3     10000         1          1   total 2.01424281632e-02 3.14909167627e-03
+2     10000         1          2   total 0.00000000000e+00 0.00000000000e+00
+1     10000         2          1   total 4.54366466559e-01 2.74255069249e-02
+0     10000         2          2   total 0.00000000000e+00 0.00000000000e+00
+   material  group out nuclide              mean         std. dev.
+1     10000          1   total 1.00000000000e+00 4.60705234720e-02
+0     10000          2   total 0.00000000000e+00 0.00000000000e+00
+   material  group out nuclide              mean         std. dev.
+1     10000          1   total 1.00000000000e+00 5.14714567344e-02
+0     10000          2   total 0.00000000000e+00 0.00000000000e+00
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 1.75152106204e+07 1.43817527390e+06
+0     10000         2   total 3.50171995194e+05 2.99459316967e+04
+   material  group in nuclide              mean         std. dev.
+1     10000         1   total 1.92392215460e-02 1.30950595010e-03
+0     10000         2   total 4.66719027354e-01 4.14108703995e-02
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 3.13737670907e-01 1.55819023553e-02
+0     10001         2   total 3.00821401699e-01 2.80524484312e-02
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 2.73227872020e-01 3.31153664433e-02
+0     10001         2   total 3.12374836218e-01 4.96058317053e-02
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 2.73227872020e-01 3.31153664433e-02
+0     10001         2   total 3.12374836218e-01 4.96058317053e-02
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 1.57499139045e-03 3.22547890697e-04
+0     10001         2   total 5.40037883216e-03 6.18138308229e-04
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 1.57499139045e-03 3.22547890697e-04
+0     10001         2   total 5.40037883216e-03 6.18138308229e-04
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 0.00000000000e+00 0.00000000000e+00
+0     10001         2   total 0.00000000000e+00 0.00000000000e+00
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 0.00000000000e+00 0.00000000000e+00
+0     10001         2   total 0.00000000000e+00 0.00000000000e+00
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 0.00000000000e+00 0.00000000000e+00
+0     10001         2   total 0.00000000000e+00 0.00000000000e+00
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 3.12162679516e-01 1.53219230918e-02
+0     10001         2   total 2.95421022866e-01 2.74454888860e-02
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 3.10120735076e-01 3.37881061225e-02
+0     10001         2   total 2.96264270001e-01 4.37922257327e-02
+    material  group in  group out nuclide moment               mean         std. dev.
+12     10001         1          1   total     P0  3.10120735076e-01 3.37881061225e-02
+13     10001         1          1   total     P1  3.82295903624e-02 8.48399710345e-03
+14     10001         1          1   total     P2  2.07449419697e-02 4.69561067742e-03
+15     10001         1          1   total     P3  7.96429677175e-03 3.73162260999e-03
+8      10001         1          2   total     P0  0.00000000000e+00 0.00000000000e+00
+9      10001         1          2   total     P1  0.00000000000e+00 0.00000000000e+00
+10     10001         1          2   total     P2  0.00000000000e+00 0.00000000000e+00
+11     10001         1          2   total     P3  0.00000000000e+00 0.00000000000e+00
+4      10001         2          1   total     P0  0.00000000000e+00 0.00000000000e+00
+5      10001         2          1   total     P1  0.00000000000e+00 0.00000000000e+00
+6      10001         2          1   total     P2  0.00000000000e+00 0.00000000000e+00
+7      10001         2          1   total     P3  0.00000000000e+00 0.00000000000e+00
+0      10001         2          2   total     P0  2.96264270001e-01 4.37922257327e-02
+1      10001         2          2   total     P1 -1.12136361341e-02 1.61803664886e-02
+2      10001         2          2   total     P2  8.83656629804e-03 1.15039644588e-02
+3      10001         2          2   total     P3 -3.27006730881e-03 7.32884580152e-03
+    material  group in  group out nuclide moment               mean         std. dev.
+12     10001         1          1   total     P0  3.10120735076e-01 3.37881061225e-02
+13     10001         1          1   total     P1  3.82295903624e-02 8.48399710345e-03
+14     10001         1          1   total     P2  2.07449419697e-02 4.69561067742e-03
+15     10001         1          1   total     P3  7.96429677175e-03 3.73162260999e-03
+8      10001         1          2   total     P0  0.00000000000e+00 0.00000000000e+00
+9      10001         1          2   total     P1  0.00000000000e+00 0.00000000000e+00
+10     10001         1          2   total     P2  0.00000000000e+00 0.00000000000e+00
+11     10001         1          2   total     P3  0.00000000000e+00 0.00000000000e+00
+4      10001         2          1   total     P0  0.00000000000e+00 0.00000000000e+00
+5      10001         2          1   total     P1  0.00000000000e+00 0.00000000000e+00
+6      10001         2          1   total     P2  0.00000000000e+00 0.00000000000e+00
+7      10001         2          1   total     P3  0.00000000000e+00 0.00000000000e+00
+0      10001         2          2   total     P0  2.96264270001e-01 4.37922257327e-02
+1      10001         2          2   total     P1 -1.12136361341e-02 1.61803664886e-02
+2      10001         2          2   total     P2  8.83656629804e-03 1.15039644588e-02
+3      10001         2          2   total     P3 -3.27006730881e-03 7.32884580152e-03
+   material  group in  group out nuclide              mean         std. dev.
+3     10001         1          1   total 1.00000000000e+00 1.08778696728e-01
+2     10001         1          2   total 0.00000000000e+00 0.00000000000e+00
+1     10001         2          1   total 0.00000000000e+00 0.00000000000e+00
+0     10001         2          2   total 1.00000000000e+00 1.42427173055e-01
+   material  group in  group out nuclide              mean         std. dev.
+3     10001         1          1   total 0.00000000000e+00 0.00000000000e+00
+2     10001         1          2   total 0.00000000000e+00 0.00000000000e+00
+1     10001         2          1   total 0.00000000000e+00 0.00000000000e+00
+0     10001         2          2   total 0.00000000000e+00 0.00000000000e+00
+   material  group out nuclide              mean         std. dev.
+1     10001          1   total 0.00000000000e+00 0.00000000000e+00
+0     10001          2   total 0.00000000000e+00 0.00000000000e+00
+   material  group out nuclide              mean         std. dev.
+1     10001          1   total 0.00000000000e+00 0.00000000000e+00
+0     10001          2   total 0.00000000000e+00 0.00000000000e+00
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 1.66778394974e+07 1.26644430952e+06
+0     10001         2   total 3.34953367601e+05 3.83367816257e+04
+   material  group in nuclide              mean         std. dev.
+1     10001         1   total 0.00000000000e+00 0.00000000000e+00
+0     10001         2   total 0.00000000000e+00 0.00000000000e+00
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 6.64572260617e-01 3.12147519127e-02
+0     10002         2   total 2.05238401381e+00 2.24342906705e-01
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 2.90565257425e-01 2.38518546437e-02
+0     10002         2   total 1.51643801275e+00 2.35197268504e-01
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 2.90565257425e-01 2.38518546437e-02
+0     10002         2   total 1.51643801275e+00 2.35197268504e-01
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 6.90399522187e-04 4.41475687059e-05
+0     10002         2   total 3.16872566141e-02 3.74655858238e-03
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 6.90399522187e-04 4.41475687059e-05
+0     10002         2   total 3.16872566141e-02 3.74655858238e-03
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 0.00000000000e+00 0.00000000000e+00
+0     10002         2   total 0.00000000000e+00 0.00000000000e+00
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 0.00000000000e+00 0.00000000000e+00
+0     10002         2   total 0.00000000000e+00 0.00000000000e+00
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 0.00000000000e+00 0.00000000000e+00
+0     10002         2   total 0.00000000000e+00 0.00000000000e+00
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 6.63881861094e-01 3.11726840046e-02
+0     10002         2   total 2.02069675720e+00 2.20604453857e-01
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 6.71269204714e-01 2.61863711686e-02
+0     10002         2   total 2.03538832876e+00 2.58060328563e-01
+    material  group in  group out nuclide moment               mean         std. dev.
+12     10002         1          1   total     P0  6.39901484868e-01 2.47091227977e-02
+13     10002         1          1   total     P1  3.81167448865e-01 1.62432649213e-02
+14     10002         1          1   total     P2  1.52391897805e-01 8.15627770336e-03
+15     10002         1          1   total     P3  9.14802228847e-03 3.88856214164e-03
+8      10002         1          2   total     P0  3.13677198465e-02 1.72811290328e-03
+9      10002         1          2   total     P1  8.75772320612e-03 9.25670501198e-04
+10     10002         1          2   total     P2 -2.56790105967e-03 1.01398475208e-03
+11     10002         1          2   total     P3 -3.78480288187e-03 8.17075570852e-04
+4      10002         2          1   total     P0  4.43343134122e-04 4.44850393331e-04
+5      10002         2          1   total     P1  3.99960414260e-04 4.01320182735e-04
+6      10002         2          1   total     P2  3.19562707240e-04 3.20649142996e-04
+7      10002         2          1   total     P3  2.13846969230e-04 2.14573997098e-04
+0      10002         2          2   total     P0  2.03494498562e+00 2.57799888924e-01
+1      10002         2          2   total     P1  5.09940513161e-01 5.12359062971e-02
+2      10002         2          2   total     P2  1.11174608804e-01 1.30198170388e-02
+3      10002         2          2   total     P3  2.49884357394e-02 8.31235256236e-03
+    material  group in  group out nuclide moment               mean         std. dev.
+12     10002         1          1   total     P0  6.39901484868e-01 2.47091227977e-02
+13     10002         1          1   total     P1  3.81167448865e-01 1.62432649213e-02
+14     10002         1          1   total     P2  1.52391897805e-01 8.15627770336e-03
+15     10002         1          1   total     P3  9.14802228847e-03 3.88856214164e-03
+8      10002         1          2   total     P0  3.13677198465e-02 1.72811290328e-03
+9      10002         1          2   total     P1  8.75772320612e-03 9.25670501198e-04
+10     10002         1          2   total     P2 -2.56790105967e-03 1.01398475208e-03
+11     10002         1          2   total     P3 -3.78480288187e-03 8.17075570852e-04
+4      10002         2          1   total     P0  4.43343134122e-04 4.44850393331e-04
+5      10002         2          1   total     P1  3.99960414260e-04 4.01320182735e-04
+6      10002         2          1   total     P2  3.19562707240e-04 3.20649142996e-04
+7      10002         2          1   total     P3  2.13846969230e-04 2.14573997098e-04
+0      10002         2          2   total     P0  2.03494498562e+00 2.57799888924e-01
+1      10002         2          2   total     P1  5.09940513161e-01 5.12359062971e-02
+2      10002         2          2   total     P2  1.11174608804e-01 1.30198170388e-02
+3      10002         2          2   total     P3  2.49884357394e-02 8.31235256236e-03
+   material  group in  group out nuclide              mean         std. dev.
+3     10002         1          1   total 1.00000000000e+00 3.86091908369e-02
+2     10002         1          2   total 1.00000000000e+00 6.76673479996e-02
+1     10002         2          1   total 1.00000000000e+00 1.41421356237e+00
+0     10002         2          2   total 1.00000000000e+00 1.35929206606e-01
+   material  group in  group out nuclide              mean         std. dev.
+3     10002         1          1   total 0.00000000000e+00 0.00000000000e+00
+2     10002         1          2   total 0.00000000000e+00 0.00000000000e+00
+1     10002         2          1   total 0.00000000000e+00 0.00000000000e+00
+0     10002         2          2   total 0.00000000000e+00 0.00000000000e+00
+   material  group out nuclide              mean         std. dev.
+1     10002          1   total 0.00000000000e+00 0.00000000000e+00
+0     10002          2   total 0.00000000000e+00 0.00000000000e+00
+   material  group out nuclide              mean         std. dev.
+1     10002          1   total 0.00000000000e+00 0.00000000000e+00
+0     10002          2   total 0.00000000000e+00 0.00000000000e+00
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 1.66055628732e+07 1.04243552374e+06
+0     10002         2   total 3.28412038650e+05 3.88284357298e+04
+   material  group in nuclide              mean         std. dev.
+1     10002         1   total 0.00000000000e+00 0.00000000000e+00
+0     10002         2   total 0.00000000000e+00 0.00000000000e+00

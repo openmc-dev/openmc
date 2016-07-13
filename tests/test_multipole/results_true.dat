@@ -6,7 +6,7 @@ Cell
 	Fill           =	Material 2
 	Region         =	-10000
 	Rotation       =	None
-	Temperature    =	[5.0000000e+02 0.0000000e+00 7.0000000e+02 8.0000000e+02]
+	Temperature    =	[5.000000e+02 0.000000e+00 7.000000e+02 8.000000e+02]
 	Translation    =	None
 	Offset         =	None
 	Distribcell index=	1

@@ -5,7 +5,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 
-interpolation_scheme = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
+INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
                         4: 'log-linear', 5: 'log-log'}
 
 
@@ -262,8 +262,8 @@ class Tabulated1D(object):
             Function read from dataset
 
         """
-        x = dataset.value[0,:]
-        y = dataset.value[1,:]
+        x = dataset.value[0, :]
+        y = dataset.value[1, :]
         breakpoints = dataset.attrs['breakpoints']
         interpolation = dataset.attrs['interpolation']
         return cls(x, y, breakpoints, interpolation)

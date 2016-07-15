@@ -5,7 +5,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.stats import Univariate, Tabular, Uniform
-from .container import interpolation_scheme
+from .container import INTERPOLATION_SCHEME
 
 
 class AngleDistribution(object):
@@ -125,7 +125,7 @@ class AngleDistribution(object):
             else:
                 n = data.shape[1] - j
 
-            interp = interpolation_scheme[interpolation[i]]
+            interp = INTERPOLATION_SCHEME[interpolation[i]]
             mu_i = Tabular(data[0, j:j+n], data[1, j:j+n], interp)
             mu_i.c = data[2, j:j+n]
 
@@ -189,7 +189,7 @@ class AngleDistribution(object):
                 data = ace.xss[idx + 2:idx + 2 + 3*n_points]
                 data.shape = (3, n_points)
 
-                mu_i = Tabular(data[0], data[1], interpolation_scheme[intt])
+                mu_i = Tabular(data[0], data[1], INTERPOLATION_SCHEME[intt])
                 mu_i.c = data[2]
             else:
                 # Isotropic angular distribution

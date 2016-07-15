@@ -150,9 +150,9 @@ reaction_name = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)', 5: '(n,misc)'
                  198: '(n,n3p)', 199: '(n,3n2pa)', 200: '(n,5n2p)', 444: '(n,damage)',
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
                  849: '(n,ac)'}
-reaction_name.update({i: '(n,n{})'.format(i-50) for i in range(50,91)})
-reaction_name.update({i: '(n,p{})'.format(i-600) for i in range(600,649)})
-reaction_name.update({i: '(n,d{})'.format(i-650) for i in range(650,699)})
-reaction_name.update({i: '(n,t{})'.format(i-700) for i in range(700,749)})
-reaction_name.update({i: '(n,3He{})'.format(i-750) for i in range(750,799)})
-reaction_name.update({i: '(n,a{})'.format(i-800) for i in range(800,849)})
+reaction_name.update({i: '(n,n{})'.format(i-50) for i in range(50, 91)})
+reaction_name.update({i: '(n,p{})'.format(i-600) for i in range(600, 649)})
+reaction_name.update({i: '(n,d{})'.format(i-650) for i in range(650, 699)})
+reaction_name.update({i: '(n,t{})'.format(i-700) for i in range(700, 749)})
+reaction_name.update({i: '(n,3He{})'.format(i-750) for i in range(750, 799)})
+reaction_name.update({i: '(n,a{})'.format(i-800) for i in range(800, 849)})

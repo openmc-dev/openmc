@@ -13,7 +13,7 @@ class DataLibrary(object):
         h5file = h5py.File(filename, 'r')
 
         materials = []
-        for name, group in h5file.items():
+        for name in h5file:
             materials.append(name)
 
         library = {'path': filename, 'type': filetype, 'materials': materials}

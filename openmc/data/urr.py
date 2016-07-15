@@ -7,7 +7,7 @@ import openmc.checkvalue as cv
 
 
 class ProbabilityTables(object):
-    """Unresolved resonance region probability tables.
+    r"""Unresolved resonance region probability tables.
 
     Parameters
     ----------
@@ -18,7 +18,7 @@ class ProbabilityTables(object):
         where N is the number of energies and M is the number of bands. The
         second dimension indicates whether the value is for the cumulative
         probability (0), total (1), elastic (2), fission (3), :math:`(n,\gamma)`
-        (4), or heating number (6).
+        (4), or heating number (5).
     interpolation : {2, 5}
         Interpolation scheme between tables
     inelastic_flag : int
@@ -45,7 +45,7 @@ class ProbabilityTables(object):
         where N is the number of energies and M is the number of bands. The
         second dimension indicates whether the value is for the cumulative
         probability (0), total (1), elastic (2), fission (3), :math:`(n,\gamma)`
-        (4), or heating number (6).
+        (4), or heating number (5).
     interpolation : {2, 5}
         Interpolation scheme between tables
     inelastic_flag : int

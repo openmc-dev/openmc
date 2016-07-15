@@ -20,7 +20,6 @@ import io
 from os import SEEK_CUR
 import struct
 import sys
-from warnings import warn
 
 import numpy as np
 
@@ -170,7 +169,7 @@ class Library(object):
             sb = b''.join([fh.readline() for i in range(10)])
 
             # Try to decode it with ascii
-            sd = sb.decode('ascii')
+            sb.decode('ascii')
 
             # No exception so proceed with ASCII - reopen in non-binary
             fh.close()
@@ -182,13 +181,13 @@ class Library(object):
             fh = open(filename, 'rb')
             self._read_binary(fh, table_names, verbose)
 
-    def _read_binary(self, fh, table_names, verbose=False,
+    def _read_binary(self, ace_file, table_names, verbose=False,
                      recl_length=4096, entries=512):
         """Read a binary (Type 2) ACE table.
 
         Parameters
         ----------
-        fh : file
+        ace_file : file
             Open ACE file
         table_names : None, str, or iterable
             Tables from the file to read in.  If None, reads in all of the
@@ -204,25 +203,25 @@ class Library(object):
         """
 
         while True:
-            start_position = fh.tell()
+            start_position = ace_file.tell()
 
             # Check for end-of-file
-            if len(fh.read(1)) == 0:
+            if len(ace_file.read(1)) == 0:
                 return
-            fh.seek(start_position)
+            ace_file.seek(start_position)
 
             # Read name, atomic mass ratio, temperature, date, comment, and
             # material
             name, atomic_weight_ratio, temperature, date, comment, mat = \
-                struct.unpack(str('=10sdd10s70s10s'), fh.read(116))
+                struct.unpack(str('=10sdd10s70s10s'), ace_file.read(116))
             name = name.decode().strip()
 
             # Read ZAID/awr combinations
-            data = struct.unpack(str('=' + 16*'id'), fh.read(192))
+            data = struct.unpack(str('=' + 16*'id'), ace_file.read(192))
             pairs = list(zip(data[::2], data[1::2]))
 
             # Read NXS
-            nxs = list(struct.unpack(str('=16i'), fh.read(64)))
+            nxs = list(struct.unpack(str('=16i'), ace_file.read(64)))
 
             # Determine length of XSS and number of records
             length = nxs[0]
@@ -230,20 +229,20 @@ class Library(object):
 
             # verify that we are supposed to read this table in
             if (table_names is not None) and (name not in table_names):
-                fh.seek(start_position + recl_length*(n_records + 1))
+                ace_file.seek(start_position + recl_length*(n_records + 1))
                 continue
 
             if verbose:
-                temperature_in_K = round(temperature * 1e6 / 8.617342e-5)
-                print("Loading nuclide {0} at {1} K".format(name, temperature_in_K))
+                kelvin = round(temperature * 1e6 / 8.617342e-5)
+                print("Loading nuclide {0} at {1} K".format(name, kelvin))
 
             # Read JXS
-            jxs = list(struct.unpack(str('=32i'), fh.read(128)))
+            jxs = list(struct.unpack(str('=32i'), ace_file.read(128)))
 
             # Read XSS
-            fh.seek(start_position + recl_length)
+            ace_file.seek(start_position + recl_length)
             xss = list(struct.unpack(str('={0}d'.format(length)),
-                                     fh.read(length*8)))
+                                     ace_file.read(length*8)))
 
             # Insert zeros at beginning of NXS, JXS, and XSS arrays so that the
             # indexing will be the same as Fortran. This makes it easier to
@@ -263,14 +262,14 @@ class Library(object):
             self.tables.append(table)
 
             # Advance to next record
-            fh.seek(start_position + recl_length*(n_records + 1))
+            ace_file.seek(start_position + recl_length*(n_records + 1))
 
-    def _read_ascii(self, fh, table_names, verbose=False):
+    def _read_ascii(self, ace_file, table_names, verbose=False):
         """Read an ASCII (Type 1) ACE table.
 
         Parameters
         ----------
-        fh : file
+        ace_file : file
             Open ACE file
         table_names : None, str, or iterable
             Tables from the file to read in.  If None, reads in all of the
@@ -282,26 +281,23 @@ class Library(object):
 
         tables_seen = set()
 
-        lines = [fh.readline() for i in range(13)]
+        lines = [ace_file.readline() for i in range(13)]
 
-        while (0 != len(lines)) and (lines[0] != ''):
+        while len(lines) != 0 and lines[0] != '':
             # Read name of table, atomic mass ratio, and temperature. If first
             # line is empty, we are at end of file
 
             # check if it's a 2.0 style header
             if lines[0].split()[0][1] == '.':
                 words = lines[0].split()
-                version = words[0]
                 name = words[1]
-                if len(words) == 3:
-                    source = words[2]
                 words = lines[1].split()
                 atomic_weight_ratio = float(words[0])
                 temperature = float(words[1])
                 commentlines = int(words[3])
                 for i in range(commentlines):
                     lines.pop(0)
-                    lines.append(fh.readline())
+                    lines.append(ace_file.readline())
             else:
                 words = lines[0].split()
                 name = words[0]
@@ -325,24 +321,21 @@ class Library(object):
 
             # verify that we are suppossed to read this table in
             if (table_names is not None) and (name not in table_names):
-                fh.seek(n_bytes, SEEK_CUR)
-                fh.readline()
-                lines = [fh.readline() for i in range(13)]
+                ace_file.seek(n_bytes, SEEK_CUR)
+                ace_file.readline()
+                lines = [ace_file.readline() for i in range(13)]
                 continue
 
             # read and fix over-shoot
-            lines += fh.readlines(n_bytes)
+            lines += ace_file.readlines(n_bytes)
             if 12 + n_lines < len(lines):
                 goback = sum([len(line) for line in lines[12+n_lines:]])
                 lines = lines[:12+n_lines]
-                fh.seek(-goback, SEEK_CUR)
+                ace_file.seek(-goback, SEEK_CUR)
 
             if verbose:
-                temperature_in_K = round(temperature * 1e6 / 8.617342e-5)
-                print("Loading nuclide {0} at {1} K".format(name, temperature_in_K))
-
-            # Read comment
-            comment = lines[1].strip()
+                kelvin = round(temperature * 1e6 / 8.617342e-5)
+                print("Loading nuclide {0} at {1} K".format(name, kelvin))
 
             # Insert zeros at beginning of NXS, JXS, and XSS arrays so that the
             # indexing will be the same as Fortran. This makes it easier to
@@ -358,7 +351,7 @@ class Library(object):
             self.tables.append(table)
 
             # Read all data blocks
-            lines = [fh.readline() for i in range(13)]
+            lines = [ace_file.readline() for i in range(13)]
 
 
 class Table(object):

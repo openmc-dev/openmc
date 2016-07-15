@@ -8,7 +8,10 @@ import h5py
 
 import openmc.checkvalue as cv
 from .ace import Table, get_table
+from .angle_energy import AngleEnergy
 from .container import Tabulated1D
+from .correlated import CorrelatedAngleEnergy
+from openmc.stats import Discrete, Tabular
 
 
 _THERMAL_NAMES = {'al': 'c_Al27', 'al27': 'c_Al27',
@@ -37,7 +40,7 @@ _THERMAL_NAMES = {'al': 'c_Al27', 'al27': 'c_Al27',
 
 
 class CoherentElastic(object):
-    """Coherent elastic scattering data from a crystalline material
+    r"""Coherent elastic scattering data from a crystalline material
 
     Parameters
     ----------
@@ -212,7 +215,7 @@ class ThermalScattering(object):
                 self.inelastic_dist.to_hdf5(inelastic_group)
 
     @classmethod
-    def from_hdf5(self, group):
+    def from_hdf5(cls, group):
         """Generate thermal scattering data from HDF5 group
 
         Parameters
@@ -229,7 +232,7 @@ class ThermalScattering(object):
         name = group.name[1:]
         atomic_weight_ratio = group.attrs['atomic_weight_ratio']
         temperature = group.attrs['temperature']
-        table = ThermalScattering(name, atomic_weight_ratio, temperature)
+        table = cls(name, atomic_weight_ratio, temperature)
         table.zaids = group.attrs['zaids']
 
         # Read thermal elastic scattering
@@ -363,7 +366,7 @@ class ThermalScattering(object):
             # Create correlated angle-energy distribution
             breakpoints = [n_energy]
             interpolation = [2]
-            energy = inelastic_xs.x
+            energy = table.inelastic_xs.x
             table.inelastic_dist = CorrelatedAngleEnergy(
                 breakpoints, interpolation, energy, energy_out, mu_out)
 

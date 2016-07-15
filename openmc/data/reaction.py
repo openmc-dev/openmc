@@ -103,7 +103,7 @@ def _get_fission_products(ace):
         idx = ace.jxs[25]
         n_group = ace.nxs[8]
         total_group_probability = 0.
-        for i, group in enumerate(range(n_group)):
+        for group in range(n_group):
             delayed_neutron = Product('neutron')
             delayed_neutron.emission_mode = 'delayed'
             delayed_neutron.decay_rate = ace.xss[idx]
@@ -201,14 +201,14 @@ def _get_photon_products(ace, mt):
             n_energy = int(ace.xss[idx + 1])
             photon._xs = ace.xss[idx + 2:idx + 2 + n_energy]
 
-            # Determine yield based on ratio of cross sections
+            # TODO: Determine yield based on ratio of cross sections
             energy = ace.xss[ace.jxs[1] + threshold_idx:
                              ace.jxs[1] + threshold_idx + n_energy]
             photon.yield_ = Tabulated1D(energy, photon._xs)
 
         else:
             raise ValueError("MFTYPE must be 12, 13, 16. Got {0}".format(
-                    mftype))
+                mftype))
 
         # ==================================================================
         # Photon energy distribution

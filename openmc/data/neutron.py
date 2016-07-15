@@ -1,25 +1,17 @@
 from __future__ import division, unicode_literals
-import io
 import sys
-from warnings import warn
 from collections import OrderedDict, Iterable, Mapping
-from copy import deepcopy
 from numbers import Integral, Real
-import sys
 
 import numpy as np
-from numpy.polynomial import Polynomial
 import h5py
 
-from . import atomic_number, atomic_symbol
+from . import atomic_symbol
 from .ace import Table, get_table
 from .container import Tabulated1D
-from .energy_distribution import *
 from .product import Product
 from .reaction import Reaction, _get_photon_products
-from .thermal import CoherentElastic
 from .urr import ProbabilityTables
-from openmc.stats import Tabular, Discrete, Uniform, Mixture
 import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
@@ -243,7 +235,7 @@ class IncidentNeutron(object):
         f.close()
 
     @classmethod
-    def from_hdf5(self, group_or_filename):
+    def from_hdf5(cls, group_or_filename):
         """Generate continuous-energy neutron interaction data from HDF5 group
 
         Parameters
@@ -255,7 +247,7 @@ class IncidentNeutron(object):
 
         Returns
         -------
-        openmc.data.ace.IncidentNeutron
+        openmc.data.IncidentNeutron
             Continuous-energy neutron interaction data
 
         """
@@ -272,8 +264,8 @@ class IncidentNeutron(object):
         atomic_weight_ratio = group.attrs['atomic_weight_ratio']
         temperature = group.attrs['temperature']
 
-        data = IncidentNeutron(name, atomic_number, mass_number, metastable,
-                               atomic_weight_ratio, temperature)
+        data = cls(name, atomic_number, mass_number, metastable,
+                   atomic_weight_ratio, temperature)
 
         # Read energy grid
         data.energy = group['energy'].value
@@ -362,8 +354,8 @@ class IncidentNeutron(object):
         else:
             name = '{}{}.{}'.format(element, mass_number, xs)
 
-        data = IncidentNeutron(name, Z, mass_number, metastable,
-                               ace.atomic_weight_ratio, ace.temperature)
+        data = cls(name, Z, mass_number, metastable,
+                   ace.atomic_weight_ratio, ace.temperature)
 
         # Read energy grid
         n_energy = ace.nxs[3]

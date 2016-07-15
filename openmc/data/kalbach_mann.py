@@ -1,11 +1,12 @@
 from collections import Iterable
 from numbers import Real, Integral
+from warnings import warn
 
 import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.stats import Tabular, Univariate, Discrete, Mixture
-from .container import Tabulated1D, interpolation_scheme
+from .container import Tabulated1D, INTERPOLATION_SCHEME
 from .angle_energy import AngleEnergy
 
 
@@ -228,7 +229,7 @@ class KalbachMann(AngleEnergy):
 
             # Create continuous distribution
             if m < n:
-                interp = interpolation_scheme[interpolation[i]]
+                interp = INTERPOLATION_SCHEME[interpolation[i]]
                 eout_continuous = Tabular(data[0, j+m:j+n], data[1, j+m:j+n], interp)
                 eout_continuous.c = data[2, j+m:j+n]
 
@@ -318,8 +319,8 @@ class KalbachMann(AngleEnergy):
 
             # Create continuous distribution
             eout_continuous = Tabular(data[0][n_discrete_lines:],
-                             data[1][n_discrete_lines:],
-                             interpolation_scheme[intt])
+                                      data[1][n_discrete_lines:],
+                                      INTERPOLATION_SCHEME[intt])
             eout_continuous.c = data[2][n_discrete_lines:]
 
             # If discrete lines are present, create a mixture distribution

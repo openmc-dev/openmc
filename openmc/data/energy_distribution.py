@@ -3,10 +3,9 @@ from collections import Iterable
 from numbers import Integral, Real
 from warnings import warn
 
-import h5py
 import numpy as np
 
-from openmc.data.container import Tabulated1D, interpolation_scheme
+from openmc.data.container import Tabulated1D, INTERPOLATION_SCHEME
 from openmc.stats.univariate import Univariate, Tabular, Discrete, Mixture
 import openmc.checkvalue as cv
 
@@ -78,11 +77,12 @@ class ArbitraryTabulated(EnergyDistribution):
     """
 
     def __init__(self, energy, pdf):
+        super(ArbitraryTabulated, self).__init__()
         self.energy = energy
         self.pdf = pdf
 
     def to_hdf5(self, group):
-        NotImplementedError
+        raise NotImplementedError
 
 
 class GeneralEvaporation(EnergyDistribution):
@@ -114,11 +114,16 @@ class GeneralEvaporation(EnergyDistribution):
     """
 
     def __init__(self, theta, g, u):
+        super(GeneralEvaporation, self).__init__()
         self.theta = theta
         self.g = g
         self.u = u
 
     def to_hdf5(self, group):
+        raise NotImplementedError
+
+    @classmethod
+    def from_ace(cls, ace, idx=0):
         raise NotImplementedError
 
 
@@ -147,6 +152,7 @@ class MaxwellEnergy(EnergyDistribution):
     """
 
     def __init__(self, theta, u):
+        super(MaxwellEnergy, self).__init__()
         self.theta = theta
         self.u = u
 
@@ -254,6 +260,7 @@ class Evaporation(EnergyDistribution):
     """
 
     def __init__(self, theta, u):
+        super(Evaporation, self).__init__()
         self.theta = theta
         self.u = u
 
@@ -364,6 +371,7 @@ class WattEnergy(EnergyDistribution):
     """
 
     def __init__(self, a, b, u):
+        super(WattEnergy, self).__init__()
         self.a = a
         self.b = b
         self.u = u
@@ -504,6 +512,7 @@ class MadlandNix(EnergyDistribution):
     """
 
     def __init__(self, efl, efh, tm):
+        super(MadlandNix, self).__init__()
         self.efl = efl
         self.efh = efh
         self.tm = tm
@@ -966,7 +975,7 @@ class ContinuousTabular(EnergyDistribution):
 
             # Create continuous distribution
             if m < n:
-                interp = interpolation_scheme[interpolation[i]]
+                interp = INTERPOLATION_SCHEME[interpolation[i]]
                 eout_continuous = Tabular(data[0, j+m:j+n], data[1, j+m:j+n], interp)
                 eout_continuous.c = data[2, j+m:j+n]
 
@@ -1048,8 +1057,8 @@ class ContinuousTabular(EnergyDistribution):
 
             # Create continuous distribution
             eout_continuous = Tabular(data[0][n_discrete_lines:],
-                             data[1][n_discrete_lines:],
-                             interpolation_scheme[intt])
+                                      data[1][n_discrete_lines:],
+                                      INTERPOLATION_SCHEME[intt])
             eout_continuous.c = data[2][n_discrete_lines:]
 
             # If discrete lines are present, create a mixture distribution

@@ -1,11 +1,12 @@
 from collections import Iterable
 from numbers import Real, Integral
+from warnings import warn
 
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.stats import Tabular, Univariate, Discrete, Mixture
-from .container import interpolation_scheme
+from openmc.stats import Tabular, Univariate, Discrete, Mixture, Uniform
+from .container import INTERPOLATION_SCHEME
 from .angle_energy import AngleEnergy
 
 
@@ -237,7 +238,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
 
             # Create continuous distribution
             if m < n:
-                interp = interpolation_scheme[interpolation[i]]
+                interp = INTERPOLATION_SCHEME[interpolation[i]]
 
                 x = dset_eout[0, offset_e+m:offset_e+n]
                 p = dset_eout[1, offset_e+m:offset_e+n]
@@ -275,7 +276,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
                 if interp_code == 0:
                     mu_ij = Discrete(x, p)
                 else:
-                    mu_ij = Tabular(x, p, interpolation_scheme[interp_code],
+                    mu_ij = Tabular(x, p, INTERPOLATION_SCHEME[interp_code],
                                     ignore_negative=True)
                 mu_ij.c = c
                 mu_i.append(mu_ij)
@@ -284,8 +285,6 @@ class CorrelatedAngleEnergy(AngleEnergy):
 
             energy_out.append(eout_i)
             mu.append(mu_i)
-
-            j += n
 
         return cls(energy_breakpoints, energy_interpolation,
                    energy, energy_out, mu)
@@ -357,7 +356,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
             # Create continuous distribution
             eout_continuous = Tabular(data[0][n_discrete_lines:],
                                       data[1][n_discrete_lines:],
-                                      interpolation_scheme[intt],
+                                      INTERPOLATION_SCHEME[intt],
                                       ignore_negative=True)
             eout_continuous.c = data[2][n_discrete_lines:]
 
@@ -390,7 +389,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
                     data = ace.xss[idx + 2:idx + 2 + 3*n_cosine]
                     data.shape = (3, n_cosine)
 
-                    mu_ij = Tabular(data[0], data[1], interpolation_scheme[intt])
+                    mu_ij = Tabular(data[0], data[1], INTERPOLATION_SCHEME[intt])
                     mu_ij.c = data[2]
                 else:
                     # Isotropic distribution

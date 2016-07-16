@@ -412,7 +412,7 @@ contains
 
       ! Set up mesh filter
       n_filters = 1
-      allocate(MeshFilter::filters(n_filters) % obj)
+      allocate(MeshFilter :: filters(n_filters) % obj)
       select type (filt => filters(n_filters) % obj)
       type is (MeshFilter)
         filt % n_bins = product(m % dimension)
@@ -423,7 +423,7 @@ contains
       ! Read and set incoming energy mesh filter
       if (check_for_node(node_mesh, "energy")) then
         n_filters = n_filters + 1
-        allocate(EnergyFilter::filters(n_filters) % obj)
+        allocate(EnergyFilter :: filters(n_filters) % obj)
         select type (filt => filters(n_filters) % obj)
         type is (EnergyFilter)
           ng = get_arraysize_double(node_mesh, "energy")
@@ -454,7 +454,6 @@ contains
         t % type = TALLY_VOLUME
 
         ! Allocate and set filters
-        t % n_filters = n_filters
         allocate(t % filters(n_filters))
         do j = 1, n_filters
           call move_alloc(filters(j) % obj, t % filters(j) % obj)
@@ -489,7 +488,7 @@ contains
         ! read and set outgoing energy mesh filter
         if (check_for_node(node_mesh, "energy")) then
           n_filters = n_filters + 1
-          allocate(EnergyoutFilter::filters(n_filters) % obj)
+          allocate(EnergyoutFilter :: filters(n_filters) % obj)
           select type (filt => filters(n_filters) % obj)
           type is (EnergyoutFilter)
             ng = get_arraysize_double(node_mesh, "energy")
@@ -501,7 +500,6 @@ contains
         end if
 
         ! Allocate and set filters
-        t % n_filters = n_filters
         allocate(t % filters(n_filters))
         do j = 1, n_filters
           call move_alloc(filters(j) % obj, t % filters(j) % obj)
@@ -530,7 +528,7 @@ contains
 
         ! Add extra filter for surface
         n_filters = n_filters + 1
-        allocate(SurfaceFilter::filters(n_filters) % obj)
+        allocate(SurfaceFilter :: filters(n_filters) % obj)
         select type(filt => filters(n_filters) % obj)
         type is(SurfaceFilter)
           filt % n_bins = 2 * m % n_dimension
@@ -545,7 +543,6 @@ contains
         t % find_filter(FILTER_SURFACE) = n_filters
 
         ! Allocate and set filters
-        t % n_filters = n_filters
         allocate(t % filters(n_filters))
         do j = 1, n_filters
           call move_alloc(filters(j) % obj, t % filters(j) % obj)

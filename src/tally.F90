@@ -1367,7 +1367,7 @@ contains
 
       ! Find the first bin in each filter. There may be more than one matching
       ! bin per filter, but we'll deal with those later.
-      do i_filt = 1, t % n_filters
+      do i_filt = 1, size(t % filters)
         call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
              NO_BIN_FOUND, matching_bins(i_filt), filter_weights(i_filt))
         ! If there are no valid bins for this filter, then there is nothing to
@@ -1382,8 +1382,9 @@ contains
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
-        filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-        filter_weight = product(filter_weights(:t % n_filters))
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        filter_weight = product(filter_weights(:size(t % filters)))
 
         ! ======================================================================
         ! Nuclide logic
@@ -1434,13 +1435,13 @@ contains
         ! Filter logic
 
         ! If there are no filters, then we are done.
-        if (t % n_filters == 0) exit FILTER_LOOP
+        if (size(t % filters) == 0) exit FILTER_LOOP
 
         ! Increment the filter bins, starting with the last filter. If we get a
         ! NO_BIN_FOUND for the last filter, it means we finished all valid bins
         ! for that filter, but next-to-last filter might have more than one
         ! valid bin so we need to increment that one as well, and so on.
-        do i_filt = t % n_filters, 1, -1
+        do i_filt = size(t % filters), 1, -1
           call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
                matching_bins(i_filt), matching_bins(i_filt), &
                filter_weights(i_filt))
@@ -1449,11 +1450,12 @@ contains
 
         ! If we got all NO_BIN_FOUNDs, then we have finished all valid bins for
         ! each of the filters. Exit the loop.
-        if (all(matching_bins(:t % n_filters) == NO_BIN_FOUND)) exit FILTER_LOOP
+        if (all(matching_bins(:size(t % filters)) == NO_BIN_FOUND)) &
+             exit FILTER_LOOP
 
         ! Reset all the filters with NO_BIN_FOUND. This will set them back to
         ! their first valid bin.
-        do i_filt = 1, t % n_filters
+        do i_filt = 1, size(t % filters)
           if (matching_bins(i_filt) == NO_BIN_FOUND) then
             call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
                  matching_bins(i_filt), matching_bins(i_filt), &
@@ -1506,7 +1508,7 @@ contains
 
       ! Find the first bin in each filter. There may be more than one matching
       ! bin per filter, but we'll deal with those later.
-      do i_filt = 1, t % n_filters
+      do i_filt = 1, size(t % filters)
         call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
              NO_BIN_FOUND, matching_bins(i_filt), filter_weights(i_filt))
         ! If there are no valid bins for this filter, then there is nothing to
@@ -1521,8 +1523,9 @@ contains
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
-        filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-        filter_weight = product(filter_weights(:t % n_filters))
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        filter_weight = product(filter_weights(:size(t % filters)))
 
         ! ======================================================================
         ! Nuclide logic
@@ -1554,13 +1557,13 @@ contains
         ! Filter logic
 
         ! If there are no filters, then we are done.
-        if (t % n_filters == 0) exit FILTER_LOOP
+        if (size(t % filters) == 0) exit FILTER_LOOP
 
         ! Increment the filter bins, starting with the last filter. If we get a
         ! NO_BIN_FOUND for the last filter, it means we finished all valid bins
         ! for that filter, but next-to-last filter might have more than one
         ! valid bin so we need to increment that one as well, and so on.
-        do i_filt = t % n_filters, 1, -1
+        do i_filt = size(t % filters), 1, -1
           call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
                matching_bins(i_filt), matching_bins(i_filt), &
                filter_weights(i_filt))
@@ -1569,11 +1572,12 @@ contains
 
         ! If we got all NO_BIN_FOUNDs, then we have finished all valid bins for
         ! each of the filters. Exit the loop.
-        if (all(matching_bins(:t % n_filters) == NO_BIN_FOUND)) exit FILTER_LOOP
+        if (all(matching_bins(:size(t % filters)) == NO_BIN_FOUND)) &
+             exit FILTER_LOOP
 
         ! Reset all the filters with NO_BIN_FOUND. This will set them back to
         ! their first valid bin.
-        do i_filt = 1, t % n_filters
+        do i_filt = 1, size(t % filters)
           if (matching_bins(i_filt) == NO_BIN_FOUND) then
             call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
                  matching_bins(i_filt), matching_bins(i_filt), &
@@ -1647,7 +1651,7 @@ contains
         matching_bins(i) = binary_search(filt % bins, n, E_out)
 
         ! determine scoring index
-        i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+        i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride) + 1
 
         ! Add score to tally
 !$omp atomic
@@ -1729,7 +1733,7 @@ contains
         end if
 
         ! determine scoring index
-        i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+        i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride) + 1
 
         ! Add score to tally
 !$omp atomic
@@ -1832,7 +1836,8 @@ contains
           else
 
             ! determine scoring index
-            i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride)&
+                 + 1
 
             ! Add score to tally
 !$omp atomic
@@ -1868,7 +1873,8 @@ contains
     matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = d_bin
 
     ! Compute the filter index based on the modified matching_bins
-    filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+    filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+         * t % stride) + 1
 
 !$omp atomic
     t % results(score_index, filter_index) % value = &
@@ -1917,7 +1923,7 @@ contains
 
       ! Find the first bin in each filter. There may be more than one matching
       ! bin per filter, but we'll deal with those later.
-      do i_filt = 1, t % n_filters
+      do i_filt = 1, size(t % filters)
         call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
              NO_BIN_FOUND, matching_bins(i_filt), filter_weights(i_filt))
         ! If there are no valid bins for this filter, then there is nothing to
@@ -1932,8 +1938,9 @@ contains
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
-        filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-        filter_weight = product(filter_weights(:t % n_filters))
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        filter_weight = product(filter_weights(:size(t % filters)))
 
         ! ======================================================================
         ! Nuclide logic
@@ -1984,13 +1991,13 @@ contains
         ! Filter logic
 
         ! If there are no filters, then we are done.
-        if (t % n_filters == 0) exit FILTER_LOOP
+        if (size(t % filters) == 0) exit FILTER_LOOP
 
         ! Increment the filter bins, starting with the last filter. If we get a
         ! NO_BIN_FOUND for the last filter, it means we finished all valid bins
         ! for that filter, but next-to-last filter might have more than one
         ! valid bin so we need to increment that one as well, and so on.
-        do i_filt = t % n_filters, 1, -1
+        do i_filt = size(t % filters), 1, -1
           call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
                matching_bins(i_filt), matching_bins(i_filt), &
                filter_weights(i_filt))
@@ -1999,11 +2006,12 @@ contains
 
         ! If we got all NO_BIN_FOUNDs, then we have finished all valid bins for
         ! each of the filters. Exit the loop.
-        if (all(matching_bins(:t % n_filters) == NO_BIN_FOUND)) exit FILTER_LOOP
+        if (all(matching_bins(:size(t % filters)) == NO_BIN_FOUND)) &
+             exit FILTER_LOOP
 
         ! Reset all the filters with NO_BIN_FOUND. This will set them back to
         ! their first valid bin.
-        do i_filt = 1, t % n_filters
+        do i_filt = 1, size(t % filters)
           if (matching_bins(i_filt) == NO_BIN_FOUND) then
             call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
                  matching_bins(i_filt), matching_bins(i_filt), &
@@ -2070,7 +2078,7 @@ contains
 
       ! Find the first bin in each filter. There may be more than one matching
       ! bin per filter, but we'll deal with those later.
-      do i_filt = 1, t % n_filters
+      do i_filt = 1, size(t % filters)
         call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
              NO_BIN_FOUND, matching_bins(i_filt), filter_weights(i_filt))
         ! If there are no valid bins for this filter, then there is nothing to
@@ -2085,8 +2093,9 @@ contains
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
-        filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-        filter_weight = product(filter_weights(:t % n_filters))
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        filter_weight = product(filter_weights(:size(t % filters)))
 
         ! ======================================================================
         ! Nuclide logic
@@ -2137,13 +2146,13 @@ contains
         ! Filter logic
 
         ! If there are no filters, then we are done.
-        if (t % n_filters == 0) exit FILTER_LOOP
+        if (size(t % filters) == 0) exit FILTER_LOOP
 
         ! Increment the filter bins, starting with the last filter. If we get a
         ! NO_BIN_FOUND for the last filter, it means we finished all valid bins
         ! for that filter, but next-to-last filter might have more than one
         ! valid bin so we need to increment that one as well, and so on.
-        do i_filt = t % n_filters, 1, -1
+        do i_filt = size(t % filters), 1, -1
           call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
                matching_bins(i_filt), matching_bins(i_filt), &
                filter_weights(i_filt))
@@ -2152,11 +2161,12 @@ contains
 
         ! If we got all NO_BIN_FOUNDs, then we have finished all valid bins for
         ! each of the filters. Exit the loop.
-        if (all(matching_bins(:t % n_filters) == NO_BIN_FOUND)) exit FILTER_LOOP
+        if (all(matching_bins(:size(t % filters)) == NO_BIN_FOUND)) &
+             exit FILTER_LOOP
 
         ! Reset all the filters with NO_BIN_FOUND. This will set them back to
         ! their first valid bin.
-        do i_filt = 1, t % n_filters
+        do i_filt = 1, size(t % filters)
           if (matching_bins(i_filt) == NO_BIN_FOUND) then
             call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
                  matching_bins(i_filt), matching_bins(i_filt), &
@@ -2280,7 +2290,8 @@ contains
               matching_bins(i_filter_surf) = OUT_TOP
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2293,7 +2304,8 @@ contains
               matching_bins(i_filter_surf) = IN_TOP
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2310,7 +2322,8 @@ contains
               matching_bins(i_filter_surf) = OUT_FRONT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2323,7 +2336,8 @@ contains
               matching_bins(i_filter_surf) = IN_FRONT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2340,7 +2354,8 @@ contains
               matching_bins(i_filter_surf) = OUT_RIGHT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2353,7 +2368,8 @@ contains
               matching_bins(i_filter_surf) = IN_RIGHT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2469,7 +2485,8 @@ contains
 
         ! Determine scoring index
         if (matching_bins(i_filter_surf) > 0) then
-          filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+               * t % stride) + 1
 
           ! Check for errors
           if (filter_index <= 0 .or. filter_index > &

@@ -32,10 +32,6 @@ module tally_header
     integer :: type                 ! volume, surface current
     integer :: estimator            ! collision, track-length
     real(8) :: volume               ! volume of region
-
-    ! Information about what filters should be used
-
-    integer                                 :: n_filters  ! Number of filters
     type(TallyFilterContainer), allocatable :: filters(:)
 
     ! The stride attribute is used for determining the index in the results

@@ -44,15 +44,15 @@ contains
       t => tallies(i)
 
       ! Allocate stride and matching_bins arrays
-      allocate(t % stride(t % n_filters))
-      max_n_filters = max(max_n_filters, t % n_filters)
+      allocate(t % stride(size(t % filters)))
+      max_n_filters = max(max_n_filters, size(t % filters))
 
       ! The filters are traversed in opposite order so that the last filter has
       ! the shortest stride in memory and the first filter has the largest
       ! stride
 
       n = 1
-      STRIDE: do j = t % n_filters, 1, -1
+      STRIDE: do j = size(t % filters), 1, -1
         t % stride(j) = n
         n = n * t % filters(j) % obj % n_bins
       end do STRIDE

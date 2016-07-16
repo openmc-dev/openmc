@@ -166,7 +166,7 @@ contains
           else
 
             ! Initialize bins, filter level
-            matching_bins(1:t % n_filters) = 0
+            matching_bins(1:size(t % filters)) = 0
 
             FILTER_LOOP: do filter_index = 1, t % total_filter_bins
 
@@ -266,7 +266,7 @@ contains
                   end if
                 end if
               end do NUCLIDE_LOOP
-              if (t % n_filters == 0) exit FILTER_LOOP
+              if (size(t % filters) == 0) exit FILTER_LOOP
             end do FILTER_LOOP
           end if
         end do TRIGGER_LOOP
@@ -307,7 +307,7 @@ contains
     end select
 
     ! initialize bins array
-    matching_bins(1:t % n_filters) = 1
+    matching_bins(1:size(t % filters)) = 1
 
     ! determine how many energyin bins there are
     i_filter_ein = t % find_filter(FILTER_ENERGYIN)
@@ -333,7 +333,7 @@ contains
                  mesh_indices_to_bin(m, (/ i-1, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
@@ -345,7 +345,7 @@ contains
 
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
@@ -360,7 +360,7 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
@@ -372,7 +372,7 @@ contains
 
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
@@ -387,7 +387,7 @@ contains
                  mesh_indices_to_bin(m, (/ i, j-1, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_FRONT
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
@@ -400,7 +400,7 @@ contains
 
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
@@ -415,7 +415,7 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_FRONT
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
@@ -427,7 +427,7 @@ contains
 
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
@@ -442,7 +442,7 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
@@ -454,7 +454,7 @@ contains
 
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
@@ -469,7 +469,7 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev
@@ -481,7 +481,7 @@ contains
 
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = &
-                 sum((matching_bins(1:t % n_filters) - 1) * t % stride) + 1
+                 sum((matching_bins(1:size(t % filters)) - 1) * t % stride) + 1
             call get_trigger_uncertainty(std_dev, rel_err, 1, filter_index, t)
             if (trigger % std_dev < std_dev) then
               trigger % std_dev = std_dev

@@ -166,7 +166,7 @@ class Filter(object):
         # If the bin is 0D numpy array, promote to 1D
         elif isinstance(bins, np.ndarray):
             if bins.shape == ():
-                bins = bins.reshape((1,))
+                bins.shape = (1,)
 
         # If the bins are in a collection, convert it to a list
         else:

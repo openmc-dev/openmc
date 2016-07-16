@@ -625,9 +625,9 @@ contains
       call write_dataset(tally_group, "name", t%name)
 
       ! Write number of filters
-      call write_dataset(tally_group, "n_filters", t%n_filters)
+      call write_dataset(tally_group, "n_filters", size(t % filters))
 
-      FILTER_LOOP: do j = 1, t % n_filters
+      FILTER_LOOP: do j = 1, size(t % filters)
         filter_group = create_group(tally_group, "filter " // trim(to_str(j)))
         call t % filters(j) % obj % to_summary(filter_group)
         call close_group(filter_group)

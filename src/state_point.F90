@@ -237,10 +237,10 @@ contains
           end select
           call write_dataset(tally_group, "n_realizations", &
                tally % n_realizations)
-          call write_dataset(tally_group, "n_filters", tally % n_filters)
+          call write_dataset(tally_group, "n_filters", size(tally % filters))
 
           ! Write filter information
-          FILTER_LOOP: do j = 1, tally % n_filters
+          FILTER_LOOP: do j = 1, size(tally % filters)
             filter_group = create_group(tally_group, "filter " // &
                  trim(to_str(j)))
             call tally % filters(j) % obj % to_statepoint(filter_group)

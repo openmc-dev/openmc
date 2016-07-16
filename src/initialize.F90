@@ -723,7 +723,7 @@ contains
       ! =======================================================================
       ! ADJUST INDICES FOR EACH TALLY FILTER
 
-      FILTER_LOOP: do j = 1, t % n_filters
+      FILTER_LOOP: do j = 1, size(t % filters)
 
         select type(filt => t % filters(j) % obj)
         type is (SurfaceFilter)
@@ -910,7 +910,7 @@ contains
 
     ! We need distribcell if any tallies have distribcell filters.
     do i = 1, n_tallies
-      do j = 1, tallies(i) % n_filters
+      do j = 1, size(tallies(i) % filters)
         select type(filt => tallies(i) % filters(j) % obj)
         type is (DistribcellFilter)
           distribcell_active = .true.
@@ -937,7 +937,7 @@ contains
 
     ! Set the number of bins in all distribcell filters.
     do i = 1, n_tallies
-      do j = 1, tallies(i) % n_filters
+      do j = 1, size(tallies(i) % filters)
         select type(filt => tallies(i) % filters(j) % obj)
         type is (DistribcellFilter)
           ! Set the number of bins to the number of instances of the cell.
@@ -1002,7 +1002,7 @@ contains
 
     ! List all cells referenced in distribcell filters.
     do i = 1, n_tallies
-      do j = 1, tallies(i) % n_filters
+      do j = 1, size(tallies(i) % filters)
         select type(filt => tallies(i) % filters(j) % obj)
         type is (DistribcellFilter)
           call cell_list % add(filt % cell)

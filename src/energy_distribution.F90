@@ -1,9 +1,10 @@
 module energy_distribution
 
+  use hdf5
+
   use constants,     only: ZERO, ONE, HALF, TWO, PI, HISTOGRAM, LINEAR_LINEAR
   use endf_header,   only: Tabulated1D
   use hdf5_interface
-  use hdf5
   use math,          only: maxwell_spectrum, watt_spectrum
   use random_lcg,    only: prn
   use search,        only: binary_search

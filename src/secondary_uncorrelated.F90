@@ -1,13 +1,14 @@
 module secondary_uncorrelated
 
+  use h5lt, only: h5ltpath_valid_f
+  use hdf5, only: HID_T
+
   use angle_distribution, only: AngleDistribution
   use angleenergy_header, only: AngleEnergy
   use constants, only: ONE, TWO, MAX_WORD_LEN
   use energy_distribution, only: EnergyDistribution, LevelInelastic, &
        ContinuousTabular, MaxwellEnergy, Evaporation, WattEnergy, DiscretePhoton
   use error, only: warning
-  use h5lt, only: h5ltpath_valid_f
-  use hdf5, only: HID_T
   use hdf5_interface, only: read_attribute, open_group, close_group
   use random_lcg, only: prn
 

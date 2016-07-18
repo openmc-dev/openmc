@@ -188,7 +188,7 @@ class ThermalScattering(object):
 
         """
 
-        f = h5py.File(path, mode)
+        f = h5py.File(path, mode, libver='latest')
 
         # Write basic data
         g = f.create_group(self.name)

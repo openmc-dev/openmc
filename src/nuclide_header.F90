@@ -2,13 +2,14 @@ module nuclide_header
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
+  use hdf5,        only: HID_T, HSIZE_T, SIZE_T, h5iget_name_f
+  use h5lt,        only: h5ltpath_valid_f
+
   use constants
   use dict_header, only: DictIntInt
   use endf,        only: reaction_name, is_fission, is_disappearance
   use endf_header, only: Function1D, Constant1D, Polynomial, Tabulated1D
   use error,       only: fatal_error, warning
-  use hdf5,        only: HID_T, HSIZE_T, SIZE_T, h5iget_name_f
-  use h5lt,        only: h5ltpath_valid_f
   use hdf5_interface, only: read_attribute, open_group, close_group, &
        open_dataset, read_dataset, close_dataset, get_shape
   use list_header, only: ListInt

@@ -1,9 +1,10 @@
 module endf_header
 
+  use hdf5, only: HID_T, HSIZE_T
+
   use constants, only: ZERO, HISTOGRAM, LINEAR_LINEAR, LINEAR_LOG, &
        LOG_LINEAR, LOG_LOG
   use hdf5_interface
-  use hdf5, only: HID_T, HSIZE_T
   use search, only: binary_search
 
   implicit none
@@ -157,25 +158,25 @@ contains
 
     ! Determine number of regions
     nr = nint(xss(idx))
-    this%n_regions = nr
+    this % n_regions = nr
 
     ! Read interpolation region data
     if (nr > 0) then
-      allocate(this%nbt(nr))
-      allocate(this%int(nr))
-      this%nbt(:) = nint(xss(idx + 1 : idx + nr))
-      this%int(:) = nint(xss(idx + nr + 1 : idx + 2*nr))
+      allocate(this % nbt(nr))
+      allocate(this % int(nr))
+      this % nbt(:) = nint(xss(idx + 1 : idx + nr))
+      this % int(:) = nint(xss(idx + nr + 1 : idx + 2*nr))
     end if
 
     ! Determine number of pairs
     ne = int(XSS(idx + 2*nr + 1))
-    this%n_pairs = ne
+    this % n_pairs = ne
 
     ! Read (x,y) pairs
-    allocate(this%x(ne))
-    allocate(this%y(ne))
-    this%x(:) = xss(idx + 2*nr + 2 : idx + 2*nr + 1 + ne)
-    this%y(:) = xss(idx + 2*nr + 2 + ne : idx + 2*nr + 1 + 2*ne)
+    allocate(this % x(ne))
+    allocate(this % y(ne))
+    this % x(:) = xss(idx + 2*nr + 2 : idx + 2*nr + 1 + ne)
+    this % y(:) = xss(idx + 2*nr + 2 + ne : idx + 2*nr + 1 + 2*ne)
   end subroutine tabulated1d_from_ace
 
   subroutine tabulated1d_from_hdf5(this, dset_id)
@@ -185,19 +186,19 @@ contains
     real(8), allocatable :: xy(:,:)
     integer(HSIZE_T) :: dims(2)
 
-    call read_attribute(this%nbt, dset_id, 'breakpoints')
-    call read_attribute(this%int, dset_id, 'interpolation')
-    this%n_regions = size(this%nbt)
+    call read_attribute(this % nbt, dset_id, 'breakpoints')
+    call read_attribute(this % int, dset_id, 'interpolation')
+    this % n_regions = size(this % nbt)
 
     call get_shape(dset_id, dims)
-    this%n_pairs = int(dims(1), 4)
-    allocate(this%x(this%n_pairs))
-    allocate(this%y(this%n_pairs))
+    this % n_pairs = int(dims(1), 4)
+    allocate(this % x(this % n_pairs))
+    allocate(this % y(this % n_pairs))
 
     allocate(xy(dims(1), dims(2)))
     call read_dataset(xy, dset_id)
-    this%x(:) = xy(:,1)
-    this%y(:) = xy(:,2)
+    this % x(:) = xy(:,1)
+    this % y(:) = xy(:,2)
   end subroutine tabulated1d_from_hdf5
 
   pure function tabulated1d_evaluate(this, x) result(y)

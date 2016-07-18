@@ -1,8 +1,9 @@
 module angle_distribution
 
+  use hdf5, only: HID_T, HSIZE_T
+
   use constants, only: ZERO, ONE, HISTOGRAM, LINEAR_LINEAR
   use distribution_univariate, only: DistributionContainer, Tabular
-  use hdf5, only: HID_T, HSIZE_T
   use hdf5_interface, only: read_attribute, get_shape, read_dataset, &
        open_dataset, close_dataset
   use random_lcg, only: prn
@@ -81,9 +82,9 @@ contains
     dset_id = open_dataset(group_id, 'energy')
     call get_shape(dset_id, dims)
     n_energy = int(dims(1), 4)
-    allocate(this%energy(n_energy))
-    allocate(this%distribution(n_energy))
-    call read_dataset(this%energy, dset_id)
+    allocate(this % energy(n_energy))
+    allocate(this % distribution(n_energy))
+    call read_dataset(this % energy, dset_id)
     call close_dataset(dset_id)
 
     ! Get outgoing energy distribution data
@@ -105,8 +106,8 @@ contains
       end if
 
       ! Create and initialize tabular distribution
-      allocate(Tabular :: this%distribution(i)%obj)
-      select type (mudist => this%distribution(i)%obj)
+      allocate(Tabular :: this % distribution(i) % obj)
+      select type (mudist => this % distribution(i) % obj)
       type is (Tabular)
         mudist % interpolation = interp(i)
         allocate(mudist % x(n), mudist % p(n), mudist % c(n))

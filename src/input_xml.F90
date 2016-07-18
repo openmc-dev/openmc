@@ -1,5 +1,7 @@
 module input_xml
 
+  use hdf5
+
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
@@ -10,6 +12,7 @@ module input_xml
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
   use global
+  use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
   use mesh_header,      only: RegularMesh
   use multipole,        only: multipole_read
@@ -24,9 +27,6 @@ module input_xml
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
   use xml_interface
-
-  use hdf5
-  use hdf5_interface
 
   implicit none
   save
@@ -2087,14 +2087,14 @@ contains
     call read_materials_xml(libraries, library_dict)
 
     ! Read continuous-energy cross sections
-    if (run_CE) then
+    if (run_CE .and. run_mode /= MODE_PLOTTING) then
       call time_read_xs%start()
       call read_ce_cross_sections(libraries, library_dict)
       call time_read_xs%stop()
     end if
 
     ! Normalize atom/weight percents
-    call normalize_ao()
+    if (run_mode /= MODE_PLOTTING) call normalize_ao()
 
     ! Clear dictionary
     call library_dict % clear()
@@ -3294,11 +3294,6 @@ contains
 
             ! If a specific nuclide was specified
             word = to_lower(sarray(j))
-
-!!$            ! Append default_xs specifier to nuclide if needed
-!!$            if ((default_xs /= '') .and. (.not. ends_with(sarray(j), 'c'))) then
-!!$              word = trim(word) // "." // trim(default_xs)
-!!$            end if
 
             ! Search through nuclides
             pair_list => nuclide_dict % keys()

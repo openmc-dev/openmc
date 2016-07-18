@@ -1,8 +1,9 @@
 module secondary_nbody
 
+  use hdf5,               only: HID_T
+
   use angleenergy_header, only: AngleEnergy
   use constants,          only: ONE, TWO, PI
-  use hdf5,               only: HID_T
   use hdf5_interface,     only: read_attribute
   use math,               only: maxwell_spectrum
   use random_lcg,         only: prn

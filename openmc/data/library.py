@@ -23,7 +23,8 @@ class DataLibrary(object):
         root = ET.Element('cross_sections')
 
         # Determine common directory for library paths
-        common_dir = os.path.commonpath([lib['path'] for lib in self.libraries])
+        common_dir = os.path.dirname(os.path.commonprefix(
+            [lib['path'] for lib in self.libraries]))
         if common_dir == '':
             common_dir = '.'
 

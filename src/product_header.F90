@@ -1,10 +1,11 @@
 module product_header
 
+  use hdf5, only: HID_T
+
   use angleenergy_header, only: AngleEnergyContainer
   use constants, only: ZERO, MAX_WORD_LEN, EMISSION_PROMPT, EMISSION_DELAYED, &
        EMISSION_TOTAL, NEUTRON, PHOTON
   use endf_header, only: Tabulated1D, Function1D, Constant1D, Polynomial
-  use hdf5, only: HID_T
   use hdf5_interface, only: read_attribute, open_group, close_group, &
        open_dataset, close_dataset, read_dataset
   use random_lcg, only: prn

@@ -60,8 +60,14 @@ src/install_manifest.txt
 
 # Nuclear data
 data/nndc
+data/nndc_hdf5
 data/wmp
 data/multipole_lib.tar.gz
+data/ENDF-B-VII.1-*.tar.gz
+data/JEFF32-ACE-*.tar.gz
+data/TSLs.tar.gz
+data/jeff-3.2
+data/jeff-3.2-hdf5
 
 # Images
 *.ppm

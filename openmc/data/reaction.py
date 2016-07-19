@@ -2,6 +2,7 @@ from __future__ import division, unicode_literals
 from collections import Iterable
 from copy import deepcopy
 from numbers import Real
+from warnings import warn
 
 import numpy as np
 from numpy.polynomial import Polynomial
@@ -114,8 +115,15 @@ def _get_fission_products(ace):
                 delayed_neutron.yield_.y *= group_probability.y[0]
                 total_group_probability += group_probability.y[0]
             else:
-                raise NotImplementedError(
-                    'Delayed neutron with energy-dependent group probability')
+                # Get union energy grid and ensure energies are within
+                # interpolable range of both functions
+                max_energy = min(yield_delayed.x[-1], group_probability.x[-1])
+                energy = np.union1d(yield_delayed.x, group_probability.x)
+                energy = energy[energy <= max_energy]
+
+                # Calculate group yield
+                group_yield = yield_delayed(energy) * group_probability(energy)
+                delayed_neutron.yield_ = Tabulated1D(energy, group_yield)
 
             # Advance position
             nr = int(ace.xss[idx + 1])
@@ -132,7 +140,8 @@ def _get_fission_products(ace):
         # Renormalize delayed neutron yields to reflect fact that in ACE
         # file, the sum of the group probabilities is not exactly one
         for product in products[1:]:
-            product.yield_.y /= total_group_probability
+            if total_group_probability > 0.:
+                product.yield_.y /= total_group_probability
 
     return products, derived_products
 
@@ -427,6 +436,13 @@ class Reaction(object):
 
             # Read reaction cross section
             xs = ace.xss[ace.jxs[7] + loc + 1:ace.jxs[7] + loc + 1 + n_energy]
+
+            # Fix negatives -- known issue for Y89 in JEFF 3.2
+            if np.any(xs < 0.0):
+                warn("Negative cross sections found for MT={} in {}. Setting "
+                     "to zero.".format(rx.mt, ace.name))
+                xs[xs < 0.0] = 0.0
+
             rx.xs = Tabulated1D(energy, xs)
 
             # ==================================================================
@@ -476,7 +492,15 @@ class Reaction(object):
             mt = 2
             rx = cls(mt)
 
+            # Get elastic cross section values
             elastic_xs = ace.xss[ace.jxs[1] + 3*n_grid:ace.jxs[1] + 4*n_grid]
+
+            # Fix negatives -- known issue for Ti46,49,50 in JEFF 3.2
+            if np.any(elastic_xs < 0.0):
+                warn("Negative elastic scattering cross section found for {}. "
+                     "Setting to zero.".format(ace.name))
+                elastic_xs[elastic_xs < 0.0] = 0.0
+
             rx.xs = Tabulated1D(grid, elastic_xs)
 
             # No energy distribution for elastic scattering

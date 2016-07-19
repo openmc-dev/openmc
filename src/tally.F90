@@ -69,8 +69,10 @@ contains
 
 !===============================================================================
 ! SCORE_GENERAL* adds scores to the tally array for the given filter and
-! nuclide.  This will work for either analog or tracklength tallies.  Note that
-! atom_density and flux are not used for analog tallies.
+! nuclide.  This function is called by all volume tallies.  For analog tallies,
+! the flux estimate depends on the score type so the flux argument is really
+! just used for filter weights.  The atom_density argument is not used for
+! analog tallies.
 !===============================================================================
 
   subroutine score_general_ce(p, t, start_index, filter_index, i_nuclide, &
@@ -128,7 +130,7 @@ contains
           else
             score = p % last_wgt
           end if
-          score = score / material_xs % total
+          score = score / material_xs % total * flux
 
         else
           ! For flux, we need no cross section
@@ -144,9 +146,9 @@ contains
           if (survival_biasing) then
             ! We need to account for the fact that some weight was already
             ! absorbed
-            score = p % last_wgt + p % absorb_wgt
+            score = p % last_wgt + p % absorb_wgt * flux
           else
-            score = p % last_wgt
+            score = p % last_wgt * flux
           end if
 
         else
@@ -181,7 +183,7 @@ contains
           ! Score the flux weighted inverse velocity with velocity in units of
           ! cm/s
           score = score / material_xs % total &
-               / (sqrt(TWO * E / (MASS_NEUTRON_MEV)) * C_LIGHT * 100.0_8)
+               / (sqrt(TWO * E / (MASS_NEUTRON_MEV)) * C_LIGHT * 100.0_8) * flux
 
         else
           ! For inverse velocity, we don't need a cross section. The velocity is
@@ -197,7 +199,7 @@ contains
           ! Since only scattering events make it here, again we can use
           ! the weight entering the collision as the estimator for the
           ! reaction rate
-          score = p % last_wgt
+          score = p % last_wgt * flux
 
         else
           ! Note SCORE_SCATTER_N not available for tracklength/collision.
@@ -220,7 +222,7 @@ contains
         ! Since only scattering events make it here, again we can use
         ! the weight entering the collision as the estimator for the
         ! reaction rate
-        score = p % last_wgt
+        score = p % last_wgt * flux
 
 
       case (SCORE_SCATTER_YN)
@@ -233,7 +235,7 @@ contains
         ! Since only scattering events make it here, again we can use
         ! the weight entering the collision as the estimator for the
         ! reaction rate
-        score = p % last_wgt
+        score = p % last_wgt * flux
 
 
       case (SCORE_NU_SCATTER, SCORE_NU_SCATTER_N)
@@ -247,7 +249,7 @@ contains
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
           ! Don't waste time on very common reactions we know have multiplicities
           ! of one.
-          score = p % last_wgt
+          score = p % last_wgt * flux
         else
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
@@ -257,11 +259,11 @@ contains
             select type (yield => rxn % products(1) % yield)
             type is (Constant1D)
               ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y
+              score = p % last_wgt * yield % y * flux
             class default
               ! the yield was already incorporated in to p % wgt per the
               ! scattering routine
-              score = p % wgt
+              score = p % wgt * flux
             end select
           end associate
         end if
@@ -281,7 +283,7 @@ contains
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
           ! Don't waste time on very common reactions we know have multiplicities
           ! of one.
-          score = p % last_wgt
+          score = p % last_wgt * flux
         else
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
@@ -291,11 +293,11 @@ contains
             select type (yield => rxn % products(1) % yield)
             type is (Constant1D)
               ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y
+              score = p % last_wgt * yield % y * flux
             class default
               ! the yield was already incorporated in to p % wgt per the
               ! scattering routine
-              score = p % wgt
+              score = p % wgt * flux
             end select
           end associate
         end if
@@ -315,7 +317,7 @@ contains
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
           ! Don't waste time on very common reactions we know have multiplicities
           ! of one.
-          score = p % last_wgt
+          score = p % last_wgt * flux
         else
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
@@ -325,11 +327,11 @@ contains
             select type (yield => rxn % products(1) % yield)
             type is (Constant1D)
               ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y
+              score = p % last_wgt * yield % y * flux
             class default
               ! the yield was already incorporated in to p % wgt per the
               ! scattering routine
-              score = p % wgt
+              score = p % wgt * flux
             end select
           end associate
         end if
@@ -340,13 +342,13 @@ contains
           if (survival_biasing) then
             ! No absorption events actually occur if survival biasing is on --
             ! just use weight absorbed in survival biasing
-            score = p % absorb_wgt
+            score = p % absorb_wgt * flux
           else
             ! Skip any event where the particle wasn't absorbed
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission and absorption events will contribute here, so we
             ! can just use the particle's weight entering the collision
-            score = p % last_wgt
+            score = p % last_wgt * flux
           end if
 
         else
@@ -366,7 +368,7 @@ contains
             ! fission
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
               score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission &
-                   / micro_xs(p % event_nuclide) % absorption
+                   / micro_xs(p % event_nuclide) % absorption * flux
             else
               score = ZERO
             end if
@@ -377,7 +379,7 @@ contains
             ! particle's weight entering the collision as the estimate for the
             ! fission reaction rate
             score = p % last_wgt * micro_xs(p % event_nuclide) % fission &
-                 / micro_xs(p % event_nuclide) % absorption
+                 / micro_xs(p % event_nuclide) % absorption * flux
           end if
 
         else
@@ -408,7 +410,7 @@ contains
             ! nu-fission
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
               score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
-                   nu_fission / micro_xs(p % event_nuclide) % absorption
+                   nu_fission / micro_xs(p % event_nuclide) % absorption * flux
             else
               score = ZERO
             end if
@@ -420,7 +422,7 @@ contains
             ! score the number of particles that were banked in the fission
             ! bank. Since this was weighted by 1/keff, we multiply by keff
             ! to get the proper score.
-            score = keff * p % wgt_bank
+            score = keff * p % wgt_bank * flux
           end if
 
         else
@@ -640,7 +642,7 @@ contains
                 score = p%absorb_wgt * &
                      nuc%reactions(nuc%index_fission(1))%Q_value * &
                      micro_xs(p%event_nuclide)%fission / &
-                     micro_xs(p%event_nuclide)%absorption
+                     micro_xs(p%event_nuclide)%absorption * flux
               end if
             end associate
           else
@@ -654,7 +656,7 @@ contains
                 score = p%last_wgt * &
                      nuc%reactions(nuc%index_fission(1))%Q_value * &
                      micro_xs(p%event_nuclide)%fission / &
-                     micro_xs(p%event_nuclide)%absorption
+                     micro_xs(p%event_nuclide)%absorption * flux
               end if
             end associate
           end if
@@ -692,7 +694,7 @@ contains
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Check if event MT matches
           if (p % event_MT /= ELASTIC) cycle SCORE_LOOP
-          score = p % last_wgt
+          score = p % last_wgt * flux
 
         else
           if (i_nuclide > 0) then
@@ -707,7 +709,7 @@ contains
           ! Any other score is assumed to be a MT number. Thus, we just need
           ! to check if it matches the MT number of the event
           if (p % event_MT /= score_bin) cycle SCORE_LOOP
-          score = p % last_wgt
+          score = p % last_wgt * flux
 
         else
           ! Any other cross section has to be calculated on-the-fly. For
@@ -863,7 +865,7 @@ contains
           else
             score = p % last_wgt
           end if
-          score = score / material_xs % total
+          score = score / material_xs % total * flux
 
         else
           ! For flux, we need no cross section
@@ -886,7 +888,7 @@ contains
           if (i_nuclide > 0) then
             score = score * atom_density * &
                  nucxs % get_xs('total', p_g, UVW=p_uvw) / &
-                 matxs % get_xs('total', p_g, UVW=p_uvw)
+                 matxs % get_xs('total', p_g, UVW=p_uvw) * flux
           end if
 
         else
@@ -912,7 +914,7 @@ contains
           else
             score = p % last_wgt
           end if
-          score = score * inverse_velocities(p_g) / material_xs % total
+          score = score * inverse_velocities(p_g) / material_xs % total * flux
 
         else
           ! For inverse velocity, we need no cross section
@@ -935,7 +937,7 @@ contains
           ! Since only scattering events make it here, again we can use
           ! the weight entering the collision as the estimator for the
           ! reaction rate
-          score = p % last_wgt
+          score = p % last_wgt * flux
 
           ! Since we transport based on material data, the angle selected
           ! was not selected from the f(mu) for the nuclide.  Therefore
@@ -978,7 +980,7 @@ contains
           ! For scattering production, we need to use the pre-collision
           ! weight times the multiplicity as the estimate for the number of
           ! neutrons exiting a reaction with neutrons in the exit channel
-          score = p % wgt
+          score = p % wgt * flux
 
           ! Since we transport based on material data, the angle selected
           ! was not selected from the f(mu) for the nuclide.  Therefore
@@ -1008,13 +1010,13 @@ contains
           if (survival_biasing) then
             ! No absorption events actually occur if survival biasing is on --
             ! just use weight absorbed in survival biasing
-            score = p % absorb_wgt
+            score = p % absorb_wgt * flux
           else
             ! Skip any event where the particle wasn't absorbed
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission and absorption events will contribute here, so we
             ! can just use the particle's weight entering the collision
-            score = p % last_wgt
+            score = p % last_wgt * flux
           end if
           if (i_nuclide > 0) then
             score = score * atom_density * &
@@ -1037,24 +1039,24 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! fission
-            score = p % absorb_wgt
+            score = p % absorb_wgt * flux
           else
             ! Skip any non-absorption events
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission events will contribute, so again we can use
             ! particle's weight entering the collision as the estimate for the
             ! fission reaction rate
-            score = p % last_wgt
+            score = p % last_wgt * flux
           end if
           if (i_nuclide > 0) then
-              score = score * atom_density * &
-                   nucxs % get_xs('fission', p_g, UVW=p_uvw) / &
-                   matxs % get_xs('absorption', p_g, UVW=p_uvw)
-            else
-              score = score * &
-                   matxs % get_xs('fission', p_g, UVW=p_uvw) / &
-                   matxs % get_xs('absorption', p_g, UVW=p_uvw)
-            end if
+            score = score * atom_density * &
+                 nucxs % get_xs('fission', p_g, UVW=p_uvw) / &
+                 matxs % get_xs('absorption', p_g, UVW=p_uvw)
+          else
+            score = score * &
+                 matxs % get_xs('fission', p_g, UVW=p_uvw) / &
+                 matxs % get_xs('absorption', p_g, UVW=p_uvw)
+          end if
         else
           if (i_nuclide > 0) then
             score = nucxs % get_xs('fission', p_g, UVW=p_uvw) * &
@@ -1084,7 +1086,7 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! nu-fission
-            score = p % absorb_wgt
+            score = p % absorb_wgt * flux
             if (i_nuclide > 0) then
               score = score * atom_density * &
                    nucxs % get_xs('nu_fission', p_g, UVW=p_uvw) / &
@@ -1102,7 +1104,7 @@ contains
             ! score the number of particles that were banked in the fission
             ! bank. Since this was weighted by 1/keff, we multiply by keff
             ! to get the proper score.
-            score = keff * p % wgt_bank
+            score = keff * p % wgt_bank * flux
             if (i_nuclide > 0) then
               score = score * atom_density * &
                    nucxs % get_xs('fission', p_g, UVW=p_uvw) / &
@@ -1126,14 +1128,14 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! fission
-            score = p % absorb_wgt
+            score = p % absorb_wgt * flux
           else
             ! Skip any non-absorption events
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission events will contribute, so again we can use
             ! particle's weight entering the collision as the estimate for the
             ! fission reaction rate
-            score = p % last_wgt
+            score = p % last_wgt * flux
           end if
           if (i_nuclide > 0) then
             score = score * atom_density * &
@@ -1354,7 +1356,7 @@ contains
                                     ! position during the loop
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array
-    real(8) :: filter_weight
+    real(8) :: filter_weight        ! combined weight of all filters
     type(TallyObject), pointer :: t
 
     ! A loop over all tallies is necessary because we need to simultaneously
@@ -1378,7 +1380,6 @@ contains
       ! ========================================================================
       ! Loop until we've covered all valid bins on each of the filters.
 
-      filter_weight = ONE
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
@@ -1427,7 +1428,7 @@ contains
 
           ! Determine score for each bin
           call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
-               i_nuclide, ZERO, ZERO)
+               i_nuclide, ZERO, filter_weight)
 
         end do NUCLIDE_LOOP
 
@@ -1489,7 +1490,7 @@ contains
                                     ! position during the loop
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array
-    real(8) :: filter_weight
+    real(8) :: filter_weight        ! combined weight of all filters
     real(8) :: atom_density
     type(TallyObject), pointer :: t
     type(Material),    pointer :: mat
@@ -1519,7 +1520,6 @@ contains
       ! ========================================================================
       ! Loop until we've covered all valid bins on each of the filters.
 
-      filter_weight = ONE
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
@@ -1549,7 +1549,7 @@ contains
 
           ! Determine score for each bin
           call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
-               i_nuclide, atom_density, ZERO)
+               i_nuclide, atom_density, filter_weight)
 
         end do NUCLIDE_LOOP
 
@@ -1617,6 +1617,7 @@ contains
     integer :: k             ! loop index for bank sites
     integer :: bin_energyout ! original outgoing energy bin
     integer :: i_filter      ! index for matching filter bin combination
+    real(8) :: filter_weight ! combined weight of all filters
     real(8) :: score         ! actual score
     real(8) :: E_out         ! energy of fission bank site
 
@@ -1650,13 +1651,14 @@ contains
         ! change outgoing energy bin
         matching_bins(i) = binary_search(filt % bins, n, E_out)
 
-        ! determine scoring index
+        ! determine scoring index and weight for this filter combination
         i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride) + 1
+        filter_weight = product(filter_weights(:size(t % filters)))
 
         ! Add score to tally
 !$omp atomic
         t % results(i_score, i_filter) % value = &
-             t % results(i_score, i_filter) % value + score
+             t % results(i_score, i_filter) % value + score * filter_weight
       end do
     end select
 
@@ -1677,6 +1679,7 @@ contains
     integer :: k             ! loop index for bank sites
     integer :: bin_energyout ! original outgoing energy bin
     integer :: i_filter      ! index for matching filter bin combination
+    real(8) :: filter_weight ! combined weight of all filters
     real(8) :: score         ! actual score
     integer :: gout          ! energy group of fission bank site
     integer :: gin           ! energy group of incident particle
@@ -1732,13 +1735,14 @@ contains
           matching_bins(i) = binary_search(filt % bins, n, E_out)
         end if
 
-        ! determine scoring index
+        ! determine scoring index and weight for this filter combination
         i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride) + 1
+        filter_weight = product(filter_weights(:size(t % filters)))
 
         ! Add score to tally
 !$omp atomic
         t % results(i_score, i_filter) % value = &
-             t % results(i_score, i_filter) % value + score
+             t % results(i_score, i_filter) % value + score * filter_weight
       end do
 
     ! reset outgoing energy bin and score index
@@ -1769,6 +1773,7 @@ contains
     integer :: k             ! loop index for bank sites
     integer :: bin_energyout ! original outgoing energy bin
     integer :: i_filter      ! index for matching filter bin combination
+    real(8) :: filter_weight ! combined weight of all filters
     real(8) :: score         ! actual score
     real(8) :: E_out         ! energy of fission bank site
 
@@ -1835,14 +1840,15 @@ contains
           ! if the delayed group filter is not present, add score to tally
           else
 
-            ! determine scoring index
+            ! determine scoring index and weight for this filter combination
             i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride)&
                  + 1
+            filter_weight = product(filter_weights(:size(t % filters)))
 
             ! Add score to tally
 !$omp atomic
             t % results(i_score, i_filter) % value = &
-                 t % results(i_score, i_filter) % value + score
+                 t % results(i_score, i_filter) % value + score * filter_weight
           end if
         end if
       end do
@@ -1861,24 +1867,26 @@ contains
   subroutine score_fission_delayed_dg(t, d_bin, score, score_index)
 
     type(TallyObject), intent(inout) :: t
-    integer, intent(in)              :: score_index ! index for score
-    real(8), intent(in)              :: score       ! actual score
     integer, intent(in)              :: d_bin       ! delayed group bin index
+    real(8), intent(in)              :: score       ! actual score
+    integer, intent(in)              :: score_index ! index for score
 
     integer :: bin_original  ! original bin index
     integer :: filter_index  ! index for matching filter bin combination
+    real(8) :: filter_weight ! combined weight of all filters
 
     ! save original delayed group bin
     bin_original = matching_bins(t % find_filter(FILTER_DELAYEDGROUP))
     matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = d_bin
 
-    ! Compute the filter index based on the modified matching_bins
-    filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-         * t % stride) + 1
+    ! determine scoring index and weight on the modified matching_bins
+    filter_index = sum((matching_bins(1:size(t % filters)) - 1) * t % stride) &
+         + 1
+    filter_weight = product(filter_weights(:size(t % filters)))
 
 !$omp atomic
     t % results(score_index, filter_index) % value = &
-         t % results(score_index, filter_index) % value + score
+         t % results(score_index, filter_index) % value + score * filter_weight
 
     ! reset original delayed group bin
     matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = bin_original
@@ -1906,7 +1914,7 @@ contains
     integer :: i_nuclide            ! index in nuclides array (from bins)
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
-    real(8) :: filter_weight
+    real(8) :: filter_weight        ! combined weight of all filters
     type(TallyObject), pointer :: t
     type(Material),    pointer :: mat
 
@@ -1934,7 +1942,6 @@ contains
       ! ========================================================================
       ! Loop until we've covered all valid bins on each of the filters.
 
-      filter_weight = ONE
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
@@ -2056,7 +2063,7 @@ contains
     real(8) :: flux                 ! collision estimate of flux
     real(8) :: atom_density         ! atom density of single nuclide
                                     !   in atom/b-cm
-    real(8) :: filter_weight
+    real(8) :: filter_weight        ! combined weight of all filters
     type(TallyObject), pointer :: t
     type(Material),    pointer :: mat
 
@@ -2089,7 +2096,6 @@ contains
       ! ========================================================================
       ! Loop until we've covered all valid bins on each of the filters.
 
-      filter_weight = ONE
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination

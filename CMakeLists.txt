@@ -317,6 +317,7 @@ if(PYTHONINTERP_FOUND)
                     --root=debian/openmc --install-layout=deb
                     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})")
   else()
+    install(CODE "set(ENV{PYTHONPATH} \"${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages\")")
     install(CODE "execute_process(
                     COMMAND ${PYTHON_EXECUTABLE} setup.py install
                     --prefix=${CMAKE_INSTALL_PREFIX}

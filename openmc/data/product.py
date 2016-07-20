@@ -6,7 +6,7 @@ import numpy as np
 from numpy.polynomial.polynomial import Polynomial
 
 import openmc.checkvalue as cv
-from .container import Tabulated1D
+from .function import Tabulated1D
 from .angle_energy import AngleEnergy
 
 if sys.version_info[0] >= 3:

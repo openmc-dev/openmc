@@ -5,7 +5,7 @@ from warnings import warn
 
 import numpy as np
 
-from openmc.data.container import Tabulated1D, INTERPOLATION_SCHEME
+from .function import Tabulated1D, INTERPOLATION_SCHEME
 from openmc.stats.univariate import Univariate, Tabular, Discrete, Mixture
 import openmc.checkvalue as cv
 

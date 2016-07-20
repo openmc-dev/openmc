@@ -6,7 +6,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.stats import Tabular, Univariate, Discrete, Mixture
-from .container import Tabulated1D, INTERPOLATION_SCHEME
+from .function import Tabulated1D, INTERPOLATION_SCHEME
 from .angle_energy import AngleEnergy
 
 

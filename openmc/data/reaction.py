@@ -11,7 +11,7 @@ import openmc.checkvalue as cv
 from openmc.stats import Uniform
 from .angle_distribution import AngleDistribution
 from .angle_energy import AngleEnergy
-from .container import Tabulated1D
+from .function import Tabulated1D
 from .data import reaction_name
 from .product import Product
 from .uncorrelated import UncorrelatedAngleEnergy

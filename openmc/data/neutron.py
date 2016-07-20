@@ -8,7 +8,7 @@ import h5py
 
 from . import atomic_symbol
 from .ace import Table, get_table
-from .container import Tabulated1D
+from .function import Tabulated1D
 from .product import Product
 from .reaction import Reaction, _get_photon_products
 from .urr import ProbabilityTables

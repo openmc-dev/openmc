@@ -5,7 +5,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.stats import Univariate, Tabular, Uniform
-from .container import INTERPOLATION_SCHEME
+from .function import INTERPOLATION_SCHEME
 
 
 class AngleDistribution(object):

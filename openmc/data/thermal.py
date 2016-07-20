@@ -9,7 +9,7 @@ import h5py
 import openmc.checkvalue as cv
 from .ace import Table, get_table
 from .angle_energy import AngleEnergy
-from .container import Tabulated1D
+from .function import Tabulated1D
 from .correlated import CorrelatedAngleEnergy
 from openmc.stats import Discrete, Tabular
 

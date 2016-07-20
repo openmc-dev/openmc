@@ -2,13 +2,14 @@ from __future__ import division, unicode_literals
 import sys
 from collections import OrderedDict, Iterable, Mapping
 from numbers import Integral, Real
+from warnings import warn
 
 import numpy as np
 import h5py
 
-from . import ATOMIC_SYMBOL
+from .data import ATOMIC_SYMBOL, SUM_RULES
 from .ace import Table, get_table
-from .function import Tabulated1D
+from .function import Tabulated1D, Sum
 from .product import Product
 from .reaction import Reaction, _get_photon_products
 from .urr import ProbabilityTables
@@ -83,6 +84,17 @@ class IncidentNeutron(object):
         self.reactions = OrderedDict()
         self.summed_reactions = OrderedDict()
         self.urr = None
+
+    def __contains__(self, mt):
+        return mt in self.reactions or mt in self.summed_reactions
+
+    def __getitem__(self, mt):
+        if mt in self.reactions:
+            return self.reactions[mt]
+        elif mt in self.summed_reactions:
+            return self.summed_reactions[mt]
+        else:
+            raise KeyError('No reaction with MT={}.'.format(mt))
 
     def __repr__(self):
         return "<IncidentNeutron: {}>".format(self.name)
@@ -189,6 +201,38 @@ class IncidentNeutron(object):
         cv.check_type('probability tables', urr,
                       (ProbabilityTables, type(None)))
         self._urr = urr
+
+    def get_reaction_components(self, mt):
+        """Determine what reactions make up summed reaction.
+
+        Parameters
+        ----------
+        mt : int
+            ENDF MT number of the reaction to find components of.
+
+        Returns
+        -------
+        mts : list of int
+            ENDF MT numbers of reactions that make up the summed reaction and
+            have cross sections provided.
+
+        """
+        if mt in self.reactions:
+            return [mt]
+        elif mt in SUM_RULES:
+            mts = SUM_RULES[mt]
+        complete = False
+        while not complete:
+            new_mts = []
+            complete = True
+            for i, mt_i in enumerate(mts):
+                if mt_i in self.reactions:
+                    new_mts.append(mt_i)
+                elif mt_i in SUM_RULES:
+                    new_mts += SUM_RULES[mt_i]
+                    complete = False
+            mts = new_mts
+        return mts
 
     def export_to_hdf5(self, path, mode='a'):
         """Export table to an HDF5 file.
@@ -386,9 +430,19 @@ class IncidentNeutron(object):
                              n_photon_reactions].astype(int)
 
         for mt in np.unique(photon_mts // 1000):
-            if mt not in data.reactions:
+            if mt not in data:
+                if mt not in SUM_RULES:
+                    warn('Photon production is present for MT={} but no '
+                         'cross section is given.'.format(mt))
+                    continue
+
+                # Create summed reaction with appropriate cross section
                 rx = Reaction(mt)
-                rx.products += _get_photon_products(ace, mt)
+                mts = data.get_reaction_components(mt)
+                rx.xs = Sum([data.reactions[mt_i].xs for mt_i in mts])
+
+                # Determine summed cross section
+                rx.products += _get_photon_products(ace, rx)
                 data.summed_reactions[mt] = rx
 
         # Read unresolved resonance probability tables

@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections import Iterable, Callable
 from numbers import Real, Integral
 
 import numpy as np
@@ -306,3 +306,38 @@ class Tabulated1D(object):
         y = ace.xss[idx + n_pairs:idx + 2*n_pairs]
 
         return Tabulated1D(x, y, breakpoints, interpolation)
+
+
+class Sum(object):
+    """Sum of multiple functions.
+
+    This class allows you to create a callable object which represents the sum
+    of other callable objects. This is used for summed reactions whereby the
+    cross section is defined as the sum of other cross sections.
+
+    Parameters
+    ----------
+    functions : Iterable of Callable
+        Functions which are to be added together
+
+    Attributes
+    ----------
+    functions : Iterable of Callable
+        Functions which are to be added together
+
+    """
+
+    def __init__(self, functions):
+        self.functions = functions
+
+    def __call__(self, x):
+        return sum(f(x) for f in self.functions)
+
+    @property
+    def functions(self):
+        return self._functions
+
+    @functions.setter
+    def functions(self, functions):
+        cv.check_type('functions', functions, Iterable, Callable)
+        self._functions = functions

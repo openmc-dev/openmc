@@ -1,5 +1,5 @@
 from __future__ import division, unicode_literals
-from collections import Iterable
+from collections import Iterable, Callable
 from copy import deepcopy
 from numbers import Real
 from warnings import warn
@@ -146,15 +146,15 @@ def _get_fission_products(ace):
     return products, derived_products
 
 
-def _get_photon_products(ace, mt):
+def _get_photon_products(ace, rx):
     """Generate photon products from an ACE table
 
     Parameters
     ----------
     ace : openmc.data.ace.Table
         ACE table to read from
-    mt : int
-        MT number for the desired reaction
+    rx : openmc.data.Reaction
+        Reaction that generates photons
 
     Returns
     -------
@@ -176,9 +176,9 @@ def _get_photon_products(ace, mt):
         # MT=19,20,21,38, we assign the photon product to each of the individual
         # reactions
         if neutron_mt == 18:
-            if mt not in (18, 19, 20, 21, 38):
+            if rx.mt not in (18, 19, 20, 21, 38):
                 continue
-        elif neutron_mt != mt:
+        elif neutron_mt != rx.mt:
             continue
 
         # Create photon product and assign to reactions
@@ -205,15 +205,19 @@ def _get_photon_products(ace, mt):
 
             # Energy grid index at which data starts
             threshold_idx = int(ace.xss[idx]) - 1
-
-            # Get photon production cross section
             n_energy = int(ace.xss[idx + 1])
-            photon._xs = ace.xss[idx + 2:idx + 2 + n_energy]
-
-            # TODO: Determine yield based on ratio of cross sections
             energy = ace.xss[ace.jxs[1] + threshold_idx:
                              ace.jxs[1] + threshold_idx + n_energy]
-            photon.yield_ = Tabulated1D(energy, photon._xs)
+
+            # Get photon production cross section
+            photon_prod_xs = ace.xss[idx + 2:idx + 2 + n_energy]
+            neutron_xs = rx.xs(energy)
+            idx = np.where(neutron_xs > 0.)
+
+            # Calculate photon yield
+            yield_ = np.zeros_like(photon_prod_xs)
+            yield_[idx] = photon_prod_xs[idx] / neutron_xs[idx]
+            photon.yield_ = Tabulated1D(energy, yield_)
 
         else:
             raise ValueError("MFTYPE must be 12, 13, 16. Got {0}".format(
@@ -277,7 +281,7 @@ class Reaction(object):
     threshold_idx : int
         The index on the energy grid corresponding to the threshold of this
         reaction.
-    xs : openmc.data.Tabulated1D
+    xs : callable
         Microscopic cross section for this reaction as a function of incident
         energy
     products : Iterable of openmc.data.Product
@@ -340,9 +344,10 @@ class Reaction(object):
 
     @xs.setter
     def xs(self, xs):
-        cv.check_type('reaction cross section', xs, Tabulated1D)
-        for y in xs.y:
-            cv.check_greater_than('reaction cross section', y, 0.0, True)
+        cv.check_type('reaction cross section', xs, Callable)
+        if isinstance(xs, Tabulated1D):
+            for y in xs.y:
+                cv.check_greater_than('reaction cross section', y, 0.0, True)
         self._xs = xs
 
     def to_hdf5(self, group):
@@ -531,6 +536,6 @@ class Reaction(object):
         # ======================================================================
         # PHOTON PRODUCTION
 
-        rx.products += _get_photon_products(ace, mt)
+        rx.products += _get_photon_products(ace, rx)
 
         return rx

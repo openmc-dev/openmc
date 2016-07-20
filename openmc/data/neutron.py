@@ -6,7 +6,7 @@ from numbers import Integral, Real
 import numpy as np
 import h5py
 
-from . import atomic_symbol
+from . import ATOMIC_SYMBOL
 from .ace import Table, get_table
 from .function import Tabulated1D
 from .product import Product
@@ -348,7 +348,7 @@ class IncidentNeutron(object):
             mass_number -= 100
 
         # Determine name for group
-        element = atomic_symbol[Z]
+        element = ATOMIC_SYMBOL[Z]
         if metastable > 0:
             name = '{}{}_m{}.{}'.format(element, mass_number, metastable, xs)
         else:

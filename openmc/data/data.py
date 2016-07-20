@@ -1,7 +1,7 @@
 # Isotopic abundances from M. Berglund and M. E. Wieser, "Isotopic compositions
 # of the elements 2009 (IUPAC Technical Report)", Pure. Appl. Chem. 83 (2),
 # pp. 397--410 (2011).
-natural_abundance = {
+NATURAL_ABUNDANCE = {
     'H-1': 0.999885, 'H-2': 0.000115, 'He-3': 1.34e-06,
     'He-4': 0.99999866, 'Li-6': 0.0759, 'Li-7': 0.9241,
     'Be-9': 1.0, 'B-10': 0.199, 'B-11': 0.801,
@@ -100,7 +100,7 @@ natural_abundance = {
     'U-234': 5.4e-05, 'U-235': 0.007204, 'U-238': 0.992742
 }
 
-atomic_symbol = {1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N',
+ATOMIC_SYMBOL = {1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N',
                  8: 'O', 9: 'F', 10: 'Ne', 11: 'Na', 12: 'Mg', 13: 'Al',
                  14: 'Si', 15: 'P', 16: 'S', 17: 'Cl', 18: 'Ar', 19: 'K',
                  20: 'Ca', 21: 'Sc', 22: 'Ti', 23: 'V', 24: 'Cr', 25: 'Mn',
@@ -120,9 +120,9 @@ atomic_symbol = {1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N',
                  103: 'Lr', 104: 'Rf', 105: 'Db', 106: 'Sg', 107: 'Bh',
                  108: 'Hs', 109: 'Mt', 110: 'Ds', 111: 'Rg', 112: 'Cn',
                  114: 'Fl', 116: 'Lv'}
-atomic_number = {value: key for key, value in atomic_symbol.items()}
+ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
 
-reaction_name = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)', 5: '(n,misc)', 11: '(n,2nd)',
+REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)', 5: '(n,misc)', 11: '(n,2nd)',
                  16: '(n,2n)', 17: '(n,3n)', 18: '(n,fission)', 19: '(n,f)',
                  20: '(n,nf)', 21: '(n,2nf)', 22: '(n,na)', 23: '(n,n3a)',
                  24: '(n,2na)', 25: '(n,3na)', 28: '(n,np)', 29: '(n,n2a)',
@@ -150,9 +150,9 @@ reaction_name = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)', 5: '(n,misc)'
                  198: '(n,n3p)', 199: '(n,3n2pa)', 200: '(n,5n2p)', 444: '(n,damage)',
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
                  849: '(n,ac)'}
-reaction_name.update({i: '(n,n{})'.format(i-50) for i in range(50, 91)})
-reaction_name.update({i: '(n,p{})'.format(i-600) for i in range(600, 649)})
-reaction_name.update({i: '(n,d{})'.format(i-650) for i in range(650, 699)})
-reaction_name.update({i: '(n,t{})'.format(i-700) for i in range(700, 749)})
-reaction_name.update({i: '(n,3He{})'.format(i-750) for i in range(750, 799)})
-reaction_name.update({i: '(n,a{})'.format(i-800) for i in range(800, 849)})
+REACTION_NAME.update({i: '(n,n{})'.format(i-50) for i in range(50, 91)})
+REACTION_NAME.update({i: '(n,p{})'.format(i-600) for i in range(600, 649)})
+REACTION_NAME.update({i: '(n,d{})'.format(i-650) for i in range(650, 699)})
+REACTION_NAME.update({i: '(n,t{})'.format(i-700) for i in range(700, 749)})
+REACTION_NAME.update({i: '(n,3He{})'.format(i-750) for i in range(750, 799)})
+REACTION_NAME.update({i: '(n,a{})'.format(i-800) for i in range(800, 849)})

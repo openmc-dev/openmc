@@ -2,7 +2,7 @@ import sys
 
 import openmc
 from openmc.checkvalue import check_type, check_length
-from openmc.data import natural_abundance
+from openmc.data import NATURAL_ABUNDANCE
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -123,7 +123,7 @@ class Element(object):
         """
 
         isotopes = []
-        for isotope, abundance in sorted(natural_abundance.items()):
+        for isotope, abundance in sorted(NATURAL_ABUNDANCE.items()):
             if isotope.startswith(self.name + '-'):
                 nuc = openmc.Nuclide(isotope, self.xs)
                 isotopes.append((nuc, abundance))

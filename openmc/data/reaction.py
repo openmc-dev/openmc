@@ -12,7 +12,7 @@ from openmc.stats import Uniform
 from .angle_distribution import AngleDistribution
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D
-from .data import reaction_name
+from .data import REACTION_NAME
 from .product import Product
 from .uncorrelated import UncorrelatedAngleEnergy
 
@@ -298,8 +298,8 @@ class Reaction(object):
         self.derived_products = []
 
     def __repr__(self):
-        if self.mt in reaction_name:
-            return "<ACE Reaction: MT={} {}>".format(self.mt, reaction_name[self.mt])
+        if self.mt in REACTION_NAME:
+            return "<ACE Reaction: MT={} {}>".format(self.mt, REACTION_NAME[self.mt])
         else:
             return "<ACE Reaction: MT={}>".format(self.mt)
 
@@ -356,8 +356,8 @@ class Reaction(object):
         """
 
         group.attrs['mt'] = self.mt
-        if self.mt in reaction_name:
-            group.attrs['label'] = np.string_(reaction_name[self.mt])
+        if self.mt in REACTION_NAME:
+            group.attrs['label'] = np.string_(REACTION_NAME[self.mt])
         else:
             group.attrs['label'] = np.string_(self.mt)
         group.attrs['Q_value'] = self.q_value

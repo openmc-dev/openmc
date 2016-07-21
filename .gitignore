@@ -65,6 +65,7 @@ data/wmp
 data/multipole_lib.tar.gz
 data/ENDF-B-VII.1-*.tar.gz
 data/JEFF32-ACE-*.tar.gz
+data/JEFF32-ACE-*.zip
 data/TSLs.tar.gz
 data/jeff-3.2
 data/jeff-3.2-hdf5

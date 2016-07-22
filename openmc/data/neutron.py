@@ -256,14 +256,14 @@ class IncidentNeutron(object):
         g.attrs['metastable'] = self.metastable
         g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
         g.attrs['temperature'] = self.temperature
-        g.attrs['n_reaction'] = len(self.reactions)
 
         # Write energy grid
         g.create_dataset('energy', data=self.energy)
 
         # Write reaction data
-        for i, rx in enumerate(self.reactions.values()):
-            rx_group = g.create_group('reaction_{}'.format(i))
+        rxs_group = g.create_group('reactions')
+        for rx in self.reactions.values():
+            rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
             rx.to_hdf5(rx_group)
 
             # Write total nu data if available
@@ -315,18 +315,16 @@ class IncidentNeutron(object):
         data.energy = group['energy'].value
 
         # Read reaction data
-        n_reaction = group.attrs['n_reaction']
+        rxs_group = group['reactions']
+        for name, obj in sorted(rxs_group.items()):
+            if name.startswith('reaction_'):
+                rx = Reaction.from_hdf5(obj, data.energy)
+                data.reactions[rx.mt] = rx
 
-        # Write reaction data
-        for i in range(n_reaction):
-            rx_group = group['reaction_{}'.format(i)]
-            rx = Reaction.from_hdf5(rx_group, data.energy)
-            data.reactions[rx.mt] = rx
-
-            # Read total nu data if available
-            if 'total_nu' in rx_group:
-                tgroup = rx_group['total_nu']
-                rx.derived_products = [Product.from_hdf5(tgroup)]
+                # Read total nu data if available
+                if rx.mt in (18, 19, 20, 21, 38) and 'total_nu' in group:
+                    tgroup = group['total_nu']
+                    rx.derived_products.append(Product.from_hdf5(tgroup))
 
         # Read unresolved resonance probability tables
         if 'urr' in group:

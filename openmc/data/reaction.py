@@ -368,7 +368,6 @@ class Reaction(object):
         group.attrs['Q_value'] = self.q_value
         group.attrs['threshold_idx'] = self.threshold_idx + 1
         group.attrs['center_of_mass'] = 1 if self.center_of_mass else 0
-        group.attrs['n_product'] = len(self.products)
         if self.xs is not None:
             group.create_dataset('xs', data=self.xs.y)
         for i, p in enumerate(self.products):
@@ -403,13 +402,16 @@ class Reaction(object):
             xs = group['xs'].value
             rx.xs = Tabulated1D(energy, xs)
 
+        # Determine number of products
+        n_product = 0
+        for name in group:
+            if name.startswith('product_'):
+                n_product += 1
+
         # Read reaction products
-        n_product = group.attrs['n_product']
-        products = []
         for i in range(n_product):
             pgroup = group['product_{}'.format(i)]
-            products.append(Product.from_hdf5(pgroup))
-        rx.products = products
+            rx.products.append(Product.from_hdf5(pgroup))
 
         return rx
 

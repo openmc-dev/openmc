@@ -1,11 +1,12 @@
 module reaction_header
 
-  use hdf5,           only: HID_T, HSIZE_T
+  use hdf5
 
+  use constants,      only: MAX_WORD_LEN
   use hdf5_interface, only: read_attribute, open_group, close_group, &
        open_dataset, read_dataset, close_dataset, get_shape
   use product_header, only: ReactionProduct
-  use string,         only: to_str
+  use string,         only: to_str, starts_with
 
   implicit none
 
@@ -34,9 +35,16 @@ contains
     integer :: i
     integer :: cm
     integer :: n_product
+    integer :: storage_type
+    integer :: max_corder
+    integer :: n_links
+    integer :: hdf5_err
     integer(HID_T) :: pgroup
     integer(HID_T) :: xs
+    integer(SIZE_T) :: name_len
     integer(HSIZE_T) :: dims(1)
+    integer(HSIZE_T) :: j
+    character(MAX_WORD_LEN) :: name
 
     call read_attribute(this % Q_value, group_id, 'Q_value')
     call read_attribute(this % MT, group_id, 'mt')
@@ -51,8 +59,16 @@ contains
     call read_dataset(this % sigma, xs)
     call close_dataset(xs)
 
+    ! Determine number of products
+    call h5gget_info_f(group_id, storage_type, n_links, max_corder, hdf5_err)
+    n_product = 0
+    do j = 0, n_links - 1
+      call h5lget_name_by_idx_f(group_id, ".", H5_INDEX_NAME_F, H5_ITER_INC_F, &
+           j, name, hdf5_err, name_len)
+      if (starts_with(name, "product_")) n_product = n_product + 1
+    end do
+
     ! Read products
-    call read_attribute(n_product, group_id, 'n_product')
     allocate(this % products(n_product))
     do i = 1, n_product
       pgroup = open_group(group_id, 'product_' // trim(to_str(i - 1)))

@@ -1,8 +1,9 @@
 module nuclide_header
 
   use, intrinsic :: ISO_FORTRAN_ENV
+  use, intrinsic :: ISO_C_BINDING
 
-  use hdf5,        only: HID_T, HSIZE_T, SIZE_T, h5iget_name_f
+  use hdf5
   use h5lt,        only: h5ltpath_valid_f
 
   use constants
@@ -82,7 +83,6 @@ module nuclide_header
     type(MultipoleArray), pointer :: multipole => null()
 
     ! Reactions
-    integer :: n_reaction ! # of reactions
     type(Reaction), allocatable :: reactions(:)
     type(DictIntInt) :: reaction_index ! map MT values to index in reactions
                                        ! array; used at tally-time
@@ -182,15 +182,20 @@ module nuclide_header
     integer :: i
     integer :: Z
     integer :: A
-    integer :: n_reaction
+    integer :: storage_type
+    integer :: max_corder
+    integer :: n_links
     integer :: hdf5_err
     integer(HID_T) :: urr_group, nu_group
     integer(HID_T) :: energy_dset
+    integer(HID_T) :: rxs_group
     integer(HID_T) :: rx_group
     integer(HID_T) :: total_nu
     integer(SIZE_T) :: name_len, name_file_len
+    integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
     character(MAX_WORD_LEN) :: temp
+    type(VectorInt) :: MTs
     logical :: exists
 
     ! Get name of nuclide from group
@@ -206,8 +211,6 @@ module nuclide_header
     this % zaid = 1000*Z + A + 400*this % metastable
     call read_attribute(this % awr, group_id, 'atomic_weight_ratio')
     call read_attribute(this % kT, group_id, 'temperature')
-    call read_attribute(n_reaction, group_id, 'n_reaction')
-    this % n_reaction = n_reaction
 
     ! Read energy grid
     energy_dset = open_dataset(group_id, 'energy')
@@ -217,13 +220,26 @@ module nuclide_header
     call read_dataset(this % energy, energy_dset)
     call close_dataset(energy_dset)
 
+    ! Get MT values based on group names
+    rxs_group = open_group(group_id, 'reactions')
+    call h5gget_info_f(rxs_group, storage_type, n_links, max_corder, hdf5_err)
+    do j = 0, n_links - 1
+      call h5lget_name_by_idx_f(rxs_group, ".", H5_INDEX_NAME_F, H5_ITER_INC_F, &
+           j, temp, hdf5_err, name_len)
+      if (starts_with(temp, "reaction_")) then
+        call MTs % push_back(int(str_to_int(temp(10:12))))
+      end if
+    end do
+
     ! Read reactions
-    allocate(this % reactions(n_reaction))
+    allocate(this % reactions(MTs % size()))
     do i = 1, size(this % reactions)
-      rx_group = open_group(group_id, 'reaction_' // trim(to_str(i - 1)))
+      rx_group = open_group(rxs_group, 'reaction_' // trim(&
+           zero_padded(MTs % data(i), 3)))
       call this % reactions(i) % from_hdf5(rx_group)
       call close_group(rx_group)
     end do
+    call close_group(rxs_group)
 
     ! Read unresolved resonance probability tables if present
     call h5ltpath_valid_f(group_id, 'urr', .true., exists, hdf5_err)
@@ -513,11 +529,11 @@ module nuclide_header
     write(unit_,*) '  # of grid points = ' // trim(to_str(this % n_grid))
     write(unit_,*) '  Fissionable = ', this % fissionable
     write(unit_,*) '  # of fission reactions = ' // trim(to_str(this % n_fission))
-    write(unit_,*) '  # of reactions = ' // trim(to_str(this % n_reaction))
+    write(unit_,*) '  # of reactions = ' // trim(to_str(size(this % reactions)))
 
     ! Information on each reaction
     write(unit_,*) '  Reaction     Q-value  COM    IE'
-    do i = 1, this % n_reaction
+    do i = 1, size(this % reactions)
       associate (rxn => this % reactions(i))
         write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,I6)') &
              reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &

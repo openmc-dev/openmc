@@ -12,15 +12,16 @@ Incident Neutron Data
 **/<nuclide name>/**
 
 :Attributes: - **Z** (*int*) -- Atomic number
-             - **A** (*int*) -- Mass number
-             - **metastable** (*int*) -- Metastable state
+             - **A** (*int*) -- Mass number. For a natural element, A=0 is given.
+             - **metastable** (*int*) -- Metastable state (0=ground, 1=first
+               excited, etc.)
              - **atomic_weight_ratio** (*double*) -- Mass in units of neutron masses
              - **temperature** (*double*) -- Temperature in MeV
              - **n_reaction** (*int*) -- Number of reactions
 
 :Datasets: - **energy** (*double[]*) -- Energy points at which cross sections are tabulated
 
-**/<nuclide name>/reaction_<i>/**
+**/<nuclide name>/reactions/reaction_<mt>/**
 
 :Attributes: - **mt** (*int*) -- ENDF MT reaction number
              - **label** (*char[]*) -- Name of the reaction
@@ -33,7 +34,7 @@ Incident Neutron Data
 
 :Datasets: - **xs** (*double[]*) -- Cross section values tabulated against the nuclide energy grid
 
-**/<nuclide name>/reaction_<i>/product_<j>/**
+**/<nuclide name>/reactions/reaction_<mt>/product_<j>/**
 
    Reaction product data is described in :ref:`product`.
 

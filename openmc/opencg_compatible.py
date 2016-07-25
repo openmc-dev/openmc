@@ -820,7 +820,7 @@ def get_opencg_lattice(openmc_lattice):
 
     # Create an OpenCG Lattice to represent this OpenMC Lattice
     name = openmc_lattice.name
-    dimension = openmc_lattice.dimension
+    dimension = openmc_lattice.shape
     pitch = openmc_lattice.pitch
     lower_left = openmc_lattice.lower_left
     universes = openmc_lattice.universes

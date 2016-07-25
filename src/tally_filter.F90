@@ -1,6 +1,7 @@
 module tally_filter
 
   use constants,           only: ONE, NO_BIN_FOUND, FP_PRECISION
+  use dict_header,         only: DictIntInt
   use geometry_header,     only: BASE_UNIVERSE, RectLattice, HexLattice
   use global
   use hdf5_interface
@@ -35,6 +36,7 @@ module tally_filter
 !===============================================================================
   type, extends(TallyFilter) :: UniverseFilter
     integer, allocatable :: universes(:)
+    type(DictIntInt)     :: map
   contains
     procedure :: get_next_bin => get_next_bin_universe
     procedure :: to_statepoint => to_statepoint_universe
@@ -47,6 +49,7 @@ module tally_filter
 !===============================================================================
   type, extends(TallyFilter) :: MaterialFilter
     integer, allocatable :: materials(:)
+    type(DictIntInt)     :: map
   contains
     procedure :: get_next_bin => get_next_bin_material
     procedure :: to_statepoint => to_statepoint_material
@@ -59,6 +62,7 @@ module tally_filter
 !===============================================================================
   type, extends(TallyFilter) :: CellFilter
     integer, allocatable :: cells(:)
+    type(DictIntInt)     :: map
   contains
     procedure :: get_next_bin => get_next_bin_cell
     procedure :: to_statepoint => to_statepoint_cell
@@ -85,6 +89,7 @@ module tally_filter
 !===============================================================================
   type, extends(TallyFilter) :: CellbornFilter
     integer, allocatable :: cells(:)
+    type(DictIntInt)     :: map
   contains
     procedure :: get_next_bin => get_next_bin_cellborn
     procedure :: to_statepoint => to_statepoint_cellborn
@@ -437,25 +442,29 @@ contains
     integer,               intent(out) :: next_bin
     real(8),               intent(out) :: weight
 
-    integer :: i, j, start
+    integer :: i, start
     logical :: bin_found
 
+    ! Find the coordinate level of the last bin we found.
     if (current_bin == NO_BIN_FOUND) then
       start = 1
     else
-      start = current_bin + 1
-    end if
-
-    bin_found = .false.
-    do i = start, this % n_bins
-      do j = 1, p % n_coord
-        if (p % coord(j) % universe == this % universes(i)) then
-          next_bin = i
-          bin_found = .true.
+      do i = 1, p % n_coord
+        if (p % coord(i) % universe == this % universes(current_bin)) then
+          start = i + 1
           exit
         end if
       end do
-      if (bin_found) exit
+    end if
+
+    ! Starting one coordinate level deeper, find the next bin.
+    bin_found = .false.
+    do i = start, p % n_coord
+      if (this % map % has_key(p % coord(i) % universe)) then
+        next_bin = this % map % get_key(p % coord(i) % universe)
+        bin_found = .true.
+        exit
+      end if
     end do
 
     if (.not. bin_found) next_bin = NO_BIN_FOUND
@@ -486,6 +495,11 @@ contains
              &// " specified on a tally filter.")
       end if
     end do
+
+    ! Generate mapping from universe indices to filter bins.
+    do i = 1, this % n_bins
+      call this % map % add_key(this % universes(i), i)
+    end do
   end subroutine initialize_universe
 
   function text_label_universe(this, bin) result(label)
@@ -509,18 +523,13 @@ contains
     real(8),               intent(out) :: weight
 
     integer :: i
-    logical :: bin_found
 
     if (current_bin == NO_BIN_FOUND) then
-      bin_found = .false.
-      do i = 1, this % n_bins
-        if (p % material == this % materials(i)) then
-          next_bin = i
-          bin_found = .true.
-          exit
-        end if
-      end do
-      if (.not. bin_found) next_bin = NO_BIN_FOUND
+      if (this % map % has_key(p % material)) then
+        next_bin = this % map % get_key(p % material)
+      else
+        next_bin = NO_BIN_FOUND
+      end if
     else
       next_bin = NO_BIN_FOUND
     end if
@@ -551,6 +560,11 @@ contains
              &// " specified on a tally filter.")
       end if
     end do
+
+    ! Generate mapping from material indices to filter bins.
+    do i = 1, this % n_bins
+      call this % map % add_key(this % materials(i), i)
+    end do
   end subroutine initialize_material
 
   function text_label_material(this, bin) result(label)
@@ -573,25 +587,29 @@ contains
     integer,           intent(out) :: next_bin
     real(8),           intent(out) :: weight
 
-    integer :: i, j, start
+    integer :: i, start
     logical :: bin_found
 
+    ! Find the coordinate level of the last bin we found.
     if (current_bin == NO_BIN_FOUND) then
       start = 1
     else
-      start = current_bin + 1
-    end if
-
-    bin_found = .false.
-    do i = start, this % n_bins
-      do j = 1, p % n_coord
-        if (p % coord(j) % cell == this % cells(i)) then
-          next_bin = i
-          bin_found = .true.
+      do i = 1, p % n_coord
+        if (p % coord(i) % cell == this % cells(current_bin)) then
+          start = i + 1
           exit
         end if
       end do
-      if (bin_found) exit
+    end if
+
+    ! Starting one coordinate level deeper, find the next bin.
+    bin_found = .false.
+    do i = start, p % n_coord
+      if (this % map % has_key(p % coord(i) % cell)) then
+        next_bin = this % map % get_key(p % coord(i) % cell)
+        bin_found = .true.
+        exit
+      end if
     end do
 
     if (.not. bin_found) next_bin = NO_BIN_FOUND
@@ -621,6 +639,11 @@ contains
         call fatal_error("Could not find cell " // trim(to_str(id)) &
              &// " specified on tally filter.")
       end if
+    end do
+
+    ! Generate mapping from cell indices to filter bins.
+    do i = 1, this % n_bins
+      call this % map % add_key(this % cells(i), i)
     end do
   end subroutine initialize_cell
 
@@ -763,18 +786,13 @@ contains
     real(8),               intent(out) :: weight
 
     integer :: i
-    logical :: bin_found
 
     if (current_bin == NO_BIN_FOUND) then
-      bin_found = .false.
-      do i = 1, this % n_bins
-        if (p % cell_born == this % cells(i)) then
-          next_bin = i
-          bin_found = .true.
-          exit
-        end if
-      end do
-      if (.not. bin_found) next_bin = NO_BIN_FOUND
+      if (this % map % has_key(p % cell_born)) then
+        next_bin = this % map % get_key(p % cell_born)
+      else
+        next_bin = NO_BIN_FOUND
+      end if
     else
       next_bin = NO_BIN_FOUND
     end if
@@ -804,6 +822,11 @@ contains
         call fatal_error("Could not find cell " // trim(to_str(id)) &
              &// " specified on tally filter.")
       end if
+    end do
+
+    ! Generate mapping from cell indices to filter bins.
+    do i = 1, this % n_bins
+      call this % map % add_key(this % cells(i), i)
     end do
   end subroutine initialize_cellborn
 

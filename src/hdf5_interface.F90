@@ -2383,8 +2383,8 @@ contains
     ! Insert the 'r' and 'i' identifiers
     call h5tcreate_f(H5T_COMPOUND_F, size_double, dtype_real, hdf5_err)
     call h5tcreate_f(H5T_COMPOUND_F, size_double, dtype_imag, hdf5_err)
-    call h5tinsert_f(dtype_real, "r", 0_8, H5T_NATIVE_DOUBLE, hdf5_err)
-    call h5tinsert_f(dtype_imag, "i", 0_8, H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(dtype_real, "r", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(dtype_imag, "i", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdf5_err)
 
     ! Set up collective vs. independent I/O
     data_xfer_mode = H5FD_MPIO_COLLECTIVE_F

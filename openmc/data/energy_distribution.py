@@ -52,6 +52,9 @@ class EnergyDistribution(object):
             return LevelInelastic.from_hdf5(group)
         elif energy_type == 'continuous':
             return ContinuousTabular.from_hdf5(group)
+        else:
+            raise ValueError("Unknown energy distribution type: {}"
+                             .format(energy_type))
 
 
 class ArbitraryTabulated(EnergyDistribution):

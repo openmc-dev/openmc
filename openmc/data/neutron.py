@@ -39,7 +39,7 @@ class IncidentNeutron(object):
     atomic_weight_ratio : float
         Atomic mass ratio of the target nuclide.
     temperature : float
-        Temperature of the target nuclide in eV.
+        Temperature of the target nuclide in MeV.
 
     Attributes
     ----------

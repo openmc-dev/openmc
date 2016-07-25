@@ -102,7 +102,7 @@ class AngleEnergy(object):
             distribution = openmc.data.NBodyPhaseSpace.from_ace(
                 ace, idx, rx.q_value)
         else:
-            raise IOError("Unsupported ACE secondary energy "
-                          "distribution law {0}".format(law))
+            raise ValueError("Unsupported ACE secondary energy "
+                             "distribution law {}".format(law))
 
         return distribution

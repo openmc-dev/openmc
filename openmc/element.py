@@ -1,3 +1,4 @@
+import re
 import sys
 
 import openmc
@@ -6,6 +7,7 @@ from openmc.data import NATURAL_ABUNDANCE
 
 if sys.version_info[0] >= 3:
     basestring = str
+
 
 
 class Element(object):
@@ -124,7 +126,7 @@ class Element(object):
 
         isotopes = []
         for isotope, abundance in sorted(NATURAL_ABUNDANCE.items()):
-            if isotope.startswith(self.name + '-'):
+            if re.match(r'{}\d+'.format(self.name), isotope):
                 nuc = openmc.Nuclide(isotope, self.xs)
                 isotopes.append((nuc, abundance))
         return isotopes

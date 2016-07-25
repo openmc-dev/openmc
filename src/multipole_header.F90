@@ -45,7 +45,8 @@ module multipole_header
     logical                 :: fissionable = .false.  ! Is this isotope fissionable?
     integer                 :: length                 ! Number of poles
     integer, allocatable    :: l_value(:)             ! The l index of the pole
-    real(8), allocatable    :: pseudo_k0RS(:)         ! The value (sqrt(2*mass neutron)/reduced planck constant) * AWR/(AWR + 1) * scattering radius for each l
+    real(8), allocatable    :: pseudo_k0RS(:)         ! The value (sqrt(2*mass neutron)/reduced planck constant)
+                                                      ! * AWR/(AWR + 1) * scattering radius for each l
     complex(8), allocatable :: data(:,:)              ! Contains all of the pole-residue data
     real(8)                 :: sqrtAWR                ! Square root of the atomic weight ratio
 

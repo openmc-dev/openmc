@@ -10,9 +10,9 @@ transport code based on modern methods. It is a constructive solid geometry,
 continuous-energy transport code that uses ACE format cross sections. The
 project started under the Computational Reactor Physics Group at MIT.
 
-Complete documentation on the usage of OpenMC is hosted on GitHub at
-http://mit-crpg.github.io/openmc/. If you are interested in the project or would
-like to help and contribute, please send a message to the OpenMC User's Group
+Complete documentation on the usage of OpenMC is hosted on Read the Docs at
+http://openmc.readthedocs.io. If you are interested in the project or would like
+to help and contribute, please send a message to the OpenMC User's Group
 `mailing list`_.
 
 ------------
@@ -49,7 +49,7 @@ License
 OpenMC is distributed under the MIT/X license_.
 
 .. _mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-users
-.. _installation instructions: http://mit-crpg.github.io/openmc/usersguide/install.html
-.. _Troubleshooting section: http://mit-crpg.github.io/openmc/usersguide/troubleshoot.html
+.. _installation instructions: http://openmc.readthedocs.io/en/latest/usersguide/install.html
+.. _Troubleshooting section: http://openmc.readthedocs.io/en/latest/usersguide/troubleshoot.html
 .. _Issues: https://github.com/mit-crpg/openmc/issues
-.. _license: http://mit-crpg.github.io/openmc/license.html
+.. _license: http://openmc.readthedocs.io/en/latest/license.html

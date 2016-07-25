@@ -24,6 +24,7 @@ module simulation
                              reset_result
   use trigger,         only: check_triggers
   use tracking,        only: transport
+  use volume_calc,     only: run_volume_calculations
 
   implicit none
   private
@@ -41,6 +42,9 @@ contains
 
     type(Particle) :: p
     integer(8)     :: i_work
+
+    ! Volume calculations
+    if (size(volume_calcs) > 0) call run_volume_calculations()
 
     if (.not. restart_run) call initialize_source()
 

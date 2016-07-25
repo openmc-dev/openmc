@@ -18,6 +18,20 @@ try:
 except ImportError:
     from urllib2 import urlopen
 
+if sys.version_info[0] < 3:
+    askuser = raw_input
+else:
+    askuser = input
+
+
+download_warning = """
+WARNING: This script will download approximately 9 GB of data. Extracting and
+processing the data may require as much as 30 GB of additional free disk
+space. Note that if you don't need all 11 temperatures, you can modify the
+'files' list in the script to download only the data you want.
+
+Are you sure you want to continue? ([y]/n)
+"""
 
 thermal_suffix = {20: '01t', 100: '02t', 293: '03t', 296: '03t', 323: '04t',
                   350: '05t', 373: '06t', 400: '07t', 423: '08t', 473: '09t',
@@ -26,12 +40,14 @@ thermal_suffix = {20: '01t', 100: '02t', 293: '03t', 296: '03t', 323: '04t',
                   1000: '19t', 1200: '20t', 1600: '21t', 2000: '22t',
                   3000: '23t'}
 
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--batch', action='store_true',
                     help='supresses standard in')
 args = parser.parse_args()
+
+response = askuser(download_warning) if not args.batch else 'y'
+if response.lower().startswith('n'):
+    sys.exit()
 
 base_url = 'https://www.oecd-nea.org/dbforms/data/eva/evatapes/jeff_32/Processed/'
 files = ['JEFF32-ACE-293K.tar.gz',
@@ -72,10 +88,7 @@ for f in files:
             files_complete.append(f)
             continue
         else:
-            if sys.version_info[0] < 3:
-                overwrite = raw_input('Overwrite {}? ([y]/n) '.format(f))
-            else:
-                overwrite = input('Overwrite {}? ([y]/n) '.format(f))
+            overwrite = askuser('Overwrite {}? ([y]/n) '.format(f))
             if overwrite.lower().startswith('n'):
                 continue
 
@@ -165,10 +178,7 @@ ace_files = (glob.glob(os.path.join('jeff-3.2', '**', '*.ACE')) +
 
 # Ask user to convert
 if not args.batch:
-    if sys.version_info[0] < 3:
-        response = raw_input('Convert ACE files to binary? ([y]/n) ')
-    else:
-        response = input('Convert ACE files to binary? ([y]/n) ')
+    response = askuser('Convert ACE files to binary? ([y]/n) ')
 else:
     response = 'y'
 
@@ -183,10 +193,7 @@ if not response or response.lower().startswith('y'):
 
 # Ask user to convert
 if not args.batch:
-    if sys.version_info[0] < 3:
-        response = raw_input('Generate HDF5 library? ([y]/n) ')
-    else:
-        response = input('Generate HDF5 library? ([y]/n) ')
+    response = askuser('Generate HDF5 library? ([y]/n) ')
 else:
     response = 'y'
 

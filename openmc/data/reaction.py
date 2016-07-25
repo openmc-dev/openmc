@@ -303,9 +303,9 @@ class Reaction(object):
 
     def __repr__(self):
         if self.mt in REACTION_NAME:
-            return "<ACE Reaction: MT={} {}>".format(self.mt, REACTION_NAME[self.mt])
+            return "<Reaction: MT={} {}>".format(self.mt, REACTION_NAME[self.mt])
         else:
-            return "<ACE Reaction: MT={}>".format(self.mt)
+            return "<Reaction: MT={}>".format(self.mt)
 
     @property
     def center_of_mass(self):

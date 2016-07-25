@@ -5,11 +5,15 @@ import os
 import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import TestHarness
-from openmc.statepoint import StatePoint
-from openmc.executor import Executor
+import openmc
 
 
 class StatepointRestartTestHarness(TestHarness):
+    def __init__(self, final_sp, restart_sp, tallies_present=False):
+        super(StatepointRestartTestHarness, self).__init__(final_sp,
+                                                           tallies_present)
+        self._restart_sp = restart_sp
+
     def execute_test(self):
         """Run OpenMC with the appropriate arguments and check the outputs."""
         try:
@@ -40,23 +44,25 @@ class StatepointRestartTestHarness(TestHarness):
 
     def _run_openmc_restart(self):
         # Get the name of the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
+        statepoint = glob.glob(os.path.join(os.getcwd(), self._restart_sp))
+        assert len(statepoint) == 1
+        statepoint = statepoint[0]
 
         # Run OpenMC
-        executor = Executor()
-
         if self._opts.mpi_exec is not None:
-            returncode = executor.run_simulation(mpi_procs=self._opts.mpi_np,
-                                                 restart_file=statepoint,
-                                                 openmc_exec=self._opts.exe,
-                                                 mpi_exec=self._opts.mpi_exec)
+            returncode = openmc.run(mpi_procs=self._opts.mpi_np,
+                                    restart_file=statepoint,
+                                    openmc_exec=self._opts.exe,
+                                    mpi_exec=self._opts.mpi_exec)
 
         else:
-            returncode = executor.run_simulation(openmc_exec=self._opts.exe)
+            returncode = openmc.run(openmc_exec=self._opts.exe,
+                                    restart_file=statepoint)
 
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
 
 if __name__ == '__main__':
-    harness = StatepointRestartTestHarness('statepoint.07.*', True)
+    harness = StatepointRestartTestHarness('statepoint.10.h5',
+         'statepoint.07.h5', True)
     harness.main()

@@ -12,7 +12,7 @@ In a nutshell, OpenMC simulates neutrons moving around randomly in a `nuclear
 reactor`_ (or other fissile system). This is what's known as `Monte Carlo`_
 simulation. Neutrons are important in nuclear reactors because they are the
 particles that induce `fission`_ in uranium and other nuclides. Knowing the
-behavior of neutrons allows you to figure out how often and where fission
+behavior of neutrons allows you to determine how often and where fission
 occurs. The amount of energy released is then directly proportional to the
 fission reaction rate since most heat is produced by fission. By simulating many
 neutrons (millions or billions), it is possible to determine the average
@@ -65,7 +65,7 @@ Now let's look at the pros and cons of Monte Carlo methods:
 
 - **Pro**: Running simulations in parallel is conceptually very simple.
 
-- **Con**: Because they related on repeated random sampling, they are
+- **Con**: Because they rely on repeated random sampling, they are
   computationally very expensive.
 
 - **Con**: A simulation doesn't automatically give you the global solution

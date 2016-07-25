@@ -1,18 +1,19 @@
 module summary
 
-  use ace_header,      only: Reaction, UrrData, Nuclide
   use constants
   use endf,            only: reaction_name
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
-                             &HexLattice
+                             &HexLattice, BASE_UNIVERSE
   use global
   use hdf5_interface
   use material_header, only: Material
   use mesh_header,     only: RegularMesh
+  use nuclide_header
   use output,          only: time_stamp
   use surface_header
   use string,          only: to_str
   use tally_header,    only: TallyObject
+  use output,          only: find_offset
 
   use hdf5
 
@@ -37,6 +38,12 @@ contains
     ! Write header information
     call write_header(file_id)
 
+    if (run_CE) then
+      call write_dataset(file_id, "run_CE", 1)
+    else
+      call write_dataset(file_id, "run_CE", 0)
+    end if
+
     ! Write number of particles
     call write_dataset(file_id, "n_particles", n_particles)
     call write_dataset(file_id, "n_batches", n_batches)
@@ -45,7 +52,7 @@ contains
     call write_attribute_string(file_id, "n_batches", &
          "description", "Total number of batches")
 
-      ! Write eigenvalue information
+    ! Write eigenvalue information
     if (run_mode == MODE_EIGENVALUE) then
       ! write number of inactive/active batches and generations/batch
       call write_dataset(file_id, "n_inactive", n_inactive)
@@ -61,6 +68,7 @@ contains
            "description", "Number of generations per batch")
     end if
 
+    call write_nuclides(file_id)
     call write_geometry(file_id)
     call write_materials(file_id)
     if (n_tallies > 0) then
@@ -99,6 +107,49 @@ contains
   end subroutine write_header
 
 !===============================================================================
+! WRITE_NUCLIDES
+!===============================================================================
+
+  subroutine write_nuclides(file_id)
+    integer(HID_T), intent(in) :: file_id
+    integer(HID_T) :: nuclide_group
+    integer :: i
+    character(12), allocatable :: nucnames(:)
+    real(8), allocatable :: awrs(:)
+    integer, allocatable :: zaids(:)
+
+    ! Write useful data from nuclide objects
+    nuclide_group = create_group(file_id, "nuclides")
+    call write_dataset(nuclide_group, "n_nuclides_total", n_nuclides_total)
+
+    ! Build array of nuclide names, awrs, and zaids
+    allocate(nucnames(n_nuclides_total))
+    allocate(awrs(n_nuclides_total))
+    allocate(zaids(n_nuclides_total))
+    do i = 1, n_nuclides_total
+      if (run_CE) then
+        nucnames(i) = xs_listings(nuclides(i) % listing) % alias
+        awrs(i)     = nuclides(i) % awr
+        zaids(i)    = nuclides(i) % zaid
+      else
+        nucnames(i) = xs_listings(nuclides_MG(i) % obj % listing) % alias
+        awrs(i)     = nuclides_MG(i) % obj % awr
+        zaids(i)    = nuclides_MG(i) % obj % zaid
+      end if
+    end do
+
+    ! Write nuclide names, awrs and zaids
+    call write_dataset(nuclide_group, "names", nucnames)
+    call write_dataset(nuclide_group, "awrs", awrs)
+    call write_dataset(nuclide_group, "zaids", zaids)
+
+    call close_group(nuclide_group)
+
+    deallocate(nucnames, awrs, zaids)
+
+  end subroutine write_nuclides
+
+!===============================================================================
 ! WRITE_GEOMETRY
 !===============================================================================
 
@@ -107,13 +158,15 @@ contains
 
     integer          :: i, j, k, m
     integer, allocatable :: lattice_universes(:,:,:)
+    integer, allocatable :: cell_materials(:)
+    real(8), allocatable :: cell_temperatures(:)
     integer(HID_T) :: geom_group
     integer(HID_T) :: cells_group, cell_group
     integer(HID_T) :: surfaces_group, surface_group
     integer(HID_T) :: universes_group, univ_group
     integer(HID_T) :: lattices_group, lattice_group
     real(8), allocatable :: coeffs(:)
-    character(MAX_LINE_LEN) :: region_spec
+    character(REGION_SPEC_LEN) :: region_spec
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
     type(Universe), pointer :: u
@@ -150,17 +203,40 @@ contains
       select case (c%type)
       case (CELL_NORMAL)
         call write_dataset(cell_group, "fill_type", "normal")
-        if (c%material == MATERIAL_VOID) then
-          call write_dataset(cell_group, "material", -1)
+
+        if (size(c % material) == 1) then
+          if (c % material(1) == MATERIAL_VOID) then
+            call write_dataset(cell_group, "material", MATERIAL_VOID)
+          else
+            call write_dataset(cell_group, "material", &
+                 materials(c % material(1)) % id)
+          end if
         else
-          call write_dataset(cell_group, "material", materials(c%material)%id)
+          allocate(cell_materials(size(c % material)))
+          do j = 1, size(c % material)
+            if (c % material(j) == MATERIAL_VOID) then
+              cell_materials(j) = MATERIAL_VOID
+            else
+              cell_materials(j) = materials(c % material(j)) % id
+            end if
+          end do
+          call write_dataset(cell_group, "material", cell_materials)
+          deallocate(cell_materials)
         end if
+
+        allocate(cell_temperatures(size(c % sqrtkT)))
+        cell_temperatures(:) = c % sqrtkT(:)
+        cell_temperatures(:) = cell_temperatures(:)**2 / K_BOLTZMANN
+        call write_dataset(cell_group, "temperature", cell_temperatures)
+        deallocate(cell_temperatures)
 
       case (CELL_FILL)
         call write_dataset(cell_group, "fill_type", "universe")
         call write_dataset(cell_group, "fill", universes(c%fill)%id)
-        if (size(c%offset) > 0) then
-          call write_dataset(cell_group, "offset", c%offset)
+        if (allocated(c%offset)) then
+          if (size(c%offset) > 0) then
+            call write_dataset(cell_group, "offset", c%offset)
+          end if
         end if
 
         if (allocated(c%translation)) then
@@ -195,6 +271,8 @@ contains
         end select
       end do
       call write_dataset(cell_group, "region", adjustl(region_spec))
+
+      call write_dataset(cell_group, "distribcell_index", c % distribcell_index)
 
       call close_group(cell_group)
     end do CELL_LOOP
@@ -345,8 +423,10 @@ contains
       call write_dataset(lattice_group, "outer", lat%outer)
 
       ! Write distribcell offsets if present
-      if (size(lat%offset) > 0) then
-        call write_dataset(lattice_group, "offsets", lat%offset)
+      if (allocated(lat%offset)) then
+        if (size(lat%offset) > 0) then
+          call write_dataset(lattice_group, "offsets", lat%offset)
+        end if
       end if
 
       select type (lat)
@@ -355,16 +435,22 @@ contains
         call write_dataset(lattice_group, "type", "rectangular")
 
         ! Write lattice dimensions, lower left corner, and pitch
-        call write_dataset(lattice_group, "dimension", lat%n_cells)
-        call write_dataset(lattice_group, "lower_left", lat%lower_left)
+        if (lat % is_3d) then
+          call write_dataset(lattice_group, "dimension", lat % n_cells)
+          call write_dataset(lattice_group, "lower_left", lat % lower_left)
+        else
+          call write_dataset(lattice_group, "dimension", lat % n_cells(1:2))
+          call write_dataset(lattice_group, "lower_left", lat % lower_left)
+        end if
 
         ! Write lattice universes.
         allocate(lattice_universes(lat%n_cells(1), lat%n_cells(2), &
              &lat%n_cells(3)))
         do j = 1, lat%n_cells(1)
-          do k = 1, lat%n_cells(2)
+          do k = 0, lat%n_cells(2) - 1
             do m = 1, lat%n_cells(3)
-              lattice_universes(j,k,m) = universes(lat%universes(j,k,m))%id
+              lattice_universes(j, k+1, m) = &
+                   universes(lat%universes(j, lat%n_cells(2) - k, m))%id
             end do
           end do
         end do
@@ -453,7 +539,11 @@ contains
       ! Copy ZAID for each nuclide to temporary array
       allocate(nucnames(m%n_nuclides))
       do j = 1, m%n_nuclides
-        i_list = nuclides(m%nuclide(j))%listing
+        if (run_CE) then
+          i_list = nuclides(m%nuclide(j))%listing
+        else
+          i_list = nuclides_MG(m%nuclide(j))%obj%listing
+        end if
         nucnames(j) = xs_listings(i_list)%alias
       end do
 
@@ -484,8 +574,10 @@ contains
   subroutine write_tallies(file_id)
     integer(HID_T), intent(in) :: file_id
 
-    integer :: i, j
+    integer :: i, j, k
     integer :: i_list, i_xs
+    integer :: n_order      ! loop index for moment orders
+    integer :: nm_order     ! loop index for Ynm moment orders
     integer(HID_T) :: tallies_group
     integer(HID_T) :: mesh_group
     integer(HID_T) :: tally_group
@@ -493,6 +585,10 @@ contains
     character(20), allocatable :: str_array(:)
     type(RegularMesh), pointer :: m
     type(TallyObject), pointer :: t
+
+    integer                              :: offset   ! distibcell offset
+    character(MAX_LINE_LEN), allocatable :: paths(:) ! distribcell paths array
+    character(MAX_LINE_LEN)              :: path     ! distribcell path
 
     tallies_group = create_group(file_id, "tallies")
 
@@ -536,22 +632,40 @@ contains
       ! Write number of filters
       call write_dataset(tally_group, "n_filters", t%n_filters)
 
-      FILTER_LOOP: do j = 1, t%n_filters
+      FILTER_LOOP: do j = 1, t % n_filters
         filter_group = create_group(tally_group, "filter " // trim(to_str(j)))
 
         ! Write number of bins for this filter
-        call write_dataset(filter_group, "offset", t%filters(j)%offset)
-        call write_dataset(filter_group, "n_bins", t%filters(j)%n_bins)
+        call write_dataset(filter_group, "n_bins", t % filters(j) % n_bins)
 
         ! Write filter bins
-        if (t%filters(j)%type == FILTER_ENERGYIN .or. &
-             t%filters(j)%type == FILTER_ENERGYOUT .or. &
-             t%filters(j)%type == FILTER_MU .or. &
-             t%filters(j)%type == FILTER_POLAR .or. &
-             t%filters(j)%type == FILTER_AZIMUTHAL) then
-          call write_dataset(filter_group, "bins", t%filters(j)%real_bins)
+        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
+             t % filters(j)% type == FILTER_ENERGYOUT .or. &
+             t % filters(j) % type == FILTER_MU .or. &
+             t % filters(j) % type == FILTER_POLAR .or. &
+             t % filters(j) % type == FILTER_AZIMUTHAL) then
+          call write_dataset(filter_group, "bins", t % filters(j) % real_bins)
         else
-          call write_dataset(filter_group, "bins", t%filters(j)%int_bins)
+          call write_dataset(filter_group, "bins", t % filters(j) % int_bins)
+        end if
+
+        ! Write paths to reach each distribcell instance
+        if (t % filters(j) % type == FILTER_DISTRIBCELL) then
+          ! Allocate array of strings for each distribcell path
+          allocate(paths(t % filters(j) % n_bins))
+
+          ! Store path for each distribcell instance
+          do k = 1, t % filters(j) % n_bins
+            path = ''
+            offset = 1
+            call find_offset(t % filters(j) % int_bins(1), &
+                 universes(BASE_UNIVERSE), k, offset, path)
+            paths(k) = path
+          end do
+
+          ! Write array of distribcell paths to summary file
+          call write_dataset(filter_group, "paths", paths)
+          deallocate(paths)
         end if
 
         ! Write name of type
@@ -591,7 +705,11 @@ contains
       allocate(str_array(t%n_nuclide_bins))
       NUCLIDE_LOOP: do j = 1, t%n_nuclide_bins
         if (t%nuclide_bins(j) > 0) then
-          i_list = nuclides(t%nuclide_bins(j))%listing
+          if (run_CE) then
+            i_list = nuclides(t % nuclide_bins(j)) % listing
+          else
+            i_list = nuclides_MG(t % nuclide_bins(j)) % obj % listing
+          end if
           i_xs = index(xs_listings(i_list)%alias, '.')
           if (i_xs > 0) then
             str_array(j) = xs_listings(i_list)%alias(1:i_xs - 1)
@@ -611,57 +729,41 @@ contains
       call write_dataset(tally_group, "n_score_bins", t%n_score_bins)
       allocate(str_array(size(t%score_bins)))
       do j = 1, size(t%score_bins)
-        select case(t%score_bins(j))
-        case (SCORE_FLUX)
-          str_array(j) = "flux"
-        case (SCORE_TOTAL)
-          str_array(j) = "total"
-        case (SCORE_SCATTER)
-          str_array(j) = "scatter"
-        case (SCORE_NU_SCATTER)
-          str_array(j) = "nu-scatter"
-        case (SCORE_SCATTER_N)
-          str_array(j) = "scatter-n"
-        case (SCORE_SCATTER_PN)
-          str_array(j) = "scatter-pn"
-        case (SCORE_NU_SCATTER_N)
-          str_array(j) = "nu-scatter-n"
-        case (SCORE_NU_SCATTER_PN)
-          str_array(j) = "nu-scatter-pn"
-        case (SCORE_TRANSPORT)
-          str_array(j) = "transport"
-        case (SCORE_N_1N)
-          str_array(j) = "n1n"
-        case (SCORE_ABSORPTION)
-          str_array(j) = "absorption"
-        case (SCORE_FISSION)
-          str_array(j) = "fission"
-        case (SCORE_NU_FISSION)
-          str_array(j) = "nu-fission"
-        case (SCORE_DELAYED_NU_FISSION)
-          str_array(j) = "delayed-nu-fission"
-        case (SCORE_KAPPA_FISSION)
-          str_array(j) = "kappa-fission"
-        case (SCORE_CURRENT)
-          str_array(j) = "current"
-        case (SCORE_FLUX_YN)
-          str_array(j) = "flux-yn"
-        case (SCORE_TOTAL_YN)
-          str_array(j) = "total-yn"
-        case (SCORE_SCATTER_YN)
-          str_array(j) = "scatter-yn"
-        case (SCORE_NU_SCATTER_YN)
-          str_array(j) = "nu-scatter-yn"
-        case (SCORE_EVENTS)
-          str_array(j) = "events"
-        case (SCORE_INVERSE_VELOCITY)
-          str_array(j) = "inverse-velocity"
-        case default
-          str_array(j) = reaction_name(t%score_bins(j))
-        end select
+        str_array(j) = reaction_name(t%score_bins(j))
       end do
       call write_dataset(tally_group, "score_bins", str_array)
 
+      deallocate(str_array)
+
+      ! Write explicit moment order strings for each score bin
+      k = 1
+      allocate(str_array(t%n_score_bins))
+      MOMENT_LOOP: do j = 1, t%n_user_score_bins
+        select case(t%score_bins(k))
+        case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
+          str_array(k) = 'P' // trim(to_str(t%moment_order(k)))
+          k = k + 1
+        case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
+          do n_order = 0, t%moment_order(k)
+            str_array(k) = 'P' // trim(to_str(n_order))
+            k = k + 1
+          end do
+        case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
+             SCORE_TOTAL_YN)
+          do n_order = 0, t%moment_order(k)
+            do nm_order = -n_order, n_order
+              str_array(k) = 'Y' // trim(to_str(n_order)) // ',' // &
+                   trim(to_str(nm_order))
+              k = k + 1
+            end do
+          end do
+        case default
+          str_array(k) = ''
+          k = k + 1
+        end select
+      end do MOMENT_LOOP
+
+      call write_dataset(tally_group, "moment_orders", str_array)
       deallocate(str_array)
 
       call close_group(tally_group)
@@ -670,64 +772,5 @@ contains
     call close_group(tallies_group)
 
   end subroutine write_tallies
-
-!===============================================================================
-! WRITE_TIMING
-!===============================================================================
-
-  subroutine write_timing(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer(8)     :: total_particles
-    integer(HID_T) :: time_group
-    real(8)        :: speed
-
-    time_group = create_group(file_id, "timing")
-
-    ! Write timing data
-    call write_dataset(time_group, "time_initialize", time_initialize%elapsed)
-    call write_dataset(time_group, "time_read_xs", time_read_xs%elapsed)
-    call write_dataset(time_group, "time_transport", time_transport%elapsed)
-    call write_dataset(time_group, "time_bank", time_bank%elapsed)
-    call write_dataset(time_group, "time_bank_sample", time_bank_sample%elapsed)
-    call write_dataset(time_group, "time_bank_sendrecv", time_bank_sendrecv%elapsed)
-    call write_dataset(time_group, "time_tallies", time_tallies%elapsed)
-    call write_dataset(time_group, "time_inactive", time_inactive%elapsed)
-    call write_dataset(time_group, "time_active", time_active%elapsed)
-    call write_dataset(time_group, "time_finalize", time_finalize%elapsed)
-    call write_dataset(time_group, "time_total", time_total%elapsed)
-
-    ! Add descriptions to timing data
-    call write_attribute_string(time_group, "time_initialize", "description", &
-         "Total time elapsed for initialization (s)")
-    call write_attribute_string(time_group, "time_read_xs", "description", &
-         "Time reading cross-section libraries (s)")
-    call write_attribute_string(time_group, "time_transport", "description", &
-         "Time in transport only (s)")
-    call write_attribute_string(time_group, "time_bank", "description", &
-         "Total time synchronizing fission bank (s)")
-    call write_attribute_string(time_group, "time_bank_sample", "description", &
-         "Time between generations sampling source sites (s)")
-    call write_attribute_string(time_group, "time_bank_sendrecv", "description", &
-         "Time between generations SEND/RECVing source sites (s)")
-    call write_attribute_string(time_group, "time_tallies", "description", &
-         "Time between batches accumulating tallies (s)")
-    call write_attribute_string(time_group, "time_inactive", "description", &
-         "Total time in inactive batches (s)")
-    call write_attribute_string(time_group, "time_active", "description", &
-         "Total time in active batches (s)")
-    call write_attribute_string(time_group, "time_finalize", "description", &
-         "Total time for finalization (s)")
-    call write_attribute_string(time_group, "time_total", "description", &
-         "Total time elapsed (s)")
-
-    ! Write calculation rate
-    total_particles = n_particles * n_batches * gen_per_batch
-    speed = real(total_particles) / (time_inactive%elapsed + &
-         time_active%elapsed)
-    call write_dataset(time_group, "neutrons_per_second", speed)
-
-    call close_group(time_group)
-  end subroutine write_timing
 
 end module summary

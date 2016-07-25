@@ -10,10 +10,7 @@ from testing_harness import *
 
 class DistribcellTestHarness(TestHarness):
     def __init__(self):
-        self._sp_name = None
-        self._tallies = True
-        self._opts = None
-        self._args = None
+        super(DistribcellTestHarness, self).__init__(None, True)
 
     def execute_test(self):
         """Run OpenMC with the appropriate arguments and check the outputs."""

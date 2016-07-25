@@ -2,7 +2,6 @@ module output
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use ace_header,      only: Nuclide, Reaction, UrrData
   use constants
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
@@ -12,8 +11,10 @@ module output
   use math,            only: t_percentile
   use mesh_header,     only: RegularMesh
   use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
+  use nuclide_header
   use particle_header, only: LocalCoord, Particle
   use plot_header
+  use sab_header,      only: SAlphaBeta
   use string,          only: to_upper, to_str
   use tally_header,    only: TallyObject
 
@@ -51,9 +52,9 @@ contains
 
     ! Write version information
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     Copyright:      2011-2015 Massachusetts Institute of Technology'
+         '     Copyright:      2011-2016 Massachusetts Institute of Technology'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     License:        http://mit-crpg.github.io/openmc/license.html'
+         '     License:        http://openmc.readthedocs.io/en/latest/license.html'
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",8X,I1,".",I1,".",I1)') &
          VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1
@@ -100,9 +101,9 @@ contains
 !===============================================================================
 
   subroutine header(msg, unit, level)
-    character(*), intent(in) :: msg ! header message
-    integer, intent(in), optional :: unit       ! unit to write to
-    integer, intent(in), optional :: level      ! specified header level
+    character(*), intent(in)      :: msg   ! header message
+    integer, intent(in), optional :: unit  ! unit to write to
+    integer, intent(in), optional :: level ! specified header level
 
     integer :: n            ! number of = signs on left
     integer :: m            ! number of = signs on right
@@ -305,208 +306,15 @@ contains
 
     ! Display weight, energy, grid index, and interpolation factor
     write(ou,*) '  Weight = ' // to_str(p % wgt)
-    write(ou,*) '  Energy = ' // to_str(p % E)
+    if (run_CE) then
+      write(ou,*) '  Energy = ' // to_str(p % E)
+    else
+      write(ou,*) '  Energy Group = ' // to_str(p % g)
+    end if
     write(ou,*) '  Delayed Group = ' // to_str(p % delayed_group)
     write(ou,*)
 
   end subroutine print_particle
-
-!===============================================================================
-! PRINT_NUCLIDE displays information about a continuous-energy neutron
-! cross_section table and its reactions and secondary angle/energy distributions
-!===============================================================================
-
-  subroutine print_nuclide(nuc, unit)
-    type(Nuclide), intent(in) :: nuc
-    integer, intent(in), optional :: unit
-
-    integer :: i                 ! loop index over nuclides
-    integer :: unit_             ! unit to write to
-    integer :: size_total        ! memory used by nuclide (bytes)
-    integer :: size_angle_total  ! total memory used for angle dist. (bytes)
-    integer :: size_energy_total ! total memory used for energy dist. (bytes)
-    integer :: size_xs           ! memory used for cross-sections (bytes)
-    integer :: size_angle        ! memory used for an angle distribution (bytes)
-    integer :: size_energy       ! memory used for a  energy distributions (bytes)
-    integer :: size_urr          ! memory used for probability tables (bytes)
-    character(11) :: law         ! secondary energy distribution law
-    type(UrrData),  pointer :: urr
-
-    ! set default unit for writing information
-    if (present(unit)) then
-      unit_ = unit
-    else
-      unit_ = OUTPUT_UNIT
-    end if
-
-    ! Initialize totals
-    size_angle_total = 0
-    size_energy_total = 0
-    size_urr = 0
-    size_xs = 0
-
-    ! Basic nuclide information
-    write(unit_,*) 'Nuclide ' // trim(nuc % name)
-    write(unit_,*) '  zaid = ' // trim(to_str(nuc % zaid))
-    write(unit_,*) '  awr = ' // trim(to_str(nuc % awr))
-    write(unit_,*) '  kT = ' // trim(to_str(nuc % kT))
-    write(unit_,*) '  # of grid points = ' // trim(to_str(nuc % n_grid))
-    write(unit_,*) '  Fissionable = ', nuc % fissionable
-    write(unit_,*) '  # of fission reactions = ' // trim(to_str(nuc % n_fission))
-    write(unit_,*) '  # of reactions = ' // trim(to_str(nuc % n_reaction))
-
-    ! Information on each reaction
-    write(unit_,*) '  Reaction     Q-value  COM  Law    IE    size(angle) size(energy)'
-    do i = 1, nuc % n_reaction
-      associate (rxn => nuc % reactions(i))
-        ! Determine size of angle distribution
-        if (rxn % has_angle_dist) then
-          size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
-        else
-          size_angle = 0
-        end if
-
-        ! Determine size of energy distribution and law
-        if (rxn % has_energy_dist) then
-          size_energy = size(rxn % edist % data) * 8
-          law = to_str(rxn % edist % law)
-        else
-          size_energy = 0
-          law = 'None'
-        end if
-
-        write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
-             reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
-             law(1:4), rxn % threshold, size_angle, size_energy
-
-        ! Accumulate data size
-        size_xs = size_xs + (nuc % n_grid - rxn%threshold + 1) * 8
-        size_angle_total = size_angle_total + size_angle
-        size_energy_total = size_energy_total + size_energy
-      end associate
-    end do
-
-    ! Add memory required for summary reactions (total, absorption, fission,
-    ! nu-fission)
-    size_xs = 8 * nuc % n_grid * 4
-
-    ! Write information about URR probability tables
-    size_urr = 0
-    if (nuc % urr_present) then
-      urr => nuc % urr_data
-      write(unit_,*) '  Unresolved resonance probability table:'
-      write(unit_,*) '    # of energies = ' // trim(to_str(urr % n_energy))
-      write(unit_,*) '    # of probabilities = ' // trim(to_str(urr % n_prob))
-      write(unit_,*) '    Interpolation =  ' // trim(to_str(urr % interp))
-      write(unit_,*) '    Inelastic flag = ' // trim(to_str(urr % inelastic_flag))
-      write(unit_,*) '    Absorption flag = ' // trim(to_str(urr % absorption_flag))
-      write(unit_,*) '    Multiply by smooth? ', urr % multiply_smooth
-      write(unit_,*) '    Min energy = ', trim(to_str(urr % energy(1)))
-      write(unit_,*) '    Max energy = ', trim(to_str(urr % energy(urr % n_energy)))
-
-      ! Calculate memory used by probability tables and add to total
-      size_urr = urr % n_energy * (urr % n_prob * 6 + 1) * 8
-    end if
-
-    ! Calculate total memory
-    size_total = size_xs + size_angle_total + size_energy_total + size_urr
-
-    ! Write memory used
-    write(unit_,*) '  Memory Requirements'
-    write(unit_,*) '    Cross sections = ' // trim(to_str(size_xs)) // ' bytes'
-    write(unit_,*) '    Secondary angle distributions = ' // &
-         trim(to_str(size_angle_total)) // ' bytes'
-    write(unit_,*) '    Secondary energy distributions = ' // &
-         trim(to_str(size_energy_total)) // ' bytes'
-    write(unit_,*) '    Probability Tables = ' // &
-         trim(to_str(size_urr)) // ' bytes'
-    write(unit_,*) '    Total = ' // trim(to_str(size_total)) // ' bytes'
-
-    ! Blank line at end of nuclide
-    write(unit_,*)
-
-  end subroutine print_nuclide
-
-!===============================================================================
-! PRINT_SAB_TABLE displays information about a S(a,b) table containing data
-! describing thermal scattering from bound materials such as hydrogen in water.
-!===============================================================================
-
-  subroutine print_sab_table(sab, unit)
-    type(SAlphaBeta), intent(in) :: sab
-    integer, intent(in), optional :: unit
-
-    integer :: size_sab   ! memory used by S(a,b) table
-    integer :: unit_      ! unit to write to
-    integer :: i          ! Loop counter for parsing through sab % zaid
-    integer :: char_count ! Counter for the number of characters on a line
-
-    ! set default unit for writing information
-    if (present(unit)) then
-      unit_ = unit
-    else
-      unit_ = OUTPUT_UNIT
-    end if
-
-    ! Basic S(a,b) table information
-    write(unit_,*) 'S(a,b) Table ' // trim(sab % name)
-    write(unit_,'(A)',advance="no") '   zaids = '
-    ! Initialize the counter based on the above string
-    char_count = 11
-    do i = 1, sab % n_zaid
-      ! Deal with a line thats too long
-      if (char_count >= 73) then  ! 73 = 80 - (5 ZAID chars + 1 space + 1 comma)
-        ! End the line
-        write(unit_,*) ""
-        ! Add 11 leading blanks
-        write(unit_,'(A)', advance="no") "           "
-        ! reset the counter to 11
-        char_count = 11
-      end if
-      if (i < sab % n_zaid) then
-        ! Include a comma
-        write(unit_,'(A)',advance="no") trim(to_str(sab % zaid(i))) // ", "
-        char_count = char_count + len(trim(to_str(sab % zaid(i)))) + 2
-      else
-        ! Don't include a comma, since we are all done
-        write(unit_,'(A)',advance="no") trim(to_str(sab % zaid(i)))
-      end if
-
-    end do
-    write(unit_,*) "" ! Move to next line
-    write(unit_,*) '  awr = ' // trim(to_str(sab % awr))
-    write(unit_,*) '  kT = ' // trim(to_str(sab % kT))
-
-    ! Inelastic data
-    write(unit_,*) '  # of Incoming Energies (Inelastic) = ' // &
-         trim(to_str(sab % n_inelastic_e_in))
-    write(unit_,*) '  # of Outgoing Energies (Inelastic) = ' // &
-         trim(to_str(sab % n_inelastic_e_out))
-    write(unit_,*) '  # of Outgoing Angles (Inelastic) = ' // &
-         trim(to_str(sab % n_inelastic_mu))
-    write(unit_,*) '  Threshold for Inelastic = ' // &
-         trim(to_str(sab % threshold_inelastic))
-
-    ! Elastic data
-    if (sab % n_elastic_e_in > 0) then
-      write(unit_,*) '  # of Incoming Energies (Elastic) = ' // &
-           trim(to_str(sab % n_elastic_e_in))
-      write(unit_,*) '  # of Outgoing Angles (Elastic) = ' // &
-           trim(to_str(sab % n_elastic_mu))
-      write(unit_,*) '  Threshold for Elastic = ' // &
-           trim(to_str(sab % threshold_elastic))
-    end if
-
-    ! Determine memory used by S(a,b) table and write out
-    size_sab = 8 * (sab % n_inelastic_e_in * (2 + sab % n_inelastic_e_out * &
-         (1 + sab % n_inelastic_mu)) + sab % n_elastic_e_in * &
-         (2 + sab % n_elastic_mu))
-    write(unit_,*) '  Memory Used = ' // trim(to_str(size_sab)) // ' bytes'
-
-    ! Blank line at end
-    write(unit_,*)
-
-  end subroutine print_sab_table
 
 !===============================================================================
 ! WRITE_XS_SUMMARY writes information about each nuclide and S(a,b) table to a
@@ -520,8 +328,6 @@ contains
     integer :: i       ! loop index
     integer :: unit_xs ! cross_sections.out file unit
     character(MAX_FILE_LEN)  :: path ! path of summary file
-    type(Nuclide),    pointer :: nuc
-    type(SAlphaBeta), pointer :: sab
 
     ! Create filename for log file
     path = trim(path_output) // "cross_sections.out"
@@ -529,24 +335,32 @@ contains
     ! Open log file for writing
     open(NEWUNIT=unit_xs, FILE=path, STATUS='replace', ACTION='write')
 
-    ! Write header
-    call header("CROSS SECTION TABLES", unit=unit_xs)
+    if (run_CE) then
+      ! Write header
+      call header("CROSS SECTION TABLES", unit=unit_xs)
 
-    NUCLIDE_LOOP: do i = 1, n_nuclides_total
-      ! Get pointer to nuclide
-      nuc => nuclides(i)
+      NUCLIDE_LOOP: do i = 1, n_nuclides_total
+        ! Print information about nuclide
+        call nuclides(i) % print(unit=unit_xs)
+      end do NUCLIDE_LOOP
 
-      ! Print information about nuclide
-      call print_nuclide(nuc, unit=unit_xs)
-    end do NUCLIDE_LOOP
-
-    SAB_TABLES_LOOP: do i = 1, n_sab_tables
-      ! Get pointer to S(a,b) table
-      sab => sab_tables(i)
-
-      ! Print information about S(a,b) table
-      call print_sab_table(sab, unit=unit_xs)
-    end do SAB_TABLES_LOOP
+      SAB_TABLES_LOOP: do i = 1, n_sab_tables
+        ! Print information about S(a,b) table
+        call sab_tables(i) % print(unit=unit_xs)
+      end do SAB_TABLES_LOOP
+    else
+      ! Write header
+      call header("MGXS LIBRARY TABLES", unit=unit_xs)
+      NuclideMG_LOOP: do i = 1, n_nuclides_total
+        ! Print information about nuclide
+        call nuclides_mg(i) % obj % print(unit=unit_xs)
+      end do NuclideMG_LOOP
+      call header("MATERIAL MGXS TABLES", unit=unit_xs)
+      MATERIAL_LOOP: do i = 1, n_materials
+        ! Print information about Materials
+        call macro_xs(i) % obj % print(unit=unit_xs)
+      end do MATERIAL_LOOP
+    end if
 
     ! Close cross section summary file
     close(unit_xs)
@@ -963,8 +777,6 @@ contains
     score_names(abs(SCORE_TOTAL))              = "Total Reaction Rate"
     score_names(abs(SCORE_SCATTER))            = "Scattering Rate"
     score_names(abs(SCORE_NU_SCATTER))         = "Scattering Production Rate"
-    score_names(abs(SCORE_TRANSPORT))          = "Transport Rate"
-    score_names(abs(SCORE_N_1N))               = "(n,1n) Rate"
     score_names(abs(SCORE_ABSORPTION))         = "Absorption Rate"
     score_names(abs(SCORE_FISSION))            = "Fission Rate"
     score_names(abs(SCORE_NU_FISSION))         = "Nu-Fission Rate"
@@ -1096,7 +908,11 @@ contains
             write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                  "Total Material"
           else
-            i_listing = nuclides(i_nuclide) % listing
+            if (run_CE) then
+              i_listing = nuclides(i_nuclide) % listing
+            else
+              i_listing = nuclides_MG(i_nuclide) % obj % listing
+            end if
             write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                  trim(xs_listings(i_listing) % alias)
           end if
@@ -1351,7 +1167,7 @@ contains
   function get_label(t, i_filter) result(label)
     type(TallyObject), intent(in) :: t        ! tally object
     integer,           intent(in) :: i_filter ! index in filters array
-    character(100)                :: label    ! user-specified identifier
+    character(MAX_LINE_LEN)       :: label    ! user-specified identifier
 
     integer :: i      ! index in cells/surfaces/etc array
     integer :: bin
@@ -1378,8 +1194,7 @@ contains
       label = ''
       univ => universes(BASE_UNIVERSE)
       offset = 0
-      call find_offset(t % filters(i_filter) % offset, &
-           t % filters(i_filter) % int_bins(1), &
+      call find_offset(t % filters(i_filter) % int_bins(1), &
            univ, bin-1, offset, label)
     case (FILTER_SURFACE)
       i = t % filters(i_filter) % int_bins(bin)
@@ -1413,15 +1228,15 @@ contains
 ! with the given offset
 !===============================================================================
 
-  recursive subroutine find_offset(map, goal, univ, final, offset, path)
+  recursive subroutine find_offset(goal, univ, final, offset, path)
 
-    integer, intent(in) :: map          ! Index in maps vector
-    integer, intent(in) :: goal         ! The target cell ID
+    integer, intent(in) :: goal         ! The target cell index
     type(Universe), intent(in) :: univ  ! Universe to begin search
     integer, intent(in) :: final        ! Target offset
     integer, intent(inout) :: offset    ! Current offset
     character(*), intent(inout) :: path ! Path to offset
 
+    integer :: map                  ! Index in maps vector
     integer :: i, j                 ! Index over cells
     integer :: k, l, m              ! Indices in lattice
     integer :: old_k, old_l, old_m  ! Previous indices in lattice
@@ -1436,6 +1251,9 @@ contains
     type(Universe), pointer :: next_univ  ! Next universe to loop through
     class(Lattice), pointer :: lat        ! Pointer to current lattice
 
+    ! Get the distribcell index for this cell
+    map = cells(goal) % distribcell_index
+
     n = univ % n_cells
 
     ! Write to the geometry stack
@@ -1447,17 +1265,13 @@ contains
 
     ! Look through all cells in this universe
     do i = 1, n
-
-      cell_index = univ % cells(i)
-      c => cells(cell_index)
-
-      ! If the cell ID matches the goal and the offset matches final,
-      ! write to the geometry stack
-      if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
-        path = trim(path) // "->" // to_str(c%id)
+      ! If the cell matches the goal and the offset matches final, write to the
+      ! geometry stack
+      if (univ % cells(i) == goal .and. offset == final) then
+        c => cells(univ % cells(i))
+        path = trim(path) // "->" // to_str(c % id)
         return
       end if
-
     end do
 
     ! Find the fill cell or lattice cell that we need to enter
@@ -1537,7 +1351,7 @@ contains
           offset = c % offset(map) + offset
 
           next_univ => universes(c % fill)
-          call find_offset(map, goal, next_univ, final, offset, path)
+          call find_offset(goal, next_univ, final, offset, path)
           return
 
         ! ====================================================================
@@ -1577,7 +1391,7 @@ contains
                       path = trim(path) // "(" // trim(to_str(k)) // &
                            "," // trim(to_str(l)) // "," // &
                            trim(to_str(m)) // ")"
-                      call find_offset(map, goal, next_univ, final, offset, path)
+                      call find_offset(goal, next_univ, final, offset, path)
                       return
                     else
                       old_m = m
@@ -1593,7 +1407,7 @@ contains
                     path = trim(path) // "(" // trim(to_str(old_k)) // &
                          "," // trim(to_str(old_l)) // "," // &
                          trim(to_str(old_m)) // ")"
-                    call find_offset(map, goal, next_univ, final, offset, path)
+                    call find_offset(goal, next_univ, final, offset, path)
                     return
                   end if
 
@@ -1638,8 +1452,7 @@ contains
                            trim(to_str(k - lat % n_rings)) // "," // &
                            trim(to_str(l - lat % n_rings)) // "," // &
                            trim(to_str(m)) // ")"
-                      call find_offset(map, goal, next_univ, final, offset, &
-                                       path)
+                      call find_offset(goal, next_univ, final, offset, path)
                       return
                     else
                       old_m = m
@@ -1656,7 +1469,7 @@ contains
                          trim(to_str(old_k - lat % n_rings)) // "," // &
                          trim(to_str(old_l - lat % n_rings)) // "," // &
                          trim(to_str(old_m)) // ")"
-                    call find_offset(map, goal, next_univ, final, offset, path)
+                    call find_offset(goal, next_univ, final, offset, path)
                     return
                   end if
 

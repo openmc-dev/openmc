@@ -9,7 +9,7 @@ module plot
   use mesh,            only: get_mesh_indices
   use mesh_header,     only: RegularMesh
   use output,          only: write_message
-  use particle_header, only: Particle, LocalCoord
+  use particle_header, only: LocalCoord, Particle
   use plot_header
   use ppmlib,          only: Image, init_image, allocate_image, &
                              deallocate_image, set_pixel
@@ -56,7 +56,7 @@ contains
 
   subroutine position_rgb(p, pl, rgb, id)
 
-    type(Particle), intent(inout)         :: p
+    type(Particle), intent(inout)   :: p
     type(ObjectPlot), pointer, intent(in) :: pl
     integer, intent(out)                  :: rgb(3)
     integer, intent(out)                  :: id
@@ -82,17 +82,17 @@ contains
       if (pl % color_by == PLOT_COLOR_MATS) then
         ! Assign color based on material
         c => cells(p % coord(j) % cell)
-        if (c % material == MATERIAL_VOID) then
-          ! By default, color void cells white
-          rgb = 255
-          id = -1
-        else if (c % type == CELL_FILL) then
+        if (c % type == CELL_FILL) then
           ! If we stopped on a middle universe level, treat as if not found
           rgb = pl % not_found % rgb
           id = -1
+        else if (p % material == MATERIAL_VOID) then
+          ! By default, color void cells white
+          rgb = 255
+          id = -1
         else
-          rgb = pl % colors(c % material) % rgb
-          id = materials(c % material) % id
+          rgb = pl % colors(p % material) % rgb
+          id = materials(p % material) % id
         end if
       else if (pl % color_by == PLOT_COLOR_CELLS) then
         ! Assign color based on cell
@@ -364,7 +364,7 @@ contains
     real(8) :: ll(3)        ! lower left starting point for each sweep direction
     type(Particle)    :: p
     type(ProgressBar) :: progress
-    type(c_ptr) :: f_ptr
+    type(c_ptr)       :: f_ptr
 
     ! compute voxel widths in each direction
     vox = pl % width/dble(pl % pixels)

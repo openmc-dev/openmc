@@ -7,14 +7,15 @@ module constants
 
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
-  integer, parameter :: VERSION_MINOR   = 7
-  integer, parameter :: VERSION_RELEASE = 1
+  integer, parameter :: VERSION_MINOR   = 8
+  integer, parameter :: VERSION_RELEASE = 0
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 14
-  integer, parameter :: REVISION_PARTICLE_RESTART = 1
-  integer, parameter :: REVISION_TRACK            = 1
-  integer, parameter :: REVISION_SUMMARY          = 1
+  integer,       parameter :: REVISION_STATEPOINT       = 15
+  integer,       parameter :: REVISION_PARTICLE_RESTART = 1
+  integer,       parameter :: REVISION_TRACK            = 1
+  integer,       parameter :: REVISION_SUMMARY          = 3
+  character(10), parameter :: MULTIPOLE_VERSION         = "v0.2"
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS
@@ -37,7 +38,7 @@ module constants
   real(8), parameter :: FP_COINCIDENT = 1e-12_8
 
   ! Maximum number of collisions/crossings
-  integer, parameter :: MAX_EVENTS = 10000
+  integer, parameter :: MAX_EVENTS = 1000000
   integer, parameter :: MAX_SAMPLE = 100000
 
   ! Maximum number of secondary particles created
@@ -45,10 +46,11 @@ module constants
 
   ! Maximum number of words in a single line, length of line, and length of
   ! single word
-  integer, parameter :: MAX_WORDS    = 500
-  integer, parameter :: MAX_LINE_LEN = 250
-  integer, parameter :: MAX_WORD_LEN = 150
-  integer, parameter :: MAX_FILE_LEN = 255
+  integer, parameter :: MAX_WORDS       = 500
+  integer, parameter :: MAX_LINE_LEN    = 250
+  integer, parameter :: MAX_WORD_LEN    = 150
+  integer, parameter :: MAX_FILE_LEN    = 255
+  integer, parameter :: REGION_SPEC_LEN = 1000
 
   ! Maximum number of external source spatial resamples to encounter before an
   ! error is thrown.
@@ -62,6 +64,7 @@ module constants
 
   real(8), parameter ::                      &
        PI               = 3.1415926535898_8, & ! pi
+       SQRT_PI          = 1.7724538509055_8, & ! square root of pi
        MASS_NEUTRON     = 1.008664916_8,     & ! mass of a neutron in amu
        MASS_NEUTRON_MEV = 939.565379_8,      & ! mass of a neutron in MeV/c^2
        MASS_PROTON      = 1.007276466812_8,  & ! mass of a proton in amu
@@ -76,6 +79,7 @@ module constants
        TWO              = 2.0_8,             &
        THREE            = 3.0_8,             &
        FOUR             = 4.0_8
+  complex(8), parameter :: ONEI = (ZERO, ONE)
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS
@@ -138,6 +142,9 @@ module constants
   ! Maximum number of lost particles
   integer, parameter :: MAX_LOST_PARTICLES = 10
 
+  ! Maximum number of lost particles, relative to the total number of particles
+  real(8), parameter :: REL_MAX_LOST_PARTICLES = 1e-6_8
+
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS
 
@@ -157,9 +164,14 @@ module constants
 
   ! Angular distribution type
   integer, parameter :: &
-       ANGLE_ISOTROPIC = 1, & ! Isotropic angular distribution
-       ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins
-       ANGLE_TABULAR   = 3    ! Tabular angular distribution
+       ANGLE_ISOTROPIC = 1, & ! Isotropic angular distribution (CE)
+       ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins (CE)
+       ANGLE_TABULAR   = 3, & ! Tabular angular distribution (CE or MG)
+       ANGLE_LEGENDRE  = 4, & ! Legendre angular distribution (MG)
+       ANGLE_HISTOGRAM = 5    ! Histogram angular distribution (MG)
+
+  ! Number of mu bins to use when converting Legendres to tabular type
+  integer, parameter :: DEFAULT_NMU = 33
 
   ! Secondary energy mode for S(a,b) inelastic scattering
   integer, parameter :: &
@@ -174,28 +186,28 @@ module constants
 
   ! Reaction types
   integer, parameter :: &
-       TOTAL_XS = 1,  ELASTIC = 2,  N_LEVEL = 4,   MISC = 5,      N_2ND   = 11, &
-       N_2N    = 16,  N_3N   = 17,  N_FISSION = 18, N_F    = 19,  N_NF    = 20, &
-       N_2NF   = 21,  N_NA   = 22,  N_N3A   = 23,  N_2NA   = 24,  N_3NA   = 25, &
-       N_NP    = 28,  N_N2A  = 29,  N_2N2A  = 30,  N_ND    = 32,  N_NT    = 33, &
-       N_N3HE  = 34,  N_ND2A = 35,  N_NT2A  = 36,  N_4N    = 37,  N_3NF   = 38, &
-       N_2NP   = 41,  N_3NP  = 42,  N_N2P   = 44,  N_NPA   = 45,  N_N1    = 51, &
-       N_N40   = 90,  N_NC   = 91,  N_DISAPPEAR = 101, N_GAMMA = 102, N_P = 103, &
-       N_D     = 104, N_T    = 105, N_3HE   = 106, N_A     = 107, N_2A    = 108, &
-       N_3A    = 109, N_2P   = 111, N_PA    = 112, N_T2A   = 113, N_D2A   = 114, &
-       N_PD    = 115, N_PT   = 116, N_DA    = 117, N_5N    = 152, N_6N    = 153, &
-       N_2NT   = 154, N_TA   = 155, N_4NP   = 156, N_3ND   = 157, N_NDA   = 158, &
-       N_2NPA  = 159, N_7N   = 160, N_8N    = 161, N_5NP   = 162, N_6NP   = 163, &
-       N_7NP   = 164, N_4NA  = 165, N_5NA   = 166, N_6NA   = 167, N_7NA   = 168, &
-       N_4ND   = 169, N_5ND  = 170, N_6ND   = 171, N_3NT   = 172, N_4NT   = 173, &
-       N_5NT   = 174, N_6NT  = 175, N_2N3HE = 176, N_3N3HE = 177, N_4N3HE = 178, &
-       N_3N2P  = 179, N_3N3A = 180, N_3NPA  = 181, N_DT    = 182, N_NPD   = 183, &
-       N_NPT   = 184, N_NDT  = 185, N_NP3HE = 186, N_ND3HE = 187, N_NT3HE = 188, &
-       N_NTA   = 189, N_2N2P = 190, N_P3HE  = 191, N_D3HE  = 192, N_3HEA  = 193, &
-       N_4N2P  = 194, N_4N2A = 195, N_4NPA  = 196, N_3P    = 197, N_N3P   = 198, &
-       N_3N2PA = 199, N_5N2P = 200, N_P0    = 600, N_PC    = 649, N_D0    = 650, &
-       N_DC    = 699, N_T0   = 700, N_TC    = 749, N_3HE0  = 750, N_3HEC  = 799, &
-       N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891
+       TOTAL_XS = 1,  ELASTIC = 2,   N_NONELASTIC = 3, N_LEVEL = 4, MISC  = 5,   &
+       N_2ND   = 11,  N_2N    = 16,  N_3N   = 17,  N_FISSION = 18, N_F    = 19,  &
+       N_NF    = 20,  N_2NF   = 21,  N_NA   = 22,  N_N3A   = 23,  N_2NA   = 24,  &
+       N_3NA   = 25,  N_NP    = 28,  N_N2A  = 29,  N_2N2A  = 30,  N_ND    = 32,  &
+       N_NT    = 33,  N_N3HE  = 34,  N_ND2A = 35,  N_NT2A  = 36,  N_4N    = 37,  &
+       N_3NF   = 38,  N_2NP   = 41,  N_3NP  = 42,  N_N2P   = 44,  N_NPA   = 45,  &
+       N_N1    = 51,  N_N40   = 90,  N_NC   = 91,  N_DISAPPEAR = 101, N_GAMMA = 102, &
+       N_P     = 103, N_D     = 104, N_T    = 105, N_3HE   = 106, N_A     = 107, &
+       N_2A    = 108, N_3A    = 109, N_2P   = 111, N_PA    = 112, N_T2A   = 113, &
+       N_D2A   = 114, N_PD    = 115, N_PT   = 116, N_DA    = 117, N_5N    = 152, &
+       N_6N    = 153, N_2NT   = 154, N_TA   = 155, N_4NP   = 156, N_3ND   = 157, &
+       N_NDA   = 158, N_2NPA  = 159, N_7N   = 160, N_8N    = 161, N_5NP   = 162, &
+       N_6NP   = 163, N_7NP   = 164, N_4NA  = 165, N_5NA   = 166, N_6NA   = 167, &
+       N_7NA   = 168, N_4ND   = 169, N_5ND  = 170, N_6ND   = 171, N_3NT   = 172, &
+       N_4NT   = 173, N_5NT   = 174, N_6NT  = 175, N_2N3HE = 176, N_3N3HE = 177, &
+       N_4N3HE = 178, N_3N2P  = 179, N_3N3A = 180, N_3NPA  = 181, N_DT    = 182, &
+       N_NPD   = 183, N_NPT   = 184, N_NDT  = 185, N_NP3HE = 186, N_ND3HE = 187, &
+       N_NT3HE = 188, N_NTA   = 189, N_2N2P = 190, N_P3HE  = 191, N_D3HE  = 192, &
+       N_3HEA  = 193, N_4N2P  = 194, N_4N2A = 195, N_4NPA  = 196, N_3P    = 197, &
+       N_N3P   = 198, N_3N2PA = 199, N_5N2P = 200, N_P0    = 600, N_PC    = 649, &
+       N_D0    = 650, N_DC    = 699, N_T0   = 700, N_TC    = 749, N_3HE0  = 750, &
+       N_3HEC  = 799, N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891
 
   ! ACE table types
   integer, parameter :: &
@@ -203,11 +215,22 @@ module constants
        ACE_THERMAL   = 2, & ! thermal S(a,b) scattering data
        ACE_DOSIMETRY = 3    ! dosimetry cross sections
 
+  ! MGXS Table Types
+  integer, parameter :: &
+       MGXS_ISOTROPIC   = 1, & ! Isotropically Weighted Data
+       MGXS_ANGLE       = 2    ! Data by Angular Bins
+
   ! Fission neutron emission (nu) type
   integer, parameter ::   &
        NU_NONE       = 0, & ! No nu values (non-fissionable)
        NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
        NU_TABULAR    = 2    ! Nu values given by tabular distribution
+
+  ! Secondary particle emission type
+  integer, parameter :: &
+       EMISSION_PROMPT = 1,  & ! Prompt emission of secondary particle
+       EMISSION_DELAYED = 2, & ! Delayed emission of secondary particle
+       EMISSION_TOTAL = 3      ! Yield represents total emission (prompt + delayed)
 
   ! Cross section filetypes
   integer, parameter :: &
@@ -259,7 +282,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 22
+  integer, parameter :: N_SCORE_TYPES = 20
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -269,20 +292,18 @@ module constants
        SCORE_SCATTER_PN         = -6,  & ! system for scoring 0th through nth moment
        SCORE_NU_SCATTER_N       = -7,  & ! arbitrary nu-scattering moment
        SCORE_NU_SCATTER_PN      = -8,  & ! system for scoring 0th through nth nu-scatter moment
-       SCORE_TRANSPORT          = -9,  & ! transport reaction rate
-       SCORE_N_1N               = -10, & ! (n,1n) rate
-       SCORE_ABSORPTION         = -11, & ! absorption rate
-       SCORE_FISSION            = -12, & ! fission rate
-       SCORE_NU_FISSION         = -13, & ! neutron production rate
-       SCORE_KAPPA_FISSION      = -14, & ! fission energy production rate
-       SCORE_CURRENT            = -15, & ! partial current
-       SCORE_FLUX_YN            = -16, & ! angular moment of flux
-       SCORE_TOTAL_YN           = -17, & ! angular moment of total reaction rate
-       SCORE_SCATTER_YN         = -18, & ! angular flux-weighted scattering moment (0:N)
-       SCORE_NU_SCATTER_YN      = -19, & ! angular flux-weighted nu-scattering moment (0:N)
-       SCORE_EVENTS             = -20, & ! number of events
-       SCORE_DELAYED_NU_FISSION = -21, & ! delayed neutron production rate
-       SCORE_INVERSE_VELOCITY   = -22    ! flux-weighted inverse velocity
+       SCORE_ABSORPTION         = -9,  & ! absorption rate
+       SCORE_FISSION            = -10, & ! fission rate
+       SCORE_NU_FISSION         = -11, & ! neutron production rate
+       SCORE_KAPPA_FISSION      = -12, & ! fission energy production rate
+       SCORE_CURRENT            = -13, & ! partial current
+       SCORE_FLUX_YN            = -14, & ! angular moment of flux
+       SCORE_TOTAL_YN           = -15, & ! angular moment of total reaction rate
+       SCORE_SCATTER_YN         = -16, & ! angular flux-weighted scattering moment (0:N)
+       SCORE_NU_SCATTER_YN      = -17, & ! angular flux-weighted nu-scattering moment (0:N)
+       SCORE_EVENTS             = -18, & ! number of events
+       SCORE_DELAYED_NU_FISSION = -19, & ! delayed neutron production rate
+       SCORE_INVERSE_VELOCITY   = -20    ! flux-weighted inverse velocity
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -351,32 +372,11 @@ module constants
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS
 
-  integer, parameter :: N_STREAMS = 3
-  integer, parameter :: STREAM_TRACKING = 1
-  integer, parameter :: STREAM_TALLIES  = 2
-  integer, parameter :: STREAM_SOURCE   = 3
-
-  ! ============================================================================
-  ! EXTERNAL SOURCE PARAMETERS
-
-  ! Source spatial distribution types
-  integer, parameter :: &
-       SRC_SPACE_BOX     = 1, & ! Source in a rectangular prism
-       SRC_SPACE_POINT   = 2, & ! Source at a single point
-       SRC_SPACE_FISSION = 3    ! Source in prism filtered by fissionable mats
-
-  ! Source angular distribution types
-  integer, parameter :: &
-       SRC_ANGLE_ISOTROPIC = 1, & ! Isotropic angular
-       SRC_ANGLE_MONO      = 2, & ! Monodirectional source
-       SRC_ANGLE_TABULAR   = 3    ! Tabular distribution
-
-  ! Source energy distribution types
-  integer, parameter :: &
-       SRC_ENERGY_MONO    = 1, & ! Monoenergetic source
-       SRC_ENERGY_MAXWELL = 2, & ! Maxwell fission spectrum
-       SRC_ENERGY_WATT    = 3, & ! Watt fission spectrum
-       SRC_ENERGY_TABULAR = 4    ! Tabular distribution
+  integer, parameter :: N_STREAMS = 4
+  integer, parameter :: STREAM_TRACKING   = 1
+  integer, parameter :: STREAM_TALLIES    = 2
+  integer, parameter :: STREAM_SOURCE     = 3
+  integer, parameter :: STREAM_URR_PTABLE = 4
 
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS

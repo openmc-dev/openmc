@@ -2,8 +2,24 @@ module math
 
   use constants
   use random_lcg, only: prn
+  use ISO_C_BINDING
 
   implicit none
+
+!===============================================================================
+! FADDEEVA_W evaluates the scaled complementary error function.  This
+! interfaces with the MIT C library
+!===============================================================================
+
+  interface
+    function faddeeva_w(z, relerr) bind(C, name='Faddeeva_w') result(w)
+      use ISO_C_BINDING
+      implicit none
+      complex(C_DOUBLE_COMPLEX), value :: z
+      real(C_DOUBLE),            value :: relerr
+      complex(C_DOUBLE_COMPLEX)        :: w
+    end function faddeeva_w
+  end interface
 
 contains
 
@@ -558,6 +574,103 @@ contains
   end function calc_rn
 
 !===============================================================================
+! EXPAND_HARMONIC expands a given series of real spherical harmonics
+!===============================================================================
+
+  pure function expand_harmonic(data, order, uvw) result(val)
+    real(8), intent(in) :: data(:)
+    integer, intent(in) :: order
+    real(8), intent(in) :: uvw(3)
+    real(8)             :: val
+
+    integer :: l, lm_lo, lm_hi
+
+    val = data(1)
+    lm_lo = 2
+    lm_hi = 4
+    do l = 1, order - 1
+      val = val + sqrt(TWO * real(l,8) + ONE) * &
+           dot_product(calc_rn(l,uvw), data(lm_lo:lm_hi))
+      lm_lo = lm_hi + 1
+      lm_hi = lm_lo + 2 * (l + 1)
+    end do
+
+  end function expand_harmonic
+
+!===============================================================================
+! EVALUATE_LEGENDRE Find the value of f(x) given a set of Legendre coefficients
+! and the value of x
+!===============================================================================
+
+  pure function evaluate_legendre(data, x) result(val)
+    real(8), intent(in) :: data(:)
+    real(8), intent(in) :: x
+    real(8)             :: val
+
+    integer :: l
+
+    val =  HALF * data(1)
+    do l = 1, size(data) - 1
+      val = val + (real(l,8) +  HALF) * data(l + 1) * calc_pn(l,x)
+    end do
+
+  end function evaluate_legendre
+
+!===============================================================================
+! ROTATE_ANGLE rotates direction cosines through a polar angle whose cosine is
+! mu and through an azimuthal angle sampled uniformly. Note that this is done
+! with direct sampling rather than rejection as is done in MCNP and SERPENT.
+!===============================================================================
+
+  function rotate_angle(uvw0, mu, phi) result(uvw)
+    real(8), intent(in) :: uvw0(3) ! directional cosine
+    real(8), intent(in) :: mu      ! cosine of angle in lab or CM
+    real(8), optional   :: phi     ! azimuthal angle
+    real(8)             :: uvw(3)  ! rotated directional cosine
+
+    real(8) :: phi_   ! azimuthal angle
+    real(8) :: sinphi ! sine of azimuthal angle
+    real(8) :: cosphi ! cosine of azimuthal angle
+    real(8) :: a      ! sqrt(1 - mu^2)
+    real(8) :: b      ! sqrt(1 - w^2)
+    real(8) :: u0     ! original cosine in x direction
+    real(8) :: v0     ! original cosine in y direction
+    real(8) :: w0     ! original cosine in z direction
+
+    ! Copy original directional cosines
+    u0 = uvw0(1)
+    v0 = uvw0(2)
+    w0 = uvw0(3)
+
+    ! Sample azimuthal angle in [0,2pi) if none provided
+    if (present(phi)) then
+      phi_ = phi
+    else
+      phi_ = TWO * PI * prn()
+    end if
+
+    ! Precompute factors to save flops
+    sinphi = sin(phi_)
+    cosphi = cos(phi_)
+    a = sqrt(max(ZERO, ONE - mu*mu))
+    b = sqrt(max(ZERO, ONE - w0*w0))
+
+    ! Need to treat special case where sqrt(1 - w**2) is close to zero by
+    ! expanding about the v component rather than the w component
+    if (b > 1e-10) then
+      uvw(1) = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
+      uvw(2) = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
+      uvw(3) = mu*w0 - a*b*cosphi
+    else
+      b = sqrt(ONE - v0*v0)
+      uvw(1) = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b
+      uvw(2) = mu*v0 - a*b*cosphi
+      uvw(3) = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
+    end if
+
+  end function rotate_angle
+
+!===============================================================================
 ! MAXWELL_SPECTRUM samples an energy from the Maxwell fission distribution based
 ! on a direct sampling scheme. The probability distribution function for a
 ! Maxwellian is given as p(x) = 2/(T*sqrt(pi))*sqrt(x/T)*exp(-x/T). This PDF can
@@ -604,5 +717,97 @@ contains
     E_out = w + a*a*b/4. + (TWO*prn() - ONE)*sqrt(a*a*b*w)
 
   end function watt_spectrum
+
+!===============================================================================
+! FADDEEVA the Faddeeva function, using Stephen Johnson's implementation
+!===============================================================================
+
+  function faddeeva(z) result(wv)
+    complex(C_DOUBLE_COMPLEX), intent(in) :: z ! The point to evaluate Z at
+    complex(8)     :: wv     ! The resulting w(z) value
+    real(C_DOUBLE) :: relerr ! Target relative error in inner loop of MIT
+                             !  Faddeeva
+
+    ! Technically, the value we want is given by the equation:
+    ! w(z) = I/Pi * Integrate[Exp[-t^2]/(z-t), {t, -Infinity, Infinity}]
+    ! as shown in Equation 63 from Hwang, R. N. "A rigorous pole
+    ! representation of multilevel cross sections and its practical
+    ! applications." Nuclear Science and Engineering 96.3 (1987): 192-209.
+    !
+    ! The MIT Faddeeva function evaluates w(z) = exp(-z^2)erfc(-iz). These
+    ! two forms of the Faddeeva function are related by a transformation.
+    !
+    ! If we call the integral form w_int, and the function form w_fun:
+    ! For imag(z) > 0, w_int(z) = w_fun(z)
+    ! For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
+
+    ! Note that faddeeva_w will interpret zero as machine epsilon
+
+    relerr = ZERO
+    if (aimag(z) > ZERO) then
+      wv = faddeeva_w(z, relerr)
+    else
+      wv = -conjg(faddeeva_w(conjg(z), relerr))
+    end if
+
+  end function faddeeva
+
+!===============================================================================
+! BROADEN_WMP_POLYNOMIALS Doppler broadens the windowed multipole curvefit.  The
+! curvefit is a polynomial of the form
+! a/En + b/sqrt(En) + c + d sqrt(En) ...
+!===============================================================================
+
+  subroutine broaden_wmp_polynomials(En, dopp, n, factors)
+    real(8), intent(in) :: En         ! Energy to evaluate at
+    real(8), intent(in) :: dopp       ! sqrt(atomic weight ratio / kT),
+                                      !  kT given in eV.
+    integer, intent(in) :: n          ! number of components to polynomial
+    real(8), intent(out):: factors(n) ! output leading coefficient
+
+    integer :: i
+
+    real(8) :: sqrtE               ! sqrt(energy)
+    real(8) :: beta                ! sqrt(atomic weight ratio * E / kT)
+    real(8) :: half_inv_dopp2      ! 0.5 / dopp**2
+    real(8) :: quarter_inv_dopp4   ! 0.25 / dopp**4
+    real(8) :: erfbeta             ! error function of beta
+    real(8) :: exp_m_beta2         ! exp(-beta**2)
+
+    sqrtE = sqrt(En)
+    beta = sqrtE * dopp
+    half_inv_dopp2 = HALF / dopp**2
+    quarter_inv_dopp4 = half_inv_dopp2**2
+
+    if (beta > 6.0_8) then
+      ! Save time, ERF(6) is 1 to machine precision.
+      ! beta/sqrtpi*exp(-beta**2) is also approximately 1 machine epsilon.
+      erfBeta = ONE
+      exp_m_beta2 = ZERO
+    else
+      erfBeta = erf(beta)
+      exp_m_beta2 = exp(-beta**2)
+    end if
+
+    ! Assume that, for sure, we'll use a second order (1/E, 1/V, const)
+    ! fit, and no less.
+
+    factors(1) = erfbeta / En
+    factors(2) = ONE / sqrtE
+    factors(3) = factors(1) * (half_inv_dopp2 + En) &
+         + exp_m_beta2 / (beta * SQRT_PI)
+
+    ! Perform recursive broadening of high order components
+    do i = 1, n-3
+      if (i /= 1) then
+        factors(i+3) = -factors(i-1) * (i - ONE) * i * quarter_inv_dopp4 &
+             + factors(i+1) * (En + (ONE + TWO * i) * half_inv_dopp2)
+      else
+        ! Although it's mathematically identical, factors(0) will contain
+        ! nothing, and we don't want to have to worry about memory.
+        factors(i+3) = factors(i+1)*(En + (ONE + TWO * i) * half_inv_dopp2)
+      end if
+    end do
+  end subroutine broaden_wmp_polynomials
 
 end module math

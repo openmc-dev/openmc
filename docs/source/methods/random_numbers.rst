@@ -70,5 +70,5 @@ the idea is to determine the new multiplicative and additive constants in
    Different Sizes and Good Lattice Structures," *Math. Comput.*, **68**, 249
    (1999).
 
-.. _Brown: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl_rn_arb-strides_1994.pdf
+.. _Brown: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl-rn-arb-stride.pdf
 .. _linear congruential generator: http://en.wikipedia.org/wiki/Linear_congruential_generator

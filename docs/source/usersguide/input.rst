@@ -112,9 +112,11 @@ standard deviation.
 
 The ``<cross_sections>`` element has no attributes and simply indicates the path
 to an XML cross section listing file (usually named cross_sections.xml). If this
-element is absent from the settings.xml file, the :envvar:`CROSS_SECTIONS`
-environment variable will be used to find the path to the XML cross section
-listing.
+element is absent from the settings.xml file, the
+:envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used to find the
+path to the XML cross section listing when in continuous-energy mode, and the
+:envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable will be used in
+multi-group mode.
 
 ``<cutoff>`` Element
 --------------------
@@ -212,7 +214,20 @@ cross section values between.
 
   *Default*: logarithm
 
+  .. note:: This element is not used in the multi-group :ref:`energy_mode`.
+
 .. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
+
+.. _energy_mode:
+
+``<energy_mode>`` Element
+-------------------------
+
+The ``<energy_mode>`` element tells OpenMC if the run-mode should be
+continuous-energy or multi-group.  Options for entry are: ``continuous-energy``
+or ``multi-group``.
+
+  *Default*: continuous-energy
 
 ``<entropy>`` Element
 ---------------------
@@ -264,6 +279,33 @@ based on the recommended value in LA-UR-14-24530_.
 
   *Default*: 8000
 
+  .. note:: This element is not used in the multi-group :ref:`energy_mode`.
+
+``<multipole_library>`` Element
+-------------------------------
+
+The ``<multipole_library>`` element indicates the directory containing a
+windowed multipole library. If a windowed multipole library is available,
+OpenMC can use it for on-the-fly Doppler-broadening of resolved resonance range
+cross sections. If this element is absent from the settings.xml file, the
+:envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used.
+
+  .. note:: The <use_windowed_multipole> element must also be set to "true"
+    for windowed multipole functionality.
+
+``<max_order>`` Element
+---------------------------
+
+The ``<max_order>`` element allows the user to set a maximum scattering order
+to apply to every nuclide/material in the problem.  That is, if the data
+library has :math:`P_3` data available, but ``<max_order>`` was set to ``1``,
+then, OpenMC will only use up to the :math:`P_1` data.
+
+  *Default*: Use the maximum order in the data library
+
+  .. note:: This element is not used in the continuous-energy
+    :ref:`energy_mode`.
+
 .. _natural_elements:
 
 ``<natural_elements>`` Element
@@ -312,10 +354,10 @@ out the file and "false" will not.
     *Default*: false
 
   :summary:
-    Writes out an ASCII summary file describing all of the user input files that
+    Writes out an HDF5 summary file describing all of the user input files that
     were read in.
 
-    *Default*: false
+    *Default*: true
 
   :tallies:
     Write out an ASCII file of tally results.
@@ -342,6 +384,8 @@ in the unresolved resonance range if available. This element has no attributes
 or sub-elements and can be set to either "false" or "true".
 
   *Default*: true
+
+  .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
 ``<resonance_scattering>`` Element
 ----------------------------------
@@ -402,6 +446,8 @@ attributes or sub-elements:
 
     *Defaults*: None (scatterer), ARES (method), 0.01 eV (E_min), 1.0 keV (E_max)
 
+  .. note:: This element is not used in the multi-group :ref:`energy_mode`.
+
 ``<run_cmfd>`` Element
 ----------------------
 
@@ -424,8 +470,16 @@ pseudo-random number generator.
 
 The ``source`` element gives information on an external source distribution to
 be used either as the source for a fixed source calculation or the initial
-source guess for criticality calculations. It takes the following
+source guess for criticality calculations. Multiple ``<source>`` elements may be
+specified to define different source distributions. Each one takes the following
 attributes/sub-elements:
+
+  :strength:
+    The strength of the source. If multiple sources are present, the source
+    strength indicates the relative probability of choosing one source over the
+    other.
+
+    *Default*: 1.0
 
   :file:
     If this attribute is given, it indicates that the source is to be read from
@@ -440,13 +494,13 @@ attributes/sub-elements:
     has the following attributes:
 
     :type:
-
-      The type of spatial distribution. Valid options are "box", "fission", and
-      "point". A "box" spatial distribution has coordinates sampled uniformly in
-      a parallelepiped. A "fission" spatial distribution samples locations from
-      a "box" distribution but only locations in fissionable materials are
-      accepted. A "point" spatial distribution has coordinates specified by a
-      triplet.
+      The type of spatial distribution. Valid options are "box", "fission",
+      "point", and "cartesian". A "box" spatial distribution has coordinates
+      sampled uniformly in a parallelepiped. A "fission" spatial distribution
+      samples locations from a "box" distribution but only locations in
+      fissionable materials are accepted. A "point" spatial distribution has
+      coordinates specified by a triplet. An "cartesian" spatial distribution
+      specifies independent distributions of x-, y-, and z-coordinates.
 
       *Default*: None
 
@@ -459,67 +513,125 @@ attributes/sub-elements:
 
       For a "point" spatial distribution, ``parameters`` should be given as
       three real numbers which specify the (x,y,z) location of an isotropic
-      point source
+      point source.
+
+      For an "cartesian" distribution, no parameters are specified. Instead,
+      the ``x``, ``y``, and ``z`` elements must be specified.
 
       *Default*: None
+
+    :x:
+      For an "cartesian" distribution, this element specifies the distribution
+      of x-coordinates. The necessary sub-elements/attributes are those of a
+      univariate probability distribution (see the description in
+      :ref:`univariate`).
+
+    :y:
+      For an "cartesian" distribution, this element specifies the distribution
+      of y-coordinates. The necessary sub-elements/attributes are those of a
+      univariate probability distribution (see the description in
+      :ref:`univariate`).
+
+    :z:
+      For an "cartesian" distribution, this element specifies the distribution
+      of z-coordinates. The necessary sub-elements/attributes are those of a
+      univariate probability distribution (see the description in
+      :ref:`univariate`).
 
   :angle:
     An element specifying the angular distribution of source sites. This element
     has the following attributes:
 
     :type:
-      The type of angular distribution. Valid options are "isotropic" and
-      "monodirectional". The angle of the particle emitted from a source site is
-      isotropic if the "isotropic" option is given. The angle of the particle
-      emitted from a source site is the direction specified in the <parameters>
-      attribute if "monodirectional" option is given.
+      The type of angular distribution. Valid options are "isotropic",
+      "monodirectional", and "mu-phi". The angle of the particle emitted from a
+      source site is isotropic if the "isotropic" option is given. The angle of
+      the particle emitted from a source site is the direction specified in the
+      ``reference_uvw`` element/attribute if "monodirectional" option is
+      given. The "mu-phi" option produces directions with the cosine of the
+      polar angle and the azimuthal angle explicitly specified.
 
       *Default*: isotropic
 
-    :parameters:
-      For an "isotropic" angular distribution, ``parameters`` should not be
-      specified.
+    :reference_uvw:
+      The direction from which the polar angle is measured. Represented by the
+      x-, y-, and z-components of a unit vector. For a monodirectional
+      distribution, this defines the direction of all sampled particles.
 
-      For a "monodirectional" angular distribution, ``parameters`` should be
-      given as three real numbers which specify the angular cosines with respect
-      to each axis.
+    :mu:
+      An element specifying the distribution of the cosine of the polar
+      angle. Only relevant when the type is "mu-phi". The necessary
+      sub-elements/attributes are those of a univariate probability distribution
+      (see the description in :ref:`univariate`).
 
-      *Default*: None
+    :phi:
+      An element specifying the distribution of the azimuthal angle. Only
+      relevant when the type is "mu-phi". The necessary sub-elements/attributes
+      are those of a univariate probability distribution (see the description in
+      :ref:`univariate`).
 
   :energy:
-    An element specifying the energy distribution of source sites. This element
-    has the following attributes:
-
-    :type:
-
-      The type of energy distribution. Valid options are "monoenergetic",
-      "watt", and "maxwell". The "monoenergetic" option produces source sites at
-      a single energy. The "watt" option produces source sites whose energy is
-      sampled from a Watt fission spectrum. The "maxwell" option produce source
-      sites whose energy is sampled from a Maxwell fission spectrum.
-
-      *Default*: watt
-
-    :parameters:
-      For a "monoenergetic" energy distribution, ``parameters`` should be
-      given as the energy in MeV of the source sites.
-
-      For a "watt" energy distribution, ``parameters`` should be given as two
-      real numbers :math:`a` and :math:`b` that parameterize the distribution
-      :math:`p(E) dE = c e^{-E/a} \sinh \sqrt{b \, E} dE`.
-
-      For a "maxwell" energy distribution, ``parameters`` should be given as one
-      real number :math:`a` that parameterizes the distribution :math:`p(E) dE =
-      c E e^{-E/a} dE`.
-
-      *Default*: 0.988 2.249
+    An element specifying the energy distribution of source sites. The necessary
+    sub-elements/attributes are those of a univariate probability distribution
+    (see the description in :ref:`univariate`).
 
   :write_initial:
     An element specifying whether to write out the initial source bank used at
     the beginning of the first batch. The output file is named
-    "initial_source.binary(h5)"
+    "initial_source.h5"
 
-      *Default*: false
+    *Default*: false
+
+.. _univariate:
+
+Univariate Probability Distributions
+++++++++++++++++++++++++++++++++++++
+
+Various components of a source distribution involve probability distributions of
+a single random variable, e.g. the distribution of the energy, the distribution
+of the polar angle, and the distribution of x-coordinates. Each of these
+components supports the same syntax with an element whose tag signifies the
+variable and whose sub-elements/attributes are as follows:
+
+:type:
+  The type of the distribution. Valid options are "uniform", "discrete",
+  "tabular", "maxwell", and "watt". The "uniform" option produces variates
+  sampled from a uniform distribution over a finite interval. The "discrete"
+  option produces random variates that can assume a finite number of values
+  (i.e., a distribution characterized by a probability mass function). The
+  "tabular" option produces random variates sampled from a tabulated
+  distribution where the density function is either a histogram or
+  linearly-interpolated between tabulated points. The "watt" option produces
+  random variates is sampled from a Watt fission spectrum (only used for
+  energies). The "maxwell" option produce variates sampled from a Maxwell
+  fission spectrum (only used for energies).
+
+  *Default*: None
+
+:parameters:
+  For a "uniform" distribution, ``parameters`` should be given as two real
+  numbers :math:`a` and :math:`b` that define the interval :math:`[a,b]` over
+  which random variates are sampled.
+
+  For a "discrete" or "tabular" distribution, ``parameters`` provides the
+  :math:`(x,p)` pairs defining the discrete/tabular distribution. All :math:`x`
+  points are given first followed by corresponding :math:`p` points.
+
+  For a "watt" distribution, ``parameters`` should be given as two real numbers
+  :math:`a` and :math:`b` that parameterize the distribution :math:`p(x) dx = c
+  e^{-x/a} \sinh \sqrt{b \, x} dx`.
+
+  For a "maxwell" distribution, ``parameters`` should be given as one real
+  number :math:`a` that parameterizes the distribution :math:`p(x) dx = c x
+  e^{-x/a} dx`.
+
+  .. note:: The above format should be used even when using the multi-group
+            :ref:`energy_mode`.
+:interpolation:
+  For a "tabular" distribution, ``interpolation`` can be set to "histogram" or
+  "linear-linear" thereby specifying how tabular points are to be interpolated.
+
+  *Default*: histogram
 
 ``<state_point>`` Element
 -------------------------
@@ -576,7 +688,7 @@ attributes/sub-elements:
 
     *Default*: false
 
-  :source_write:
+  :write:
     If this element is set to "false", source sites are not written
     to the state point or source point file. This can substantially reduce the
     size of state points if large numbers of particles per batch are used.
@@ -701,6 +813,17 @@ problem. It has the following attributes/sub-elements:
 
     *Default*: None
 
+
+``<use_windowed_multipole>`` Element
+------------------------------------
+
+The ``<use_windowed_multipole>`` element toggles the windowed multipole
+capability on or off. If this element is set to "True" and the relevant data is
+available, OpenMC will use the windowed multipole method to evaluate and Doppler
+broaden cross sections in the resolved resonance range.
+
+  *Default*: False
+
 ``<verbosity>`` Element
 -----------------------
 
@@ -798,10 +921,18 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
     *Default*: None
 
   :boundary:
-    The boundary condition for the surface. This can be "transmission",
-    "vacuum", or "reflective".
+     The boundary condition for the surface. This can be "transmission",
+     "vacuum", "reflective", or "periodic". Periodic boundary conditions can
+     only be applied to x-, y-, and z-planes. Only axis-aligned periodicity is
+     supported, i.e., x-planes can only be paired with x-planes. Specify which
+     planes are periodic and the code will automatically identify which planes
+     are paired together.
 
     *Default*: "transmission"
+
+  :periodic_surface_id:
+     If a periodic boundary condition is applied, this attribute identifies the
+     ``id`` of the corresponding periodic sufrace.
 
 The following quadratic surfaces can be modeled:
 
@@ -891,7 +1022,9 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
   :material:
     The ``id`` of the material that this cell contains. If the cell should
-    contain no material, this can also be set to "void".
+    contain no material, this can also be set to "void". A list of materials
+    can be specified for the "distributed material" feature. This will give each
+    unique instance of the cell its own material.
 
     .. note:: If a material is specified, no fill should be given.
 
@@ -921,6 +1054,15 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
     *Default*: A region filling all space.
 
+  :temperature:
+    The temperature of the cell in Kelvin. If windowed-multipole data is
+    avalable, this temperature will be used to Doppler broaden some cross
+    sections in the resolved resonance region. A list of temperatures can be
+    specified for the "distributed temperature" feature. This will give each
+    unique instance of the cell its own temperature.
+
+    *Default*: The temperature of the coldest nuclide in the cell's material(s)
+
   :rotation:
     If the cell is filled with a universe, this element specifies the angles in
     degrees about the x, y, and z axes that the filled universe should be
@@ -931,6 +1073,20 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     .. code-block:: xml
 
         <cell fill="..." rotation="0 0 90" />
+
+    The rotation applied is an intrinsic rotation whose Tait-Bryan angles are
+    given as those specified about the x, y, and z axes respectively. That is to
+    say, if the angles are :math:`(\phi, \theta, \psi)`, then the rotation
+    matrix applied is :math:`R_z(\psi) R_y(\theta) R_x(\phi)` or
+
+    .. math::
+
+       \left [ \begin{array}{ccc} \cos\theta \cos\psi & -\cos\theta \sin\psi +
+       \sin\phi \sin\theta \cos\psi & \sin\phi \sin\psi + \cos\phi \sin\theta
+       \cos\psi \\ \cos\theta \sin\psi & \cos\phi \cos\psi + \sin\phi \sin\theta
+       \sin\psi & -\sin\phi \cos\psi + \cos\phi \sin\theta \sin\psi \\
+       -\sin\theta & \sin\phi \cos\theta & \cos\phi \cos\theta \end{array}
+       \right ]
 
     *Default*: None
 
@@ -1114,13 +1270,20 @@ Each ``material`` element can have the following attributes or sub-elements:
     An element with attributes/sub-elements called ``value`` and ``units``. The
     ``value`` attribute is the numeric value of the density while the ``units``
     can be "g/cm3", "kg/m3", "atom/b-cm", "atom/cm3", or "sum". The "sum" unit
-    indicates that values appearing in ``ao`` attributes for ``<nuclide>`` and
-    ``<element>`` sub-elements are to be interpreted as nuclide/element
-    densities in atom/b-cm, and the total density of the material is taken as
-    the sum of all nuclides/elements. The "sum" option cannot be used in
-    conjunction with weight percents.
+    indicates that values appearing in ``ao`` or ``wo`` attributes for ``<nuclide>``
+    and ``<element>`` sub-elements are to be interpreted as absolute nuclide/element
+    densities in atom/b-cm or g/cm3, and the total density of the material is
+    taken as the sum of all nuclides/elements. The "macro" unit is used with
+    a ``macroscopic`` quantity to indicate that the density is already included
+    in the library and thus not needed here.  However, if a value is provided
+    for the ``value``, then this is treated as a number density multiplier on
+    the macroscopic cross sections in the multi-group data.  This can be used,
+    for example, when perturbing the density slightly.
 
     *Default*: None
+
+    .. note:: A ``macroscopic`` quantity can not be used in conjunction with a
+              ``nuclide``, ``element``, or ``sab`` quantity.
 
   :nuclide:
     An element with attributes/sub-elements called ``name``, ``xs``, and ``ao``
@@ -1148,6 +1311,9 @@ Each ``material`` element can have the following attributes or sub-elements:
     transport codes and to quantify the effects of anisotropic scattering.
 
     *Default*: None
+
+    .. note:: The ``scattering`` attribute/sub-element is not used in the
+              multi-group :ref:`energy_mode`.
 
   :element:
 
@@ -1184,11 +1350,34 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+    .. note:: The ``scattering`` attribute/sub-element is not used in the
+              multi-group :ref:`energy_mode`.
+
   :sab:
     Associates an S(a,b) table with the material. This element has
     attributes/sub-elements called ``name`` and ``xs``. The ``name`` attribute
     is the name of the S(a,b) table that should be associated with the material,
     and ``xs`` is the cross-section identifier for the table.
+
+    *Default*: None
+
+    .. note:: This element is not used in the multi-group :ref:`energy_mode`.
+
+  :macroscopic:
+    The ``macroscopic`` element is similar to the ``nuclide`` element, but,
+    recognizes that some multi-group libraries may be providing material
+    specific macroscopic cross sections instead of always providing nuclide
+    specific data like in the continuous-energy case.  To that end, the
+    macroscopic element has attributes/sub-elements called ``name``, and ``xs``.
+    The ``name`` attribute is the name of the cross-section for a
+    desired nuclide while the ``xs`` attribute is the cross-section
+    identifier. One example would be as follows:
+
+    .. code-block:: xml
+
+        <macroscopic name="UO2" xs="71c" />
+
+    .. note:: This element is only used in the multi-group :ref:`energy_mode`.
 
     *Default*: None
 
@@ -1278,7 +1467,8 @@ The ``<tally>`` element accepts the following sub-elements:
           A list of universes for which the tally should be accumulated.
 
         :energy:
-          A monotonically increasing list of bounding **pre-collision** energies
+          In continuous-energy mode, this filter should be provided as a
+          monotonically increasing list of bounding **pre-collision** energies
           for a number of groups. For example, if this filter is specified as
 
           .. code-block:: xml
@@ -1288,17 +1478,24 @@ The ``<tally>`` element accepts the following sub-elements:
           then two energy bins will be created, one with energies between 0 and
           1 MeV and the other with energies between 1 and 20 MeV.
 
+          In multi-group mode the bins provided must match group edges
+          defined in the multi-group library.
+
         :energyout:
-          A monotonically increasing list of bounding **post-collision**
-          energies for a number of groups. For example, if this filter is
-          specified as
+          In continuous-energy mode, this filter should be provided as a
+          monotonically increasing list of bounding **post-collision** energies
+          for a number of groups. For example, if this filter is specified as
 
           .. code-block:: xml
 
               <filter type="energyout" bins="0.0 1.0 20.0" />
 
-          then two post-collision energy bins will be created, one with energies
-          between 0 and 1 MeV and the other with energies between 1 and 20 MeV.
+          then two post-collision energy bins will be created, one with
+          energies between 0 and 1 MeV and the other with energies between
+          1 and 20 MeV.
+
+          In multi-group mode the bins provided must match group edges
+          defined in the multi-group library.
 
         :mu:
           A monotonically increasing list of bounding **post-collision** cosines
@@ -1382,6 +1579,8 @@ The ``<tally>`` element accepts the following sub-elements:
 
               <filter type="delayedgroup" bins="1 2 3 4 5 6" />
 
+          .. note:: This filter type is not used in the multi-group :ref:`energy_mode`.
+
   :nuclides:
     If specified, the scores listed will be for particular nuclides, not the
     summation of reactions from all nuclides. The format for nuclides should be
@@ -1409,114 +1608,207 @@ The ``<tally>`` element accepts the following sub-elements:
     *Default*: ``tracklength`` but will revert to ``analog`` if necessary.
 
   :scores:
-    A space-separated list of the desired responses to be accumulated. Accepted
-    options are "flux", "total", "scatter", "absorption", "fission",
-    "nu-fission", "delayed-nu-fission", "kappa-fission", "nu-scatter",
-    "scatter-N", "scatter-PN", "scatter-YN", "nu-scatter-N", "nu-scatter-PN",
-    "nu-scatter-YN", "flux-YN", "total-YN", "current", "inverse-velocity" and
-    "events". These correspond to the following physical quantities:
+    A space-separated list of the desired responses to be accumulated. The accepted
+    options are listed in the following tables:
 
-    :flux:
-      Total flux in particle-cm per source particle.
+    .. table:: **Flux scores: units are particle-cm per source particle.**
 
-      .. note::
-         The ``analog`` estimator is actually identical to the ``collision``
-         estimator for the flux score.
+        +----------------------+---------------------------------------------------+
+        |Score                 | Description                                       |
+        +======================+===================================================+
+        |flux                  |Total flux.                                        |
+        +----------------------+---------------------------------------------------+
+        |flux-YN               |Spherical harmonic expansion of the direction of   |
+        |                      |motion :math:`\left(\Omega\right)` of the total    |
+        |                      |flux. This score will tally all of the harmonic    |
+        |                      |moments of order 0 to N.  N must be between 0 and  |
+        |                      |10.                                                |
+        +----------------------+---------------------------------------------------+
 
-    :total:
-      Total reaction rate in reactions per source particle.
+    .. table:: **Reaction scores: units are reactions per source particle.**
 
-    :scatter:
-      Total scattering rate. Can also be identified with the ``scatter-0``
-      response type. Units are reactions per source particle.
+        +----------------------+---------------------------------------------------+
+        |Score                 | Description                                       |
+        +======================+===================================================+
+        |absorption            |Total absorption rate. This accounts for all       |
+        |                      |reactions which do not produce secondary neutrons  |
+        |                      |as well as fission.                                |
+        +----------------------+---------------------------------------------------+
+        |elastic               |Elastic scattering reaction rate.                  |
+        +----------------------+---------------------------------------------------+
+        |fission               |Total fission reaction rate.                       |
+        +----------------------+---------------------------------------------------+
+        |scatter               |Total scattering rate. Can also be identified with |
+        |                      |the "scatter-0" response type.                     |
+        +----------------------+---------------------------------------------------+
+        |scatter-N             |Tally the N\ :sup:`th` \ scattering moment, where N|
+        |                      |is the Legendre expansion order of the change in   |
+        |                      |particle angle :math:`\left(\mu\right)`. N must be |
+        |                      |between 0 and 10. As an example, tallying the 2\   |
+        |                      |:sup:`nd` \ scattering moment would be specified as|
+        |                      |``<scores>scatter-2</scores>``.                    |
+        +----------------------+---------------------------------------------------+
+        |scatter-PN            |Tally all of the scattering moments from order 0 to|
+        |                      |N, where N is the Legendre expansion order of the  |
+        |                      |change in particle angle                           |
+        |                      |:math:`\left(\mu\right)`. That is, "scatter-P1" is |
+        |                      |equivalent to requesting tallies of "scatter-0" and|
+        |                      |"scatter-1".  Like for "scatter-N", N must be      |
+        |                      |between 0 and 10. As an example, tallying up to the|
+        |                      |2\ :sup:`nd` \ scattering moment would be specified|
+        |                      |as ``<scores> scatter-P2 </scores>``.              |
+        +----------------------+---------------------------------------------------+
+        |scatter-YN            |"scatter-YN" is similar to "scatter-PN" except an  |
+        |                      |additional expansion is performed for the incoming |
+        |                      |particle direction :math:`\left(\Omega\right)`     |
+        |                      |using the real spherical harmonics.  This is useful|
+        |                      |for performing angular flux moment weighting of the|
+        |                      |scattering moments. Like "scatter-PN", "scatter-YN"|
+        |                      |will tally all of the moments from order 0 to N; N |
+        |                      |again must be between 0 and 10.                    |
+        +----------------------+---------------------------------------------------+
+        |total                 |Total reaction rate.                               |
+        +----------------------+---------------------------------------------------+
+        |total-YN              |The total reaction rate expanded via spherical     |
+        |                      |harmonics about the direction of motion of the     |
+        |                      |neutron, :math:`\Omega`. This score will tally all |
+        |                      |of the harmonic moments of order 0 to N.  N must be|
+        |                      |between 0 and 10.                                  |
+        +----------------------+---------------------------------------------------+
+        |(n,2nd)               |(n,2nd) reaction rate.                             |
+        +----------------------+---------------------------------------------------+
+        |(n,2n)                |(n,2n) reaction rate.                              |
+        +----------------------+---------------------------------------------------+
+        |(n,3n)                |(n,3n) reaction rate.                              |
+        +----------------------+---------------------------------------------------+
+        |(n,na)                |(n,n\ :math:`\alpha`\ ) reaction rate.             |
+        +----------------------+---------------------------------------------------+
+        |(n,n3a)               |(n,n3\ :math:`\alpha`\ ) reaction rate.            |
+        +----------------------+---------------------------------------------------+
+        |(n,2na)               |(n,2n\ :math:`\alpha`\ ) reaction rate.            |
+        +----------------------+---------------------------------------------------+
+        |(n,3na)               |(n,3n\ :math:`\alpha`\ ) reaction rate.            |
+        +----------------------+---------------------------------------------------+
+        |(n,np)                |(n,np) reaction rate.                              |
+        +----------------------+---------------------------------------------------+
+        |(n,n2a)               |(n,n2\ :math:`\alpha`\ ) reaction rate.            |
+        +----------------------+---------------------------------------------------+
+        |(n,2n2a)              |(n,2n2\ :math:`\alpha`\ ) reaction rate.           |
+        +----------------------+---------------------------------------------------+
+        |(n,nd)                |(n,nd) reaction rate.                              |
+        +----------------------+---------------------------------------------------+
+        |(n,nt)                |(n,nt) reaction rate.                              |
+        +----------------------+---------------------------------------------------+
+        |(n,nHe-3)             |(n,n\ :sup:`3`\ He) reaction rate.                 |
+        +----------------------+---------------------------------------------------+
+        |(n,nd2a)              |(n,nd2\ :math:`\alpha`\ ) reaction rate.           |
+        +----------------------+---------------------------------------------------+
+        |(n,nt2a)              |(n,nt2\ :math:`\alpha`\ ) reaction rate.           |
+        +----------------------+---------------------------------------------------+
+        |(n,4n)                |(n,4n) reaction rate.                              |
+        +----------------------+---------------------------------------------------+
+        |(n,2np)               |(n,2np) reaction rate.                             |
+        +----------------------+---------------------------------------------------+
+        |(n,3np)               |(n,3np) reaction rate.                             |
+        +----------------------+---------------------------------------------------+
+        |(n,n2p)               |(n,n2p) reaction rate.                             |
+        +----------------------+---------------------------------------------------+
+        |(n,n*X*)              |Level inelastic scattering reaction rate. The *X*  |
+        |                      |indicates what which inelastic level, e.g., (n,n3) |
+        |                      |is third-level inelastic scattering.               |
+        +----------------------+---------------------------------------------------+
+        |(n,nc)                |Continuum level inelastic scattering reaction rate.|
+        +----------------------+---------------------------------------------------+
+        |(n,gamma)             |Radiative capture reaction rate.                   |
+        +----------------------+---------------------------------------------------+
+        |(n,p)                 |(n,p) reaction rate.                               |
+        +----------------------+---------------------------------------------------+
+        |(n,d)                 |(n,d) reaction rate.                               |
+        +----------------------+---------------------------------------------------+
+        |(n,t)                 |(n,t) reaction rate.                               |
+        +----------------------+---------------------------------------------------+
+        |(n,3He)               |(n,\ :sup:`3`\ He) reaction rate.                  |
+        +----------------------+---------------------------------------------------+
+        |(n,a)                 |(n,\ :math:`\alpha`\ ) reaction rate.              |
+        +----------------------+---------------------------------------------------+
+        |(n,2a)                |(n,2\ :math:`\alpha`\ ) reaction rate.             |
+        +----------------------+---------------------------------------------------+
+        |(n,3a)                |(n,3\ :math:`\alpha`\ ) reaction rate.             |
+        +----------------------+---------------------------------------------------+
+        |(n,2p)                |(n,2p) reaction rate.                              |
+        +----------------------+---------------------------------------------------+
+        |(n,pa)                |(n,p\ :math:`\alpha`\ ) reaction rate.             |
+        +----------------------+---------------------------------------------------+
+        |(n,t2a)               |(n,t2\ :math:`\alpha`\ ) reaction rate.            |
+        +----------------------+---------------------------------------------------+
+        |(n,d2a)               |(n,d2\ :math:`\alpha`\ ) reaction rate.            |
+        +----------------------+---------------------------------------------------+
+        |(n,pd)                |(n,pd) reaction rate.                              |
+        +----------------------+---------------------------------------------------+
+        |(n,pt)                |(n,pt) reaction rate.                              |
+        +----------------------+---------------------------------------------------+
+        |(n,da)                |(n,d\ :math:`\alpha`\ ) reaction rate.             |
+        +----------------------+---------------------------------------------------+
+        |*Arbitrary integer*   |An arbitrary integer is interpreted to mean the    |
+        |                      |reaction rate for a reaction with a given ENDF MT  |
+        |                      |number.                                            |
+        +----------------------+---------------------------------------------------+
 
-    :absorption:
-      Total absorption rate. This accounts for all reactions which do not
-      produce secondary neutrons. Units are reactions per source particle.
+    .. table:: **Particle production scores: units are particles produced per
+               source particles.**
 
-    :fission:
-      Total fission rate in reactions per source particle.
+        +----------------------+---------------------------------------------------+
+        |Score                 | Description                                       |
+        +======================+===================================================+
+        |delayed-nu-fission    |Total production of delayed neutrons due to        |
+        |                      |fission. This score type is not used in the        |
+        |                      |multi-group :ref:`energy_mode`.                    |
+        +----------------------+---------------------------------------------------+
+        |nu-fission            |Total production of neutrons due to fission.       |
+        +----------------------+---------------------------------------------------+
+        |nu-scatter,           |These scores are similar in functionality to their |
+        |nu-scatter-N,         |``scatter*`` equivalents except the total          |
+        |nu-scatter-PN,        |production of neutrons due to scattering is scored |
+        |nu-scatter-YN         |vice simply the scattering rate. This accounts for |
+        |                      |multiplicity from (n,2n), (n,3n), and (n,4n)       |
+        |                      |reactions.                                         |
+        +----------------------+---------------------------------------------------+
 
-    :nu-fission:
-      Total production of neutrons due to fission. Units are neutrons produced
-      per source neutron.
+    .. table:: **Miscellaneous scores: units are indicated for each.**
 
-    :delayed-nu-fission:
-      Total production of delayed neutrons due to fission. Units are neutrons produced
-      per source neutron.
+        +----------------------+---------------------------------------------------+
+        |Score                 | Description                                       |
+        +======================+===================================================+
+        |current               |Partial currents on the boundaries of each cell in |
+        |                      |a mesh. Units are particles per source             |
+        |                      |particle. Note that this score can only be used if |
+        |                      |a mesh filter has been specified. Furthermore, it  |
+        |                      |may not be used in conjunction with any other      |
+        |                      |score.                                             |
+        +----------------------+---------------------------------------------------+
+        |events                |Number of scoring events. Units are events per     |
+        |                      |source particle.                                   |
+        +----------------------+---------------------------------------------------+
+        |inverse-velocity      |The flux-weighted inverse velocity where the       |
+        |                      |velocity is in units of centimeters per second.    |
+        |                      |This score type is not used in the                 |
+        |                      |multi-group :ref:`energy_mode`.                    |
+        +----------------------+---------------------------------------------------+
+        |kappa-fission         |The recoverable energy production rate due to      |
+        |                      |fission. The recoverable energy is defined as the  |
+        |                      |fission product kinetic energy, prompt and delayed |
+        |                      |neutron kinetic energies, prompt and delayed       |
+        |                      |:math:`\gamma`-ray total energies, and the total   |
+        |                      |energy released by the delayed :math:`\beta`       |
+        |                      |particles. The neutrino energy does not contribute |
+        |                      |to this response. The prompt and delayed           |
+        |                      |:math:`\gamma`-rays are assumed to deposit their   |
+        |                      |energy locally. Units are MeV per source particle. |
+        +----------------------+---------------------------------------------------+
 
-    :kappa-fission:
-      The recoverable energy production rate due to fission. The recoverable
-      energy is defined as the fission product kinetic energy, prompt and
-      delayed neutron kinetic energies, prompt and delayed :math:`\gamma`-ray
-      total energies, and the total energy released by the delayed :math:`\beta`
-      particles. The neutrino energy does not contribute to this response. The
-      prompt and delayed :math:`\gamma`-rays are assumed to deposit their energy
-      locally. Units are MeV per source particle.
-
-    :scatter-N:
-      Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre
-      expansion order of the change in particle angle :math:`\left(\mu\right)`.
-      N must be between 0 and 10. As an example, tallying the 2\ :sup:`nd` \
-      scattering moment would be specified as ``<scores> scatter-2
-      </scores>``. Units are reactions per source particle.
-
-    :scatter-PN:
-      Tally all of the scattering moments from order 0 to N, where N is the
-      Legendre expansion order of the change in particle angle
-      :math:`\left(\mu\right)`. That is, ``scatter-P1`` is equivalent to
-      requesting tallies of ``scatter-0`` and ``scatter-1``.  Like for
-      ``scatter-N``, N must be between 0 and 10. As an example, tallying up to
-      the 2\ :sup:`nd` \ scattering moment would be specified as ``<scores>
-      scatter-P2 </scores>``. Units are reactions per source particle.
-
-    :scatter-YN:
-      ``scatter-YN`` is similar to ``scatter-PN`` except an additional expansion
-      is performed for the incoming particle direction
-      :math:`\left(\Omega\right)` using the real spherical harmonics.  This is
-      useful for performing angular flux moment weighting of the scattering
-      moments. Like ``scatter-PN``, ``scatter-YN`` will tally all of the moments
-      from order 0 to N; N again must be between 0 and 10. Units are reactions
-      per source particle.
-
-    :nu-scatter, nu-scatter-N, nu-scatter-PN, nu-scatter-YN:
-      These scores are similar in functionality to their ``scatter*``
-      equivalents except the total production of neutrons due to scattering is
-      scored vice simply the scattering rate. This accounts for multiplicity
-      from (n,2n), (n,3n), and (n,4n) reactions. Units are neutrons produced per
-      source particle.
-
-    :flux-YN:
-      Spherical harmonic expansion of the direction of motion
-      :math:`\left(\Omega\right)` of the total flux.  This score will tally all
-      of the harmonic moments of order 0 to N.  N must be between 0
-      and 10. Units are particle-cm per source particle.
-
-    :total-YN:
-      The total reaction rate expanded via spherical harmonics about the
-      direction of motion of the neutron, :math:`\Omega`.
-      This score will tally all of the harmonic moments of order 0 to N.  N must
-      be between 0 and 10. Units are reactions per source particle.
-
-    :current:
-      Partial currents on the boundaries of each cell in a mesh. Units are
-      particles per source particle.
-
-      .. note::
-          This score can only be used if a mesh filter has been
-          specified. Furthermore, it may not be used in conjunction with any
-          other score.
-
-    :inverse-velocity:
-      The flux-weighted inverse velocity where the velocity is in units of
-      centimeters per second.
-
-      .. note::
-         The ``analog`` estimator is actually identical to the ``collision``
-         estimator for the inverse-velocity score.
-
-    :events:
-      Number of scoring events. Units are events per source particle.
+    .. note::
+       The ``analog`` estimator is actually identical to the ``collision``
+       estimator for the flux and inverse-velocity scores.
 
   :trigger:
     Precision trigger applied to all filter bins and nuclides for this tally.
@@ -1671,7 +1963,7 @@ sub-elements:
     datafiles can be processed into 3D SILO files using the
     ``openmc-voxel-to-silovtk`` utility provided with the OpenMC source, and
     subsequently viewed with a 3D viewer such as VISIT or Paraview. See the
-    :ref:`usersguide_voxel` for information about the datafile structure.
+    :ref:`io_voxel` for information about the datafile structure.
 
     .. note:: Since the PPM format is saved without any kind of compression,
               the resulting file sizes can be quite large.  Saving the image in

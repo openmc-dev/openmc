@@ -15,8 +15,9 @@ openmc.egg-info/
 # Inputs generated from Python API
 examples/python/**/*.xml
 
-# emacs backups
+# emacs and vim backups
 *~
+*.swp
 
 # OpenMC statepoints
 *.binary
@@ -24,6 +25,8 @@ examples/python/**/*.xml
 # Documentation builds
 docs/build
 docs/source/_images/*.pdf
+docs/source/_images/*.aux
+docs/source/pythonapi/generated/
 
 # Source build
 build
@@ -41,6 +44,8 @@ results_test.dat
 
 # Test build files
 tests/build/
+tests/coverage/
+tests/memcheck/
 tests/ctestscript.run
 
 # HDF5 files
@@ -53,11 +58,14 @@ src/bin/
 src/cmake_install.cmake
 src/install_manifest.txt
 
-# Data downloaded from NNDC
+# Nuclear data
 data/nndc
+data/wmp
+data/multipole_lib.tar.gz
 
-#Images
+# Images
 *.ppm
+*.voxel
 
 # PyCharm project configuration files
 .idea

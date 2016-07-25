@@ -14,6 +14,5 @@ essential aspects of using OpenMC to perform simulations.
     beginners
     install
     input
-    output/index
     processing
     troubleshoot

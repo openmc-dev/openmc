@@ -1,16 +1,16 @@
 import copy
+import operator
 
 import numpy as np
 
 try:
     import opencg
 except ImportError:
-    msg = 'Unable to import opencg which is needed by openmc.opencg_compatible'
-    raise ImportError(msg)
+    raise ImportError('Unable to import opencg which is needed by '
+                      'openmc.opencg_compatible')
 
 import openmc
-from openmc.region import Intersection
-from openmc.surface import Halfspace
+import openmc.checkvalue as cv
 
 
 # A dictionary of all OpenMC Materials created
@@ -79,12 +79,8 @@ def get_opencg_material(openmc_material):
 
     """
 
-    if not isinstance(openmc_material, openmc.Material):
-        msg = 'Unable to create an OpenCG Material from "{0}" ' \
-              'which is not an OpenMC Material'.format(openmc_material)
-        raise ValueError(msg)
+    cv.check_type('openmc_material', openmc_material, openmc.Material)
 
-    global OPENCG_MATERIALS
     material_id = openmc_material.id
 
     # If this Material was already created, use it
@@ -119,12 +115,8 @@ def get_openmc_material(opencg_material):
 
     """
 
-    if not isinstance(opencg_material, opencg.Material):
-        msg = 'Unable to create an OpenMC Material from "{0}" ' \
-              'which is not an OpenCG Material'.format(opencg_material)
-        raise ValueError(msg)
+    cv.check_type('opencg_material', opencg_material, opencg.Material)
 
-    global OPENMC_MATERIALS
     material_id = opencg_material.id
 
     # If this Material was already created, use it
@@ -165,10 +157,7 @@ def is_opencg_surface_compatible(opencg_surface):
 
     """
 
-    if not isinstance(opencg_surface, opencg.Surface):
-        msg = 'Unable to check if OpenCG Surface is compatible' \
-              'since "{0}" is not a Surface'.format(opencg_surface)
-        raise ValueError(msg)
+    cv.check_type('opencg_surface', opencg_surface, opencg.Surface)
 
     if opencg_surface.type in ['x-squareprism',
                                'y-squareprism', 'z-squareprism']:
@@ -192,12 +181,8 @@ def get_opencg_surface(openmc_surface):
 
     """
 
-    if not isinstance(openmc_surface, openmc.Surface):
-        msg = 'Unable to create an OpenCG Surface from "{0}" ' \
-              'which is not an OpenMC Surface'.format(openmc_surface)
-        raise ValueError(msg)
+    cv.check_type('openmc_surface', openmc_surface, openmc.Surface)
 
-    global OPENCG_SURFACES
     surface_id = openmc_surface.id
 
     # If this Material was already created, use it
@@ -238,21 +223,21 @@ def get_opencg_surface(openmc_surface):
         z0 = openmc_surface.z0
         R = openmc_surface.r
         opencg_surface = opencg.XCylinder(surface_id, name,
-                                            boundary, y0, z0, R)
+                                          boundary, y0, z0, R)
 
     elif openmc_surface.type == 'y-cylinder':
         x0 = openmc_surface.x0
         z0 = openmc_surface.z0
         R = openmc_surface.r
         opencg_surface = opencg.YCylinder(surface_id, name,
-                                            boundary, x0, z0, R)
+                                          boundary, x0, z0, R)
 
     elif openmc_surface.type == 'z-cylinder':
         x0 = openmc_surface.x0
         y0 = openmc_surface.y0
         R = openmc_surface.r
         opencg_surface = opencg.ZCylinder(surface_id, name,
-                                            boundary, x0, y0, R)
+                                          boundary, x0, y0, R)
 
     # Add the OpenMC Surface to the global collection of all OpenMC Surfaces
     OPENMC_SURFACES[surface_id] = openmc_surface
@@ -278,12 +263,8 @@ def get_openmc_surface(opencg_surface):
 
     """
 
-    if not isinstance(opencg_surface, opencg.Surface):
-        msg = 'Unable to create an OpenMC Surface from "{0}" which ' \
-              'is not an OpenCG Surface'.format(opencg_surface)
-        raise ValueError(msg)
+    cv.check_type('opencg_surface', opencg_surface, opencg.Surface)
 
-    global openmc_surface
     surface_id = opencg_surface.id
 
     # If this Surface was already created, use it
@@ -369,12 +350,8 @@ def get_compatible_opencg_surfaces(opencg_surface):
 
     """
 
-    if not isinstance(opencg_surface, opencg.Surface):
-        msg = 'Unable to create an OpenMC Surface from "{0}" which ' \
-              'is not an OpenCG Surface'.format(opencg_surface)
-        raise ValueError(msg)
+    cv.check_type('opencg_surface', opencg_surface, opencg.Surface)
 
-    global OPENMC_SURFACES
     surface_id = opencg_surface.id
 
     # If this Surface was already created, use it
@@ -410,9 +387,9 @@ def get_compatible_opencg_surfaces(opencg_surface):
         surfaces = [left, right, bottom, top]
 
     elif opencg_surface.type == 'z-squareprism':
-        x0 = opencg_surface.x0['x0']
-        y0 = opencg_surface.y0['y0']
-        R = opencg_surface.r['R']
+        x0 = opencg_surface.x0
+        y0 = opencg_surface.y0
+        R = opencg_surface.r
 
         # Create a list of the four planes we need
         left = opencg.XPlane(name=name, boundary=boundary, x0=x0-R)
@@ -451,12 +428,8 @@ def get_opencg_cell(openmc_cell):
 
     """
 
-    if not isinstance(openmc_cell, openmc.Cell):
-        msg = 'Unable to create an OpenCG Cell from "{0}" which ' \
-              'is not an OpenMC Cell'.format(openmc_cell)
-        raise ValueError(msg)
+    cv.check_type('openmc_cell', openmc_cell, openmc.Cell)
 
-    global OPENCG_CELLS
     cell_id = openmc_cell.id
 
     # If this Cell was already created, use it
@@ -469,9 +442,9 @@ def get_opencg_cell(openmc_cell):
 
     fill = openmc_cell.fill
 
-    if (openmc_cell.fill_type == 'material'):
+    if openmc_cell.fill_type == 'material':
         opencg_cell.fill = get_opencg_material(fill)
-    elif (openmc_cell.fill_type == 'universe'):
+    elif openmc_cell.fill_type == 'universe':
         opencg_cell.fill = get_opencg_universe(fill)
     else:
         opencg_cell.fill = get_opencg_lattice(fill)
@@ -487,13 +460,13 @@ def get_opencg_cell(openmc_cell):
     # half-spaces, i.e., no complex cells.
     region = openmc_cell.region
     if region is not None:
-        if isinstance(region, Halfspace):
+        if isinstance(region, openmc.Halfspace):
             surface = region.surface
             halfspace = -1 if region.side == '-' else 1
             opencg_cell.add_surface(get_opencg_surface(surface), halfspace)
-        elif isinstance(region, Intersection):
+        elif isinstance(region, openmc.Intersection):
             for node in region.nodes:
-                if not isinstance(node, Halfspace):
+                if not isinstance(node, openmc.Halfspace):
                     raise NotImplementedError("Complex cells not yet "
                                               "supported in OpenCG.")
                 surface = node.surface
@@ -501,7 +474,7 @@ def get_opencg_cell(openmc_cell):
                 opencg_cell.add_surface(get_opencg_surface(surface), halfspace)
         else:
             raise NotImplementedError("Complex cells not yet supported "
-                                       "in OpenCG.")
+                                      "in OpenCG.")
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell
@@ -533,20 +506,10 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
         OpenMC
 
     """
-    if not isinstance(opencg_cell, opencg.Cell):
-        msg = 'Unable to create compatible OpenMC Cell from "{0}" which ' \
-              'is not an OpenCG Cell'.format(opencg_cell)
-        raise ValueError(msg)
 
-    elif not isinstance(opencg_surface, opencg.Surface):
-        msg = 'Unable to create compatible OpenMC Cell since "{0}" is ' \
-              'not an OpenCG Surface'.format(opencg_surface)
-        raise ValueError(msg)
-
-    elif halfspace not in [-1, +1]:
-        msg = 'Unable to create compatible Cell since "{0}"' \
-              'is not a +/-1 halfspace'.format(halfspace)
-        raise ValueError(msg)
+    cv.check_type('opencg_cell', opencg_cell, opencg.Cell)
+    cv.check_type('opencg_surface', opencg_surface, opencg.Surface)
+    cv.check_value('halfspace', halfspace, (-1, +1))
 
     # Initialize an empty list for the new compatible cells
     compatible_cells = []
@@ -558,7 +521,7 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
         # Get the compatible Surfaces (XPlanes and YPlanes)
         compatible_surfaces = get_compatible_opencg_surfaces(opencg_surface)
 
-        opencg_cell.removeSurface(opencg_surface)
+        opencg_cell.remove_surface(opencg_surface)
 
         # If Cell is inside SquarePrism, add "inside" of Surface halfspaces
         if halfspace == -1:
@@ -575,7 +538,7 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
             num_clones = 8
 
             for clone_id in range(num_clones):
-                # Create a cloned OpenCG Cell with Surfaces compatible with OpenMC
+                # Create cloned OpenCG Cell with Surfaces compatible with OpenMC
                 clone = opencg_cell.clone()
                 compatible_cells.append(clone)
 
@@ -625,7 +588,7 @@ def get_compatible_opencg_cells(opencg_cell, opencg_surface, halfspace):
 
     # Remove redundant Surfaces from the Cells
     for cell in compatible_cells:
-        cell.removeRedundantSurfaces()
+        cell.remove_redundant_surfaces()
 
     # Return the list of OpenMC compatible OpenCG Cells
     return compatible_cells
@@ -641,15 +604,12 @@ def make_opencg_cells_compatible(opencg_universe):
 
     """
 
-    if not isinstance(opencg_universe, opencg.Universe):
-        msg = 'Unable to make compatible OpenCG Cells for "{0}" which ' \
-              'is not an OpenCG Universe'.format(opencg_universe)
-        raise ValueError(msg)
+    cv.check_type('opencg_universe', opencg_universe, opencg.Universe)
 
     # Check all OpenCG Cells in this Universe for compatibility with OpenMC
     opencg_cells = opencg_universe.cells
 
-    for cell_id, opencg_cell in opencg_cells.items():
+    for opencg_cell in opencg_cells.values():
 
         # Check each of the OpenCG Surfaces for OpenMC compatibility
         surfaces = opencg_cell.surfaces
@@ -669,10 +629,10 @@ def make_opencg_cells_compatible(opencg_universe):
                 # of this block is necessary in the event that there are more
                 # incompatible Surfaces in this Cell that are not accounted for.
                 cells = get_compatible_opencg_cells(opencg_cell,
-                                                     surface, halfspace)
+                                                    surface, halfspace)
 
                 # Remove the non-compatible OpenCG Cell from the Universe
-                opencg_universe.removeCell(opencg_cell)
+                opencg_universe.remove_cell(opencg_cell)
 
                 # Add the compatible OpenCG Cells to the Universe
                 opencg_universe.add_cells(cells)
@@ -700,12 +660,8 @@ def get_openmc_cell(opencg_cell):
 
     """
 
-    if not isinstance(opencg_cell, opencg.Cell):
-        msg = 'Unable to create an OpenMC Cell from "{0}" which ' \
-              'is not an OpenCG Cell'.format(opencg_cell)
-        raise ValueError(msg)
+    cv.check_type('opencg_cell', opencg_cell, opencg.Cell)
 
-    global OPENMC_CELLS
     cell_id = opencg_cell.id
 
     # If this Cell was already created, use it
@@ -718,27 +674,28 @@ def get_openmc_cell(opencg_cell):
 
     fill = opencg_cell.fill
 
-    if (opencg_cell.type == 'universe'):
+    if opencg_cell.type == 'universe':
         openmc_cell.fill = get_openmc_universe(fill)
-    elif (opencg_cell.type == 'lattice'):
+    elif opencg_cell.type == 'lattice':
         openmc_cell.fill = get_openmc_lattice(fill)
     else:
         openmc_cell.fill = get_openmc_material(fill)
 
-    if opencg_cell.rotation:
+    if opencg_cell.rotation is not None:
         rotation = np.asarray(opencg_cell.rotation, dtype=np.float64)
         openmc_cell.rotation = rotation
 
-    if opencg_cell.translation:
+    if opencg_cell.translation is not None:
         translation = np.asarray(opencg_cell.translation, dtype=np.float64)
         openmc_cell.translation = translation
 
-    surfaces = opencg_cell.surfaces
-
-    for surface_id in surfaces:
-        surface = surfaces[surface_id][0]
-        halfspace = surfaces[surface_id][1]
-        openmc_cell.add_surface(get_openmc_surface(surface), halfspace)
+    surfaces = []
+    operators = []
+    for surface, halfspace in opencg_cell.surfaces.values():
+        surfaces.append(get_openmc_surface(surface))
+        operators.append(operator.neg if halfspace == -1 else operator.pos)
+    openmc_cell.region = openmc.Intersection(
+        *[op(s) for op, s in zip(operators, surfaces)])
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell
@@ -764,12 +721,8 @@ def get_opencg_universe(openmc_universe):
 
     """
 
-    if not isinstance(openmc_universe, openmc.Universe):
-        msg = 'Unable to create an OpenCG Universe from "{0}" which ' \
-              'is not an OpenMC Universe'.format(openmc_universe)
-        raise ValueError(msg)
+    cv.check_type('openmc_universe', openmc_universe, openmc.Universe)
 
-    global OPENCG_UNIVERSES
     universe_id = openmc_universe.id
 
     # If this Universe was already created, use it
@@ -783,7 +736,7 @@ def get_opencg_universe(openmc_universe):
     # Convert all OpenMC Cells in this Universe to OpenCG Cells
     openmc_cells = openmc_universe.cells
 
-    for cell_id, openmc_cell in openmc_cells.items():
+    for openmc_cell in openmc_cells.values():
         opencg_cell = get_opencg_cell(openmc_cell)
         opencg_universe.add_cell(opencg_cell)
 
@@ -811,12 +764,8 @@ def get_openmc_universe(opencg_universe):
 
     """
 
-    if not isinstance(opencg_universe, opencg.Universe):
-        msg = 'Unable to create an OpenMC Universe from "{0}" which ' \
-              'is not an OpenCG Universe'.format(opencg_universe)
-        raise ValueError(msg)
+    cv.check_type('opencg_universe', opencg_universe, opencg.Universe)
 
-    global OPENMC_UNIVERSES
     universe_id = opencg_universe.id
 
     # If this Universe was already created, use it
@@ -833,7 +782,7 @@ def get_openmc_universe(opencg_universe):
     # Convert all OpenCG Cells in this Universe to OpenMC Cells
     opencg_cells = opencg_universe.cells
 
-    for cell_id, opencg_cell in opencg_cells.items():
+    for opencg_cell in opencg_cells.values():
         openmc_cell = get_openmc_cell(opencg_cell)
         openmc_universe.add_cell(openmc_cell)
 
@@ -861,12 +810,8 @@ def get_opencg_lattice(openmc_lattice):
 
     """
 
-    if not isinstance(openmc_lattice, openmc.Lattice):
-        msg = 'Unable to create an OpenCG Lattice from "{0}" which ' \
-              'is not an OpenMC Lattice'.format(openmc_lattice)
-        raise ValueError(msg)
+    cv.check_type('openmc_lattice', openmc_lattice, openmc.Lattice)
 
-    global OPENCG_LATTICES
     lattice_id = openmc_lattice.id
 
     # If this Lattice was already created, use it
@@ -875,25 +820,39 @@ def get_opencg_lattice(openmc_lattice):
 
     # Create an OpenCG Lattice to represent this OpenMC Lattice
     name = openmc_lattice.name
-    dimension = openmc_lattice.dimension
+    dimension = openmc_lattice.shape
     pitch = openmc_lattice.pitch
     lower_left = openmc_lattice.lower_left
     universes = openmc_lattice.universes
     outer = openmc_lattice.outer
 
+    # Convert 2D dimension to 3D for OpenCG
+    if len(dimension) == 2:
+        new_dimension = np.ones(3, dtype=np.int)
+        new_dimension[:2] = dimension
+        dimension = new_dimension
+
+    # Convert 2D pitch to 3D for OpenCG
     if len(pitch) == 2:
-        new_pitch = np.ones(3, dtype=np.float64) * np.inf
+        new_pitch = np.ones(3, dtype=np.float64) * np.finfo(np.float64).max
         new_pitch[:2] = pitch
         pitch = new_pitch
 
+    # Convert 2D lower left to 3D for OpenCG
     if len(lower_left) == 2:
-        new_lower_left = np.ones(3, dtype=np.float64)
+        new_lower_left = np.ones(3, dtype=np.float64) * np.finfo(np.float64).min
         new_lower_left[:2] = lower_left
         lower_left = new_lower_left
 
+    # Convert 2D universes array to 3D for OpenCG
+    if len(universes.shape) == 2:
+        new_universes = universes.copy()
+        new_universes.shape = (1,) + universes.shape
+        universes = new_universes
+
     # Initialize an empty array for the OpenCG nested Universes in this Lattice
-    universe_array = np.ndarray(tuple(np.array(dimension)[::-1]),
-                                dtype=opencg.Universe)
+    universe_array = np.empty(tuple(np.array(dimension)[::-1]),
+                              dtype=opencg.Universe)
 
     # Create OpenCG Universes for each unique nested Universe in this Lattice
     unique_universes = openmc_lattice.get_unique_universes()
@@ -905,7 +864,7 @@ def get_opencg_lattice(openmc_lattice):
     for z in range(dimension[2]):
         for y in range(dimension[1]):
             for x in range(dimension[0]):
-                universe_id = universes[x][dimension[1]-y-1][z].id
+                universe_id = universes[z][y][x].id
                 universe_array[z][y][x] = unique_universes[universe_id]
 
     opencg_lattice = opencg.Lattice(lattice_id, name)
@@ -944,12 +903,8 @@ def get_openmc_lattice(opencg_lattice):
 
     """
 
-    if not isinstance(opencg_lattice, opencg.Lattice):
-        msg = 'Unable to create an OpenMC Lattice from "{0}" which ' \
-              'is not an OpenCG Lattice'.format(opencg_lattice)
-        raise ValueError(msg)
+    cv.check_type('opencg_lattice', opencg_lattice, opencg.Lattice)
 
-    global OPENMC_LATTICES
     lattice_id = opencg_lattice.id
 
     # If this Lattice was already created, use it
@@ -963,8 +918,8 @@ def get_openmc_lattice(opencg_lattice):
     outer = opencg_lattice.outside
 
     # Initialize an empty array for the OpenMC nested Universes in this Lattice
-    universe_array = np.ndarray(tuple(np.array(dimension)),
-                                dtype=openmc.Universe)
+    universe_array = np.empty(tuple(np.array(dimension)[::-1]),
+                              dtype=openmc.Universe)
 
     # Create OpenMC Universes for each unique nested Universe in this Lattice
     unique_universes = opencg_lattice.get_unique_universes()
@@ -977,7 +932,7 @@ def get_openmc_lattice(opencg_lattice):
         for y in range(dimension[1]):
             for x in range(dimension[0]):
                 universe_id = universes[z][y][x].id
-                universe_array[x][y][z] = unique_universes[universe_id]
+                universe_array[z][y][x] = unique_universes[universe_id]
 
     # Reverse y-dimension in array to match ordering in OpenCG
     universe_array = universe_array[:, ::-1, :]
@@ -987,7 +942,6 @@ def get_openmc_lattice(opencg_lattice):
                    np.array(dimension, dtype=np.float64))) / -2.0
 
     openmc_lattice = openmc.RectLattice(lattice_id=lattice_id)
-    openmc_lattice.dimension = dimension
     openmc_lattice.pitch = width
     openmc_lattice.universes = universe_array
     openmc_lattice.lower_left = lower_left
@@ -1018,10 +972,7 @@ def get_opencg_geometry(openmc_geometry):
 
     """
 
-    if not isinstance(openmc_geometry, openmc.Geometry):
-        msg = 'Unable to get OpenCG geometry from "{0}" which is ' \
-              'not an OpenMC Geometry object'.format(openmc_geometry)
-        raise ValueError(msg)
+    cv.check_type('openmc_geometry', openmc_geometry, openmc.Geometry)
 
     # Clear dictionaries and auto-generated IDs
     OPENMC_SURFACES.clear()
@@ -1039,6 +990,7 @@ def get_opencg_geometry(openmc_geometry):
     opencg_geometry = opencg.Geometry()
     opencg_geometry.root_universe = opencg_root_universe
     opencg_geometry.initialize_cell_offsets()
+    opencg_geometry.assign_auto_ids()
 
     return opencg_geometry
 
@@ -1058,10 +1010,7 @@ def get_openmc_geometry(opencg_geometry):
 
     """
 
-    if not isinstance(opencg_geometry, opencg.Geometry):
-        msg = 'Unable to get OpenMC geometry from "{0}" which is ' \
-              'not an OpenCG Geometry object'.format(opencg_geometry)
-        raise ValueError(msg)
+    cv.check_type('opencg_geometry', opencg_geometry, opencg.Geometry)
 
     # Deep copy the goemetry since it may be modified to make all Surfaces
     # compatible with OpenMC's specifications
@@ -1083,7 +1032,7 @@ def get_openmc_geometry(opencg_geometry):
 
     # Make the entire geometry "compatible" before assigning auto IDs
     universes = opencg_geometry.get_all_universes()
-    for universe_id, universe in universes.items():
+    for universe in universes.values():
         if not isinstance(universe, opencg.Lattice):
             make_opencg_cells_compatible(universe)
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
-project(openmc Fortran)
+project(openmc Fortran C)
 
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -107,50 +107,62 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
     message(FATAL_ERROR "gfortran version must be 4.6 or higher")
   endif()
 
-  # GNU Fortran compiler options
+  # GCC compiler options
   list(APPEND f90flags -cpp -std=f2008 -fbacktrace)
+  list(APPEND cflags -cpp -std=c99)
   if(debug)
     if(NOT (GCC_VERSION VERSION_LESS 4.7))
       list(APPEND f90flags -Wall)
+      list(APPEND cflags -Wall)
     endif()
     list(APPEND f90flags -g -pedantic -fbounds-check
       -ffpe-trap=invalid,overflow,underflow)
+    list(APPEND cflags -g -pedantic -fbounds-check)
     list(APPEND ldflags -g)
   endif()
   if(profile)
     list(APPEND f90flags -pg)
+    list(APPEND cflags -pg)
     list(APPEND ldflags -pg)
   endif()
   if(optimize)
     list(APPEND f90flags -O3)
+    list(APPEND cflags -O3)
   endif()
   if(openmp)
     list(APPEND f90flags -fopenmp)
+    list(APPEND cflags -fopenmp)
     list(APPEND ldflags -fopenmp)
   endif()
   if(coverage)
     list(APPEND f90flags -coverage)
+    list(APPEND cflags -coverage)
     list(APPEND ldflags -coverage)
   endif()
 
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
-  # Intel Fortran compiler options
+  # Intel compiler options
   list(APPEND f90flags -fpp -std08 -assume byterecl -traceback)
+  list(APPEND cflags -std=c99)
   if(debug)
     list(APPEND f90flags -g -warn -ftrapuv -fp-stack-check
       "-check all" -fpe0)
+    list(APPEND cflags -g -w3 -ftrapuv -fp-stack-check)
     list(APPEND ldflags -g)
   endif()
   if(profile)
     list(APPEND f90flags -pg)
+    list(APPEND cflags -pg)
     list(APPEND ldflags -pg)
   endif()
   if(optimize)
     list(APPEND f90flags -O3)
+    list(APPEND cflags -O3)
   endif()
   if(openmp)
-    list(APPEND f90flags -openmp)
-    list(APPEND ldflags -openmp)
+    list(APPEND f90flags -qopenmp)
+    list(APPEND cflags -qopenmp)
+    list(APPEND ldflags -qopenmp)
   endif()
 
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL PGI)
@@ -244,6 +256,12 @@ add_subdirectory(src/xml/fox)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 #===============================================================================
+# Build faddeeva library
+#===============================================================================
+
+add_library(faddeeva STATIC src/Faddeeva.c)
+
+#===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
@@ -263,11 +281,14 @@ endif()
 # set compile flags. Note that this sets the COMPILE_OPTIONS property (also
 # available only in 2.8.12+) rather than the COMPILE_FLAGS property, which is
 # deprecated. The former can handle lists whereas the latter cannot.
-if(CMAKE_VERSION VERSION_LESS 4.8.12)
+if (CMAKE_VERSION VERSION_LESS 2.8.12)
   string(REPLACE ";" " " f90flags "${f90flags}")
+  string(REPLACE ";" " " cflags "${cflags}")
   set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
+  set_property(TARGET faddeeva PROPERTY COMPILE_FLAGS "${cflags}")
 else()
   target_compile_options(${program} PUBLIC ${f90flags})
+  target_compile_options(faddeeva PRIVATE ${cflags})
 endif()
 
 # Add HDF5 library directories to link line with -L
@@ -277,7 +298,7 @@ endforeach()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom)
+target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom faddeeva)
 
 #===============================================================================
 # Install executable, scripts, manpage, license
@@ -296,6 +317,7 @@ if(PYTHONINTERP_FOUND)
                     --root=debian/openmc --install-layout=deb
                     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})")
   else()
+    install(CODE "set(ENV{PYTHONPATH} \"${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages\")")
     install(CODE "execute_process(
                     COMMAND ${PYTHON_EXECUTABLE} setup.py install
                     --prefix=${CMAKE_INSTALL_PREFIX}
@@ -313,113 +335,36 @@ include(CTest)
 # Get a list of all the tests to run
 file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.py)
 
-# Check for MEM_CHECK and COVERAGE variables
-if (DEFINED ENV{MEM_CHECK})
-  set(MEM_CHECK $ENV{MEM_CHECK})
-else(DEFINED ENV{MEM_CHECK})
-  set(MEM_CHECK FALSE)
-endif(DEFINED ENV{MEM_CHECK})
-if (DEFINED ENV{COVERAGE})
-  set(COVERAGE $ENV{COVERAGE})
-else(DEFINED ENV{COVERAGE})
-  set(COVERAGE FALSE)
-endif(DEFINED ENV{COVERAGE})
-
 # Loop through all the tests
 foreach(test ${TESTS})
-
   # Get test information
   get_filename_component(TEST_NAME ${test} NAME)
   get_filename_component(TEST_PATH ${test} PATH)
 
-  # Check for running standard tests (no valgrind, no gcov)
-  if(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
+  if (DEFINED ENV{MEM_CHECK})
+    # Generate input files if needed
+    if (NOT EXISTS "${TEST_PATH}/geometry.xml")
+      execute_process(COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --build-inputs
+        WORKING_DIRECTORY ${TEST_PATH})
+    endif()
 
+    # Add serial test
+    add_test(NAME ${TEST_NAME}
+      WORKING_DIRECTORY ${TEST_PATH}
+      COMMAND $<TARGET_FILE:openmc>)
+  else()
     # Check serial/parallel
     if (${MPI_ENABLED})
-
       # Preform a parallel test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
         --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
-
-    else(${MPI_ENABLED})
-
+    else()
       # Perform a serial test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
-
-    endif(${MPI_ENABLED})
-
-  # Handle special case for valgrind and gcov (run openmc directly, no python)
-  else(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
-
-    # If a plot test is encountered, run with "-p"
-    if (${test} MATCHES "test_plot")
-
-      # Perform serial valgrind and coverage test with plot flag
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -p ${TEST_PATH})
-
-    elseif(${test} MATCHES "test_filter_distribcell")
-
-      # Add each case for distribcell tests
-      add_test(NAME ${TEST_NAME}_case-1
-        WORKING_DIRECTORY ${TEST_PATH}/case-1
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-1)
-      add_test(NAME ${TEST_NAME}_case-2
-        WORKING_DIRECTORY ${TEST_PATH}/case-2
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-2)
-      add_test(NAME ${TEST_NAME}_case-3
-        WORKING_DIRECTORY ${TEST_PATH}/case-3
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-3)
-      add_test(NAME ${TEST_NAME}_case-4
-        WORKING_DIRECTORY ${TEST_PATH}/case-4
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH}/case-4)
-
-    # If a restart test is encounted, need to run with -r and restart file(s)
-    elseif(${test} MATCHES "restart")
-
-      # Handle restart tests separately
-      if(${test} MATCHES "test_statepoint_restart")
-        set(RESTART_FILE statepoint.07.h5)
-      elseif(${test} MATCHES "test_sourcepoint_restart")
-        set(RESTART_FILE statepoint.07.h5 source.07.h5)
-      elseif(${test} MATCHES "test_particle_restart_eigval")
-        set(RESTART_FILE particle_9_555.h5)
-      elseif(${test} MATCHES "test_particle_restart_fixed")
-        set(RESTART_FILE particle_7_928.h5)
-      else(${test} MATCHES "test_statepoint_restart")
-        message(FATAL_ERROR "Restart test ${test} not recognized")
-      endif(${test} MATCHES "test_statepoint_restart")
-
-      # Perform serial valgrind and coverage test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
-
-      # Perform serial valgrind and coverage restart test
-      add_test(NAME ${TEST_NAME}_restart
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -r ${RESTART_FILE} ${TEST_PATH})
-
-      # Set test dependency
-      set_tests_properties(${TEST_NAME}_restart PROPERTIES DEPENDS ${TEST_NAME})
-
-
-    # Handle standard tests for valgrind and gcov
-    else(${test} MATCHES "test_plot")
-
-      # Perform serial valgrind and coverage test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
-
-    endif(${test} MATCHES "test_plot")
-
-  endif(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
-
+    endif()
+  endif()
 endforeach(test)

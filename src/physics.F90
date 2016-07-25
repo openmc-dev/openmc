@@ -1,27 +1,25 @@
 module physics
 
-  use ace_header,             only: Nuclide, Reaction, DistEnergy
   use constants
   use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning
-  use fission,                only: nu_total, nu_delayed
   use global
-  use interpolation,          only: interpolate_tab1
   use material_header,        only: Material
-  use math,                   only: maxwell_spectrum, watt_spectrum
+  use math
   use mesh,                   only: get_mesh_indices
+  use nuclide_header
   use output,                 only: write_message
   use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart
-  use random_lcg,             only: prn
+  use physics_common
+  use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
+  use reaction_header,        only: Reaction
   use search,                 only: binary_search
+  use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use string,                 only: to_str
 
   implicit none
-
-! TODO: Figure out how to write particle restart files in sample_angle,
-! sample_energy, etc.
 
 contains
 
@@ -58,6 +56,13 @@ contains
       if (master) call warning("Killing neutron with extremely low energy")
     end if
 
+    ! Advance URR seed stream 'N' times after energy changes
+    if (p % E /= p % last_E) then
+      call prn_set_stream(STREAM_URR_PTABLE)
+      call advance_prn_seed(n_nuc_zaid_total)
+      call prn_set_stream(STREAM_TRACKING)
+    endif
+
   end subroutine collision
 
 !===============================================================================
@@ -90,9 +95,14 @@ contains
     ! change when sampling fission sites. The following block handles all
     ! absorption (including fission)
 
-    if (nuc % fissionable .and. run_mode == MODE_EIGENVALUE) then
+    if (nuc % fissionable) then
       call sample_fission(i_nuclide, i_reaction)
-      call create_fission_sites(p, i_nuclide, i_reaction)
+      if (run_mode == MODE_EIGENVALUE) then
+        call create_fission_sites(p, i_nuclide, i_reaction, fission_bank, n_bank)
+      elseif (run_mode == MODE_FIXEDSOURCE) then
+        call create_fission_sites(p, i_nuclide, i_reaction, &
+             p % secondary_bank, p % n_secondary)
+      end if
     end if
 
     ! If survival biasing is being used, the following subroutine adjusts the
@@ -193,7 +203,7 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide),  pointer :: nuc
+    type(Nuclide), pointer :: nuc
 
     ! Get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -239,7 +249,6 @@ contains
 !===============================================================================
 
   subroutine absorption(p, i_nuclide)
-
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
 
@@ -276,32 +285,10 @@ contains
   end subroutine absorption
 
 !===============================================================================
-! RUSSIAN_ROULETTE
-!===============================================================================
-
-  subroutine russian_roulette(p)
-
-    type(Particle), intent(inout) :: p
-
-    if (p % wgt < weight_cutoff) then
-      if (prn() < p % wgt / weight_survive) then
-        p % wgt = weight_survive
-        p % last_wgt = p % wgt
-      else
-        p % wgt = ZERO
-        p % last_wgt = ZERO
-        p % alive = .false.
-      end if
-    end if
-
-  end subroutine russian_roulette
-
-!===============================================================================
 ! SCATTER
 !===============================================================================
 
   subroutine scatter(p, i_nuclide, i_nuc_mat)
-
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
     integer,        intent(in)    :: i_nuc_mat
@@ -458,7 +445,10 @@ contains
     vel = sqrt(dot_product(v_n, v_n))
 
     ! Sample scattering angle
-    mu_cm = sample_angle(rxn, E)
+    select type (dist => rxn % products(1) % distribution(1) % obj)
+    type is (UncorrelatedAngleEnergy)
+      mu_cm = dist % angle % sample(E)
+    end select
 
     ! Determine direction cosines in CM
     uvw_cm = v_n/vel
@@ -495,7 +485,6 @@ contains
 !===============================================================================
 
   subroutine sab_scatter(i_nuclide, i_sab, E, uvw, mu)
-
     integer, intent(in)     :: i_nuclide ! index in micro_xs
     integer, intent(in)     :: i_sab     ! index in sab_tables
     real(8), intent(inout)  :: E         ! incoming/outgoing energy
@@ -999,9 +988,9 @@ contains
 
   subroutine sample_cxs_target_velocity(nuc, v_target, E, uvw)
     type(Nuclide), intent(in) :: nuc ! target nuclide at temperature
-    real(8), intent(out)    :: v_target(3)
-    real(8), intent(in)     :: E
-    real(8), intent(in)     :: uvw(3)
+    real(8), intent(out)         :: v_target(3)
+    real(8), intent(in)          :: E
+    real(8), intent(in)          :: uvw(3)
 
     real(8) :: kT          ! equilibrium temperature of target in MeV
     real(8) :: awr         ! target/neutron mass ratio
@@ -1070,18 +1059,18 @@ contains
 ! neutrons produced from fission and creates appropriate bank sites.
 !===============================================================================
 
-  subroutine create_fission_sites(p, i_nuclide, i_reaction)
+  subroutine create_fission_sites(p, i_nuclide, i_reaction, bank_array, size_bank)
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
     integer,        intent(in)    :: i_reaction
+    type(Bank),     intent(inout) :: bank_array(:)
+    integer(8),     intent(inout) :: size_bank
 
     integer :: nu_d(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
     integer :: i                        ! loop index
     integer :: nu                       ! actual number of neutrons produced
     integer :: ijk(3)                   ! indices in ufs mesh
     real(8) :: nu_t                     ! total nu
-    real(8) :: mu                       ! fission neutron angular cosine
-    real(8) :: phi                      ! fission neutron azimuthal angle
     real(8) :: weight                   ! weight adjustment for ufs method
     logical :: in_mesh                  ! source site in ufs mesh?
     type(Nuclide),  pointer :: nuc
@@ -1122,47 +1111,42 @@ contains
       nu = int(nu_t) + 1
     end if
 
-    ! Check for fission bank size getting hit
-    if (n_bank + nu > size(fission_bank)) then
-      if (master) call warning("Maximum number of sites in fission bank &
-           &reached. This can result in irreproducible results using different &
-           &numbers of processes/threads.")
+    ! Check for bank size getting hit. For fixed source calculations, this is a
+    ! fatal error. For eigenvalue calculations, it just means that k-effective
+    ! was too high for a single batch.
+    if (size_bank + nu > size(bank_array)) then
+      if (run_mode == MODE_FIXEDSOURCE) then
+        call fatal_error("Secondary particle bank size limit reached. If you &
+             &are running a subcritical multiplication problem, k-effective &
+             &may be too close to one.")
+      else
+        if (master) call warning("Maximum number of sites in fission bank &
+             &reached. This can result in irreproducible results using different &
+             &numbers of processes/threads.")
+      end if
     end if
 
     ! Bank source neutrons
-    if (nu == 0 .or. n_bank == size(fission_bank)) return
+    if (nu == 0 .or. size_bank == size(bank_array)) return
 
     ! Initialize counter of delayed neutrons encountered for each delayed group
     ! to zero.
     nu_d(:) = 0
 
     p % fission = .true. ! Fission neutrons will be banked
-    do i = int(n_bank,4) + 1, int(min(n_bank + nu, int(size(fission_bank),8)),4)
+    do i = int(size_bank,4) + 1, int(min(size_bank + nu, int(size(bank_array),8)),4)
       ! Bank source neutrons by copying particle data
-      fission_bank(i) % xyz = p % coord(1) % xyz
+      bank_array(i) % xyz = p % coord(1) % xyz
 
       ! Set weight of fission bank site
-      fission_bank(i) % wgt = ONE/weight
+      bank_array(i) % wgt = ONE/weight
 
-      ! Sample cosine of angle -- fission neutrons are always emitted
-      ! isotropically. Sometimes in ACE data, fission reactions actually have
-      ! an angular distribution listed, but for those that do, it's simply just
-      ! a uniform distribution in mu
-      mu = TWO * prn() - ONE
+      ! Sample delayed group and angle/energy for fission reaction
+      call sample_fission_neutron(nuc, nuc % reactions(i_reaction), &
+           p % E, bank_array(i))
 
-      ! Sample azimuthal angle uniformly in [0,2*pi)
-      phi = TWO*PI*prn()
-      fission_bank(i) % uvw(1) = mu
-      fission_bank(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-      fission_bank(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
-
-      ! Sample secondary energy distribution for fission reaction and set energy
-      ! in fission bank
-      fission_bank(i) % E = sample_fission_energy(nuc, nuc%reactions(&
-           i_reaction), p)
-
-      ! Set the delayed group of the neutron
-      fission_bank(i) % delayed_group = p % delayed_group
+      ! Set delayed group on particle too
+      p % delayed_group = bank_array(i) % delayed_group
 
       ! Increment the number of neutrons born delayed
       if (p % delayed_group > 0) then
@@ -1171,7 +1155,7 @@ contains
     end do
 
     ! increment number of bank sites
-    n_bank = min(n_bank + nu, int(size(fission_bank),8))
+    size_bank = min(size_bank + nu, int(size(bank_array),8))
 
     ! Store total and delayed weight banked for analog fission tallies
     p % n_bank   = nu
@@ -1181,38 +1165,41 @@ contains
   end subroutine create_fission_sites
 
 !===============================================================================
-! SAMPLE_FISSION_ENERGY
+! SAMPLE_FISSION_NEUTRON
 !===============================================================================
 
-  function sample_fission_energy(nuc, rxn, p) result(E_out)
+  subroutine sample_fission_neutron(nuc, rxn, E_in, site)
+    type(Nuclide),  intent(in)    :: nuc
+    type(Reaction), intent(in)    :: rxn
+    real(8),        intent(in)    :: E_in
+    type(Bank),     intent(inout) :: site
 
-    type(Nuclide),  intent(in) :: nuc
-    type(Reaction), intent(in) :: rxn
-    type(Particle), intent(inout) :: p     ! Particle causing fission
-    real(8)                       :: E_out ! outgoing energy of fission neutron
-
-    integer :: j            ! index on nu energy grid / precursor group
-    integer :: lc           ! index before start of energies/nu values
-    integer :: NR           ! number of interpolation regions
-    integer :: NE           ! number of energies tabulated
-    integer :: law          ! energy distribution law
-    integer :: n_sample     ! number of times resampling
+    integer :: group        ! index on nu energy grid / precursor group
+    integer :: n_sample     ! number of resamples
     real(8) :: nu_t         ! total nu
     real(8) :: nu_d         ! delayed nu
-    real(8) :: mu           ! fission neutron angular cosine
     real(8) :: beta         ! delayed neutron fraction
     real(8) :: xi           ! random number
     real(8) :: yield        ! delayed neutron precursor yield
     real(8) :: prob         ! cumulative probability
-    type(DistEnergy), pointer :: edist
+    real(8) :: mu           ! cosine of scattering angle
+    real(8) :: phi          ! azimuthal angle
 
-    ! Determine total nu
-    nu_t = nu_total(nuc, p % E)
+    ! Sample cosine of angle -- fission neutrons are always emitted
+    ! isotropically. Sometimes in ACE data, fission reactions actually have
+    ! an angular distribution listed, but for those that do, it's simply just
+    ! a uniform distribution in mu
+    mu = TWO * prn() - ONE
 
-    ! Determine delayed nu
-    nu_d = nu_delayed(nuc, p % E)
+    ! Sample azimuthal angle uniformly in [0,2*pi)
+    phi = TWO*PI*prn()
+    site % uvw(1) = mu
+    site % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+    site % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
-    ! Determine delayed neutron fraction
+    ! Determine total nu, delayed nu, and delayed neutron fraction
+    nu_t = nuc % nu(E_in, EMISSION_TOTAL)
+    nu_d = nuc % nu(E_in, EMISSION_DELAYED)
     beta = nu_d / nu_t
 
     if (prn() < beta) then
@@ -1220,56 +1207,41 @@ contains
       ! DELAYED NEUTRON SAMPLED
 
       ! sampled delayed precursor group
-      xi = prn()
-      lc = 1
+      xi = prn()*nu_d
       prob = ZERO
-      do j = 1, nuc % n_precursor
-        ! determine number of interpolation regions and energies
-        NR = int(nuc % nu_d_precursor_data(lc + 1))
-        NE = int(nuc % nu_d_precursor_data(lc + 2 + 2*NR))
+      do group = 1, nuc % n_precursor
 
         ! determine delayed neutron precursor yield for group j
-        yield = interpolate_tab1(nuc % nu_d_precursor_data( &
-             lc+1:lc+2+2*NR+2*NE), p % E)
+        yield = rxn % products(1 + group) % yield % evaluate(E_in)
 
         ! Check if this group is sampled
         prob = prob + yield
         if (xi < prob) exit
-
-        ! advance pointer
-        lc = lc + 2 + 2*NR + 2*NE + 1
       end do
 
       ! if the sum of the probabilities is slightly less than one and the
       ! random number is greater, j will be greater than nuc %
       ! n_precursor -- check for this condition
-      j = min(j, nuc % n_precursor)
+      group = min(group, nuc % n_precursor)
 
       ! set the delayed group for the particle born from fission
-      p % delayed_group = j
+      site % delayed_group = group
 
-      ! select energy distribution for group j
-      law = nuc % nu_d_edist(j) % law
-      edist => nuc % nu_d_edist(j)
-
-      ! sample from energy distribution
       n_sample = 0
       do
-        if (law == 44 .or. law == 61) then
-          call sample_energy(edist, p % E, E_out, mu)
-        else
-          call sample_energy(edist, p % E, E_out)
-        end if
+        ! sample from energy/angle distribution -- note that mu has already been
+        ! sampled above and doesn't need to be resampled
+        call rxn % products(1 + group) % sample(E_in, site % E, mu)
 
         ! resample if energy is greater than maximum neutron energy
-        if (E_out < energy_max_neutron) exit
+        if (site % E < energy_max_neutron) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
           call fatal_error("Resampled energy distribution maximum number of " &
-               &// "times for nuclide " // nuc % name)
+               // "times for nuclide " // nuc % name)
         end if
       end do
 
@@ -1278,33 +1250,27 @@ contains
       ! PROMPT NEUTRON SAMPLED
 
       ! set the delayed group for the particle born from fission to 0
-      p % delayed_group = 0
+      site % delayed_group = 0
 
       ! sample from prompt neutron energy distribution
-      law = rxn % edist % law
       n_sample = 0
       do
-        if (law == 44 .or. law == 61) then
-          call sample_energy(rxn%edist, p % E, E_out, prob)
-        else
-          call sample_energy(rxn%edist, p % E, E_out)
-        end if
+        call rxn % products(1) % sample(E_in, site % E, mu)
 
         ! resample if energy is greater than maximum neutron energy
-        if (E_out < energy_max_neutron) exit
+        if (site % E < energy_max_neutron) exit
 
         ! check for large number of resamples
         n_sample = n_sample + 1
         if (n_sample == MAX_SAMPLE) then
           ! call write_particle_restart(p)
           call fatal_error("Resampled energy distribution maximum number of " &
-               &// "times for nuclide " // nuc % name)
+               // "times for nuclide " // nuc % name)
         end if
       end do
-
     end if
 
-  end function sample_fission_energy
+  end subroutine sample_fission_neutron
 
 !===============================================================================
 ! INELASTIC_SCATTER handles all reactions with a single secondary neutron (other
@@ -1312,46 +1278,23 @@ contains
 !===============================================================================
 
   subroutine inelastic_scatter(nuc, rxn, p)
-    type(Nuclide),  intent(in)    :: nuc
-    type(Reaction), intent(in)    :: rxn
-    type(Particle), intent(inout) :: p
+    type(Nuclide), intent(in)    :: nuc
+    type(Reaction),   intent(in)    :: rxn
+    type(Particle),   intent(inout) :: p
 
     integer :: i      ! loop index
-    integer :: law    ! secondary energy distribution law
     real(8) :: E      ! energy in lab (incoming/outgoing)
     real(8) :: mu     ! cosine of scattering angle in lab
     real(8) :: A      ! atomic weight ratio of nuclide
     real(8) :: E_in   ! incoming energy
     real(8) :: E_cm   ! outgoing energy in center-of-mass
-    real(8) :: Q      ! Q-value of reaction
     real(8) :: yield  ! neutron yield
 
     ! copy energy of neutron
     E_in = p % E
 
-    ! determine A and Q
-    A = nuc % awr
-    Q = rxn % Q_value
-
-    ! determine secondary energy distribution law
-    law = rxn % edist % law
-
-    ! sample scattering angle
-    mu = sample_angle(rxn, E_in)
-
-    ! sample outgoing energy
-    if (law == 44 .or. law == 61) then
-      call sample_energy(rxn%edist, E_in, E, mu)
-      ! Because of floating-point roundoff, it may be possible for mu to be
-      ! outside of the range [-1,1). In these cases, we just set mu to exactly
-      ! -1 or 1
-
-      if (abs(mu) > ONE) mu = sign(ONE,mu)
-    elseif (law == 66) then
-      call sample_energy(rxn%edist, E_in, E, A=A, Q=Q)
-    else
-      call sample_energy(rxn%edist, E_in, E)
-    end if
+    ! sample outgoing energy and scattering cosine
+    call rxn % products(1) % sample(E_in, E, mu)
 
     ! if scattering system is in center-of-mass, transfer cosine of scattering
     ! angle and outgoing energy from CM to LAB
@@ -1359,18 +1302,18 @@ contains
       E_cm = E
 
       ! determine outgoing energy in lab
+      A = nuc%awr
       E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) &
            / ((A+ONE)*(A+ONE))
 
       ! determine outgoing angle in lab
       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
-
-      ! Because of floating-point roundoff, it may be possible for mu to be
-      ! outside of the range [-1,1). In these cases, we just set mu to exactly
-      ! -1 or 1
-
-      if (abs(mu) > ONE) mu = sign(ONE,mu)
     end if
+
+    ! Because of floating-point roundoff, it may be possible for mu to be
+    ! outside of the range [-1,1). In these cases, we just set mu to exactly -1
+    ! or 1
+    if (abs(mu) > ONE) mu = sign(ONE,mu)
 
     ! Set outgoing energy and scattering angle
     p % E = E
@@ -1379,954 +1322,18 @@ contains
     ! change direction of particle
     p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
 
-    ! change weight of particle based on yield
-    if (rxn % multiplicity_with_E) then
-      yield = interpolate_tab1(rxn % multiplicity_E, E_in)
-      p % wgt = yield * p % wgt
-    else
-      do i = 1, rxn % multiplicity - 1
-        call p % create_secondary(p % coord(1) % uvw, NEUTRON)
+    ! evaluate yield
+    yield = rxn % products(1) % yield % evaluate(E_in)
+    if (mod(yield, ONE) == ZERO) then
+      ! If yield is integral, create exactly that many secondary particles
+      do i = 1, nint(yield) - 1
+        call p % create_secondary(p % coord(1) % uvw, NEUTRON, run_CE=.true.)
       end do
+    else
+      ! Otherwise, change weight of particle based on yield
+      p % wgt = yield * p % wgt
     end if
 
   end subroutine inelastic_scatter
-
-!===============================================================================
-! SAMPLE_ANGLE samples the cosine of the angle between incident and exiting
-! particle directions either from 32 equiprobable bins or from a tabular
-! distribution.
-!===============================================================================
-
-  function sample_angle(rxn, E) result(mu)
-    type(Reaction), intent(in) :: rxn ! reaction
-    real(8),        intent(in) :: E   ! incoming energy
-
-    real(8)        :: xi      ! random number on [0,1)
-    integer        :: interp  ! type of interpolation
-    integer        :: type    ! angular distribution type
-    integer        :: i       ! incoming energy bin
-    integer        :: n       ! number of incoming energy bins
-    integer        :: lc      ! location in data array
-    integer        :: NP      ! number of points in cos distribution
-    integer        :: k       ! index on cosine grid
-    real(8)        :: r       ! interpolation factor on incoming energy
-    real(8)        :: frac    ! interpolation fraction on cosine
-    real(8)        :: mu0     ! cosine in bin k
-    real(8)        :: mu1     ! cosine in bin k+1
-    real(8)        :: mu      ! final cosine sampled
-    real(8)        :: c_k     ! cumulative frequency at k
-    real(8)        :: c_k1    ! cumulative frequency at k+1
-    real(8)        :: p0,p1   ! probability distribution
-
-    ! check if reaction has angular distribution -- if not, sample outgoing
-    ! angle isotropically
-    if (.not. rxn % has_angle_dist) then
-      mu = TWO * prn() - ONE
-      return
-    end if
-
-    ! determine number of incoming energies
-    n = rxn % adist % n_energy
-
-    ! find energy bin and calculate interpolation factor -- if the energy is
-    ! outside the range of the tabulated energies, choose the first or last bins
-    if (E < rxn % adist % energy(1)) then
-      i = 1
-      r = ZERO
-    elseif (E > rxn % adist % energy(n)) then
-      i = n - 1
-      r = ONE
-    else
-      i = binary_search(rxn % adist % energy, n, E)
-      r = (E - rxn % adist % energy(i)) / &
-           (rxn % adist % energy(i+1) - rxn % adist % energy(i))
-    end if
-
-    ! Sample between the ith and (i+1)th bin
-    if (r > prn()) i = i + 1
-
-    ! check whether this is a 32-equiprobable bin or a tabular distribution
-    lc  = rxn % adist % location(i)
-    type = rxn % adist % type(i)
-    if (type == ANGLE_ISOTROPIC) then
-      mu = TWO * prn() - ONE
-    elseif (type == ANGLE_32_EQUI) then
-      ! sample cosine bin
-      xi = prn()
-      k = 1 + int(32.0_8*xi)
-
-      ! calculate cosine
-      mu0 = rxn % adist % data(lc + k)
-      mu1 = rxn % adist % data(lc + k+1)
-      mu = mu0 + (32.0_8 * xi - k + ONE) * (mu1 - mu0)
-
-    elseif (type == ANGLE_TABULAR) then
-      interp = int(rxn % adist % data(lc + 1))
-      NP     = int(rxn % adist % data(lc + 2))
-
-      ! determine outgoing cosine bin
-      xi = prn()
-      lc = lc + 2
-      c_k = rxn % adist % data(lc + 2*NP + 1)
-      do k = 1, NP - 1
-        c_k1 = rxn % adist % data(lc + 2*NP + k+1)
-        if (xi < c_k1) exit
-        c_k = c_k1
-      end do
-
-      ! check to make sure k is <= NP - 1
-      k = min(k, NP - 1)
-
-      p0  = rxn % adist % data(lc + NP + k)
-      mu0 = rxn % adist % data(lc + k)
-      if (interp == HISTOGRAM) then
-        ! Histogram interpolation
-        if (p0 > ZERO) then
-          mu = mu0 + (xi - c_k)/p0
-        else
-          mu = mu0
-        end if
-
-      elseif (interp == LINEAR_LINEAR) then
-        ! Linear-linear interpolation
-        p1  = rxn % adist % data(lc + NP + k+1)
-        mu1 = rxn % adist % data(lc + k+1)
-
-        frac = (p1 - p0)/(mu1 - mu0)
-        if (frac == ZERO) then
-          mu = mu0 + (xi - c_k)/p0
-        else
-          mu = mu0 + (sqrt(max(ZERO, p0*p0 + 2*frac*(xi - c_k))) - p0)/frac
-        end if
-      else
-        ! call write_particle_restart(p)
-        call fatal_error("Unknown interpolation type: " // trim(to_str(interp)))
-      end if
-
-      ! Because of floating-point roundoff, it may be possible for mu to be
-      ! outside of the range [-1,1). In these cases, we just set mu to exactly
-      ! -1 or 1
-
-      if (abs(mu) > ONE) mu = sign(ONE,mu)
-
-    else
-      ! call write_particle_restart(p)
-      call fatal_error("Unknown angular distribution type: " &
-           &// trim(to_str(type)))
-    end if
-
-  end function sample_angle
-
-!===============================================================================
-! ROTATE_ANGLE rotates direction cosines through a polar angle whose cosine is
-! mu and through an azimuthal angle sampled uniformly. Note that this is done
-! with direct sampling rather than rejection as is done in MCNP and SERPENT.
-!===============================================================================
-
-  function rotate_angle(uvw0, mu) result(uvw)
-    real(8), intent(in) :: uvw0(3) ! directional cosine
-    real(8), intent(in) :: mu      ! cosine of angle in lab or CM
-    real(8)             :: uvw(3)  ! rotated directional cosine
-
-    real(8) :: phi    ! azimuthal angle
-    real(8) :: sinphi ! sine of azimuthal angle
-    real(8) :: cosphi ! cosine of azimuthal angle
-    real(8) :: a      ! sqrt(1 - mu^2)
-    real(8) :: b      ! sqrt(1 - w^2)
-    real(8) :: u0     ! original cosine in x direction
-    real(8) :: v0     ! original cosine in y direction
-    real(8) :: w0     ! original cosine in z direction
-
-    ! Copy original directional cosines
-    u0 = uvw0(1)
-    v0 = uvw0(2)
-    w0 = uvw0(3)
-
-    ! Sample azimuthal angle in [0,2pi)
-    phi = TWO * PI * prn()
-
-    ! Precompute factors to save flops
-    sinphi = sin(phi)
-    cosphi = cos(phi)
-    a = sqrt(max(ZERO, ONE - mu*mu))
-    b = sqrt(max(ZERO, ONE - w0*w0))
-
-    ! Need to treat special case where sqrt(1 - w**2) is close to zero by
-    ! expanding about the v component rather than the w component
-    if (b > 1e-10) then
-      uvw(1) = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
-      uvw(2) = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
-      uvw(3) = mu*w0 - a*b*cosphi
-    else
-      b = sqrt(ONE - v0*v0)
-      uvw(1) = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b
-      uvw(2) = mu*v0 - a*b*cosphi
-      uvw(3) = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
-    end if
-
-  end function rotate_angle
-
-!===============================================================================
-! SAMPLE_ENERGY samples an outgoing energy distribution, either for a secondary
-! neutron from a collision or for a prompt/delayed fission neutron
-!===============================================================================
-
-  recursive subroutine sample_energy(edist, E_in, E_out, mu_out, A, Q)
-    type(DistEnergy),  intent(in)    :: edist
-    real(8), intent(in)              :: E_in   ! incoming energy of neutron
-    real(8), intent(out)             :: E_out  ! outgoing energy
-    real(8), intent(inout), optional :: mu_out ! outgoing cosine of angle
-    real(8), intent(in),    optional :: A      ! mass number of nuclide
-    real(8), intent(in),    optional :: Q      ! Q-value of reaction
-
-    integer :: i           ! index on incoming energy grid
-    integer :: k           ! sampled index on outgoing grid
-    integer :: l           ! sampled index on incoming grid
-    integer :: n_sample    ! number of rejections
-    integer :: lc          ! dummy index
-    integer :: NR          ! number of interpolation regions
-    integer :: NE          ! number of energies
-    integer :: NET         ! number of outgoing energies
-    integer :: INTTp       ! combination of INTT and ND
-    integer :: INTT        ! 1 = histogram, 2 = linear-linear
-    integer :: JJ          ! 1 = histogram, 2 = linear-linear
-    integer :: ND          ! number of discrete lines
-    integer :: NP          ! number of points in distribution
-
-    real(8) :: p_valid     ! probability of law validity
-
-    real(8) :: E_i_1, E_i_K   ! endpoints on outgoing grid i
-    real(8) :: E_i1_1, E_i1_K ! endpoints on outgoing grid i+1
-    real(8) :: E_1, E_K       ! endpoints interpolated between i and i+1
-
-    real(8) :: E_l_k, E_l_k1  ! adjacent E on outgoing grid l
-    real(8) :: p_l_k, p_l_k1  ! adjacent p on outgoing grid l
-    real(8) :: c_k, c_k1      ! cumulative probability
-
-    real(8) :: KM_A           ! Kalbach-Mann parameter R
-    real(8) :: KM_R           ! Kalbach-Mann parameter R
-    real(8) :: A_k, A_k1      ! Kalbach-Mann A on outgoing grid l
-    real(8) :: R_k, R_k1      ! Kalbach-Mann R on outgoing grid l
-
-    real(8) :: Watt_a, Watt_b ! Watt spectrum parameters
-
-    real(8) :: mu_k    ! angular cosine in bin k
-    real(8) :: mu_k1   ! angular cosine in bin k+1
-    real(8) :: p_k     ! angular pdf in bin k
-    real(8) :: p_k1    ! angular pdf in bin k+1
-
-    real(8) :: r           ! interpolation factor on incoming energy
-    real(8) :: frac        ! interpolation factor on outgoing energy
-    real(8) :: U           ! restriction energy
-    real(8) :: T           ! nuclear temperature
-
-    real(8) :: Ap          ! total mass ratio for n-body dist
-    integer :: n_bodies    ! number of bodies for n-body dist
-    real(8) :: E_max       ! parameter for n-body dist
-    real(8) :: x, y, v     ! intermediate variables for n-body dist
-    real(8) :: r1, r2, r3, r4, r5, r6
-    logical :: histogram_interp ! use histogram interpolation on incoming energy
-
-    ! ==========================================================================
-    ! SAMPLE ENERGY DISTRIBUTION IF THERE ARE MULTIPLE
-
-    if (associated(edist % next)) then
-      p_valid = interpolate_tab1(edist % p_valid, E_in)
-
-      if (prn() > p_valid) then
-        if (edist % law == 44 .or. edist % law == 61) then
-          call sample_energy(edist%next, E_in, E_out, mu_out)
-        elseif (edist % law == 66) then
-          call sample_energy(edist%next, E_in, E_out, A=A, Q=Q)
-        else
-          call sample_energy(edist%next, E_in, E_out)
-        end if
-        return
-      end if
-    end if
-
-    ! Determine which secondary energy distribution law to use
-    select case (edist % law)
-    case (1)
-      ! =======================================================================
-      ! TABULAR EQUIPROBABLE ENERGY BINS
-
-      ! read number of interpolation regions, incoming energies, and outgoing
-      ! energies
-      NR  = int(edist % data(1))
-      NE  = int(edist % data(2 + 2*NR))
-      NET = int(edist % data(3 + 2*NR + NE))
-      if (NR > 0) then
-        ! call write_particle_restart(p)
-        call fatal_error("Multiple interpolation regions not supported while &
-             &attempting to sample equiprobable energy bins.")
-      end if
-
-      ! determine index on incoming energy grid and interpolation factor
-      lc = 2 + 2*NR
-      i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-      r = (E_in - edist%data(lc+i)) / &
-           (edist%data(lc+i+1) - edist%data(lc+i))
-
-      ! Sample outgoing energy bin
-      r1 = prn()
-      k = 1 + int(NET * r1)
-
-      ! Determine E_1 and E_K
-      lc    = 3 + 3*NR + NE + (i-1)*NET
-      E_i_1 = edist % data(lc + 1)
-      E_i_K = edist % data(lc + NET)
-
-      lc     = 3 + 3*NR + NE + i*NET
-      E_i1_1 = edist % data(lc + 1)
-      E_i1_K = edist % data(lc + NET)
-
-      E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
-      E_K = E_i_K + r*(E_i1_K - E_i_K)
-
-      ! Randomly select between the outgoing table for incoming energy E_i and
-      ! E_(i+1)
-      if (prn() < r) then
-        l = i + 1
-      else
-        l = i
-      end if
-
-      ! Determine E_l_k and E_l_k+1
-      lc     = 3 + 2*NR + NE + (l-1)*NET
-      E_l_k  = edist % data(lc+k)
-      E_l_k1 = edist % data(lc+k+1)
-
-      ! Determine E' (denoted here as E_out)
-      r2 = prn()
-      E_out  = E_l_k + r2*(E_l_k1 - E_l_k)
-
-      ! Now interpolate between incident energy bins i and i + 1
-      if (l == i) then
-        E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
-      else
-        E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
-      end if
-
-    case (3)
-      ! =======================================================================
-      ! INELASTIC LEVEL SCATTERING
-
-      E_out = edist%data(2) * (E_in - edist%data(1))
-
-    case (4)
-      ! =======================================================================
-      ! CONTINUOUS TABULAR DISTRIBUTION
-
-      ! read number of interpolation regions and incoming energies
-      NR  = int(edist % data(1))
-      NE  = int(edist % data(2 + 2*NR))
-      if (NR == 1) then
-        histogram_interp = (edist % data(3) == 1)
-      else if (NR > 1) then
-        ! call write_particle_restart(p)
-        call fatal_error("Multiple interpolation regions not supported while &
-             &attempting to sample continuous tabular distribution.")
-      else
-        histogram_interp = .false.
-      end if
-
-      ! find energy bin and calculate interpolation factor -- if the energy is
-      ! outside the range of the tabulated energies, choose the first or last
-      ! bins
-      lc = 2 + 2*NR
-      if (E_in < edist % data(lc+1)) then
-        i = 1
-        r = ZERO
-      elseif (E_in > edist % data(lc+NE)) then
-        i = NE - 1
-        r = ONE
-      else
-        i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-        r = (E_in - edist%data(lc+i)) / &
-             (edist%data(lc+i+1) - edist%data(lc+i))
-      end if
-
-      ! Sample between the ith and (i+1)th bin
-      if (histogram_interp) then
-        l = i
-      else
-        r2 = prn()
-        if (r > r2) then
-          l = i + 1
-        else
-          l = i
-        end if
-      end if
-
-      ! interpolation for energy E1 and EK
-      lc    = int(edist%data(2 + 2*NR + NE + i))
-      NP    = int(edist%data(lc + 2))
-      E_i_1 = edist%data(lc + 2 + 1)
-      E_i_K = edist%data(lc + 2 + NP)
-
-      lc     = int(edist%data(2 + 2*NR + NE + i + 1))
-      NP     = int(edist%data(lc + 2))
-      E_i1_1 = edist%data(lc + 2 + 1)
-      E_i1_K = edist%data(lc + 2 + NP)
-
-      E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
-      E_K = E_i_K + r*(E_i1_K - E_i_K)
-
-      ! determine location of outgoing energies, pdf, cdf for E(l)
-      lc = int(edist % data(2 + 2*NR + NE + l))
-
-      ! determine type of interpolation and number of discrete lines
-      INTTp = int(edist % data(lc + 1))
-      NP    = int(edist % data(lc + 2))
-      if (INTTp > 10) then
-        INTT = mod(INTTp,10)
-        ND = (INTTp - INTT)/10
-      else
-        INTT = INTTp
-        ND = 0
-      end if
-
-      if (ND > 0) then
-        ! discrete lines present
-        ! call write_particle_restart(p)
-        call fatal_error("Discrete lines in continuous tabular distributed not &
-             &yet supported")
-      end if
-
-      ! determine outgoing energy bin
-      r1 = prn()
-      lc = lc + 2 ! start of EOUT
-      c_k = edist % data(lc + 2*NP + 1)
-      do k = 1, NP - 1
-        c_k1 = edist % data(lc + 2*NP + k+1)
-        if (r1 < c_k1) exit
-        c_k = c_k1
-      end do
-
-      ! check to make sure k is <= NP - 1
-      k = min(k, NP - 1)
-
-      E_l_k = edist % data(lc+k)
-      p_l_k = edist % data(lc+NP+k)
-      if (INTT == HISTOGRAM) then
-        ! Histogram interpolation
-        if (p_l_k > ZERO) then
-          E_out = E_l_k + (r1 - c_k)/p_l_k
-        else
-          E_out = E_l_k
-        end if
-
-      elseif (INTT == LINEAR_LINEAR) then
-        ! Linear-linear interpolation
-        E_l_k1 = edist % data(lc+k+1)
-        p_l_k1 = edist % data(lc+NP+k+1)
-
-        frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
-        if (frac == ZERO) then
-          E_out = E_l_k + (r1 - c_k)/p_l_k
-        else
-          E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
-               2*frac*(r1 - c_k))) - p_l_k)/frac
-        end if
-      else
-        ! call write_particle_restart(p)
-        call fatal_error("Unknown interpolation type: " // trim(to_str(INTT)))
-      end if
-
-      ! Now interpolate between incident energy bins i and i + 1
-      if (.not. histogram_interp) then
-        if (l == i) then
-          E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
-        else
-          E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
-        end if
-      end if
-
-    case (5)
-      ! =======================================================================
-      ! GENERAL EVAPORATION SPECTRUM
-
-    case (7)
-      ! =======================================================================
-      ! MAXWELL FISSION SPECTRUM
-
-      ! read number of interpolation regions and incoming energies
-      NR = int(edist % data(1))
-      NE = int(edist % data(2 + 2*NR))
-
-      ! determine nuclear temperature from tabulated function
-      T = interpolate_tab1(edist % data, E_in)
-
-      ! determine restriction energy
-      lc = 2 + 2*NR + 2*NE
-      U = edist % data(lc + 1)
-
-      n_sample = 0
-      do
-        ! sample maxwell fission spectrum
-        E_out = maxwell_spectrum(T)
-
-        ! accept energy based on restriction energy
-        if (E_out <= E_in - U) exit
-
-        ! check for large number of rejections
-        n_sample = n_sample + 1
-        if (n_sample == MAX_SAMPLE) then
-          ! call write_particle_restart(p)
-          call fatal_error("Too many rejections on Maxwell fission spectrum.")
-        end if
-      end do
-
-    case (9)
-      ! =======================================================================
-      ! EVAPORATION SPECTRUM
-
-      ! read number of interpolation regions and incoming energies
-      NR = int(edist % data(1))
-      NE = int(edist % data(2 + 2*NR))
-
-      ! determine nuclear temperature from tabulated function
-      T = interpolate_tab1(edist % data, E_in)
-
-      ! determine restriction energy
-      lc = 2 + 2*NR + 2*NE
-      U = edist % data(lc + 1)
-
-      y = (E_in - U)/T
-      v = 1 - exp(-y)
-
-      ! sample outgoing energy based on evaporation spectrum probability
-      ! density function
-      n_sample = 0
-      do
-        x = -log((1 - v*prn())*(1 - v*prn()))
-        if (x <= y) exit
-
-        ! check for large number of rejections
-        n_sample = n_sample + 1
-        if (n_sample == MAX_SAMPLE) then
-          ! call write_particle_restart(p)
-          call fatal_error("Too many rejections on evaporation spectrum.")
-        end if
-      end do
-
-      E_out = x*T
-
-    case (11)
-      ! =======================================================================
-      ! ENERGY-DEPENDENT WATT SPECTRUM
-
-      ! read number of interpolation regions and incoming energies for
-      ! parameter 'a'
-      NR = int(edist % data(1))
-      NE = int(edist % data(2 + 2*NR))
-
-      ! determine Watt parameter 'a' from tabulated function
-      Watt_a = interpolate_tab1(edist % data, E_in)
-
-      ! determine Watt parameter 'b' from tabulated function
-      lc = 2 + 2*(NR + NE)
-      Watt_b = interpolate_tab1(edist % data, E_in, lc + 1)
-
-      ! read number of interpolation regions and incoming energies for
-      ! parameter 'a'
-      NR = int(edist % data(lc + 1))
-      NE = int(edist % data(lc + 2 + 2*NR))
-
-      ! determine restriction energy
-      lc = lc + 2 + 2*(NR + NE)
-      U = edist % data(lc + 1)
-
-      n_sample = 0
-      do
-        ! Sample energy-dependent Watt fission spectrum
-        E_out = watt_spectrum(Watt_a, Watt_b)
-
-        ! accept energy based on restriction energy
-        if (E_out <= E_in - U) exit
-
-        ! check for large number of rejections
-        n_sample = n_sample + 1
-        if (n_sample == MAX_SAMPLE) then
-          ! call write_particle_restart(p)
-          call fatal_error("Too many rejections on Watt spectrum.")
-        end if
-      end do
-
-    case (44)
-      ! =======================================================================
-      ! KALBACH-MANN CORRELATED SCATTERING
-
-      if (.not. present(mu_out)) then
-        ! call write_particle_restart(p)
-        call fatal_error("Law 44 called without giving mu_out as argument.")
-      end if
-
-      ! read number of interpolation regions and incoming energies
-      NR = int(edist % data(1))
-      NE = int(edist % data(2 + 2*NR))
-      if (NR > 0) then
-        ! call write_particle_restart(p)
-        call fatal_error("Multiple interpolation regions not supported while &
-             &attempting to sample Kalbach-Mann distribution.")
-      end if
-
-      ! find energy bin and calculate interpolation factor -- if the energy is
-      ! outside the range of the tabulated energies, choose the first or last
-      ! bins
-      lc = 2 + 2*NR
-      if (E_in < edist % data(lc+1)) then
-        i = 1
-        r = ZERO
-      elseif (E_in > edist % data(lc+NE)) then
-        i = NE - 1
-        r = ONE
-      else
-        i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-        r = (E_in - edist%data(lc+i)) / &
-             (edist%data(lc+i+1) - edist%data(lc+i))
-      end if
-
-      ! Sample between the ith and (i+1)th bin
-      r2 = prn()
-      if (r > r2) then
-        l = i + 1
-      else
-        l = i
-      end if
-
-      ! determine endpoints on grid i
-      lc    = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
-      NP    = int(edist%data(lc + 2))
-      E_i_1 = edist%data(lc + 2 + 1)
-      E_i_K = edist%data(lc + 2 + NP)
-
-      ! determine endpoints on grid i+1
-      lc     = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
-      NP     = int(edist%data(lc + 2))
-      E_i1_1 = edist%data(lc + 2 + 1)
-      E_i1_K = edist%data(lc + 2 + NP)
-
-      E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
-      E_K = E_i_K + r*(E_i1_K - E_i_K)
-
-      ! determine location of outgoing energies, pdf, cdf for E(l)
-      lc = int(edist % data(2 + 2*NR + NE + l))
-
-      ! determine type of interpolation and number of discrete lines
-      INTTp = int(edist % data(lc + 1))
-      NP    = int(edist % data(lc + 2))
-      if (INTTp > 10) then
-        INTT = mod(INTTp,10)
-        ND = (INTTp - INTT)/10
-      else
-        INTT = INTTp
-        ND = 0
-      end if
-
-      if (ND > 0) then
-        ! discrete lines present
-        ! call write_particle_restart(p)
-        call fatal_error("Discrete lines in continuous tabular distributed not &
-             &yet supported")
-      end if
-
-      ! determine outgoing energy bin
-      r1 = prn()
-      lc = lc + 2 ! start of EOUT
-      c_k = edist % data(lc + 2*NP + 1)
-      do k = 1, NP - 1
-        c_k1 = edist % data(lc + 2*NP + k+1)
-        if (r1 < c_k1) exit
-        c_k = c_k1
-      end do
-
-      ! check to make sure k is <= NP - 1
-      k = min(k, NP - 1)
-
-      E_l_k = edist % data(lc+k)
-      p_l_k = edist % data(lc+NP+k)
-      if (INTT == HISTOGRAM) then
-        ! Histogram interpolation
-        if (p_l_k > ZERO) then
-          E_out = E_l_k + (r1 - c_k)/p_l_k
-        else
-          E_out = E_l_k
-        end if
-
-        ! Determine Kalbach-Mann parameters
-        KM_R = edist % data(lc + 3*NP + k)
-        KM_A = edist % data(lc + 4*NP + k)
-
-      elseif (INTT == LINEAR_LINEAR) then
-        ! Linear-linear interpolation
-        E_l_k1 = edist % data(lc+k+1)
-        p_l_k1 = edist % data(lc+NP+k+1)
-
-        ! Find E prime
-        frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
-        if (frac == ZERO) then
-          E_out = E_l_k + (r1 - c_k)/p_l_k
-        else
-          E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
-               2*frac*(r1 - c_k))) - p_l_k)/frac
-        end if
-
-        ! Determine Kalbach-Mann parameters
-        R_k  = edist % data(lc + 3*NP + k)
-        R_k1 = edist % data(lc + 3*NP + k+1)
-        A_k  = edist % data(lc + 4*NP + k)
-        A_k1 = edist % data(lc + 4*NP + k+1)
-
-        KM_R = R_k + (R_k1 - R_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
-        KM_A = A_k + (A_k1 - A_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
-      else
-        ! call write_particle_restart()
-        call fatal_error("Unknown interpolation type: " // trim(to_str(INTT)))
-      end if
-
-      ! Now interpolate between incident energy bins i and i + 1
-      if (l == i) then
-        E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
-      else
-        E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
-      end if
-
-      ! Sampled correlated angle from Kalbach-Mann parameters
-      r3 = prn()
-      r4 = prn()
-      if (r3 > KM_R) then
-        T = (TWO*r4 - ONE) * sinh(KM_A)
-        mu_out = log(T + sqrt(T*T + ONE))/KM_A
-      else
-        mu_out = log(r4*exp(KM_A) + (ONE - r4)*exp(-KM_A))/KM_A
-      end if
-
-    case (61)
-      ! =======================================================================
-      ! CORRELATED ENERGY AND ANGLE DISTRIBUTION
-
-      if (.not. present(mu_out)) then
-        ! call write_particle_restart()
-        call fatal_error("Law 61 called without giving mu_out as argument.")
-      end if
-
-      ! read number of interpolation regions and incoming energies
-      NR = int(edist % data(1))
-      NE = int(edist % data(2 + 2*NR))
-      if (NR > 0) then
-        ! call write_particle_restart()
-        call fatal_error("Multiple interpolation regions not supported while &
-             &attempting to sample correlated energy-angle distribution.")
-      end if
-
-      ! find energy bin and calculate interpolation factor -- if the energy is
-      ! outside the range of the tabulated energies, choose the first or last
-      ! bins
-      lc = 2 + 2*NR
-      if (E_in < edist % data(lc+1)) then
-        i = 1
-        r = ZERO
-      elseif (E_in > edist % data(lc+NE)) then
-        i = NE - 1
-        r = ONE
-      else
-        i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-        r = (E_in - edist%data(lc+i)) / &
-             (edist%data(lc+i+1) - edist%data(lc+i))
-      end if
-
-      ! Sample between the ith and (i+1)th bin
-      r2 = prn()
-      if (r > r2) then
-        l = i + 1
-      else
-        l = i
-      end if
-
-      ! determine endpoints on grid i
-      lc    = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
-      NP    = int(edist%data(lc + 2))
-      E_i_1 = edist%data(lc + 2 + 1)
-      E_i_K = edist%data(lc + 2 + NP)
-
-      ! determine endpoints on grid i+1
-      lc     = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
-      NP     = int(edist%data(lc + 2))
-      E_i1_1 = edist%data(lc + 2 + 1)
-      E_i1_K = edist%data(lc + 2 + NP)
-
-      E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
-      E_K = E_i_K + r*(E_i1_K - E_i_K)
-
-      ! determine location of outgoing energies, pdf, cdf for E(l)
-      lc = int(edist % data(2 + 2*NR + NE + l))
-
-      ! determine type of interpolation and number of discrete lines
-      INTTp = int(edist % data(lc + 1))
-      NP    = int(edist % data(lc + 2))
-      if (INTTp > 10) then
-        INTT = mod(INTTp,10)
-        ND = (INTTp - INTT)/10
-      else
-        INTT = INTTp
-        ND = 0
-      end if
-
-      if (ND > 0) then
-        ! discrete lines present
-        ! call write_particle_restart()
-        call fatal_error("Discrete lines in continuous tabular distributed not &
-             &yet supported")
-      end if
-
-      ! determine outgoing energy bin
-      r1 = prn()
-      lc = lc + 2 ! start of EOUT
-      c_k = edist % data(lc + 2*NP + 1)
-      do k = 1, NP - 1
-        c_k1 = edist % data(lc + 2*NP + k+1)
-        if (r1 < c_k1) exit
-        c_k = c_k1
-      end do
-
-      ! check to make sure k is <= NP - 1
-      k = min(k, NP - 1)
-
-      E_l_k = edist % data(lc+k)
-      p_l_k = edist % data(lc+NP+k)
-      if (INTT == HISTOGRAM) then
-        ! Histogram interpolation
-        if (p_l_k > ZERO) then
-          E_out = E_l_k + (r1 - c_k)/p_l_k
-        else
-          E_out = E_l_k
-        end if
-
-      elseif (INTT == LINEAR_LINEAR) then
-        ! Linear-linear interpolation
-        E_l_k1 = edist % data(lc+k+1)
-        p_l_k1 = edist % data(lc+NP+k+1)
-
-        ! Find E prime
-        frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
-        if (frac == ZERO) then
-          E_out = E_l_k + (r1 - c_k)/p_l_k
-        else
-          E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
-               2*frac*(r1 - c_k))) - p_l_k)/frac
-        end if
-      else
-        ! call write_particle_restart()
-        call fatal_error("Unknown interpolation type: " // trim(to_str(INTT)))
-      end if
-
-      ! Now interpolate between incident energy bins i and i + 1
-      if (l == i) then
-        E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
-      else
-        E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
-      end if
-
-      ! Find correlated angular distribution for closest outgoing energy bin
-      if (r1 - c_k < c_k1 - r1) then
-        lc = int(edist % data(lc + 3*NP + k))
-      else
-        lc = int(edist % data(lc + 3*NP + k + 1))
-      end if
-
-      ! Check if angular distribution is isotropic
-      if (lc == 0) then
-        mu_out = TWO * prn() - ONE
-        return
-      end if
-
-      ! interpolation type and number of points in angular distribution
-      JJ = int(edist % data(lc + 1))
-      NP = int(edist % data(lc + 2))
-
-      ! determine outgoing cosine bin
-      r3 = prn()
-      lc = lc + 2
-      c_k = edist % data(lc + 2*NP + 1)
-      do k = 1, NP - 1
-        c_k1 = edist % data(lc + 2*NP + k+1)
-        if (r3 < c_k1) exit
-        c_k = c_k1
-      end do
-
-      ! check to make sure k is <= NP - 1
-      k = min(k, NP - 1)
-
-      p_k  = edist % data(lc + NP + k)
-      mu_k = edist % data(lc + k)
-      if (JJ == HISTOGRAM) then
-        ! Histogram interpolation
-        if (p_k > ZERO) then
-          mu_out = mu_k + (r3 - c_k)/p_k
-        else
-          mu_out = mu_k
-        end if
-
-      elseif (JJ == LINEAR_LINEAR) then
-        ! Linear-linear interpolation
-        p_k1  = edist % data(lc + NP + k+1)
-        mu_k1 = edist % data(lc + k+1)
-
-        frac = (p_k1 - p_k)/(mu_k1 - mu_k)
-        if (frac == ZERO) then
-          mu_out = mu_k + (r3 - c_k)/p_k
-        else
-          mu_out = mu_k + (sqrt(p_k*p_k + 2*frac*(r3 - c_k))-p_k)/frac
-        end if
-      else
-        ! call write_particle_restart()
-        call fatal_error("Unknown interpolation type: " // trim(to_str(JJ)))
-      end if
-
-    case (66)
-      ! =======================================================================
-      ! N-BODY PHASE SPACE DISTRIBUTION
-
-      ! read number of bodies in phase space and total mass ratio
-      n_bodies = int(edist % data(1))
-      Ap       = edist % data(2)
-
-      ! determine E_max parameter
-      E_max = (Ap - ONE)/Ap * (A/(A+ONE)*E_in + Q)
-
-      ! x is essentially a Maxwellian distribution
-      x = maxwell_spectrum(ONE)
-
-      select case (n_bodies)
-      case (3)
-        y = maxwell_spectrum(ONE)
-      case (4)
-        r1 = prn()
-        r2 = prn()
-        r3 = prn()
-        y = -log(r1*r2*r3)
-      case (5)
-        r1 = prn()
-        r2 = prn()
-        r3 = prn()
-        r4 = prn()
-        r5 = prn()
-        r6 = prn()
-        y = -log(r1*r2*r3*r4) - log(r5) * cos(PI/TWO*r6)**2
-      end select
-
-      ! now determine v and E_out
-      v = x/(x+y)
-      E_out = E_max * v
-
-    case (67)
-      ! =======================================================================
-      ! LABORATORY ENERGY-ANGLE LAW
-
-    end select
-
-  end subroutine sample_energy
 
 end module physics

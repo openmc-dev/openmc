@@ -47,19 +47,41 @@
             </choice>
             <choice>
               <element name="material">
-                <choice>
-                  <data type="int"/>
-                  <value>void</value>
-                </choice>
+                <oneOrMore>
+                  <choice>
+                    <data type="int"/>
+                    <value>void</value>
+                  </choice>
+                </oneOrMore>
               </element>
               <attribute name="material">
-                <choice>
-                  <data type="int"/>
-                  <value>void</value>
-                </choice>
+                <oneOrMore>
+                  <choice>
+                    <data type="int"/>
+                    <value>void</value>
+                  </choice>
+                </oneOrMore>
               </attribute>
             </choice>
           </choice>
+          <optional>
+            <choice>
+              <element name="temperature">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="temperature">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
           <optional>
             <choice>
               <element name="region">
@@ -169,6 +191,7 @@
                   <value>transmit</value>
                   <value>reflective</value>
                   <value>vacuum</value>
+                  <value>periodic</value>
                 </choice>
               </element>
               <attribute name="boundary">
@@ -176,7 +199,18 @@
                   <value>transmit</value>
                   <value>reflective</value>
                   <value>vacuum</value>
+                  <value>periodic</value>
                 </choice>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="periodic_surface_id">
+                <data type="int"/>
+              </element>
+              <attribute name="periodic_surface_id">
+                <data type="int"/>
               </attribute>
             </choice>
           </optional>

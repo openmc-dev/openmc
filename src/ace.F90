@@ -280,6 +280,7 @@ contains
     real(8)       :: awr           ! atomic weight ratio for table
     logical       :: file_exists   ! does ACE library exist?
     logical       :: data_0K       ! are we reading 0K data?
+    logical       :: score_Q_pres  ! are there SCORE_Q tallies?
     character(7)  :: readable      ! is ACE library readable?
     character(10) :: name          ! name of ACE table
     character(10) :: date_         ! date ACE library was processed
@@ -413,6 +414,21 @@ contains
 
       if (nuc % fissionable .and. .not. data_0K) then
         call generate_nu_fission(nuc)
+      end if
+
+      ! If there are any tallies for Q-values, precompute the cross section
+      ! weighted Qs.
+      if (.not. data_0K) then
+        score_Q_pres = .false.
+        TALLY_LOOP: do i = 1, n_tallies
+          do j = 1, tallies(i) % n_score_bins
+            if (tallies(i) % score_bins(j) == SCORE_Q) then
+              score_Q_pres = .true.
+              exit TALLY_LOOP
+            end if
+          end do
+        end do TALLY_LOOP
+        if (score_Q_pres) call generate_nf_heating(nuc)
       end if
 
     case (ACE_THERMAL)
@@ -1560,6 +1576,88 @@ contains
            nuc % fission(i)
     end do
   end subroutine generate_nu_fission
+
+!===============================================================================
+! GENERATE_NF_HEATING precalculates the cross-section weighted reaction Q-values
+! for non-fission heating tallies.
+!===============================================================================
+
+  subroutine generate_nf_heating(nuc)
+    type(Nuclide), intent(inout) :: nuc
+
+    ! Initialize the heating array.
+    allocate(nuc % nf_heat(size(nuc % energy)))
+    nuc % nf_heat(:) = ZERO
+
+    ! Skip MT=1 through MT=10 because they are summations of other reactions,
+    ! are Q=0, or are ill-defined.
+
+    call add_mt_heat(nuc, N_2ND)
+
+    ! For many of the following reactions, we may have level-specific data
+    ! avialable, e.g. MT=N_2N0 through MT=N_2NC, but we will always use the
+    ! summed-up MT number, e.g. MT=N_2N, because that will give us the Q-value
+    ! for the ground state.  Essentially, we are assuming that excited nuclei
+    ! instantly decay and release their excitation energy.
+
+    call add_mt_heat(nuc, N_2N)
+    call add_mt_heat(nuc, N_3N)
+    ! Skip fission reactions, MT=18 through MT=21.
+    call add_mt_heat(nuc, N_NA)
+    call add_mt_heat(nuc, N_N3A)
+    call add_mt_heat(nuc, N_2NA)
+    call add_mt_heat(nuc, N_3NA)
+    call add_mt_heat(nuc, N_NP)
+    call add_mt_heat(nuc, N_N2A)
+    call add_mt_heat(nuc, N_2N2A)
+    call add_mt_heat(nuc, N_D)
+    call add_mt_heat(nuc, N_T)
+    call add_mt_heat(nuc, N_N3HE)
+    call add_mt_heat(nuc, N_ND2A)
+    call add_mt_heat(nuc, N_NT2A)
+    call add_mt_heat(nuc, N_4N)
+    ! Skip fourth-chance fission, MT=38.
+    call add_mt_heat(nuc, N_2NP)
+    call add_mt_heat(nuc, N_3NP)
+    call add_mt_heat(nuc, N_N2P)
+    call add_mt_heat(nuc, N_NPA)
+    call add_mt_heat(nuc, N_GAMMA)
+    call add_mt_heat(nuc, N_P)
+    call add_mt_heat(nuc, N_D)
+    call add_mt_heat(nuc, N_T)
+    call add_mt_heat(nuc, N_3HE)
+    call add_mt_heat(nuc, N_A)
+    call add_mt_heat(nuc, N_2A)
+    call add_mt_heat(nuc, N_3A)
+    call add_mt_heat(nuc, N_2P)
+    call add_mt_heat(nuc, N_PA)
+    call add_mt_heat(nuc, N_T2A)
+    call add_mt_heat(nuc, N_D2A)
+    call add_mt_heat(nuc, N_PD)
+    call add_mt_heat(nuc, N_PT)
+    call add_mt_heat(nuc, N_DA)
+  end subroutine generate_nf_heating
+
+!===============================================================================
+! ADD_MT_HEAT Adds the cross-section weighted reaction Q-value for a specific
+! MT number to the nuclide.
+!===============================================================================
+
+  subroutine add_mt_heat(nuc, MT)
+    type(Nuclide), intent(inout) :: nuc
+    integer,       intent(in)    :: MT
+
+    integer :: i_rxn, thresh
+
+    if (nuc % reaction_index % has_key(MT)) then
+      i_rxn = nuc % reaction_index % get_key(MT)
+      associate(rxn => nuc % reactions(i_rxn))
+        thresh = rxn % threshold
+        nuc % nf_heat(thresh:) = nuc % nf_heat(thresh:) &
+             + rxn % sigma(:) * rxn % Q_value
+      end associate
+    end if
+  end subroutine add_mt_heat
 
 !===============================================================================
 ! READ_THERMAL_DATA reads elastic and inelastic cross sections and corresponding

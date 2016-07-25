@@ -694,6 +694,37 @@ contains
           end if
         end if
 
+      case (SCORE_Q)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          ! When a capture reaction occurs, we don't actually pick a specific
+          ! MT so we don't know e.g. if a (n, gamma) or (n, alpha) reaction
+          ! occured.  Hence, we can't use an analog estimator with SCORE_Q.
+          call fatal_error('Q-value tallies are not supported for analog &
+               &estimators')
+        else
+          if (i_nuclide > 0) then
+            i_energy = micro_xs(i_nuclide) % index_grid
+            f = micro_xs(i_nuclide) % interp_factor
+            score = ((ONE - f) * nuclides(i_nuclide) % nf_heat(i_energy) &
+                 + f * nuclides(i_nuclide) % nf_heat(i_energy + 1)) &
+                 * atom_density * flux
+          else
+            score = ZERO
+            if (p % material /= MATERIAL_VOID) then
+              do l = 1, materials(p % material) % n_nuclides
+                atom_density_ = materials(p % material) % atom_density(l)
+                i_nuc = materials(p % material) % nuclide(l)
+                i_energy = micro_xs(i_nuc) % index_grid
+                f = micro_xs(i_nuc) % interp_factor
+                score = score &
+                     + ((ONE - f) * nuclides(i_nuc) % nf_heat(i_energy) &
+                     + f * nuclides(i_nuc) % nf_heat(i_energy + 1)) &
+                     * atom_density_ * flux
+              end do
+            end if
+          end if
+        end if
+
       case default
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Any other score is assumed to be a MT number. Thus, we just need

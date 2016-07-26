@@ -1,6 +1,7 @@
 module reaction_header
 
-  use hdf5
+  use hdf5, only: HID_T, HSIZE_T, SIZE_T, h5gget_info_f, h5lget_name_by_idx_f, &
+                  H5_INDEX_NAME_F, H5_ITER_INC_F
 
   use constants,      only: MAX_WORD_LEN
   use hdf5_interface, only: read_attribute, open_group, close_group, &

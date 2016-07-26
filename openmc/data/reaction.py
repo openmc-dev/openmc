@@ -456,7 +456,7 @@ class Reaction(object):
             # YIELD AND ANGLE-ENERGY DISTRIBUTION
 
             # Determine multiplicity
-            ty = ace.xss[ace.jxs[5] + i_reaction - 1]
+            ty = int(ace.xss[ace.jxs[5] + i_reaction - 1])
             rx.center_of_mass = (ty < 0)
             if i_reaction < ace.nxs[5] + 1:
                 if ty != 19:

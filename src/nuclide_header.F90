@@ -3,8 +3,9 @@ module nuclide_header
   use, intrinsic :: ISO_FORTRAN_ENV
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-  use h5lt,        only: h5ltpath_valid_f
+  use hdf5, only: HID_T, HSIZE_T, SIZE_T, h5iget_name_f, h5gget_info_f, &
+                  h5lget_name_by_idx_f, H5_INDEX_NAME_F, H5_ITER_INC_F
+  use h5lt, only: h5ltpath_valid_f
 
   use constants
   use dict_header, only: DictIntInt

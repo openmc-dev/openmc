@@ -16,7 +16,6 @@ generates ACE-format cross sections.
 """
 
 from __future__ import division, unicode_literals
-import io
 from os import SEEK_CUR
 import struct
 import sys
@@ -164,7 +163,7 @@ class Library(object):
 
         # Determine whether file is ASCII or binary
         try:
-            fh = io.open(filename, 'rb')
+            fh = open(filename, 'rb')
             # Grab 10 lines of the library
             sb = b''.join([fh.readline() for i in range(10)])
 
@@ -173,13 +172,13 @@ class Library(object):
 
             # No exception so proceed with ASCII - reopen in non-binary
             fh.close()
-            fh = io.open(filename, 'r')
-            fh.seek(0)
-            self._read_ascii(fh, table_names, verbose)
+            with open(filename, 'r') as fh:
+                fh.seek(0)
+                self._read_ascii(fh, table_names, verbose)
         except UnicodeDecodeError:
             fh.close()
-            fh = open(filename, 'rb')
-            self._read_binary(fh, table_names, verbose)
+            with open(filename, 'rb') as fh:
+                self._read_binary(fh, table_names, verbose)
 
     def _read_binary(self, ace_file, table_names, verbose=False,
                      recl_length=4096, entries=512):

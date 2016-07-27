@@ -1217,17 +1217,11 @@ class ResonanceScattering(object):
     @nuclide.setter
     def nuclide(self, nuc):
         check_type('nuclide', nuc, Nuclide)
-        if nuc.zaid is None:
-            raise ValueError("The nuclide must have an explicitly defined "
-                             "zaid attribute.")
         self._nuclide = nuc
 
     @nuclide_0K.setter
     def nuclide_0K(self, nuc):
         check_type('nuclide_0K', nuc, Nuclide)
-        if nuc.zaid is None:
-            raise ValueError("The nuclide_0K must have an explicitly defined "
-                             "zaid attribute.")
         self._nuclide_0K = nuc
 
     @method.setter
@@ -1255,10 +1249,9 @@ class ResonanceScattering(object):
             subelement = ET.SubElement(scatterer, 'method')
             subelement.text = self.method
         subelement = ET.SubElement(scatterer, 'xs_label')
-        subelement.text = str(self.nuclide.zaid) + '.' + str(self.nuclide.xs)
+        subelement.text = '{0.name}.{0.xs}'.format(self.nuclide)
         subelement = ET.SubElement(scatterer, 'xs_label_0K')
-        subelement.text = str(self.nuclide_0K.zaid) + '.' \
-             + str(self.nuclide_0K.xs)
+        subelement.text = '{0.name}.{0.xs}'.format(self.nuclide_0K)
         if self.E_min is not None:
             subelement = ET.SubElement(scatterer, 'E_min')
             subelement.text = str(self.E_min)

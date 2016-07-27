@@ -5,7 +5,7 @@
 
   <material id="1">
     <density value="4.5" units="g/cc" />
-    <nuclide name="U-235" ao="1.0" />
+    <nuclide name="U235" ao="1.0" />
   </material>
 
 </materials>

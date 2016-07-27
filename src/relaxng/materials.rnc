@@ -11,8 +11,7 @@ element materials {
     } &
 
     element nuclide {
-      (element name { xsd:string { maxLength = "7" } } |
-        attribute name { xsd:string { maxLength = "7" } }) &
+      (element name { xsd:string } | attribute name { xsd:string }) &
       (element xs { xsd:string { maxLength = "5" } } |
         attribute xs { xsd:string { maxLength = "5" } })? &
       (element scattering { ( "data" | "iso-in-lab" ) } |
@@ -44,8 +43,7 @@ element materials {
     }*  &
 
     element sab {
-      (element name { xsd:string { maxLength = "7" } } |
-        attribute name { xsd:string { maxLength = "7" } }) &
+      (element name { xsd:string } | attribute name { xsd:string }) &
       (element xs { xsd:string { maxLength = "5" } } |
         attribute xs { xsd:string { maxLength = "5" } })?
     }*

@@ -21,7 +21,6 @@ module mgxs_header
     character(len=104) :: name    ! name of dataset, e.g. 92235.03c
     integer            :: zaid    ! Z and A identifier, e.g. 92235
     real(8)            :: awr     ! Atomic Weight Ratio
-    integer            :: listing ! index in xs_listings
     real(8)            :: kT      ! temperature in MeV (k*T)
 
     ! Fission information
@@ -54,8 +53,8 @@ module mgxs_header
 !===============================================================================
 
   abstract interface
-    subroutine mgxs_init_file_(this,node_xsdata,groups,get_kfiss,get_fiss, &
-                               max_order,i_listing)
+    subroutine mgxs_init_file_(this, node_xsdata, groups, get_kfiss, get_fiss, &
+                               max_order)
       import Mgxs, Node
       class(Mgxs), intent(inout)      :: this        ! Working Object
       type(Node), pointer, intent(in) :: node_xsdata ! Data from MGXS xml
@@ -63,7 +62,6 @@ module mgxs_header
       logical, intent(in)             :: get_kfiss   ! Need Kappa-Fission?
       logical, intent(in)             :: get_fiss    ! Should we get fiss data?
       integer, intent(in)             :: max_order   ! Maximum requested order
-      integer, intent(in)             :: i_listing   ! Index of listings array
     end subroutine mgxs_init_file_
 
     subroutine mgxs_print_(this, unit)
@@ -96,8 +94,7 @@ module mgxs_header
 
     end function mgxs_calc_f_
 
-    subroutine mgxs_combine_(this,mat,nuclides,groups,max_order,scatt_type, &
-                             i_listing)
+    subroutine mgxs_combine_(this, mat, nuclides, groups, max_order, scatt_type)
       import Mgxs, Material, MgxsContainer
       class(Mgxs),           intent(inout) :: this ! The Mgxs to initialize
       type(Material), pointer,  intent(in) :: mat  ! base material
@@ -105,7 +102,6 @@ module mgxs_header
       integer, intent(in)                  :: groups     ! Number of E groups
       integer, intent(in)                  :: max_order  ! Maximum requested order
       integer, intent(in)                  :: scatt_type ! Legendre or Tabular Scatt?
-      integer, intent(in)                  :: i_listing  ! Index in listings
     end subroutine mgxs_combine_
 
     function mgxs_sample_fission_(this, gin, uvw) result(gout)
@@ -201,10 +197,9 @@ module mgxs_header
 ! the xsdata object node itself.
 !===============================================================================
 
-    subroutine mgxs_init_file(this, node_xsdata, i_listing)
+    subroutine mgxs_init_file(this, node_xsdata)
       class(Mgxs), intent(inout)      :: this        ! Working Object
       type(Node), pointer, intent(in) :: node_xsdata ! Data from MGXS xml
-      integer, intent(in)             :: i_listing   ! Index in listings array
 
       character(MAX_LINE_LEN) :: temp_str
 
@@ -254,20 +249,16 @@ module mgxs_header
         call fatal_error("Fissionable element must be set!")
       end if
 
-      ! Keep track of what listing is associated with this nuclide
-      this % listing = i_listing
-
     end subroutine mgxs_init_file
 
     subroutine mgxsiso_init_file(this, node_xsdata, groups, get_kfiss, get_fiss, &
-                                 max_order, i_listing)
+                                 max_order)
       class(MgxsIso), intent(inout)   :: this        ! Working Object
       type(Node), pointer, intent(in) :: node_xsdata ! Data from MGXS xml
       integer, intent(in)             :: groups      ! Number of Energy groups
       logical, intent(in)             :: get_kfiss   ! Need Kappa-Fission?
       logical, intent(in)             :: get_fiss    ! Need fiss data?
       integer, intent(in)             :: max_order   ! Maximum requested order
-      integer, intent(in)             :: i_listing   ! Index in listings array
 
       type(Node), pointer     :: node_legendre_mu
       character(MAX_LINE_LEN) :: temp_str
@@ -282,7 +273,7 @@ module mgxs_header
       integer                 :: legendre_mu_points, imu
 
       ! Call generic data gathering routine (will populate the metadata)
-      call mgxs_init_file(this, node_xsdata, i_listing)
+      call mgxs_init_file(this, node_xsdata)
 
       ! Load the more specific data
       allocate(this % nu_fission(groups))
@@ -564,14 +555,13 @@ module mgxs_header
     end subroutine mgxsiso_init_file
 
     subroutine mgxsang_init_file(this, node_xsdata, groups, get_kfiss, get_fiss, &
-                                 max_order, i_listing)
+                                 max_order)
       class(MgxsAngle), intent(inout) :: this        ! Working Object
       type(Node), pointer, intent(in) :: node_xsdata ! Data from MGXS xml
       integer, intent(in)             :: groups      ! Number of Energy groups
       logical, intent(in)             :: get_kfiss   ! Need Kappa-Fission?
       logical, intent(in)             :: get_fiss    ! Should we get fiss data?
       integer, intent(in)             :: max_order   ! Maximum requested order
-      integer, intent(in)             :: i_listing   ! Index in listings array
 
       type(Node), pointer     :: node_legendre_mu
       character(MAX_LINE_LEN) :: temp_str
@@ -586,7 +576,7 @@ module mgxs_header
       integer                 :: legendre_mu_points, imu, ipol, iazi
 
       ! Call generic data gathering routine (will populate the metadata)
-      call mgxs_init_file(this, node_xsdata, i_listing)
+      call mgxs_init_file(this, node_xsdata)
 
       if (check_for_node(node_xsdata, "num_polar")) then
         call get_node_value(node_xsdata, "num_polar", this % n_pol)
@@ -1318,11 +1308,10 @@ module mgxs_header
 ! objects
 !===============================================================================
 
-    subroutine mgxs_combine(this, mat, scatt_type, i_listing)
+    subroutine mgxs_combine(this, mat, scatt_type)
       class(Mgxs), intent(inout)          :: this ! The Mgxs to initialize
       type(Material), pointer, intent(in) :: mat  ! base material
       integer, intent(in)                 :: scatt_type ! How is data presented
-      integer, intent(in)                 :: i_listing  ! Index in listings
 
       ! Fill in meta-data from material information
       if (mat % name == "") then
@@ -1331,7 +1320,6 @@ module mgxs_header
         this % name      = mat % name
       end if
       this % zaid        = -mat % id
-      this % listing     = i_listing
       this % fissionable = mat % fissionable
       this % scatt_type  = scatt_type
 
@@ -1342,15 +1330,13 @@ module mgxs_header
 
     end subroutine mgxs_combine
 
-    subroutine mgxsiso_combine(this, mat, nuclides, groups, max_order, scatt_type, &
-                               i_listing)
+    subroutine mgxsiso_combine(this, mat, nuclides, groups, max_order, scatt_type)
       class(MgxsIso), intent(inout)       :: this ! The Mgxs to initialize
       type(Material), pointer, intent(in) :: mat  ! base material
       type(MgxsContainer), intent(in)     :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                 :: groups     ! Number of E groups
       integer, intent(in)                 :: max_order  ! Maximum requested order
       integer, intent(in)                 :: scatt_type ! How is data presented
-      integer, intent(in)                 :: i_listing  ! Index in listings
 
       integer :: i             ! loop index over nuclides
       integer :: gin, gout     ! group indices
@@ -1361,7 +1347,7 @@ module mgxs_header
       real(8), allocatable :: scatt_coeffs(:, :, :)
 
       ! Set the meta-data
-      call mgxs_combine(this, mat, scatt_type, i_listing)
+      call mgxs_combine(this, mat, scatt_type)
 
       ! Determine the scattering type of our data and ensure all scattering orders
       ! are the same.
@@ -1538,15 +1524,13 @@ module mgxs_header
 
     end subroutine mgxsiso_combine
 
-    subroutine mgxsang_combine(this, mat, nuclides, groups, max_order, scatt_type, &
-                               i_listing)
+    subroutine mgxsang_combine(this, mat, nuclides, groups, max_order, scatt_type)
       class(MgxsAngle), intent(inout)     :: this ! The Mgxs to initialize
       type(Material), pointer, intent(in) :: mat  ! base material
       type(MgxsContainer), intent(in)     :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                 :: groups     ! Number of E groups
       integer, intent(in)                 :: max_order  ! Maximum requested order
       integer, intent(in)                 :: scatt_type ! Legendre or Tabular Scatt?
-      integer, intent(in)                 :: i_listing  ! Index in listings
 
       integer :: i             ! loop index over nuclides
       integer :: gin, gout     ! group indices
@@ -1558,7 +1542,7 @@ module mgxs_header
       real(8), allocatable :: mult_denom(:, :, :, :), scatt_coeffs(:, :, :, :, :)
 
       ! Set the meta-data
-      call mgxs_combine(this, mat, scatt_type, i_listing)
+      call mgxs_combine(this, mat, scatt_type)
 
       ! Get the number of each polar and azi angles and make sure all the
       ! NuclideAngle types have the same number of these angles

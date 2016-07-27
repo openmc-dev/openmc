@@ -10,13 +10,13 @@ module hdf5_interface
 ! can be combined into one simply accepting an assumed-shape array.
 !==============================================================================
 
-  use error, only: fatal_error
-  use tally_header, only: TallyResult
+  use, intrinsic :: ISO_C_BINDING
 
   use hdf5
   use h5lt
-  use, intrinsic :: ISO_C_BINDING
 
+  use error, only: fatal_error
+  use tally_header, only: TallyResult
 #ifdef PHDF5
   use message_passing, only: MPI_COMM_WORLD, MPI_INFO_NULL
 #endif

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import division
+
 import os
 import sys
 import glob
@@ -20,7 +22,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         tallies_file = openmc.Tallies()
 
         # Define nuclides and scores to add to both tallies
-        self.nuclides = ['U-235', 'U-238']
+        self.nuclides = ['U235', 'U238']
         self.scores = ['fission', 'nu-fission']
 
         # Define filters for energy and spatial domain
@@ -60,7 +62,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
         # Merge all cell tallies together
         while len(tallies) != 1:
-            halfway = int(len(tallies) / 2)
+            halfway = len(tallies) // 2
             zip_split = zip(tallies[:halfway], tallies[halfway:])
             tallies = list(map(lambda xy: xy[0].merge(xy[1]), zip_split))
 

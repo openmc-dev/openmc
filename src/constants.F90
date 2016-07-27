@@ -237,6 +237,13 @@ module constants
        ASCII  = 1, & ! ASCII cross section file
        BINARY = 2    ! Binary cross section file
 
+  ! Library types
+  integer, parameter :: &
+       LIBRARY_NEUTRON = 1, &
+       LIBRARY_THERMAL = 2, &
+       LIBRARY_PHOTON = 3, &
+       LIBRARY_MULTIGROUP = 4
+
   ! Probability table parameters
   integer, parameter :: &
        URR_CUM_PROB = 1, &

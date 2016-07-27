@@ -1,5 +1,7 @@
 module input_xml
 
+  use hdf5
+
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
@@ -10,15 +12,18 @@ module input_xml
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
   use global
+  use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
   use mesh_header,      only: RegularMesh
+  use multipole,        only: multipole_read
   use output,           only: write_message
   use plot_header
   use random_lcg,       only: prn, seed
   use surface_header
-  use stl_vector,       only: VectorInt
-  use string,           only: str_to_int, str_to_real, tokenize, &
-                              to_lower, to_str, starts_with, ends_with
+  use set_header,       only: SetChar
+  use stl_vector,       only: VectorInt, VectorReal, VectorChar
+  use string,           only: to_lower, to_str, str_to_int, str_to_real, &
+                              starts_with, ends_with, tokenize, split_string
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
   use xml_interface
@@ -39,15 +44,8 @@ contains
   subroutine read_input_xml()
 
     call read_settings_xml()
-    if (run_mode /= MODE_PLOTTING) then
-      if (run_CE) then
-        call read_ce_cross_sections_xml()
-      else
-        call read_mg_cross_sections_xml()
-      end if
-    end if
     call read_geometry_xml()
-    call read_materials_xml()
+    call read_materials()
     call read_tallies_xml()
     if (cmfd_run) call configure_cmfd()
 
@@ -127,46 +125,42 @@ contains
     ! Find cross_sections.xml file -- the first place to look is the
     ! settings.xml file. If no file is found there, then we check the
     ! CROSS_SECTIONS environment variable
-    if (run_mode /= MODE_PLOTTING) then
-      if (.not. check_for_node(doc, "cross_sections") .and. &
-           run_mode /= MODE_PLOTTING) then
-        ! No cross_sections.xml file specified in settings.xml, check
-        ! environment variable
-        if (run_CE) then
-          call get_environment_variable("OPENMC_CROSS_SECTIONS", env_variable)
+    if (.not. check_for_node(doc, "cross_sections")) then
+      ! No cross_sections.xml file specified in settings.xml, check
+      ! environment variable
+      if (run_CE) then
+        call get_environment_variable("OPENMC_CROSS_SECTIONS", env_variable)
+        if (len_trim(env_variable) == 0) then
+          call get_environment_variable("CROSS_SECTIONS", env_variable)
           if (len_trim(env_variable) == 0) then
-            call get_environment_variable("CROSS_SECTIONS", env_variable)
-            if (len_trim(env_variable) == 0) then
-              call fatal_error("No cross_sections.xml file was specified in &
-                   &settings.xml or in the OPENMC_CROSS_SECTIONS environment &
-                   &variable. OpenMC needs such a file to identify where to &
-                   &find ACE cross section libraries. Please consult the &
-                   &user's guide at http://mit-crpg.github.io/openmc for &
-                   &information on how to set up ACE cross section libraries.")
-            else
-              call warning("The CROSS_SECTIONS environment variable is &
-                   &deprecated. Please update your environment to use &
-                   &OPENMC_CROSS_SECTIONS instead.")
-            end if
-          end if
-          path_cross_sections = trim(env_variable)
-        else
-          call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", &
-                                        env_variable)
-          if (len_trim(env_variable) == 0) then
-            call fatal_error("No mgxs.xml file was specified in &
-                 &settings.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
+            call fatal_error("No cross_sections.xml file was specified in &
+                 &settings.xml or in the OPENMC_CROSS_SECTIONS environment &
                  &variable. OpenMC needs such a file to identify where to &
-                 &find the cross section libraries. Please consult the user's &
-                 &guide at http://mit-crpg.github.io/openmc for information on &
-                 &how to set up the cross section libraries.")
+                 &find ACE cross section libraries. Please consult the &
+                 &user's guide at http://mit-crpg.github.io/openmc for &
+                 &information on how to set up ACE cross section libraries.")
           else
-            path_cross_sections = trim(env_variable)
+            call warning("The CROSS_SECTIONS environment variable is &
+                 &deprecated. Please update your environment to use &
+                 &OPENMC_CROSS_SECTIONS instead.")
           end if
         end if
+        path_cross_sections = trim(env_variable)
       else
-        call get_node_value(doc, "cross_sections", path_cross_sections)
+        call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", env_variable)
+        if (len_trim(env_variable) == 0) then
+          call fatal_error("No mgxs.xml file was specified in &
+               &settings.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
+               &variable. OpenMC needs such a file to identify where to &
+               &find ACE cross section libraries. Please consult the user's &
+               &guide at http://mit-crpg.github.io/openmc for information on &
+               &how to set up ACE cross section libraries.")
+        else
+          path_cross_sections = trim(env_variable)
+        end if
       end if
+    else
+      call get_node_value(doc, "cross_sections", path_cross_sections)
     end if
 
     ! Find the windowed multipole library
@@ -2060,7 +2054,55 @@ contains
 ! for errors and placing properly-formatted data in the right data structures
 !===============================================================================
 
-  subroutine read_materials_xml()
+  subroutine read_materials()
+    integer :: i, j
+    type(DictCharInt) :: library_dict
+    type(Library), allocatable :: libraries(:)
+
+    if (run_CE) then
+      call read_ce_cross_sections_xml(libraries)
+    else
+      call read_mg_cross_sections_xml(libraries)
+    end if
+
+    ! Creating dictionary that maps the name of the material to the entry
+    do i = 1, size(libraries)
+      do j = 1, size(libraries(i) % materials)
+        call library_dict % add_key(to_lower(libraries(i) % materials(j)), i)
+      end do
+    end do
+
+    ! Check that 0K nuclides are listed in the cross_sections.xml file
+    if (allocated(nuclides_0K)) then
+      do i = 1, size(nuclides_0K)
+        if (.not. library_dict % has_key(to_lower(nuclides_0K(i) % name_0K))) then
+          call fatal_error("Could not find resonant scatterer " &
+               // trim(nuclides_0K(i) % name_0K) &
+               // " in cross_sections.xml file!")
+        end if
+      end do
+    end if
+
+    ! Parse data from materials.xml
+    call read_materials_xml(libraries, library_dict)
+
+    ! Read continuous-energy cross sections
+    if (run_CE .and. run_mode /= MODE_PLOTTING) then
+      call time_read_xs%start()
+      call read_ce_cross_sections(libraries, library_dict)
+      call time_read_xs%stop()
+    end if
+
+    ! Normalize atom/weight percents
+    if (run_mode /= MODE_PLOTTING) call normalize_ao()
+
+    ! Clear dictionary
+    call library_dict % clear()
+  end subroutine read_materials
+
+  subroutine read_materials_xml(libraries, library_dict)
+    type(Library), intent(in) :: libraries(:)
+    type(DictCharInt), intent(inout) :: library_dict
 
     integer :: i              ! loop index for materials
     integer :: j              ! loop index for nuclides
@@ -2068,23 +2110,20 @@ contains
     integer :: n              ! number of nuclides
     integer :: n_sab          ! number of sab tables for a material
     integer :: n_nuc_ele      ! number of nuclides in an element
-    integer :: index_list     ! index in xs_listings array
+    integer :: i_library      ! index in libraries array
     integer :: index_nuclide  ! index in nuclides
-    integer :: index_nuc_zaid ! index in nuclide ZAID
     integer :: index_sab      ! index in sab_tables
     real(8) :: val            ! value entered for density
     real(8) :: temp_dble      ! temporary double prec. real
     logical :: file_exists    ! does materials.xml exist?
     logical :: sum_density    ! density is taken to be sum of nuclide densities
-    integer :: zaid           ! ZAID of nuclide
-    character(12) :: name     ! name of isotope, e.g. 92235.03c
-    character(12) :: alias    ! alias of nuclide, e.g. U-235.03c
+    character(20) :: name     ! name of isotope, e.g. 92235.03c
     character(MAX_WORD_LEN) :: units    ! units on density
     character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
-    type(ListChar) :: list_names   ! temporary list of nuclide names
-    type(ListReal) :: list_density ! temporary list of nuclide densities
-    type(ListInt)  :: list_iso_lab ! temporary list of isotropic lab scatterers
+    type(VectorChar) :: names     ! temporary list of nuclide names
+    type(VectorReal) :: densities ! temporary list of nuclide densities
+    type(VectorInt)  :: list_iso_lab ! temporary list of isotropic lab scatterers
     type(Material),    pointer :: mat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
@@ -2128,7 +2167,6 @@ contains
 
     ! Initialize count for number of nuclides/S(a,b) tables
     index_nuclide = 0
-    index_nuc_zaid = 0
     index_sab = 0
 
     do i = 1, n_materials
@@ -2153,13 +2191,6 @@ contains
       ! Copy material name
       if (check_for_node(node_mat, "name")) then
         call get_node_value(node_mat, "name", mat % name)
-        mat % name = to_lower(mat % name)
-      end if
-
-      if (run_mode == MODE_PLOTTING) then
-        ! add to the dictionary and skip xs processing
-        call material_dict % add_key(mat % id, i)
-        cycle
       end if
 
       ! =======================================================================
@@ -2277,12 +2308,12 @@ contains
         name = to_lower(name)
 
         ! save name and density to list
-        call list_names % append(name)
+        call names % push_back(name)
 
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
         if (units == 'macro') then
-          call list_density % append(ONE)
+          call densities % push_back(ONE)
         else
           call fatal_error("Units can only be macro for macroscopic data " &
                // trim(name))
@@ -2318,15 +2349,15 @@ contains
             if (check_for_node(node_nuc, "scattering")) then
               call get_node_value(node_nuc, "scattering", temp_str)
               if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-                call list_iso_lab % append(1)
+                call list_iso_lab % push_back(1)
               else if (adjustl(to_lower(temp_str)) == "data") then
-                call list_iso_lab % append(0)
+                call list_iso_lab % push_back(0)
               else
                 call fatal_error("Scattering must be isotropic in lab or follow&
                      & the ACE file data")
               end if
             else
-              call list_iso_lab % append(0)
+              call list_iso_lab % push_back(0)
             end if
           end if
 
@@ -2335,15 +2366,14 @@ contains
           if (check_for_node(node_nuc, "xs")) &
                call get_node_value(node_nuc, "xs", name)
           name = trim(temp_str) // "." // trim(name)
-          name = to_lower(name)
 
           ! save name and density to list
-          call list_names % append(name)
+          call names % push_back(name)
 
           ! Check if no atom/weight percents were specified or if both atom and
           ! weight percents were specified
           if (units == 'macro') then
-            call list_density % append(ONE)
+            call densities % push_back(ONE)
           else
             if (.not. check_for_node(node_nuc, "ao") .and. &
                  .not. check_for_node(node_nuc, "wo")) then
@@ -2358,10 +2388,10 @@ contains
             ! Copy atom/weight percents
             if (check_for_node(node_nuc, "ao")) then
               call get_node_value(node_nuc, "ao", temp_dble)
-              call list_density % append(temp_dble)
+              call densities % push_back(temp_dble)
             else
               call get_node_value(node_nuc, "wo", temp_dble)
-              call list_density % append(-temp_dble)
+              call densities % push_back(-temp_dble)
             end if
           end if
         end do INDIVIDUAL_NUCLIDES
@@ -2408,20 +2438,20 @@ contains
         end if
 
         ! Get current number of nuclides
-        n_nuc_ele = list_names % size()
+        n_nuc_ele = names % size()
 
         ! Expand element into naturally-occurring isotopes
         if (check_for_node(node_ele, "ao")) then
           call get_node_value(node_ele, "ao", temp_dble)
-          call expand_natural_element(name, temp_str, temp_dble, &
-               list_names, list_density)
+          call expand_natural_element(name, temp_str, temp_dble, names, &
+               densities)
         else
           call fatal_error("The ability to expand a natural element based on &
                &weight percentage is not yet supported.")
         end if
 
         ! Compute number of new nuclides from the natural element expansion
-        n_nuc_ele = list_names % size() - n_nuc_ele
+        n_nuc_ele = names % size() - n_nuc_ele
 
         ! Check enforced isotropic lab scattering
         if (run_CE) then
@@ -2434,9 +2464,9 @@ contains
           ! Set ace or iso-in-lab scattering for each nuclide in element
           do k = 1, n_nuc_ele
             if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-              call list_iso_lab % append(1)
+              call list_iso_lab % push_back(1)
             else if (adjustl(to_lower(temp_str)) == "data") then
-              call list_iso_lab % append(0)
+              call list_iso_lab % push_back(0)
             else
               call fatal_error("Scattering must be isotropic in lab or follow&
                    & the ACE file data")
@@ -2450,7 +2480,7 @@ contains
       ! COPY NUCLIDES TO ARRAYS IN MATERIAL
 
       ! allocate arrays in Material object
-      n = list_names % size()
+      n = names % size()
       mat % n_nuclides = n
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
@@ -2459,26 +2489,20 @@ contains
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
-        name = trim(list_names % get_item(j))
-        if (.not. xs_listing_dict % has_key(to_lower(name))) then
+        name = trim(names % data(j))
+        if (.not. library_dict % has_key(to_lower(name))) then
           call fatal_error("Could not find nuclide " // trim(name) &
                // " in cross_sections data file!")
         end if
+        i_library = library_dict % get_key(to_lower(name))
 
         if (run_CE) then
           ! Check to make sure cross-section is continuous energy neutron table
-          n = len_trim(name)
-          if (name(n:n) /= 'c') then
+          if (libraries(i_library) % type /= LIBRARY_NEUTRON) then
             call fatal_error("Cross-section table " // trim(name) &
                  // " is not a continuous-energy neutron table.")
           end if
         end if
-
-        ! Find xs_listing and set the name/alias according to the listing
-        index_list = xs_listing_dict % get_key(to_lower(name))
-        name       = xs_listings(index_list) % name
-        alias      = xs_listings(index_list) % alias
-        zaid       = xs_listings(index_list) % zaid
 
         ! If this nuclide hasn't been encountered yet, we need to add its name
         ! and alias to the nuclide_dict
@@ -2487,26 +2511,21 @@ contains
           mat % nuclide(j) = index_nuclide
 
           call nuclide_dict % add_key(to_lower(name), index_nuclide)
-          call nuclide_dict % add_key(to_lower(alias), index_nuclide)
         else
           mat % nuclide(j) = nuclide_dict % get_key(to_lower(name))
         end if
 
-        ! Construct dict of nuclide zaid
-        if (.not. nuc_zaid_dict % has_key(zaid)) then
-          index_nuc_zaid  = index_nuc_zaid + 1
-          call nuc_zaid_dict % add_key(zaid, index_nuc_zaid)
-        end if
-
         ! Copy name and atom/weight percent
         mat % names(j) = name
-        mat % atom_density(j) = list_density % get_item(j)
+        mat % atom_density(j) = densities % data(j)
 
         ! Cast integer isotropic lab scattering flag to boolean
-        if (list_iso_lab % get_item(j) == 1) then
-          mat % p0(j) = .true.
-        else
-          mat % p0(j) = .false.
+        if (run_CE) then
+          if (list_iso_lab % data(j) == 1) then
+            mat % p0(j) = .true.
+          else
+            mat % p0(j) = .false.
+          end if
         end if
 
       end do ALL_NUCLIDES
@@ -2523,8 +2542,8 @@ contains
       if (sum_density) mat % density = sum(mat % atom_density)
 
       ! Clear lists
-      call list_names % clear()
-      call list_density % clear()
+      call names % clear()
+      call densities % clear()
       call list_iso_lab % clear()
 
       ! =======================================================================
@@ -2562,15 +2581,22 @@ contains
             mat % sab_names(j) = name
 
             ! Check that this nuclide is listed in the cross_sections.xml file
-            if (.not. xs_listing_dict % has_key(to_lower(name))) then
+            if (.not. library_dict % has_key(to_lower(name))) then
               call fatal_error("Could not find S(a,b) table " // trim(name) &
                    // " in cross_sections.xml file!")
             end if
 
             ! Find index in xs_listing and set the name and alias according to the
             ! listing
-            index_list = xs_listing_dict % get_key(to_lower(name))
-            name       = xs_listings(index_list) % name
+            i_library = library_dict % get_key(to_lower(name))
+
+            if (run_CE) then
+              ! Check to make sure cross-section is continuous energy neutron table
+              if (libraries(i_library) % type /= LIBRARY_THERMAL) then
+                call fatal_error("Cross-section table " // trim(name) &
+                     // " is not a S(a,b) table.")
+              end if
+            end if
 
             ! If this S(a,b) table hasn't been encountered yet, we need to add its
             ! name and alias to the sab_dict
@@ -2592,7 +2618,6 @@ contains
     ! Set total number of nuclides and S(a,b) tables
     n_nuclides_total = index_nuclide
     n_sab_tables     = index_sab
-    n_nuc_zaid_total = index_nuc_zaid
 
     ! Close materials XML file
     call close_xmldoc(doc)
@@ -3269,11 +3294,6 @@ contains
 
             ! If a specific nuclide was specified
             word = to_lower(sarray(j))
-
-            ! Append default_xs specifier to nuclide if needed
-            if ((default_xs /= '') .and. (.not. ends_with(sarray(j), 'c'))) then
-              word = trim(word) // "." // trim(default_xs)
-            end if
 
             ! Search through nuclides
             pair_list => nuclide_dict % keys()
@@ -4516,19 +4536,19 @@ contains
 ! file contains a listing of the CE and MG cross sections that may be used.
 !===============================================================================
 
-  subroutine read_ce_cross_sections_xml()
+  subroutine read_ce_cross_sections_xml(libraries)
+    type(Library), allocatable, intent(out) :: libraries(:)
 
     integer :: i           ! loop index
-    integer :: filetype    ! default file type
-    integer :: recl        ! default record length
-    integer :: entries     ! default number of entries
+    integer :: n
+    integer :: n_libraries
     logical :: file_exists ! does cross_sections.xml exist?
-    character(MAX_WORD_LEN)  :: directory ! directory with cross sections
-    character(MAX_LINE_LEN)  :: temp_str
-    type(XsListing), pointer :: listing => null()
-    type(Node), pointer :: doc => null()
-    type(Node), pointer :: node_ace => null()
-    type(NodeList), pointer :: node_ace_list => null()
+    character(MAX_WORD_LEN) :: directory ! directory with cross sections
+    character(MAX_WORD_LEN) :: words(MAX_WORDS)
+    character(10000) :: temp_str
+    type(Node), pointer :: doc
+    type(Node), pointer :: node_library
+    type(NodeList), pointer :: node_library_list
 
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
@@ -4553,118 +4573,64 @@ contains
       directory = path_cross_sections(1:i)
     end if
 
-    ! determine whether binary/ascii
-    temp_str = ''
-    if (check_for_node(doc, "filetype")) &
-         call get_node_value(doc, "filetype", temp_str)
-    if (trim(temp_str) == 'ascii') then
-      filetype = ASCII
-    elseif (trim(temp_str) == 'binary') then
-      filetype = BINARY
-    elseif (len_trim(temp_str) == 0) then
-      filetype = ASCII
-    else
-      call fatal_error("Unknown filetype in cross_sections.xml: " &
-           // trim(temp_str))
-    end if
-
-    ! copy default record length and entries for binary files
-    if (filetype == BINARY) then
-      call get_node_value(doc, "record_length", recl)
-      call get_node_value(doc, "entries", entries)
-    end if
-
-    ! Get node list of all <ace_table>
-    call get_node_list(doc, "ace_table", node_ace_list)
-    n_listings = get_list_size(node_ace_list)
+    ! Get node list of all <library>
+    call get_node_list(doc, "library", node_library_list)
+    n_libraries = get_list_size(node_library_list)
 
     ! Allocate xs_listings array
-    if (n_listings == 0) then
-      call fatal_error("No ACE table listings present in cross_sections.xml &
+    if (n_libraries == 0) then
+      call fatal_error("No cross section libraries present in cross_sections.xml &
            &file!")
     else
-      allocate(xs_listings(n_listings))
+      allocate(libraries(n_libraries))
     end if
 
-    do i = 1, n_listings
-      listing => xs_listings(i)
-
+    do i = 1, n_libraries
       ! Get pointer to ace table XML node
-      call get_list_item(node_ace_list, i, node_ace)
+      call get_list_item(node_library_list, i, node_library)
 
-      ! copy a number of attributes
-      call get_node_value(node_ace, "name", listing % name)
-      if (check_for_node(node_ace, "alias")) &
-           call get_node_value(node_ace, "alias", listing % alias)
-      call get_node_value(node_ace, "zaid", listing % zaid)
-      call get_node_value(node_ace, "awr", listing % awr)
-      if (check_for_node(node_ace, "temperature")) &
-           call get_node_value(node_ace, "temperature", listing % kT)
-      call get_node_value(node_ace, "location", listing % location)
-
-      ! determine type of cross section
-      if (ends_with(listing % name, 'c')) then
-        listing % type = ACE_NEUTRON
-      elseif (ends_with(listing % name, 't')) then
-        listing % type = ACE_THERMAL
+      ! Get list of materials
+      if (check_for_node(node_library, "materials")) then
+        call get_node_value(node_library, "materials", temp_str)
+        call split_string(temp_str, words, n)
+        allocate(libraries(i) % materials(n))
+        libraries(i) % materials(:) = words(1:n)
       end if
 
-      ! set filetype, record length, and number of entries
-      if (check_for_node(node_ace, "filetype")) then
-        temp_str = ''
-        call get_node_value(node_ace, "filetype", temp_str)
-        if (temp_str == 'ascii') then
-          listing % filetype = ASCII
-        else if (temp_str == 'binary') then
-          listing % filetype = BINARY
-        end if
+      ! Get type of library
+      if (check_for_node(node_library, "type")) then
+        call get_node_value(node_library, "type", temp_str)
+        select case(to_lower(temp_str))
+        case ('neutron')
+          libraries(i) % type = LIBRARY_NEUTRON
+        case ('thermal')
+          libraries(i) % type = LIBRARY_THERMAL
+        end select
       else
-        listing % filetype = filetype
-      end if
-
-      ! Set record length and entries for binary files
-      if (filetype == BINARY) then
-        listing % recl     = recl
-        listing % entries  = entries
-      end if
-
-      ! determine metastable state
-      if (.not. check_for_node(node_ace, "metastable")) then
-        listing % metastable = .false.
-      else
-        listing % metastable = .true.
+        call fatal_error("Missing library type")
       end if
 
       ! determine path of cross section table
-      if (check_for_node(node_ace, "path")) then
-        call get_node_value(node_ace, "path", temp_str)
+      if (check_for_node(node_library, "path")) then
+        call get_node_value(node_library, "path", temp_str)
       else
-        call fatal_error("Path missing for isotope " // listing % name)
+        call fatal_error("Missing library path")
       end if
 
       if (starts_with(temp_str, '/')) then
-        listing % path = trim(temp_str)
+        libraries(i) % path = trim(temp_str)
       else
         if (ends_with(directory,'/')) then
-          listing % path = trim(directory) // trim(temp_str)
+          libraries(i) % path = trim(directory) // trim(temp_str)
         else
-          listing % path = trim(directory) // '/' // trim(temp_str)
+          libraries(i) % path = trim(directory) // '/' // trim(temp_str)
         end if
       end if
 
-      ! create dictionary entry for both name and alias
-      call xs_listing_dict % add_key(to_lower(listing % name), i)
-      if (check_for_node(node_ace, "alias")) then
-        call xs_listing_dict % add_key(to_lower(listing % alias), i)
-      end if
-    end do
-
-    ! Check that 0K nuclides are listed in the cross_sections.xml file
-    do i = 1, n_res_scatterers_total
-      if (.not. xs_listing_dict % has_key(trim(nuclides_0K(i) % name_0K))) then
-        call fatal_error("Could not find nuclide " &
-             // trim(nuclides_0K(i) % name_0K) &
-             // " in cross_sections.xml file!")
+      inquire(FILE=libraries(i) % path, EXIST=file_exists)
+      if (.not. file_exists) then
+        call warning("Cross section library " // trim(libraries(i) % path) // &
+             " does not exist.")
       end if
     end do
 
@@ -4673,11 +4639,12 @@ contains
 
   end subroutine read_ce_cross_sections_xml
 
-  subroutine read_mg_cross_sections_xml()
+  subroutine read_mg_cross_sections_xml(libraries)
+    type(Library), allocatable, intent(out) :: libraries(:)
 
     integer :: i           ! loop index
-    logical :: file_exists ! does mgxs.xml exist?
-    type(XsListing), pointer :: listing => null()
+    integer :: n_libraries
+    logical :: file_exists ! does cross_sections.xml exist?
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_xsdata => null()
     type(NodeList), pointer :: node_xsdata_list => null()
@@ -4736,55 +4703,23 @@ contains
 
     ! Get node list of all <xsdata>
     call get_node_list(doc, "xsdata", node_xsdata_list)
-    n_listings = get_list_size(node_xsdata_list)
+    n_libraries = get_list_size(node_xsdata_list)
 
     ! Allocate xs_listings array
-    if (n_listings == 0) then
+    if (n_libraries == 0) then
       call fatal_error("At least one <xsdata> element must be present in &
                        &mgxs.xml file!")
     else
-      allocate(xs_listings(n_listings))
+      allocate(libraries(n_libraries))
     end if
 
-    do i = 1, n_listings
-      listing => xs_listings(i)
-
+    do i = 1, n_libraries
       ! Get pointer to xsdata table XML node
       call get_list_item(node_xsdata_list, i, node_xsdata)
 
-      ! copy a number of attributes
-      call get_node_value(node_xsdata, "name", listing % name)
-      listing % name = to_lower(listing % name)
-      listing % alias = listing % name
-      if (check_for_node(node_xsdata, "alias")) &
-           call get_node_value(node_xsdata, "alias", listing % alias)
-      listing % alias = to_lower(listing % alias)
-      if (check_for_node(node_xsdata, "zaid")) then
-        call get_node_value(node_xsdata, "zaid", listing % zaid)
-      else
-        listing % zaid = -1
-      end if
-      if (check_for_node(node_xsdata, "awr")) then
-        call get_node_value(node_xsdata, "awr", listing % awr)
-      else
-        ! Set to a default of 1; this allows a macroscopic library to still
-        ! be used with materials with atom/b-cm units for testing purposes
-        listing % awr = ONE
-      end if
-      if (check_for_node(node_xsdata, "kT")) then
-        call get_node_value(node_xsdata, "kT", listing % kT)
-      else
-        listing % kT = 293.6_8 * K_BOLTZMANN
-      end if
-
-      ! determine type of cross section
-      if (ends_with(listing % name, 'c')) then
-        listing % type = NEUTRON
-      end if
-
-      ! create dictionary entry for both name and alias
-      call xs_listing_dict % add_key(to_lower(listing % name), i)
-      call xs_listing_dict % add_key(to_lower(listing % alias), i)
+      ! Get name of material
+      allocate(libraries(i) % materials(1))
+      call get_node_value(node_xsdata, "name", libraries(i) % materials(1))
     end do
 
     ! Close cross sections XML file
@@ -4800,14 +4735,12 @@ contains
 ! evaluations of particular isotopes don't exist.
 !===============================================================================
 
-  subroutine expand_natural_element(name, xs, density, list_names, &
-       list_density)
-
-    character(*),   intent(in)    :: name
-    character(*),   intent(in)    :: xs
-    real(8),        intent(in)    :: density
-    type(ListChar), intent(inout) :: list_names
-    type(ListReal), intent(inout) :: list_density
+  subroutine expand_natural_element(name, xs, density, names, densities)
+    character(*),   intent(in)   :: name
+    character(*),   intent(in)   :: xs
+    real(8),        intent(in)   :: density
+    type(VectorChar), intent(inout) :: names
+    type(VectorReal), intent(inout) :: densities
 
     character(2) :: element_name
 
@@ -4815,670 +4748,670 @@ contains
 
     select case (to_lower(element_name))
     case ('h')
-      call list_names % append('1001.' // xs)
-      call list_density % append(density * 0.999885_8)
-      call list_names % append('1002.' // xs)
-      call list_density % append(density * 0.000115_8)
+      call names % push_back('H1.' // xs)
+      call densities % push_back(density * 0.999885_8)
+      call names % push_back('H2.' // xs)
+      call densities % push_back(density * 0.000115_8)
     case ('he')
-      call list_names % append('2003.' // xs)
-      call list_density % append(density * 0.00000134_8)
-      call list_names % append('2004.' // xs)
-      call list_density % append(density * 0.99999866_8)
+      call names % push_back('He3.' // xs)
+      call densities % push_back(density * 0.00000134_8)
+      call names % push_back('He4.' // xs)
+      call densities % push_back(density * 0.99999866_8)
 
     case ('li')
-      call list_names % append('3006.' // xs)
-      call list_density % append(density * 0.0759_8)
-      call list_names % append('3007.' // xs)
-      call list_density % append(density * 0.9241_8)
+      call names % push_back('Li6.' // xs)
+      call densities % push_back(density * 0.0759_8)
+      call names % push_back('Li7.' // xs)
+      call densities % push_back(density * 0.9241_8)
 
     case ('be')
-      call list_names % append('4009.' // xs)
-      call list_density % append(density)
+      call names % push_back('Be9.' // xs)
+      call densities % push_back(density)
 
     case ('b')
-      call list_names % append('5010.' // xs)
-      call list_density % append(density * 0.199_8)
-      call list_names % append('5011.' // xs)
-      call list_density % append(density * 0.801_8)
+      call names % push_back('B10.' // xs)
+      call densities % push_back(density * 0.199_8)
+      call names % push_back('B11.' // xs)
+      call densities % push_back(density * 0.801_8)
 
     case ('c')
       ! No evaluations split up Carbon into isotopes yet
-      call list_names % append('6000.' // xs)
-      call list_density % append(density)
+      call names % push_back('C0.' // xs)
+      call densities % push_back(density)
 
     case ('n')
-      call list_names % append('7014.' // xs)
-      call list_density % append(density * 0.99636_8)
-      call list_names % append('7015.' // xs)
-      call list_density % append(density * 0.00364_8)
+      call names % push_back('N14.' // xs)
+      call densities % push_back(density * 0.99636_8)
+      call names % push_back('N15.' // xs)
+      call densities % push_back(density * 0.00364_8)
 
     case ('o')
       if (default_expand == JEFF_32) then
-        call list_names % append('8016.' // xs)
-        call list_density % append(density * 0.99757_8)
-        call list_names % append('8017.' // xs)
-        call list_density % append(density * 0.00038_8)
-        call list_names % append('8018.' // xs)
-        call list_density % append(density * 0.00205_8)
+        call names % push_back('O16.' // xs)
+        call densities % push_back(density * 0.99757_8)
+        call names % push_back('O17.' // xs)
+        call densities % push_back(density * 0.00038_8)
+        call names % push_back('O18.' // xs)
+        call densities % push_back(density * 0.00205_8)
       elseif (default_expand >= JENDL_32 .and. default_expand <= JENDL_40) then
-        call list_names % append('8016.' // xs)
-        call list_density % append(density)
+        call names % push_back('O16.' // xs)
+        call densities % push_back(density)
       else
-        call list_names % append('8016.' // xs)
-        call list_density % append(density * 0.99962_8)
-        call list_names % append('8017.' // xs)
-        call list_density % append(density * 0.00038_8)
+        call names % push_back('O16.' // xs)
+        call densities % push_back(density * 0.99962_8)
+        call names % push_back('O17.' // xs)
+        call densities % push_back(density * 0.00038_8)
       end if
 
     case ('f')
-      call list_names % append('9019.' // xs)
-      call list_density % append(density)
+      call names % push_back('F19.' // xs)
+      call densities % push_back(density)
 
     case ('ne')
-      call list_names % append('10020.' // xs)
-      call list_density % append(density * 0.9048_8)
-      call list_names % append('10021.' // xs)
-      call list_density % append(density * 0.0027_8)
-      call list_names % append('10022.' // xs)
-      call list_density % append(density * 0.0925_8)
+      call names % push_back('Ne20.' // xs)
+      call densities % push_back(density * 0.9048_8)
+      call names % push_back('Ne21.' // xs)
+      call densities % push_back(density * 0.0027_8)
+      call names % push_back('Ne22.' // xs)
+      call densities % push_back(density * 0.0925_8)
 
     case ('na')
-      call list_names % append('11023.' // xs)
-      call list_density % append(density)
+      call names % push_back('Na23.' // xs)
+      call densities % push_back(density)
 
     case ('mg')
-      call list_names % append('12024.' // xs)
-      call list_density % append(density * 0.7899_8)
-      call list_names % append('12025.' // xs)
-      call list_density % append(density * 0.1000_8)
-      call list_names % append('12026.' // xs)
-      call list_density % append(density * 0.1101_8)
+      call names % push_back('Mg24.' // xs)
+      call densities % push_back(density * 0.7899_8)
+      call names % push_back('Mg25.' // xs)
+      call densities % push_back(density * 0.1000_8)
+      call names % push_back('Mg26.' // xs)
+      call densities % push_back(density * 0.1101_8)
 
     case ('al')
-      call list_names % append('13027.' // xs)
-      call list_density % append(density)
+      call names % push_back('Al27.' // xs)
+      call densities % push_back(density)
 
     case ('si')
-      call list_names % append('14028.' // xs)
-      call list_density % append(density * 0.92223_8)
-      call list_names % append('14029.' // xs)
-      call list_density % append(density * 0.04685_8)
-      call list_names % append('14030.' // xs)
-      call list_density % append(density * 0.03092_8)
+      call names % push_back('Si28.' // xs)
+      call densities % push_back(density * 0.92223_8)
+      call names % push_back('Si29.' // xs)
+      call densities % push_back(density * 0.04685_8)
+      call names % push_back('Si30.' // xs)
+      call densities % push_back(density * 0.03092_8)
 
     case ('p')
-      call list_names % append('15031.' // xs)
-      call list_density % append(density)
+      call names % push_back('P31.' // xs)
+      call densities % push_back(density)
 
     case ('s')
-      call list_names % append('16032.' // xs)
-      call list_density % append(density * 0.9499_8)
-      call list_names % append('16033.' // xs)
-      call list_density % append(density * 0.0075_8)
-      call list_names % append('16034.' // xs)
-      call list_density % append(density * 0.0425_8)
-      call list_names % append('16036.' // xs)
-      call list_density % append(density * 0.0001_8)
+      call names % push_back('S32.' // xs)
+      call densities % push_back(density * 0.9499_8)
+      call names % push_back('S33.' // xs)
+      call densities % push_back(density * 0.0075_8)
+      call names % push_back('S34.' // xs)
+      call densities % push_back(density * 0.0425_8)
+      call names % push_back('S36.' // xs)
+      call densities % push_back(density * 0.0001_8)
 
     case ('cl')
-      call list_names % append('17035.' // xs)
-      call list_density % append(density * 0.7576_8)
-      call list_names % append('17037.' // xs)
-      call list_density % append(density * 0.2424_8)
+      call names % push_back('Cl35.' // xs)
+      call densities % push_back(density * 0.7576_8)
+      call names % push_back('Cl37.' // xs)
+      call densities % push_back(density * 0.2424_8)
 
     case ('ar')
-      call list_names % append('18036.' // xs)
-      call list_density % append(density * 0.003336_8)
-      call list_names % append('18038.' // xs)
-      call list_density % append(density * 0.000629_8)
-      call list_names % append('18040.' // xs)
-      call list_density % append(density * 0.996035_8)
+      call names % push_back('Ar36.' // xs)
+      call densities % push_back(density * 0.003336_8)
+      call names % push_back('Ar38.' // xs)
+      call densities % push_back(density * 0.000629_8)
+      call names % push_back('Ar40.' // xs)
+      call densities % push_back(density * 0.996035_8)
 
     case ('k')
-      call list_names % append('19039.' // xs)
-      call list_density % append(density * 0.932581_8)
-      call list_names % append('19040.' // xs)
-      call list_density % append(density * 0.000117_8)
-      call list_names % append('19041.' // xs)
-      call list_density % append(density * 0.067302_8)
+      call names % push_back('K39.' // xs)
+      call densities % push_back(density * 0.932581_8)
+      call names % push_back('K40.' // xs)
+      call densities % push_back(density * 0.000117_8)
+      call names % push_back('K41.' // xs)
+      call densities % push_back(density * 0.067302_8)
 
     case ('ca')
-      call list_names % append('20040.' // xs)
-      call list_density % append(density * 0.96941_8)
-      call list_names % append('20042.' // xs)
-      call list_density % append(density * 0.00647_8)
-      call list_names % append('20043.' // xs)
-      call list_density % append(density * 0.00135_8)
-      call list_names % append('20044.' // xs)
-      call list_density % append(density * 0.02086_8)
-      call list_names % append('20046.' // xs)
-      call list_density % append(density * 0.00004_8)
-      call list_names % append('20048.' // xs)
-      call list_density % append(density * 0.00187_8)
+      call names % push_back('Ca40.' // xs)
+      call densities % push_back(density * 0.96941_8)
+      call names % push_back('Ca42.' // xs)
+      call densities % push_back(density * 0.00647_8)
+      call names % push_back('Ca43.' // xs)
+      call densities % push_back(density * 0.00135_8)
+      call names % push_back('Ca44.' // xs)
+      call densities % push_back(density * 0.02086_8)
+      call names % push_back('Ca46.' // xs)
+      call densities % push_back(density * 0.00004_8)
+      call names % push_back('Ca48.' // xs)
+      call densities % push_back(density * 0.00187_8)
 
     case ('sc')
-      call list_names % append('21045.' // xs)
-      call list_density % append(density)
+      call names % push_back('Sc45.' // xs)
+      call densities % push_back(density)
 
     case ('ti')
-      call list_names % append('22046.' // xs)
-      call list_density % append(density * 0.0825_8)
-      call list_names % append('22047.' // xs)
-      call list_density % append(density * 0.0744_8)
-      call list_names % append('22048.' // xs)
-      call list_density % append(density * 0.7372_8)
-      call list_names % append('22049.' // xs)
-      call list_density % append(density * 0.0541_8)
-      call list_names % append('22050.' // xs)
-      call list_density % append(density * 0.0518_8)
+      call names % push_back('Ti46.' // xs)
+      call densities % push_back(density * 0.0825_8)
+      call names % push_back('Ti47.' // xs)
+      call densities % push_back(density * 0.0744_8)
+      call names % push_back('Ti48.' // xs)
+      call densities % push_back(density * 0.7372_8)
+      call names % push_back('Ti49.' // xs)
+      call densities % push_back(density * 0.0541_8)
+      call names % push_back('Ti50.' // xs)
+      call densities % push_back(density * 0.0518_8)
 
     case ('v')
       if (default_expand == ENDF_BVII0 .or. default_expand == JEFF_311 &
            .or. default_expand == JEFF_32 .or. &
            (default_expand >= JENDL_32 .and. default_expand <= JENDL_33)) then
-        call list_names % append('23000.' // xs)
-        call list_density % append(density)
+        call names % push_back('V0.' // xs)
+        call densities % push_back(density)
       else
-        call list_names % append('23050.' // xs)
-        call list_density % append(density * 0.0025_8)
-        call list_names % append('23051.' // xs)
-        call list_density % append(density * 0.9975_8)
+        call names % push_back('V50.' // xs)
+        call densities % push_back(density * 0.0025_8)
+        call names % push_back('V51.' // xs)
+        call densities % push_back(density * 0.9975_8)
       end if
 
     case ('cr')
-      call list_names % append('24050.' // xs)
-      call list_density % append(density * 0.04345_8)
-      call list_names % append('24052.' // xs)
-      call list_density % append(density * 0.83789_8)
-      call list_names % append('24053.' // xs)
-      call list_density % append(density * 0.09501_8)
-      call list_names % append('24054.' // xs)
-      call list_density % append(density * 0.02365_8)
+      call names % push_back('Cr50.' // xs)
+      call densities % push_back(density * 0.04345_8)
+      call names % push_back('Cr52.' // xs)
+      call densities % push_back(density * 0.83789_8)
+      call names % push_back('Cr53.' // xs)
+      call densities % push_back(density * 0.09501_8)
+      call names % push_back('Cr54.' // xs)
+      call densities % push_back(density * 0.02365_8)
 
     case ('mn')
-      call list_names % append('25055.' // xs)
-      call list_density % append(density)
+      call names % push_back('Mn55.' // xs)
+      call densities % push_back(density)
 
     case ('fe')
-      call list_names % append('26054.' // xs)
-      call list_density % append(density * 0.05845_8)
-      call list_names % append('26056.' // xs)
-      call list_density % append(density * 0.91754_8)
-      call list_names % append('26057.' // xs)
-      call list_density % append(density * 0.02119_8)
-      call list_names % append('26058.' // xs)
-      call list_density % append(density * 0.00282_8)
+      call names % push_back('Fe54.' // xs)
+      call densities % push_back(density * 0.05845_8)
+      call names % push_back('Fe56.' // xs)
+      call densities % push_back(density * 0.91754_8)
+      call names % push_back('Fe57.' // xs)
+      call densities % push_back(density * 0.02119_8)
+      call names % push_back('Fe58.' // xs)
+      call densities % push_back(density * 0.00282_8)
 
     case ('co')
-      call list_names % append('27059.' // xs)
-      call list_density % append(density)
+      call names % push_back('Co59.' // xs)
+      call densities % push_back(density)
 
     case ('ni')
-      call list_names % append('28058.' // xs)
-      call list_density % append(density * 0.68077_8)
-      call list_names % append('28060.' // xs)
-      call list_density % append(density * 0.26223_8)
-      call list_names % append('28061.' // xs)
-      call list_density % append(density * 0.011399_8)
-      call list_names % append('28062.' // xs)
-      call list_density % append(density * 0.036346_8)
-      call list_names % append('28064.' // xs)
-      call list_density % append(density * 0.009255_8)
+      call names % push_back('Ni58.' // xs)
+      call densities % push_back(density * 0.68077_8)
+      call names % push_back('Ni60.' // xs)
+      call densities % push_back(density * 0.26223_8)
+      call names % push_back('Ni61.' // xs)
+      call densities % push_back(density * 0.011399_8)
+      call names % push_back('Ni62.' // xs)
+      call densities % push_back(density * 0.036346_8)
+      call names % push_back('Ni64.' // xs)
+      call densities % push_back(density * 0.009255_8)
 
     case ('cu')
-      call list_names % append('29063.' // xs)
-      call list_density % append(density * 0.6915_8)
-      call list_names % append('29065.' // xs)
-      call list_density % append(density * 0.3085_8)
+      call names % push_back('Cu63.' // xs)
+      call densities % push_back(density * 0.6915_8)
+      call names % push_back('Cu65.' // xs)
+      call densities % push_back(density * 0.3085_8)
 
     case ('zn')
       if (default_expand == ENDF_BVII0 .or. default_expand == &
            JEFF_311 .or. default_expand == JEFF_312) then
-        call list_names % append('30000.' // xs)
-        call list_density % append(density)
+        call names % push_back('Zn0.' // xs)
+        call densities % push_back(density)
       else
-        call list_names % append('30064.' // xs)
-        call list_density % append(density * 0.4917_8)
-        call list_names % append('30066.' // xs)
-        call list_density % append(density * 0.2773_8)
-        call list_names % append('30067.' // xs)
-        call list_density % append(density * 0.0404_8)
-        call list_names % append('30068.' // xs)
-        call list_density % append(density * 0.1845_8)
-        call list_names % append('30070.' // xs)
-        call list_density % append(density * 0.0061_8)
+        call names % push_back('Zn64.' // xs)
+        call densities % push_back(density * 0.4917_8)
+        call names % push_back('Zn66.' // xs)
+        call densities % push_back(density * 0.2773_8)
+        call names % push_back('Zn67.' // xs)
+        call densities % push_back(density * 0.0404_8)
+        call names % push_back('Zn68.' // xs)
+        call densities % push_back(density * 0.1845_8)
+        call names % push_back('Zn70.' // xs)
+        call densities % push_back(density * 0.0061_8)
       end if
 
     case ('ga')
       if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
-        call list_names % append('31000.' // xs)
-        call list_density % append(density)
+        call names % push_back('Ga0.' // xs)
+        call densities % push_back(density)
       else
-        call list_names % append('31069.' // xs)
-        call list_density % append(density * 0.60108_8)
-        call list_names % append('31071.' // xs)
-        call list_density % append(density * 0.39892_8)
+        call names % push_back('Ha69.' // xs)
+        call densities % push_back(density * 0.60108_8)
+        call names % push_back('Ga71.' // xs)
+        call densities % push_back(density * 0.39892_8)
       end if
 
     case ('ge')
-      call list_names % append('32070.' // xs)
-      call list_density % append(density * 0.2057_8)
-      call list_names % append('32072.' // xs)
-      call list_density % append(density * 0.2745_8)
-      call list_names % append('32073.' // xs)
-      call list_density % append(density * 0.0775_8)
-      call list_names % append('32074.' // xs)
-      call list_density % append(density * 0.3650_8)
-      call list_names % append('32076.' // xs)
-      call list_density % append(density * 0.0773_8)
+      call names % push_back('Ge70.' // xs)
+      call densities % push_back(density * 0.2057_8)
+      call names % push_back('Ge72.' // xs)
+      call densities % push_back(density * 0.2745_8)
+      call names % push_back('Ge73.' // xs)
+      call densities % push_back(density * 0.0775_8)
+      call names % push_back('Ge74.' // xs)
+      call densities % push_back(density * 0.3650_8)
+      call names % push_back('Ge76.' // xs)
+      call densities % push_back(density * 0.0773_8)
 
     case ('as')
-      call list_names % append('33075.' // xs)
-      call list_density % append(density)
+      call names % push_back('As75.' // xs)
+      call densities % push_back(density)
 
     case ('se')
-      call list_names % append('34074.' // xs)
-      call list_density % append(density * 0.0089_8)
-      call list_names % append('34076.' // xs)
-      call list_density % append(density * 0.0937_8)
-      call list_names % append('34077.' // xs)
-      call list_density % append(density * 0.0763_8)
-      call list_names % append('34078.' // xs)
-      call list_density % append(density * 0.2377_8)
-      call list_names % append('34080.' // xs)
-      call list_density % append(density * 0.4961_8)
-      call list_names % append('34082.' // xs)
-      call list_density % append(density * 0.0873_8)
+      call names % push_back('Se74.' // xs)
+      call densities % push_back(density * 0.0089_8)
+      call names % push_back('Se76.' // xs)
+      call densities % push_back(density * 0.0937_8)
+      call names % push_back('Se77.' // xs)
+      call densities % push_back(density * 0.0763_8)
+      call names % push_back('Se78.' // xs)
+      call densities % push_back(density * 0.2377_8)
+      call names % push_back('Se80.' // xs)
+      call densities % push_back(density * 0.4961_8)
+      call names % push_back('Se82.' // xs)
+      call densities % push_back(density * 0.0873_8)
 
     case ('br')
-      call list_names % append('35079.' // xs)
-      call list_density % append(density * 0.5069_8)
-      call list_names % append('35081.' // xs)
-      call list_density % append(density * 0.4931_8)
+      call names % push_back('Br79.' // xs)
+      call densities % push_back(density * 0.5069_8)
+      call names % push_back('Br81.' // xs)
+      call densities % push_back(density * 0.4931_8)
 
     case ('kr')
-      call list_names % append('36078.' // xs)
-      call list_density % append(density * 0.00355_8)
-      call list_names % append('36080.' // xs)
-      call list_density % append(density * 0.02286_8)
-      call list_names % append('36082.' // xs)
-      call list_density % append(density * 0.11593_8)
-      call list_names % append('36083.' // xs)
-      call list_density % append(density * 0.11500_8)
-      call list_names % append('36084.' // xs)
-      call list_density % append(density * 0.56987_8)
-      call list_names % append('36086.' // xs)
-      call list_density % append(density * 0.17279_8)
+      call names % push_back('Kr78.' // xs)
+      call densities % push_back(density * 0.00355_8)
+      call names % push_back('Kr80.' // xs)
+      call densities % push_back(density * 0.02286_8)
+      call names % push_back('Kr82.' // xs)
+      call densities % push_back(density * 0.11593_8)
+      call names % push_back('Kr83.' // xs)
+      call densities % push_back(density * 0.11500_8)
+      call names % push_back('Kr84.' // xs)
+      call densities % push_back(density * 0.56987_8)
+      call names % push_back('Kr86.' // xs)
+      call densities % push_back(density * 0.17279_8)
 
     case ('rb')
-      call list_names % append('37085.' // xs)
-      call list_density % append(density * 0.7217_8)
-      call list_names % append('37087.' // xs)
-      call list_density % append(density * 0.2783_8)
+      call names % push_back('Rb85.' // xs)
+      call densities % push_back(density * 0.7217_8)
+      call names % push_back('Rb87.' // xs)
+      call densities % push_back(density * 0.2783_8)
 
     case ('sr')
-      call list_names % append('38084.' // xs)
-      call list_density % append(density * 0.0056_8)
-      call list_names % append('38086.' // xs)
-      call list_density % append(density * 0.0986_8)
-      call list_names % append('38087.' // xs)
-      call list_density % append(density * 0.0700_8)
-      call list_names % append('38088.' // xs)
-      call list_density % append(density * 0.8258_8)
+      call names % push_back('Sr84.' // xs)
+      call densities % push_back(density * 0.0056_8)
+      call names % push_back('Sr86.' // xs)
+      call densities % push_back(density * 0.0986_8)
+      call names % push_back('Sr87.' // xs)
+      call densities % push_back(density * 0.0700_8)
+      call names % push_back('Sr88.' // xs)
+      call densities % push_back(density * 0.8258_8)
 
     case ('y')
-      call list_names % append('39089.' // xs)
-      call list_density % append(density)
+      call names % push_back('Y89.' // xs)
+      call densities % push_back(density)
 
     case ('zr')
-      call list_names % append('40090.' // xs)
-      call list_density % append(density * 0.5145_8)
-      call list_names % append('40091.' // xs)
-      call list_density % append(density * 0.1122_8)
-      call list_names % append('40092.' // xs)
-      call list_density % append(density * 0.1715_8)
-      call list_names % append('40094.' // xs)
-      call list_density % append(density * 0.1738_8)
-      call list_names % append('40096.' // xs)
-      call list_density % append(density * 0.0280_8)
+      call names % push_back('Zr90.' // xs)
+      call densities % push_back(density * 0.5145_8)
+      call names % push_back('Zr91.' // xs)
+      call densities % push_back(density * 0.1122_8)
+      call names % push_back('Zr92.' // xs)
+      call densities % push_back(density * 0.1715_8)
+      call names % push_back('Zr94.' // xs)
+      call densities % push_back(density * 0.1738_8)
+      call names % push_back('Zr96.' // xs)
+      call densities % push_back(density * 0.0280_8)
 
     case ('nb')
-      call list_names % append('41093.' // xs)
-      call list_density % append(density)
+      call names % push_back('Nb93.' // xs)
+      call densities % push_back(density)
 
     case ('mo')
-      call list_names % append('42092.' // xs)
-      call list_density % append(density * 0.1453_8)
-      call list_names % append('42094.' // xs)
-      call list_density % append(density * 0.0915_8)
-      call list_names % append('42095.' // xs)
-      call list_density % append(density * 0.1584_8)
-      call list_names % append('42096.' // xs)
-      call list_density % append(density * 0.1667_8)
-      call list_names % append('42097.' // xs)
-      call list_density % append(density * 0.0960_8)
-      call list_names % append('42098.' // xs)
-      call list_density % append(density * 0.2439_8)
-      call list_names % append('42100.' // xs)
-      call list_density % append(density * 0.0982_8)
+      call names % push_back('Mo92.' // xs)
+      call densities % push_back(density * 0.1453_8)
+      call names % push_back('Mo94.' // xs)
+      call densities % push_back(density * 0.0915_8)
+      call names % push_back('Mo95.' // xs)
+      call densities % push_back(density * 0.1584_8)
+      call names % push_back('Mo96.' // xs)
+      call densities % push_back(density * 0.1667_8)
+      call names % push_back('Mo97.' // xs)
+      call densities % push_back(density * 0.0960_8)
+      call names % push_back('Mo98.' // xs)
+      call densities % push_back(density * 0.2439_8)
+      call names % push_back('Mo100.' // xs)
+      call densities % push_back(density * 0.0982_8)
 
     case ('ru')
-      call list_names % append('44096.' // xs)
-      call list_density % append(density * 0.0554_8)
-      call list_names % append('44098.' // xs)
-      call list_density % append(density * 0.0187_8)
-      call list_names % append('44099.' // xs)
-      call list_density % append(density * 0.1276_8)
-      call list_names % append('44100.' // xs)
-      call list_density % append(density * 0.1260_8)
-      call list_names % append('44101.' // xs)
-      call list_density % append(density * 0.1706_8)
-      call list_names % append('44102.' // xs)
-      call list_density % append(density * 0.3155_8)
-      call list_names % append('44104.' // xs)
-      call list_density % append(density * 0.1862_8)
+      call names % push_back('Ru96.' // xs)
+      call densities % push_back(density * 0.0554_8)
+      call names % push_back('Ru98.' // xs)
+      call densities % push_back(density * 0.0187_8)
+      call names % push_back('Ru99.' // xs)
+      call densities % push_back(density * 0.1276_8)
+      call names % push_back('Ru100.' // xs)
+      call densities % push_back(density * 0.1260_8)
+      call names % push_back('Ru101.' // xs)
+      call densities % push_back(density * 0.1706_8)
+      call names % push_back('Ru102.' // xs)
+      call densities % push_back(density * 0.3155_8)
+      call names % push_back('Ru104.' // xs)
+      call densities % push_back(density * 0.1862_8)
 
     case ('rh')
-      call list_names % append('45103.' // xs)
-      call list_density % append(density)
+      call names % push_back('Rh103.' // xs)
+      call densities % push_back(density)
 
     case ('pd')
-      call list_names % append('46102.' // xs)
-      call list_density % append(density * 0.0102_8)
-      call list_names % append('46104.' // xs)
-      call list_density % append(density * 0.1114_8)
-      call list_names % append('46105.' // xs)
-      call list_density % append(density * 0.2233_8)
-      call list_names % append('46106.' // xs)
-      call list_density % append(density * 0.2733_8)
-      call list_names % append('46108.' // xs)
-      call list_density % append(density * 0.2646_8)
-      call list_names % append('46110.' // xs)
-      call list_density % append(density * 0.1172_8)
+      call names % push_back('Pd102.' // xs)
+      call densities % push_back(density * 0.0102_8)
+      call names % push_back('Pd104.' // xs)
+      call densities % push_back(density * 0.1114_8)
+      call names % push_back('Pd105.' // xs)
+      call densities % push_back(density * 0.2233_8)
+      call names % push_back('Pd106.' // xs)
+      call densities % push_back(density * 0.2733_8)
+      call names % push_back('Pd108.' // xs)
+      call densities % push_back(density * 0.2646_8)
+      call names % push_back('Pd110.' // xs)
+      call densities % push_back(density * 0.1172_8)
 
     case ('ag')
-      call list_names % append('47107.' // xs)
-      call list_density % append(density * 0.51839_8)
-      call list_names % append('47109.' // xs)
-      call list_density % append(density * 0.48161_8)
+      call names % push_back('Ag107.' // xs)
+      call densities % push_back(density * 0.51839_8)
+      call names % push_back('Ag109.' // xs)
+      call densities % push_back(density * 0.48161_8)
 
     case ('cd')
-      call list_names % append('48106.' // xs)
-      call list_density % append(density * 0.0125_8)
-      call list_names % append('48108.' // xs)
-      call list_density % append(density * 0.0089_8)
-      call list_names % append('48110.' // xs)
-      call list_density % append(density * 0.1249_8)
-      call list_names % append('48111.' // xs)
-      call list_density % append(density * 0.1280_8)
-      call list_names % append('48112.' // xs)
-      call list_density % append(density * 0.2413_8)
-      call list_names % append('48113.' // xs)
-      call list_density % append(density * 0.1222_8)
-      call list_names % append('48114.' // xs)
-      call list_density % append(density * 0.2873_8)
-      call list_names % append('48116.' // xs)
-      call list_density % append(density * 0.0749_8)
+      call names % push_back('Cd106.' // xs)
+      call densities % push_back(density * 0.0125_8)
+      call names % push_back('Cd108.' // xs)
+      call densities % push_back(density * 0.0089_8)
+      call names % push_back('Cd110.' // xs)
+      call densities % push_back(density * 0.1249_8)
+      call names % push_back('Cd111.' // xs)
+      call densities % push_back(density * 0.1280_8)
+      call names % push_back('Cd112.' // xs)
+      call densities % push_back(density * 0.2413_8)
+      call names % push_back('Cd113.' // xs)
+      call densities % push_back(density * 0.1222_8)
+      call names % push_back('Cd114.' // xs)
+      call densities % push_back(density * 0.2873_8)
+      call names % push_back('Cd116.' // xs)
+      call densities % push_back(density * 0.0749_8)
 
     case ('in')
-      call list_names % append('49113.' // xs)
-      call list_density % append(density * 0.0429_8)
-      call list_names % append('49115.' // xs)
-      call list_density % append(density * 0.9571_8)
+      call names % push_back('In113.' // xs)
+      call densities % push_back(density * 0.0429_8)
+      call names % push_back('In115.' // xs)
+      call densities % push_back(density * 0.9571_8)
 
     case ('sn')
-      call list_names % append('50112.' // xs)
-      call list_density % append(density * 0.0097_8)
-      call list_names % append('50114.' // xs)
-      call list_density % append(density * 0.0066_8)
-      call list_names % append('50115.' // xs)
-      call list_density % append(density * 0.0034_8)
-      call list_names % append('50116.' // xs)
-      call list_density % append(density * 0.1454_8)
-      call list_names % append('50117.' // xs)
-      call list_density % append(density * 0.0768_8)
-      call list_names % append('50118.' // xs)
-      call list_density % append(density * 0.2422_8)
-      call list_names % append('50119.' // xs)
-      call list_density % append(density * 0.0859_8)
-      call list_names % append('50120.' // xs)
-      call list_density % append(density * 0.3258_8)
-      call list_names % append('50122.' // xs)
-      call list_density % append(density * 0.0463_8)
-      call list_names % append('50124.' // xs)
-      call list_density % append(density * 0.0579_8)
+      call names % push_back('Sn112.' // xs)
+      call densities % push_back(density * 0.0097_8)
+      call names % push_back('Sn114.' // xs)
+      call densities % push_back(density * 0.0066_8)
+      call names % push_back('Sn115.' // xs)
+      call densities % push_back(density * 0.0034_8)
+      call names % push_back('Sn116.' // xs)
+      call densities % push_back(density * 0.1454_8)
+      call names % push_back('Sn117.' // xs)
+      call densities % push_back(density * 0.0768_8)
+      call names % push_back('Sn118.' // xs)
+      call densities % push_back(density * 0.2422_8)
+      call names % push_back('Sn119.' // xs)
+      call densities % push_back(density * 0.0859_8)
+      call names % push_back('Sn120.' // xs)
+      call densities % push_back(density * 0.3258_8)
+      call names % push_back('Sn122.' // xs)
+      call densities % push_back(density * 0.0463_8)
+      call names % push_back('Sn124.' // xs)
+      call densities % push_back(density * 0.0579_8)
 
     case ('sb')
-      call list_names % append('51121.' // xs)
-      call list_density % append(density * 0.5721_8)
-      call list_names % append('51123.' // xs)
-      call list_density % append(density * 0.4279_8)
+      call names % push_back('Sb121.' // xs)
+      call densities % push_back(density * 0.5721_8)
+      call names % push_back('Sb123.' // xs)
+      call densities % push_back(density * 0.4279_8)
 
     case ('te')
-      call list_names % append('52120.' // xs)
-      call list_density % append(density * 0.0009_8)
-      call list_names % append('52122.' // xs)
-      call list_density % append(density * 0.0255_8)
-      call list_names % append('52123.' // xs)
-      call list_density % append(density * 0.0089_8)
-      call list_names % append('52124.' // xs)
-      call list_density % append(density * 0.0474_8)
-      call list_names % append('52125.' // xs)
-      call list_density % append(density * 0.0707_8)
-      call list_names % append('52126.' // xs)
-      call list_density % append(density * 0.1884_8)
-      call list_names % append('52128.' // xs)
-      call list_density % append(density * 0.3174_8)
-      call list_names % append('52130.' // xs)
-      call list_density % append(density * 0.3408_8)
+      call names % push_back('Te120.' // xs)
+      call densities % push_back(density * 0.0009_8)
+      call names % push_back('Te122.' // xs)
+      call densities % push_back(density * 0.0255_8)
+      call names % push_back('Te123.' // xs)
+      call densities % push_back(density * 0.0089_8)
+      call names % push_back('Te124.' // xs)
+      call densities % push_back(density * 0.0474_8)
+      call names % push_back('Te125.' // xs)
+      call densities % push_back(density * 0.0707_8)
+      call names % push_back('Te126.' // xs)
+      call densities % push_back(density * 0.1884_8)
+      call names % push_back('Te128.' // xs)
+      call densities % push_back(density * 0.3174_8)
+      call names % push_back('Te130.' // xs)
+      call densities % push_back(density * 0.3408_8)
 
     case ('i')
-      call list_names % append('53127.' // xs)
-      call list_density % append(density)
+      call names % push_back('I127.' // xs)
+      call densities % push_back(density)
 
     case ('xe')
-      call list_names % append('54124.' // xs)
-      call list_density % append(density * 0.000952_8)
-      call list_names % append('54126.' // xs)
-      call list_density % append(density * 0.000890_8)
-      call list_names % append('54128.' // xs)
-      call list_density % append(density * 0.019102_8)
-      call list_names % append('54129.' // xs)
-      call list_density % append(density * 0.264006_8)
-      call list_names % append('54130.' // xs)
-      call list_density % append(density * 0.040710_8)
-      call list_names % append('54131.' // xs)
-      call list_density % append(density * 0.212324_8)
-      call list_names % append('54132.' // xs)
-      call list_density % append(density * 0.269086_8)
-      call list_names % append('54134.' // xs)
-      call list_density % append(density * 0.104357_8)
-      call list_names % append('54136.' // xs)
-      call list_density % append(density * 0.088573_8)
+      call names % push_back('Xe124.' // xs)
+      call densities % push_back(density * 0.000952_8)
+      call names % push_back('Xe126.' // xs)
+      call densities % push_back(density * 0.000890_8)
+      call names % push_back('Xe128.' // xs)
+      call densities % push_back(density * 0.019102_8)
+      call names % push_back('Xe129.' // xs)
+      call densities % push_back(density * 0.264006_8)
+      call names % push_back('Xe130.' // xs)
+      call densities % push_back(density * 0.040710_8)
+      call names % push_back('Xe131.' // xs)
+      call densities % push_back(density * 0.212324_8)
+      call names % push_back('Xe132.' // xs)
+      call densities % push_back(density * 0.269086_8)
+      call names % push_back('Xe134.' // xs)
+      call densities % push_back(density * 0.104357_8)
+      call names % push_back('Xe136.' // xs)
+      call densities % push_back(density * 0.088573_8)
 
     case ('cs')
-      call list_names % append('55133.' // xs)
-      call list_density % append(density)
+      call names % push_back('Cs133.' // xs)
+      call densities % push_back(density)
 
     case ('ba')
-      call list_names % append('56130.' // xs)
-      call list_density % append(density * 0.00106_8)
-      call list_names % append('56132.' // xs)
-      call list_density % append(density * 0.00101_8)
-      call list_names % append('56134.' // xs)
-      call list_density % append(density * 0.02417_8)
-      call list_names % append('56135.' // xs)
-      call list_density % append(density * 0.06592_8)
-      call list_names % append('56136.' // xs)
-      call list_density % append(density * 0.07854_8)
-      call list_names % append('56137.' // xs)
-      call list_density % append(density * 0.11232_8)
-      call list_names % append('56138.' // xs)
-      call list_density % append(density * 0.71698_8)
+      call names % push_back('Ba130.' // xs)
+      call densities % push_back(density * 0.00106_8)
+      call names % push_back('Ba132.' // xs)
+      call densities % push_back(density * 0.00101_8)
+      call names % push_back('Ba134.' // xs)
+      call densities % push_back(density * 0.02417_8)
+      call names % push_back('Ba135.' // xs)
+      call densities % push_back(density * 0.06592_8)
+      call names % push_back('Ba136.' // xs)
+      call densities % push_back(density * 0.07854_8)
+      call names % push_back('Ba137.' // xs)
+      call densities % push_back(density * 0.11232_8)
+      call names % push_back('Ba138.' // xs)
+      call densities % push_back(density * 0.71698_8)
 
     case ('la')
-      call list_names % append('57138.' // xs)
-      call list_density % append(density * 0.0008881_8)
-      call list_names % append('57139.' // xs)
-      call list_density % append(density * 0.9991119_8)
+      call names % push_back('La138.' // xs)
+      call densities % push_back(density * 0.0008881_8)
+      call names % push_back('La139.' // xs)
+      call densities % push_back(density * 0.9991119_8)
 
     case ('ce')
-      call list_names % append('58136.' // xs)
-      call list_density % append(density * 0.00185_8)
-      call list_names % append('58138.' // xs)
-      call list_density % append(density * 0.00251_8)
-      call list_names % append('58140.' // xs)
-      call list_density % append(density * 0.88450_8)
-      call list_names % append('58142.' // xs)
-      call list_density % append(density * 0.11114_8)
+      call names % push_back('Ce136.' // xs)
+      call densities % push_back(density * 0.00185_8)
+      call names % push_back('Ce138.' // xs)
+      call densities % push_back(density * 0.00251_8)
+      call names % push_back('Ce140.' // xs)
+      call densities % push_back(density * 0.88450_8)
+      call names % push_back('Ce142.' // xs)
+      call densities % push_back(density * 0.11114_8)
 
     case ('pr')
-      call list_names % append('59141.' // xs)
-      call list_density % append(density)
+      call names % push_back('Pr141.' // xs)
+      call densities % push_back(density)
 
     case ('nd')
-      call list_names % append('60142.' // xs)
-      call list_density % append(density * 0.27152_8)
-      call list_names % append('60143.' // xs)
-      call list_density % append(density * 0.12174_8)
-      call list_names % append('60144.' // xs)
-      call list_density % append(density * 0.23798_8)
-      call list_names % append('60145.' // xs)
-      call list_density % append(density * 0.08293_8)
-      call list_names % append('60146.' // xs)
-      call list_density % append(density * 0.17189_8)
-      call list_names % append('60148.' // xs)
-      call list_density % append(density * 0.05756_8)
-      call list_names % append('60150.' // xs)
-      call list_density % append(density * 0.05638_8)
+      call names % push_back('Nd142.' // xs)
+      call densities % push_back(density * 0.27152_8)
+      call names % push_back('Nd143.' // xs)
+      call densities % push_back(density * 0.12174_8)
+      call names % push_back('Nd144.' // xs)
+      call densities % push_back(density * 0.23798_8)
+      call names % push_back('Nd145.' // xs)
+      call densities % push_back(density * 0.08293_8)
+      call names % push_back('Nd146.' // xs)
+      call densities % push_back(density * 0.17189_8)
+      call names % push_back('Nd148.' // xs)
+      call densities % push_back(density * 0.05756_8)
+      call names % push_back('Nd150.' // xs)
+      call densities % push_back(density * 0.05638_8)
 
     case ('sm')
-      call list_names % append('62144.' // xs)
-      call list_density % append(density * 0.0307_8)
-      call list_names % append('62147.' // xs)
-      call list_density % append(density * 0.1499_8)
-      call list_names % append('62148.' // xs)
-      call list_density % append(density * 0.1124_8)
-      call list_names % append('62149.' // xs)
-      call list_density % append(density * 0.1382_8)
-      call list_names % append('62150.' // xs)
-      call list_density % append(density * 0.0738_8)
-      call list_names % append('62152.' // xs)
-      call list_density % append(density * 0.2675_8)
-      call list_names % append('62154.' // xs)
-      call list_density % append(density * 0.2275_8)
+      call names % push_back('Sm144.' // xs)
+      call densities % push_back(density * 0.0307_8)
+      call names % push_back('Sm147.' // xs)
+      call densities % push_back(density * 0.1499_8)
+      call names % push_back('Sm148.' // xs)
+      call densities % push_back(density * 0.1124_8)
+      call names % push_back('Sm149.' // xs)
+      call densities % push_back(density * 0.1382_8)
+      call names % push_back('Sm150.' // xs)
+      call densities % push_back(density * 0.0738_8)
+      call names % push_back('Sm152.' // xs)
+      call densities % push_back(density * 0.2675_8)
+      call names % push_back('Sm154.' // xs)
+      call densities % push_back(density * 0.2275_8)
 
     case ('eu')
-      call list_names % append('63151.' // xs)
-      call list_density % append(density * 0.4781_8)
-      call list_names % append('63153.' // xs)
-      call list_density % append(density * 0.5219_8)
+      call names % push_back('Eu151.' // xs)
+      call densities % push_back(density * 0.4781_8)
+      call names % push_back('Eu153.' // xs)
+      call densities % push_back(density * 0.5219_8)
 
     case ('gd')
-      call list_names % append('64152.' // xs)
-      call list_density % append(density * 0.0020_8)
-      call list_names % append('64154.' // xs)
-      call list_density % append(density * 0.0218_8)
-      call list_names % append('64155.' // xs)
-      call list_density % append(density * 0.1480_8)
-      call list_names % append('64156.' // xs)
-      call list_density % append(density * 0.2047_8)
-      call list_names % append('64157.' // xs)
-      call list_density % append(density * 0.1565_8)
-      call list_names % append('64158.' // xs)
-      call list_density % append(density * 0.2484_8)
-      call list_names % append('64160.' // xs)
-      call list_density % append(density * 0.2186_8)
+      call names % push_back('Gd152.' // xs)
+      call densities % push_back(density * 0.0020_8)
+      call names % push_back('Gd154.' // xs)
+      call densities % push_back(density * 0.0218_8)
+      call names % push_back('Gd155.' // xs)
+      call densities % push_back(density * 0.1480_8)
+      call names % push_back('Gd156.' // xs)
+      call densities % push_back(density * 0.2047_8)
+      call names % push_back('Gd157.' // xs)
+      call densities % push_back(density * 0.1565_8)
+      call names % push_back('Gd158.' // xs)
+      call densities % push_back(density * 0.2484_8)
+      call names % push_back('Gd160.' // xs)
+      call densities % push_back(density * 0.2186_8)
 
     case ('tb')
-      call list_names % append('65159.' // xs)
-      call list_density % append(density)
+      call names % push_back('Tb159.' // xs)
+      call densities % push_back(density)
 
     case ('dy')
-      call list_names % append('66156.' // xs)
-      call list_density % append(density * 0.00056_8)
-      call list_names % append('66158.' // xs)
-      call list_density % append(density * 0.00095_8)
-      call list_names % append('66160.' // xs)
-      call list_density % append(density * 0.02329_8)
-      call list_names % append('66161.' // xs)
-      call list_density % append(density * 0.18889_8)
-      call list_names % append('66162.' // xs)
-      call list_density % append(density * 0.25475_8)
-      call list_names % append('66163.' // xs)
-      call list_density % append(density * 0.24896_8)
-      call list_names % append('66164.' // xs)
-      call list_density % append(density * 0.28260_8)
+      call names % push_back('Dy156.' // xs)
+      call densities % push_back(density * 0.00056_8)
+      call names % push_back('Dy158.' // xs)
+      call densities % push_back(density * 0.00095_8)
+      call names % push_back('Dy160.' // xs)
+      call densities % push_back(density * 0.02329_8)
+      call names % push_back('Dy161.' // xs)
+      call densities % push_back(density * 0.18889_8)
+      call names % push_back('Dy162.' // xs)
+      call densities % push_back(density * 0.25475_8)
+      call names % push_back('Dy163.' // xs)
+      call densities % push_back(density * 0.24896_8)
+      call names % push_back('Dy164.' // xs)
+      call densities % push_back(density * 0.28260_8)
 
     case ('ho')
-      call list_names % append('67165.' // xs)
-      call list_density % append(density)
+      call names % push_back('Ho165.' // xs)
+      call densities % push_back(density)
 
     case ('er')
-      call list_names % append('68162.' // xs)
-      call list_density % append(density * 0.00139_8)
-      call list_names % append('68164.' // xs)
-      call list_density % append(density * 0.01601_8)
-      call list_names % append('68166.' // xs)
-      call list_density % append(density * 0.33503_8)
-      call list_names % append('68167.' // xs)
-      call list_density % append(density * 0.22869_8)
-      call list_names % append('68168.' // xs)
-      call list_density % append(density * 0.26978_8)
-      call list_names % append('68170.' // xs)
-      call list_density % append(density * 0.14910_8)
+      call names % push_back('Er162.' // xs)
+      call densities % push_back(density * 0.00139_8)
+      call names % push_back('Er164.' // xs)
+      call densities % push_back(density * 0.01601_8)
+      call names % push_back('Er166.' // xs)
+      call densities % push_back(density * 0.33503_8)
+      call names % push_back('Er167.' // xs)
+      call densities % push_back(density * 0.22869_8)
+      call names % push_back('Er168.' // xs)
+      call densities % push_back(density * 0.26978_8)
+      call names % push_back('Er170.' // xs)
+      call densities % push_back(density * 0.14910_8)
 
     case ('tm')
-      call list_names % append('69169.' // xs)
-      call list_density % append(density)
+      call names % push_back('Tm169.' // xs)
+      call densities % push_back(density)
 
     case ('yb')
-      call list_names % append('70168.' // xs)
-      call list_density % append(density * 0.00123_8)
-      call list_names % append('70170.' // xs)
-      call list_density % append(density * 0.02982_8)
-      call list_names % append('70171.' // xs)
-      call list_density % append(density * 0.1409_8)
-      call list_names % append('70172.' // xs)
-      call list_density % append(density * 0.2168_8)
-      call list_names % append('70173.' // xs)
-      call list_density % append(density * 0.16103_8)
-      call list_names % append('70174.' // xs)
-      call list_density % append(density * 0.32026_8)
-      call list_names % append('70176.' // xs)
-      call list_density % append(density * 0.12996_8)
+      call names % push_back('Yb168.' // xs)
+      call densities % push_back(density * 0.00123_8)
+      call names % push_back('Yb170.' // xs)
+      call densities % push_back(density * 0.02982_8)
+      call names % push_back('Yb171.' // xs)
+      call densities % push_back(density * 0.1409_8)
+      call names % push_back('Yb172.' // xs)
+      call densities % push_back(density * 0.2168_8)
+      call names % push_back('Yb173.' // xs)
+      call densities % push_back(density * 0.16103_8)
+      call names % push_back('Yb174.' // xs)
+      call densities % push_back(density * 0.32026_8)
+      call names % push_back('Yb176.' // xs)
+      call densities % push_back(density * 0.12996_8)
 
     case ('lu')
-      call list_names % append('71175.' // xs)
-      call list_density % append(density * 0.97401_8)
-      call list_names % append('71176.' // xs)
-      call list_density % append(density * 0.02599_8)
+      call names % push_back('Lu175.' // xs)
+      call densities % push_back(density * 0.97401_8)
+      call names % push_back('Lu176.' // xs)
+      call densities % push_back(density * 0.02599_8)
 
     case ('hf')
-      call list_names % append('72174.' // xs)
-      call list_density % append(density * 0.0016_8)
-      call list_names % append('72176.' // xs)
-      call list_density % append(density * 0.0526_8)
-      call list_names % append('72177.' // xs)
-      call list_density % append(density * 0.1860_8)
-      call list_names % append('72178.' // xs)
-      call list_density % append(density * 0.2728_8)
-      call list_names % append('72179.' // xs)
-      call list_density % append(density * 0.1362_8)
-      call list_names % append('72180.' // xs)
-      call list_density % append(density * 0.3508_8)
+      call names % push_back('Hf174.' // xs)
+      call densities % push_back(density * 0.0016_8)
+      call names % push_back('Hf176.' // xs)
+      call densities % push_back(density * 0.0526_8)
+      call names % push_back('Hf177.' // xs)
+      call densities % push_back(density * 0.1860_8)
+      call names % push_back('Hf178.' // xs)
+      call densities % push_back(density * 0.2728_8)
+      call names % push_back('Hf179.' // xs)
+      call densities % push_back(density * 0.1362_8)
+      call names % push_back('Hf180.' // xs)
+      call densities % push_back(density * 0.3508_8)
 
     case ('ta')
       if (default_expand == ENDF_BVII0 .or. &
            (default_expand >= JEFF_311 .and. default_expand <= JEFF_312) .or. &
            (default_expand >= JENDL_32 .and. default_expand <= JENDL_40)) then
-        call list_names % append('73181.' // xs)
-        call list_density % append(density)
+        call names % push_back('Ta181.' // xs)
+        call densities % push_back(density)
       else
-        call list_names % append('73180.' // xs)
-        call list_density % append(density * 0.0001201_8)
-        call list_names % append('73181.' // xs)
-        call list_density % append(density * 0.9998799_8)
+        call names % push_back('Ta180.' // xs)
+        call densities % push_back(density * 0.0001201_8)
+        call names % push_back('Ta181.' // xs)
+        call densities % push_back(density * 0.9998799_8)
       end if
 
     case ('w')
@@ -5486,139 +5419,139 @@ contains
            .or. default_expand == JEFF_312 .or. &
            (default_expand >= JENDL_32 .and. default_expand <= JENDL_33)) then
         ! Combine W-180 with W-182
-        call list_names % append('74182.' // xs)
-        call list_density % append(density * 0.2662_8)
-        call list_names % append('74183.' // xs)
-        call list_density % append(density * 0.1431_8)
-        call list_names % append('74184.' // xs)
-        call list_density % append(density * 0.3064_8)
-        call list_names % append('74186.' // xs)
-        call list_density % append(density * 0.2843_8)
+        call names % push_back('W182.' // xs)
+        call densities % push_back(density * 0.2662_8)
+        call names % push_back('W183.' // xs)
+        call densities % push_back(density * 0.1431_8)
+        call names % push_back('W184.' // xs)
+        call densities % push_back(density * 0.3064_8)
+        call names % push_back('W186.' // xs)
+        call densities % push_back(density * 0.2843_8)
       else
-        call list_names % append('74180.' // xs)
-        call list_density % append(density * 0.0012_8)
-        call list_names % append('74182.' // xs)
-        call list_density % append(density * 0.2650_8)
-        call list_names % append('74183.' // xs)
-        call list_density % append(density * 0.1431_8)
-        call list_names % append('74184.' // xs)
-        call list_density % append(density * 0.3064_8)
-        call list_names % append('74186.' // xs)
-        call list_density % append(density * 0.2843_8)
+        call names % push_back('W180.' // xs)
+        call densities % push_back(density * 0.0012_8)
+        call names % push_back('W182.' // xs)
+        call densities % push_back(density * 0.2650_8)
+        call names % push_back('W183.' // xs)
+        call densities % push_back(density * 0.1431_8)
+        call names % push_back('W184.' // xs)
+        call densities % push_back(density * 0.3064_8)
+        call names % push_back('W186.' // xs)
+        call densities % push_back(density * 0.2843_8)
       end if
 
     case ('re')
-      call list_names % append('75185.' // xs)
-      call list_density % append(density * 0.3740_8)
-      call list_names % append('75187.' // xs)
-      call list_density % append(density * 0.6260_8)
+      call names % push_back('Re185.' // xs)
+      call densities % push_back(density * 0.3740_8)
+      call names % push_back('Re187.' // xs)
+      call densities % push_back(density * 0.6260_8)
 
     case ('os')
       if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
-        call list_names % append('76000.' // xs)
-        call list_density % append(density)
+        call names % push_back('Os0.' // xs)
+        call densities % push_back(density)
       else
-        call list_names % append('76184.' // xs)
-        call list_density % append(density * 0.0002_8)
-        call list_names % append('76186.' // xs)
-        call list_density % append(density * 0.0159_8)
-        call list_names % append('76187.' // xs)
-        call list_density % append(density * 0.0196_8)
-        call list_names % append('76188.' // xs)
-        call list_density % append(density * 0.1324_8)
-        call list_names % append('76189.' // xs)
-        call list_density % append(density * 0.1615_8)
-        call list_names % append('76190.' // xs)
-        call list_density % append(density * 0.2626_8)
-        call list_names % append('76192.' // xs)
-        call list_density % append(density * 0.4078_8)
+        call names % push_back('Os184.' // xs)
+        call densities % push_back(density * 0.0002_8)
+        call names % push_back('Os186.' // xs)
+        call densities % push_back(density * 0.0159_8)
+        call names % push_back('Os187.' // xs)
+        call densities % push_back(density * 0.0196_8)
+        call names % push_back('Os188.' // xs)
+        call densities % push_back(density * 0.1324_8)
+        call names % push_back('Os189.' // xs)
+        call densities % push_back(density * 0.1615_8)
+        call names % push_back('Os190.' // xs)
+        call densities % push_back(density * 0.2626_8)
+        call names % push_back('Os192.' // xs)
+        call densities % push_back(density * 0.4078_8)
       end if
 
     case ('ir')
-      call list_names % append('77191.' // xs)
-      call list_density % append(density * 0.373_8)
-      call list_names % append('77193.' // xs)
-      call list_density % append(density * 0.627_8)
+      call names % push_back('Ir191.' // xs)
+      call densities % push_back(density * 0.373_8)
+      call names % push_back('Ir193.' // xs)
+      call densities % push_back(density * 0.627_8)
 
     case ('pt')
       if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
-        call list_names % append('78000.' // xs)
-        call list_density % append(density)
+        call names % push_back('Pt0.' // xs)
+        call densities % push_back(density)
       else
-        call list_names % append('78190.' // xs)
-        call list_density % append(density * 0.00012_8)
-        call list_names % append('78192.' // xs)
-        call list_density % append(density * 0.00782_8)
-        call list_names % append('78194.' // xs)
-        call list_density % append(density * 0.3286_8)
-        call list_names % append('78195.' // xs)
-        call list_density % append(density * 0.3378_8)
-        call list_names % append('78196.' // xs)
-        call list_density % append(density * 0.2521_8)
-        call list_names % append('78198.' // xs)
-        call list_density % append(density * 0.07356_8)
+        call names % push_back('Pt190.' // xs)
+        call densities % push_back(density * 0.00012_8)
+        call names % push_back('Pt192.' // xs)
+        call densities % push_back(density * 0.00782_8)
+        call names % push_back('Pt194.' // xs)
+        call densities % push_back(density * 0.3286_8)
+        call names % push_back('Pt195.' // xs)
+        call densities % push_back(density * 0.3378_8)
+        call names % push_back('Pt196.' // xs)
+        call densities % push_back(density * 0.2521_8)
+        call names % push_back('Pt198.' // xs)
+        call densities % push_back(density * 0.07356_8)
       end if
 
     case ('au')
-      call list_names % append('79197.' // xs)
-      call list_density % append(density)
+      call names % push_back('Au197.' // xs)
+      call densities % push_back(density)
 
     case ('hg')
-      call list_names % append('80196.' // xs)
-      call list_density % append(density * 0.0015_8)
-      call list_names % append('80198.' // xs)
-      call list_density % append(density * 0.0997_8)
-      call list_names % append('80199.' // xs)
-      call list_density % append(density * 0.1687_8)
-      call list_names % append('80200.' // xs)
-      call list_density % append(density * 0.2310_8)
-      call list_names % append('80201.' // xs)
-      call list_density % append(density * 0.1318_8)
-      call list_names % append('80202.' // xs)
-      call list_density % append(density * 0.2986_8)
-      call list_names % append('80204.' // xs)
-      call list_density % append(density * 0.0687_8)
+      call names % push_back('Hg196.' // xs)
+      call densities % push_back(density * 0.0015_8)
+      call names % push_back('Hg198.' // xs)
+      call densities % push_back(density * 0.0997_8)
+      call names % push_back('Hg199.' // xs)
+      call densities % push_back(density * 0.1687_8)
+      call names % push_back('Hg200.' // xs)
+      call densities % push_back(density * 0.2310_8)
+      call names % push_back('Hg201.' // xs)
+      call densities % push_back(density * 0.1318_8)
+      call names % push_back('Hg202.' // xs)
+      call densities % push_back(density * 0.2986_8)
+      call names % push_back('Hg204.' // xs)
+      call densities % push_back(density * 0.0687_8)
 
     case ('tl')
       if (default_expand == JEFF_311 .or. default_expand == JEFF_312) then
-        call list_names % append('81000.' // xs)
-        call list_density % append(density)
+        call names % push_back('Tl0.' // xs)
+        call densities % push_back(density)
       else
-        call list_names % append('81203.' // xs)
-        call list_density % append(density * 0.2952_8)
-        call list_names % append('81205.' // xs)
-        call list_density % append(density * 0.7048_8)
+        call names % push_back('Tl203.' // xs)
+        call densities % push_back(density * 0.2952_8)
+        call names % push_back('Tl205.' // xs)
+        call densities % push_back(density * 0.7048_8)
       end if
 
     case ('pb')
-      call list_names % append('82204.' // xs)
-      call list_density % append(density * 0.014_8)
-      call list_names % append('82206.' // xs)
-      call list_density % append(density * 0.241_8)
-      call list_names % append('82207.' // xs)
-      call list_density % append(density * 0.221_8)
-      call list_names % append('82208.' // xs)
-      call list_density % append(density * 0.524_8)
+      call names % push_back('Pb204.' // xs)
+      call densities % push_back(density * 0.014_8)
+      call names % push_back('Pb206.' // xs)
+      call densities % push_back(density * 0.241_8)
+      call names % push_back('Pb207.' // xs)
+      call densities % push_back(density * 0.221_8)
+      call names % push_back('Pb208.' // xs)
+      call densities % push_back(density * 0.524_8)
 
     case ('bi')
-      call list_names % append('83209.' // xs)
-      call list_density % append(density)
+      call names % push_back('Bi209.' // xs)
+      call densities % push_back(density)
 
     case ('th')
-      call list_names % append('90232.' // xs)
-      call list_density % append(density)
+      call names % push_back('Th232.' // xs)
+      call densities % push_back(density)
 
     case ('pa')
-      call list_names % append('91231.' // xs)
-      call list_density % append(density)
+      call names % push_back('Pa231.' // xs)
+      call densities % push_back(density)
 
     case ('u')
-      call list_names % append('92234.' // xs)
-      call list_density % append(density * 0.000054_8)
-      call list_names % append('92235.' // xs)
-      call list_density % append(density * 0.007204_8)
-      call list_names % append('92238.' // xs)
-      call list_density % append(density * 0.992742_8)
+      call names % push_back('U234.' // xs)
+      call densities % push_back(density * 0.000054_8)
+      call names % push_back('U235.' // xs)
+      call densities % push_back(density * 0.007204_8)
+      call names % push_back('U238.' // xs)
+      call densities % push_back(density * 0.992742_8)
 
     case default
       call fatal_error("Cannot expand element: " // name)
@@ -5713,5 +5646,406 @@ contains
       call stack%pop_back()
     end do
   end subroutine generate_rpn
+
+!===============================================================================
+! NORMALIZE_AO normalizes the atom or weight percentages for each material
+!===============================================================================
+
+  subroutine normalize_ao()
+    integer        :: i               ! index in materials array
+    integer        :: j               ! index over nuclides in material
+    real(8)        :: sum_percent     ! summation
+    real(8)        :: awr             ! atomic weight ratio
+    real(8)        :: x               ! atom percent
+    logical        :: percent_in_atom ! nuclides specified in atom percent?
+    logical        :: density_in_atom ! density specified in atom/b-cm?
+
+    do i = 1, size(materials)
+      associate (mat => materials(i))
+        percent_in_atom = (mat % atom_density(1) > ZERO)
+        density_in_atom = (mat % density > ZERO)
+
+        sum_percent = ZERO
+        do j = 1, size(mat % nuclide)
+          ! determine atomic weight ratio
+          if (run_CE) then
+            awr = nuclides(mat % nuclide(j)) % awr
+          else
+            awr = ONE
+          end if
+
+          ! if given weight percent, convert all values so that they are divided
+          ! by awr. thus, when a sum is done over the values, it's actually
+          ! sum(w/awr)
+          if (.not. percent_in_atom) then
+            mat % atom_density(j) = -mat % atom_density(j) / awr
+          end if
+        end do
+
+        ! determine normalized atom percents. if given atom percents, this is
+        ! straightforward. if given weight percents, the value is w/awr and is
+        ! divided by sum(w/awr)
+        sum_percent = sum(mat % atom_density)
+        mat % atom_density = mat % atom_density / sum_percent
+
+        ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
+        ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
+        if (.not. density_in_atom) then
+          sum_percent = ZERO
+          do j = 1, mat % n_nuclides
+            if (run_CE) then
+              awr = nuclides(mat % nuclide(j)) % awr
+            else
+              awr = ONE
+            end if
+            x = mat % atom_density(j)
+            sum_percent = sum_percent + x*awr
+          end do
+          sum_percent = ONE / sum_percent
+          mat%density = -mat % density * N_AVOGADRO &
+               / MASS_NEUTRON * sum_percent
+        end if
+
+        ! Calculate nuclide atom densities
+        mat % atom_density = mat % density * mat % atom_density
+      end associate
+    end do
+
+  end subroutine normalize_ao
+
+!===============================================================================
+! ASSIGN_SAB_TABLES assigns S(alpha,beta) tables to specific nuclides within
+! materials so the code knows when to apply bound thermal scattering data
+!===============================================================================
+
+  subroutine assign_sab_tables()
+    integer :: i            ! index in materials array
+    integer :: j            ! index over nuclides in material
+    integer :: k            ! index over S(a,b) tables in material
+    integer :: m            ! position for sorting
+    integer :: temp_nuclide ! temporary value for sorting
+    integer :: temp_table   ! temporary value for sorting
+
+    do i = 1, size(materials)
+      ! Skip materials with no S(a,b) tables
+      if (.not. allocated(materials(i) % i_sab_tables)) cycle
+
+      associate (mat => materials(i))
+
+        ASSIGN_SAB: do k = 1, size(mat % i_sab_tables)
+          ! In order to know which nuclide the S(a,b) table applies to, we need
+          ! to search through the list of nuclides for one which has a matching
+          ! zaid
+          associate (sab => sab_tables(mat % i_sab_tables(k)))
+            FIND_NUCLIDE: do j = 1, size(mat % nuclide)
+              if (any(sab % zaid == nuclides(mat % nuclide(j)) % zaid)) then
+                mat % i_sab_nuclides(k) = j
+                exit FIND_NUCLIDE
+              end if
+            end do FIND_NUCLIDE
+          end associate
+
+          ! Check to make sure S(a,b) table matched a nuclide
+          if (mat % i_sab_nuclides(k) == NONE) then
+            call fatal_error("S(a,b) table " // trim(mat % &
+                 sab_names(k)) // " did not match any nuclide on material " &
+                 // trim(to_str(mat % id)))
+          end if
+        end do ASSIGN_SAB
+
+        ! If there are multiple S(a,b) tables, we need to make sure that the
+        ! entries in i_sab_nuclides are sorted or else they won't be applied
+        ! correctly in the cross_section module. The algorithm here is a simple
+        ! insertion sort -- don't need anything fancy!
+
+        if (size(mat % i_sab_tables) > 1) then
+          SORT_SAB: do k = 2, size(mat % i_sab_tables)
+            ! Save value to move
+            m = k
+            temp_nuclide = mat % i_sab_nuclides(k)
+            temp_table   = mat % i_sab_tables(k)
+
+            MOVE_OVER: do
+              ! Check if insertion value is greater than (m-1)th value
+              if (temp_nuclide >= mat % i_sab_nuclides(m-1)) exit
+
+              ! Move values over until hitting one that's not larger
+              mat % i_sab_nuclides(m) = mat % i_sab_nuclides(m-1)
+              mat % i_sab_tables(m)   = mat % i_sab_tables(m-1)
+              m = m - 1
+
+              ! Exit if we've reached the beginning of the list
+              if (m == 1) exit
+            end do MOVE_OVER
+
+            ! Put the original value into its new position
+            mat % i_sab_nuclides(m) = temp_nuclide
+            mat % i_sab_tables(m)   = temp_table
+          end do SORT_SAB
+        end if
+
+        ! Deallocate temporary arrays for names of nuclides and S(a,b) tables
+        if (allocated(mat % names)) deallocate(mat % names)
+      end associate
+    end do
+  end subroutine assign_sab_tables
+
+  subroutine read_ce_cross_sections(libraries, library_dict)
+    type(Library),   intent(in)      :: libraries(:)
+    type(DictCharInt), intent(inout) :: library_dict
+
+    integer :: i, j
+    integer :: i_library
+    integer :: i_nuclide
+    integer :: i_sab
+    integer :: index_nuc_zaid   ! index in nuclide ZAID
+    integer :: zaid             ! ZAID of nuclide
+    integer(HID_T) :: file_id
+    integer(HID_T) :: group_id
+    logical :: mp_found     ! if windowed multipole libraries were found
+    character(MAX_WORD_LEN) :: name
+    type(SetChar) :: already_read
+
+    allocate(nuclides(n_nuclides_total))
+    allocate(sab_tables(n_sab_tables))
+!$omp parallel
+    allocate(micro_xs(n_nuclides_total))
+!$omp end parallel
+
+    index_nuc_zaid = 0
+
+    ! Read cross sections
+    do i = 1, size(materials)
+      do j = 1, size(materials(i) % names)
+        name = materials(i) % names(j)
+
+        if (.not. already_read % contains(name)) then
+          i_library = library_dict % get_key(to_lower(name))
+          i_nuclide = nuclide_dict % get_key(to_lower(name))
+
+          call write_message('Reading ' // trim(name) // ' from ' // &
+               trim(libraries(i_library) % path), 6)
+
+          ! Read nuclide data from HDF5
+          file_id = file_open(libraries(i_library) % path, 'r')
+          group_id = open_group(file_id, name)
+          call nuclides(i_nuclide) % from_hdf5(group_id)
+          call close_group(group_id)
+          call file_close(file_id)
+
+          ! Assign resonant scattering data
+          if (treat_res_scat) call read_0K_elastic_scattering(&
+               nuclides(i_nuclide), libraries, library_dict)
+
+          ! Determine if minimum/maximum energy for this nuclide is greater/less
+          ! than the previous
+          energy_min_neutron = max(energy_min_neutron, nuclides(i_nuclide) % energy(1))
+          energy_max_neutron = min(energy_max_neutron, nuclides(i_nuclide) % energy(&
+               size(nuclides(i_nuclide) % energy)))
+
+          ! Add name and alias to dictionary
+          call already_read % add(name)
+
+          ! Construct dictionary mapping nuclide zaids to [1,N] -- used for
+          ! unresolved resonance probability tables
+          zaid = nuclides(i_nuclide) % zaid
+          if (.not. nuc_zaid_dict % has_key(zaid)) then
+            index_nuc_zaid  = index_nuc_zaid + 1
+            call nuc_zaid_dict % add_key(zaid, index_nuc_zaid)
+          end if
+
+          ! Read multipole file into the appropriate entry on the nuclides array
+          if (multipole_active) call read_multipole_data(i_nuclide)
+        end if
+
+        ! Check if material is fissionable
+        if (nuclides(materials(i) % nuclide(j)) % fissionable) then
+          materials(i) % fissionable = .true.
+        end if
+      end do
+    end do
+
+    do i = 1, size(materials)
+      ! Skip materials with no S(a,b) tables
+      if (.not. allocated(materials(i) % sab_names)) cycle
+
+      do j = 1, size(materials(i) % sab_names)
+        ! Get name of S(a,b) table
+        name = materials(i) % sab_names(j)
+
+        if (.not. already_read % contains(name)) then
+          i_library = library_dict % get_key(to_lower(name))
+          i_sab  = sab_dict % get_key(to_lower(name))
+
+          call write_message('Reading ' // trim(name) // ' from ' // &
+               trim(libraries(i_library) % path), 6)
+
+          ! Read S(a,b) data from HDF5
+          file_id = file_open(libraries(i_library) % path, 'r')
+          group_id = open_group(file_id, name)
+          call sab_tables(i_sab) % from_hdf5(group_id)
+          call close_group(group_id)
+          call file_close(file_id)
+
+          ! Add name to dictionary
+          call already_read % add(name)
+        end if
+      end do
+    end do
+
+    n_nuc_zaid_total = index_nuc_zaid
+
+    ! Associate S(a,b) tables with specific nuclides
+    call assign_sab_tables()
+
+    ! Show which nuclide results in lowest energy for neutron transport
+    do i = 1, size(nuclides)
+      if (nuclides(i) % energy(nuclides(i) % n_grid) == energy_max_neutron) then
+        call write_message("Maximum neutron transport energy: " // &
+             trim(to_str(energy_max_neutron)) // " MeV for " // &
+             trim(adjustl(nuclides(i) % name)), 6)
+        exit
+      end if
+    end do
+
+    ! If the user wants multipole, make sure we found a multipole library.
+    if (multipole_active) then
+      mp_found = .false.
+      do i = 1, size(nuclides)
+        if (nuclides(i) % mp_present) then
+          mp_found = .true.
+          exit
+        end if
+      end do
+      if (.not. mp_found) call warning("Windowed multipole functionality is &
+           &turned on, but no multipole libraries were found.  Set the &
+           &<multipole_library> element in settings.xml or the &
+           &OPENMC_MULTIPOLE_LIBRARY environment variable.")
+    end if
+
+  end subroutine read_ce_cross_sections
+
+!===============================================================================
+! READ_0K_ELASTIC_SCATTERING
+!===============================================================================
+
+  subroutine read_0K_elastic_scattering(nuc, libraries, library_dict)
+    type(Nuclide), intent(inout)   :: nuc
+    type(Library),   intent(in)      :: libraries(:)
+    type(DictCharInt), intent(inout) :: library_dict
+
+    integer :: i, j
+    integer :: i_library
+    integer(HID_T) :: file_id
+    integer(HID_T) :: group_id
+    real(8) :: xs_cdf_sum
+    character(MAX_WORD_LEN) :: name
+    type(Nuclide) :: resonant_nuc
+
+    do i = 1, size(nuclides_0K)
+      if (nuc % name == nuclides_0K(i) % name) then
+        ! Copy basic information from settings.xml
+        nuc % resonant = .true.
+        nuc % name_0K = trim(nuclides_0K(i) % name_0K)
+        nuc % scheme = trim(nuclides_0K(i) % scheme)
+        nuc % E_min = nuclides_0K(i) % E_min
+        nuc % E_max = nuclides_0K(i) % E_max
+
+        ! Get index in libraries array
+        name = nuc % name_0K
+        i_library = library_dict % get_key(to_lower(name))
+
+        call write_message('Reading ' // trim(name) // ' 0K data from ' // &
+             trim(libraries(i_library) % path), 6)
+
+        ! Read nuclide data from HDF5
+        file_id = file_open(libraries(i_library) % path, 'r')
+        group_id = open_group(file_id, name)
+        call resonant_nuc % from_hdf5(group_id)
+        call close_group(group_id)
+        call file_close(file_id)
+
+        ! Copy 0K energy grid and elastic scattering cross section
+        call move_alloc(TO=nuc % energy_0K, FROM=resonant_nuc % energy)
+        call move_alloc(TO=nuc % elastic_0K, FROM=resonant_nuc % elastic)
+        nuc % n_grid_0K = size(nuc % energy_0K)
+
+        ! Build CDF for 0K elastic scattering
+        xs_cdf_sum = ZERO
+        allocate(nuc % xs_cdf(size(nuc % energy_0K)))
+
+        do j = 1, size(nuc % energy_0K) - 1
+          ! Negative cross sections result in a CDF that is not monotonically
+          ! increasing. Set all negative xs values to ZERO.
+          if (nuc % elastic_0K(j) < ZERO) nuc % elastic_0K(j) = ZERO
+
+          ! build xs cdf
+          xs_cdf_sum = xs_cdf_sum &
+               + (sqrt(nuc % energy_0K(j)) * nuc % elastic_0K(j) &
+               + sqrt(nuc % energy_0K(j+1)) * nuc % elastic_0K(j+1)) / TWO &
+               * (nuc % energy_0K(j+1) - nuc % energy_0K(j))
+          nuc % xs_cdf(j) = xs_cdf_sum
+        end do
+
+        exit
+      end if
+    end do
+
+  end subroutine read_0K_elastic_scattering
+
+!===============================================================================
+! READ_MULTIPOLE_DATA checks for the existence of a multipole library in the
+! directory and loads it using multipole_read
+!===============================================================================
+
+  subroutine read_multipole_data(i_table)
+
+    integer, intent(in) :: i_table  ! index in nuclides/sab_tables
+
+    integer :: i
+    logical :: file_exists                 ! Does multipole library exist?
+    character(7) :: readable               ! Is multipole library readable?
+    character(6) :: zaid_string            ! String of the ZAID
+    character(MAX_FILE_LEN+9) :: filename  ! Path to multipole xs library
+
+    ! For the time being, and I know this is a bit hacky, we just assume
+    ! that the file will be zaid.h5.
+    associate (nuc => nuclides(i_table))
+
+      write(zaid_string, '(I6.6)') nuc % zaid
+      filename = trim(path_multipole) // zaid_string // ".h5"
+
+      ! Check if Multipole library exists and is readable
+      inquire(FILE=filename, EXIST=file_exists, READ=readable)
+      if (.not. file_exists) then
+        nuc % mp_present = .false.
+        return
+      elseif (readable(1:3) == 'NO') then
+        call fatal_error("Multipole library '" // trim(filename) // "' is not &
+             &readable! Change file permissions with chmod command.")
+      end if
+
+      ! Display message
+      call write_message("Loading Multipole XS table: " // filename, 6)
+
+      allocate(nuc % multipole)
+
+      ! Call the read routine
+      call multipole_read(filename, nuc % multipole, i_table)
+      nuc % mp_present = .true.
+
+      ! Recreate nu-fission cross section
+      if (nuc % fissionable) then
+        do i = 1, size(nuc % energy)
+          nuc % nu_fission(i) = nuc % nu(nuc % energy(i), EMISSION_TOTAL) * &
+               nuc % fission(i)
+        end do
+      else
+        nuc % nu_fission(:) = ZERO
+      end if
+
+    end associate
+
+  end subroutine read_multipole_data
 
 end module input_xml

@@ -65,7 +65,7 @@ class IncidentNeutron(object):
         Contains summed cross sections, e.g., the total cross section. The keys
         are the MT values and the values are Reaction objects.
     temperature : float
-        Temperature of the target nuclide in eV.
+        Temperature of the target nuclide in MeV.
     urr : None or openmc.data.ProbabilityTables
         Unresolved resonance region probability tables
 

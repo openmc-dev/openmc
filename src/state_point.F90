@@ -43,7 +43,7 @@ contains
   subroutine write_state_point()
 
     integer :: i, j, k
-    integer :: i_list, i_xs
+    integer :: i_xs
     integer :: n_order      ! loop index for moment orders
     integer :: nm_order     ! loop index for Ynm moment orders
     integer, allocatable :: id_array(:)
@@ -251,20 +251,11 @@ contains
           allocate(str_array(tally % n_nuclide_bins))
           NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
             if (tally % nuclide_bins(j) > 0) then
-              ! Get index in cross section listings for this nuclide
-              if (run_CE) then
-                i_list = nuclides(tally % nuclide_bins(j)) % listing
-              else
-                i_list = nuclides_MG(tally % nuclide_bins(j)) % obj % listing
-              end if
-
-              ! Determine position of . in alias string (e.g. "U-235.71c"). If
-              ! no . is found, just use the entire string.
-              i_xs = index(xs_listings(i_list) % alias, '.')
+              i_xs = index(nuclides(tally % nuclide_bins(j)) % name, '.')
               if (i_xs > 0) then
-                str_array(j) = xs_listings(i_list) % alias(1:i_xs - 1)
+                str_array(j) = nuclides(tally % nuclide_bins(j)) % name(1 : i_xs-1)
               else
-                str_array(j) = xs_listings(i_list) % alias
+                str_array(j) = nuclides(tally % nuclide_bins(j)) % name
               end if
             else
               str_array(j) = 'total'

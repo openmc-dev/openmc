@@ -1,7 +1,10 @@
 module energy_distribution
 
-  use constants,     only: ZERO, ONE, TWO, PI, HISTOGRAM, LINEAR_LINEAR
+  use hdf5
+
+  use constants,     only: ZERO, ONE, HALF, TWO, PI, HISTOGRAM, LINEAR_LINEAR
   use endf_header,   only: Tabulated1D
+  use hdf5_interface
   use math,          only: maxwell_spectrum, watt_spectrum
   use random_lcg,    only: prn
   use search,        only: binary_search
@@ -16,6 +19,7 @@ module energy_distribution
   type, abstract :: EnergyDistribution
   contains
     procedure(energy_distribution_sample_), deferred :: sample
+    procedure(energy_distribution_from_hdf5_), deferred :: from_hdf5
   end type EnergyDistribution
 
   abstract interface
@@ -25,6 +29,13 @@ module energy_distribution
       real(8), intent(in) :: E_in
       real(8) :: E_out
     end function energy_distribution_sample_
+
+    subroutine energy_distribution_from_hdf5_(this, group_id)
+      import EnergyDistribution
+      import HID_T
+      class(EnergyDistribution), intent(inout) :: this
+      integer(HID_T), intent(in) :: group_id
+    end subroutine energy_distribution_from_hdf5_
   end interface
 
   type :: EnergyDistributionContainer
@@ -50,7 +61,22 @@ module energy_distribution
                                              ! each incoming energy
   contains
     procedure :: sample => equiprobable_sample
+    procedure :: from_hdf5 => equiprobable_from_hdf5
   end type TabularEquiprobable
+
+!===============================================================================
+! DISCRETEPHOTON gives the energy distribution for a discrete photon (usually
+! used for photon production from an incident-neutron reaction)
+!===============================================================================
+
+  type, extends(EnergyDistribution) :: DiscretePhoton
+    integer :: primary_flag
+    real(8) :: energy
+    real(8) :: A
+  contains
+    procedure :: sample => discrete_photon_sample
+    procedure :: from_hdf5 => discrete_photon_from_hdf5
+  end type DiscretePhoton
 
 !===============================================================================
 ! LEVELINELASTIC gives the energy distribution for level inelastic scattering by
@@ -62,6 +88,7 @@ module energy_distribution
     real(8) :: mass_ratio
   contains
     procedure :: sample => level_inelastic_sample
+    procedure :: from_hdf5 => level_inelastic_from_hdf5
   end type LevelInelastic
 
 !===============================================================================
@@ -86,6 +113,7 @@ module energy_distribution
     type(CTTable), allocatable :: distribution(:)
   contains
     procedure :: sample => continuous_sample
+    procedure :: from_hdf5 => continuous_from_hdf5
   end type ContinuousTabular
 
 !===============================================================================
@@ -98,6 +126,7 @@ module energy_distribution
     real(8) :: u        ! restriction energy
   contains
     procedure :: sample => maxwellenergy_sample
+    procedure :: from_hdf5 => maxwellenergy_from_hdf5
   end type MaxwellEnergy
 
 !===============================================================================
@@ -110,6 +139,7 @@ module energy_distribution
     real(8) :: u
   contains
     procedure :: sample => evaporation_sample
+    procedure :: from_hdf5 => evaporation_from_hdf5
   end type Evaporation
 
 !===============================================================================
@@ -123,6 +153,7 @@ module energy_distribution
     real(8) :: u
   contains
     procedure :: sample => watt_sample
+    procedure :: from_hdf5 => watt_from_hdf5
   end type WattEnergy
 
 contains
@@ -186,6 +217,31 @@ contains
     end if
   end function equiprobable_sample
 
+  subroutine equiprobable_from_hdf5(this, group_id)
+    class(TabularEquiprobable), intent(inout) :: this
+    integer(HID_T),             intent(in)    :: group_id
+  end subroutine equiprobable_from_hdf5
+
+  function discrete_photon_sample(this, E_in) result(E_out)
+    class(DiscretePhoton), intent(in) :: this
+    real(8),               intent(in) :: E_in
+    real(8)                           :: E_out
+
+    if (this % primary_flag == 2) then
+      E_out = this % energy + this % A/(this % A + 1)*E_in
+    else
+      E_out = this % energy
+    end if
+  end function discrete_photon_sample
+
+  subroutine discrete_photon_from_hdf5(this, group_id)
+    class(DiscretePhoton), intent(inout) :: this
+    integer(HID_T),        intent(in)    :: group_id
+
+    call read_attribute(this % primary_flag, group_id, 'primary_flag')
+    call read_attribute(this % energy, group_id, 'energy')
+    call read_attribute(this % A, group_id, 'atomic_weight_ratio')
+  end subroutine discrete_photon_from_hdf5
 
   function level_inelastic_sample(this, E_in) result(E_out)
     class(LevelInelastic), intent(in) :: this
@@ -195,6 +251,13 @@ contains
     E_out = this%mass_ratio*(E_in - this%threshold)
   end function level_inelastic_sample
 
+  subroutine level_inelastic_from_hdf5(this, group_id)
+    class(LevelInelastic), intent(inout) :: this
+    integer(HID_T),        intent(in)    :: group_id
+
+    call read_attribute(this%threshold, group_id, 'threshold')
+    call read_attribute(this%mass_ratio, group_id, 'mass_ratio')
+  end subroutine level_inelastic_from_hdf5
 
   function continuous_sample(this, E_in) result(E_out)
     class(ContinuousTabular), intent(in) :: this
@@ -307,6 +370,111 @@ contains
     end if
   end function continuous_sample
 
+  subroutine continuous_from_hdf5(this, group_id)
+    class(ContinuousTabular), intent(inout) :: this
+    integer(HID_T),           intent(in)    :: group_id
+
+    integer :: i, j, k
+    integer :: n
+    integer :: n_energy
+    integer(HID_T) :: dset_id
+    integer(HSIZE_T) :: dims(1), dims2(2)
+    integer, allocatable :: temp(:,:)
+    integer, allocatable :: offsets(:)
+    integer, allocatable :: interp(:)
+    integer, allocatable :: n_discrete(:)
+    real(8), allocatable :: eout(:,:)
+
+    ! Open incoming energy dataset
+    dset_id = open_dataset(group_id, 'energy')
+
+    ! Get interpolation parameters
+    call read_attribute(temp, dset_id, 'interpolation')
+    allocate(this%breakpoints(size(temp, 1)))
+    allocate(this%interpolation(size(temp, 1)))
+    this%breakpoints(:) = temp(:, 1)
+    this%interpolation(:) = temp(:, 2)
+    this%n_region = size(this%breakpoints)
+
+    ! Get incoming energies
+    call get_shape(dset_id, dims)
+    n_energy = int(dims(1), 4)
+    allocate(this%energy(n_energy))
+    allocate(this%distribution(n_energy))
+    call read_dataset(this%energy, dset_id)
+    call close_dataset(dset_id)
+
+    ! Get outgoing energy distribution data
+    dset_id = open_dataset(group_id, 'distribution')
+    call read_attribute(offsets, dset_id, 'offsets')
+    call read_attribute(interp, dset_id, 'interpolation')
+    call read_attribute(n_discrete, dset_id, 'n_discrete_lines')
+    call get_shape(dset_id, dims2)
+    allocate(eout(dims2(1), dims2(2)))
+    call read_dataset(eout, dset_id)
+    call close_dataset(dset_id)
+
+    do i = 1, n_energy
+      ! Determine number of outgoing energies
+      j = offsets(i)
+      if (i < n_energy) then
+        n = offsets(i+1) - j
+      else
+        n = size(eout, 1) - j
+      end if
+
+      associate (d => this % distribution(i))
+        ! Assign interpolation scheme and number of discrete lines
+        d % interpolation = interp(i)
+        d % n_discrete = n_discrete(i)
+
+        ! Allocate arrays for energies and PDF/CDF
+        allocate(d % e_out(n))
+        allocate(d % p(n))
+        allocate(d % c(n))
+
+        ! Copy data
+        d % e_out(:) = eout(j+1:j+n, 1)
+        d % p(:) = eout(j+1:j+n, 2)
+
+        ! To get answers that match ACE data, for now we still use the tabulated
+        ! CDF values that were passed through to the HDF5 library. At a later
+        ! time, we can remove the CDF values from the HDF5 library and
+        ! reconstruct them using the PDF
+        if (.true.) then
+          d % c(:) = eout(j+1:j+n, 3)
+        else
+          ! Calculate cumulative distribution function -- discrete portion
+          do k = 1, n_discrete(i)
+            if (k == 1) then
+              d % c(k) = d % p(k)
+            else
+              d % c(k) = d % c(k-1) + d % p(k)
+            end if
+          end do
+
+          ! Continuous portion
+          do k = d % n_discrete + 1, n
+            if (k == d % n_discrete + 1) then
+              d % c(k) = sum(d % p(1:d % n_discrete))
+            else
+              if (d % interpolation == HISTOGRAM) then
+                d % c(k) = d % c(k-1) + d % p(k-1) * &
+                     (d % e_out(k) - d % e_out(k-1))
+              elseif (d % interpolation == LINEAR_LINEAR) then
+                d % c(k) = d % c(k-1) + HALF*(d % p(k-1) + d % p(k)) * &
+                     (d % e_out(k) - d % e_out(k-1))
+              end if
+            end if
+          end do
+
+          ! Normalize density and distribution functions
+          d % p(:) = d % p(:)/d % c(n)
+          d % c(:) = d % c(:)/d % c(n)
+        end if
+      end associate
+    end do
+  end subroutine continuous_from_hdf5
 
   function maxwellenergy_sample(this, E_in) result(E_out)
     class(MaxwellEnergy), intent(in) :: this
@@ -326,6 +494,18 @@ contains
       if (E_out <= E_in - this%u) exit
     end do
   end function maxwellenergy_sample
+
+  subroutine maxwellenergy_from_hdf5(this, group_id)
+    class(MaxwellEnergy), intent(inout) :: this
+    integer(HID_T),       intent(in)    :: group_id
+
+    integer(HID_T) :: dset_id
+
+    call read_attribute(this%u, group_id, 'u')
+    dset_id = open_dataset(group_id, 'theta')
+    call this%theta%from_hdf5(dset_id)
+    call close_dataset(dset_id)
+  end subroutine maxwellenergy_from_hdf5
 
   function evaporation_sample(this, E_in) result(E_out)
     class(Evaporation), intent(in) :: this
@@ -351,6 +531,18 @@ contains
     E_out = x*theta
   end function evaporation_sample
 
+  subroutine evaporation_from_hdf5(this, group_id)
+    class(Evaporation), intent(inout) :: this
+    integer(HID_T),     intent(in)    :: group_id
+
+    integer(HID_T) :: dset_id
+
+    call read_attribute(this%u, group_id, 'u')
+    dset_id = open_dataset(group_id, 'theta')
+    call this%theta%from_hdf5(dset_id)
+    call close_dataset(dset_id)
+  end subroutine evaporation_from_hdf5
+
   function watt_sample(this, E_in) result(E_out)
     class(WattEnergy), intent(in) :: this
     real(8), intent(in) :: E_in  ! incoming energy
@@ -372,5 +564,22 @@ contains
       if (E_out <= E_in - this%u) exit
     end do
   end function watt_sample
+
+  subroutine watt_from_hdf5(this, group_id)
+    class(WattEnergy), intent(inout) :: this
+    integer(HID_T),    intent(in)    :: group_id
+
+    integer(HID_T) :: dset_id
+
+    call read_attribute(this%u, group_id, 'u')
+
+    dset_id = open_dataset(group_id, 'a')
+    call this%a%from_hdf5(dset_id)
+    call close_dataset(dset_id)
+
+    dset_id = open_dataset(group_id, 'b')
+    call this%b%from_hdf5(dset_id)
+    call close_dataset(dset_id)
+  end subroutine watt_from_hdf5
 
 end module energy_distribution

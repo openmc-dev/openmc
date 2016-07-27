@@ -133,7 +133,7 @@ contains
             accumulated_fission = .true.
           case default
             ! Search through all of our secondary reactions
-            do j = 1, nuc % n_reaction
+            do j = 1, size(nuc % reactions)
               if (nuc % reactions(j) % MT == MT(i)) then
                 ! Match found
 

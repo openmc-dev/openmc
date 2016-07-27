@@ -279,9 +279,9 @@ idiosyncrasies in treating fission. In an eigenvalue calculation, secondary
 neutrons from fission are only "banked" for use in the next generation rather
 than being tracked as secondary neutrons from elastic and inelastic scattering
 would be. On top of this, fission is sometimes broken into first-chance fission,
-second-chance fission, etc. An ACE table either lists the partial fission
-reactions with secondary energy distributions for each one, or a total fission
-reaction with a single secondary energy distribution.
+second-chance fission, etc. The nuclear data file either lists the partial
+fission reactions with secondary energy distributions for each one, or a total
+fission reaction with a single secondary energy distribution.
 
 When a fission reaction is sampled in OpenMC (either total fission or, if data
 exists, first- or second-chance fission), the following algorithm is used to
@@ -290,7 +290,7 @@ number of prompt and delayed neutrons must be determined to decide whether the
 secondary neutrons will be prompt or delayed. This is important because delayed
 neutrons have a markedly different spectrum from prompt neutrons, one that has a
 lower average energy of emission. The total number of neutrons emitted
-:math:`\nu_t` is given as a function of incident energy in the ACE format. Two
+:math:`\nu_t` is given as a function of incident energy in the ENDF format. Two
 representations exist for :math:`\nu_t`. The first is a polynomial of order
 :math:`N` with coefficients :math:`c_0,c_1,\dots,c_N`. If :math:`\nu_t` has this
 format, we can evaluate it at incoming energy :math:`E` by using the equation
@@ -347,26 +347,52 @@ provided as group-wise data instead of in a continuous-energy format. In this
 case, the outgoing energy of the fission neutrons are represented as histograms
 by way of either the nu-fission matrix or chi vector.
 
------------------------------------------
-Secondary Angles and Energy Distributions
------------------------------------------
+------------------------------------
+Secondary Angle-Energy Distributions
+------------------------------------
 
 Note that this section is specific to continuous-energy mode since the
 multi-group scattering process has already been described including the
 secondary energy and angle sampling.
 
-For any reactions with secondary neutrons, it is necessary to sample secondary
-angle and energy distributions. This includes elastic and inelastic scattering,
-fission, and :math:`(n,xn)` reactions. In some cases, the angle and energy
-distributions may be specified separately, and in other cases, they may be
-specified as a correlated angle-energy distribution. In the following sections,
-we will outline the methods used to sample secondary distributions as well as
-how they are used to modify the state of a particle.
+For a reaction with secondary products, it is necessary to determine the
+outgoing angle and energy of the products. For any reaction other than elastic
+and level inelastic scattering, the outgoing energy must be determined based on
+tabulated or parameterized data. The `ENDF-6 Format`_ specifies a variety of
+ways that the secondary energy distribution can be represented. ENDF File 5
+contains uncorrelated energy distribution whereas ENDF File 6 contains
+correlated energy-angle distributions. The ACE format specifies its own
+representations based loosely on the formats given in ENDF-6. OpenMC's HDF5
+nuclear data files use a combination of ENDF and ACE distributions; in this
+section, we will describe how the outgoing angle and energy of secondary
+particles are sampled.
+
+One of the subtleties in the nuclear data format is the fact that a single
+reaction product can have multiple angle-energy distributions. This is mainly
+useful for reactions with multiple products of the same type in the exit channel
+such as :math:`(n,2n)` or :math:`(n,3n)`. In these types of reactions, each
+neutron is emitted corresponding to a different excitation level of the compound
+nucleus, and thus in general the neutrons will originate from different energy
+distributions. If multiple angle-energy distributions are present, they are
+assigned incoming-energy-dependent probabilities that can then be used to
+randomly select one.
+
+Once a distribution has been selected, the procedure for determining the
+outgoing angle and energy will depend on the type of the distribution.
+
+Uncorrelated Angle-Energy Distributions
+---------------------------------------
+
+The first set of distributions we will look at are uncorrelated angle-energy
+distributions, where angle and energy are specified separately. For these
+distributions, OpenMC first samples the angular distribution as described
+:ref:`sample-angle` and then samples an energy as described in
+:ref:`sample-energy`.
 
 .. _sample-angle:
 
-Sampling Secondary Angle Distributions
---------------------------------------
+Sampling Angular Distributions
+++++++++++++++++++++++++++++++
 
 For elastic scattering, it is only necessary to specific a secondary angle
 distribution since the outgoing energy can be determined analytically. Other
@@ -374,15 +400,14 @@ reactions may also have separate secondary angle and secondary energy
 distributions that are uncorrelated. In these cases, the secondary angle
 distribution is represented as either
 
-- An Isotropic angular distribution,
-- An equiprobable distribution with 32 bins, or
+- An isotropic angular distribution,
 - A tabular distribution.
 
 Isotropic Angular Distribution
-++++++++++++++++++++++++++++++
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In the first case, no data needs to be stored on the ACE table, and the cosine
-of the scattering angle is simply calculated as
+In the first case, no data is stored in the nuclear data file, and the cosine of
+the scattering angle is simply calculated as
 
 .. math::
     :label: isotropic-angle
@@ -392,42 +417,17 @@ of the scattering angle is simply calculated as
 where :math:`\mu` is the cosine of the scattering angle and :math:`\xi` is a
 random number sampled uniformly on :math:`[0,1)`.
 
-Equiprobable Angle Bin Distribution
-+++++++++++++++++++++++++++++++++++
-
-For a 32 equiprobable bin distribution, we select a random number :math:`\xi` to
-sample a cosine bin :math:`i` such that
-
-.. math::
-    :label: equiprobable-bin
-
-    i = 1 + \lfloor 32\xi \rfloor.
-
-The same random number can then also be used to interpolate between neighboring
-:math:`\mu` values to get the final scattering cosine:
-
-.. math::
-    :label: equiprobable-cosine
-
-    \mu = \mu_i + (32\xi - i) (\mu_{i+1} - \mu_i)
-
-where :math:`\mu_i` is the :math:`i`-th scattering cosine.
-
 .. _angle-tabular:
 
 Tabular Angular Distribution
-++++++++++++++++++++++++++++
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-As the `MCNP Manual`_ points out, using an equiprobable bin distribution works
-well for high-probability regions of the scattering cosine probability, but for
-low-probability regions it is not very accurate. Thus, a more accurate method is
-to represent the scattering cosine with a tabular distribution. In this case, we
-have a table of cosines and their corresponding values for a probability
-distribution function and cumulative distribution function. For each incoming
-neutron energy :math:`E_i`, let us call :math:`p_{i,j}` the j-th value in the
-probability distribution function and :math:`c_{i,j}` the j-th value in the
-cumulative distribution function. We first find the interpolation factor on the
-incoming energy grid:
+In this case, we have a table of cosines and their corresponding values for a
+probability distribution function and cumulative distribution function. For each
+incoming neutron energy :math:`E_i`, let us call :math:`p_{i,j}` the j-th value
+in the probability distribution function and :math:`c_{i,j}` the j-th value in
+the cumulative distribution function. We first find the interpolation factor on
+the incoming energy grid:
 
 .. math::
     :label: interpolation-factor
@@ -545,89 +545,11 @@ linear-linear interpolation:
 
 .. _sample-energy:
 
-Sampling Secondary Energy and Correlated Angle/Energy Distributions
--------------------------------------------------------------------
+Sampling Energy Distributions
++++++++++++++++++++++++++++++
 
-For a reaction with secondary neutrons, it is necessary to determine the
-outgoing energy of the neutrons. For any reaction other than elastic scattering,
-the outgoing energy must be determined based on tabulated or parameterized
-data. The `ENDF-6 Format`_ specifies a variety of ways that the secondary energy
-distribution can be represented. ENDF File 5 contains uncorrelated energy
-distribution where ENDF File 6 contains correlated energy-angle
-distributions. The ACE format specifies its own representations based loosely on
-the formats given in ENDF-6. In this section, we will describe how the outgoing
-energy of secondary particles is determined based on each ACE law.
-
-One of the subtleties in the ACE format is the fact that a single reaction can
-have multiple secondary energy distributions. This is mainly useful for
-reactions with multiple neutrons in the exit channel such as :math:`(n,2n)` or
-:math:`(n,3n)`. In these types of reactions, each neutron is emitted
-corresponding to a different excitation level of the compound nucleus, and thus
-in general the neutrons will originate from different energy distributions. If
-multiple energy distributions are present, they are assigned probabilities that
-can then be used to randomly select one.
-
-Once a secondary energy distribution has been sampled, the procedure for
-determining the outgoing energy will depend on which ACE law has been specified
-for the data.
-
-.. _ace-law-1:
-
-ACE Law 1 - Tabular Equiprobable Energy Bins
-++++++++++++++++++++++++++++++++++++++++++++
-
-In the tabular equiprobable bin representation, an array of equiprobable
-outgoing energy bins is given for a number of incident energies. While the
-representation itself is simple, the complexity lies in how one interpolates
-between incident as well as outgoing energies on such a table. If one performs
-simple interpolation between tables for neighboring incident energies, it is
-possible that the resulting energies would violate laws governing the
-kinematics, i.e. the outgoing energy may be outside the range of available
-energy in the reaction.
-
-To avoid this situation, the accepted practice is to use a process known as
-scaled interpolation [Doyas]_. First, we find the tabulated incident energies
-which bound the actual incoming energy of the particle, i.e. find :math:`i` such
-that :math:`E_i < E < E_{i+1}` and calculate the interpolation factor :math:`f`
-via :eq:`interpolation-factor`. Then, we interpolate between the minimum and
-maximum energies of the outgoing energy distributions corresponding to
-:math:`E_i` and :math:`E_{i+1}`:
-
-.. math::
-    :label: ace-law-1-minmax
-
-    E_{min} = E_{i,1} + f ( E_{i+1,1} - E_i ) \\
-    E_{max} = E_{i,M} + f ( E_{i+1,M} - E_M )
-
-where :math:`E_{min}` and :math:`E_{max}` are the minimum and maximum outgoing
-energies of a scaled distribution, :math:`E_{i,j}` is the j-th outgoing energy
-corresponding to the incoming energy :math:`E_i`, and :math:`M` is the number of
-outgoing energy bins. Next, statistical interpolation is performed to choose
-between using the outgoing energy distributions corresponding to energy
-:math:`E_i` and :math:`E_{i+1}`. Let :math:`\ell` be the chosen table where
-:math:`\ell = i` if :math:`\xi_1 > f` and :math:`\ell = i + 1` otherwise, and
-:math:`\xi_1` is a random number. Now, we randomly sample an equiprobable
-outgoing energy bin :math:`j` and interpolate between successive values on the
-outgoing energy distribution:
-
-.. math::
-    :label: ace-law-1-intermediate
-
-    \hat{E} = E_{\ell,j} + \xi_2 (E_{\ell,j+1} - E_{\ell,j})
-
-where :math:`\xi_2` is a random number sampled uniformly on :math:`[0,1)`. Since
-this outgoing energy may violate reaction kinematics, we then scale it to the
-minimum and maximum energies we calculated earlier to get the final outgoing
-energy:
-
-.. math::
-    :label: ace-law-1-energy
-
-    E' = E_{min} + \frac{\hat{E} - E_{\ell,1}}{E_{\ell,M} - E_{\ell,1}}
-    (E_{max} - E_{min})
-
-ACE Law 3 - Inelastic Level Scattering
-++++++++++++++++++++++++++++++++++++++
+Inelastic Level Scattering
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 It can be shown (see Foderaro_) that in inelastic level scattering, the outgoing
 energy of the neutron :math:`E'` can be related to the Q-value of the reaction
@@ -640,31 +562,50 @@ and the incoming energy:
 
 where :math:`A` is the mass of the target nucleus measured in neutron masses.
 
-.. _ace-law-4:
+.. _continuous-tabular:
 
-ACE Law 4 - Continuous Tabular Distribution
-+++++++++++++++++++++++++++++++++++++++++++
+Continuous Tabular Distribution
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This representation is very similar to :ref:`ace-law-1` except that instead of
-equiprobable outgoing energy bins, the outgoing energy distribution for each
-incoming energy is represented with a probability distribution function. For
-each incoming neutron energy :math:`E_i`, let us call :math:`p_{i,j}` the j-th
-value in the probability distribution function, :math:`c_{i,j}` the j-th value
-in the cumulative distribution function, and :math:`E_{i,j}` the j-th outgoing
-energy.
+In a continuous tabular distribution, a tabulated energy distribution is
+provided for each of a set of incoming energies. While the representation itself
+is simple, the complexity lies in how one interpolates between incident as well
+as outgoing energies on such a table. If one performs simple interpolation
+between tables for neighboring incident energies, it is possible that the
+resulting energies would violate laws governing the kinematics, i.e., the
+outgoing energy may be outside the range of available energy in the reaction.
 
-We proceed first as we did for ACE Law 1, determining the bounding energies of
-the particle's incoming energy such that :math:`E_i < E < E_{i+1}` and
-calculating an interpolation factor :math:`f` with equation
-:eq:`interpolation-factor`. Next, statistical interpolation is performed to
-choose between using the outgoing energy distributions corresponding to energy
-:math:`E_i` and :math:`E_{i+1}`. Let :math:`\ell` be the chosen table where
-:math:`\ell = i` if :math:`\xi_1 > f` and :math:`\ell = i + 1` otherwise, and
-:math:`\xi_1` is a random number. Then, we sample an outgoing energy bin
+To avoid this situation, the accepted practice is to use a process known as
+scaled interpolation [Doyas]_. First, we find the tabulated incident energies
+which bound the actual incoming energy of the particle, i.e., find :math:`i`
+such that :math:`E_i < E < E_{i+1}` and calculate the interpolation factor
+:math:`f` via :eq:`interpolation-factor`. Then, we interpolate between the
+minimum and maximum energies of the outgoing energy distributions corresponding
+to :math:`E_i` and :math:`E_{i+1}`:
+
+.. math::
+    :label: continuous-minmax
+
+    E_{min} = E_{i,1} + f ( E_{i+1,1} - E_{i,1} ) \\
+    E_{max} = E_{i,M} + f ( E_{i+1,M} - E_{i,M} )
+
+where :math:`E_{min}` and :math:`E_{max}` are the minimum and maximum outgoing
+energies of a scaled distribution, :math:`E_{i,j}` is the j-th outgoing energy
+corresponding to the incoming energy :math:`E_i`, and :math:`M` is the number of
+outgoing energy bins.
+
+Next, statistical interpolation is performed to choose between using the
+outgoing energy distributions corresponding to energy :math:`E_i` and
+:math:`E_{i+1}`. Let :math:`\ell` be the chosen table where :math:`\ell = i` if
+:math:`\xi_1 > f` and :math:`\ell = i + 1` otherwise, and :math:`\xi_1` is a
+random number. For each incoming neutron energy :math:`E_i`, let us call
+:math:`p_{i,j}` the j-th value in the probability distribution function,
+:math:`c_{i,j}` the j-th value in the cumulative distribution function, and
+:math:`E_{i,j}` the j-th outgoing energy. We then sample an outgoing energy bin
 :math:`j` using the cumulative distribution function:
 
 .. math::
-    :label: ace-law-4-sample-cdf
+    :label: continuous-sample-cdf
 
     c_{\ell,j} < \xi_2 < c_{\ell,j+1}
 
@@ -692,22 +633,22 @@ If linear-linear interpolation is to be used, the outgoing energy on the
     \right ).
 
 Since this outgoing energy may violate reaction kinematics, we then scale it to
-minimum and maximum energies interpolated between the neighboring outgoing
-energy distributions to get the final outgoing energy:
+minimum and maximum energies calculated in equation :eq:`continuous-minmax` to
+get the final outgoing energy:
 
 .. math::
-    :label: ace-law-4-energy
+    :label: continuous-eout
 
     E' = E_{min} + \frac{\hat{E} - E_{\ell,1}}{E_{\ell,M} - E_{\ell,1}}
     (E_{max} - E_{min})
 
 where :math:`E_{min}` and :math:`E_{max}` are defined the same as in equation
-:eq:`ace-law-1-minmax`.
+:eq:`continuous-minmax`.
 
 .. _maxwell:
 
-ACE Law 7 - Maxwell Fission Spectrum
-++++++++++++++++++++++++++++++++++++
+Maxwell Fission Spectrum
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 One representation of the secondary energies for neutrons from fission is the
 so-called Maxwell spectrum. A probability distribution for the Maxwell spectrum
@@ -720,7 +661,7 @@ can be written in the form
 
 where :math:`E` is the incoming energy of the neutron and :math:`T` is the
 so-called nuclear temperature, which is a function of the incoming energy of the
-neutron. The ACE format contains a list of nuclear temperatures versus incoming
+neutron. The ENDF format contains a list of nuclear temperatures versus incoming
 energies. The nuclear temperature is interpolated between neighboring incoming
 energies using a specified interpolation law. Once the temperature :math:`T` is
 determined, we then calculate a candidate outgoing energy based on rule C64 in
@@ -740,12 +681,12 @@ interval. The outgoing energy is only accepted if
 
     0 \le E' \le E - U
 
-where :math:`U` is called the restriction energy and is specified on the ACE
-table. If the outgoing energy is rejected, it is resampled using equation
+where :math:`U` is called the restriction energy and is specified in the ENDF
+data. If the outgoing energy is rejected, it is resampled using equation
 :eq:`maxwell-E-candidate`.
 
-ACE Law 9 - Evaporation Spectrum
-++++++++++++++++++++++++++++++++
+Evaporation Spectrum
+^^^^^^^^^^^^^^^^^^^^
 
 Evaporation spectra are primarily used in compound nucleus processes where a
 secondary particle can "evaporate" from the compound nucleus if it has
@@ -759,7 +700,7 @@ be written in the form
 
 where :math:`E` is the incoming energy of the neutron and :math:`T` is the
 nuclear temperature, which is a function of the incoming energy of the
-neutron. The ACE format contains a list of nuclear temperatures versus incoming
+neutron. The ENDF format contains a list of nuclear temperatures versus incoming
 energies. The nuclear temperature is interpolated between neighboring incoming
 energies using a specified interpolation law. Once the temperature :math:`T` is
 determined, we then calculate a candidate outgoing energy based on the algorithm
@@ -777,11 +718,11 @@ energy as in equation :eq:`maxwell-restriction`. This algorithm has a much
 higher rejection efficiency than the standard technique, i.e. rule C45 in the
 `Monte Carlo Sampler`_.
 
-ACE Law 11 - Energy-Dependent Watt Spectrum
-+++++++++++++++++++++++++++++++++++++++++++
+Energy-Dependent Watt Spectrum
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The probability distribution for a Watt fission spectrum can be written in the
-form
+The probability distribution for a [Watt]_ fission spectrum can be written in
+the form
 
 .. math::
     :label: watt-spectrum
@@ -805,29 +746,37 @@ where :math:`\xi` is a random number sampled on the interval :math:`[0,1)`. The
 outgoing energy is only accepted according to a specified restriction energy
 :math:`U` as defined in equation :eq:`maxwell-restriction`.
 
-This algorithm can be found in Forrest Brown's lectures_ on Monte Carlo methods
-and is an unpublished sampling scheme based on the original Watt spectrum
-derivation [Watt]_.
+A derivation of the algorithm described here can be found in a paper by Romano_.
 
-ACE Law 44 - Kalbach-Mann Correlated Scattering
-+++++++++++++++++++++++++++++++++++++++++++++++
+Product Angle-Energy Distributions
+----------------------------------
 
-This law is very similar to ACE Law 4 except now the outgoing angle of the
-neutron is correlated to the outgoing energy and is not sampled from a separate
-distribution. For each incident neutron energy :math:`E_i` tabulated, there is
-an array of precompound factors :math:`R_{i,j}` and angular distribution slopes
-:math:`A_{i,j}` corresponding to each outgoing energy bin :math:`j` in addition
-to the outgoing energies and distribution functions as in ACE Law 4.
+If the secondary distribution for a product was given in file 6 in ENDF, the
+angle and energy are correlated with one another and cannot be sampled
+separately. Several representations exist in ENDF/ACE for correlated
+angle-energy distributions.
+
+Kalbach-Mann Correlated Scattering
+++++++++++++++++++++++++++++++++++
+
+This law is very similar to the uncorrelated continuous tabular energy
+distribution except now the outgoing angle of the neutron is correlated to the
+outgoing energy and is not sampled from a separate distribution. For each
+incident neutron energy :math:`E_i` tabulated, there is an array of precompound
+factors :math:`R_{i,j}` and angular distribution slopes :math:`A_{i,j}`
+corresponding to each outgoing energy bin :math:`j` in addition to the outgoing
+energies and distribution functions as in :ref:`continuous-tabular`.
 
 The calculation of the outgoing energy of the neutron proceeds exactly the same
-as in the algorithm described in :ref:`ace-law-4`. In that algorithm, we found
-an interpolation factor :math:`f`, statistically sampled an incoming energy bin
-:math:`\ell`, and sampled an outgoing energy bin :math:`j` based on the
-tabulated cumulative distribution function. Once the outgoing energy has been
-determined with equation :eq:`ace-law-4-energy`, we then need to calculate the
-outgoing angle based on the tabulated Kalbach-Mann parameters. These parameters
-themselves are subject to either histogram or linear-linear interpolation on the
-outgoing energy grid. For histogram interpolation, the parameters are
+as in the algorithm described in :ref:`continuous-tabular`. In that algorithm,
+we found an interpolation factor :math:`f`, statistically sampled an incoming
+energy bin :math:`\ell`, and sampled an outgoing energy bin :math:`j` based on
+the tabulated cumulative distribution function. Once the outgoing energy has
+been determined with equation :eq:`continuous-eout`, we then need to calculate
+the outgoing angle based on the tabulated Kalbach-Mann parameters. These
+parameters themselves are subject to either histogram or linear-linear
+interpolation on the outgoing energy grid. For histogram interpolation, the
+parameters are
 
 .. math::
     :label: KM-parameters-histogram
@@ -873,52 +822,55 @@ outgoing angle is
 
     \mu = \frac{1}{A} \ln \left ( \xi_4 e^A + (1 - \xi_4) e^{-A} \right ).
 
-.. _ace-law-61:
+.. _correlated-energy-angle:
 
-ACE Law 61 - Correlated Energy and Angle Distribution
-+++++++++++++++++++++++++++++++++++++++++++++++++++++
+Correlated Energy and Angle Distribution
+++++++++++++++++++++++++++++++++++++++++
 
-This law is very similar to ACE Law 44 in the sense that the outgoing angle of
-the neutron is correlated to the outgoing energy and is not sampled from a
-separate distribution. In this case though, rather than being determined from an
-analytical distribution function, the cosine of the scattering angle is
-determined from a tabulated distribution. For each incident energy :math:`i` and
-outgoing energy :math:`j`, there is a tabulated angular distribution.
+This distribution is very similar to a Kalbach-Mann distribution in the sense
+that the outgoing angle of the neutron is correlated to the outgoing energy and
+is not sampled from a separate distribution. In this case though, rather than
+being determined from an analytical distribution function, the cosine of the
+scattering angle is determined from a tabulated distribution. For each incident
+energy :math:`i` and outgoing energy :math:`j`, there is a tabulated angular
+distribution.
 
 The calculation of the outgoing energy of the neutron proceeds exactly the same
-as in the algorithm described in :ref:`ace-law-4`. In that algorithm, we found
-an interpolation factor :math:`f`, statistically sampled an incoming energy bin
-:math:`\ell`, and sampled an outgoing energy bin :math:`j` based on the
-tabulated cumulative distribution function. Once the outgoing energy has been
-determined with equation :eq:`ace-law-4-energy`, we then need to decide which
-angular distribution to use. If histogram interpolation was used on the outgoing
-energy bins, then we use the angular distribution corresponding to incoming
-energy bin :math:`\ell` and outgoing energy bin :math:`j`. If linear-linear
-interpolation was used on the outgoing energy bins, then we use the whichever
-angular distribution was closer to the sampled value of the cumulative
-distribution function for the outgoing energy. The actual algorithm used to
-sample the chosen tabular angular distribution has been previously described in
-:ref:`angle-tabular`.
+as in the algorithm described in :ref:`continuous-tabular`. In that algorithm,
+we found an interpolation factor :math:`f`, statistically sampled an incoming
+energy bin :math:`\ell`, and sampled an outgoing energy bin :math:`j` based on
+the tabulated cumulative distribution function. Once the outgoing energy has
+been determined with equation :eq:`continuous-eout`, we then need to decide
+which angular distribution to use. If histogram interpolation was used on the
+outgoing energy bins, then we use the angular distribution corresponding to
+incoming energy bin :math:`\ell` and outgoing energy bin :math:`j`. If
+linear-linear interpolation was used on the outgoing energy bins, then we use
+the whichever angular distribution was closer to the sampled value of the
+cumulative distribution function for the outgoing energy. The actual algorithm
+used to sample the chosen tabular angular distribution has been previously
+described in :ref:`angle-tabular`.
 
-ACE Law 66 - N-Body Phase Space Distribution
-++++++++++++++++++++++++++++++++++++++++++++
+N-Body Phase Space Distribution
++++++++++++++++++++++++++++++++
 
 Reactions in which there are more than two products of similar masses are
 sometimes best treated by using what's known as an N-body phase
 distribution. This distribution has the following probability density function
-for outgoing energy of the :math:`i`-th particle in the center-of-mass system:
+for outgoing energy and angle of the :math:`i`-th particle in the center-of-mass
+system:
 
 .. math::
     :label: n-body-pdf
 
-    p_i(E') dE' = C_n \sqrt{E'} (E_i^{max} - E')^{(3n/2) - 4} dE'
+    p_i(\mu, E') dE' d\mu = C_n \sqrt{E'} (E_i^{max} - E')^{(3n/2) - 4} dE' d\mu
 
 where :math:`n` is the number of outgoing particles, :math:`C_n` is a
 normalization constant, :math:`E_i^{max}` is the maximum center-of-mass energy
-for particle :math:`i`, and :math:`E'` is the outgoing energy. The algorithm for
-sampling the outgoing energy is based on algorithms R28, C45, and C64 in the
-`Monte Carlo Sampler`_. First we calculate the maximum energy in the
-center-of-mass using the following equation:
+for particle :math:`i`, and :math:`E'` is the outgoing energy. We see in
+equation :eq:`n-body-pdf` that the angle is simply isotropic in the
+center-of-mass system. The algorithm for sampling the outgoing energy is based
+on algorithms R28, C45, and C64 in the `Monte Carlo Sampler`_. First we
+calculate the maximum energy in the center-of-mass using the following equation:
 
 .. math::
     :label: n-body-emax
@@ -961,7 +913,7 @@ distribution. First, the documentation (and code) for MCNP5-1.60 has a mistake
 in the algorithm for :math:`n = 4`. That being said, there are no existing
 nuclear data evaluations which use an N-body phase space distribution with
 :math:`n = 4`, so the error would not affect any calculations. In the
-ENDF/B-VII.0 nuclear data evaluation, only one reaction uses an N-body phase
+ENDF/B-VII.1 nuclear data evaluation, only one reaction uses an N-body phase
 space distribution at all, the :math:`(n,2n)` reaction with H-2.
 
 .. _transform-coordinates:
@@ -1527,16 +1479,16 @@ accordingly.
 Continuous Outgoing Energies
 ++++++++++++++++++++++++++++
 
-If the thermal data was processed with :math:`iwt=2` in NJOY, then the
-outgoing energy spectra is represented by a continuous outgoing energy spectra
-in tabular form with linear-linear interpolation.  The sampling of the outgoing
-energy portion of this format is very similar to :ref:`ACE Law 61<ace-law-61>`,
-but the sampling of the correlated angle is performed as it was in the other
-two representations discussed in this sub-section.  In the Law 61 algorithm,
-we found an interpolation factor :math:`f`, statistically sampled an incoming
+If the thermal data was processed with :math:`iwt=2` in NJOY, then the outgoing
+energy spectra is represented by a continuous outgoing energy spectra in tabular
+form with linear-linear interpolation.  The sampling of the outgoing energy
+portion of this format is very similar to :ref:`correlated-energy-angle`, but
+the sampling of the correlated angle is performed as it was in the other two
+representations discussed in this sub-section.  In the Law 61 algorithm, we
+found an interpolation factor :math:`f`, statistically sampled an incoming
 energy bin :math:`\ell`, and sampled an outgoing energy bin :math:`j` based on
 the tabulated cumulative distribution function. Once the outgoing energy has
-been determined with equation :eq:`ace-law-4-energy`, we then need to decide
+been determined with equation :eq:`continuous-eout`, we then need to decide
 which angular distribution data to use.  Like the linear-linear interpolation
 case in Law 61, the angular distribution closest to the sampled value of the
 cumulative distribution function for the outgoing energy is utilized.  The
@@ -1722,6 +1674,8 @@ another.
 .. _LA-UR-14-27694: http://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-UR-14-27694
 
 .. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf
+
+.. _Romano: http://dx.doi.org/10.1016/j.cpc.2014.11.001
 
 .. _Sutton and Brown: http://www.osti.gov/bridge/product.biblio.jsp?osti_id=307911
 

@@ -522,8 +522,6 @@ contains
     integer,               intent(out) :: next_bin
     real(8),               intent(out) :: weight
 
-    integer :: i
-
     if (current_bin == NO_BIN_FOUND) then
       if (this % map % has_key(p % material)) then
         next_bin = this % map % get_key(p % material)
@@ -784,8 +782,6 @@ contains
     integer,               intent(in)  :: current_bin
     integer,               intent(out) :: next_bin
     real(8),               intent(out) :: weight
-
-    integer :: i
 
     if (current_bin == NO_BIN_FOUND) then
       if (this % map % has_key(p % cell_born)) then

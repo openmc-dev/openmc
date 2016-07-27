@@ -12,10 +12,10 @@ class ResonanceScatteringTestHarness(PyAPITestHarness):
         # Materials
         mat = openmc.Material(material_id=1)
         mat.set_density('g/cc', 1.0)
-        mat.add_nuclide('U-238', 1.0)
-        mat.add_nuclide('U-235', 0.02)
-        mat.add_nuclide('Pu-239', 0.02)
-        mat.add_nuclide('H-1', 20.0)
+        mat.add_nuclide('U238', 1.0)
+        mat.add_nuclide('U235', 0.02)
+        mat.add_nuclide('Pu239', 0.02)
+        mat.add_nuclide('H1', 20.0)
 
         mats_file = openmc.Materials([mat])
         mats_file.default_xs = '71c'
@@ -37,8 +37,7 @@ class ResonanceScatteringTestHarness(PyAPITestHarness):
         geometry.export_to_xml()
 
         # Settings
-        nuclide = openmc.Nuclide('U-238', '71c')
-        nuclide.zaid = 92238
+        nuclide = openmc.Nuclide('U238', '71c')
         res_scatt_dbrc = openmc.ResonanceScattering()
         res_scatt_dbrc.nuclide = nuclide
         res_scatt_dbrc.nuclide_0K = nuclide # This is a bad idea! Just for tests
@@ -46,8 +45,7 @@ class ResonanceScatteringTestHarness(PyAPITestHarness):
         res_scatt_dbrc.E_min = 1e-6
         res_scatt_dbrc.E_max = 210e-6
 
-        nuclide = openmc.Nuclide('U-235', '71c')
-        nuclide.zaid = 92235
+        nuclide = openmc.Nuclide('U235', '71c')
         res_scatt_wcm = openmc.ResonanceScattering()
         res_scatt_wcm.nuclide = nuclide
         res_scatt_wcm.nuclide_0K = nuclide
@@ -55,8 +53,7 @@ class ResonanceScatteringTestHarness(PyAPITestHarness):
         res_scatt_wcm.E_min = 1e-6
         res_scatt_wcm.E_max = 210e-6
 
-        nuclide = openmc.Nuclide('Pu-239', '71c')
-        nuclide.zaid = 94239
+        nuclide = openmc.Nuclide('Pu239', '71c')
         res_scatt_ares = openmc.ResonanceScattering()
         res_scatt_ares.nuclide = nuclide
         res_scatt_ares.nuclide_0K = nuclide

@@ -38,6 +38,7 @@ module stl_vector
   implicit none
   private
 
+  integer, parameter :: VECTOR_CHAR_LEN = 255
   real(8), parameter :: GROWTH_FACTOR = 1.5
 
   type, public :: VectorInt
@@ -75,6 +76,24 @@ module stl_vector
     procedure :: shrink_to_fit => shrink_to_fit_real
     procedure :: size => size_real
   end type VectorReal
+
+  type, public :: VectorChar
+    integer, private :: size_ = 0
+    integer, private :: capacity_ = 0
+    character(VECTOR_CHAR_LEN), allocatable :: data(:)
+  contains
+    procedure :: capacity => capacity_char
+    procedure :: clear => clear_char
+    generic :: initialize => &
+         initialize_fill_char
+    procedure, private :: initialize_fill_char
+    procedure :: pop_back => pop_back_char
+    procedure :: push_back => push_back_char
+    procedure :: reserve => reserve_char
+    procedure :: resize => resize_char
+    procedure :: shrink_to_fit => shrink_to_fit_char
+    procedure :: size => size_char
+  end type VectorChar
 
 contains
 
@@ -347,5 +366,144 @@ contains
 
     size = this%size_
   end function size_real
+
+!===============================================================================
+! Implementation of VectorChar
+!===============================================================================
+
+  pure function capacity_char(this) result(capacity)
+    class(VectorChar), intent(in) :: this
+    integer :: capacity
+
+    capacity = this%capacity_
+  end function capacity_char
+
+  subroutine clear_char(this)
+    class(VectorChar), intent(inout) :: this
+
+    ! Since char is trivially destructible, we only need to set size to zero and
+    ! can leave capacity as is
+    this%size_ = 0
+  end subroutine clear_char
+
+  subroutine initialize_fill_char(this, n, val)
+    class(VectorChar), intent(inout) :: this
+    integer, intent(in) :: n
+    character(*), optional, intent(in) :: val
+
+    integer :: i
+    character(VECTOR_CHAR_LEN) :: val_
+
+    ! If no value given, fill the vector with empty strings
+    if (present(val)) then
+      val_ = val
+    else
+      val_ = ''
+    end if
+
+    if (allocated(this%data)) deallocate(this%data)
+
+    allocate(this%data(n))
+    do i = 1, n
+      this%data(i) = val_
+    end do
+    this%size_ = n
+    this%capacity_ = n
+  end subroutine initialize_fill_char
+
+  subroutine pop_back_char(this)
+    class(VectorChar), intent(inout) :: this
+    if (this%size_ > 0) this%size_ = this%size_ - 1
+  end subroutine pop_back_char
+
+  subroutine push_back_char(this, val)
+    class(VectorChar), intent(inout) :: this
+    character(*), intent(in) :: val
+
+    integer :: capacity
+    character(VECTOR_CHAR_LEN), allocatable :: data(:)
+
+    if (this%capacity_ == this%size_) then
+      ! Create new data array that is GROWTH_FACTOR larger. Note that
+      if (this%capacity_ == 0) then
+        capacity = 8
+      else
+        capacity = int(GROWTH_FACTOR*this%capacity_)
+      end if
+      allocate(data(capacity))
+
+      ! Copy existing elements
+      if (this%size_ > 0) data(1:this%size_) = this%data
+
+      ! Move allocation
+      call move_alloc(FROM=data, TO=this%data)
+      this%capacity_ = capacity
+    end if
+
+    ! Increase size of vector by one and set new element
+    this%size_ = this%size_ + 1
+    this%data(this%size_) = val
+  end subroutine push_back_char
+
+  subroutine reserve_char(this, n)
+    class(VectorChar), intent(inout) :: this
+    integer, intent(in) :: n
+
+    character(VECTOR_CHAR_LEN), allocatable :: data(:)
+
+    if (n > this%capacity_) then
+      allocate(data(n))
+
+      ! Copy existing elements
+      if (this%size_ > 0) data(1:this%size_) = this%data(1:this%size_)
+
+      ! Move allocation
+      call move_alloc(FROM=data, TO=this%data)
+      this%capacity_ = n
+    end if
+  end subroutine reserve_char
+
+  subroutine resize_char(this, n, val)
+    class(VectorChar), intent(inout) :: this
+    integer, intent(in) :: n
+    character(*), intent(in), optional :: val
+
+    if (n < this%size_) then
+      this%size_ = n
+    elseif (n > this%size_) then
+      ! If requested size is greater than capacity, first reserve that many
+      ! elements
+      if (n > this%capacity_) call this%reserve(n)
+
+      ! Fill added elements with specified value and increase size
+      if (present(val)) this%data(this%size_ + 1 : n) = val
+      this%size_ = n
+    end if
+
+  end subroutine resize_char
+
+  subroutine shrink_to_fit_char(this)
+    class(VectorChar), intent(inout) :: this
+
+    character(VECTOR_CHAR_LEN), allocatable :: data(:)
+
+    if (this%capacity_ > this%size_) then
+      if (this%size_ > 0) then
+        allocate(data(this%size_))
+        data(:) = this%data(1:this%size_)
+        call move_alloc(FROM=data, TO=this%data)
+        this%capacity_ = this%size_
+      else
+        if (allocated(this%data)) deallocate(this%data)
+      end if
+    end if
+  end subroutine shrink_to_fit_char
+
+  pure function size_char(this) result(size)
+    class(VectorChar), intent(in) :: this
+    integer :: size
+
+    size = this%size_
+  end function size_char
 
 end module stl_vector

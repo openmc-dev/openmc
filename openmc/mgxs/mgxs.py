@@ -1,6 +1,6 @@
 from __future__ import division
 
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
 from numbers import Integral
 import warnings
 import os
@@ -120,7 +120,7 @@ class MGXS(object):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -412,7 +412,7 @@ class MGXS(object):
             self.rxn_rate_tally.sparse = sparse
 
         for tally_name in self.tallies:
-                self.tallies[tally_name].sparse = sparse
+            self.tallies[tally_name].sparse = sparse
 
         self._sparse = sparse
 
@@ -494,7 +494,7 @@ class MGXS(object):
         -------
         list of str
             A list of the string names for each nuclide in the spatial domain
-            (e.g., ['U-235', 'U-238', 'O-16'])
+            (e.g., ['U235', 'U238', 'O16'])
 
         Raises
         ------
@@ -522,7 +522,7 @@ class MGXS(object):
         Parameters
         ----------
         nuclide : str
-            A nuclide name string (e.g., 'U-235')
+            A nuclide name string (e.g., 'U235')
 
         Returns
         -------
@@ -557,7 +557,7 @@ class MGXS(object):
         Parameters
         ----------
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the atom densities for all nuclides
             in the spatial domain. The special string 'sum' will return the atom
             density summed across all nuclides in the spatial domain. Defaults
@@ -716,7 +716,7 @@ class MGXS(object):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
@@ -852,7 +852,7 @@ class MGXS(object):
         fine_edges = self.energy_groups.group_edges
 
         # Condense each of the tallies to the coarse group structure
-        for tally_type, tally in condensed_xs.tallies.items():
+        for tally in condensed_xs.tallies.values():
 
             # Make condensed tally derived and null out sum, sum_sq
             tally._derived = True
@@ -954,7 +954,7 @@ class MGXS(object):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         groups : list of int
             A list of energy group indices starting at 1 for the high energies
             (e.g., [1, 2, 3]; default is [])
@@ -993,7 +993,8 @@ class MGXS(object):
             slice_nuclides = [nuc for nuc in nuclides if nuc in tally.nuclides]
             if len(groups) != 0 and tally.contains_filter('energy'):
                 tally_slice = tally.get_slice(filters=filters,
-                    filter_bins=filter_bins, nuclides=slice_nuclides)
+                                              filter_bins=filter_bins,
+                                              nuclides=slice_nuclides)
             else:
                 tally_slice = tally.get_slice(nuclides=slice_nuclides)
             slice_xs.tallies[tally_type] = tally_slice
@@ -1110,7 +1111,7 @@ class MGXS(object):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -1214,7 +1215,7 @@ class MGXS(object):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -1286,7 +1287,7 @@ class MGXS(object):
         num_digits = len(str(self.num_subdomains))
 
         # Create a separate HDF5 group for each subdomain
-        for i, subdomain in enumerate(subdomains):
+        for subdomain in subdomains:
 
             # Create an HDF5 group for the subdomain
             if self.domain_type == 'distribcell':
@@ -1311,9 +1312,11 @@ class MGXS(object):
 
                 # Extract the cross section for this subdomain and nuclide
                 average = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
-                    xs_type=xs_type, value='mean', row_column=row_column)
+                                      xs_type=xs_type, value='mean',
+                                      row_column=row_column)
                 std_dev = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
-                    xs_type=xs_type, value='std_dev', row_column=row_column)
+                                      xs_type=xs_type, value='std_dev',
+                                      row_column=row_column)
                 average = average.squeeze()
                 std_dev = std_dev.squeeze()
 
@@ -1386,9 +1389,9 @@ class MGXS(object):
                         longtable=True, index=False)
 
             # Surround LaTeX table with code needed to run pdflatex
-            with open(filename + '.tex','r') as original:
+            with open(filename + '.tex', 'r') as original:
                 data = original.read()
-            with open(filename + '.tex','w') as modified:
+            with open(filename + '.tex', 'w') as modified:
                 modified.write(
                     '\\documentclass[preview, 12pt, border=1mm]{standalone}\n')
                 modified.write('\\usepackage{caption}\n')
@@ -1411,7 +1414,7 @@ class MGXS(object):
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will include the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             include the cross sections summed over all nuclides. Defaults
@@ -1451,7 +1454,7 @@ class MGXS(object):
             query_nuclides = self.get_all_nuclides()
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
             df = xs_tally.get_pandas_dataframe(
-                    distribcell_paths=distribcell_paths)
+                distribcell_paths=distribcell_paths)
 
             # Remove nuclide column since it is homogeneous and redundant
             df.drop('nuclide', axis=1, inplace=True)
@@ -1460,12 +1463,12 @@ class MGXS(object):
         elif self.by_nuclide and nuclides != 'all':
             xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
             df = xs_tally.get_pandas_dataframe(
-                    distribcell_paths=distribcell_paths)
+                distribcell_paths=distribcell_paths)
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
             df = self.xs_tally.get_pandas_dataframe(
-                    distribcell_paths=distribcell_paths)
+                distribcell_paths=distribcell_paths)
 
         # Remove the score column since it is homogeneous and redundant
         df = df.drop('score', axis=1)
@@ -1517,6 +1520,7 @@ class MGXS(object):
                 densities = self.get_nuclide_densities(nuclides)
             else:
                 densities = self.get_nuclide_densities('sum')
+            densities = np.repeat(densities, len(self.rxn_rate_tally.scores))
             tile_factor = df.shape[0] / len(densities)
             df['mean'] /= np.tile(densities, tile_factor)
             df['std. dev.'] /= np.tile(densities, tile_factor)
@@ -1599,7 +1603,7 @@ class MatrixMGXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -1648,7 +1652,7 @@ class MatrixMGXS(MGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             return the cross section summed over all nuclides. Defaults to
@@ -1786,7 +1790,7 @@ class MatrixMGXS(MGXS):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         in_groups : list of int
             A list of incoming energy group indices starting at 1 for the high
             energies (e.g., [1, 2, 3]; default is [])
@@ -1836,7 +1840,7 @@ class MatrixMGXS(MGXS):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             report the cross sections summed over all nuclides. Defaults to
@@ -2020,7 +2024,7 @@ class TotalXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2138,7 +2142,7 @@ class TransportXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2268,7 +2272,7 @@ class NuTransportXS(TransportXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2389,7 +2393,7 @@ class AbsorptionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2505,7 +2509,7 @@ class CaptureXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2627,7 +2631,7 @@ class FissionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2738,7 +2742,7 @@ class NuFissionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2854,7 +2858,7 @@ class KappaFissionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2967,7 +2971,7 @@ class ScatterXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -3082,7 +3086,7 @@ class NuScatterXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -3216,7 +3220,7 @@ class ScatterMatrixXS(MatrixMGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -3379,7 +3383,7 @@ class ScatterMatrixXS(MatrixMGXS):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         in_groups : list of int
             A list of incoming energy group indices starting at 1 for the high
             energies (e.g., [1, 2, 3]; default is [])
@@ -3442,7 +3446,7 @@ class ScatterMatrixXS(MatrixMGXS):
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all', moment='all',
                xs_type='macro', order_groups='increasing',
-               row_column='inout', value='mean', **kwargs):
+               row_column='inout', value='mean'):
         r"""Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested scattering
@@ -3461,7 +3465,7 @@ class ScatterMatrixXS(MatrixMGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
@@ -3529,7 +3533,7 @@ class ScatterMatrixXS(MatrixMGXS):
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
             cv.check_less_than(
-                    'moment', moment, self.legendre_order, equality=True)
+                'moment', moment, self.legendre_order, equality=True)
             scores = [self.xs_tally.scores[moment]]
         else:
             scores = []
@@ -3608,7 +3612,7 @@ class ScatterMatrixXS(MatrixMGXS):
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will include the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             include the cross sections summed over all nuclides. Defaults
@@ -3640,7 +3644,7 @@ class ScatterMatrixXS(MatrixMGXS):
         """
 
         df = super(ScatterMatrixXS, self).get_pandas_dataframe(
-                groups, nuclides, xs_type, distribcell_paths)
+            groups, nuclides, xs_type, distribcell_paths)
 
         # Add a moment column to dataframe
         if self.legendre_order > 0:
@@ -3659,7 +3663,7 @@ class ScatterMatrixXS(MatrixMGXS):
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
             cv.check_less_than(
-                    'moment', moment, self.legendre_order, equality=True)
+                'moment', moment, self.legendre_order, equality=True)
             df = df[df['moment'] == 'P{}'.format(moment)]
 
         return df
@@ -3675,7 +3679,7 @@ class ScatterMatrixXS(MatrixMGXS):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -3865,7 +3869,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -3987,7 +3991,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -4134,7 +4138,7 @@ class NuFissionMatrixXS(MatrixMGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -4249,7 +4253,7 @@ class Chi(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -4327,7 +4331,7 @@ class Chi(MGXS):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         groups : list of Integral
             A list of energy group indices starting at 1 for the high energies
             (e.g., [1, 2, 3]; default is [])
@@ -4438,7 +4442,7 @@ class Chi(MGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
@@ -4571,7 +4575,7 @@ class Chi(MGXS):
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will include the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             include the cross sections summed over all nuclides. Defaults to
@@ -4600,7 +4604,7 @@ class Chi(MGXS):
 
         # Build the dataframe using the parent class method
         df = super(Chi, self).get_pandas_dataframe(
-                groups, nuclides, xs_type, distribcell_paths=distribcell_paths)
+            groups, nuclides, xs_type, distribcell_paths=distribcell_paths)
 
         # If user requested micro cross sections, multiply by the atom
         # densities to cancel out division made by the parent class method

@@ -13,18 +13,18 @@ class Nuclide(object):
     Parameters
     ----------
     name : str
-        Name of the nuclide, e.g. U-235
+        Name of the nuclide, e.g. U235
     xs : str
         Cross section identifier, e.g. 71c
 
     Attributes
     ----------
     name : str
-        Name of the nuclide, e.g. U-235
+        Name of the nuclide, e.g. U235
     xs : str
         Cross section identifier, e.g. 71c
     zaid : int
-        1000*(atomic number) + mass number. As an example, the zaid of U-235
+        1000*(atomic number) + mass number. As an example, the zaid of U235
         would be 92235.
     scattering : 'data' or 'iso-in-lab' or None
         The type of angular scattering distribution to use
@@ -46,9 +46,9 @@ class Nuclide(object):
 
     def __eq__(self, other):
         if isinstance(other, Nuclide):
-            if self._name != other._name:
+            if self.name != other.name:
                 return False
-            elif self._xs != other._xs:
+            elif self.xs != other.xs:
                 return False
             else:
                 return True
@@ -71,9 +71,12 @@ class Nuclide(object):
 
     def __repr__(self):
         string = 'Nuclide    -    {0}\n'.format(self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
-        if self._zaid is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self._zaid)
+        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self.xs)
+        if self.zaid is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self.zaid)
+        if self.scattering is not None:
+            string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t',
+                                                self.scattering)
         return string
 
     @property
@@ -116,13 +119,3 @@ class Nuclide(object):
             raise ValueError(msg)
 
         self._scattering = scattering
-
-    def __repr__(self):
-        string = 'Nuclide    -    {0}\n'.format(self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self.xs)
-        if self.zaid is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tZAID', '=\t', self.zaid)
-        if self.scattering is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t', 
-                                                self.scattering)
-        return string

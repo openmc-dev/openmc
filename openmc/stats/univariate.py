@@ -4,10 +4,15 @@ from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
 
+import numpy as np
+
 import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
     basestring = str
+
+_INTERPOLATION_SCHEMES = ['histogram', 'linear-linear', 'linear-log',
+                          'log-linear', 'log-log']
 
 
 class Univariate(object):
@@ -24,8 +29,12 @@ class Univariate(object):
         pass
 
     @abstractmethod
-    def to_xml(self):
+    def to_xml(self, element_name):
         return ''
+
+    @abstractmethod
+    def __len__(self):
+        return 0
 
 
 class Discrete(Univariate):
@@ -55,6 +64,9 @@ class Discrete(Univariate):
         super(Discrete, self).__init__()
         self.x = x
         self.p = p
+
+    def __len__(self):
+        return len(self.x)
 
     @property
     def x(self):
@@ -114,6 +126,9 @@ class Uniform(Univariate):
         self.a = a
         self.b = b
 
+    def __len__(self):
+        return 2
+
     @property
     def a(self):
         return self._a
@@ -131,6 +146,12 @@ class Uniform(Univariate):
     def b(self, b):
         cv.check_type('Uniform b', b, Real)
         self._b = b
+
+    def to_tabular(self):
+        prob = 1./(self.b - self.a)
+        t = Tabular([self.a, self.b], [prob, prob], 'histogram')
+        t.c = [0., 1.]
+        return t
 
     def to_xml(self, element_name):
         element = ET.Element(element_name)
@@ -162,6 +183,9 @@ class Maxwell(Univariate):
         super(Maxwell, self).__init__()
         self.theta = theta
 
+    def __len__(self):
+        return 1
+
     @property
     def theta(self):
         return self._theta
@@ -180,7 +204,7 @@ class Maxwell(Univariate):
 
 
 class Watt(Univariate):
-    """Watt fission energy spectrum.
+    r"""Watt fission energy spectrum.
 
     The Watt fission energy spectrum is characterized by two parameters
     :math:`a` and :math:`b` and has density function :math:`p(E) dE = c e^{-E/a}
@@ -206,6 +230,9 @@ class Watt(Univariate):
         super(Watt, self).__init__()
         self.a = a
         self.b = b
+
+    def __len__(self):
+        return 2
 
     @property
     def a(self):
@@ -238,8 +265,8 @@ class Tabular(Univariate):
     """Piecewise continuous probability distribution.
 
     This class is used to represent a probability distribution whose density
-    function is tabulated at specific values and is either histogram or linearly
-    interpolated between points.
+    function is tabulated at specific values with a specified interpolation
+    scheme.
 
     Parameters
     ----------
@@ -247,9 +274,11 @@ class Tabular(Univariate):
         Tabulated values of the random variable
     p : Iterable of float
         Tabulated probabilities
-    interpolation : {'histogram', 'linear-linear'}, optional
+    interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
         Indicate whether the density function is constant between tabulated
-        points or linearly-interpolated.
+        points or linearly-interpolated. Defaults to 'linear-linear'.
+    ignore_negative : bool
+        Ignore negative probabilities
 
     Attributes
     ----------
@@ -257,17 +286,22 @@ class Tabular(Univariate):
         Tabulated values of the random variable
     p : Iterable of float
         Tabulated probabilities
-    interpolation : {'histogram', 'linear-linear'}, optional
+    interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
         Indicate whether the density function is constant between tabulated
         points or linearly-interpolated.
 
     """
 
-    def __init__(self, x, p, interpolation='linear-linear'):
+    def __init__(self, x, p, interpolation='linear-linear',
+                 ignore_negative=False):
         super(Tabular, self).__init__()
+        self._ignore_negative = ignore_negative
         self.x = x
         self.p = p
         self.interpolation = interpolation
+
+    def __len__(self):
+        return len(self.x)
 
     @property
     def x(self):
@@ -289,14 +323,14 @@ class Tabular(Univariate):
     @p.setter
     def p(self, p):
         cv.check_type('tabulated probabilities', p, Iterable, Real)
-        for pk in p:
-            cv.check_greater_than('tabulated probability', pk, 0.0, True)
+        if not self._ignore_negative:
+            for pk in p:
+                cv.check_greater_than('tabulated probability', pk, 0.0, True)
         self._p = p
 
     @interpolation.setter
     def interpolation(self, interpolation):
-        cv.check_value('interpolation', interpolation,
-                       ['linear-linear', 'histogram'])
+        cv.check_value('interpolation', interpolation, _INTERPOLATION_SCHEMES)
         self._interpolation = interpolation
 
     def to_xml(self, element_name):
@@ -308,3 +342,103 @@ class Tabular(Univariate):
         params.text = ' '.join(map(str, self.x)) + ' ' + ' '.join(map(str, self.p))
 
         return element
+
+
+class Legendre(Univariate):
+    r"""Probability density given by a Legendre polynomial expansion
+    :math:`\sum\limits_{\ell=0}^N \frac{2\ell + 1}{2} a_\ell P_\ell(\mu)`.
+
+    Parameters
+    ----------
+    coefficients : Iterable of Real
+        Expansion coefficients :math:`a_\ell`. Note that the :math:`(2\ell +
+        1)/2` factor should not be included.
+
+    Attributes
+    ----------
+    coefficients : Iterable of Real
+        Expansion coefficients :math:`a_\ell`. Note that the :math:`(2\ell +
+        1)/2` factor should not be included.
+
+    """
+
+    def __init__(self, coefficients):
+        self.coefficients = coefficients
+
+    def __call__(self, x):
+        return self._legendre_polynomial(x)
+
+    def __len__(self):
+        return len(self._legendre_polynomial.coef)
+
+    @property
+    def coefficients(self):
+        poly = self._legendre_polynomial
+        l = np.arange(poly.degree() + 1)
+        return 2./(2.*l + 1.) * poly.coef
+
+    @coefficients.setter
+    def coefficients(self, coefficients):
+        cv.check_type('Legendre expansion coefficients', coefficients,
+                      Iterable, Real)
+        for l in range(len(coefficients)):
+            coefficients[l] *= (2.*l + 1.)/2.
+        self._legendre_polynomial = np.polynomial.legendre.Legendre(
+            coefficients)
+
+    def to_xml(self, element_name):
+        raise NotImplementedError
+
+
+class Mixture(Univariate):
+    """Probability distribution characterized by a mixture of random variables.
+
+    Parameters
+    ----------
+    probability : Iterable of Real
+        Probability of selecting a particular distribution
+    distribution : Iterable of Univariate
+        List of distributions with corresponding probabilities
+
+    Attributes
+    ----------
+    probability : Iterable of Real
+        Probability of selecting a particular distribution
+    distribution : Iterable of Univariate
+        List of distributions with corresponding probabilities
+
+    """
+
+    def __init__(self, probability, distribution):
+        super(Mixture, self).__init__()
+        self.probability = probability
+        self.distribution = distribution
+
+    def __len__(self):
+        return sum(len(d) for d in self.distribution)
+
+    @property
+    def probability(self):
+        return self._probability
+
+    @property
+    def distribution(self):
+        return self._distribution
+
+    @probability.setter
+    def probability(self, probability):
+        cv.check_type('mixture distribution probabilities', probability,
+                      Iterable, Real)
+        for p in probability:
+            cv.check_greater_than('mixture distribution probabilities',
+                                  p, 0.0, True)
+        self._probability = probability
+
+    @distribution.setter
+    def distribution(self, distribution):
+        cv.check_type('mixture distribution components', distribution,
+                      Iterable, Univariate)
+        self._distribution = distribution
+
+    def to_xml(self, element_name):
+        raise NotImplementedError

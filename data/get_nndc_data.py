@@ -20,10 +20,6 @@ try:
 except ImportError:
     from urllib2 import urlopen
 
-cwd = os.getcwd()
-sys.path.insert(0, os.path.join(cwd, '..'))
-from openmc.ace import ascii_to_binary
-
 baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',
          'ENDF-B-VII.1-tsl.tar.gz']
@@ -115,12 +111,6 @@ with open(graphite, 'w') as fh:
     fh.write(text)
 
 # ==============================================================================
-# COPY CROSS_SECTIONS.XML
-
-print('Copying cross_sections_nndc.xml...')
-shutil.copyfile('cross_sections_nndc.xml', 'nndc/cross_sections.xml')
-
-# ==============================================================================
 # PROMPT USER TO DELETE .TAR.GZ FILES
 
 # Ask user to delete
@@ -140,44 +130,26 @@ if not response or response.lower().startswith('y'):
             os.remove(f)
 
 # ==============================================================================
-# PROMPT USER TO CONVERT ASCII TO BINARY
+# PROMPT USER TO GENERATE HDF5 LIBRARY
 
 # Ask user to convert
 if not args.batch:
     if sys.version_info[0] < 3:
-        response = raw_input('Convert ACE files to binary? ([y]/n) ')
+        response = raw_input('Generate HDF5 library? ([y]/n) ')
     else:
-        response = input('Convert ACE files to binary? ([y]/n) ')
+        response = input('Generate HDF5 library? ([y]/n) ')
 else:
     response = 'y'
 
 # Convert files if requested
 if not response or response.lower().startswith('y'):
+    # get a list of all ACE files
+    ace_files = sorted(glob.glob(os.path.join('nndc', '**', '*.ace*')))
 
-    # get a list of directories
-    ace_dirs = glob.glob(os.path.join('nndc', '*K'))
-    ace_dirs += glob.glob(os.path.join('nndc', 'tsl'))
+    # Ensure 'import openmc.data' works in the openmc-ace-to-xml script
+    cwd = os.getcwd()
+    env = os.environ.copy()
+    env['PYTHONPATH'] = os.path.join(cwd, '..')
 
-    # loop around ace directories
-    for d in ace_dirs:
-        print('Converting {0}...'.format(d))
-
-        # get a list of files to convert
-        ace_files = glob.glob(os.path.join(d, '*.ace*'))
-
-        # convert files
-        for f in ace_files:
-            print('    Converting {0}...'.format(os.path.split(f)[1]))
-            ascii_to_binary(f, f)
-
-    # Change cross_sections.xml file
-    xs_file = os.path.join('nndc', 'cross_sections.xml')
-    asc_str = "<filetype>ascii</filetype>"
-    bin_str = "<filetype> binary </filetype>\n "
-    bin_str += "<record_length> 4096 </record_length>\n "
-    bin_str += "<entries> 512 </entries>"
-    with open(xs_file) as fh:
-        text = fh.read()
-    text = text.replace(asc_str, bin_str)
-    with open(xs_file, 'w') as fh:
-        fh.write(text)
+    subprocess.call(['../scripts/openmc-ace-to-hdf5', '-d', 'nndc_hdf5']
+                    + ace_files, env=env)

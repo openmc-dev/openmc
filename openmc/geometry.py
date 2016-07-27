@@ -1,11 +1,13 @@
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
 from xml.etree import ElementTree as ET
 
 import openmc
-from openmc.clean_xml import *
+from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
 from openmc.checkvalue import check_type
 
+
 def reset_auto_ids():
+    """Reset counters for all auto-generated IDs"""
     openmc.reset_auto_material_id()
     openmc.reset_auto_surface_id()
     openmc.reset_auto_cell_id()
@@ -40,10 +42,10 @@ class Geometry(object):
     @root_universe.setter
     def root_universe(self, root_universe):
         check_type('root universe', root_universe, openmc.Universe)
-        if root_universe._id != 0:
+        if root_universe.id != 0:
             msg = 'Unable to add root Universe "{0}" to Geometry since ' \
                   'it has ID="{1}" instead of ' \
-                  'ID=0'.format(root_universe, root_universe._id)
+                  'ID=0'.format(root_universe, root_universe.id)
             raise ValueError(msg)
 
         self._root_universe = root_universe
@@ -281,9 +283,9 @@ class Geometry(object):
             The name to match
         case_sensitive : bool
             Whether to distinguish upper and lower case letters in each
-            material's name (default is True)
+            material's name (default is False)
         matching : bool
-            Whether the names must match completely (default is True)
+            Whether the names must match completely (default is False)
 
         Returns
         -------
@@ -321,9 +323,9 @@ class Geometry(object):
             The name to search match
         case_sensitive : bool
             Whether to distinguish upper and lower case letters in each
-            cell's name (default is True)
+            cell's name (default is False)
         matching : bool
-            Whether the names must match completely (default is True)
+            Whether the names must match completely (default is False)
 
         Returns
         -------
@@ -361,9 +363,9 @@ class Geometry(object):
             The name to match
         case_sensitive : bool
             Whether to distinguish upper and lower case letters in each
-            cell's name (default is True)
+            cell's name (default is False)
         matching : bool
-            Whether the names must match completely (default is True)
+            Whether the names must match completely (default is False)
 
         Returns
         -------
@@ -401,9 +403,9 @@ class Geometry(object):
             The name to match
         case_sensitive : bool
             Whether to distinguish upper and lower case letters in each
-            universe's name (default is True)
+            universe's name (default is False)
         matching : bool
-            Whether the names must match completely (default is True)
+            Whether the names must match completely (default is False)
 
         Returns
         -------
@@ -441,9 +443,9 @@ class Geometry(object):
             The name to match
         case_sensitive : bool
             Whether to distinguish upper and lower case letters in each
-            lattice's name (default is True)
+            lattice's name (default is False)
         matching : bool
-            Whether the names must match completely (default is True)
+            Whether the names must match completely (default is False)
 
         Returns
         -------

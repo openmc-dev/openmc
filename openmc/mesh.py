@@ -16,6 +16,7 @@ AUTO_MESH_ID = 10000
 
 
 def reset_auto_mesh_id():
+    """Reset counter for auto-generated mesh IDs."""
     global AUTO_MESH_ID
     AUTO_MESH_ID = 10000
 
@@ -63,20 +64,20 @@ class Mesh(object):
 
     def __eq__(self, mesh2):
         # Check type
-        if self._type != mesh2._type:
+        if self._type != mesh2.type:
             return False
 
         # Check dimension
-        elif self._dimension != mesh2._dimension:
+        elif self._dimension != mesh2.dimension:
             return False
 
         # Check width
-        elif self._width != mesh2._width:
+        elif self._width != mesh2.width:
             return False
 
         # Check lower left / upper right
-        elif self._lower_left != mesh2._lower_left and \
-             self._upper_right != mesh2._upper_right:
+        elif self._lower_left != mesh2.lower_left and \
+             self._upper_right != mesh2.upper_right:
             return False
 
         else:
@@ -129,7 +130,7 @@ class Mesh(object):
     def name(self, name):
         if name is not None:
             cv.check_type('name for mesh ID="{0}"'.format(self._id),
-                       name, basestring)
+                          name, basestring)
             self._name = name
         else:
             self._name = ''
@@ -137,9 +138,9 @@ class Mesh(object):
     @type.setter
     def type(self, meshtype):
         cv.check_type('type for mesh ID="{0}"'.format(self._id),
-                   meshtype, basestring)
+                      meshtype, basestring)
         cv.check_value('type for mesh ID="{0}"'.format(self._id),
-                    meshtype, ['regular'])
+                       meshtype, ['regular'])
         self._type = meshtype
 
     @dimension.setter

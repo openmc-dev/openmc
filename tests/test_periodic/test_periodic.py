@@ -11,13 +11,13 @@ class PeriodicTest(PyAPITestHarness):
     def _build_inputs(self):
         # Define materials
         water = openmc.Material(1)
-        water.add_nuclide('H-1', 2.0)
-        water.add_nuclide('O-16', 1.0)
-        water.add_s_alpha_beta('HH2O', '71t')
+        water.add_nuclide('H1', 2.0)
+        water.add_nuclide('O16', 1.0)
+        water.add_s_alpha_beta('c_H_in_H2O', '71t')
         water.set_density('g/cc', 1.0)
 
         fuel = openmc.Material(2)
-        fuel.add_nuclide('U-235', 1.0)
+        fuel.add_nuclide('U235', 1.0)
         fuel.set_density('g/cc', 4.5)
 
         materials = openmc.Materials((water, fuel))

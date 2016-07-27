@@ -6,7 +6,6 @@ import sys
 import numpy as np
 
 from openmc import Mesh
-from openmc.summary import Summary
 import openmc.checkvalue as cv
 
 
@@ -396,7 +395,7 @@ class Filter(object):
             if self.type == 'mesh':
                 # Convert (x,y,z) to a single bin -- this is similar to
                 # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
-                if (len(self.mesh.dimension) == 3):
+                if len(self.mesh.dimension) == 3:
                     nx, ny, nz = self.mesh.dimension
                     val = (filter_bin[0] - 1) * ny * nz + \
                           (filter_bin[1] - 1) * nz + \
@@ -573,7 +572,7 @@ class Filter(object):
             mesh_key = 'mesh {0}'.format(self.mesh.id)
 
             # Find mesh dimensions - use 3D indices for simplicity
-            if (len(self.mesh.dimension) == 3):
+            if len(self.mesh.dimension) == 3:
                 nx, ny, nz = self.mesh.dimension
             else:
                 nx, ny = self.mesh.dimension

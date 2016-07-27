@@ -1,11 +1,13 @@
+import re
 import sys
 
 import openmc
 from openmc.checkvalue import check_type, check_length
-from openmc.data import natural_abundance
+from openmc.data import NATURAL_ABUNDANCE
 
 if sys.version_info[0] >= 3:
     basestring = str
+
 
 
 class Element(object):
@@ -45,9 +47,9 @@ class Element(object):
 
     def __eq__(self, other):
         if isinstance(other, Element):
-            if self._name != other._name:
+            if self.name != other.name:
                 return False
-            elif self._xs != other._xs:
+            elif self.xs != other.xs:
                 return False
             else:
                 return True
@@ -64,9 +66,6 @@ class Element(object):
 
     def __lt__(self, other):
         return not self > other
-
-    def __hash__(self):
-        return hash(repr(self))
 
     def __hash__(self):
         return hash(repr(self))
@@ -126,8 +125,8 @@ class Element(object):
         """
 
         isotopes = []
-        for isotope, abundance in sorted(natural_abundance.items()):
-            if isotope.startswith(self.name + '-'):
+        for isotope, abundance in sorted(NATURAL_ABUNDANCE.items()):
+            if re.match(r'{}\d+'.format(self.name), isotope):
                 nuc = openmc.Nuclide(isotope, self.xs)
                 isotopes.append((nuc, abundance))
         return isotopes

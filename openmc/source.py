@@ -104,6 +104,14 @@ class Source(object):
         self._strength = strength
 
     def to_xml(self):
+        """Return XML representation of the source
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
         element = ET.Element("source")
         element.set("strength", str(self.strength))
         if self.file is not None:

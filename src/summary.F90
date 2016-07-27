@@ -127,11 +127,11 @@ contains
     allocate(zaids(n_nuclides_total))
     do i = 1, n_nuclides_total
       if (run_CE) then
-        nucnames(i) = xs_listings(nuclides(i) % listing) % alias
+        nucnames(i) = nuclides(i) % name
         awrs(i)     = nuclides(i) % awr
         zaids(i)    = nuclides(i) % zaid
       else
-        nucnames(i) = xs_listings(nuclides_MG(i) % obj % listing) % alias
+        nucnames(i) = nuclides_MG(i) % obj % name
         awrs(i)     = nuclides_MG(i) % obj % awr
         zaids(i)    = nuclides_MG(i) % obj % zaid
       end if
@@ -507,8 +507,7 @@ contains
 
     integer :: i
     integer :: j
-    integer :: i_list
-    character(12), allocatable :: nucnames(:)
+    character(20), allocatable :: nucnames(:)
     integer(HID_T) :: materials_group
     integer(HID_T) :: material_group
     type(Material), pointer :: m
@@ -539,11 +538,10 @@ contains
       allocate(nucnames(m%n_nuclides))
       do j = 1, m%n_nuclides
         if (run_CE) then
-          i_list = nuclides(m%nuclide(j))%listing
+          nucnames(j) = nuclides(m%nuclide(j))%name
         else
-          i_list = nuclides_MG(m%nuclide(j))%obj%listing
+          nucnames(j) = nuclides_MG(m%nuclide(j))%obj%name
         end if
-        nucnames(j) = xs_listings(i_list)%alias
       end do
 
       ! Write temporary array to 'nuclides'
@@ -574,7 +572,7 @@ contains
     integer(HID_T), intent(in) :: file_id
 
     integer :: i, j, k
-    integer :: i_list, i_xs
+    integer :: i_xs
     integer :: n_order      ! loop index for moment orders
     integer :: nm_order     ! loop index for Ynm moment orders
     integer(HID_T) :: tallies_group
@@ -637,16 +635,11 @@ contains
       allocate(str_array(t%n_nuclide_bins))
       NUCLIDE_LOOP: do j = 1, t%n_nuclide_bins
         if (t%nuclide_bins(j) > 0) then
-          if (run_CE) then
-            i_list = nuclides(t % nuclide_bins(j)) % listing
-          else
-            i_list = nuclides_MG(t % nuclide_bins(j)) % obj % listing
-          end if
-          i_xs = index(xs_listings(i_list)%alias, '.')
+          i_xs = index(nuclides(t%nuclide_bins(j))%name, '.')
           if (i_xs > 0) then
-            str_array(j) = xs_listings(i_list)%alias(1:i_xs - 1)
+            str_array(j) = nuclides(t%nuclide_bins(j))%name(1 : i_xs-1)
           else
-            str_array(j) = xs_listings(i_list)%alias
+            str_array(j) = nuclides(t%nuclide_bins(j))%name
           end if
         else
           str_array(j) = 'total'

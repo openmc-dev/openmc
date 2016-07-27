@@ -326,6 +326,17 @@ class IncidentNeutron(object):
                     tgroup = group['total_nu']
                     rx.derived_products.append(Product.from_hdf5(tgroup))
 
+        # Build summed reactions.  Start from the highest MT number because high
+        # MTs never depend on lower MTs.
+        for mt_sum in sorted(SUM_RULES.keys())[::-1]:
+            if mt_sum not in data:
+                xs_components = [data[mt].xs for mt in SUM_RULES[mt_sum]
+                                 if mt in data]
+                if len(xs_components) > 0:
+                    rxn = Reaction(mt_sum)
+                    rxn.xs = Sum(xs_components)
+                    data.summed_reactions[mt_sum] = rxn
+
         # Read unresolved resonance probability tables
         if 'urr' in group:
             urr_group = group['urr']

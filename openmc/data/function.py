@@ -80,50 +80,46 @@ class Tabulated1D(object):
         # Get indices for interpolation
         idx = np.searchsorted(self.x, x, side='right') - 1
 
-        # Find lowest valid index
-        i_low = np.searchsorted(idx, 0)
-
+        # Loop over interpolation regions
         for k in range(len(self.breakpoints)):
-            # Determine which x values are within this interpolation range
-            i_high = np.searchsorted(idx, self.breakpoints[k] - 1)
+            # Get indices for the begining and ending of this region
+            i_begin = self.breakpoints[k-1] - 1 if k > 0 else 0
+            i_end = self.breakpoints[k] - 1
 
-            # Get x values and bounding (x,y) pairs
-            xk = x[i_low:i_high]
-            xi = self.x[idx[i_low:i_high]]
-            xi1 = self.x[idx[i_low:i_high] + 1]
-            yi = self.y[idx[i_low:i_high]]
-            yi1 = self.y[idx[i_low:i_high] + 1]
+            # Figure out which idx values lie within this region
+            contained = (idx >= i_begin) & (idx < i_end)
+
+            xk = x[contained]                 # x values in this region
+            xi = self.x[idx[contained]]       # low edge of corresponding bins
+            xi1 = self.x[idx[contained] + 1]  # high edge of corresponding bins
+            yi = self.y[idx[contained]]
+            yi1 = self.y[idx[contained] + 1]
 
             if self.interpolation[k] == 1:
                 # Histogram
-                y[i_low:i_high] = yi
+                y[contined] = yi
 
             elif self.interpolation[k] == 2:
                 # Linear-linear
-                y[i_low:i_high] = yi + (xk - xi)/(xi1 - xi)*(yi1 - yi)
+                y[contained] = yi + (xk - xi)/(xi1 - xi)*(yi1 - yi)
 
             elif self.interpolation[k] == 3:
                 # Linear-log
-                y[i_low:i_high] = yi + np.log(xk/xi)/np.log(xi1/xi)*(yi1 - yi)
+                y[contained] = yi + np.log(xk/xi)/np.log(xi1/xi)*(yi1 - yi)
 
             elif self.interpolation[k] == 4:
                 # Log-linear
-                y[i_low:i_high] = yi*np.exp((xk - xi)/(xi1 - xi)*np.log(yi1/yi))
+                y[contained] = yi*np.exp((xk - xi)/(xi1 - xi)*np.log(yi1/yi))
 
             elif self.interpolation[k] == 5:
                 # Log-log
-                y[i_low:i_high] = yi*np.exp(np.log(xk/xi)/np.log(xi1/xi)*np.log(yi1/yi))
+                y[contained] = (yi*np.exp(np.log(xk/xi)/np.log(xi1/xi)
+                                *np.log(yi1/yi)))
 
-            i_low = i_high
-
-        # In some cases, the first/last point of x may be less than the first
-        # value of self.x due only to precision, so we check if they're close
-        # and set them equal if so. Otherwise, the interpolated value might be
-        # out of range (and thus zero)
-        if np.isclose(x[0], self.x[0], 1e-8):
-            y[0] = self.y[0]
-        if np.isclose(x[-1], self.x[-1], 1e-8):
-            y[-1] = self.y[-1]
+        # In some cases, x values might be outside the tabulated region due only
+        # to precision, so we check if they're close and set them equal if so.
+        y[np.isclose(x, self.x[0], atol=1e-14)] = self.y[0]
+        y[np.isclose(x, self.x[-1], atol=1e-14)] = self.y[-1]
 
         return y if iterable else y[0]
 

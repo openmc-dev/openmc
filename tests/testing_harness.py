@@ -9,6 +9,14 @@ import shutil
 import sys
 
 import numpy as np
+import pandas as pd
+
+# Require numpy and pandas to print output in scientific notation with 6
+# significant figures. This is needed to avoid round off error when large
+# numbers are printed, which can cause tests to fail for different build
+# configurations.
+np.set_printoptions(formatter={'float': '{:.5e}'.format})
+pd.options.display.float_format = '{:.5e}'.format
 
 sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 from input_set import InputSet, MGInputSet

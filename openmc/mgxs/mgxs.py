@@ -11,11 +11,6 @@ import itertools
 
 import numpy as np
 
-# Require numpy to print output in scientific notation to 6 decimal places.
-# This is needed to avoid round off error when large numbers are printed,
-# which can cause tests to fail for different build configurations.
-np.set_printoptions(formatter={'float': lambda x: format(x, '8.6E')})
-
 import openmc
 import openmc.checkvalue as cv
 from openmc.mgxs import EnergyGroups
@@ -1182,6 +1177,9 @@ class MGXS(object):
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
+        # Generate the header for an individual XS
+        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
             print(string)
@@ -1201,11 +1199,7 @@ class MGXS(object):
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                if xs_type == 'macro':
-                    string += '{0: <16}\n'.format('\tCross Sections [cm^-1]:')
-                else:
-                    string += '{0: <16}\n'.format('\tCross Sections [barns]:')
-
+                string += '{0: <16}\n'.format(xs_header)
                 template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]:\t'
 
                 # Loop over energy groups ranges
@@ -1575,6 +1569,26 @@ class MGXS(object):
             df.sort_values(by=[self.domain_type] + columns, inplace=True)
         return df
 
+    def get_units(self, xs_type='macro'):
+        """This method returns the units of a MGXS based on a desired xs_type.
+
+        Parameters
+        ----------
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section units.
+            Defaults to 'macro'.
+
+        Returns
+        -------
+        str
+            A string representing the units of the MGXS.
+
+        """
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        return 'cm^-1' if xs_type == 'macro' else 'barns'
+
 
 class MatrixMGXS(MGXS):
     """An abstract multi-group cross section for some energy group structure
@@ -1927,6 +1941,9 @@ class MatrixMGXS(MGXS):
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
+        # Generate the header for an individual XS
+        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
             print(string)
@@ -1955,11 +1972,7 @@ class MatrixMGXS(MGXS):
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                if xs_type == 'macro':
-                    string += '{0: <16}\n'.format('\tCross Sections [cm^-1]:')
-                else:
-                    string += '{0: <16}\n'.format('\tCross Sections [barns]:')
-
+                string += '{0: <16}\n'.format(xs_header)
                 template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
                 # Loop over incoming/outgoing energy groups ranges
@@ -3775,6 +3788,9 @@ class ScatterMatrixXS(MatrixMGXS):
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
+        # Generate the header for an individual XS
+        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
             print(string)
@@ -3803,11 +3819,7 @@ class ScatterMatrixXS(MatrixMGXS):
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                if xs_type == 'macro':
-                    string += '{0: <16}\n'.format('\tCross Sections [cm^-1]:')
-                else:
-                    string += '{0: <16}\n'.format('\tCross Sections [barns]:')
-
+                string += '{0: <16}\n'.format(xs_header)
                 template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
                 # Loop over incoming/outgoing energy groups ranges
@@ -4447,7 +4459,7 @@ class Chi(MGXS):
         """
 
         if not self.can_merge(other):
-            raise ValueError('Unable to merge Chi')
+            raise ValueError('Unable to merge a Chi MGXS')
 
         # Create deep copy of tally to return as merged tally
         merged_mgxs = copy.deepcopy(self)
@@ -4466,7 +4478,7 @@ class Chi(MGXS):
             # The nuclides must be mutually exclusive
             for nuclide in self.nuclides:
                 if nuclide in other.nuclides:
-                    msg = 'Unable to merge Chi with shared nuclides'
+                    msg = 'Unable to merge a Chi MGXS with shared nuclides'
                     raise ValueError(msg)
 
             # Concatenate lists of nuclides for the merged MGXS
@@ -4671,6 +4683,30 @@ class Chi(MGXS):
 
         return df
 
+    def get_units(self, xs_type='macro'):
+        """Returns the units of Chi.
+
+        This method returns the units of Chi, which is "%" for both macro
+        and micro xs types.
+
+        Parameters
+        ----------
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section units.
+            Defaults to 'macro'.
+
+        Returns
+        -------
+        str
+            A string representing the units of Chi.
+
+        """
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        # Chi has the same units (%) for both macro and micro
+        return '%'
+
 
 class ChiPrompt(Chi):
     r"""The prompt fission spectrum.
@@ -4787,28 +4823,6 @@ class ChiPrompt(Chi):
     @property
     def scores(self):
         return ['prompt-nu-fission', 'prompt-nu-fission']
-
-    def merge(self, other):
-        """Merge another ChiPrompt with this one
-
-        If results have been loaded from a statepoint, then ChiPrompt are only
-        mergeable along one and only one of energy groups or nuclides.
-
-        Parameters
-        ----------
-        other : openmc.mgxs.MGXS
-            MGXS to merge with this one
-
-        Returns
-        -------
-        merged_mgxs : openmc.mgxs.MGXS
-            Merged MGXS
-        """
-
-        if not self.can_merge(other):
-            raise ValueError('Unable to merge ChiPrompt')
-
-        return super(ChiPrompt, self).merge(other)
 
 
 class Velocity(MGXS):
@@ -4946,20 +4960,21 @@ class Velocity(MGXS):
 
         return self._xs_tally
 
-    def print_xs(self, subdomains='all', nuclides='all'):
-        """Print a string representation for the multi-group cross section.
+    def get_units(self, xs_type='macro'):
+        """Returns the units of Velocity.
+
+        This method returns the units of a Velocity based on a desired xs_type.
 
         Parameters
         ----------
-        subdomains : Iterable of Integral or 'all'
-            The subdomain IDs of the cross sections to include in the report.
-            Defaults to 'all'.
-        nuclides : Iterable of str or 'all' or 'sum'
-            The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
-            The special string 'all' will report the cross sections for all
-            nuclides in the spatial domain. The special string 'sum' will report
-            the cross sections summed over all nuclides. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section units.
+            Defaults to 'macro'.
+
+        Returns
+        -------
+        str
+            A string representing the units of the Velocity.
 
         """
 
@@ -4974,63 +4989,11 @@ class Velocity(MGXS):
         else:
             subdomains = [self.domain.id]
 
-        # Construct a collection of the nuclides to report
-        if self.by_nuclide:
-            if nuclides == 'all':
-                nuclides = self.get_all_nuclides()
-            elif nuclides == 'sum':
-                nuclides = ['sum']
-            else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+        if xs_type == 'macro':
+            return 'cm/second'
         else:
-            nuclides = ['sum']
-
-        # Build header for string with type and domain info
-        string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
-
-        # If cross section data has not been computed, only print string header
-        if self.tallies is None:
-            print(string)
-            return
-
-        # Loop over all subdomains
-        for subdomain in subdomains:
-
-            if self.domain_type == 'distribcell':
-                string += '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
-
-            # Loop over all Nuclides
-            for nuclide in nuclides:
-
-                # Build header for nuclide type
-                if nuclide != 'sum':
-                    string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
-
-                # Build header for cross section type
-                string += '{0: <16}\n'.format\
-                          ('\tVelocity [cm/second]:')
-
-                template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]:\t'
-
-                # Loop over energy groups ranges
-                for group in range(1, self.num_groups+1):
-                    bounds = self.energy_groups.get_group_bounds(group)
-                    string += template.format('', group, bounds[0], bounds[1])
-                    average = self.get_xs([group], [subdomain], [nuclide],
-                                          xs_type='macro', value='mean')
-                    rel_err = self.get_xs([group], [subdomain], [nuclide],
-                                          xs_type='macro', value='rel_err')
-                    average = average.flatten()[0]
-                    rel_err = rel_err.flatten()[0] * 100.
-                    string += '{:.2e} +/- {:1.2e}%'.format(average, rel_err)
-                    string += '\n'
-                string += '\n'
-            string += '\n'
-
-        print(string)
+            raise ValueError('Unable to return the units of Velocity for '
+                             'xs_type other than "macro"')
 
 
 class PromptNuFissionXS(MGXS):

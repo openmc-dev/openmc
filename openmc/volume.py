@@ -183,7 +183,7 @@ class VolumeCalculation(object):
         vol.results = results
         return vol
 
-    def to_xml(self):
+    def to_xml_element(self):
         """Return XML representation of the volume calculation
 
         Returns

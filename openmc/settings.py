@@ -155,7 +155,7 @@ class Settings(object):
         self._max_order = None
 
         # Source subelement
-        self._source = None
+        self._source = cv.CheckedList(Source, 'source distributions')
 
         self._confidence_intervals = None
         self._cross_sections = None
@@ -216,12 +216,12 @@ class Settings(object):
 
         self._settings_file = ET.Element("settings")
         self._run_mode_subelement = None
-        self._source_element = None
         self._multipole_active = None
 
-        self._resonance_scattering = None
-        self._volume_calculations = cv.CheckedList(VolumeCalculation,
-                                                   'volume calculations')
+        self._resonance_scattering = cv.CheckedList(
+            ResonanceScattering, 'resonance scattering models')
+        self._volume_calculations = cv.CheckedList(
+            VolumeCalculation, 'volume calculations')
 
     @property
     def run_mode(self):
@@ -502,11 +502,9 @@ class Settings(object):
 
     @source.setter
     def source(self, source):
-        if isinstance(source, Source):
-            self._source = [source,]
-        else:
-            cv.check_type('source distribution', source, Iterable, Source)
-            self._source = source
+        if not isinstance(source, MutableSequence):
+            source = [source]
+        self._source = cv.CheckedList(Source, 'source distributions', source)
 
     @output.setter
     def output(self, output):
@@ -810,22 +808,17 @@ class Settings(object):
 
     @resonance_scattering.setter
     def resonance_scattering(self, res):
-        if isinstance(res, Iterable):
-            cv.check_type('resonance_scattering', res, Iterable,
-                       ResonanceScattering)
-            self._resonance_scattering = res
-        else:
-            cv.check_type('resonance_scattering', res, ResonanceScattering)
-            self._resonance_scattering = [res]
+        if not isinstance(res, MutableSequence):
+            res = [res]
+        self._resonance_scattering = cv.CheckedList(
+            ResonanceScattering, 'resonance scattering models', res)
 
     @volume_calculations.setter
     def volume_calculations(self, vol_calcs):
-        name = 'stochastic volume calculations'
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
-        cv.check_type(name, vol_calcs, MutableSequence)
-        self._volume_calculations = cv.CheckedList(VolumeCalculation,
-                                                   name, vol_calcs)
+        self._volume_calculations = cv.CheckedList(
+            VolumeCalculation, 'stochastic volume calculations', vol_calcs)
 
     def _create_run_mode_subelement(self):
 
@@ -884,13 +877,12 @@ class Settings(object):
             element.text = str(self._max_order)
 
     def _create_source_subelement(self):
-        if self.source is not None:
-            for source in self.source:
-                self._settings_file.append(source.to_xml())
+        for source in self.source:
+            self._settings_file.append(source.to_xml_element())
 
     def _create_volume_calcs_subelement(self):
         for calc in self.volume_calculations:
-            self._settings_file.append(calc.to_xml())
+            self._settings_file.append(calc.to_xml_element())
 
     def _create_output_subelement(self):
         if self._output is not None:
@@ -1121,18 +1113,15 @@ class Settings(object):
                                     "use_windowed_multipole")
             element.text = str(self._multipole_active)
 
-    def _create_resonance_scattering_element(self):
-        if self.resonance_scattering is None:
-            return
-
-        element = ET.SubElement(self._settings_file, "resonance_scattering")
-
-        for r in self.resonance_scattering:
-            if r.nuclide.name != r.nuclide_0K.name:
-                raise ValueError("The nuclide and nuclide_0K attributes of "
-                                 "a ResonantScattering object must have "
-                                 "identical names.")
-            r.create_xml_subelement(element)
+    def _create_resonance_scattering_subelement(self):
+        if len(self.resonance_scattering) > 0:
+            elem = ET.SubElement(self._settings_file, 'resonance_scattering')
+            for r in self.resonance_scattering:
+                if r.nuclide.name != r.nuclide_0K.name:
+                    raise ValueError("The nuclide and nuclide_0K attributes of "
+                                     "a ResonantScattering object must have "
+                                     "identical names.")
+                elem.append(r.to_xml_element())
 
     def export_to_xml(self):
         """Create a settings.xml file that can be used for a simulation.
@@ -1144,7 +1133,6 @@ class Settings(object):
         self._source_subelement = None
         self._trigger_subelement = None
         self._run_mode_subelement = None
-        self._source_element = None
 
         self._create_run_mode_subelement()
         self._create_source_subelement()
@@ -1172,7 +1160,7 @@ class Settings(object):
         self._create_ufs_subelement()
         self._create_dd_subelement()
         self._create_use_multipole_subelement()
-        self._create_resonance_scattering_element()
+        self._create_resonance_scattering_subelement()
         self._create_volume_calcs_subelement()
 
         # Clean the indentation in the file to be user-readable
@@ -1261,8 +1249,16 @@ class ResonanceScattering(object):
         cv.check_greater_than('E_max', E, 0, True)
         self._E_max = E
 
-    def create_xml_subelement(self, xml_element):
-        scatterer = ET.SubElement(xml_element, "scatterer")
+    def to_xml_element(self):
+        """Return XML representation of the resonance scattering model
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing resonance scattering model
+
+        """
+        scatterer = ET.Element("scatterer")
         subelement = ET.SubElement(scatterer, 'nuclide')
         subelement.text = self.nuclide.name
         if self.method is not None:
@@ -1278,3 +1274,4 @@ class ResonanceScattering(object):
         if self.E_max is not None:
             subelement = ET.SubElement(scatterer, 'E_max')
             subelement.text = str(self.E_max)
+        return scatterer

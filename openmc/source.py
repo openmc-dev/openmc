@@ -103,7 +103,7 @@ class Source(object):
         cv.check_greater_than('source strength', strength, 0.0, True)
         self._strength = strength
 
-    def to_xml(self):
+    def to_xml_element(self):
         """Return XML representation of the source
 
         Returns
@@ -117,9 +117,9 @@ class Source(object):
         if self.file is not None:
             element.set("file", self.file)
         if self.space is not None:
-            element.append(self.space.to_xml())
+            element.append(self.space.to_xml_element())
         if self.angle is not None:
-            element.append(self.angle.to_xml())
+            element.append(self.angle.to_xml_element())
         if self.energy is not None:
-            element.append(self.energy.to_xml('energy'))
+            element.append(self.energy.to_xml_element('energy'))
         return element

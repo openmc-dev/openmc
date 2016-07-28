@@ -1399,10 +1399,6 @@ class MGXS(object):
         # Get a Pandas DataFrame for the data
         df = self.get_pandas_dataframe(groups=groups, xs_type=xs_type)
 
-        # Capitalize column label strings
-        #df.columns = df.columns.astype(str)
-        #df.columns = map(str.title, df.columns)
-
         # Export the data using Pandas IO API
         if format == 'csv':
             df.to_csv(filename + '.csv', index=False)

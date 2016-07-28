@@ -328,7 +328,7 @@ class IncidentNeutron(object):
 
         # Build summed reactions.  Start from the highest MT number because high
         # MTs never depend on lower MTs.
-        for mt_sum in sorted(SUM_RULES.keys())[::-1]:
+        for mt_sum in sorted(SUM_RULES, reverse=True):
             if mt_sum not in data:
                 xs_components = [data[mt].xs for mt in SUM_RULES[mt_sum]
                                  if mt in data]

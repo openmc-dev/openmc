@@ -142,6 +142,17 @@ element settings {
 
   element verbosity { xsd:positiveInteger }? &
 
+  element volume_calc {
+    (element cells { list { xsd:positiveInteger+ } } |
+      attribute cells { list { xsd:positiveInteger+ } }) &
+    (element samples { xsd:positiveInteger } |
+      attribute samples { xsd:positiveInteger }) &
+    (element lower_left { list { xsd:double+ } } |
+      attribute lower_left { list { xsd:double+ } }) &
+    (element upper_right { list { xsd:double+ } } |
+      attribute upper_right { list { xsd:double+ } })
+  }+ &
+
   element uniform_fs{
     (element dimension { list { xsd:positiveInteger+ } } |
       attribute dimension { list { xsd:positiveInteger+ } }) &

@@ -625,6 +625,68 @@
         <data type="positiveInteger"/>
       </element>
     </optional>
+    <oneOrMore>
+      <element name="volume_calc">
+        <interleave>
+          <choice>
+            <element name="cells">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="cells">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="samples">
+              <data type="positiveInteger"/>
+            </element>
+            <attribute name="samples">
+              <data type="positiveInteger"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="upper_right">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="upper_right">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+        </interleave>
+      </element>
+    </oneOrMore>
     <optional>
       <element name="uniform_fs">
         <interleave>

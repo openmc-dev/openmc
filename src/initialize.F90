@@ -717,7 +717,7 @@ contains
         select type(filt => t % filters(j) % obj)
         type is (SurfaceFilter)
           ! Check if this is a surface filter only for surface currents
-          if (.not. any(t%score_bins == SCORE_CURRENT)) &
+          if (.not. any(t % score_bins == SCORE_CURRENT)) &
                call filt % initialize()
         class default
           call filt % initialize()

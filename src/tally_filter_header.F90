@@ -18,9 +18,9 @@ module tally_filter_header
   contains
     procedure(get_next_bin_),  deferred :: get_next_bin
     procedure(to_statepoint_), deferred :: to_statepoint
-    procedure                           :: to_summary => to_summary_
+    procedure                           :: to_summary => filter_to_summary
     procedure(text_label_),    deferred :: text_label
-    procedure                           :: initialize => initialize_
+    procedure                           :: initialize => filter_initialize
   end type TallyFilter
 
   abstract interface
@@ -46,7 +46,7 @@ module tally_filter_header
     end subroutine get_next_bin_
 
 !===============================================================================
-! TO_STATPEOINT writes all the information needed to reconstruct the filter to
+! TO_STATEPOINT writes all the information needed to reconstruct the filter to
 ! the given filter_group.
 
     subroutine to_statepoint_(this, filter_group)
@@ -87,19 +87,19 @@ contains
 ! given filter_group.  If this procedure is not overridden by the derived class,
 ! then it will call to_statepoint by default.
 
-  subroutine to_summary_(this, filter_group)
+  subroutine filter_to_summary(this, filter_group)
     class(TallyFilter), intent(in) :: this
     integer(HID_T),     intent(in) :: filter_group
 
     call this % to_statepoint(filter_group)
-  end subroutine to_summary_
+  end subroutine filter_to_summary
 
 !===============================================================================
 ! INITIALIZE sets up any internal data, as necessary.  If this procedure is not
 ! overriden by the derived class, then it will do nothing by default.
 
-  subroutine initialize_(this)
+  subroutine filter_initialize(this)
     class(TallyFilter), intent(inout) :: this
-  end subroutine initialize_
+  end subroutine filter_initialize
 
 end module tally_filter_header

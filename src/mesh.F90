@@ -290,7 +290,7 @@ contains
 
     ! Check if line intersects left surface -- calculate the intersection point
     ! y
-    if ( (x0 < xm0 .and. x1 > xm0) .or. (x0 > xm0 .and. x1 < xm0) ) then
+    if ((x0 < xm0 .and. x1 > xm0) .or. (x0 > xm0 .and. x1 < xm0)) then
       yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0)
       if (yi >= ym0 .and. yi < ym1) then
         intersects = .true.
@@ -300,7 +300,7 @@ contains
 
     ! Check if line intersects back surface -- calculate the intersection point
     ! x
-    if ( (y0 < ym0 .and. y1 > ym0) .or. (y0 > ym0 .and. y1 < ym0) ) then
+    if ((y0 < ym0 .and. y1 > ym0) .or. (y0 > ym0 .and. y1 < ym0)) then
       xi = x0 + (ym0 - y0) * (x1 - x0) / (y1 - y0)
       if (xi >= xm0 .and. xi < xm1) then
         intersects = .true.
@@ -310,7 +310,7 @@ contains
 
     ! Check if line intersects right surface -- calculate the intersection
     ! point y
-    if ( (x0 < xm1 .and. x1 > xm1) .or. (x0 > xm1 .and. x1 < xm1) ) then
+    if ((x0 < xm1 .and. x1 > xm1) .or. (x0 > xm1 .and. x1 < xm1)) then
       yi = y0 + (xm1 - x0) * (y1 - y0) / (x1 - x0)
       if (yi >= ym0 .and. yi < ym1) then
         intersects = .true.
@@ -320,7 +320,7 @@ contains
 
     ! Check if line intersects front surface -- calculate the intersection point
     ! x
-    if ( (y0 < ym1 .and. y1 > ym1) .or. (y0 > ym1 .and. y1 < ym1) ) then
+    if ((y0 < ym1 .and. y1 > ym1) .or. (y0 > ym1 .and. y1 < ym1)) then
       xi = x0 + (ym1 - y0) * (x1 - x0) / (y1 - y0)
       if (xi >= xm0 .and. xi < xm1) then
         intersects = .true.
@@ -367,7 +367,7 @@ contains
 
     ! Check if line intersects left surface -- calculate the intersection point
     ! (y,z)
-    if ( (x0 < xm0 .and. x1 > xm0) .or. (x0 > xm0 .and. x1 < xm0) ) then
+    if ((x0 < xm0 .and. x1 > xm0) .or. (x0 > xm0 .and. x1 < xm0)) then
       yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0)
       zi = z0 + (xm0 - x0) * (z1 - z0) / (x1 - x0)
       if (yi >= ym0 .and. yi < ym1 .and. zi >= zm0 .and. zi < zm1) then
@@ -378,7 +378,7 @@ contains
 
     ! Check if line intersects back surface -- calculate the intersection point
     ! (x,z)
-    if ( (y0 < ym0 .and. y1 > ym0) .or. (y0 > ym0 .and. y1 < ym0) ) then
+    if ((y0 < ym0 .and. y1 > ym0) .or. (y0 > ym0 .and. y1 < ym0)) then
       xi = x0 + (ym0 - y0) * (x1 - x0) / (y1 - y0)
       zi = z0 + (ym0 - y0) * (z1 - z0) / (y1 - y0)
       if (xi >= xm0 .and. xi < xm1 .and. zi >= zm0 .and. zi < zm1) then
@@ -389,7 +389,7 @@ contains
 
     ! Check if line intersects bottom surface -- calculate the intersection
     ! point (x,y)
-    if ( (z0 < zm0 .and. z1 > zm0) .or. (z0 > zm0 .and. z1 < zm0) ) then
+    if ((z0 < zm0 .and. z1 > zm0) .or. (z0 > zm0 .and. z1 < zm0)) then
       xi = x0 + (zm0 - z0) * (x1 - x0) / (z1 - z0)
       yi = y0 + (zm0 - z0) * (y1 - y0) / (z1 - z0)
       if (xi >= xm0 .and. xi < xm1 .and. yi >= ym0 .and. yi < ym1) then
@@ -400,7 +400,7 @@ contains
 
     ! Check if line intersects right surface -- calculate the intersection point
     ! (y,z)
-    if ( (x0 < xm1 .and. x1 > xm1) .or. (x0 > xm1 .and. x1 < xm1) ) then
+    if ((x0 < xm1 .and. x1 > xm1) .or. (x0 > xm1 .and. x1 < xm1)) then
       yi = y0 + (xm1 - x0) * (y1 - y0) / (x1 - x0)
       zi = z0 + (xm1 - x0) * (z1 - z0) / (x1 - x0)
       if (yi >= ym0 .and. yi < ym1 .and. zi >= zm0 .and. zi < zm1) then
@@ -411,7 +411,7 @@ contains
 
     ! Check if line intersects front surface -- calculate the intersection point
     ! (x,z)
-    if ( (y0 < ym1 .and. y1 > ym1) .or. (y0 > ym1 .and. y1 < ym1) ) then
+    if ((y0 < ym1 .and. y1 > ym1) .or. (y0 > ym1 .and. y1 < ym1)) then
       xi = x0 + (ym1 - y0) * (x1 - x0) / (y1 - y0)
       zi = z0 + (ym1 - y0) * (z1 - z0) / (y1 - y0)
       if (xi >= xm0 .and. xi < xm1 .and. zi >= zm0 .and. zi < zm1) then
@@ -422,7 +422,7 @@ contains
 
     ! Check if line intersects top surface -- calculate the intersection point
     ! (x,y)
-    if ( (z0 < zm1 .and. z1 > zm1) .or. (z0 > zm1 .and. z1 < zm1) ) then
+    if ((z0 < zm1 .and. z1 > zm1) .or. (z0 > zm1 .and. z1 < zm1)) then
       xi = x0 + (zm1 - z0) * (x1 - x0) / (z1 - z0)
       yi = y0 + (zm1 - z0) * (y1 - y0) / (z1 - z0)
       if (xi >= xm0 .and. xi < xm1 .and. yi >= ym0 .and. yi < ym1) then

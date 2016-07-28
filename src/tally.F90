@@ -473,8 +473,8 @@ contains
             ! score the number of particles that were banked in the fission
             ! bank as prompt neutrons. Since this was weighted by 1/keff, we
             ! multiply by keff to get the proper score.
-            score = keff * p % wgt_bank * (1 - sum(p % n_delayed_bank) &
-                 / p % n_bank)
+            score = keff * p % wgt_bank * (ONE - sum(p % n_delayed_bank) &
+                 / real(p % n_bank, 8))
           end if
 
         else
@@ -1627,19 +1627,19 @@ contains
       matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
 
       ! Case for tallying prompt neutrons
-      if (score_bin == SCORE_NU_FISSION .OR. \
-        (score_bin == SCORE_PROMPT_NU_FISSION .AND. g == 0)) then
+      if (score_bin == SCORE_NU_FISSION .or. &
+           (score_bin == SCORE_PROMPT_NU_FISSION .and. g == 0)) then
 
         ! determine scoring index
         i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
 
         ! Add score to tally
-        !$omp atomic
+!$omp atomic
         t % results(i_score, i_filter) % value = &
              t % results(i_score, i_filter) % value + score
 
       ! Case for tallying delayed emissions
-      else if (score_bin == SCORE_DELAYED_NU_FISSION .AND. g /= 0) then
+      else if (score_bin == SCORE_DELAYED_NU_FISSION .and. g /= 0) then
 
         ! Get the index of delayed group filter
         j = t % find_filter(FILTER_DELAYEDGROUP)
@@ -1654,9 +1654,7 @@ contains
 
             ! check whether the delayed group of the particle is equal to the
             ! delayed group of this bin
-            if (d == g) then
-              call score_fission_delayed_dg(t, d_bin, score, i_score)
-            end if
+            if (d == g) call score_fission_delayed_dg(t, d_bin, score, i_score)
           end do
 
         ! if the delayed group filter is not present, add score to tally

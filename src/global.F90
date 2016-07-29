@@ -65,11 +65,7 @@ module global
   ! ============================================================================
   ! CROSS SECTION RELATED VARIABLES NEEDED REGARDLESS OF CE OR MG
 
-  ! Cross section arrays
-  type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings
-
   integer :: n_nuclides_total ! Number of nuclide cross section tables
-  integer :: n_listings       ! Number of listings in cross_sections.xml
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
@@ -77,7 +73,6 @@ module global
 
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict
-  type(DictCharInt) :: xs_listing_dict
 
   ! Default xs identifier (e.g. 70c or 300K)
   character(5):: default_xs
@@ -107,7 +102,8 @@ module global
   ! Whether or not windowed multipole cross sections should be used.
   logical :: multipole_active = .false.
 
-  ! Total amount of nuclide ZAID and dictionary of nuclide ZAID and index
+  ! Total amount of nuclide ZAID and dictionary of nuclide ZAID and index --
+  ! this is used when sampling unresolved resonance probability tables
   integer(8)       :: n_nuc_zaid_total
   type(DictIntInt) :: nuc_zaid_dict
 
@@ -498,7 +494,6 @@ contains
     end if
 
     if (allocated(sab_tables)) deallocate(sab_tables)
-    if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)
 
     ! Deallocate external source
@@ -553,7 +548,6 @@ contains
     call plot_dict % clear()
     call nuclide_dict % clear()
     call sab_dict % clear()
-    call xs_listing_dict % clear()
 
     ! Clear statepoint and sourcepoint batch set
     call statepoint_batch % clear()

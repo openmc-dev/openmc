@@ -4,12 +4,26 @@
 File Format Specifications
 ==========================
 
+----------
+Data Files
+----------
+
 .. toctree::
    :numbered:
-   :maxdepth: 3
+   :maxdepth: 2
 
-   data_wmp
+   nuclear_data
    mgxs_library
+   data_wmp
+
+------------
+Output Files
+------------
+
+.. toctree::
+   :numbered:
+   :maxdepth: 2
+
    statepoint
    source
    summary

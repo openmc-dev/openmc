@@ -3,6 +3,12 @@ module sab_header
   use, intrinsic :: ISO_FORTRAN_ENV
 
   use constants
+  use distribution_univariate, only: Tabular
+  use hdf5, only: HID_T, HSIZE_T
+  use h5lt, only: h5ltpath_valid_f
+  use hdf5_interface, only: read_attribute, get_shape, open_group, close_group, &
+       open_dataset, read_dataset, close_dataset
+  use secondary_correlated, only: CorrelatedAngleEnergy
   use string, only: to_str
 
   implicit none
@@ -27,10 +33,10 @@ module sab_header
 !===============================================================================
 
   type SAlphaBeta
-    character(10) :: name     ! name of table, e.g. lwtr.10t
-    real(8)       :: awr      ! weight of nucleus in neutron masses
-    real(8)       :: kT       ! temperature in MeV (k*T)
-    integer       :: n_zaid   ! Number of valid zaids
+    character(100) :: name     ! name of table, e.g. lwtr.10t
+    real(8)        :: awr      ! weight of nucleus in neutron masses
+    real(8)        :: kT       ! temperature in MeV (k*T)
+    integer        :: n_zaid   ! Number of valid zaids
     integer, allocatable :: zaid(:) ! List of valid Z and A identifiers, e.g. 6012
 
     ! threshold for S(a,b) treatment (usually ~4 eV)
@@ -61,90 +67,247 @@ module sab_header
     real(8), allocatable :: elastic_P(:)
     real(8), allocatable :: elastic_mu(:,:)
   contains
-      procedure :: print => print_sab_table
+    procedure :: print => salphabeta_print
+    procedure :: from_hdf5 => salphabeta_from_hdf5
   end type SAlphaBeta
 
-  contains
+contains
 
 !===============================================================================
 ! PRINT_SAB_TABLE displays information about a S(a,b) table containing data
 ! describing thermal scattering from bound materials such as hydrogen in water.
 !===============================================================================
 
-    subroutine print_sab_table(this, unit)
-      class(SAlphaBeta), intent(in)  :: this
-      integer, intent(in), optional :: unit
+  subroutine salphabeta_print(this, unit)
+    class(SAlphaBeta), intent(in)  :: this
+    integer, intent(in), optional :: unit
 
-      integer :: size_sab   ! memory used by S(a,b) table
-      integer :: unit_      ! unit to write to
-      integer :: i          ! Loop counter for parsing through this % zaid
-      integer :: char_count ! Counter for the number of characters on a line
+    integer :: size_sab   ! memory used by S(a,b) table
+    integer :: unit_      ! unit to write to
+    integer :: i          ! Loop counter for parsing through this % zaid
+    integer :: char_count ! Counter for the number of characters on a line
 
-      ! set default unit for writing information
-      if (present(unit)) then
-        unit_ = unit
+    ! set default unit for writing information
+    if (present(unit)) then
+      unit_ = unit
+    else
+      unit_ = OUTPUT_UNIT
+    end if
+
+    ! Basic S(a,b) table information
+    write(unit_,*) 'S(a,b) Table ' // trim(this % name)
+    write(unit_,'(A)',advance="no") '   zaids = '
+    ! Initialize the counter based on the above string
+    char_count = 11
+    do i = 1, this % n_zaid
+      ! Deal with a line thats too long
+      if (char_count >= 73) then  ! 73 = 80 - (5 ZAID chars + 1 space + 1 comma)
+        ! End the line
+        write(unit_,*) ""
+        ! Add 11 leading blanks
+        write(unit_,'(A)', advance="no") "           "
+        ! reset the counter to 11
+        char_count = 11
+      end if
+      if (i < this % n_zaid) then
+        ! Include a comma
+        write(unit_,'(A)',advance="no") trim(to_str(this % zaid(i))) // ", "
+        char_count = char_count + len(trim(to_str(this % zaid(i)))) + 2
       else
-        unit_ = OUTPUT_UNIT
+        ! Don't include a comma, since we are all done
+        write(unit_,'(A)',advance="no") trim(to_str(this % zaid(i)))
       end if
 
-      ! Basic S(a,b) table information
-      write(unit_,*) 'S(a,b) Table ' // trim(this % name)
-      write(unit_,'(A)',advance="no") '   zaids = '
-      ! Initialize the counter based on the above string
-      char_count = 11
-      do i = 1, this % n_zaid
-        ! Deal with a line thats too long
-        if (char_count >= 73) then  ! 73 = 80 - (5 ZAID chars + 1 space + 1 comma)
-          ! End the line
-          write(unit_,*) ""
-          ! Add 11 leading blanks
-          write(unit_,'(A)', advance="no") "           "
-          ! reset the counter to 11
-          char_count = 11
-        end if
-        if (i < this % n_zaid) then
-          ! Include a comma
-          write(unit_,'(A)',advance="no") trim(to_str(this % zaid(i))) // ", "
-          char_count = char_count + len(trim(to_str(this % zaid(i)))) + 2
-        else
-          ! Don't include a comma, since we are all done
-          write(unit_,'(A)',advance="no") trim(to_str(this % zaid(i)))
-        end if
+    end do
+    write(unit_,*) "" ! Move to next line
+    write(unit_,*) '  awr = ' // trim(to_str(this % awr))
+    write(unit_,*) '  kT = ' // trim(to_str(this % kT))
 
-      end do
-      write(unit_,*) "" ! Move to next line
-      write(unit_,*) '  awr = ' // trim(to_str(this % awr))
-      write(unit_,*) '  kT = ' // trim(to_str(this % kT))
+    ! Inelastic data
+    write(unit_,*) '  # of Incoming Energies (Inelastic) = ' // &
+         trim(to_str(this % n_inelastic_e_in))
+    write(unit_,*) '  # of Outgoing Energies (Inelastic) = ' // &
+         trim(to_str(this % n_inelastic_e_out))
+    write(unit_,*) '  # of Outgoing Angles (Inelastic) = ' // &
+         trim(to_str(this % n_inelastic_mu))
+    write(unit_,*) '  Threshold for Inelastic = ' // &
+         trim(to_str(this % threshold_inelastic))
 
-      ! Inelastic data
-      write(unit_,*) '  # of Incoming Energies (Inelastic) = ' // &
-           trim(to_str(this % n_inelastic_e_in))
-      write(unit_,*) '  # of Outgoing Energies (Inelastic) = ' // &
-           trim(to_str(this % n_inelastic_e_out))
-      write(unit_,*) '  # of Outgoing Angles (Inelastic) = ' // &
-           trim(to_str(this % n_inelastic_mu))
-      write(unit_,*) '  Threshold for Inelastic = ' // &
-           trim(to_str(this % threshold_inelastic))
+    ! Elastic data
+    if (this % n_elastic_e_in > 0) then
+      write(unit_,*) '  # of Incoming Energies (Elastic) = ' // &
+           trim(to_str(this % n_elastic_e_in))
+      write(unit_,*) '  # of Outgoing Angles (Elastic) = ' // &
+           trim(to_str(this % n_elastic_mu))
+      write(unit_,*) '  Threshold for Elastic = ' // &
+           trim(to_str(this % threshold_elastic))
+    end if
 
-      ! Elastic data
-      if (this % n_elastic_e_in > 0) then
-        write(unit_,*) '  # of Incoming Energies (Elastic) = ' // &
-             trim(to_str(this % n_elastic_e_in))
-        write(unit_,*) '  # of Outgoing Angles (Elastic) = ' // &
-             trim(to_str(this % n_elastic_mu))
-        write(unit_,*) '  Threshold for Elastic = ' // &
-             trim(to_str(this % threshold_elastic))
+    ! Determine memory used by S(a,b) table and write out
+    size_sab = 8 * (this % n_inelastic_e_in * (2 + this % n_inelastic_e_out * &
+         (1 + this % n_inelastic_mu)) + this % n_elastic_e_in * &
+         (2 + this % n_elastic_mu))
+    write(unit_,*) '  Memory Used = ' // trim(to_str(size_sab)) // ' bytes'
+
+    ! Blank line at end
+    write(unit_,*)
+
+  end subroutine salphabeta_print
+
+  subroutine salphabeta_from_hdf5(this, group_id)
+    class(SAlphaBeta), intent(inout) :: this
+    integer(HID_T),    intent(in)    :: group_id
+
+    integer :: i, j
+    integer :: n_energy, n_energy_out, n_mu
+    integer :: hdf5_err
+    integer(HID_T) :: elastic_group
+    integer(HID_T) :: inelastic_group
+    integer(HID_T) :: dset_id
+    integer(HSIZE_T) :: dims2(2)
+    integer(HSIZE_T) :: dims3(3)
+    real(8), allocatable :: temp(:,:)
+    character(20) :: type
+    logical :: exists
+    type(CorrelatedAngleEnergy) :: correlated_dist
+
+    call read_attribute(this % awr, group_id, 'atomic_weight_ratio')
+    call read_attribute(this % kT, group_id, 'temperature')
+    call read_attribute(this % zaid, group_id, 'zaids')
+    this % n_zaid = size(this % zaid)
+
+    ! Coherent elastic data
+    call h5ltpath_valid_f(group_id, 'elastic', .true., exists, hdf5_err)
+    if (exists) then
+      ! Read cross section data
+      elastic_group = open_group(group_id, 'elastic')
+      dset_id = open_dataset(elastic_group, 'xs')
+      call read_attribute(type, dset_id, 'type')
+      call get_shape(dset_id, dims2)
+      allocate(temp(dims2(1), dims2(2)))
+      call read_dataset(temp, dset_id)
+      call close_dataset(dset_id)
+
+      ! Set cross section data and type
+      this % n_elastic_e_in = int(dims2(1), 4)
+      allocate(this % elastic_e_in(this % n_elastic_e_in))
+      allocate(this % elastic_P(this % n_elastic_e_in))
+      this % elastic_e_in(:) = temp(:, 1)
+      this % elastic_P(:) = temp(:, 2)
+      select case (type)
+      case ('tab1')
+        this % elastic_mode = SAB_ELASTIC_DISCRETE
+      case ('bragg')
+        this % elastic_mode = SAB_ELASTIC_EXACT
+      end select
+      deallocate(temp)
+
+      ! Set elastic threshold
+      this % threshold_elastic = this % elastic_e_in(this % n_elastic_e_in)
+
+      ! Read angle distribution
+      if (this % elastic_mode /= SAB_ELASTIC_EXACT) then
+        dset_id = open_dataset(elastic_group, 'mu_out')
+        call get_shape(dset_id, dims2)
+        this % n_elastic_mu = int(dims2(1), 4)
+        allocate(this % elastic_mu(dims2(1), dims2(2)))
+        call read_dataset(this % elastic_mu, dset_id)
+        call close_dataset(dset_id)
       end if
 
-      ! Determine memory used by S(a,b) table and write out
-      size_sab = 8 * (this % n_inelastic_e_in * (2 + this % n_inelastic_e_out * &
-           (1 + this % n_inelastic_mu)) + this % n_elastic_e_in * &
-           (2 + this % n_elastic_mu))
-      write(unit_,*) '  Memory Used = ' // trim(to_str(size_sab)) // ' bytes'
+      call close_group(elastic_group)
+    end if
 
-      ! Blank line at end
-      write(unit_,*)
+    ! Inelastic data
+    call h5ltpath_valid_f(group_id, 'inelastic', .true., exists, hdf5_err)
+    if (exists) then
+      ! Read type of inelastic data
+      inelastic_group = open_group(group_id, 'inelastic')
+      call read_attribute(type, inelastic_group, 'secondary_mode')
+      select case (type)
+      case ('equal')
+        this % secondary_mode = SAB_SECONDARY_EQUAL
+      case ('skewed')
+        this % secondary_mode = SAB_SECONDARY_SKEWED
+      case ('continuous')
+        this % secondary_mode = SAB_SECONDARY_CONT
+      end select
 
-    end subroutine print_sab_table
+      ! Read cross section data
+      dset_id = open_dataset(inelastic_group, 'xs')
+      call get_shape(dset_id, dims2)
+      allocate(temp(dims2(1), dims2(2)))
+      call read_dataset(temp, dset_id)
+      call close_dataset(dset_id)
+
+      ! Set cross section data
+      this % n_inelastic_e_in = int(dims2(1), 4)
+      allocate(this % inelastic_e_in(this % n_inelastic_e_in))
+      allocate(this % inelastic_sigma(this % n_inelastic_e_in))
+      this % inelastic_e_in(:) = temp(:, 1)
+      this % inelastic_sigma(:) = temp(:, 2)
+      deallocate(temp)
+
+      ! Set inelastic threshold
+      this % threshold_inelastic = this % inelastic_e_in(this % n_inelastic_e_in)
+
+      if (this % secondary_mode /= SAB_SECONDARY_CONT) then
+        ! Read energy distribution
+        dset_id = open_dataset(inelastic_group, 'energy_out')
+        call get_shape(dset_id, dims2)
+        this % n_inelastic_e_out = int(dims2(1), 4)
+        allocate(this % inelastic_e_out(dims2(1), dims2(2)))
+        call read_dataset(this % inelastic_e_out, dset_id)
+        call close_dataset(dset_id)
+
+        ! Read angle distribution
+        dset_id = open_dataset(inelastic_group, 'mu_out')
+        call get_shape(dset_id, dims3)
+        this % n_inelastic_mu = int(dims3(1), 4)
+        allocate(this % inelastic_mu(dims3(1), dims3(2), dims3(3)))
+        call read_dataset(this % inelastic_mu, dset_id)
+        call close_dataset(dset_id)
+      else
+        ! Read correlated angle-energy distribution
+        call correlated_dist % from_hdf5(inelastic_group)
+
+        ! Convert to S(a,b) native format
+        n_energy = size(correlated_dist % energy)
+        allocate(this % inelastic_data(n_energy))
+        do i = 1, n_energy
+          associate (edist => correlated_dist % distribution(i))
+            ! Get number of outgoing energies for incoming energy i
+            n_energy_out = size(edist % e_out)
+            this % inelastic_data(i) % n_e_out = n_energy_out
+            allocate(this % inelastic_data(i) % e_out(n_energy_out))
+            allocate(this % inelastic_data(i) % e_out_pdf(n_energy_out))
+            allocate(this % inelastic_data(i) % e_out_cdf(n_energy_out))
+
+            ! Copy outgoing energy distribution
+            this % inelastic_data(i) % e_out(:) = edist % e_out
+            this % inelastic_data(i) % e_out_pdf(:) = edist % p
+            this % inelastic_data(i) % e_out_cdf(:) = edist % c
+
+            do j = 1, n_energy_out
+              select type (adist => edist % angle(j) % obj)
+              type is (Tabular)
+                ! On first pass, allocate space for angles
+                if (j == 1) then
+                  n_mu = size(adist % x)
+                  this % n_inelastic_mu = n_mu
+                  allocate(this % inelastic_data(i) % mu(n_mu, n_energy_out))
+                end if
+
+                ! Copy outgoing angles
+                this % inelastic_data(i) % mu(:, j) = adist % x
+              end select
+            end do
+          end associate
+        end do
+      end if
+
+      call close_group(inelastic_group)
+    end if
+  end subroutine salphabeta_from_hdf5
 
 end module sab_header

@@ -9,6 +9,7 @@ import h5py
 
 from .data import ATOMIC_SYMBOL, SUM_RULES
 from .ace import Table, get_table
+from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum
 from .product import Product
 from .reaction import Reaction, _get_photon_products
@@ -81,6 +82,7 @@ class IncidentNeutron(object):
         self.temperature = temperature
 
         self._energy = None
+        self._fission_energy = None
         self.reactions = OrderedDict()
         self.summed_reactions = OrderedDict()
         self.urr = None
@@ -125,6 +127,10 @@ class IncidentNeutron(object):
     @property
     def energy(self):
         return self._energy
+
+    @property
+    def fission_energy(self):
+        return self._fission_energy
 
     @property
     def temperature(self):
@@ -185,6 +191,12 @@ class IncidentNeutron(object):
     def energy(self, energy):
         cv.check_type('energy grid', energy, Iterable, Real)
         self._energy = energy
+
+    @fission_energy.setter
+    def fission_energy(self, fission_energy):
+        cv.check_type('fission energy release', fission_energy,
+                      FissionEnergyRelease)
+        self._fission_energy = fission_energy
 
     @reactions.setter
     def reactions(self, reactions):
@@ -276,6 +288,11 @@ class IncidentNeutron(object):
             urr_group = g.create_group('urr')
             self.urr.to_hdf5(urr_group)
 
+        # Write fission energy release data
+        if self.fission_energy is not None:
+            fer_group = g.create_group('fission_energy_release')
+            self.fission_energy.to_hdf5(fer_group)
+
         f.close()
 
     @classmethod
@@ -330,6 +347,11 @@ class IncidentNeutron(object):
         if 'urr' in group:
             urr_group = group['urr']
             data.urr = ProbabilityTables.from_hdf5(urr_group)
+
+        # Read fission energy release data
+        if 'fission_energy_release' in group:
+            fer_group = group['fission_energy_release']
+            data.fission_energy = FissionEnergyRelease.from_hdf5(fer_group)
 
         return data
 

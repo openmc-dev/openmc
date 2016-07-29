@@ -1,4 +1,5 @@
 from collections import Callable
+from copy import deepcopy
 import sys
 #from warnings import warn
 
@@ -64,16 +65,16 @@ class FissionEnergyRelease(object):
                     self.neutrinos])
 
     @property
-    def prompt_q(self):
+    def q_prompt(self):
         return Sum([self.fragments, self.prompt_neutrons, self.prompt_photons,
                     lambda E: -E])
 
     @property
-    def recoverable_q(self):
+    def q_recoverable(self):
         return Sum([self.recoverable, lambda E: -E])
 
     @property
-    def total_q(self):
+    def q_total(self):
         return Sum([self.total, lambda E: -E])
     
     @property
@@ -226,7 +227,37 @@ class FissionEnergyRelease(object):
             out.neutrinos = Polynomial(value['ENU'])
         else:
             out.form = 'Sher-Beck'
-            raise NotImplemented
+
+            # EFR and ENP are energy independent.  Polynomial is used because it
+            # has a __call__ attribute that handles Iterable inputs.  The
+            # energy-dependence of END is unspecified in ENDF-102 so assume it
+            # is independent.
+            out.fragments = Polynomial((value['EFR'][0]))
+            out.prompt_photons = Polynomial((value['EGP'][0]))
+            out.delayed_neutrons = Polynomial((value['END'][0]))
+
+            # EDP, EB, and ENU are linear.
+            out.delayed_photons = Polynomial((value['EGD'][0], -0.075))
+            out.betas = Polynomial((value['EB'][0], -0.075))
+            out.neutrinos = Polynomial((value['ENU'][0], -0.105))
+
+            # Prompt neutrons require nu-data.  It is not clear from ENDF-102
+            # whether prompt or total nu values should be used, but the delayed
+            # neutron fraction is so small that the difference is negligible.
+            nu_prompt = [p for p in incident_neutron[18].products
+                         if p.particle == 'neutron'
+                         and p.emission_mode == 'prompt']
+            if len(nu_prompt) == 0:
+                raise ValueError('Nu data is needed to compute fission energy '
+                                 'release with the Sher-Beck format.')
+            if len(nu_prompt) > 1:
+                raise ValueError('Ambiguous prompt nu value.')
+            if not isinstance(nu_prompt[0].yield_, Tabulated1D):
+                raise TypeError('Sher-Beck fission energy release currently '
+                                'only supports Tabulated1D nu data.')
+            ENP = deepcopy(nu_prompt[0].yield_)
+            ENP.y = value['ENP'] + 1.307 * ENP.x - 8.07 * (ENP.y - ENP.y[0])
+            out.prompt_neutrons = ENP
 
         return out
 
@@ -247,16 +278,19 @@ class FissionEnergyRelease(object):
         """
 
         obj = cls()
+
+        obj.fragments = Polynomial(group['fragments'].value)
+        obj.delayed_neutrons = Polynomial(group['delayed_neutrons'].value)
+        obj.prompt_photons = Polynomial(group['prompt_photons'].value)
+        obj.delayed_photons = Polynomial(group['delayed_photons'].value)
+        obj.betas = Polynomial(group['betas'].value)
+        obj.neutrinos = Polynomial(group['neutrinos'].value)
+
         if group.attrs['format'] == 'Madland':
-            obj.fragments = Polynomial(group['fragments'].value)
             obj.prompt_neutrons = Polynomial(group['prompt_neutrons'].value)
-            obj.delayed_neutrons = Polynomial(group['delayed_neutrons'].value)
-            obj.prompt_photons = Polynomial(group['prompt_photons'].value)
-            obj.delayed_photons = Polynomial(group['delayed_photons'].value)
-            obj.betas = Polynomial(group['betas'].value)
-            obj.neutrinos = Polynomial(group['neutrinos'].value)
         elif group.attrs['format'] == 'Sher-Beck':
-            raise NotImplemented
+            obj.prompt_neutrons = Tabulated1D.from_hdf5(
+                                                       group['prompt_neutrons'])
         else:
             raise ValueError('Unrecognized energy release format')
 
@@ -272,19 +306,20 @@ class FissionEnergyRelease(object):
 
         """
 
+        group.create_dataset('fragments', data=self.fragments.coef)
+        group.create_dataset('delayed_neutrons',
+                             data=self.delayed_neutrons.coef)
+        group.create_dataset('prompt_photons',
+                             data=self.prompt_photons.coef)
+        group.create_dataset('delayed_photons',
+                             data=self.delayed_photons.coef)
+        group.create_dataset('betas', data=self.betas.coef)
+        group.create_dataset('neutrinos', data=self.neutrinos.coef)
+
         if self.form == 'Madland':
             group.attrs['format'] = np.string_('Madland')
-            group.create_dataset('fragments', data=self.fragments.coef)
             group.create_dataset('prompt_neutrons',
                                  data=self.prompt_neutrons.coef)
-            group.create_dataset('delayed_neutrons',
-                                 data=self.delayed_neutrons.coef)
-            group.create_dataset('prompt_photons',
-                                 data=self.prompt_photons.coef)
-            group.create_dataset('delayed_photons',
-                                 data=self.delayed_photons.coef)
-            group.create_dataset('betas', data=self.betas.coef)
-            group.create_dataset('neutrinos', data=self.neutrinos.coef)
 
             q_prompt = (self.fragments + self.prompt_neutrons +
                         self.prompt_photons + Polynomial((-1.0, 0.0)))
@@ -294,19 +329,18 @@ class FissionEnergyRelease(object):
                              self.delayed_photons + self.betas +
                              Polynomial((-1.0, 0.0)))
             group.create_dataset('q_recoverable', data=q_recoverable.coef)
-            q_total = (self.fragments + self.prompt_neutrons +
-                       self.delayed_neutrons + self.prompt_photons +
-                       self.delayed_photons + self.betas + self.neutrinos +
-                       Polynomial((-1.0, 0.0)))
-            group.create_dataset('q_total', data=q_total.coef)
         elif self.form == 'Sher-Beck':
             group.attrs['format'] = np.string_('Sher-Beck')
-            self.fragments.to_hdf5(group, 'fragments')
             self.prompt_neutrons.to_hdf5(group, 'prompt_neutrons')
-            self.delayed_neutrons.to_hdf5(group, 'delayed_neutrons')
-            self.prompt_photons.to_hdf5(group, 'prompt_photons')
-            self.delayed_photons.to_hdf5(group, 'delayed_photons')
-            self.betas.to_hdf5(group, 'betas')
-            self.neutrinos.to_hdf5(group, 'neutrinos')
+
+            q_prompt = deepcopy(self.prompt_neutrons)
+            q_prompt.y += self.fragments(q_prompt.x)
+            q_prompt.y += self.prompt_photons(q_prompt.x)
+            q_prompt.to_hdf5(group, 'q_prompt')
+            q_recoverable = q_prompt
+            q_recoverable.y += self.delayed_neutrons(q_recoverable.x)
+            q_recoverable.y += self.delayed_photons(q_recoverable.x)
+            q_recoverable.y += self.betas(q_recoverable.x)
+            q_recoverable.to_hdf5(group, 'q_recoverable')
         else:
             raise ValueError('Unrecognized energy release format')

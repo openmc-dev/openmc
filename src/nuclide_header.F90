@@ -322,6 +322,23 @@ module nuclide_header
         fer_dset = open_dataset(fer_group, 'q_recoverable')
         call this % fission_q_recov % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
+      else if (temp == 'Sher-Beck') then
+        ! The data uses the Sher-Beck format.  Python has handily converted this
+        ! format to Tabulated1Ds.
+
+        ! Read the prompt Q-value
+        allocate(Tabulated1D :: this % fission_q_prompt)
+        fer_dset = open_dataset(fer_group, 'q_prompt')
+        call this % fission_q_prompt % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+
+        ! Read the recoverable energy Q-value
+        allocate(Tabulated1D :: this % fission_q_recov)
+        fer_dset = open_dataset(fer_group, 'q_recoverable')
+        call this % fission_q_recov % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission energy release format.')
       end if
       call close_group(fer_group)
     end if

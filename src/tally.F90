@@ -703,7 +703,7 @@ contains
             ! fission scaled by Q-value
             associate (nuc => nuclides(p % event_nuclide))
               if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
-                  allocated(nuc % fission_q_prompt)) then
+                   allocated(nuc % fission_q_prompt)) then
                 score = p % absorb_wgt &
                      * nuc % fission_q_prompt % evaluate(p % last_E) &
                      * micro_xs(p % event_nuclide) % fission &
@@ -762,7 +762,7 @@ contains
             ! fission scaled by Q-value
             associate (nuc => nuclides(p % event_nuclide))
               if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
-                  allocated(nuc % fission_q_recov)) then
+                   allocated(nuc % fission_q_recov)) then
                 score = p % absorb_wgt &
                      * nuc % fission_q_recov % evaluate(p % last_E) &
                      * micro_xs(p % event_nuclide) % fission &

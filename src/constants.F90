@@ -7,8 +7,8 @@ module constants
 
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
-  integer, parameter :: VERSION_MINOR   = 7
-  integer, parameter :: VERSION_RELEASE = 1
+  integer, parameter :: VERSION_MINOR   = 8
+  integer, parameter :: VERSION_RELEASE = 0
 
   ! Revision numbers for binary files
   integer,       parameter :: REVISION_STATEPOINT       = 15
@@ -236,6 +236,13 @@ module constants
   integer, parameter :: &
        ASCII  = 1, & ! ASCII cross section file
        BINARY = 2    ! Binary cross section file
+
+  ! Library types
+  integer, parameter :: &
+       LIBRARY_NEUTRON = 1, &
+       LIBRARY_THERMAL = 2, &
+       LIBRARY_PHOTON = 3, &
+       LIBRARY_MULTIGROUP = 4
 
   ! Probability table parameters
   integer, parameter :: &

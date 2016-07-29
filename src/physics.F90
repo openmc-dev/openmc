@@ -346,7 +346,7 @@ contains
         i = i + 1
 
         ! Check to make sure inelastic scattering reaction sampled
-        if (i > nuc % n_reaction) then
+        if (i > size(nuc % reactions)) then
           call write_particle_restart(p)
           call fatal_error("Did not sample any reaction for nuclide " &
                &// trim(nuc % name))

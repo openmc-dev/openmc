@@ -10,13 +10,13 @@ module hdf5_interface
 ! can be combined into one simply accepting an assumed-shape array.
 !==============================================================================
 
-  use error, only: fatal_error
-  use tally_header, only: TallyResult
+  use, intrinsic :: ISO_C_BINDING
 
   use hdf5
   use h5lt
-  use, intrinsic :: ISO_C_BINDING
 
+  use error, only: fatal_error
+  use tally_header, only: TallyResult
 #ifdef PHDF5
   use message_passing, only: MPI_COMM_WORLD, MPI_INFO_NULL
 #endif
@@ -2383,8 +2383,8 @@ contains
     ! Insert the 'r' and 'i' identifiers
     call h5tcreate_f(H5T_COMPOUND_F, size_double, dtype_real, hdf5_err)
     call h5tcreate_f(H5T_COMPOUND_F, size_double, dtype_imag, hdf5_err)
-    call h5tinsert_f(dtype_real, "r", 0_8, H5T_NATIVE_DOUBLE, hdf5_err)
-    call h5tinsert_f(dtype_imag, "i", 0_8, H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(dtype_real, "r", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(dtype_imag, "i", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdf5_err)
 
     ! Set up collective vs. independent I/O
     data_xfer_mode = H5FD_MPIO_COLLECTIVE_F

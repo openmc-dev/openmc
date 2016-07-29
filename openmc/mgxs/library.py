@@ -625,7 +625,7 @@ class Library(object):
             in the report. Defaults to 'all'.
         nuclides : {'all', 'sum'}
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -758,7 +758,7 @@ class Library(object):
         xsdata_name : str
             Name to apply to the "xsdata" entry produced by this method
         nuclide : str
-            A nuclide name string (e.g., 'U-235').  Defaults to 'total' to
+            A nuclide name string (e.g., 'U235').  Defaults to 'total' to
             obtain a material-wise macroscopic cross section.
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or

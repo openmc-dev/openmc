@@ -14,7 +14,6 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 from openmc.mgxs import EnergyGroups
-from openmc import Mesh
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -4976,17 +4975,6 @@ class InverseVelocity(MGXS):
             A string representing the units of the InverseVelocity.
 
         """
-
-        # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
-        elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
-        elif self.domain_type == 'mesh':
-            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
-            subdomains = list(itertools.product(*xyz))
-        else:
-            subdomains = [self.domain.id]
 
         if xs_type == 'macro':
             return 'second/cm'

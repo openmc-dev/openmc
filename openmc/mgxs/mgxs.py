@@ -42,7 +42,6 @@ MGXS_TYPES = ['total',
 
 
 # Supported domain types
-# TODO: Implement Mesh domains
 DOMAIN_TYPES = ['cell',
                 'distribcell',
                 'universe',
@@ -50,7 +49,6 @@ DOMAIN_TYPES = ['cell',
                 'mesh']
 
 # Supported domain classes
-# TODO: Implement Mesh domains
 _DOMAINS = (openmc.Cell,
             openmc.Universe,
             openmc.Material,

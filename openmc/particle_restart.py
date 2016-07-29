@@ -1,6 +1,3 @@
-import struct
-
-
 class Particle(object):
     """Information used to restart a specific particle that caused a simulation to
     fail.

@@ -57,26 +57,22 @@
               <interleave>
                 <choice>
                   <element name="name">
-                    <data type="string">
-                      <param name="maxLength">7</param>
-                    </data>
+                    <data type="string"/>
                   </element>
                   <attribute name="name">
-                    <data type="string">
-                      <param name="maxLength">7</param>
-                    </data>
+                    <data type="string"/>
                   </attribute>
                 </choice>
                 <optional>
                   <choice>
                     <element name="xs">
                       <data type="string">
-                        <param name="maxLength">3</param>
+                        <param name="maxLength">5</param>
                       </data>
                     </element>
                     <attribute name="xs">
                       <data type="string">
-                        <param name="maxLength">3</param>
+                        <param name="maxLength">5</param>
                       </data>
                     </attribute>
                   </choice>
@@ -123,25 +119,21 @@
               <interleave>
                 <choice>
                   <element name="name">
-                    <data type="string">
-                      <param name="maxLength">7</param>
-                    </data>
+                    <data type="string"/>
                   </element>
                   <attribute name="name">
-                    <data type="string">
-                      <param name="maxLength">7</param>
-                    </data>
+                    <data type="string"/>
                   </attribute>
                 </choice>
                 <choice>
                   <element name="xs">
                     <data type="string">
-                      <param name="maxLength">3</param>
+                      <param name="maxLength">5</param>
                     </data>
                   </element>
                   <attribute name="xs">
                     <data type="string">
-                      <param name="maxLength">3</param>
+                      <param name="maxLength">5</param>
                     </data>
                   </attribute>
                 </choice>
@@ -167,12 +159,12 @@
                   <choice>
                     <element name="xs">
                       <data type="string">
-                        <param name="maxLength">3</param>
+                        <param name="maxLength">5</param>
                       </data>
                     </element>
                     <attribute name="xs">
                       <data type="string">
-                        <param name="maxLength">3</param>
+                        <param name="maxLength">5</param>
                       </data>
                     </attribute>
                   </choice>
@@ -219,26 +211,22 @@
               <interleave>
                 <choice>
                   <element name="name">
-                    <data type="string">
-                      <param name="maxLength">7</param>
-                    </data>
+                    <data type="string"/>
                   </element>
                   <attribute name="name">
-                    <data type="string">
-                      <param name="maxLength">7</param>
-                    </data>
+                    <data type="string"/>
                   </attribute>
                 </choice>
                 <optional>
                   <choice>
                     <element name="xs">
                       <data type="string">
-                        <param name="maxLength">3</param>
+                        <param name="maxLength">5</param>
                       </data>
                     </element>
                     <attribute name="xs">
                       <data type="string">
-                        <param name="maxLength">3</param>
+                        <param name="maxLength">5</param>
                       </data>
                     </attribute>
                   </choice>
@@ -252,7 +240,7 @@
     <optional>
       <element name="default_xs">
         <data type="string">
-          <param name="maxLength">3</param>
+          <param name="maxLength">5</param>
         </data>
       </element>
     </optional>

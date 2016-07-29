@@ -203,7 +203,7 @@ class Region(object):
 
 
 class Intersection(Region):
-    """Intersection of two or more regions.
+    r"""Intersection of two or more regions.
 
     Instances of Intersection are generally created via the __and__ operator
     applied to two instances of :class:`openmc.Region`. This is illustrated in
@@ -277,7 +277,7 @@ class Intersection(Region):
 
 
 class Union(Region):
-    """Union of two or more regions.
+    r"""Union of two or more regions.
 
     Instances of Union are generally created via the __or__ operator applied to
     two instances of :class:`openmc.Region`. This is illustrated in the

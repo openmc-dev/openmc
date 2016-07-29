@@ -6,7 +6,6 @@ from math import sqrt, floor
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
-import warnings
 
 import numpy as np
 
@@ -429,14 +428,14 @@ class RectLattice(Lattice):
         # For 2D Lattices
         if self.ndim == 2:
             offset = self._offsets[lat_z, lat_y, lat_x, distribcell_index-1]
-            offset += self._universes[lat_x][lat_y].get_cell_instance(path,
-                                                              distribcell_index)
+            offset += self._universes[lat_x][lat_y].get_cell_instance(
+                path, distribcell_index)
 
         # For 3D Lattices
         else:
             offset = self._offsets[lat_z, lat_y, lat_x, distribcell_index-1]
             offset += self._universes[lat_z][lat_y][lat_x].get_cell_instance(
-                                                        path, distribcell_index)
+                path, distribcell_index)
 
         return offset
 
@@ -908,7 +907,7 @@ class HexLattice(Lattice):
         # coordinates
         d_min = np.inf
         for idx in [(ix, ia, iz), (ix + 1, ia, iz), (ix, ia + 1, iz),
-                  (ix + 1, ia + 1, iz)]:
+                    (ix + 1, ia + 1, iz)]:
             p = self.get_local_coordinates(point, idx)
             d = p[0]**2 + p[1]**2
             if d < d_min:

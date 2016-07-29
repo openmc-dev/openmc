@@ -2,7 +2,6 @@ import sys
 import os
 import copy
 import pickle
-import warnings
 from numbers import Integral
 from collections import OrderedDict
 from warnings import warn
@@ -154,10 +153,6 @@ class Library(object):
         return self._openmc_geometry
 
     @property
-    def openmc_geometry(self):
-        return self._openmc_geometry
-
-    @property
     def opencg_geometry(self):
         if self._opencg_geometry is None:
             from openmc.opencg_compatible import get_opencg_geometry
@@ -297,16 +292,14 @@ class Library(object):
                 cv.check_iterable_type('domain', domains, openmc.Mesh)
                 all_domains = domains
             else:
-                msg = 'Unable to set domains with ' \
-                      'domain type "{}"'.format(self.domain_type)
-                raise ValueError(msg)
+                raise ValueError('Unable to set domains with domain '
+                                 'type "{}"'.format(self.domain_type))
 
             # Check that each domain can be found in the geometry
             for domain in domains:
                 if domain not in all_domains:
-                    msg = 'Domain "{}" could not be found in the ' \
-                          'geometry.'.format(domain)
-                    raise ValueError(msg)
+                    raise ValueError('Domain "{}" could not be found in the '
+                                     'geometry.'.format(domain))
 
             self._domains = domains
 
@@ -320,9 +313,8 @@ class Library(object):
         cv.check_value('correction', correction, ('P0', None))
 
         if correction == 'P0' and self.legendre_order > 0:
-            msg = 'The P0 correction will be ignored since the scattering ' \
-                  'order {} is greater than zero'.format(self.legendre_order)
-            warnings.warn(msg)
+            warn('The P0 correction will be ignored since the scattering '
+                 'order "{}" is greater than zero'.format(self.legendre_order))
 
         self._correction = correction
 
@@ -335,7 +327,7 @@ class Library(object):
         if self.correction == 'P0' and legendre_order > 0:
             msg = 'The P0 correction will be ignored since the scattering ' \
                   'order {} is greater than zero'.format(self.legendre_order)
-            warnings.warn(msg, RuntimeWarning)
+            warn(msg, RuntimeWarning)
             self.correction = None
 
         self._legendre_order = legendre_order
@@ -420,7 +412,7 @@ class Library(object):
         for domain in self.domains:
             for mgxs_type in self.mgxs_types:
                 mgxs = self.get_mgxs(domain, mgxs_type)
-                for tally_id, tally in mgxs.tallies.items():
+                for tally in mgxs.tallies.values():
                     tallies_file.append(tally, merge=merge)
 
     def load_from_statepoint(self, statepoint):
@@ -476,13 +468,9 @@ class Library(object):
 
         Parameters
         ----------
-        domain : Material or Cell or Universe or Mesh or Integral
-            The material, cell, universe, or mesh object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption',
-                     'capture', 'fission', 'nu-fission', 'kappa-fission',
-                     'scatter', 'nu-scatter', 'scatter matrix',
-                     'nu-scatter matrix', 'multiplicity matrix',
-                     'nu-fission matrix', chi'}
+        domain : Material or Cell or Universe or Integral
+            The material, cell, or universe object of interest (or its ID)
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission'}
             The type of multi-group cross section object to return
 
         Returns
@@ -522,8 +510,8 @@ class Library(object):
 
         # Check that requested domain is included in library
         if mgxs_type not in self.mgxs_types:
-                msg = 'Unable to find MGXS type "{0}"'.format(mgxs_type)
-                raise ValueError(msg)
+            msg = 'Unable to find MGXS type "{0}"'.format(mgxs_type)
+            raise ValueError(msg)
 
         return self.all_mgxs[domain_id][mgxs_type]
 
@@ -657,7 +645,7 @@ class Library(object):
             in the report. Defaults to 'all'.
         nuclides : {'all', 'sum'}
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -790,7 +778,7 @@ class Library(object):
         xsdata_name : str
             Name to apply to the "xsdata" entry produced by this method
         nuclide : str
-            A nuclide name string (e.g., 'U-235').  Defaults to 'total' to
+            A nuclide name string (e.g., 'U235').  Defaults to 'total' to
             obtain a material-wise macroscopic cross section.
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
@@ -946,7 +934,7 @@ class Library(object):
                 # accounted for approximately by using an adjusted
                 # absorption cross section.
                 if 'total' in self.mgxs_types:
-                    xsdata._absorption = \
+                    xsdata.absorption = \
                         np.subtract(xsdata.total,
                                     np.sum(xsdata.scatter[0, :, :], axis=1))
 
@@ -1208,13 +1196,11 @@ class Library(object):
         # Ensure absorption is present
         if 'absorption' not in self.mgxs_types:
             error_flag = True
-            msg = '"absorption" MGXS type is required but not provided.'
-            warn(msg)
+            warn('An "absorption" MGXS type is required but not provided.')
         # Ensure nu-scattering matrix is required
         if 'nu-scatter matrix' not in self.mgxs_types:
             error_flag = True
-            msg = '"nu-scatter matrix" MGXS type is required but not provided.'
-            warn(msg)
+            warn('A "nu-scatter matrix" MGXS type is required but not provided.')
         else:
             # Ok, now see the status of scatter and/or multiplicity
             if ((('scatter matrix' not in self.mgxs_types) and
@@ -1223,24 +1209,20 @@ class Library(object):
                 # we need total, and not transport.
                 if 'total' not in self.mgxs_types:
                     error_flag = True
-                    msg = '"total" MGXS type is required if a ' \
-                          'scattering matrix is not provided.'
-                    warn(msg)
+                    warn('A "total" MGXS type is required if a '
+                         'scattering matrix is not provided.')
         # Total or transport can be present, but if using
         # self.correction=="P0", then we should use transport.
         if (((self.correction is "P0") and
              ('nu-transport' not in self.mgxs_types))):
             error_flag = True
-            msg = 'A "nu-transport" MGXS type is required since a "P0" ' \
-                  'correction is applied, but a "nu-transport" MGXS is ' \
-                  'not provided.'
-            warn(msg)
+            warn('A "nu-transport" MGXS type is required since a "P0" '
+                 'correction is applied, but a "nu-transport" MGXS is '
+                 'not provided.')
         elif (((self.correction is None) and
                ('total' not in self.mgxs_types))):
             error_flag = True
-            msg = '"total" MGXS type is required, but not provided.'
-            warn(msg)
+            warn('A "total" MGXS type is required, but not provided.')
 
         if error_flag:
-            msg = 'Invalid MGXS configuration encountered.'
-            raise ValueError(msg)
+            raise ValueError('Invalid MGXS configuration encountered.')

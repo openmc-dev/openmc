@@ -8,7 +8,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.clean_xml import *
+from openmc.clean_xml import clean_xml_indentation
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -18,6 +18,7 @@ AUTO_PLOT_ID = 10000
 
 
 def reset_auto_plot_id():
+    """Reset counter for auto-generated plot IDs."""
     global AUTO_PLOT_ID
     AUTO_PLOT_ID = 10000
 
@@ -201,7 +202,7 @@ class Plot(object):
         cv.check_type('plot background', background, Iterable, Integral)
         cv.check_length('plot background', background, 3)
         for rgb in background:
-            cv.check_greater_than('plot background',rgb, 0, True)
+            cv.check_greater_than('plot background', rgb, 0, True)
             cv.check_less_than('plot background', rgb, 256)
         self._background = background
 
@@ -257,7 +258,7 @@ class Plot(object):
         string += '{0: <16}{1}{2}\n'.format('\tColor', '=\t', self._color)
         string += '{0: <16}{1}{2}\n'.format('\tMask', '=\t',
                                             self._mask_components)
-        string += '{0: <16}{1}{2}\n'.format('\tMask',    '=\t',
+        string += '{0: <16}{1}{2}\n'.format('\tMask', '=\t',
                                             self._mask_background)
         string += '{0: <16}{1}{2}\n'.format('\tCol Spec', '=\t', self._col_spec)
         return string
@@ -536,8 +537,8 @@ class Plots(cv.CheckedList):
         for plot in self:
             xml_element = plot.get_plot_xml()
 
-            if len(plot._name) > 0:
-                self._plots_file.append(ET.Comment(plot._name))
+            if len(plot.name) > 0:
+                self._plots_file.append(ET.Comment(plot.name))
 
             self._plots_file.append(xml_element)
 
@@ -557,4 +558,4 @@ class Plots(cv.CheckedList):
         # Write the XML Tree to the plots.xml file
         tree = ET.ElementTree(self._plots_file)
         tree.write("plots.xml", xml_declaration=True,
-                             encoding='utf-8', method="xml")
+                   encoding='utf-8', method="xml")

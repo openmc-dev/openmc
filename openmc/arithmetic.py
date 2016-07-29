@@ -1,6 +1,5 @@
 import sys
 import copy
-from numbers import Integral
 from collections import Iterable
 
 import numpy as np
@@ -321,7 +320,7 @@ class CrossFilter(object):
 
     @type.setter
     def type(self, filter_type):
-        if filter_type not in _FILTER_TYPES.values():
+        if filter_type not in _FILTER_TYPES:
             msg = 'Unable to set CrossFilter type to "{0}" since it ' \
                   'is not one of the supported types'.format(filter_type)
             raise ValueError(msg)
@@ -576,7 +575,7 @@ class AggregateNuclide(object):
     @nuclides.setter
     def nuclides(self, nuclides):
         cv.check_iterable_type('nuclides', nuclides,
-            (basestring, Nuclide, CrossNuclide))
+                               (basestring, Nuclide, CrossNuclide))
         self._nuclides = nuclides
 
     @aggregate_op.setter
@@ -691,7 +690,7 @@ class AggregateFilter(object):
 
     @type.setter
     def type(self, filter_type):
-        if filter_type not in _FILTER_TYPES.values():
+        if filter_type not in _FILTER_TYPES:
             msg = 'Unable to set AggregateFilter type to "{0}" since it ' \
                   'is not one of the supported types'.format(filter_type)
             raise ValueError(msg)

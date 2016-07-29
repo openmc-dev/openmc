@@ -7,8 +7,8 @@ module constants
 
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
-  integer, parameter :: VERSION_MINOR   = 7
-  integer, parameter :: VERSION_RELEASE = 1
+  integer, parameter :: VERSION_MINOR   = 8
+  integer, parameter :: VERSION_RELEASE = 0
 
   ! Revision numbers for binary files
   integer,       parameter :: REVISION_STATEPOINT       = 15
@@ -237,6 +237,13 @@ module constants
        ASCII  = 1, & ! ASCII cross section file
        BINARY = 2    ! Binary cross section file
 
+  ! Library types
+  integer, parameter :: &
+       LIBRARY_NEUTRON = 1, &
+       LIBRARY_THERMAL = 2, &
+       LIBRARY_PHOTON = 3, &
+       LIBRARY_MULTIGROUP = 4
+
   ! Probability table parameters
   integer, parameter :: &
        URR_CUM_PROB = 1, &
@@ -282,7 +289,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 20
+  integer, parameter :: N_SCORE_TYPES = 21
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -303,7 +310,8 @@ module constants
        SCORE_NU_SCATTER_YN      = -17, & ! angular flux-weighted nu-scattering moment (0:N)
        SCORE_EVENTS             = -18, & ! number of events
        SCORE_DELAYED_NU_FISSION = -19, & ! delayed neutron production rate
-       SCORE_INVERSE_VELOCITY   = -20    ! flux-weighted inverse velocity
+       SCORE_PROMPT_NU_FISSION  = -20, & ! prompt neutron production rate
+       SCORE_INVERSE_VELOCITY   = -21    ! flux-weighted inverse velocity
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10

@@ -1,6 +1,5 @@
 module initialize
 
-  use ace,             only: read_ace_xs
   use bank_header,     only: Bank
   use constants
   use dict_header,     only: DictIntInt, ElemKeyValueII
@@ -109,19 +108,6 @@ contains
     end if
 
     if (run_mode /= MODE_PLOTTING) then
-      ! With the AWRs from the xs_listings, change all material specifications
-      ! so that they contain atom percents summing to 1
-      call normalize_ao()
-
-      ! Read ACE-format cross sections
-      call time_read_xs%start()
-      if (run_CE) then
-        call read_ace_xs()
-      else
-        call read_mgxs()
-      end if
-      call time_read_xs%stop()
-
       ! Construct information needed for nuclear data
       if (run_CE) then
         ! Set undefined cell temperatures to match the material data.
@@ -140,7 +126,10 @@ contains
         end select
       else
         ! Create material macroscopic data for MGXS
+        call time_read_xs%start()
+        call read_mgxs()
         call create_macro_xs()
+        call time_read_xs%stop()
       end if
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
@@ -799,71 +788,6 @@ contains
     end do TALLY_LOOP
 
   end subroutine adjust_indices
-
-!===============================================================================
-! NORMALIZE_AO normalizes the atom or weight percentages for each material
-!===============================================================================
-
-  subroutine normalize_ao()
-
-    integer        :: index_list      ! index in xs_listings array
-    integer        :: i               ! index in materials array
-    integer        :: j               ! index over nuclides in material
-    real(8)        :: sum_percent     ! summation
-    real(8)        :: awr             ! atomic weight ratio
-    real(8)        :: x               ! atom percent
-    logical        :: percent_in_atom ! nuclides specified in atom percent?
-    logical        :: density_in_atom ! density specified in atom/b-cm?
-    type(Material), pointer :: mat => null()
-
-    ! first find the index in the xs_listings array for each nuclide in each
-    ! material
-    do i = 1, n_materials
-      mat => materials(i)
-
-      percent_in_atom = (mat%atom_density(1) > ZERO)
-      density_in_atom = (mat%density > ZERO)
-
-      sum_percent = ZERO
-      do j = 1, mat%n_nuclides
-        ! determine atomic weight ratio
-        index_list = xs_listing_dict%get_key(mat%names(j))
-        awr = xs_listings(index_list)%awr
-
-        ! if given weight percent, convert all values so that they are divided
-        ! by awr. thus, when a sum is done over the values, it's actually
-        ! sum(w/awr)
-        if (.not. percent_in_atom) then
-          mat%atom_density(j) = -mat%atom_density(j) / awr
-        end if
-      end do
-
-      ! determine normalized atom percents. if given atom percents, this is
-      ! straightforward. if given weight percents, the value is w/awr and is
-      ! divided by sum(w/awr)
-      sum_percent = sum(mat%atom_density)
-      mat%atom_density = mat%atom_density / sum_percent
-
-      ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
-      ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
-      if (.not. density_in_atom) then
-        sum_percent = ZERO
-        do j = 1, mat%n_nuclides
-          index_list = xs_listing_dict%get_key(mat%names(j))
-          awr = xs_listings(index_list)%awr
-          x = mat%atom_density(j)
-          sum_percent = sum_percent + x*awr
-        end do
-        sum_percent = ONE / sum_percent
-        mat%density = -mat%density * N_AVOGADRO &
-             / MASS_NEUTRON * sum_percent
-      end if
-
-      ! Calculate nuclide atom densities
-      mat%atom_density = mat%density * mat%atom_density
-    end do
-
-  end subroutine normalize_ao
 
 !===============================================================================
 ! CALCULATE_WORK determines how many particles each processor should simulate

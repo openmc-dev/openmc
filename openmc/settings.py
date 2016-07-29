@@ -6,7 +6,7 @@ import sys
 
 import numpy as np
 
-from openmc.clean_xml import *
+from openmc.clean_xml import clean_xml_indentation
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
 from openmc import Nuclide
@@ -311,7 +311,7 @@ class Settings(object):
 
     @property
     def trigger_batch_interval(self):
-        return self._batch_interval
+        return self._trigger_batch_interval
 
     @property
     def output(self):
@@ -1011,7 +1011,7 @@ class Settings(object):
         if self._trigger_active is not None:
             if self._trigger_subelement is None:
                 self._trigger_subelement = ET.SubElement(self._settings_file,
-                                                      "trigger")
+                                                         "trigger")
 
             element = ET.SubElement(self._trigger_subelement, "active")
             element.text = str(self._trigger_active).lower()
@@ -1020,7 +1020,7 @@ class Settings(object):
         if self._trigger_max_batches is not None:
             if self._trigger_subelement is None:
                 self._trigger_subelement = ET.SubElement(self._settings_file,
-                                                      "trigger")
+                                                         "trigger")
 
             element = ET.SubElement(self._trigger_subelement, "max_batches")
             element.text = str(self._trigger_max_batches)
@@ -1029,7 +1029,7 @@ class Settings(object):
         if self._trigger_batch_interval is not None:
             if self._trigger_subelement is None:
                 self._trigger_subelement = ET.SubElement(self._settings_file,
-                                                      "trigger")
+                                                         "trigger")
 
             element = ET.SubElement(self._trigger_subelement, "batch_interval")
             element.text = str(self._trigger_batch_interval)
@@ -1103,14 +1103,16 @@ class Settings(object):
             element.text = str(self._multipole_active)
 
     def _create_resonance_scattering_element(self):
-        if self.resonance_scattering is None: return
+        if self.resonance_scattering is None:
+            return
 
         element = ET.SubElement(self._settings_file, "resonance_scattering")
 
         for r in self.resonance_scattering:
             if r.nuclide.name != r.nuclide_0K.name:
                 raise ValueError("The nuclide and nuclide_0K attributes of "
-                     "a ResonantScattering object must have identical names.")
+                                 "a ResonantScattering object must have "
+                                 "identical names.")
             r.create_xml_subelement(element)
 
     def export_to_xml(self):
@@ -1159,7 +1161,7 @@ class Settings(object):
         # Write the XML Tree to the settings.xml file
         tree = ET.ElementTree(self._settings_file)
         tree.write("settings.xml", xml_declaration=True,
-                             encoding='utf-8', method="xml")
+                   encoding='utf-8', method="xml")
 
 
 class ResonanceScattering(object):
@@ -1215,15 +1217,11 @@ class ResonanceScattering(object):
     @nuclide.setter
     def nuclide(self, nuc):
         check_type('nuclide', nuc, Nuclide)
-        if nuc.zaid == None: raise ValueError("The nuclide must have an "
-             "explicitly defined zaid attribute.")
         self._nuclide = nuc
 
     @nuclide_0K.setter
     def nuclide_0K(self, nuc):
         check_type('nuclide_0K', nuc, Nuclide)
-        if nuc.zaid == None: raise ValueError("The nuclide_0K must have an "
-             "explicitly defined zaid attribute.")
         self._nuclide_0K = nuc
 
     @method.setter
@@ -1251,10 +1249,9 @@ class ResonanceScattering(object):
             subelement = ET.SubElement(scatterer, 'method')
             subelement.text = self.method
         subelement = ET.SubElement(scatterer, 'xs_label')
-        subelement.text = str(self.nuclide.zaid) + '.' + str(self.nuclide.xs)
+        subelement.text = '{0.name}.{0.xs}'.format(self.nuclide)
         subelement = ET.SubElement(scatterer, 'xs_label_0K')
-        subelement.text = str(self.nuclide_0K.zaid) + '.' \
-             + str(self.nuclide_0K.xs)
+        subelement.text = '{0.name}.{0.xs}'.format(self.nuclide_0K)
         if self.E_min is not None:
             subelement = ET.SubElement(scatterer, 'E_min')
             subelement.text = str(self.E_min)

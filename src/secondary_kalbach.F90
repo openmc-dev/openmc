@@ -1,7 +1,11 @@
 module secondary_kalbach
 
+  use hdf5, only: HID_T, HSIZE_T
+
   use angleenergy_header, only: AngleEnergy
-  use constants, only: ZERO, ONE, TWO, HISTOGRAM, LINEAR_LINEAR
+  use constants, only: ZERO, HALF, ONE, TWO, HISTOGRAM, LINEAR_LINEAR
+  use hdf5_interface, only: read_attribute, read_dataset, open_dataset, &
+       close_dataset, get_shape
   use random_lcg, only: prn
   use search, only: binary_search
 
@@ -29,6 +33,7 @@ module secondary_kalbach
     type(KalbachMannTable), allocatable :: distribution(:) ! outgoing E/mu parameters
   contains
     procedure :: sample => kalbachmann_sample
+    procedure :: from_hdf5 => kalbachmann_from_hdf5
   end type KalbachMann
 
 contains
@@ -160,5 +165,117 @@ contains
     end if
 
   end subroutine kalbachmann_sample
+
+  subroutine kalbachmann_from_hdf5(this, group_id)
+    class(KalbachMann), intent(inout) :: this
+    integer(HID_T),     intent(in)    :: group_id
+
+    integer :: i, j, k
+    integer :: n
+    integer :: n_energy
+    integer(HID_T) :: dset_id
+    integer(HSIZE_T) :: dims(1), dims2(2)
+    integer, allocatable :: temp(:,:)
+    integer, allocatable :: offsets(:)
+    integer, allocatable :: interp(:)
+    integer, allocatable :: n_discrete(:)
+    real(8), allocatable :: eout(:,:)
+
+    ! Open incoming energy dataset
+    dset_id = open_dataset(group_id, 'energy')
+
+    ! Get interpolation parameters
+    call read_attribute(temp, dset_id, 'interpolation')
+    allocate(this%breakpoints(size(temp, 1)))
+    allocate(this%interpolation(size(temp, 1)))
+    this%breakpoints(:) = temp(:, 1)
+    this%interpolation(:) = temp(:, 2)
+    this%n_region = size(this%breakpoints)
+
+    ! Get incoming energies
+    call get_shape(dset_id, dims)
+    n_energy = int(dims(1), 4)
+    allocate(this%energy(n_energy))
+    allocate(this%distribution(n_energy))
+    call read_dataset(this%energy, dset_id)
+    call close_dataset(dset_id)
+
+    ! Get outgoing energy distribution data
+    dset_id = open_dataset(group_id, 'distribution')
+    call read_attribute(offsets, dset_id, 'offsets')
+    call read_attribute(interp, dset_id, 'interpolation')
+    call read_attribute(n_discrete, dset_id, 'n_discrete_lines')
+    call get_shape(dset_id, dims2)
+    allocate(eout(dims2(1), dims2(2)))
+    call read_dataset(eout, dset_id)
+    call close_dataset(dset_id)
+
+    do i = 1, n_energy
+      ! Determine number of outgoing energies
+      j = offsets(i)
+      if (i < n_energy) then
+        n = offsets(i+1) - j
+      else
+        n = size(eout, 1) - j
+      end if
+
+      associate (d => this%distribution(i))
+        ! Assign interpolation scheme and number of discrete lines
+        d % interpolation = interp(i)
+        d % n_discrete = n_discrete(i)
+
+        ! Allocate arrays for energies and PDF/CDF
+        allocate(d % e_out(n))
+        allocate(d % p(n))
+        allocate(d % c(n))
+        allocate(d % r(n))
+        allocate(d % a(n))
+
+        ! Copy data
+        d % e_out(:) = eout(j+1:j+n, 1)
+        d % p(:) = eout(j+1:j+n, 2)
+        d % c(:) = eout(j+1:j+n, 3)
+        d % r(:) = eout(j+1:j+n, 4)
+        d % a(:) = eout(j+1:j+n, 5)
+
+
+        ! To get answers that match ACE data, for now we still use the tabulated
+        ! CDF values that were passed through to the HDF5 library. At a later
+        ! time, we can remove the CDF values from the HDF5 library and
+        ! reconstruct them using the PDF
+        if (.false.) then
+          ! Calculate cumulative distribution function -- discrete portion
+          do k = 1, d % n_discrete
+            if (k == 1) then
+              d % c(k) = d % p(k)
+            else
+              d % c(k) = d % c(k-1) + d % p(k)
+            end if
+          end do
+
+          ! Continuous portion
+          do k = d % n_discrete + 1, n
+            if (k == d % n_discrete + 1) then
+              d % c(k) = sum(d % p(1:d % n_discrete))
+            else
+              if (d % interpolation == HISTOGRAM) then
+                d % c(k) = d % c(k-1) + d % p(k-1) * &
+                     (d % e_out(k) - d % e_out(k-1))
+              elseif (d % interpolation == LINEAR_LINEAR) then
+                d % c(k) = d % c(k-1) + HALF*(d % p(k-1) + d % p(k)) * &
+                     (d % e_out(k) - d % e_out(k-1))
+              end if
+            end if
+          end do
+
+          ! Normalize density and distribution functions
+          d % p(:) = d % p(:)/d % c(n)
+          d % c(:) = d % c(:)/d % c(n)
+        end if
+      end associate
+
+      j = j + n
+    end do
+  end subroutine kalbachmann_from_hdf5
 
 end module secondary_kalbach

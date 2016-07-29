@@ -16,16 +16,16 @@ particles = 10000
 ###############################################################################
 
 # Instantiate some Nuclides
-h1 = openmc.Nuclide('H-1')
-o16 = openmc.Nuclide('O-16')
-u235 = openmc.Nuclide('U-235')
+h1 = openmc.Nuclide('H1')
+o16 = openmc.Nuclide('O16')
+u235 = openmc.Nuclide('U235')
 
 # Instantiate some Materials and register the appropriate Nuclides
 moderator = openmc.Material(material_id=41, name='moderator')
 moderator.set_density('g/cc', 1.0)
 moderator.add_nuclide(h1, 2.)
 moderator.add_nuclide(o16, 1.)
-moderator.add_s_alpha_beta('HH2O', '71t')
+moderator.add_s_alpha_beta('c_H_in_H2O', '71t')
 
 fuel = openmc.Material(material_id=40, name='fuel')
 fuel.set_density('g/cc', 4.5)

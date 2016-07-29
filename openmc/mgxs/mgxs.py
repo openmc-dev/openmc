@@ -123,7 +123,7 @@ class MGXS(object):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -503,7 +503,7 @@ class MGXS(object):
         -------
         list of str
             A list of the string names for each nuclide in the spatial domain
-            (e.g., ['U-235', 'U-238', 'O-16'])
+            (e.g., ['U235', 'U238', 'O16'])
 
         Raises
         ------
@@ -531,7 +531,7 @@ class MGXS(object):
         Parameters
         ----------
         nuclide : str
-            A nuclide name string (e.g., 'U-235')
+            A nuclide name string (e.g., 'U235')
 
         Returns
         -------
@@ -566,7 +566,7 @@ class MGXS(object):
         Parameters
         ----------
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the atom densities for all nuclides
             in the spatial domain. The special string 'sum' will return the atom
             density summed across all nuclides in the spatial domain. Defaults
@@ -725,7 +725,7 @@ class MGXS(object):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
@@ -963,7 +963,7 @@ class MGXS(object):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         groups : list of int
             A list of energy group indices starting at 1 for the high energies
             (e.g., [1, 2, 3]; default is [])
@@ -1120,7 +1120,7 @@ class MGXS(object):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -1223,7 +1223,7 @@ class MGXS(object):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -1422,7 +1422,7 @@ class MGXS(object):
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will include the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             include the cross sections summed over all nuclides. Defaults
@@ -1631,7 +1631,7 @@ class MatrixMGXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -1680,7 +1680,7 @@ class MatrixMGXS(MGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             return the cross section summed over all nuclides. Defaults to
@@ -1818,7 +1818,7 @@ class MatrixMGXS(MGXS):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         in_groups : list of int
             A list of incoming energy group indices starting at 1 for the high
             energies (e.g., [1, 2, 3]; default is [])
@@ -1868,7 +1868,7 @@ class MatrixMGXS(MGXS):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             report the cross sections summed over all nuclides. Defaults to
@@ -2051,7 +2051,7 @@ class TotalXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2169,7 +2169,7 @@ class TransportXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2299,7 +2299,7 @@ class NuTransportXS(TransportXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2420,7 +2420,7 @@ class AbsorptionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2536,7 +2536,7 @@ class CaptureXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2658,7 +2658,7 @@ class FissionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2769,7 +2769,7 @@ class NuFissionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2885,7 +2885,7 @@ class KappaFissionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2998,7 +2998,7 @@ class ScatterXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -3113,7 +3113,7 @@ class NuScatterXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -3247,7 +3247,7 @@ class ScatterMatrixXS(MatrixMGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -3410,7 +3410,7 @@ class ScatterMatrixXS(MatrixMGXS):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         in_groups : list of int
             A list of incoming energy group indices starting at 1 for the high
             energies (e.g., [1, 2, 3]; default is [])
@@ -3492,7 +3492,7 @@ class ScatterMatrixXS(MatrixMGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
@@ -3639,7 +3639,7 @@ class ScatterMatrixXS(MatrixMGXS):
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will include the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             include the cross sections summed over all nuclides. Defaults
@@ -3706,7 +3706,7 @@ class ScatterMatrixXS(MatrixMGXS):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -3895,7 +3895,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -4017,7 +4017,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -4164,7 +4164,7 @@ class NuFissionMatrixXS(MatrixMGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -4279,7 +4279,7 @@ class Chi(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -4357,7 +4357,7 @@ class Chi(MGXS):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         groups : list of Integral
             A list of energy group indices starting at 1 for the high energies
             (e.g., [1, 2, 3]; default is [])
@@ -4468,7 +4468,7 @@ class Chi(MGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
@@ -4601,7 +4601,7 @@ class Chi(MGXS):
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will include the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             include the cross sections summed over all nuclides. Defaults to

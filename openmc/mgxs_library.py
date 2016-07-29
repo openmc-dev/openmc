@@ -100,7 +100,7 @@ class XSdata(object):
     alias : str
         Separate unique identifier for the xsdata object
     zaid : int
-        1000*(atomic number) + mass number. As an example, the zaid of U-235
+        1000*(atomic number) + mass number. As an example, the zaid of U235
         would be 92235.
     awr : float
         Atomic weight ratio of an isotope.  That is, the ratio of the mass

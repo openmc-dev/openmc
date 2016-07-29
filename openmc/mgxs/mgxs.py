@@ -4248,14 +4248,14 @@ class Chi(MGXS):
 
     .. math::
 
-       \langle \nu\sigma_{f,\rightarrow g} \phi \rangle &= \int_{r \in V} dr
+       \langle \nu\sigma_{f,g' \rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \; \chi(E)
        \nu\sigma_f (r, E') \psi(r, E', \Omega')\\
        \langle \nu\sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu\sigma_f (r,
        E') \psi(r, E', \Omega') \\
-       \chi_g &= \frac{\langle \nu\sigma_{f,\rightarrow g} \phi \rangle}{\langle
-       \nu\sigma_f \phi \rangle}
+       \chi_g &= \frac{\langle \nu\sigma_{f,g' \rightarrow g} \phi \rangle}
+       {\langle \nu\sigma_f \phi \rangle}
 
     Parameters
     ----------
@@ -4731,14 +4731,14 @@ class ChiPrompt(Chi):
 
     .. math::
 
-       \langle \nu\sigma_{f,\rightarrow g}^p \phi \rangle &= \int_{r \in V} dr
-       \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \; \chi(E)
-       \nu\sigma_f^p (r, E') \psi(r, E', \Omega')\\
-       \langle \nu\sigma_f^p \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
-       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu\sigma_f^p (r,
+       \langle \nu^p \sigma_{f,g' \rightarrow g} \phi \rangle &= \int_{r \in V}
+       dr \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \;
+       \chi(E) \nu^p \sigma_f (r, E') \psi(r, E', \Omega')\\
+       \langle \nu^p \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
+       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^p \sigma_f (r,
        E') \psi(r, E', \Omega') \\
-       \chi_g^p &= \frac{\langle \nu\sigma_{f,\rightarrow g}^p \phi \rangle}{\langle
-       \nu\sigma_f^p \phi \rangle}
+       \chi_g^p &= \frac{\langle \nu^p \sigma_{f,g' \rightarrow g} \phi \rangle}
+       {\langle \nu^p \sigma_f \phi \rangle}
 
     Parameters
     ----------

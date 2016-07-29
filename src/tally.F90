@@ -625,14 +625,14 @@ contains
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
-            ! fission scale by kappa-fission
-            associate (nuc => nuclides(p%event_nuclide))
-              if (micro_xs(p%event_nuclide)%absorption > ZERO .and. &
-                   nuc%fissionable) then
-                score = p%absorb_wgt * &
-                     nuc%reactions(nuc%index_fission(1))%Q_value * &
-                     micro_xs(p%event_nuclide)%fission / &
-                     micro_xs(p%event_nuclide)%absorption
+            ! fission scaled by kappa-fission
+            associate (nuc => nuclides(p % event_nuclide))
+              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
+                   nuc % fissionable) then
+                score = p % absorb_wgt * &
+                     nuc % reactions(nuc % index_fission(1)) % Q_value * &
+                     micro_xs(p % event_nuclide) % fission / &
+                     micro_xs(p % event_nuclide) % absorption
               end if
             end associate
           else
@@ -641,12 +641,12 @@ contains
             ! All fission events will contribute, so again we can use
             ! particle's weight entering the collision as the estimate for
             ! the fission energy production rate
-            associate (nuc => nuclides(p%event_nuclide))
-              if (nuc%fissionable) then
-                score = p%last_wgt * &
-                     nuc%reactions(nuc%index_fission(1))%Q_value * &
-                     micro_xs(p%event_nuclide)%fission / &
-                     micro_xs(p%event_nuclide)%absorption
+            associate (nuc => nuclides(p % event_nuclide))
+              if (nuc % fissionable) then
+                score = p % last_wgt * &
+                     nuc % reactions(nuc % index_fission(1)) % Q_value * &
+                     micro_xs(p % event_nuclide) % fission / &
+                     micro_xs(p % event_nuclide) % absorption
               end if
             end associate
           end if
@@ -654,22 +654,23 @@ contains
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides(i_nuclide))
-              if (nuc%fissionable) then
-                score = nuc%reactions(nuc%index_fission(1))%Q_value * &
-                     micro_xs(i_nuclide)%fission * atom_density * flux
+              if (nuc % fissionable) then
+                score = nuc % reactions(nuc % index_fission(1)) % Q_value * &
+                     micro_xs(i_nuclide) % fission * atom_density * flux
               end if
             end associate
           else
-            do l = 1, materials(p%material)%n_nuclides
+            do l = 1, materials(p % material) % n_nuclides
               ! Determine atom density and index of nuclide
-              atom_density_ = materials(p%material)%atom_density(l)
-              i_nuc = materials(p%material)%nuclide(l)
+              atom_density_ = materials(p % material) % atom_density(l)
+              i_nuc = materials(p % material) % nuclide(l)
 
               ! If nuclide is fissionable, accumulate kappa fission
               associate(nuc => nuclides(i_nuc))
                 if (nuc % fissionable) then
-                  score = score + nuc%reactions(nuc%index_fission(1))%Q_value * &
-                       micro_xs(i_nuc)%fission * atom_density_ * flux
+                  score = score + &
+                       nuc % reactions(nuc % index_fission(1)) % Q_value * &
+                       micro_xs(i_nuc) % fission * atom_density_ * flux
                 end if
               end associate
             end do
@@ -691,6 +692,123 @@ contains
             score = micro_xs(i_nuclide) % elastic * atom_density * flux
           else
             score = material_xs % elastic * flux
+          end if
+        end if
+
+      case (SCORE_FISS_Q_PROMPT)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing) then
+            ! No fission events occur if survival biasing is on -- need to
+            ! calculate fraction of absorptions that would have resulted in
+            ! fission scaled by Q-value
+            associate (nuc => nuclides(p % event_nuclide))
+              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
+                  allocated(nuc % fission_q_prompt)) then
+                score = p % absorb_wgt &
+                     * nuc % fission_q_prompt % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption
+              end if
+            end associate
+          else
+            ! Skip any non-absorption events
+            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
+            ! All fission events will contribute, so again we can use
+            ! particle's weight entering the collision as the estimate for
+            ! the fission energy production rate
+            associate (nuc => nuclides(p % event_nuclide))
+              if (allocated(nuc % fission_q_prompt)) then
+                score = p % last_wgt &
+                     * nuc % fission_q_prompt % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption
+              end if
+            end associate
+          end if
+
+        else
+          if (t % estimator == ESTIMATOR_COLLISION) then
+            E = p % last_E
+          else
+            E = p % E
+          end if
+
+          if (i_nuclide > 0) then
+            if (allocated(nuclides(i_nuclide) % fission_q_prompt)) then
+              score = micro_xs(i_nuclide) % fission * atom_density * flux &
+                      * nuclides(i_nuclide) % fission_q_prompt % evaluate(E)
+            else
+              score = ZERO
+            end if
+          else
+            score = ZERO
+            do l = 1, materials(p % material) % n_nuclides
+              atom_density_ = materials(p % material) % atom_density(l)
+              i_nuc = materials(p % material) % nuclide(l)
+              if (allocated(nuclides(i_nuc) % fission_q_prompt)) then
+                score = score + micro_xs(i_nuc) % fission * atom_density_ &
+                        * flux &
+                        * nuclides(i_nuc) % fission_q_prompt % evaluate(E)
+              end if
+            end do
+          end if
+        end if
+
+      case (SCORE_FISS_Q_RECOV)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing) then
+            ! No fission events occur if survival biasing is on -- need to
+            ! calculate fraction of absorptions that would have resulted in
+            ! fission scaled by Q-value
+            associate (nuc => nuclides(p % event_nuclide))
+              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
+                  allocated(nuc % fission_q_recov)) then
+                score = p % absorb_wgt &
+                     * nuc % fission_q_recov % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption
+              end if
+            end associate
+          else
+            ! Skip any non-absorption events
+            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
+            ! All fission events will contribute, so again we can use
+            ! particle's weight entering the collision as the estimate for
+            ! the fission energy production rate
+            associate (nuc => nuclides(p % event_nuclide))
+              if (allocated(nuc % fission_q_recov)) then
+                score = p % last_wgt &
+                     * nuc % fission_q_recov % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption
+              end if
+            end associate
+          end if
+
+        else
+          if (t % estimator == ESTIMATOR_COLLISION) then
+            E = p % last_E
+          else
+            E = p % E
+          end if
+
+          if (i_nuclide > 0) then
+            if (allocated(nuclides(i_nuclide) % fission_q_recov)) then
+              score = micro_xs(i_nuclide) % fission * atom_density * flux &
+                      * nuclides(i_nuclide) % fission_q_recov % evaluate(E)
+            else
+              score = ZERO
+            end if
+          else
+            score = ZERO
+            do l = 1, materials(p % material) % n_nuclides
+              atom_density_ = materials(p % material) % atom_density(l)
+              i_nuc = materials(p % material) % nuclide(l)
+              if (allocated(nuclides(i_nuc) % fission_q_recov)) then
+                score = score + micro_xs(i_nuc) % fission * atom_density_ &
+                        * flux * nuclides(i_nuc) % fission_q_recov % evaluate(E)
+              end if
+            end do
           end if
         end if
 

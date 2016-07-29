@@ -62,6 +62,19 @@ class FissionEnergyRelease(object):
         return Sum([self.fragments, self.prompt_neutrons, self.delayed_neutrons,
                     self.prompt_photons, self.delayed_photons, self.betas,
                     self.neutrinos])
+
+    @property
+    def prompt_q(self):
+        return Sum([self.fragments, self.prompt_neutrons, self.prompt_photons,
+                    lambda E: -E])
+
+    @property
+    def recoverable_q(self):
+        return Sum([self.recoverable, lambda E: -E])
+
+    @property
+    def total_q(self):
+        return Sum([self.total, lambda E: -E])
     
     @property
     def form(self):
@@ -272,6 +285,20 @@ class FissionEnergyRelease(object):
                                  data=self.delayed_photons.coef)
             group.create_dataset('betas', data=self.betas.coef)
             group.create_dataset('neutrinos', data=self.neutrinos.coef)
+
+            q_prompt = (self.fragments + self.prompt_neutrons +
+                        self.prompt_photons + Polynomial((-1.0, 0.0)))
+            group.create_dataset('q_prompt', data=q_prompt.coef)
+            q_recoverable = (self.fragments + self.prompt_neutrons +
+                             self.delayed_neutrons + self.prompt_photons +
+                             self.delayed_photons + self.betas +
+                             Polynomial((-1.0, 0.0)))
+            group.create_dataset('q_recoverable', data=q_recoverable.coef)
+            q_total = (self.fragments + self.prompt_neutrons +
+                       self.delayed_neutrons + self.prompt_photons +
+                       self.delayed_photons + self.betas + self.neutrinos +
+                       Polynomial((-1.0, 0.0)))
+            group.create_dataset('q_total', data=q_total.coef)
         elif self.form == 'Sher-Beck':
             group.attrs['format'] = np.string_('Sher-Beck')
             self.fragments.to_hdf5(group, 'fragments')

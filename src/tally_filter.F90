@@ -206,7 +206,7 @@ contains
     class(MeshFilter), intent(in)  :: this
     type(Particle),    intent(in)  :: p
     integer,           intent(in)  :: estimator
-    integer,           intent(in)  :: current_bin
+    integer, value,    intent(in)  :: current_bin
     integer,           intent(out) :: next_bin
     real(8),           intent(out) :: weight
 
@@ -438,12 +438,11 @@ contains
     class(UniverseFilter), intent(in)  :: this
     type(Particle),        intent(in)  :: p
     integer,               intent(in)  :: estimator
-    integer,               intent(in)  :: current_bin
+    integer, value,        intent(in)  :: current_bin
     integer,               intent(out) :: next_bin
     real(8),               intent(out) :: weight
 
     integer :: i, start
-    logical :: bin_found
 
     ! Find the coordinate level of the last bin we found.
     if (current_bin == NO_BIN_FOUND) then
@@ -458,16 +457,13 @@ contains
     end if
 
     ! Starting one coordinate level deeper, find the next bin.
-    bin_found = .false.
+    next_bin = NO_BIN_FOUND
     do i = start, p % n_coord
       if (this % map % has_key(p % coord(i) % universe)) then
         next_bin = this % map % get_key(p % coord(i) % universe)
-        bin_found = .true.
         exit
       end if
     end do
-
-    if (.not. bin_found) next_bin = NO_BIN_FOUND
     weight = ONE
   end subroutine get_next_bin_universe
 
@@ -518,18 +514,15 @@ contains
     class(MaterialFilter), intent(in)  :: this
     type(Particle),        intent(in)  :: p
     integer,               intent(in)  :: estimator
-    integer,               intent(in)  :: current_bin
+    integer, value,        intent(in)  :: current_bin
     integer,               intent(out) :: next_bin
     real(8),               intent(out) :: weight
 
+    next_bin = NO_BIN_FOUND
     if (current_bin == NO_BIN_FOUND) then
       if (this % map % has_key(p % material)) then
         next_bin = this % map % get_key(p % material)
-      else
-        next_bin = NO_BIN_FOUND
       end if
-    else
-      next_bin = NO_BIN_FOUND
     end if
     weight = ONE
   end subroutine get_next_bin_material
@@ -581,12 +574,11 @@ contains
     class(CellFilter), intent(in)  :: this
     type(Particle),    intent(in)  :: p
     integer,           intent(in)  :: estimator
-    integer,           intent(in)  :: current_bin
+    integer, value,    intent(in)  :: current_bin
     integer,           intent(out) :: next_bin
     real(8),           intent(out) :: weight
 
     integer :: i, start
-    logical :: bin_found
 
     ! Find the coordinate level of the last bin we found.
     if (current_bin == NO_BIN_FOUND) then
@@ -601,16 +593,13 @@ contains
     end if
 
     ! Starting one coordinate level deeper, find the next bin.
-    bin_found = .false.
+    next_bin = NO_BIN_FOUND
     do i = start, p % n_coord
       if (this % map % has_key(p % coord(i) % cell)) then
         next_bin = this % map % get_key(p % coord(i) % cell)
-        bin_found = .true.
         exit
       end if
     end do
-
-    if (.not. bin_found) next_bin = NO_BIN_FOUND
     weight = ONE
   end subroutine get_next_bin_cell
 
@@ -661,7 +650,7 @@ contains
     class(DistribcellFilter), intent(in)  :: this
     type(Particle),           intent(in)  :: p
     integer,                  intent(in)  :: estimator
-    integer,                  intent(in)  :: current_bin
+    integer, value,           intent(in)  :: current_bin
     integer,                  intent(out) :: next_bin
     real(8),                  intent(out) :: weight
 
@@ -779,18 +768,15 @@ contains
     class(CellbornFilter), intent(in)  :: this
     type(Particle),        intent(in)  :: p
     integer,               intent(in)  :: estimator
-    integer,               intent(in)  :: current_bin
+    integer, value,        intent(in)  :: current_bin
     integer,               intent(out) :: next_bin
     real(8),               intent(out) :: weight
 
+    next_bin = NO_BIN_FOUND
     if (current_bin == NO_BIN_FOUND) then
       if (this % map % has_key(p % cell_born)) then
         next_bin = this % map % get_key(p % cell_born)
-      else
-        next_bin = NO_BIN_FOUND
       end if
-    else
-      next_bin = NO_BIN_FOUND
     end if
     weight = ONE
   end subroutine get_next_bin_cellborn
@@ -842,25 +828,20 @@ contains
     class(SurfaceFilter), intent(in)  :: this
     type(Particle),       intent(in)  :: p
     integer,              intent(in)  :: estimator
-    integer,              intent(in)  :: current_bin
+    integer, value,       intent(in)  :: current_bin
     integer,              intent(out) :: next_bin
     real(8),              intent(out) :: weight
 
     integer :: i
-    logical :: bin_found
 
+    next_bin = NO_BIN_FOUND
     if (current_bin == NO_BIN_FOUND) then
-      bin_found = .false.
       do i = 1, this % n_bins
         if (p % surface == this % surfaces(i)) then
           next_bin = i
-          bin_found = .true.
           exit
         end if
       end do
-      if (.not. bin_found) next_bin = NO_BIN_FOUND
-    else
-      next_bin = NO_BIN_FOUND
     end if
     weight = ONE
   end subroutine get_next_bin_surface
@@ -907,7 +888,7 @@ contains
     class(EnergyFilter), intent(in)  :: this
     type(Particle),      intent(in)  :: p
     integer,             intent(in)  :: estimator
-    integer,             intent(in)  :: current_bin
+    integer, value,      intent(in)  :: current_bin
     integer,             intent(out) :: next_bin
     real(8),             intent(out) :: weight
 
@@ -981,7 +962,7 @@ contains
     class(EnergyoutFilter), intent(in)  :: this
     type(Particle),         intent(in)  :: p
     integer,                intent(in)  :: estimator
-    integer,                intent(in)  :: current_bin
+    integer, value,         intent(in)  :: current_bin
     integer,                intent(out) :: next_bin
     real(8),                intent(out) :: weight
 
@@ -1042,7 +1023,7 @@ contains
     class(DelayedGroupFilter), intent(in)  :: this
     type(Particle),            intent(in)  :: p
     integer,                   intent(in)  :: estimator
-    integer,                   intent(in)  :: current_bin
+    integer, value,            intent(in)  :: current_bin
     integer,                   intent(out) :: next_bin
     real(8),                   intent(out) :: weight
 
@@ -1078,7 +1059,7 @@ contains
     class(MuFilter), intent(in)  :: this
     type(Particle),  intent(in)  :: p
     integer,         intent(in)  :: estimator
-    integer,         intent(in)  :: current_bin
+    integer, value,  intent(in)  :: current_bin
     integer,         intent(out) :: next_bin
     real(8),         intent(out) :: weight
 
@@ -1131,7 +1112,7 @@ contains
     class(PolarFilter), intent(in)  :: this
     type(Particle),     intent(in)  :: p
     integer,            intent(in)  :: estimator
-    integer,            intent(in)  :: current_bin
+    integer, value,     intent(in)  :: current_bin
     integer,            intent(out) :: next_bin
     real(8),            intent(out) :: weight
 
@@ -1192,7 +1173,7 @@ contains
     class(AzimuthalFilter), intent(in)  :: this
     type(Particle),         intent(in)  :: p
     integer,                intent(in)  :: estimator
-    integer,                intent(in)  :: current_bin
+    integer, value,         intent(in)  :: current_bin
     integer,                intent(out) :: next_bin
     real(8),                intent(out) :: weight
 

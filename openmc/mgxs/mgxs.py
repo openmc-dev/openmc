@@ -36,7 +36,7 @@ MGXS_TYPES = ['total',
               'nu-fission matrix',
               'chi',
               'chi-prompt',
-              'velocity',
+              'inverse-velocity',
               'prompt-nu-fission']
 
 
@@ -430,7 +430,7 @@ class MGXS(object):
 
         Parameters
         ----------
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'velocity', 'prompt-nu-fission'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission'}
             The type of multi-group cross section object to return
         domain : openmc.Material or openmc.Cell or openmc.Universe
             The domain for spatial homogenization
@@ -487,8 +487,8 @@ class MGXS(object):
             mgxs = Chi(domain, domain_type, energy_groups)
         elif mgxs_type == 'chi-prompt':
             mgxs = ChiPrompt(domain, domain_type, energy_groups)
-        elif mgxs_type == 'velocity':
-            mgxs = Velocity(domain, domain_type, energy_groups)
+        elif mgxs_type == 'inverse-velocity':
+            mgxs = InverseVelocity(domain, domain_type, energy_groups)
         elif mgxs_type == 'prompt-nu-fission':
             mgxs = PromptNuFissionXS(domain, domain_type, energy_groups)
 
@@ -4787,35 +4787,34 @@ class ChiPrompt(Chi):
         return ['prompt-nu-fission', 'prompt-nu-fission']
 
 
-class Velocity(MGXS):
-    r"""A velocity multi-group cross section.
+class InverseVelocity(MGXS):
+    r"""An inverse velocity multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group neutron velocities for multi-group neutronics calculations.
-    The units of velocity are centimeters per second. At a minimum, one needs to
-    set the :attr:`Velocity.energy_groups` and :attr:`Velocity.domain`
-    properties. Tallies for the flux and appropriate reaction rates over the
-    specified domain are generated automatically via the
-    :attr:`Velocity.tallies` property, which can then be appended to a
-    :class:`openmc.Tallies` instance.
+    multi-group neutron inverse velocities for multi-group neutronics
+    calculations. The units of inverse velocity are seconds per centimeter. At a
+    minimum, one needs to set the :attr:`InverseVelocity.energy_groups` and
+    :attr:`InverseVelocity.domain` properties. Tallies for the flux and
+    appropriate reaction rates over the specified domain are generated
+    automatically via the :attr:`InverseVelocity.tallies` property, which can
+    then be appended to a :class:`openmc.Tallies` instance.
 
     For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`Velocity.xs_tally` property.
+    can then be obtained from the :attr:`InverseVelocity.xs_tally` property.
 
     For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
-    neutron velocities are calculated by tallying the flux-weighted inverse
-    velocity and the flux. The velocity is then the inverse of the flux-weighted
-    inverse velocity divided by the flux. This equates to dividing the
-    spatially-homogenized and energy-integrated flux by the inverse velocity:
+    neutron inverse velocities are calculated by tallying the flux-weighted
+    inverse velocity and the flux. The inverse velocity is then the
+    flux-weighted inverse velocity divided by the flux:
 
     .. math::
 
        \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-        \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
-       d\Omega \int_{E_g}^{E_{g-1}} dE \; \frac{\psi (r, E, \Omega)}{v (r, E)}}.
+       \frac{\psi (r, E, \Omega)}{v (r, E)}}{\int_{r \in V} dr \int_{4\pi}
+       d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}
 
     Parameters
     ----------
@@ -4859,8 +4858,8 @@ class Velocity(MGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`Velocity.tally_keys` property and
-        values are instances of :class:`openmc.Tally`.
+        are strings listed in the :attr:`InverseVelocity.tally_keys` property
+        and values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
@@ -4895,37 +4894,15 @@ class Velocity(MGXS):
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
-        super(Velocity, self).__init__(domain, domain_type,
+        super(InverseVelocity, self).__init__(domain, domain_type,
                                               groups, by_nuclide, name)
-        self._rxn_type = 'velocity'
-
-    @property
-    def scores(self):
-        return ['inverse-velocity', 'flux']
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['flux']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
-
-    @property
-    def xs_tally(self):
-
-        if self._xs_tally is None:
-            inverse_velocity = self.tallies['inverse-velocity']
-
-            # Compute the velocity
-            self._xs_tally = self.rxn_rate_tally / inverse_velocity
-            super(Velocity, self)._compute_xs()
-
-        return self._xs_tally
+        self._rxn_type = 'inverse-velocity'
 
     def get_units(self, xs_type='macro'):
-        """Returns the units of Velocity.
+        """Returns the units of InverseVelocity.
 
-        This method returns the units of a Velocity based on a desired xs_type.
+        This method returns the units of an InverseVelocity based on a desired
+        xs_type.
 
         Parameters
         ----------
@@ -4936,17 +4913,17 @@ class Velocity(MGXS):
         Returns
         -------
         str
-            A string representing the units of the Velocity.
+            A string representing the units of the InverseVelocity.
 
         """
 
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         if xs_type == 'macro':
-            return 'cm/second'
+            return 'second/cm'
         else:
-            raise ValueError('Unable to return the units of Velocity for '
-                             'xs_type other than "macro"')
+            raise ValueError('Unable to return the units of InverseVelocity for'
+                             ' xs_type other than "macro"')
 
 
 class PromptNuFissionXS(MGXS):

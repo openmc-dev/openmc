@@ -23,10 +23,9 @@ contains
 
     integer :: i            ! index in materials array
     integer :: j            ! index over nuclides in material
-    integer :: i_listing    ! index in xs_listings array
+    integer :: i_xsdata     ! index in <xsdata> list
     integer :: i_nuclide    ! index in nuclides
-    character(12)  :: name  ! name of isotope, e.g. 92235.03c
-    character(12)  :: alias ! alias of isotope, e.g. U-235.03c
+    character(20)  :: name  ! name of isotope, e.g. 92235.03c
     integer :: representation ! Data representation
     type(Material),    pointer :: mat
     type(SetChar) :: already_read
@@ -37,6 +36,7 @@ contains
     character(MAX_LINE_LEN) :: temp_str
     logical :: get_kfiss, get_fiss
     integer :: l
+    type(DictCharInt) :: xsdata_dict
 
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
@@ -53,7 +53,17 @@ contains
 
     ! Get node list of all <xsdata>
     call get_node_list(doc, "xsdata", node_xsdata_list)
-    n_listings = get_list_size(node_xsdata_list)
+
+    ! Build dictionary mapping nuclide names to an index in the <xsdata> node
+    ! list
+    do i = 1, get_list_size(node_xsdata_list)
+      ! Get pointer to xsdata table XML node
+      call get_list_item(node_xsdata_list, i, node_xsdata)
+
+      ! Get name and create pair (name, i)
+      call get_node_value(node_xsdata, "name", name)
+      call xsdata_dict % add_key(to_lower(name), i)
+    end do
 
     ! allocate arrays for ACE table storage and cross section cache
     allocate(nuclides_MG(n_nuclides_total))
@@ -89,13 +99,11 @@ contains
         name = mat % names(j)
 
         if (.not. already_read % contains(name)) then
-          i_listing = xs_listing_dict % get_key(to_lower(name))
+          i_xsdata = xsdata_dict % get_key(to_lower(name))
           i_nuclide = mat % nuclide(j)
-          name  = xs_listings(i_listing) % name
-          alias = xs_listings(i_listing) % alias
 
           ! Get pointer to xsdata table XML node
-          call get_list_item(node_xsdata_list, i_listing, node_xsdata)
+          call get_list_item(node_xsdata_list, i_xsdata, node_xsdata)
 
           call write_message("Loading " // trim(name) // " Data...", 5)
 
@@ -125,11 +133,10 @@ contains
 
           ! Now read in the data specific to the type we just declared
           call nuclides_MG(i_nuclide) % obj % init_file(node_xsdata, &
-               energy_groups, get_kfiss, get_fiss, max_order, i_listing)
+               energy_groups, get_kfiss, get_fiss, max_order)
 
-          ! Add name and alias to dictionary
+          ! Add name to dictionary
           call already_read % add(name)
-          call already_read % add(alias)
         end if
       end do NUCLIDE_LOOP
     end do MATERIAL_LOOP
@@ -185,7 +192,7 @@ contains
         allocate(MgxsAngle :: macro_xs(i_mat) % obj)
       end select
       call macro_xs(i_mat) % obj % combine(mat, nuclides_MG, energy_groups, &
-                                           max_order, scatt_type, i_mat)
+                                           max_order, scatt_type)
     end do
   end subroutine create_macro_xs
 

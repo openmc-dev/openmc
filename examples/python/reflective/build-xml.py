@@ -16,7 +16,7 @@ particles = 10000
 ###############################################################################
 
 # Instantiate a Nuclides
-u235 = openmc.Nuclide('U-235')
+u235 = openmc.Nuclide('U235')
 
 # Instantiate a Material and register the Nuclide
 fuel = openmc.Material(material_id=1, name='fuel')

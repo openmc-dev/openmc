@@ -40,10 +40,7 @@ class Trigger(object):
         self._scores = []
 
     def __eq__(self, other):
-        if str(self) == str(other):
-            return True
-        else:
-            return False
+        return str(self) == str(other)
 
     def __ne__(self, other):
         return not self == other
@@ -70,7 +67,7 @@ class Trigger(object):
     @trigger_type.setter
     def trigger_type(self, trigger_type):
         cv.check_value('tally trigger type', trigger_type,
-                    ['variance', 'std_dev', 'rel_err'])
+                       ['variance', 'std_dev', 'rel_err'])
         self._trigger_type = trigger_type
 
     @threshold.setter

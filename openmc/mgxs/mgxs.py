@@ -1,12 +1,13 @@
 from __future__ import division
 
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
 from numbers import Integral
 import warnings
 import os
 import sys
 import copy
 import abc
+import itertools
 
 import numpy as np
 
@@ -14,7 +15,6 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.mgxs import EnergyGroups
 from openmc import Mesh
-
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -37,11 +37,10 @@ MGXS_TYPES = ['total',
               'nu-fission matrix',
               'chi',
               'chi-prompt',
-              'velocity',
+              'inverse-velocity',
               'prompt-nu-fission']
 
 # Supported domain types
-# TODO: Implement Mesh domains
 DOMAIN_TYPES = ['cell',
                 'distribcell',
                 'universe',
@@ -49,7 +48,6 @@ DOMAIN_TYPES = ['cell',
                 'mesh']
 
 # Supported domain classes
-# TODO: Implement Mesh domains
 _DOMAINS = (openmc.Cell,
             openmc.Universe,
             openmc.Material,
@@ -116,9 +114,9 @@ class MGXS(object):
         Derived tally for the multi-group cross section. This attribute
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
-        The number of subdomains is unity for 'material', 'cell', and 'universe'
-        domain types. This is equal to the number of cell instances for
-        'distribcell' domain types (it is equal to unity prior to loading
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file) and the number of mesh cells for
         'mesh' domain types.
     num_nuclides : int
@@ -126,7 +124,7 @@ class MGXS(object):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -266,6 +264,7 @@ class MGXS(object):
             # Create a domain Filter object
             domain_filter = openmc.Filter(self.domain_type, self.domain.id)
 
+            # If a mesh domain, give the mesh to the domain filter
             if self.domain_type == 'mesh':
                 domain_filter.mesh = self.domain
 
@@ -423,7 +422,7 @@ class MGXS(object):
             self.rxn_rate_tally.sparse = sparse
 
         for tally_name in self.tallies:
-                self.tallies[tally_name].sparse = sparse
+            self.tallies[tally_name].sparse = sparse
 
         self._sparse = sparse
 
@@ -438,13 +437,10 @@ class MGXS(object):
 
         Parameters
         ----------
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption',
-            'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter',
-            'nu-scatter', 'scatter matrix', 'nu-scatter matrix',
-            'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt',
-            'velocity', 'prompt-nu-fission'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission'}
             The type of multi-group cross section object to return
-        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+        domain : openmc.Material or openmc.Cell or openmc.Universe or
+            openmc.Mesh
             The domain for spatial homogenization
         domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
             The domain type for spatial homogenization
@@ -499,8 +495,8 @@ class MGXS(object):
             mgxs = Chi(domain, domain_type, energy_groups)
         elif mgxs_type == 'chi-prompt':
             mgxs = ChiPrompt(domain, domain_type, energy_groups)
-        elif mgxs_type == 'velocity':
-            mgxs = Velocity(domain, domain_type, energy_groups)
+        elif mgxs_type == 'inverse-velocity':
+            mgxs = InverseVelocity(domain, domain_type, energy_groups)
         elif mgxs_type == 'prompt-nu-fission':
             mgxs = PromptNuFissionXS(domain, domain_type, energy_groups)
 
@@ -515,7 +511,7 @@ class MGXS(object):
         -------
         list of str
             A list of the string names for each nuclide in the spatial domain
-            (e.g., ['U-235', 'U-238', 'O-16'])
+            (e.g., ['U235', 'U238', 'O16'])
 
         Raises
         ------
@@ -543,7 +539,7 @@ class MGXS(object):
         Parameters
         ----------
         nuclide : str
-            A nuclide name string (e.g., 'U-235')
+            A nuclide name string (e.g., 'U235')
 
         Returns
         -------
@@ -578,7 +574,7 @@ class MGXS(object):
         Parameters
         ----------
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the atom densities for all nuclides
             in the spatial domain. The special string 'sum' will return the atom
             density summed across all nuclides in the spatial domain. Defaults
@@ -698,20 +694,8 @@ class MGXS(object):
         # NOTE: This is important if tally merging was used
         if self.domain_type == 'mesh':
             filters = [self.domain_type]
-            bins = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            bins.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        bins.append((x, y, 1))
-
-            filter_bins = [tuple(bins)]
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            filter_bins = [tuple(itertools.product(*xyz))]
         elif self.domain_type != 'distribcell':
             filters = [self.domain_type]
             filter_bins = [(self.domain.id,)]
@@ -745,7 +729,7 @@ class MGXS(object):
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
                value='mean', **kwargs):
-        """Returns an array of multi-group cross sections.
+        r"""Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested multi-group
         cross section data data for one or more energy groups and subdomains.
@@ -757,7 +741,7 @@ class MGXS(object):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
@@ -787,6 +771,13 @@ class MGXS(object):
 
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        # FIXME: Unable to get microscopic xs for mesh domain because the mesh
+        # cells do not know the nuclide densities in each mesh cell.
+        if self.domain_type == 'mesh' and xs_type == 'micro':
+            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
+                  'cells do not know the nuclide densities in each mesh cell.'
+            raise ValueError(msg)
 
         filters = []
         filter_bins = []
@@ -893,7 +884,7 @@ class MGXS(object):
         fine_edges = self.energy_groups.group_edges
 
         # Condense each of the tallies to the coarse group structure
-        for tally_type, tally in condensed_xs.tallies.items():
+        for tally in condensed_xs.tallies.values():
 
             # Make condensed tally derived and null out sum, sum_sq
             tally._derived = True
@@ -995,7 +986,7 @@ class MGXS(object):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         groups : list of int
             A list of energy group indices starting at 1 for the high energies
             (e.g., [1, 2, 3]; default is [])
@@ -1034,7 +1025,8 @@ class MGXS(object):
             slice_nuclides = [nuc for nuc in nuclides if nuc in tally.nuclides]
             if len(groups) != 0 and tally.contains_filter('energy'):
                 tally_slice = tally.get_slice(filters=filters,
-                    filter_bins=filter_bins, nuclides=slice_nuclides)
+                                              filter_bins=filter_bins,
+                                              nuclides=slice_nuclides)
             else:
                 tally_slice = tally.get_slice(nuclides=slice_nuclides)
             slice_xs.tallies[tally_type] = tally_slice
@@ -1151,7 +1143,7 @@ class MGXS(object):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -1167,18 +1159,8 @@ class MGXS(object):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            subdomains = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            subdomains.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        subdomains.append((x, y, 1))
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
 
@@ -1201,6 +1183,9 @@ class MGXS(object):
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
+        # Generate the header for an individual XS
+        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
             print(string)
@@ -1220,11 +1205,7 @@ class MGXS(object):
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                if xs_type == 'macro':
-                    string += '{0: <16}\n'.format('\tCross Sections [cm^-1]:')
-                else:
-                    string += '{0: <16}\n'.format('\tCross Sections [barns]:')
-
+                string += '{0: <16}\n'.format(xs_header)
                 template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]:\t'
 
                 # Loop over energy groups ranges
@@ -1268,7 +1249,7 @@ class MGXS(object):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -1316,18 +1297,8 @@ class MGXS(object):
             domain_filter = self.xs_tally.find_filter('avg(distribcell)')
             subdomains = domain_filter.bins
         elif self.domain_type == 'mesh':
-            subdomains = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            subdomains.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        subdomains.append((x, y, 1))
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
 
@@ -1353,7 +1324,7 @@ class MGXS(object):
         num_digits = len(str(self.num_subdomains))
 
         # Create a separate HDF5 group for each subdomain
-        for i, subdomain in enumerate(subdomains):
+        for subdomain in subdomains:
 
             # Create an HDF5 group for the subdomain
             if self.domain_type == 'distribcell':
@@ -1378,9 +1349,11 @@ class MGXS(object):
 
                 # Extract the cross section for this subdomain and nuclide
                 average = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
-                    xs_type=xs_type, value='mean', row_column=row_column)
+                                      xs_type=xs_type, value='mean',
+                                      row_column=row_column)
                 std_dev = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
-                    xs_type=xs_type, value='std_dev', row_column=row_column)
+                                      xs_type=xs_type, value='std_dev',
+                                      row_column=row_column)
                 average = average.squeeze()
                 std_dev = std_dev.squeeze()
 
@@ -1432,10 +1405,6 @@ class MGXS(object):
         # Get a Pandas DataFrame for the data
         df = self.get_pandas_dataframe(groups=groups, xs_type=xs_type)
 
-        # Capitalize column label strings
-        #df.columns = df.columns.astype(str)
-        #df.columns = map(str.title, df.columns)
-
         # Export the data using Pandas IO API
         if format == 'csv':
             df.to_csv(filename + '.csv', index=False)
@@ -1453,9 +1422,9 @@ class MGXS(object):
                         longtable=True, index=False)
 
             # Surround LaTeX table with code needed to run pdflatex
-            with open(filename + '.tex','r') as original:
+            with open(filename + '.tex', 'r') as original:
                 data = original.read()
-            with open(filename + '.tex','w') as modified:
+            with open(filename + '.tex', 'w') as modified:
                 modified.write(
                     '\\documentclass[preview, 12pt, border=1mm]{standalone}\n')
                 modified.write('\\usepackage{caption}\n')
@@ -1478,7 +1447,7 @@ class MGXS(object):
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will include the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             include the cross sections summed over all nuclides. Defaults
@@ -1518,7 +1487,7 @@ class MGXS(object):
             query_nuclides = self.get_all_nuclides()
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
             df = xs_tally.get_pandas_dataframe(
-                    distribcell_paths=distribcell_paths)
+                distribcell_paths=distribcell_paths)
 
             # Remove nuclide column since it is homogeneous and redundant
             df.drop('nuclide', axis=1, inplace=True)
@@ -1527,12 +1496,12 @@ class MGXS(object):
         elif self.by_nuclide and nuclides != 'all':
             xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
             df = xs_tally.get_pandas_dataframe(
-                    distribcell_paths=distribcell_paths)
+                distribcell_paths=distribcell_paths)
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
             df = self.xs_tally.get_pandas_dataframe(
-                    distribcell_paths=distribcell_paths)
+                distribcell_paths=distribcell_paths)
 
         # Remove the score column since it is homogeneous and redundant
         if self.domain_type == 'mesh':
@@ -1602,6 +1571,26 @@ class MGXS(object):
             df.sort_values(by=[self.domain_type] + columns, inplace=True)
         return df
 
+    def get_units(self, xs_type='macro'):
+        """This method returns the units of a MGXS based on a desired xs_type.
+
+        Parameters
+        ----------
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section units.
+            Defaults to 'macro'.
+
+        Returns
+        -------
+        str
+            A string representing the units of the MGXS.
+
+        """
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        return 'cm^-1' if xs_type == 'macro' else 'barns'
+
 
 class MatrixMGXS(MGXS):
     """An abstract multi-group cross section for some energy group structure
@@ -1667,8 +1656,8 @@ class MatrixMGXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. This is equal to the number of cell instances for
-        'distribcell' domain types (it is equal to unity prior to loading
+        domain types. This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file) and the number of mesh cells for
         'mesh' domain types.
     num_nuclides : int
@@ -1676,7 +1665,7 @@ class MatrixMGXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -1725,7 +1714,7 @@ class MatrixMGXS(MGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             return the cross section summed over all nuclides. Defaults to
@@ -1863,7 +1852,7 @@ class MatrixMGXS(MGXS):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         in_groups : list of int
             A list of incoming energy group indices starting at 1 for the high
             energies (e.g., [1, 2, 3]; default is [])
@@ -1913,7 +1902,7 @@ class MatrixMGXS(MGXS):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             report the cross sections summed over all nuclides. Defaults to
@@ -1930,18 +1919,8 @@ class MatrixMGXS(MGXS):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            subdomains = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            subdomains.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        subdomains.append((x, y, 1))
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
 
@@ -1963,6 +1942,9 @@ class MatrixMGXS(MGXS):
         string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
+
+        # Generate the header for an individual XS
+        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
 
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
@@ -1992,11 +1974,7 @@ class MatrixMGXS(MGXS):
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                if xs_type == 'macro':
-                    string += '{0: <16}\n'.format('\tCross Sections [cm^-1]:')
-                else:
-                    string += '{0: <16}\n'.format('\tCross Sections [barns]:')
-
+                string += '{0: <16}\n'.format(xs_header)
                 template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
                 # Loop over incoming/outgoing energy groups ranges
@@ -2024,7 +2002,7 @@ class MatrixMGXS(MGXS):
 
 
 class TotalXS(MGXS):
-    """A total multi-group cross section.
+    r"""A total multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -2102,7 +2080,7 @@ class TotalXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2110,7 +2088,7 @@ class TotalXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2133,7 +2111,7 @@ class TotalXS(MGXS):
 
 
 class TransportXS(MGXS):
-    """A transport-corrected total multi-group cross section.
+    r"""A transport-corrected total multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -2220,7 +2198,7 @@ class TransportXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2228,7 +2206,7 @@ class TransportXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2276,7 +2254,7 @@ class TransportXS(MGXS):
 
 
 class NuTransportXS(TransportXS):
-    """A transport-corrected total multi-group cross section which
+    r"""A transport-corrected total multi-group cross section which
     accounts for neutron multiplicity in scattering reactions.
 
     This class can be used for both OpenMC input generation and tally data
@@ -2350,7 +2328,7 @@ class NuTransportXS(TransportXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2358,7 +2336,7 @@ class NuTransportXS(TransportXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2389,7 +2367,7 @@ class NuTransportXS(TransportXS):
 
 
 class AbsorptionXS(MGXS):
-    """An absorption multi-group cross section.
+    r"""An absorption multi-group cross section.
 
     Absorption is defined as all reactions that do not produce secondary
     neutrons (disappearance) plus fission reactions.
@@ -2480,7 +2458,7 @@ class AbsorptionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2503,7 +2481,7 @@ class AbsorptionXS(MGXS):
 
 
 class CaptureXS(MGXS):
-    """A capture multi-group cross section.
+    r"""A capture multi-group cross section.
 
     The neutron capture reaction rate is defined as the difference between
     OpenMC's 'absorption' and 'fission' reaction rate score types. This includes
@@ -2537,7 +2515,7 @@ class CaptureXS(MGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
@@ -2588,7 +2566,7 @@ class CaptureXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2596,7 +2574,7 @@ class CaptureXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2631,7 +2609,7 @@ class CaptureXS(MGXS):
 
 
 class FissionXS(MGXS):
-    """A fission multi-group cross section.
+    r"""A fission multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -2710,7 +2688,7 @@ class FissionXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2718,7 +2696,7 @@ class FissionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2741,7 +2719,7 @@ class FissionXS(MGXS):
 
 
 class NuFissionXS(MGXS):
-    """A fission neutron production multi-group cross section.
+    r"""A fission neutron production multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -2821,7 +2799,7 @@ class NuFissionXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2829,7 +2807,7 @@ class NuFissionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2851,7 +2829,7 @@ class NuFissionXS(MGXS):
         self._rxn_type = 'nu-fission'
 
 class KappaFissionXS(MGXS):
-    """A recoverable fission energy production rate multi-group cross section.
+    r"""A recoverable fission energy production rate multi-group cross section.
 
     The recoverable energy per fission, :math:`\kappa`, is defined as the
     fission product kinetic energy, prompt and delayed neutron kinetic energies,
@@ -2936,7 +2914,7 @@ class KappaFissionXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2944,7 +2922,7 @@ class KappaFissionXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2967,7 +2945,7 @@ class KappaFissionXS(MGXS):
 
 
 class ScatterXS(MGXS):
-    """A scattering multi-group cross section.
+    r"""A scattering multi-group cross section.
 
     The scattering cross section is defined as the difference between the total
     and absorption cross sections.
@@ -3049,7 +3027,7 @@ class ScatterXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -3057,7 +3035,7 @@ class ScatterXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -3080,7 +3058,7 @@ class ScatterXS(MGXS):
 
 
 class NuScatterXS(MGXS):
-    """A scattering neutron production multi-group cross section.
+    r"""A scattering neutron production multi-group cross section.
 
     The neutron production from scattering is defined as the average number of
     neutrons produced from all neutron-producing reactions except for fission.
@@ -3164,7 +3142,7 @@ class NuScatterXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -3172,7 +3150,7 @@ class NuScatterXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -3199,7 +3177,7 @@ class NuScatterXS(MGXS):
 
 
 class ScatterMatrixXS(MatrixMGXS):
-    """A scattering matrix multi-group cross section for one or more Legendre
+    r"""A scattering matrix multi-group cross section for one or more Legendre
     moments.
 
     This class can be used for both OpenMC input generation and tally data
@@ -3298,7 +3276,7 @@ class ScatterMatrixXS(MatrixMGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -3306,7 +3284,7 @@ class ScatterMatrixXS(MatrixMGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -3469,7 +3447,7 @@ class ScatterMatrixXS(MatrixMGXS):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         in_groups : list of int
             A list of incoming energy group indices starting at 1 for the high
             energies (e.g., [1, 2, 3]; default is [])
@@ -3532,8 +3510,8 @@ class ScatterMatrixXS(MatrixMGXS):
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all', moment='all',
                xs_type='macro', order_groups='increasing',
-               row_column='inout', value='mean', **kwargs):
-        """Returns an array of multi-group cross sections.
+               row_column='inout', value='mean'):
+        r"""Returns an array of multi-group cross sections.
 
         This method constructs a 2D NumPy array for the requested scattering
         matrix data data for one or more energy groups and subdomains.
@@ -3551,7 +3529,7 @@ class ScatterMatrixXS(MatrixMGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
@@ -3619,7 +3597,7 @@ class ScatterMatrixXS(MatrixMGXS):
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
             cv.check_less_than(
-                    'moment', moment, self.legendre_order, equality=True)
+                'moment', moment, self.legendre_order, equality=True)
             scores = [self.xs_tally.scores[moment]]
         else:
             scores = []
@@ -3698,7 +3676,7 @@ class ScatterMatrixXS(MatrixMGXS):
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will include the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             include the cross sections summed over all nuclides. Defaults
@@ -3730,7 +3708,7 @@ class ScatterMatrixXS(MatrixMGXS):
         """
 
         df = super(ScatterMatrixXS, self).get_pandas_dataframe(
-                groups, nuclides, xs_type, distribcell_paths)
+            groups, nuclides, xs_type, distribcell_paths)
 
         # Add a moment column to dataframe
         if self.legendre_order > 0:
@@ -3749,7 +3727,7 @@ class ScatterMatrixXS(MatrixMGXS):
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
             cv.check_less_than(
-                    'moment', moment, self.legendre_order, equality=True)
+                'moment', moment, self.legendre_order, equality=True)
             df = df[df['moment'] == 'P{}'.format(moment)]
 
         return df
@@ -3765,7 +3743,7 @@ class ScatterMatrixXS(MatrixMGXS):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -3783,18 +3761,8 @@ class ScatterMatrixXS(MatrixMGXS):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            subdomains = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            subdomains.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        subdomains.append((x, y, 1))
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
 
@@ -3821,6 +3789,9 @@ class ScatterMatrixXS(MatrixMGXS):
         string += '{0: <16}=\t{1}\n'.format('\tReaction Type', rxn_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
+
+        # Generate the header for an individual XS
+        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
 
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
@@ -3850,11 +3821,7 @@ class ScatterMatrixXS(MatrixMGXS):
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                if xs_type == 'macro':
-                    string += '{0: <16}\n'.format('\tCross Sections [cm^-1]:')
-                else:
-                    string += '{0: <16}\n'.format('\tCross Sections [barns]:')
-
+                string += '{0: <16}\n'.format(xs_header)
                 template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
                 # Loop over incoming/outgoing energy groups ranges
@@ -3905,9 +3872,9 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -3929,9 +3896,9 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -3960,7 +3927,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -3968,7 +3935,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -3992,7 +3959,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
 
 
 class MultiplicityMatrixXS(MatrixMGXS):
-    """The scattering multiplicity matrix.
+    r"""The scattering multiplicity matrix.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -4031,9 +3998,9 @@ class MultiplicityMatrixXS(MatrixMGXS):
 
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
@@ -4051,9 +4018,9 @@ class MultiplicityMatrixXS(MatrixMGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe
+    domain : Material or Cell or Universe or Mesh
         Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
@@ -4082,7 +4049,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -4090,7 +4057,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -4146,7 +4113,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
 
 
 class NuFissionMatrixXS(MatrixMGXS):
-    """A fission production matrix multi-group cross section.
+    r"""A fission production matrix multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -4229,7 +4196,7 @@ class NuFissionMatrixXS(MatrixMGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -4237,7 +4204,7 @@ class NuFissionMatrixXS(MatrixMGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -4261,7 +4228,7 @@ class NuFissionMatrixXS(MatrixMGXS):
 
 
 class Chi(MGXS):
-    """The fission spectrum.
+    r"""The fission spectrum.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -4344,7 +4311,7 @@ class Chi(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -4352,7 +4319,7 @@ class Chi(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -4430,7 +4397,7 @@ class Chi(MGXS):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         groups : list of Integral
             A list of energy group indices starting at 1 for the high energies
             (e.g., [1, 2, 3]; default is [])
@@ -4494,7 +4461,7 @@ class Chi(MGXS):
         """
 
         if not self.can_merge(other):
-            raise ValueError('Unable to merge Chi')
+            raise ValueError('Unable to merge a Chi MGXS')
 
         # Create deep copy of tally to return as merged tally
         merged_mgxs = copy.deepcopy(self)
@@ -4513,7 +4480,7 @@ class Chi(MGXS):
             # The nuclides must be mutually exclusive
             for nuclide in self.nuclides:
                 if nuclide in other.nuclides:
-                    msg = 'Unable to merge Chi with shared nuclides'
+                    msg = 'Unable to merge a Chi MGXS with shared nuclides'
                     raise ValueError(msg)
 
             # Concatenate lists of nuclides for the merged MGXS
@@ -4541,7 +4508,7 @@ class Chi(MGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
@@ -4674,7 +4641,7 @@ class Chi(MGXS):
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will include the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             include the cross sections summed over all nuclides. Defaults to
@@ -4703,7 +4670,7 @@ class Chi(MGXS):
 
         # Build the dataframe using the parent class method
         df = super(Chi, self).get_pandas_dataframe(
-                groups, nuclides, xs_type, distribcell_paths=distribcell_paths)
+            groups, nuclides, xs_type, distribcell_paths=distribcell_paths)
 
         # If user requested micro cross sections, multiply by the atom
         # densities to cancel out division made by the parent class method
@@ -4718,9 +4685,33 @@ class Chi(MGXS):
 
         return df
 
+    def get_units(self, xs_type='macro'):
+        """Returns the units of Chi.
+
+        This method returns the units of Chi, which is "%" for both macro
+        and micro xs types.
+
+        Parameters
+        ----------
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section units.
+            Defaults to 'macro'.
+
+        Returns
+        -------
+        str
+            A string representing the units of Chi.
+
+        """
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        # Chi has the same units (%) for both macro and micro
+        return '%'
+
 
 class ChiPrompt(Chi):
-    """The prompt fission spectrum.
+    r"""The prompt fission spectrum.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -4743,7 +4734,7 @@ class ChiPrompt(Chi):
 
        \langle \nu\sigma_{f,\rightarrow g}^p \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \; \chi(E)
-       \nu\sigma_f (r, E') \psi(r, E', \Omega')\\
+       \nu\sigma_f^p (r, E') \psi(r, E', \Omega')\\
        \langle \nu\sigma_f^p \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu\sigma_f^p (r,
        E') \psi(r, E', \Omega') \\
@@ -4803,7 +4794,7 @@ class ChiPrompt(Chi):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -4833,301 +4824,37 @@ class ChiPrompt(Chi):
 
     @property
     def scores(self):
-        return ['delayed-nu-fission', 'delayed-nu-fission',
-                'nu-fission', 'nu-fission']
-
-    @property
-    def filters(self):
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energyout = openmc.Filter('energyout', group_edges)
-        energyin = openmc.Filter('energy', [group_edges[0], group_edges[-1]])
-        return [[energyin], [energyout], [energyin], [energyout]]
-
-    @property
-    def tally_keys(self):
-        return ['delayed-nu-fission-in', 'delayed-nu-fission-out',
-                'nu-fission-in', 'nu-fission-out']
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['nu-fission-out'] - \
-                                   self.tallies['delayed-nu-fission-out']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
-
-    @property
-    def xs_tally(self):
-
-        if self._xs_tally is None:
-            delayed_nu_fission_in = self.tallies['delayed-nu-fission-in']
-            nu_fission_in = self.tallies['nu-fission-in']
-            prompt_nu_fission_in = nu_fission_in - delayed_nu_fission_in
-
-            # Remove coarse energy filter to keep it out of tally arithmetic
-            energy_filter = prompt_nu_fission_in.find_filter('energy')
-            prompt_nu_fission_in.remove_filter(energy_filter)
-
-            # Compute chi
-            self._xs_tally = self.rxn_rate_tally / prompt_nu_fission_in
-            super(ChiPrompt, self)._compute_xs()
-
-            # Add the coarse energy filter back to the nu-fission tally
-            prompt_nu_fission_in.filters.append(energy_filter)
-
-        return self._xs_tally
-
-    def get_slice(self, nuclides=[], groups=[]):
-        """Build a sliced ChiPrompt for the specified nuclides and energy
-           groups.
-
-        This method constructs a new MGXS to encapsulate a subset of the data
-        represented by this MGXS. The subset of data to include in the tally
-        slice is determined by the nuclides and energy groups specified in
-        the input parameters.
-
-        Parameters
-        ----------
-        nuclides : list of str
-            A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
-        groups : list of Integral
-            A list of energy group indices starting at 1 for the high energies
-            (e.g., [1, 2, 3]; default is [])
-
-        Returns
-        -------
-        openmc.mgxs.MGXS
-            A new MGXS which encapsulates the subset of data requested
-            for the nuclide(s) and/or energy group(s) requested in the
-            parameters.
-
-        """
-
-        # Temporarily remove energy filter from delayed-nu-fission-in since its
-        # group structure will work in super MGXS.get_slice(...) method
-        delayed_nu_fission_in = self.tallies['delayed-nu-fission-in']
-        nu_fission_in = self.tallies['nu-fission-in']
-        prompt_nu_fission_in = nu_fission_in - delayed_nu_fission_in
-        energy_filter = prompt_nu_fission_in.find_filter('energy')
-        prompt_nu_fission_in.remove_filter(energy_filter)
-
-        # Call super class method and null out derived tallies
-        slice_xs = super(ChiPrompt, self).get_slice(nuclides, groups)
-        slice_xs._rxn_rate_tally = None
-        slice_xs._xs_tally = None
-
-        # Slice energy groups if needed
-        if len(groups) != 0:
-            filter_bins = []
-            for group in groups:
-                group_bounds = self.energy_groups.get_group_bounds(group)
-                filter_bins.append(group_bounds)
-            filter_bins = [tuple(filter_bins)]
-
-            # Slice nu-fission-out tally along energyout filter
-            prompt_nu_fission_out = slice_xs.tallies['nu-fission-out'] - \
-                                    slice_xs.tallies['delayed-nu-fission-out']
-            tally_slice = prompt_nu_fission_out\
-                          .get_slice(filters=['energyout'],
-                                     filter_bins=filter_bins)
-            slice_xs._tallies['prompt-nu-fission-out'] = tally_slice
-
-        # Add energy filter back to nu-fission-in tallies
-        slice_xs._tallies['prompt-nu-fission-in'].add_filter(energy_filter)
-
-        slice_xs.sparse = self.sparse
-        return slice_xs
-
-    def merge(self, other):
-        """Merge another ChiPrompt with this one
-
-        If results have been loaded from a statepoint, then ChiPrompt are only
-        mergeable along one and only one of energy groups or nuclides.
-
-        Parameters
-        ----------
-        other : openmc.mgxs.MGXS
-            MGXS to merge with this one
-
-        Returns
-        -------
-        merged_mgxs : openmc.mgxs.MGXS
-            Merged MGXS
-        """
-
-        if not self.can_merge(other):
-            raise ValueError('Unable to merge ChiPrompt')
-
-        return super(ChiPrompt, self).merge(other)
-
-    def get_xs(self, groups='all', subdomains='all', nuclides='all',
-               xs_type='macro', order_groups='increasing',
-               value='mean', **kwargs):
-        """Returns an array of the fission spectrum.
-
-        This method constructs a 2D NumPy array for the requested multi-group
-        cross section data data for one or more energy groups and subdomains.
-
-        Parameters
-        ----------
-        groups : Iterable of Integral or 'all'
-            Energy groups of interest. Defaults to 'all'.
-        subdomains : Iterable of Integral or 'all'
-            Subdomain IDs of interest. Defaults to 'all'.
-        nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
-            special string 'all' will return the cross sections for all nuclides
-            in the spatial domain. The special string 'sum' will return the
-            cross section summed over all nuclides. Defaults to 'all'.
-        xs_type: {'macro', 'micro'}
-            This parameter is not relevant for chi but is included here to
-            mirror the parent MGXS.get_xs(...) class method
-        order_groups: {'increasing', 'decreasing'}
-            Return the cross section indexed according to increasing or
-            decreasing energy groups (decreasing or increasing energies).
-            Defaults to 'increasing'.
-        value : {'mean', 'std_dev', 'rel_err'}
-            A string for the type of value to return. Defaults to 'mean'.
-
-        Returns
-        -------
-        numpy.ndarray
-            A NumPy array of the multi-group cross section indexed in the order
-            each group, subdomain and nuclide is listed in the parameters.
-
-        Raises
-        ------
-        ValueError
-            When this method is called before the multi-group cross section is
-            computed from tally data.
-
-        """
-
-        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-
-        filters = []
-        filter_bins = []
-
-        # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
-            for subdomain in subdomains:
-                filters.append(self.domain_type)
-                filter_bins.append((subdomain,))
-
-        # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(groups, basestring):
-            cv.check_iterable_type('groups', groups, Integral)
-            for group in groups:
-                filters.append('energyout')
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
-
-        # If chi prompt was computed for each nuclide in the domain
-        if self.by_nuclide:
-
-            # Get the sum as the fission source weighted average chi for all
-            # nuclides in the domain
-            if nuclides == 'sum' or nuclides == ['sum']:
-
-                # Retrieve the fission production tallies
-                prompt_nu_fission_in = self.tallies['nu-fission-in'] - \
-                                       self.tallies['delayed-nu-fission-in']
-                prompt_nu_fission_out = self.tallies['nu-fission-out'] - \
-                                        self.tallies['delayed-nu-fission-out']
-
-                # Sum out all nuclides
-                nuclides = self.get_all_nuclides()
-                prompt_nu_fission_in = prompt_nu_fission_in.summation\
-                                       (nuclides=nuclides)
-                prompt_nu_fission_out = prompt_nu_fission_out.summation\
-                                        (nuclides=nuclides)
-
-                # Remove coarse energy filter to keep it out of tally arithmetic
-                energy_filter = prompt_nu_fission_in.find_filter('energy')
-                prompt_nu_fission_in.remove_filter(energy_filter)
-
-                # Compute chi prompt and store it as the xs_tally attribute so
-                # we can use the generic get_xs(...) method
-                xs_tally = prompt_nu_fission_out / prompt_nu_fission_in
-
-                # Add the coarse energy filter back to the nu-fission tally
-                prompt_nu_fission_in.filters.append(energy_filter)
-
-                xs = xs_tally.get_values(filters=filters,
-                                         filter_bins=filter_bins, value=value)
-
-            # Get chi prompt for all nuclides in the domain
-            elif nuclides == 'all':
-                nuclides = self.get_all_nuclides()
-                xs = self.xs_tally.get_values(filters=filters,
-                                              filter_bins=filter_bins,
-                                              nuclides=nuclides, value=value)
-
-            # Get chi prompt for user-specified nuclides in the domain
-            else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
-                xs = self.xs_tally.get_values(filters=filters,
-                                              filter_bins=filter_bins,
-                                              nuclides=nuclides, value=value)
-
-        # If chi prompt was computed as an average of nuclides in the domain
-        else:
-            xs = self.xs_tally.get_values(filters=filters,
-                                          filter_bins=filter_bins, value=value)
-
-        # Reverse data if user requested increasing energy groups since
-        # tally data is stored in order of increasing energies
-        if order_groups == 'increasing':
-
-            # Reshape tally data array with separate axes for domain and energy
-            if groups == 'all':
-                num_groups = self.num_groups
-            else:
-                num_groups = len(groups)
-            num_subdomains = int(xs.shape[0] / num_groups)
-            new_shape = (num_subdomains, num_groups) + xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Reverse energies to align with increasing energy groups
-            xs = xs[:, ::-1, :]
-
-            # Eliminate trivial dimensions
-            xs = np.squeeze(xs)
-            xs = np.atleast_1d(xs)
-
-        xs = np.nan_to_num(xs)
-        return xs
+        return ['prompt-nu-fission', 'prompt-nu-fission']
 
 
-class Velocity(MGXS):
-    """A velocity multi-group cross section.
+class InverseVelocity(MGXS):
+    r"""An inverse velocity multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group velocity cross sections for multi-group neutronics
-    calculations. At a minimum, one needs to set the
-    :attr:`Velocity.energy_groups` and :attr:`Velocity.domain`
-    properties. Tallies for the flux and appropriate reaction rates over the
-    specified domain are generated automatically via the
-    :attr:`Velocity.tallies` property, which can then be appended to a
-    :class:`openmc.Tallies` instance.
+    multi-group neutron inverse velocities for multi-group neutronics
+    calculations. The units of inverse velocity are seconds per centimeter. At a
+    minimum, one needs to set the :attr:`InverseVelocity.energy_groups` and
+    :attr:`InverseVelocity.domain` properties. Tallies for the flux and
+    appropriate reaction rates over the specified domain are generated
+    automatically via the :attr:`InverseVelocity.tallies` property, which can
+    then be appended to a :class:`openmc.Tallies` instance.
 
     For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`Velocity.xs_tally` property.
+    can then be obtained from the :attr:`InverseVelocity.xs_tally` property.
 
     For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
-    velocity cross section is calculated as:
+    neutron inverse velocities are calculated by tallying the flux-weighted
+    inverse velocity and the flux. The inverse velocity is then the
+    flux-weighted inverse velocity divided by the flux:
 
     .. math::
 
        \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-        \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
-       d\Omega \int_{E_g}^{E_{g-1}} dE \; \frac{\psi (r, E, \Omega)}{v (r, E)}}.
+       \frac{\psi (r, E, \Omega)}{v (r, E)}}{\int_{r \in V} dr \int_{4\pi}
+       d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}
 
     Parameters
     ----------
@@ -5171,8 +4898,8 @@ class Velocity(MGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`Velocity.tally_keys` property and
-        values are instances of :class:`openmc.Tally`.
+        are strings listed in the :attr:`InverseVelocity.tally_keys` property
+        and values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
@@ -5208,50 +4935,26 @@ class Velocity(MGXS):
 
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name=''):
-        super(Velocity, self).__init__(domain, domain_type,
-                                       groups, by_nuclide, name)
-        self._rxn_type = 'velocity'
+        super(InverseVelocity, self).__init__(domain, domain_type,
+                                              groups, by_nuclide, name)
+        self._rxn_type = 'inverse-velocity'
 
-    @property
-    def scores(self):
-        return ['inverse-velocity', 'flux']
+    def get_units(self, xs_type='macro'):
+        """Returns the units of InverseVelocity.
 
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['flux']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally
-
-    @property
-    def xs_tally(self):
-
-        if self._xs_tally is None:
-            inverse_velocity = self.tallies['inverse-velocity']
-
-            # Compute the velocity
-            self._xs_tally = self.rxn_rate_tally / inverse_velocity
-            super(Velocity, self)._compute_xs()
-
-        return self._xs_tally
-
-    def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
-        """Print a string representation for the multi-group cross section.
+        This method returns the units of an InverseVelocity based on a desired
+        xs_type.
 
         Parameters
         ----------
-        subdomains : Iterable of Integral or 'all'
-            The subdomain IDs of the cross sections to include in the report.
-            Defaults to 'all'.
-        nuclides : Iterable of str or 'all' or 'sum'
-            The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
-            The special string 'all' will report the cross sections for all
-            nuclides in the spatial domain. The special string 'sum' will report
-            the cross sections summed over all nuclides. Defaults to 'all'.
         xs_type: {'macro', 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns.
+            Return the macro or micro cross section units.
             Defaults to 'macro'.
+
+        Returns
+        -------
+        str
+            A string representing the units of the InverseVelocity.
 
         """
 
@@ -5261,84 +4964,20 @@ class Velocity(MGXS):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            subdomains = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            subdomains.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        subdomains.append((x, y, 1))
+            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
 
-        # Construct a collection of the nuclides to report
-        if self.by_nuclide:
-            if nuclides == 'all':
-                nuclides = self.get_all_nuclides()
-            elif nuclides == 'sum':
-                nuclides = ['sum']
-            else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+        if xs_type == 'macro':
+            return 'second/cm'
         else:
-            nuclides = ['sum']
-
-        cv.check_value('xs_type', xs_type, ['macro'])
-
-        # Build header for string with type and domain info
-        string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
-
-        # If cross section data has not been computed, only print string header
-        if self.tallies is None:
-            print(string)
-            return
-
-        # Loop over all subdomains
-        for subdomain in subdomains:
-
-            if self.domain_type == 'distribcell':
-                string += '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
-
-            # Loop over all Nuclides
-            for nuclide in nuclides:
-
-                # Build header for nuclide type
-                if nuclide != 'sum':
-                    string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
-
-                # Build header for cross section type
-                string += '{0: <16}\n'.format\
-                          ('\tVelocity [cm/second]:')
-
-                template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]:\t'
-
-                # Loop over energy groups ranges
-                for group in range(1, self.num_groups+1):
-                    bounds = self.energy_groups.get_group_bounds(group)
-                    string += template.format('', group, bounds[0], bounds[1])
-                    average = self.get_xs([group], [subdomain], [nuclide],
-                                          xs_type=xs_type, value='mean')
-                    rel_err = self.get_xs([group], [subdomain], [nuclide],
-                                          xs_type=xs_type, value='rel_err')
-                    average = average.flatten()[0]
-                    rel_err = rel_err.flatten()[0] * 100.
-                    string += '{:.2e} +/- {:1.2e}%'.format(average, rel_err)
-                    string += '\n'
-                string += '\n'
-            string += '\n'
-
-        print(string)
+            raise ValueError('Unable to return the units of InverseVelocity for'
+                             ' xs_type other than "macro"')
 
 
 class PromptNuFissionXS(MGXS):
-    """A prompt fission neutron production multi-group cross section.
+    r"""A prompt fission neutron production multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -5416,7 +5055,7 @@ class PromptNuFissionXS(MGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -5444,15 +5083,3 @@ class PromptNuFissionXS(MGXS):
         super(PromptNuFissionXS, self).__init__(domain, domain_type, groups,
                                                 by_nuclide, name)
         self._rxn_type = 'prompt-nu-fission'
-
-    @property
-    def scores(self):
-        return ['flux', 'nu-fission', 'delayed-nu-fission']
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['nu-fission'] - \
-                                   self.tallies['delayed-nu-fission']
-            self._rxn_rate_tally.sparse = self.sparse
-        return self._rxn_rate_tally

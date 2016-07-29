@@ -27,6 +27,7 @@ Example Jupyter Notebooks
     examples/mgxs-part-ii
     examples/mgxs-part-iii
     examples/mgxs-part-iv
+    examples/nuclear-data
 
 ------------------------------------
 :mod:`openmc` -- Basic Functionality
@@ -34,9 +35,6 @@ Example Jupyter Notebooks
 
 Handling nuclear data
 ---------------------
-
-Classes
-+++++++
 
 .. autosummary::
    :toctree: generated
@@ -46,14 +44,6 @@ Classes
    openmc.XSdata
    openmc.MGXSLibrary
 
-Functions
-+++++++++
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   openmc.ace.ascii_to_binary
 
 Simulation Settings
 -------------------
@@ -224,6 +214,8 @@ Univariate Probability Distributions
    openmc.stats.Maxwell
    openmc.stats.Watt
    openmc.stats.Tabular
+   openmc.stats.Legendre
+   openmc.stats.Mixture
 
 Angular Distributions
 ---------------------
@@ -325,6 +317,72 @@ Functions
 
    openmc.model.create_triso_lattice
 
+--------------------------------------------
+:mod:`openmc.data` -- Nuclear Data Interface
+--------------------------------------------
+
+Core Classes
+------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.data.IncidentNeutron
+    openmc.data.Reaction
+    openmc.data.Product
+    openmc.data.Tabulated1D
+    openmc.data.ThermalScattering
+    openmc.data.CoherentElastic
+
+Angle-Energy Distributions
+--------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.data.AngleEnergy
+    openmc.data.KalbachMann
+    openmc.data.CorrelatedAngleEnergy
+    openmc.data.UncorrelatedAngleEnergy
+    openmc.data.NBodyPhaseSpace
+    openmc.data.AngleDistribution
+    openmc.data.EnergyDistribution
+    openmc.data.ArbitraryTabulated
+    openmc.data.GeneralEvaporation
+    openmc.data.MaxwellEnergy
+    openmc.data.Evaporation
+    openmc.data.WattEnergy
+    openmc.data.MadlandNix
+    openmc.data.DiscretePhoton
+    openmc.data.LevelInelastic
+    openmc.data.ContinuousTabular
+
+ACE Format
+----------
+
+Classes
++++++++
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.data.ace.Library
+   openmc.data.ace.Table
+
+Functions
++++++++++
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   openmc.data.ace.ascii_to_binary
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

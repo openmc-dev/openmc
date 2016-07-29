@@ -63,6 +63,15 @@ domain=10000 type=nu-fission matrix
 domain=10000 type=chi
 [ 1.  0.]
 [ 0.04607052  0.        ]
+domain=10000 type=chi-prompt
+[ 1.  0.]
+[ 0.05147146  0.        ]
+domain=10000 type=inverse-velocity
+[  5.70932329e-08   2.85573950e-06]
+[  4.68792969e-09   2.44216503e-07]
+domain=10000 type=prompt-nu-fission
+[ 0.01923922  0.46671903]
+[ 0.00130951  0.04141087]
 domain=10001 type=total
 [ 0.31373767  0.3008214 ]
 [ 0.0155819   0.02805245]
@@ -128,6 +137,15 @@ domain=10001 type=nu-fission matrix
 domain=10001 type=chi
 [ 0.  0.]
 [ 0.  0.]
+domain=10001 type=chi-prompt
+[ 0.  0.]
+[ 0.  0.]
+domain=10001 type=inverse-velocity
+[  5.99598048e-08   2.98549021e-06]
+[  4.55309296e-09   3.41701554e-07]
+domain=10001 type=prompt-nu-fission
+[ 0.  0.]
+[ 0.  0.]
 domain=10002 type=total
 [ 0.66457226  2.05238401]
 [ 0.03121475  0.22434291]
@@ -191,5 +209,14 @@ domain=10002 type=nu-fission matrix
 [[ 0.  0.]
  [ 0.  0.]]
 domain=10002 type=chi
+[ 0.  0.]
+[ 0.  0.]
+domain=10002 type=chi-prompt
+[ 0.  0.]
+[ 0.  0.]
+domain=10002 type=inverse-velocity
+[  6.02207831e-08   3.04495537e-06]
+[  3.78043696e-09   3.60007673e-07]
+domain=10002 type=prompt-nu-fission
 [ 0.  0.]
 [ 0.  0.]

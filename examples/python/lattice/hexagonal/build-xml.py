@@ -15,10 +15,10 @@ particles = 10000
 ###############################################################################
 
 # Instantiate some Nuclides
-h1 = openmc.Nuclide('H-1')
-o16 = openmc.Nuclide('O-16')
-u235 = openmc.Nuclide('U-235')
-fe56 = openmc.Nuclide('Fe-56')
+h1 = openmc.Nuclide('H1')
+o16 = openmc.Nuclide('O16')
+u235 = openmc.Nuclide('U235')
+fe56 = openmc.Nuclide('Fe56')
 
 # Instantiate some Materials and register the appropriate Nuclides
 fuel = openmc.Material(material_id=1, name='fuel')
@@ -29,7 +29,7 @@ moderator = openmc.Material(material_id=2, name='moderator')
 moderator.set_density('g/cc', 1.0)
 moderator.add_nuclide(h1, 2.)
 moderator.add_nuclide(o16, 1.)
-moderator.add_s_alpha_beta('HH2O', '71t')
+moderator.add_s_alpha_beta('c_H_in_H2O', '71t')
 
 iron = openmc.Material(material_id=3, name='iron')
 iron.set_density('g/cc', 7.9)

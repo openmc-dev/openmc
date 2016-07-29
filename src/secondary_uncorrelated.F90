@@ -1,9 +1,15 @@
 module secondary_uncorrelated
 
+  use h5lt, only: h5ltpath_valid_f
+  use hdf5, only: HID_T
+
   use angle_distribution, only: AngleDistribution
   use angleenergy_header, only: AngleEnergy
-  use constants, only: ONE, TWO
-  use energy_distribution, only: EnergyDistribution
+  use constants, only: ONE, TWO, MAX_WORD_LEN
+  use energy_distribution, only: EnergyDistribution, LevelInelastic, &
+       ContinuousTabular, MaxwellEnergy, Evaporation, WattEnergy, DiscretePhoton
+  use error, only: warning
+  use hdf5_interface, only: read_attribute, open_group, close_group
   use random_lcg, only: prn
 
 !===============================================================================
@@ -18,6 +24,7 @@ module secondary_uncorrelated
     class(EnergyDistribution), allocatable :: energy
   contains
     procedure :: sample => uncorrelated_sample
+    procedure :: from_hdf5 => uncorrelated_from_hdf5
   end type UncorrelatedAngleEnergy
 
 contains
@@ -44,5 +51,56 @@ contains
     ! Sample outgoing energy
     E_out = this%energy%sample(E_in)
   end subroutine uncorrelated_sample
+
+  subroutine uncorrelated_from_hdf5(this, group_id)
+    class(UncorrelatedAngleEnergy), intent(inout) :: this
+    integer(HID_T),                 intent(in)    :: group_id
+
+    logical :: exists
+    integer :: hdf5_err
+    integer(HID_T) :: energy_group
+    integer(HID_T) :: angle_group
+    character(MAX_WORD_LEN) :: type
+
+    ! Check if energy group is present
+    call h5ltpath_valid_f(group_id, 'angle', .true., exists, hdf5_err)
+
+    if (exists) then
+      angle_group = open_group(group_id, 'angle')
+      call this%angle%from_hdf5(angle_group)
+      call close_group(angle_group)
+    end if
+
+    ! Check if energy group is present
+    call h5ltpath_valid_f(group_id, 'energy', .true., exists, hdf5_err)
+
+    if (exists) then
+      energy_group = open_group(group_id, 'energy')
+      call read_attribute(type, energy_group, 'type')
+      select case (type)
+      case ('discrete_photon')
+        allocate(DiscretePhoton :: this%energy)
+      case ('level')
+        allocate(LevelInelastic :: this%energy)
+      case ('continuous')
+        allocate(ContinuousTabular :: this%energy)
+      case ('maxwell')
+        allocate(MaxwellEnergy :: this%energy)
+      case ('evaporation')
+        allocate(Evaporation :: this%energy)
+      case ('watt')
+        allocate(WattEnergy :: this%energy)
+      case default
+        call warning("Energy distribution type '" // trim(type) &
+             // "' not implemented.")
+      end select
+
+      if (allocated(this % energy)) then
+        call this%energy%from_hdf5(energy_group)
+      end if
+
+      call close_group(energy_group)
+    end if
+  end subroutine uncorrelated_from_hdf5
 
 end module secondary_uncorrelated

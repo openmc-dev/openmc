@@ -9,7 +9,7 @@ except ImportError:
     have_setuptools = False
 
 kwargs = {'name': 'openmc',
-          'version': '0.7.1',
+          'version': '0.8.0',
           'packages': ['openmc', 'openmc.data', 'openmc.mgxs', 'openmc.model',
                        'openmc.stats'],
           'scripts': glob.glob('scripts/openmc-*'),

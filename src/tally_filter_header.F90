@@ -40,7 +40,7 @@ module tally_filter_header
       class(TallyFilter), intent(in)  :: this
       type(Particle),     intent(in)  :: p
       integer,            intent(in)  :: estimator
-      integer,            intent(in)  :: current_bin
+      integer, value,     intent(in)  :: current_bin
       integer,            intent(out) :: next_bin
       real(8),            intent(out) :: weight
     end subroutine get_next_bin_

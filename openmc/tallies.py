@@ -1293,7 +1293,7 @@ class Tally(object):
                     # Create list of 2- or 3-tuples tuples for mesh cell bins
                     if self_filter.type == 'mesh':
                         dimension = self_filter.mesh.dimension
-                        xyz = [np.arange(1, x+1) for x in dimension]
+                        xyz = [range(1, x+1) for x in dimension]
                         bins = list(itertools.product(*xyz))
 
                     # Create list of 2-tuples for energy boundary bins

@@ -279,8 +279,9 @@ class Library(object):
             elif self.domain_type == 'mesh':
                 cv.check_iterable_type('domain', domains, openmc.Mesh)
 
-                # The mesh and geometry are independent, so just return
-                return
+                # The mesh and geometry are independent, so set all_domains
+                # to the input domains
+                all_domains = domains
             else:
                 raise ValueError('Unable to set domains with domain '
                                  'type "{}"'.format(self.domain_type))

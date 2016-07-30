@@ -1192,7 +1192,7 @@ class MGXS(object):
         # Loop over all subdomains
         for subdomain in subdomains:
 
-            if self.domain_type == 'distribcell':
+            if self.domain_type == 'distribcell' or self.domain_type == 'mesh':
                 string += '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
 
             # Loop over all Nuclides
@@ -1407,7 +1407,10 @@ class MGXS(object):
         if format == 'csv':
             df.to_csv(filename + '.csv', index=False)
         elif format == 'excel':
-            df.to_excel(filename + '.xls', index=False)
+            if self.domain_type == 'mesh':
+                df.to_excel(filename + '.xls')
+            else:
+                df.to_excel(filename + '.xls', index=False)
         elif format == 'pickle':
             df.to_pickle(filename + '.pkl')
         elif format == 'latex':

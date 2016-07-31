@@ -54,9 +54,9 @@ class Library(object):
         If true, computes cross sections for each nuclide in each domain
     mgxs_types : Iterable of str
         The types of cross sections in the library (e.g., ['total', 'scatter'])
-    domain_type : {'material', 'cell', 'distribcell', 'universe'}
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
-    domains : Iterable of openmc.Material, openmc.Cell or openmc.Universe
+    domains : Iterable of openmc.Material, openmc.Cell, openmc.Universe or openmc.Mesh
         The spatial domain(s) for which MGXS in the Library are computed
     correction : {'P0', None}
         Apply the P0 correction to scattering matrices if set to 'P0'
@@ -183,6 +183,8 @@ class Library(object):
                 return self.openmc_geometry.get_all_material_cells()
             elif self.domain_type == 'universe':
                 return self.openmc_geometry.get_all_universes()
+            elif self.domain_type == 'mesh':
+                raise ValueError('Unable to get domains for Mesh domain type')
             else:
                 raise ValueError('Unable to get domains without a domain type')
         else:
@@ -273,6 +275,12 @@ class Library(object):
             elif self.domain_type == 'universe':
                 cv.check_iterable_type('domain', domains, openmc.Universe)
                 all_domains = self.openmc_geometry.get_all_universes()
+            elif self.domain_type == 'mesh':
+                cv.check_iterable_type('domain', domains, openmc.Mesh)
+
+                # The mesh and geometry are independent, so set all_domains
+                # to the input domains
+                all_domains = domains
             else:
                 raise ValueError('Unable to set domains with domain '
                                  'type "{}"'.format(self.domain_type))
@@ -474,6 +482,8 @@ class Library(object):
             cv.check_type('domain', domain, (openmc.Cell, Integral))
         elif self.domain_type == 'universe':
             cv.check_type('domain', domain, (openmc.Universe, Integral))
+        elif self.domain_type == 'mesh':
+            cv.check_type('domain', domain, (openmc.Mesh, Integral))
 
         # Check that requested domain is included in library
         if isinstance(domain, Integral):

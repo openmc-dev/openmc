@@ -14,7 +14,6 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 from openmc.mgxs import EnergyGroups
-from openmc import Mesh
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -694,7 +693,7 @@ class MGXS(object):
         # NOTE: This is important if tally merging was used
         if self.domain_type == 'mesh':
             filters = [self.domain_type]
-            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            xyz = [range(1, x+1) for x in self.domain.dimension]
             filter_bins = [tuple(itertools.product(*xyz))]
         elif self.domain_type != 'distribcell':
             filters = [self.domain_type]
@@ -717,8 +716,6 @@ class MGXS(object):
             sp_tally = statepoint.get_tally(
                 tally.scores, tally.filters, tally.nuclides,
                 estimator=tally.estimator, exact_filters=True)
-            print(filters)
-            print(filter_bins)
             sp_tally = sp_tally.get_slice(
                 tally.scores, filters, filter_bins, tally.nuclides)
             sp_tally.sparse = self.sparse
@@ -1159,7 +1156,7 @@ class MGXS(object):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            xyz = [range(1, x+1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
@@ -1194,7 +1191,7 @@ class MGXS(object):
         # Loop over all subdomains
         for subdomain in subdomains:
 
-            if self.domain_type == 'distribcell':
+            if self.domain_type == 'distribcell' or self.domain_type == 'mesh':
                 string += '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
 
             # Loop over all Nuclides
@@ -1297,7 +1294,7 @@ class MGXS(object):
             domain_filter = self.xs_tally.find_filter('avg(distribcell)')
             subdomains = domain_filter.bins
         elif self.domain_type == 'mesh':
-            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            xyz = [range(1, x+1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
@@ -1409,7 +1406,10 @@ class MGXS(object):
         if format == 'csv':
             df.to_csv(filename + '.csv', index=False)
         elif format == 'excel':
-            df.to_excel(filename + '.xls', index=False)
+            if self.domain_type == 'mesh':
+                df.to_excel(filename + '.xls')
+            else:
+                df.to_excel(filename + '.xls', index=False)
         elif format == 'pickle':
             df.to_pickle(filename + '.pkl')
         elif format == 'latex':
@@ -1750,6 +1750,13 @@ class MatrixMGXS(MGXS):
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
+        # FIXME: Unable to get microscopic xs for mesh domain because the mesh
+        # cells do not know the nuclide densities in each mesh cell.
+        if self.domain_type == 'mesh' and xs_type == 'micro':
+            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
+                  'cells do not know the nuclide densities in each mesh cell.'
+            raise ValueError(msg)
+
         filters = []
         filter_bins = []
 
@@ -1919,7 +1926,7 @@ class MatrixMGXS(MGXS):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            xyz = [range(1, x+1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
@@ -3568,6 +3575,13 @@ class ScatterMatrixXS(MatrixMGXS):
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
+        # FIXME: Unable to get microscopic xs for mesh domain because the mesh
+        # cells do not know the nuclide densities in each mesh cell.
+        if self.domain_type == 'mesh' and xs_type == 'micro':
+            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
+                  'cells do not know the nuclide densities in each mesh cell.'
+            raise ValueError(msg)
+
         filters = []
         filter_bins = []
 
@@ -3718,9 +3732,12 @@ class ScatterMatrixXS(MatrixMGXS):
             df['moment'] = moments
 
             # Place the moment column before the mean column
-            mean_index = df.columns.get_loc('mean')
             columns = df.columns.tolist()
-            df = df[columns[:mean_index] + ['moment'] + columns[mean_index:-1]]
+            mean_index = [i for i, s in enumerate(columns) if 'mean' in s][0]
+            if self.domain_type == 'mesh':
+                df = df[columns[:mean_index] + [('moment', '')] + columns[mean_index:-1]]
+            else:
+                df = df[columns[:mean_index] + ['moment'] + columns[mean_index:-1]]
 
         # Select rows corresponding to requested scattering moment
         if moment != 'all':
@@ -3761,7 +3778,7 @@ class ScatterMatrixXS(MatrixMGXS):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
+            xyz = [range(1, x+1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
@@ -4249,14 +4266,14 @@ class Chi(MGXS):
 
     .. math::
 
-       \langle \nu\sigma_{f,\rightarrow g} \phi \rangle &= \int_{r \in V} dr
+       \langle \nu\sigma_{f,g' \rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \; \chi(E)
        \nu\sigma_f (r, E') \psi(r, E', \Omega')\\
        \langle \nu\sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu\sigma_f (r,
        E') \psi(r, E', \Omega') \\
-       \chi_g &= \frac{\langle \nu\sigma_{f,\rightarrow g} \phi \rangle}{\langle
-       \nu\sigma_f \phi \rangle}
+       \chi_g &= \frac{\langle \nu\sigma_{f,g' \rightarrow g} \phi \rangle}
+       {\langle \nu\sigma_f \phi \rangle}
 
     Parameters
     ----------
@@ -4539,6 +4556,13 @@ class Chi(MGXS):
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
+        # FIXME: Unable to get microscopic xs for mesh domain because the mesh
+        # cells do not know the nuclide densities in each mesh cell.
+        if self.domain_type == 'mesh' and xs_type == 'micro':
+            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
+                  'cells do not know the nuclide densities in each mesh cell.'
+            raise ValueError(msg)
+
         filters = []
         filter_bins = []
 
@@ -4732,14 +4756,14 @@ class ChiPrompt(Chi):
 
     .. math::
 
-       \langle \nu\sigma_{f,\rightarrow g}^p \phi \rangle &= \int_{r \in V} dr
-       \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \; \chi(E)
-       \nu\sigma_f^p (r, E') \psi(r, E', \Omega')\\
-       \langle \nu\sigma_f^p \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
-       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu\sigma_f^p (r,
+       \langle \nu^p \sigma_{f,g' \rightarrow g} \phi \rangle &= \int_{r \in V}
+       dr \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \;
+       \chi(E)^p \nu^p \sigma_f (r, E') \psi(r, E', \Omega')\\
+       \langle \nu^p \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
+       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^p \sigma_f (r,
        E') \psi(r, E', \Omega') \\
-       \chi_g^p &= \frac{\langle \nu\sigma_{f,\rightarrow g}^p \phi \rangle}{\langle
-       \nu\sigma_f^p \phi \rangle}
+       \chi_g^p &= \frac{\langle \nu^p \sigma_{f,g' \rightarrow g} \phi \rangle}
+       {\langle \nu^p \sigma_f \phi \rangle}
 
     Parameters
     ----------
@@ -4957,17 +4981,6 @@ class InverseVelocity(MGXS):
             A string representing the units of the InverseVelocity.
 
         """
-
-        # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
-        elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
-        elif self.domain_type == 'mesh':
-            xyz = map(lambda x: np.arange(1, x+1), self.domain.dimension)
-            subdomains = list(itertools.product(*xyz))
-        else:
-            subdomains = [self.domain.id]
 
         if xs_type == 'macro':
             return 'second/cm'

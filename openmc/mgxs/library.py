@@ -56,7 +56,7 @@ class Library(object):
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
-    domains : Iterable of openmc.Material, openmc.Cell, openmc.Universe, or
+    domains : Iterable of openmc.Material, openmc.Cell, openmc.Universe or
         openmc.Mesh
         The spatial domain(s) for which MGXS in the Library are computed
     correction : {'P0', None}
@@ -184,10 +184,8 @@ class Library(object):
                 return self.openmc_geometry.get_all_material_cells()
             elif self.domain_type == 'universe':
                 return self.openmc_geometry.get_all_universes()
-            # FIXME: Change to get tuples of all domain cells
             elif self.domain_type == 'mesh':
-                raise ValueError('Unable to get all domains for a mesh domain ' +
-                                 'type. The domains must be set to [openmc.Mesh]')
+                raise ValueError('Unable to get domains for Mesh domain type')
             else:
                 raise ValueError('Unable to get domains without a domain type')
         else:
@@ -290,6 +288,9 @@ class Library(object):
                 all_domains = self.openmc_geometry.get_all_universes()
             elif self.domain_type == 'mesh':
                 cv.check_iterable_type('domain', domains, openmc.Mesh)
+
+                # The mesh and geometry are independent, so set all_domains
+                # to the input domains
                 all_domains = domains
             else:
                 raise ValueError('Unable to set domains with domain '

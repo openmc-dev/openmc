@@ -13,6 +13,8 @@ import numpy as np
 from mgxs import MGXS, MGXS_TYPES, DOMAIN_TYPES, _DOMAINS
 from openmc.mgxs import EnergyGroups, DelayedGroups
 from openmc import Mesh
+import openmc
+import openmc.checkvalue as cv
 
 # Supported cross section types
 MDGXS_TYPES = ['delayed-nu-fission',
@@ -145,19 +147,23 @@ class MDGXS(MGXS):
 
     @delayed_groups.setter
     def delayed_groups(self, delayed_groups):
-        cv.check_type('delayed groups', delayed_groups, openmc.mgxs.DelayedGroups)
+        cv.check_type('delayed groups', delayed_groups,
+                      openmc.mgxs.DelayedGroups)
         self._delayed_groups = delayed_groups
 
     @property
     def filters(self):
+
+        # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.Filter('energy', group_edges)
+
         if self.delayed_groups != None:
             delayed_groups = self.delayed_groups.groups
             delayed_filter = openmc.Filter('delayedgroup', delayed_groups)
-            return [[delayed_filter, energy_filter]] * len(self.scores)
+            return [[energy_filter], [delayed_filter, energy_filter]]
         else:
-            return [[energy]] * len(self.scores)
+            return [[energy_filter], [energy_filter]]
 
     @staticmethod
     def get_mgxs(mdgxs_type, domain=None, domain_type=None,
@@ -171,10 +177,10 @@ class MDGXS(MGXS):
 
         Parameters
         ----------
-        mdgxs_type : {'delayed-nu-fission', 'chi-prompt', 'chi-delayed',
-            'beta'}
+        mdgxs_type : {'delayed-nu-fission', 'chi-delayed', 'beta'}
             The type of multi-delayed-group cross section object to return
-        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+        domain : openmc.Material or openmc.Cell or openmc.Universe or
+            openmc.Mesh
             The domain for spatial homogenization
         domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
             The domain type for spatial homogenization
@@ -200,7 +206,7 @@ class MDGXS(MGXS):
         cv.check_value('mdgxs_type', mdgxs_type, MDGXS_TYPES)
 
         if mdgxs_type == 'delayed-nu-fission':
-            mdgxs = DelayedNuFission(domain, domain_type, energy_groups)
+            mdgxs = DelayedNuFissionXS(domain, domain_type, energy_groups)
         elif mdgxs_type == 'chi-delayed':
             mdgxs = ChiDelayed(domain, domain_type, energy_groups)
         elif mdgxs_type == 'beta':
@@ -260,12 +266,20 @@ class MDGXS(MGXS):
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
+        # FIXME: Unable to get microscopic xs for mesh domain because the mesh
+        # cells do not know the nuclide densities in each mesh cell.
+        if self.domain_type == 'mesh' and xs_type == 'micro':
+            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
+                  'cells do not know the nuclide densities in each mesh cell.'
+            raise ValueError(msg)
+
         filters = []
         filter_bins = []
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
+            cv.check_iterable_type('subdomains', subdomains, Integral,
+                                   max_depth=3)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
@@ -275,13 +289,14 @@ class MDGXS(MGXS):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
                 filters.append('energy')
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+                filter_bins.append(
+                    (self.energy_groups.get_group_bounds(group),))
 
         # Construct list of delayed group tuples for all requested groups
         if not isinstance(delayed_groups, basestring):
             cv.check_iterable_type('delayed_groups', delayed_groups, Integral)
             for delayed_group in delayed_groups:
-                filters.append('delayedgroups')
+                filters.append('delayedgroup')
                 filter_bins.append((delayed_group,))
 
         # Construct a collection of the nuclides to retrieve from the xs tally
@@ -299,7 +314,8 @@ class MDGXS(MGXS):
             xs = xs_tally.get_values(filters=filters,
                                      filter_bins=filter_bins, value=value)
         else:
-            xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
+            xs = self.xs_tally.get_values(filters=filters,
+                                          filter_bins=filter_bins,
                                           nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
@@ -460,12 +476,12 @@ class MDGXS(MGXS):
 
         """
 
-
         merged_mdgxs = super(MDGXS, self).merge(other)
 
         # Merge delayed groups
         if self.delayed_groups != other.delayed_groups:
-            merged_delayed_groups = self.delayed_groups.merge(other.delayed_groups)
+            merged_delayed_groups = self.delayed_groups.merge(
+                other.delayed_groups)
             merged_mdgxs.delayed_groups = merged_delayed_groups
 
         return merged_mdgxs
@@ -490,7 +506,7 @@ class MDGXS(MGXS):
 
         """
 
-        if self.delayed_groups != None:
+        if self.delayed_groups == None:
             super(MDGXS, self).print_xs(subdomains, nuclides, xs_type)
             return
 
@@ -500,18 +516,8 @@ class MDGXS(MGXS):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            subdomains = []
-            if (len(self.domain.dimension) == 3):
-                nx, ny, nz = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        for z in range(1,nz+1):
-                            subdomains.append((x, y, z))
-            else:
-                nx, ny = self.domain.dimension
-                for x in range(1,nx+1):
-                    for y in range(1,ny+1):
-                        subdomains.append((x, y, 1))
+            xyz = [range(1, x+1) for x in self.domain.dimension]
+            subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
 
@@ -534,6 +540,9 @@ class MDGXS(MGXS):
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
+        # Generate the header for an individual XS
+        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
             print(string)
@@ -542,7 +551,7 @@ class MDGXS(MGXS):
         # Loop over all subdomains
         for subdomain in subdomains:
 
-            if self.domain_type == 'distribcell':
+            if self.domain_type == 'distribcell' or self.domain_type == 'mesh':
                 string += '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
 
             # Loop over all Nuclides
@@ -552,11 +561,8 @@ class MDGXS(MGXS):
                 if nuclide != 'sum':
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
-                # Build header for cross section type
-                if xs_type == 'macro':
-                    string += '{0: <16}\n'.format('\tCross Sections [cm^-1]:')
-                else:
-                    string += '{0: <16}\n'.format('\tCross Sections [barns]:')
+                # Add the cross section header
+                string += '{0: <16}\n'.format(xs_header)
 
                 for delayed_group in self.delayed_groups.groups:
 
@@ -628,15 +634,14 @@ class MDGXS(MGXS):
         df = self.get_pandas_dataframe(groups=groups, xs_type=xs_type,
                                        delayed_groups=delayed_groups)
 
-        # Capitalize column label strings
-        #df.columns = df.columns.astype(str)
-        #df.columns = map(str.title, df.columns)
-
         # Export the data using Pandas IO API
         if format == 'csv':
             df.to_csv(filename + '.csv', index=False)
         elif format == 'excel':
-            df.to_excel(filename + '.xls', index=False)
+            if self.domain_type == 'mesh':
+                df.to_excel(filename + '.xls')
+            else:
+                df.to_excel(filename + '.xls', index=False)
         elif format == 'pickle':
             df.to_pickle(filename + '.pkl')
         elif format == 'latex':
@@ -664,7 +669,7 @@ class MDGXS(MGXS):
     def get_pandas_dataframe(self, groups='all', nuclides='all',
                              xs_type='macro', distribcell_paths=True,
                              delayed_groups='all'):
-        """Build a Pandas DataFrame for the MGXS data.
+        """Build a Pandas DataFrame for the MDGXS data.
 
         This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
         renames the columns with terminology appropriate for cross section data.
@@ -699,8 +704,8 @@ class MDGXS(MGXS):
         Raises
         ------
         ValueError
-            When this method is called before the multi-group cross section is
-            computed from tally data.
+            When this method is called before the multi-delayed-group cross
+            section is computed from tally data.
 
         """
 
@@ -719,35 +724,35 @@ class MDGXS(MGXS):
 
 
 class ChiDelayed(MDGXS):
-    """The delayed fission spectrum.
+    r"""The delayed fission spectrum.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for multi-group neutronics calculations. At a
-    minimum, one needs to set the :attr:`ChiDelayed.energy_groups` and
-    :attr:`ChiDelayed.domain` properties. Tallies for the flux and appropriate
-    reaction rates over the specified domain are generated automatically via the
-    :attr:`ChiDelayed.tallies` property, which can then be appended to a
-    :class:`openmc.Tallies` instance.
+    multi-group and multi-delayed-group cross sections for multi-group
+    neutronics calculations. At a minimum, one needs to set the
+    :attr:`ChiDelayed.energy_groups` and :attr:`ChiDelayed.domain` properties.
+    Tallies for the flux and appropriate reaction rates over the specified
+    domain are generated automatically via the :attr:`ChiDelayed.tallies`
+    property, which can then be appended to a :class:`openmc.Tallies` instance.
 
-    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
+    For post-processing, the :meth:`MDGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
-    :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`ChiDelayed.xs_tally` property.
+    :class:`openmc.StatePoint` instance. The derived multi-group cross
+    section can then be obtained from the :attr:`ChiDelayed.xs_tally` property.
 
-    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
-    fission spectrum is calculated as:
+    For a spatial domain :math:`V`, energy group :math:`[E_g,E_{g-1}]`, and
+    delayed group :math:`d`, the delayed fission spectrum is calculated as:
 
     .. math::
 
-       \langle \nu\sigma_{f,\rightarrow g} \phi \rangle &= \int_{r \in V} dr
-       \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \; \chi(E)
-       \nu\sigma_f (r, E') \psi(r, E', \Omega')\\
-       \langle \nu\sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
-       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu\sigma_f (r,
+       \langle \nu^d \sigma_{f,g' \rightarrow g} \phi \rangle &= \int_{r \in V}
+       dr \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \;
+       \chi(E) \nu^d \sigma_f (r, E') \psi(r, E', \Omega')\\
+       \langle \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
+       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^d \sigma_f (r,
        E') \psi(r, E', \Omega') \\
-       \chi_g &= \frac{\langle \nu\sigma_{f,\rightarrow g} \phi \rangle}{\langle
-       \nu\sigma_f \phi \rangle}
+       \chi_g^d &= \frac{\langle \nu^d \sigma_{f,g' \rightarrow g} \phi \rangle}
+       {\langle \nu^d \sigma_f \phi \rangle}
 
     Parameters
     ----------
@@ -948,8 +953,8 @@ class ChiDelayed(MDGXS):
 
             # Slice nu-fission-out tally along energyout filter
             delayed_nu_fission_out = slice_xs.tallies['delayed-nu-fission-out']
-            tally_slice = delayed_nu_fission_out.get_slice(filters=filters,
-                                                           filter_bins=filter_bins)
+            tally_slice = delayed_nu_fission_out.get_slice\
+                          (filters=filters, filter_bins=filter_bins)
             slice_xs._tallies['delayed-nu-fission-out'] = tally_slice
 
         # Add energy filter back to nu-fission-in tallies
@@ -967,32 +972,33 @@ class ChiDelayed(MDGXS):
 
         Parameters
         ----------
-        other : openmc.mgxs.MGXS
-            MGXS to merge with this one
+        other : openmc.mdgxs.MDGXS
+            MDGXS to merge with this one
 
         Returns
         -------
-        merged_mgxs : openmc.mgxs.MGXS
-            Merged MGXS
+        merged_mdgxs : openmc.mgxs.MDGXS
+            Merged MDGXS
         """
 
         if not self.can_merge(other):
             raise ValueError('Unable to merge ChiDelayed')
 
         # Create deep copy of tally to return as merged tally
-        merged_mgxs = copy.deepcopy(self)
-        merged_mgxs._derived = True
-        merged_mgxs._rxn_rate_tally = None
-        merged_mgxs._xs_tally = None
+        merged_mdgxs = copy.deepcopy(self)
+        merged_mdgxs._derived = True
+        merged_mdgxs._rxn_rate_tally = None
+        merged_mdgxs._xs_tally = None
 
         # Merge energy groups
         if self.energy_groups != other.energy_groups:
             merged_groups = self.energy_groups.merge(other.energy_groups)
-            merged_mgxs.energy_groups = merged_groups
+            merged_mdgxs.energy_groups = merged_groups
 
         # Merge delayed groups
         if self.delayed_groups != other.delayed_groups:
-            merged_delayed_groups = self.delayed_groups.merge(other.delayed_groups)
+            merged_delayed_groups = self.delayed_groups.merge\
+                                    (other.delayed_groups)
             merged_mdgxs.delayed_groups = merged_delayed_groups
 
         # Merge nuclides
@@ -1005,22 +1011,24 @@ class ChiDelayed(MDGXS):
                     raise ValueError(msg)
 
             # Concatenate lists of nuclides for the merged MGXS
-            merged_mgxs.nuclides = self.nuclides + other.nuclides
+            merged_mdgxs.nuclides = self.nuclides + other.nuclides
 
         # Merge tallies
         for tally_key in self.tallies:
-            merged_tally = self.tallies[tally_key].merge(other.tallies[tally_key])
-            merged_mgxs.tallies[tally_key] = merged_tally
+            merged_tally = self.tallies[tally_key].merge\
+                           (other.tallies[tally_key])
+            merged_mdgxs.tallies[tally_key] = merged_tally
 
-        return merged_mgxs
+        return merged_mdgxs
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
                value='mean', delayed_groups='all', **kwargs):
-        """Returns an array of the fission spectrum.
+        """Returns an array of the delayed fission spectrum.
 
         This method constructs a 2D NumPy array for the requested multi-group
-        cross section data data for one or more energy groups and subdomains.
+        and multi-delayed group cross section data data for one or more energy
+        groups and subdomains.
 
         Parameters
         ----------
@@ -1037,7 +1045,7 @@ class ChiDelayed(MDGXS):
             cross section summed over all nuclides. Defaults to 'all'.
         xs_type: {'macro', 'micro'}
             This parameter is not relevant for chi but is included here to
-            mirror the parent MGXS.get_xs(...) class method
+            mirror the parent MDGXS.get_xs(...) class method
         order_groups: {'increasing', 'decreasing'}
             Return the cross section indexed according to increasing or
             decreasing energy groups (decreasing or increasing energies).
@@ -1048,8 +1056,9 @@ class ChiDelayed(MDGXS):
         Returns
         -------
         numpy.ndarray
-            A NumPy array of the multi-group cross section indexed in the order
-            each group, subdomain and nuclide is listed in the parameters.
+            A NumPy array of the multi-group and multi-delayed-group cross
+            section indexed in the order each group, subdomain and nuclide is
+            listed in the parameters.
 
         Raises
         ------
@@ -1062,12 +1071,20 @@ class ChiDelayed(MDGXS):
         cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
+        # FIXME: Unable to get microscopic xs for mesh domain because the mesh
+        # cells do not know the nuclide densities in each mesh cell.
+        if self.domain_type == 'mesh' and xs_type == 'micro':
+            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
+                  'cells do not know the nuclide densities in each mesh cell.'
+            raise ValueError(msg)
+
         filters = []
         filter_bins = []
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
+            cv.check_iterable_type('subdomains', subdomains, Integral,
+                                   max_depth=3)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))
@@ -1077,13 +1094,14 @@ class ChiDelayed(MDGXS):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
                 filters.append('energyout')
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+                filter_bins.append(
+                    (self.energy_groups.get_group_bounds(group),))
 
         # Construct list of delayed group tuples for all requested groups
         if not isinstance(delayed_groups, basestring):
             cv.check_iterable_type('delayed_groups', delayed_groups, Integral)
             for delayed_group in delayed_groups:
-                filters.append('delayedgroups')
+                filters.append('delayedgroup')
                 filter_bins.append((delayed_group,))
 
         # If chi delayed was computed for each nuclide in the domain
@@ -1099,8 +1117,10 @@ class ChiDelayed(MDGXS):
 
                 # Sum out all nuclides
                 nuclides = self.get_all_nuclides()
-                delayed_nu_fission_in = delayed_nu_fission_in.summation(nuclides=nuclides)
-                delayed_nu_fission_out = delayed_nu_fission_out.summation(nuclides=nuclides)
+                delayed_nu_fission_in = delayed_nu_fission_in.summation\
+                                        (nuclides=nuclides)
+                delayed_nu_fission_out = delayed_nu_fission_out.summation\
+                                         (nuclides=nuclides)
 
                 # Remove coarse energy filter to keep it out of tally arithmetic
                 energy_filter = delayed_nu_fission_in.find_filter('energy')
@@ -1160,7 +1180,7 @@ class ChiDelayed(MDGXS):
 
 
 class DelayedNuFissionXS(MDGXS):
-    """A fission delayed neutron production multi-group cross section.
+    r"""A fission delayed neutron production multi-group cross section.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -1172,18 +1192,19 @@ class DelayedNuFissionXS(MDGXS):
     :attr:`DelayedNuFissionXS.tallies` property, which can then be appended to a
     :class:`openmc.Tallies` instance.
 
-    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
+    For post-processing, the :meth:`MDGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`DelayedNuFissionXS.xs_tally` property.
 
-    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
-    fission neutron production cross section is calculated as:
+    For a spatial domain :math:`V`, energy group :math:`[E_g,E_{g-1}]`, and
+    delayed group :math:`d`, the fission delayed neutron production cross
+    section is calculated as:
 
     .. math::
 
        \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-       \nu\sigma_f (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
+       \nu^d \sigma_f (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
 
@@ -1233,8 +1254,8 @@ class DelayedNuFissionXS(MDGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`NuFissionXS.tally_keys` property and
-        values are instances of :class:`openmc.Tally`.
+        are strings listed in the :attr:`DelayedNuFissionXS.tally_keys` property
+        and values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None
@@ -1276,35 +1297,35 @@ class DelayedNuFissionXS(MDGXS):
 
 
 class Beta(MDGXS):
-    """The delayed neutron fraction.
+    r"""The delayed neutron fraction.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for multi-group neutronics calculations. At a
-    minimum, one needs to set the :attr:`ChiDelayed.energy_groups` and
-    :attr:`ChiDelayed.domain` properties. Tallies for the flux and appropriate
-    reaction rates over the specified domain are generated automatically via the
-    :attr:`ChiDelayed.tallies` property, which can then be appended to a
-    :class:`openmc.Tallies` instance.
+    multi-group and multi-delayed group cross sections for multi-group
+    neutronics calculations. At a minimum, one needs to set the
+    :attr:`Beta.energy_groups` and :attr:`Beta.domain` properties. Tallies for
+    the flux and appropriate reaction rates over the specified domain are
+    generated automatically via the :attr:`Beta.tallies` property, which can
+    then be appended to a :class:`openmc.Tallies` instance.
 
-    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
+    For post-processing, the :meth:`MDGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`ChiDelayed.xs_tally` property.
+    can then be obtained from the :attr:`Beta.xs_tally` property.
 
-    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
-    fission spectrum is calculated as:
+    For a spatial domain :math:`V`, energy group :math:`[E_g,E_{g-1}]`, and
+    delayed group :math:`d`, the delayed neutron fraction is calculated as:
 
     .. math::
 
-       \langle \nu\sigma_{f,\rightarrow g} \phi \rangle &= \int_{r \in V} dr
-       \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \; \chi(E)
-       \nu\sigma_f (r, E') \psi(r, E', \Omega')\\
-       \langle \nu\sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
-       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu\sigma_f (r,
-       E') \psi(r, E', \Omega') \\
-       \chi_g &= \frac{\langle \nu\sigma_{f,\rightarrow g} \phi \rangle}{\langle
-       \nu\sigma_f \phi \rangle}
+       \langle \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
+       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^d
+       \sigma_f (r, E') \psi(r, E', \Omega') \\
+       \langle \nu \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
+       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu
+       \sigma_f (r, E') \psi(r, E', \Omega') \\
+       \beta_{d,g} &= \frac{\langle \nu^d \sigma_f \phi \rangle}
+       {\langle \nu \sigma_f \phi \rangle}
 
     Parameters
     ----------
@@ -1352,7 +1373,7 @@ class Beta(MDGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`ChiDelayed.tally_keys` property and
+        are strings listed in the :attr:`Beta.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -1394,23 +1415,11 @@ class Beta(MDGXS):
 
     @property
     def scores(self):
-        return ['delayed-nu-fission', 'nu-fission']
-
-    @property
-    def filters(self):
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energy = openmc.Filter('energy', [group_edges[0], group_edges[-1]])
-        if self.delayed_groups != None:
-            delayed_groups = self.delayed_groups.groups
-            delayed_filter = openmc.Filter('delayedgroup', delayed_groups)
-            return [[delayed_filter, energy], [energy]]
-        else:
-            return [[energy], [energy]]
+        return ['nu-fission', 'delayed-nu-fission']
 
     @property
     def tally_keys(self):
-        return ['delayed-nu-fission', 'nu-fission']
+        return ['nu-fission', 'delayed-nu-fission']
 
     @property
     def rxn_rate_tally(self):
@@ -1425,7 +1434,7 @@ class Beta(MDGXS):
         if self._xs_tally is None:
             nu_fission = self.tallies['nu-fission']
 
-            # Compute chi
+            # Compute beta
             self._xs_tally = self.rxn_rate_tally / nu_fission
             super(Beta, self)._compute_xs()
 

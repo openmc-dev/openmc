@@ -1,5 +1,5 @@
 from collections import Iterable
-from numbers import Real
+from numbers import Real, Integral
 import copy
 import sys
 
@@ -370,7 +370,7 @@ class DelayedGroups(object):
 
     @groups.setter
     def groups(self, groups):
-        cv.check_type('groups', groups, Iterable, Int)
+        cv.check_type('groups', groups, Iterable, Integral)
         cv.check_greater_than('number of delayed groups', len(groups), 0)
 
         # Check that the groups are within [1, MAX_DELAYED_GROUPS]

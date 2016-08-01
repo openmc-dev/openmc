@@ -482,6 +482,12 @@ contains
               score = micro_xs(i_nuclide) % fission * nuclides(i_nuclide) % &
                    nu(E, EMISSION_PROMPT) * atom_density * flux
           else
+            ! make sure the correct energy is used
+            if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+              E = p % E
+            else
+              E = p % last_E
+            end if
 
             score = ZERO
 

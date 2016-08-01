@@ -709,11 +709,112 @@ class MDGXS(MGXS):
 
         """
 
-        df = super(MDGXS, self).get_pandas_dataframe(groups, nuclides, xs_type,
-                                                     distribcell_paths)
-
+        if not isinstance(groups, basestring):
+            cv.check_iterable_type('groups', groups, Integral)
+        if nuclides != 'all' and nuclides != 'sum':
+            cv.check_iterable_type('nuclides', nuclides, basestring)
         if not isinstance(delayed_groups, basestring):
             cv.check_iterable_type('delayed groups', delayed_groups, Integral)
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        num_delayed_groups = 1
+        if self.delayed_groups != None:
+            num_delayed_groups = self.delayed_groups.num_groups
+
+        # Get a Pandas DataFrame from the derived xs tally
+        if self.by_nuclide and nuclides == 'sum':
+
+            # Use tally summation to sum across all nuclides
+            query_nuclides = self.get_all_nuclides()
+            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            df = xs_tally.get_pandas_dataframe(
+                distribcell_paths=distribcell_paths)
+
+            # Remove nuclide column since it is homogeneous and redundant
+            if self.domain_type == 'mesh':
+                df.drop('nuclide', axis=1, level=0, inplace=True)
+            else:
+                df.drop('nuclide', axis=1, inplace=True)
+
+        # If the user requested a specific set of nuclides
+        elif self.by_nuclide and nuclides != 'all':
+            xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
+            df = xs_tally.get_pandas_dataframe(
+                distribcell_paths=distribcell_paths)
+
+        # If the user requested all nuclides, keep nuclide column in dataframe
+        else:
+            df = self.xs_tally.get_pandas_dataframe(
+                distribcell_paths=distribcell_paths)
+
+        # Remove the score column since it is homogeneous and redundant
+        if self.domain_type == 'mesh':
+            df = df.drop('score', axis=1, level=0)
+        else:
+            df = df.drop('score', axis=1)
+
+        # Override energy groups bounds with indices
+        all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
+        all_groups = np.repeat(all_groups, self.num_nuclides)
+        if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
+            df.rename(columns={'energy low [MeV]': 'group in'},
+                      inplace=True)
+            in_groups = np.tile(all_groups, self.num_subdomains * num_delayed_groups)
+            in_groups = np.repeat(in_groups, df.shape[0] / in_groups.size)
+            df['group in'] = in_groups
+            del df['energy high [MeV]']
+
+            df.rename(columns={'energyout low [MeV]': 'group out'},
+                      inplace=True)
+            out_groups = np.repeat(all_groups, self.xs_tally.num_scores)
+            out_groups = np.tile(out_groups, df.shape[0] / out_groups.size * num_delayed_groups)
+            df['group out'] = out_groups
+            del df['energyout high [MeV]']
+            columns = ['group in', 'group out']
+
+        elif 'energyout low [MeV]' in df:
+            df.rename(columns={'energyout low [MeV]': 'group out'},
+                      inplace=True)
+            in_groups = np.tile(all_groups, self.num_subdomains * num_delayed_groups)
+            df['group out'] = in_groups
+            del df['energyout high [MeV]']
+            columns = ['group out']
+
+        elif 'energy low [MeV]' in df:
+            df.rename(columns={'energy low [MeV]': 'group in'}, inplace=True)
+            in_groups = np.tile(all_groups, self.num_subdomains * num_delayed_groups)
+            df['group in'] = in_groups
+            del df['energy high [MeV]']
+            columns = ['group in']
+
+        # Select out those groups the user requested
+        if not isinstance(groups, basestring):
+            if 'group in' in df:
+                df = df[df['group in'].isin(groups)]
+            if 'group out' in df:
+                df = df[df['group out'].isin(groups)]
+
+        # If user requested micro cross sections, divide out the atom densities
+        if xs_type == 'micro':
+            if self.by_nuclide:
+                densities = self.get_nuclide_densities(nuclides)
+            else:
+                densities = self.get_nuclide_densities('sum')
+            densities = np.repeat(densities, len(self.rxn_rate_tally.scores))
+            tile_factor = df.shape[0] / len(densities)
+            df['mean'] /= np.tile(densities, tile_factor)
+            df['std. dev.'] /= np.tile(densities, tile_factor)
+
+        # Sort the dataframe by domain type id (e.g., distribcell id) and
+        # energy groups such that data is from fast to thermal
+        if self.domain_type == 'mesh':
+            mesh_str = 'mesh {0}'.format(self.domain.id)
+            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'), \
+                               (mesh_str, 'z')] + columns, inplace=True)
+        else:
+            df.sort_values(by=[self.domain_type] + columns, inplace=True)
+        return df
 
         # Select out those delayed groups the user requested
         if not isinstance(delayed_groups, basestring):

@@ -349,7 +349,27 @@ class Universe(object):
         # Return the offset computed at all nested Universe levels
         return offset
 
-    def get_all_nuclides(self):
+    def get_nuclides(self):
+        """Returns all nuclides in the universe
+
+        Returns
+        -------
+        nuclides : list
+            List of nuclide names
+
+        """
+
+        nuclides = []
+
+        # Append all Nuclides in each Cell in the Universe to the dictionary
+        for cell in self.cells.values():
+            for nuclide in cell.get_nuclides():
+                if nuclide not in nuclides:
+                    nuclides.append(nuclide)
+
+        return nuclides
+
+    def get_nuclide_densities(self):
         """Return all nuclides contained in the universe
 
         Returns
@@ -360,13 +380,8 @@ class Universe(object):
 
         """
 
-        nuclides = OrderedDict()
-
-        # Append all Nuclides in each Cell in the Universe to the dictionary
-        for cell in self._cells.values():
-            nuclides.update(cell.get_all_nuclides())
-
-        return nuclides
+        raise NotImplementedError('Determining average nuclide densities over '
+                                  'an entire universe not yet supported.')
 
     def get_all_cells(self):
         """Return all cells that are contained within the universe

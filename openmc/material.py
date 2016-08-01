@@ -492,8 +492,30 @@ class Material(object):
         for element, percent, percent_type in self._elements:
             element.scattering = 'iso-in-lab'
 
-    def get_all_nuclides(self):
+    def get_nuclides(self):
         """Returns all nuclides in the material
+
+        Returns
+        -------
+        nuclides : list
+            List of nuclide names
+
+        """
+
+        nuclides = []
+
+        for nuclide, density, density_type in self._nuclides:
+            nuclides.append(nuclide.name)
+
+        for element, density, density_type in self._elements:
+            # Expand natural element into isotopes
+            for isotope, abundance in element.expand():
+                nuclides.append(isotope.name)
+
+        return nuclides
+
+    def get_nuclide_densities(self):
+        """Returns all nuclides in the material and their densities
 
         Returns
         -------

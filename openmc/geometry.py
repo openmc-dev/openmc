@@ -50,6 +50,19 @@ class Geometry(object):
 
         self._root_universe = root_universe
 
+    def add_volume_information(self, volume_calc):
+        """Add volume information to from a stochastic volume calculation.
+
+        Parameters
+        ----------
+        volume_calc : openmc.VolumeCalculation
+            Results from a stochastic volume calculation
+
+        """
+        for cell in self.get_all_cells():
+            if cell.id in volume_calc.results:
+                cell.add_volume_information(volume_calc)
+
     def export_to_xml(self):
         """Create a geometry.xml file that can be used for a simulation.
 
@@ -165,24 +178,6 @@ class Geometry(object):
         universes = list(set(all_universes.values()))
         universes.sort(key=lambda x: x.id)
         return universes
-
-    def get_all_nuclides(self):
-        """Return all nuclides assigned to a material in the geometry
-
-        Returns
-        -------
-        list of openmc.Nuclide
-            Nuclides in the geometry
-
-        """
-
-        nuclides = OrderedDict()
-        materials = self.get_all_materials()
-
-        for material in materials:
-            nuclides.update(material.get_all_nuclides())
-
-        return nuclides
 
     def get_all_materials(self):
         """Return all materials assigned to a cell

@@ -85,6 +85,10 @@ class Cell(object):
         Array of offsets used for distributed cell searches
     distribcell_index : int
         Index of this cell in distribcell arrays
+    volume_information : dict
+        Estimate of the volume and total number of atoms of each nuclide from a
+        stochastic volume calculation. This information is set with the
+        :meth:`Cell.add_volume_information` method.
 
     """
 
@@ -100,6 +104,7 @@ class Cell(object):
         self._translation = None
         self._offsets = None
         self._distribcell_index = None
+        self._volume_information = None
 
     def __contains__(self, point):
         if self.region is None:
@@ -211,6 +216,10 @@ class Cell(object):
     @property
     def distribcell_index(self):
         return self._distribcell_index
+
+    @property
+    def volume_information(self):
+        return self._volume_information
 
     @id.setter
     def id(self, cell_id):
@@ -351,6 +360,22 @@ class Cell(object):
             else:
                 self.region = Intersection(self.region, region)
 
+    def add_volume_information(self, volume_calc):
+        """Add volume information to a cell.
+
+        Parameters
+        ----------
+        volume_calc : openmc.VolumeCalculation
+            Results from a stochastic volume calculation
+
+        """
+        for cell_id in volume_calc.results:
+            if cell_id == self.id:
+                self._volume_information = volume_calc.results[cell_id]
+                break
+        else:
+            raise ValueError('No volume information found for this cell.')
+
     def get_cell_instance(self, path, distribcell_index):
 
         # If the Cell is filled by a Material
@@ -368,8 +393,19 @@ class Cell(object):
 
         return offset
 
-    def get_all_nuclides(self):
-        """Return all nuclides contained in the cell
+    def get_nuclides(self):
+        """Returns all nuclides in the cell
+
+        Returns
+        -------
+        nuclides : list
+            List of nuclide names
+
+        """
+        return self.fill.get_nuclides() if self.fill_type != 'void' else []
+
+    def get_nuclide_densities(self):
+        """Return all nuclides contained in the cell and their densities
 
         Returns
         -------
@@ -381,8 +417,24 @@ class Cell(object):
 
         nuclides = OrderedDict()
 
-        if self.fill_type != 'void':
-            nuclides.update(self.fill.get_all_nuclides())
+        if self.fill_type == 'material':
+            nuclides.update(self.fill.get_nuclide_densities())
+        elif self.fill_type == 'void':
+            pass
+        else:
+            if self.volume_information is not None:
+                volume = self.volume_information['volume'][0]
+                for full_name, atoms in self.volume_information['atoms']:
+                    name, xs = full_name.split('.')
+                    nuclide = openmc.Nuclide(name, xs)
+                    density = 1.0e-24 * atoms[0]/volume  # density in atoms/b-cm
+                    nuclides[name] = (nuclide, density)
+            else:
+                raise RuntimeError(
+                    'Volume information is needed to calculate microscopic cross '
+                    'sections for cell {}. This can be done by running a '
+                    'stochastic volume calculation via the '
+                    'openmc.VolumeCalculation object'.format(self.id))
 
         return nuclides
 

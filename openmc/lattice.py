@@ -144,25 +144,26 @@ class Lattice(object):
 
         return univs
 
-    def get_all_nuclides(self):
-        """Return all nuclides contained in the lattice
+    def get_nuclides(self):
+        """Returns all nuclides in the lattice
 
         Returns
         -------
-        nuclides : collections.OrderedDict
-            Dictionary whose keys are nuclide names and values are 2-tuples of
-            (nuclide, density)
+        nuclides : list
+            List of nuclide names
 
         """
 
-        nuclides = OrderedDict()
+        nuclides = []
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()
 
         # Append all Universes containing each cell to the dictionary
-        for universe_id, universe in unique_universes.items():
-            nuclides.update(universe.get_all_nuclides())
+        for universe in unique_universes.values():
+            for nuclide in universe.get_nuclides():
+                if nuclide not in nuclides:
+                    nuclides.append(nuclide)
 
         return nuclides
 

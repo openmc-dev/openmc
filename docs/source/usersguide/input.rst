@@ -1764,6 +1764,10 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |fission. This score type is not used in the        |
         |                      |multi-group :ref:`energy_mode`.                    |
         +----------------------+---------------------------------------------------+
+        |prompt-nu-fission     |Total production of prompt neutrons due to         |
+        |                      |fission. This score type is not used in the        |
+        |                      |multi-group :ref:`energy_mode`.                    |
+        +----------------------+---------------------------------------------------+
         |nu-fission            |Total production of neutrons due to fission.       |
         +----------------------+---------------------------------------------------+
         |nu-scatter,           |These scores are similar in functionality to their |

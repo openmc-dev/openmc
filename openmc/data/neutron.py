@@ -52,6 +52,9 @@ class IncidentNeutron(object):
         Atomic weight ratio of the target nuclide.
     energy : numpy.ndarray
         The energy values (MeV) at which reaction cross-sections are tabulated.
+    fission_energy : None or openmc.data.FissionEnergyRelease
+        The energy released by fission, tabulated by component (e.g. prompt
+        neutrons or beta particles) and dependent on incident neutron energy
     mass_number : int
         Number of nucleons in the nucleus
     metastable : int

@@ -51,7 +51,7 @@ class Geometry(object):
         self._root_universe = root_universe
 
     def add_volume_information(self, volume_calc):
-        """Add volume information to from a stochastic volume calculation.
+        """Add volume information from a stochastic volume calculation.
 
         Parameters
         ----------

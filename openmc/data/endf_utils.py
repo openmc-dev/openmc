@@ -24,6 +24,7 @@ def read_CONT_line(line):
             int(line[66:70]), int(line[70:72]), int(line[72:75]),
             int(line[75:80]))
 
+
 def identify_nuclide(fname):
     """Read the header of an ENDF file and extract identifying information."""
     with open(fname, 'r') as fh:
@@ -39,5 +40,6 @@ def identify_nuclide(fname):
     # Return dictionary of the most important identifying information.
     return {'Z': int(ZA) // 1000,
             'A': int(ZA) % 1000,
+            'LFI': bool(LFI),
             'LIS': LIS,
             'LISO': LISO}

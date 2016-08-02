@@ -3,6 +3,7 @@ from copy import deepcopy
 import sys
 #from warnings import warn
 
+import h5py
 import numpy as np
 from numpy.polynomial.polynomial import Polynomial
 
@@ -12,6 +13,189 @@ import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
     basestring = str
+
+
+def _extract_458_data(filename):
+    """Read an ENDF file and extract the MF=1, MT=458 values.
+
+    Parameters
+    ----------
+    filename : str
+        Path to and ENDF file
+
+    Returns
+    -------
+    value : dict of str to list of float
+        Dictionary that gives lists of coefficients for each energy component.
+        The keys are the 2-3 letter strings used in ENDF-102, e.g. 'EFR' and
+        'ET'.  The list will have a length of 1 for Sher-Beck data, more for
+        polynomial data.
+    uncertainty : dict of str to list of float
+        A dictionary with the same format as above.  This is probably a
+        one-standard deviation value, but that is not specified explicitly in
+        ENDF-102.  Also, some evaluations will give zero uncertainty.  Use with
+        caution.
+
+    """
+    ident = identify_nuclide(filename)
+
+    if not ident['LFI']:
+        # This nuclide isn't fissionable.
+        return None
+
+    # Extract the MF=1, MT=458 section.
+    lines = []
+    with open(filename, 'r') as fh:
+        line = fh.readline()
+        while line != '':
+            if line[70:75] == ' 1458':
+                lines.append(line)
+            line = fh.readline()
+
+    if len(lines) == 0:
+        # No 458 data here.
+        return None
+
+    # Read the number of coefficients in this LIST record.
+    NPL = read_CONT_line(lines[1])[4]
+
+    # Parse the ENDF LIST into an array.
+    data = []
+    for i in range(NPL):
+        row, column = divmod(i, 6)
+        data.append(read_float(lines[2 + row][11*column:11*(column+1)]))
+
+    # Declare the coefficient names and the order they are given in.  The LIST
+    # contains a value followed immediately by an uncertainty for each of these
+    # components, times the polynomial order + 1.
+    labels = ('EFR', 'ENP', 'END', 'EGP', 'EGD', 'EB', 'ENU', 'ER', 'ET')
+
+    # Associate each set of values and uncertainties with its label.
+    value = dict()
+    uncertainty = dict()
+    for i in range(len(labels)):
+        value[labels[i]] = data[2*i::18]
+        uncertainty[labels[i]] = data[2*i + 1::18]
+
+    # In ENDF/B-7.1, data for 2nd-order coefficients were mistakenly not
+    # converted from MeV to eV.  Check for this error and fix it if present.
+    n_coeffs = len(value['EFR'])
+    if n_coeffs == 3:  # Only check 2nd-order data.
+        # Check each energy component for the error.  If a 1 MeV neutron
+        # causes a change of more than 100 MeV, we know something is wrong.
+        error_present = False
+        for coeffs in value.values():
+            second_order = coeffs[2]
+            if abs(second_order) * 1e12 > 1e8:
+                error_present = True
+                break
+
+        # If we found the error, reduce all 2nd-order coeffs by 10**6.
+        if error_present:
+            for coeffs in value.values(): coeffs[2] *= 1e-6
+            for coeffs in uncertainty.values(): coeffs[2] *= 1e-6
+
+        # Perform the sanity check again... just in case.
+        for coeffs in value.values():
+            second_order = coeffs[2]
+            if abs(second_order) * 1e12 > 1e8:
+                raise ValueError("Encountered a ludicrously large second-"
+                                 "order polynomial coefficient.")
+
+    # Convert eV to MeV.
+    for coeffs in value.values():
+        for i in range(len(coeffs)):
+            coeffs[i] *= 10**(-6 + 6*i)
+    for coeffs in uncertainty.values():
+        for i in range(len(coeffs)):
+            coeffs[i] *= 10**(-6 + 6*i)
+
+    return value, uncertainty
+
+
+def write_compact_458_library(endf_files, output_name=None, comment=None,
+                              verbose=False):
+    """Read ENDF files, strip the MF=1 MT=458 data and write to small HDF5.
+
+    Parameters
+    ----------
+    endf_files : Collection of str
+        Strings giving the paths to the ENDF files that will be parsed for data.
+    output_name : str
+        Name of the output HDF5 file.  Default is 'fission_Q_data.h5'.
+    comment : str
+        Comment to write in the output HDF5 file.  Defaults to no comment.
+    verbose : bool
+        If True, print the name of each isomer as it is read.  Defaults to
+        False.
+
+    """
+    # Open the output file.
+    if output_name is None: output_name = 'fission_Q_data.h5'
+    out = h5py.File(output_name, 'w', libver='latest')
+
+    # Write comments, if given.  This commented out comment is the one used for
+    # the library distributed with OpenMC.
+    #comment = ('This data is extracted from ENDF/B-VII.1 library.  Thanks '
+    #           'evaluators, for all your hard work :)  Citation:  '
+    #           'M. B. Chadwick, M. Herman, P. Oblozinsky, '
+    #           'M. E. Dunn, Y. Danon, A. C. Kahler, D. L. Smith, '
+    #           'B. Pritychenko, G. Arbanas, R. Arcilla, R. Brewer, '
+    #           'D. A. Brown, R. Capote, A. D. Carlson, Y. S. Cho, H. Derrien, '
+    #           'K. Guber, G. M. Hale, S. Hoblit, S. Holloway, T. D. Johnson, '
+    #           'T. Kawano, B. C. Kiedrowski, H. Kim, S. Kunieda, '
+    #           'N. M. Larson, L. Leal, J. P. Lestone, R. C. Little, '
+    #           'E. A. McCutchan, R. E. MacFarlane, M. MacInnes, '
+    #           'C. M. Mattoon, R. D. McKnight, S. F. Mughabghab, '
+    #           'G. P. A. Nobre, G. Palmiotti, A. Palumbo, M. T. Pigni, '
+    #           'V. G. Pronyaev, R. O. Sayer, A. A. Sonzogni, N. C. Summers, '
+    #           'P. Talou, I. J. Thompson, A. Trkov, R. L. Vogt, '
+    #           'S. C. van der Marck, A. Wallner, M. C. White, D. Wiarda, '
+    #           'and P. G. Young. ENDF/B-VII.1 nuclear data for science and '
+    #           'technology: Cross sections, covariances, fission product '
+    #           'yields and decay data", Nuclear Data Sheets, '
+    #           '112(12):2887-2996 (2011).')
+    if comment is not None:
+        out.attrs['comment'] = np.string_(comment)
+
+    # Declare the order of the components.  Use fixed-length numpy strings
+    # because they work well with h5py.
+    labels = np.array(('EFR', 'ENP', 'END', 'EGP', 'EGD', 'EB', 'ENU', 'ER',
+                       'ET'), dtype='S3')
+    out.attrs['component order'] = labels
+
+    # Iterate over the given files.
+    if verbose: print('Reading ENDF files:')
+    for fname in endf_files:
+        if verbose: print(fname)
+
+        ident = identify_nuclide(fname)
+
+        # Skip non-fissionable nuclides.
+        if not ident['LFI']: continue
+
+        # Get the important bits.
+        data = _extract_458_data(fname)
+        if data is None: continue
+        value, uncertainty = data
+
+        # Make a group for this isomer.
+        name = str(ident['Z']) + str(ident['A'])
+        if ident['LISO'] != 0:
+            name += '_m' + str(ident['LISO'])
+        nuclide_group = out.create_group(name)
+
+        # Write all the coefficients into one array.  The first dimension gives
+        # the component (e.g. fragments or prompt neutrons); the second switches
+        # between value and uncertainty; the third gives the polynomial order.
+        n_coeffs = len(value['EFR'])
+        data_out = np.zeros((len(labels), 2, n_coeffs))
+        for i, label in enumerate(labels):
+            data_out[i, 0, :] = value[label.decode()]
+            data_out[i, 1, :] = uncertainty[label.decode()]
+        nuclide_group.create_dataset('data', data=data_out)
+
+    out.close()
 
 
 class FissionEnergyRelease(object):
@@ -148,72 +332,21 @@ class FissionEnergyRelease(object):
             pass
         if ident['LISO'] != incident_neutron.metastable:
             pass
+        if not ident['LIF']:
+            pass
 
-        # Extract the MF=1, MT=458 section.
-        lines = []
-        with open(filename, 'r') as fh:
-            line = fh.readline()
-            while line != '':
-                if line[70:75] == ' 1458':
-                    lines.append(line)
-                line = fh.readline()
+        # Read the 458 data from the ENDF file.
+        value, uncertainty = _extract_458_data(filename)
 
-        # Read the number of coefficients in this LIST record.
-        NPL = read_CONT_line(lines[1])[4]
-
-        # Parse the ENDF LIST into an array.
-        data = []
-        for i in range(NPL):
-            row, column = divmod(i, 6)
-            data.append(read_float(lines[2 + row][11*column:11*(column+1)]))
-
-        # Declare the coefficient names and the order they are given in.  The
-        # LIST contains a value followed immediately by an uncertainty for each
-        # of these components, times the polynomial order + 1.  If we only find
-        # one value for each of these components, then we need to use the
-        # Sher-Beck formula for energy dependence.  Otherwise, it is a
-        # polynomial.
+        # Declare the coefficient names.  If we only find one value for each of
+        # these components, then we need to use the Sher-Beck formula for energy
+        # dependence.  Otherwise, it is a polynomial.
         labels = ('EFR', 'ENP', 'END', 'EGP', 'EGD', 'EB', 'ENU', 'ER', 'ET')
 
-        # Associate each set of values and uncertainties with its label.
-        value = dict()
-        uncertainty = dict()
-        for i in range(len(labels)):
-            value[labels[i]] = data[2*i::18]
-            uncertainty[labels[i]] = data[2*i + 1::18]
-
-        # In ENDF/B-7.1, data for 2nd-order coefficients were mistakenly not
-        # converted from MeV to eV.  Check for this error and fix it if present.
+        # How many coefficients are given for each coefficient?  If we only find
+        # one value for each, then we need to use the Sher-Beck formula for
+        # energy dependence.  Otherwise, it is a polynomial.
         n_coeffs = len(value['EFR'])
-        if n_coeffs == 3:  # Only check 2nd-order data.
-            # Check each energy component for the error.  If a 1 MeV neutron
-            # causes a change of more than 100 MeV, we know something is wrong.
-            error_present = False
-            for coeffs in value.values():
-                second_order = coeffs[2]
-                if abs(second_order) * 1e12 > 1e8:
-                    error_present = True
-                    break
-
-            # If we found the error, reduce all 2nd-order coeffs by 10**6.
-            if error_present:
-                for coeffs in value.values(): coeffs[2] *= 1e-6
-                for coeffs in uncertainty.values(): coeffs[2] *= 1e-6
-
-            # Perform the sanity check again... just in case.
-            for coeffs in value.values():
-                second_order = coeffs[2]
-                if abs(second_order) * 1e12 > 1e8:
-                    raise ValueError("Encountered a ludicrously large second-"
-                                     "order polynomial coefficient.")
-
-        # Convert eV to MeV.
-        for coeffs in value.values():
-            for i in range(len(coeffs)):
-                coeffs[i] *= 10**(-6 + 6*i)
-        for coeffs in uncertainty.values():
-            for i in range(len(coeffs)):
-                coeffs[i] *= 10**(-6 + 6*i)
 
         out = cls()
         if n_coeffs > 1:

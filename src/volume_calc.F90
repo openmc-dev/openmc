@@ -140,8 +140,16 @@ contains
 
     call p % initialize()
 
-!$omp parallel private(i, j, k, i_cell, i_material, level, found_cell) &
-!$omp&         firstprivate(p, indices, hits)
+!$omp parallel private(i, j, k, i_cell, i_material, level, found_cell, &
+!$omp&                 indices, hits) firstprivate(p)
+
+    ! Reset vectors -- this is really to get around a gfortran 4.6 bug. Ideally,
+    ! indices and hits would just be firstprivate but 4.6 complains because they
+    ! have allocatable components...
+    do i_cell = 1, size(this % cell_id)
+      call indices(i_cell) % clear()
+      call hits(i_cell) % clear()
+    end do
 
     call prn_set_stream(STREAM_VOLUME)
 

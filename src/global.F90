@@ -14,7 +14,7 @@ module global
   use set_header,       only: SetInt
   use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
-  use tally_header,     only: TallyObject, TallyMap, TallyResult
+  use tally_header,     only: TallyObject, TallyResult
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
 
@@ -137,6 +137,7 @@ module global
   type(RegularMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
   integer, allocatable :: matching_bins(:)
+  real(8), allocatable :: filter_weights(:)
 
   ! Pointers for different tallies
   type(TallyObject), pointer :: user_tallies(:) => null()
@@ -175,9 +176,6 @@ module global
   real(8) :: global_tally_leakage     = ZERO
 !$omp threadprivate(global_tally_collision, global_tally_absorption, &
 !$omp&              global_tally_tracklength, global_tally_leakage)
-
-  ! Tally map structure
-  type(TallyMap), allocatable :: tally_maps(:)
 
   integer :: n_meshes       = 0 ! # of structured meshes
   integer :: n_user_meshes  = 0 ! # of structured user meshes
@@ -443,7 +441,8 @@ module global
   type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
 
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
-!$omp&              trace, thread_id, current_work, matching_bins)
+!$omp&              trace, thread_id, current_work, matching_bins, &
+!$omp&              filter_weights)
 
 contains
 
@@ -509,7 +508,7 @@ contains
     if (allocated(meshes)) deallocate(meshes)
     if (allocated(tallies)) deallocate(tallies)
     if (allocated(matching_bins)) deallocate(matching_bins)
-    if (allocated(tally_maps)) deallocate(tally_maps)
+    if (allocated(filter_weights)) deallocate(filter_weights)
 
     ! Deallocate fission and source bank and entropy
 !$omp parallel

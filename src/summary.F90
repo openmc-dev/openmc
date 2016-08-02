@@ -3,7 +3,7 @@ module summary
   use constants
   use endf,            only: reaction_name
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
-                             &HexLattice, BASE_UNIVERSE
+                             &HexLattice
   use global
   use hdf5_interface
   use material_header, only: Material
@@ -13,7 +13,6 @@ module summary
   use surface_header
   use string,          only: to_str
   use tally_header,    only: TallyObject
-  use output,          only: find_offset
 
   use hdf5
 
@@ -584,10 +583,6 @@ contains
     type(RegularMesh), pointer :: m
     type(TallyObject), pointer :: t
 
-    integer                              :: offset   ! distibcell offset
-    character(MAX_LINE_LEN), allocatable :: paths(:) ! distribcell paths array
-    character(MAX_LINE_LEN)              :: path     ! distribcell path
-
     tallies_group = create_group(file_id, "tallies")
 
     ! Write total number of meshes
@@ -628,74 +623,11 @@ contains
       call write_dataset(tally_group, "name", t%name)
 
       ! Write number of filters
-      call write_dataset(tally_group, "n_filters", t%n_filters)
+      call write_dataset(tally_group, "n_filters", size(t % filters))
 
-      FILTER_LOOP: do j = 1, t % n_filters
+      FILTER_LOOP: do j = 1, size(t % filters)
         filter_group = create_group(tally_group, "filter " // trim(to_str(j)))
-
-        ! Write number of bins for this filter
-        call write_dataset(filter_group, "n_bins", t % filters(j) % n_bins)
-
-        ! Write filter bins
-        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
-             t % filters(j)% type == FILTER_ENERGYOUT .or. &
-             t % filters(j) % type == FILTER_MU .or. &
-             t % filters(j) % type == FILTER_POLAR .or. &
-             t % filters(j) % type == FILTER_AZIMUTHAL) then
-          call write_dataset(filter_group, "bins", t % filters(j) % real_bins)
-        else
-          call write_dataset(filter_group, "bins", t % filters(j) % int_bins)
-        end if
-
-        ! Write paths to reach each distribcell instance
-        if (t % filters(j) % type == FILTER_DISTRIBCELL) then
-          ! Allocate array of strings for each distribcell path
-          allocate(paths(t % filters(j) % n_bins))
-
-          ! Store path for each distribcell instance
-          do k = 1, t % filters(j) % n_bins
-            path = ''
-            offset = 1
-            call find_offset(t % filters(j) % int_bins(1), &
-                 universes(BASE_UNIVERSE), k, offset, path)
-            paths(k) = path
-          end do
-
-          ! Write array of distribcell paths to summary file
-          call write_dataset(filter_group, "paths", paths)
-          deallocate(paths)
-        end if
-
-        ! Write name of type
-        select case (t%filters(j)%type)
-        case(FILTER_UNIVERSE)
-          call write_dataset(filter_group, "type", "universe")
-        case(FILTER_MATERIAL)
-          call write_dataset(filter_group, "type", "material")
-        case(FILTER_CELL)
-          call write_dataset(filter_group, "type", "cell")
-        case(FILTER_CELLBORN)
-          call write_dataset(filter_group, "type", "cellborn")
-        case(FILTER_SURFACE)
-          call write_dataset(filter_group, "type", "surface")
-        case(FILTER_MESH)
-          call write_dataset(filter_group, "type", "mesh")
-        case(FILTER_ENERGYIN)
-          call write_dataset(filter_group, "type", "energy")
-        case(FILTER_ENERGYOUT)
-          call write_dataset(filter_group, "type", "energyout")
-        case(FILTER_DISTRIBCELL)
-          call write_dataset(filter_group, "type", "distribcell")
-        case(FILTER_MU)
-          call write_dataset(filter_group, "type", "mu")
-        case(FILTER_POLAR)
-          call write_dataset(filter_group, "type", "polar")
-        case(FILTER_AZIMUTHAL)
-          call write_dataset(filter_group, "type", "azimuthal")
-        case(FILTER_DELAYEDGROUP)
-          call write_dataset(filter_group, "type", "delayedgroup")
-        end select
-
+        call t % filters(j) % obj % to_summary(filter_group)
         call close_group(filter_group)
       end do FILTER_LOOP
 

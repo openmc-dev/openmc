@@ -681,7 +681,7 @@ class StatePoint(object):
                 if tally_filter.type == 'surface':
                     surface_ids = []
                     for bin in tally_filter.bins:
-                        surface_ids.append(summary.surfaces[bin].id)
+                        surface_ids.append(bin)
                     tally_filter.bins = surface_ids
 
                 if tally_filter.type in ['cell', 'distribcell']:

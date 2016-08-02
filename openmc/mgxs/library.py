@@ -56,8 +56,7 @@ class Library(object):
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
-    domains : Iterable of openmc.Material, openmc.Cell, openmc.Universe or
-        openmc.Mesh
+    domains : Iterable of openmc.Material, openmc.Cell, openmc.Universe or openmc.Mesh
         The spatial domain(s) for which MGXS in the Library are computed
     correction : {'P0', None}
         Apply the P0 correction to scattering matrices if set to 'P0'

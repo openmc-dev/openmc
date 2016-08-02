@@ -18,17 +18,18 @@ if sys.version_info[0] >= 3:
 
 
 class Library(object):
-    """A multi-group cross section library for some energy group structure.
+    """A multi-energy-group and multi-delayed-group cross section library for
+    some energy group structure.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for deterministic neutronics calculations.
 
-    This class helps automate the generation of MGXS objects for some energy
-    group structure and domain type. The Library serves as a collection for
-    MGXS objects with routines to automate the initialization of tallies for
-    input files, the loading of tally data from statepoint files, data storage,
-    energy group condensation and more.
+    This class helps automate the generation of MGXS and MDGXS objects for some
+    energy group structure and domain type. The Library serves as a collection
+    for MGXS and MDGXS objects with routines to automate the initialization of
+    tallies for input files, the loading of tally data from statepoint files,
+    data storage, energy group condensation and more.
 
     Parameters
     ----------
@@ -64,6 +65,8 @@ class Library(object):
         The highest legendre moment in the scattering matrices (default is 0)
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    delayed_groups : openmc.mgxs.DelayedGroups
+        Delayed groups to filter out the xs
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -95,6 +98,7 @@ class Library(object):
         self._domain_type = None
         self._domains = 'all'
         self._energy_groups = None
+        self._delayed_groups = None
         self._correction = 'P0'
         self._legendre_order = 0
         self._tally_trigger = None
@@ -126,6 +130,7 @@ class Library(object):
             clone._correction = self.correction
             clone._legendre_order = self.legendre_order
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
+            clone._delayed_groups = copy.deepcopy(self.delayed_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = copy.deepcopy(self.all_mgxs)
             clone._sp_filename = self._sp_filename
@@ -195,6 +200,10 @@ class Library(object):
         return self._energy_groups
 
     @property
+    def delayed_groups(self):
+        return self._delayed_groups
+
+    @property
     def correction(self):
         return self._correction
 
@@ -209,6 +218,13 @@ class Library(object):
     @property
     def num_groups(self):
         return self.energy_groups.num_groups
+
+    @property
+    def num_delayed_groups(self):
+        if self.delayed_groups == None:
+            return 0
+        else:
+            return self.delayed_groups.num_groups
 
     @property
     def all_mgxs(self):
@@ -261,7 +277,7 @@ class Library(object):
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
 
-        if by_nuclide == True and domain_type == 'mesh':
+        if self.by_nuclide == True and domain_type == 'mesh':
             raise ValueError('Unable to create MGXS library by nuclide with ' +
                              'mesh domain')
 
@@ -307,6 +323,12 @@ class Library(object):
     def energy_groups(self, energy_groups):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
+
+    @delayed_groups.setter
+    def delayed_groups(self, delayed_groups):
+        cv.check_type('delayed groups', delayed_groups,
+                      openmc.mgxs.DelayedGroups)
+        self._delayed_groups = delayed_groups
 
     @correction.setter
     def correction(self, correction):
@@ -373,11 +395,18 @@ class Library(object):
         for domain in self.domains:
             self.all_mgxs[domain.id] = OrderedDict()
             for mgxs_type in self.mgxs_types:
-                mgxs = openmc.mgxs.MGXS.get_mgxs(mgxs_type, name=self.name)
+                if mgxs_type in openmc.mgxs.MDGXS_TYPES:
+                    mgxs = openmc.mgxs.MDGXS.get_mgxs(mgxs_type, name=self.name)
+                else:
+                    mgxs = openmc.mgxs.MGXS.get_mgxs(mgxs_type, name=self.name)
+
                 mgxs.domain = domain
                 mgxs.domain_type = self.domain_type
                 mgxs.energy_groups = self.energy_groups
                 mgxs.by_nuclide = self.by_nuclide
+
+                if mgxs_type in openmc.mgxs.MDGXS_TYPES:
+                    mgxs.delayed_groups = self.delayed_groups
 
                 # If a tally trigger was specified, add it to the MGXS
                 if self.tally_trigger:

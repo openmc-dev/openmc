@@ -795,6 +795,9 @@ class Tally(object):
             else:
                 no_scores_match = False
 
+            if score == 'current' and score not in self.scores:
+                return False
+
         # Nuclides cannot be specified on 'flux' scores
         if 'flux' in self.scores or 'flux' in other.scores:
             if self.nuclides != other.nuclides:

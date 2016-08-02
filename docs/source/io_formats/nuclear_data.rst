@@ -55,6 +55,27 @@ Incident Neutron Data
    from fission. It is formatted as a reaction product, described in
    :ref:`product`.
 
+**/<nuclide name>/fission_energy_release/**
+
+:Attributes: - **format** (*char[]*) -- The energy-dependence format.  Either
+               'Madland' or 'Sher-Beck'
+
+:Datasets: - **fragments** (*double[]*) -- Polynomial coefficients for energy
+             released in the form of fragments
+           - **prompt_neutrons** (*double[]* or :ref:`tabulated <1d_tabulated>`)
+             -- Energy released in the form of prompt neutrons.  Polynomial if
+             the format is Madland or a table if Sher-Beck.
+           - **delayed_neutrons** (*double[]*) -- Polynomial coefficients for
+             energy released in the form of delayed neutrons
+           - **prompt_photons** (*double[]*) -- Polynomial coefficients for
+             energy released in the form of prompt photons
+           - **delayed_photons** (*double[]*) -- Polynomial coefficients for
+             energy released in the form of delayed photons
+           - **betas** (*double[]*) -- Polynomial coefficients for
+             energy released in the form of betas
+           - **neutrinos** (*double[]*) -- Polynomial coefficients for
+             energy released in the form of neutrinos
+
 -------------------------------
 Thermal Neutron Scattering Data
 -------------------------------

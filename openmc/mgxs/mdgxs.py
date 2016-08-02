@@ -115,7 +115,7 @@ class MDGXS(MGXS):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 by_nuclide=False, name='', delayed_groups=None):
+                 delayed_groups=None, by_nuclide=False, name=''):
         super(MDGXS, self).__init__(domain, domain_type, energy_groups,
                                     by_nuclide, name)
         self._delayed_groups = None
@@ -124,12 +124,30 @@ class MDGXS(MGXS):
             self.delayed_groups = delayed_groups
 
     def __deepcopy__(self, memo):
-        super(MDGXS, self).__deepcopy__(memo)
         existing = memo.get(id(self))
 
         # If this is the first time we have tried to copy this object, copy it
         if existing is None:
+            clone = type(self).__new__(type(self))
+            clone._name = self.name
+            clone._rxn_type = self.rxn_type
+            clone._by_nuclide = self.by_nuclide
+            clone._nuclides = copy.deepcopy(self._nuclides)
+            clone._domain = self.domain
+            clone._domain_type = self.domain_type
+            clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._delayed_groups = copy.deepcopy(self.delayed_groups, memo)
+            clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
+            clone._rxn_rate_tally = copy.deepcopy(self._rxn_rate_tally, memo)
+            clone._xs_tally = copy.deepcopy(self._xs_tally, memo)
+            clone._sparse = self.sparse
+            clone._derived = self.derived
+
+            clone._tallies = OrderedDict()
+            for tally_type, tally in self.tallies.items():
+                clone.tallies[tally_type] = copy.deepcopy(tally, memo)
+
+            memo[id(self)] = clone
 
             return clone
 
@@ -143,7 +161,10 @@ class MDGXS(MGXS):
 
     @property
     def num_delayed_groups(self):
-        return self.delayed_groups.num_groups
+        if self.delayed_groups == None:
+            return 0
+        else:
+            return self.delayed_groups.num_groups
 
     @delayed_groups.setter
     def delayed_groups(self, delayed_groups):
@@ -167,8 +188,8 @@ class MDGXS(MGXS):
 
     @staticmethod
     def get_mgxs(mdgxs_type, domain=None, domain_type=None,
-                 energy_groups=None, by_nuclide=False, name='',
-                 delayed_groups=None):
+                 energy_groups=None, delayed_groups=None,
+                 by_nuclide=False, name=''):
         """Return a MDGXS subclass object for some energy group structure within
         some spatial domain for some reaction type.
 
@@ -206,15 +227,16 @@ class MDGXS(MGXS):
         cv.check_value('mdgxs_type', mdgxs_type, MDGXS_TYPES)
 
         if mdgxs_type == 'delayed-nu-fission':
-            mdgxs = DelayedNuFissionXS(domain, domain_type, energy_groups)
+            mdgxs = DelayedNuFissionXS(domain, domain_type, energy_groups,
+                                       delayed_groups)
         elif mdgxs_type == 'chi-delayed':
-            mdgxs = ChiDelayed(domain, domain_type, energy_groups)
+            mdgxs = ChiDelayed(domain, domain_type, energy_groups,
+                               delayed_groups)
         elif mdgxs_type == 'beta':
-            mdgxs = Beta(domain, domain_type, energy_groups)
+            mdgxs = Beta(domain, domain_type, energy_groups, delayed_groups)
 
         mdgxs.by_nuclide = by_nuclide
         mdgxs.name = name
-        mdgxs.delayed_groups = delayed_groups
         return mdgxs
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
@@ -936,9 +958,9 @@ class ChiDelayed(MDGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 by_nuclide=False, name='', delayed_groups=None):
+                 delayed_groups=None, by_nuclide=False, name=''):
         super(ChiDelayed, self).__init__(domain, domain_type, energy_groups,
-                                         by_nuclide, name, delayed_groups)
+                                         delayed_groups, by_nuclide, name)
         self._rxn_type = 'chi-delayed'
 
     @property
@@ -1390,10 +1412,10 @@ class DelayedNuFissionXS(MDGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 by_nuclide=False, name='', delayed_groups=None):
+                 delayed_groups=None, by_nuclide=False, name=''):
         super(DelayedNuFissionXS, self).__init__(domain, domain_type,
-                                                 energy_groups, by_nuclide,
-                                                 name, delayed_groups)
+                                                 energy_groups, delayed_groups,
+                                                 by_nuclide, name)
         self._rxn_type = 'delayed-nu-fission'
 
 
@@ -1509,9 +1531,9 @@ class Beta(MDGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 by_nuclide=False, name='', delayed_groups=None):
+                 delayed_groups=None, by_nuclide=False, name=''):
         super(Beta, self).__init__(domain, domain_type, energy_groups,
-                                   by_nuclide, name, delayed_groups)
+                                   delayed_groups, by_nuclide, name)
         self._rxn_type = 'beta'
 
     @property

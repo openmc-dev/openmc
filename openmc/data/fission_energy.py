@@ -306,6 +306,89 @@ class FissionEnergyRelease(object):
         self._form = form
 
     @classmethod
+    def _from_dictionary(cls, energy_release, incident_neutron):
+        """Generate fission energy release data from a dictionary.
+
+        Parameters
+        ----------
+        energy_release : dict of str to list of float
+            Dictionary that gives lists of coefficients for each energy
+            component.  The keys are the 2-3 letter strings used in ENDF-102,
+            e.g. 'EFR' and 'ET'.  The list will have a length of 1 for Sher-Beck
+            data, more for polynomial data.
+
+        incident_neutron : openmc.data.IncidentNeutron
+            Corresponding incident neutron dataset
+
+        Returns
+        -------
+        openmc.data.FissionEnergyRelease
+            Fission energy release data
+
+        """
+        out = cls()
+
+        # How many coefficients are given for each component?  If we only find
+        # one value for each, then we need to use the Sher-Beck formula for
+        # energy dependence.  Otherwise, it is a polynomial.
+        n_coeffs = len(energy_release['EFR'])
+        if n_coeffs > 1:
+            out.form = 'Madland'
+            out.fragments = Polynomial(energy_release['EFR'])
+            out.prompt_neutrons = Polynomial(energy_release['ENP'])
+            out.delayed_neutrons = Polynomial(energy_release['END'])
+            out.prompt_photons = Polynomial(energy_release['EGP'])
+            out.delayed_photons = Polynomial(energy_release['EGD'])
+            out.betas = Polynomial(energy_release['EB'])
+            out.neutrinos = Polynomial(energy_release['ENU'])
+        else:
+            out.form = 'Sher-Beck'
+
+            # EFR and ENP are energy independent.  Polynomial is used because it
+            # has a __call__ attribute that handles Iterable inputs.  The
+            # energy-dependence of END is unspecified in ENDF-102 so assume it
+            # is independent.
+            out.fragments = Polynomial((energy_release['EFR'][0]))
+            out.prompt_photons = Polynomial((energy_release['EGP'][0]))
+            out.delayed_neutrons = Polynomial((energy_release['END'][0]))
+
+            # EDP, EB, and ENU are linear.
+            out.delayed_photons = Polynomial((energy_release['EGD'][0], -0.075))
+            out.betas = Polynomial((energy_release['EB'][0], -0.075))
+            out.neutrinos = Polynomial((energy_release['ENU'][0], -0.105))
+
+            # Prompt neutrons require nu-data.  It is not clear from ENDF-102
+            # whether prompt or total nu value should be used, but the delayed
+            # neutron fraction is so small that the difference is negligible.
+            # MT=18 (n, fission) might not be available so try MT=19 (n, f) as
+            # well.
+            if 18 in incident_neutron.reactions:
+                nu_prompt = [p for p in incident_neutron[18].products
+                             if p.particle == 'neutron'
+                             and p.emission_mode == 'prompt']
+            elif 19 in incident_neutron.reactions:
+                nu_prompt = [p for p in incident_neutron[19].products
+                             if p.particle == 'neutron'
+                             and p.emission_mode == 'prompt']
+            else:
+                raise ValueError('IncidentNeutron data has no fission '
+                                  'reaction.')
+            if len(nu_prompt) == 0:
+                raise ValueError('Nu data is needed to compute fission energy '
+                                 'release with the Sher-Beck format.')
+            if len(nu_prompt) > 1:
+                raise ValueError('Ambiguous prompt value.')
+            if not isinstance(nu_prompt[0].yield_, Tabulated1D):
+                raise TypeError('Sher-Beck fission energy release currently '
+                                'only supports Tabulated1D nu data.')
+            ENP = deepcopy(nu_prompt[0].yield_)
+            ENP.y = (energy_release['ENP'] + 1.307 * ENP.x
+                     - 8.07 * (ENP.y - ENP.y[0]))
+            out.prompt_neutrons = ENP
+
+        return out
+
+    @classmethod
     def from_endf(cls, filename, incident_neutron):
         """Generate fission energy release data from an ENDF file.
 
@@ -327,72 +410,22 @@ class FissionEnergyRelease(object):
         # Check to make sure this ENDF file matches the expected isomer.
         ident = identify_nuclide(filename)
         if ident['Z'] != incident_neutron.atomic_number:
-            pass
+            raise ValueError('The atomic number of the ENDF evaluation does '
+                             'not match the given IncidentNeutron.')
         if ident['A'] != incident_neutron.mass_number:
-            pass
+            raise ValueError('The atomic mass of the ENDF evaluation does '
+                             'not match the given IncidentNeutron.')
         if ident['LISO'] != incident_neutron.metastable:
-            pass
-        if not ident['LIF']:
-            pass
+            raise ValueError('The metastable state of the ENDF evaluation does '
+                             'not match the given IncidentNeutron.')
+        if not ident['LFI']:
+            raise ValueError('The ENDF evaluation is not fissionable.')
 
         # Read the 458 data from the ENDF file.
         value, uncertainty = _extract_458_data(filename)
 
-        # Declare the coefficient names.  If we only find one value for each of
-        # these components, then we need to use the Sher-Beck formula for energy
-        # dependence.  Otherwise, it is a polynomial.
-        labels = ('EFR', 'ENP', 'END', 'EGP', 'EGD', 'EB', 'ENU', 'ER', 'ET')
-
-        # How many coefficients are given for each coefficient?  If we only find
-        # one value for each, then we need to use the Sher-Beck formula for
-        # energy dependence.  Otherwise, it is a polynomial.
-        n_coeffs = len(value['EFR'])
-
-        out = cls()
-        if n_coeffs > 1:
-            out.form = 'Madland'
-            out.fragments = Polynomial(value['EFR'])
-            out.prompt_neutrons = Polynomial(value['ENP'])
-            out.delayed_neutrons = Polynomial(value['END'])
-            out.prompt_photons = Polynomial(value['EGP'])
-            out.delayed_photons = Polynomial(value['EGD'])
-            out.betas = Polynomial(value['EB'])
-            out.neutrinos = Polynomial(value['ENU'])
-        else:
-            out.form = 'Sher-Beck'
-
-            # EFR and ENP are energy independent.  Polynomial is used because it
-            # has a __call__ attribute that handles Iterable inputs.  The
-            # energy-dependence of END is unspecified in ENDF-102 so assume it
-            # is independent.
-            out.fragments = Polynomial((value['EFR'][0]))
-            out.prompt_photons = Polynomial((value['EGP'][0]))
-            out.delayed_neutrons = Polynomial((value['END'][0]))
-
-            # EDP, EB, and ENU are linear.
-            out.delayed_photons = Polynomial((value['EGD'][0], -0.075))
-            out.betas = Polynomial((value['EB'][0], -0.075))
-            out.neutrinos = Polynomial((value['ENU'][0], -0.105))
-
-            # Prompt neutrons require nu-data.  It is not clear from ENDF-102
-            # whether prompt or total nu values should be used, but the delayed
-            # neutron fraction is so small that the difference is negligible.
-            nu_prompt = [p for p in incident_neutron[18].products
-                         if p.particle == 'neutron'
-                         and p.emission_mode == 'prompt']
-            if len(nu_prompt) == 0:
-                raise ValueError('Nu data is needed to compute fission energy '
-                                 'release with the Sher-Beck format.')
-            if len(nu_prompt) > 1:
-                raise ValueError('Ambiguous prompt nu value.')
-            if not isinstance(nu_prompt[0].yield_, Tabulated1D):
-                raise TypeError('Sher-Beck fission energy release currently '
-                                'only supports Tabulated1D nu data.')
-            ENP = deepcopy(nu_prompt[0].yield_)
-            ENP.y = value['ENP'] + 1.307 * ENP.x - 8.07 * (ENP.y - ENP.y[0])
-            out.prompt_neutrons = ENP
-
-        return out
+        # Build the object.
+        return cls._from_dictionary(value, incident_neutron)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -419,15 +452,53 @@ class FissionEnergyRelease(object):
         obj.betas = Polynomial(group['betas'].value)
         obj.neutrinos = Polynomial(group['neutrinos'].value)
 
-        if group.attrs['format'] == 'Madland':
+        if group.attrs['format'].decode() == 'Madland':
             obj.prompt_neutrons = Polynomial(group['prompt_neutrons'].value)
-        elif group.attrs['format'] == 'Sher-Beck':
+        elif group.attrs['format'].decode() == 'Sher-Beck':
             obj.prompt_neutrons = Tabulated1D.from_hdf5(
                                                        group['prompt_neutrons'])
         else:
             raise ValueError('Unrecognized energy release format')
 
         return obj
+
+    @classmethod
+    def from_compact_hdf5(cls, fname, incident_neutron):
+        """Generate fission energy release data from a small HDF5 library.
+
+        Parameters
+        ----------
+        fname : str
+            Path to an HDF5 file containing fission energy release data.  This
+            file should have been generated form the
+            openmc.data.write_compact_458_library function.
+
+        incident_neutron : openmc.data.IncidentNeutron
+            Corresponding incident neutron dataset
+
+        Returns
+        -------
+        openmc.data.FissionEnergyRelease or None
+            Fission energy release data for the given nuclide if it is present
+            in the data file
+
+        """
+
+        fin = h5py.File(fname, 'r')
+
+        components = [s.decode() for s in fin.attrs['component order']]
+
+        nuclide_name = str(incident_neutron.atomic_number)
+        nuclide_name += str(incident_neutron.mass_number)
+        if incident_neutron.metastable != 0:
+            nuclide_name += '_m' + str(incident_neutron.metastable)
+
+        if nuclide_name not in fin: return None
+
+        data = {c : fin[nuclide_name + '/data'][i, 0, :]
+                for i, c in enumerate(components)}
+
+        return cls._from_dictionary(data, incident_neutron)
 
     def to_hdf5(self, group):
         """Write energy release data to an HDF5 group

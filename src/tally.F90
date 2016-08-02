@@ -14,7 +14,8 @@ module tally
   use particle_header,  only: LocalCoord, Particle
   use search,           only: binary_search
   use string,           only: to_str
-  use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
+  use tally_header,     only: TallyResult
+  use tally_filter
 
 #ifdef MPI
   use message_passing
@@ -28,7 +29,6 @@ module tally
 
   procedure(score_general_),      pointer :: score_general => null()
   procedure(score_analog_tally_), pointer :: score_analog_tally => null()
-  procedure(get_scoring_bins_),   pointer :: get_scoring_bins => null()
 
   abstract interface
     subroutine score_general_(p, t, start_index, filter_index, i_nuclide, &
@@ -48,13 +48,6 @@ module tally
       import Particle
       type(Particle), intent(in) :: p
     end subroutine score_analog_tally_
-
-    subroutine get_scoring_bins_(p, i_tally, found_bin)
-      import Particle
-      type(Particle), intent(in)  :: p
-      integer,        intent(in)  :: i_tally
-      logical,        intent(out) :: found_bin
-    end subroutine get_scoring_bins_
   end interface
 
 contains
@@ -68,18 +61,18 @@ contains
     if (run_CE) then
       score_general      => score_general_ce
       score_analog_tally => score_analog_tally_ce
-      get_scoring_bins   => get_scoring_bins_ce
     else
       score_general      => score_general_mg
       score_analog_tally => score_analog_tally_mg
-      get_scoring_bins   => get_scoring_bins_mg
     end if
   end subroutine init_tally_routines
 
 !===============================================================================
 ! SCORE_GENERAL* adds scores to the tally array for the given filter and
-! nuclide.  This will work for either analog or tracklength tallies.  Note that
-! atom_density and flux are not used for analog tallies.
+! nuclide.  This function is called by all volume tallies.  For analog tallies,
+! the flux estimate depends on the score type so the flux argument is really
+! just used for filter weights.  The atom_density argument is not used for
+! analog tallies.
 !===============================================================================
 
   subroutine score_general_ce(p, t, start_index, filter_index, i_nuclide, &
@@ -137,7 +130,7 @@ contains
           else
             score = p % last_wgt
           end if
-          score = score / material_xs % total
+          score = score / material_xs % total * flux
 
         else
           ! For flux, we need no cross section
@@ -153,9 +146,9 @@ contains
           if (survival_biasing) then
             ! We need to account for the fact that some weight was already
             ! absorbed
-            score = p % last_wgt + p % absorb_wgt
+            score = p % last_wgt + p % absorb_wgt * flux
           else
-            score = p % last_wgt
+            score = p % last_wgt * flux
           end if
 
         else
@@ -190,7 +183,7 @@ contains
           ! Score the flux weighted inverse velocity with velocity in units of
           ! cm/s
           score = score / material_xs % total &
-               / (sqrt(TWO * E / (MASS_NEUTRON_MEV)) * C_LIGHT * 100.0_8)
+               / (sqrt(TWO * E / (MASS_NEUTRON_MEV)) * C_LIGHT * 100.0_8) * flux
 
         else
           ! For inverse velocity, we don't need a cross section. The velocity is
@@ -206,7 +199,7 @@ contains
           ! Since only scattering events make it here, again we can use
           ! the weight entering the collision as the estimator for the
           ! reaction rate
-          score = p % last_wgt
+          score = p % last_wgt * flux
 
         else
           ! Note SCORE_SCATTER_N not available for tracklength/collision.
@@ -229,7 +222,7 @@ contains
         ! Since only scattering events make it here, again we can use
         ! the weight entering the collision as the estimator for the
         ! reaction rate
-        score = p % last_wgt
+        score = p % last_wgt * flux
 
 
       case (SCORE_SCATTER_YN)
@@ -242,7 +235,7 @@ contains
         ! Since only scattering events make it here, again we can use
         ! the weight entering the collision as the estimator for the
         ! reaction rate
-        score = p % last_wgt
+        score = p % last_wgt * flux
 
 
       case (SCORE_NU_SCATTER, SCORE_NU_SCATTER_N)
@@ -256,7 +249,7 @@ contains
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
           ! Don't waste time on very common reactions we know have multiplicities
           ! of one.
-          score = p % last_wgt
+          score = p % last_wgt * flux
         else
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
@@ -266,11 +259,11 @@ contains
             select type (yield => rxn % products(1) % yield)
             type is (Constant1D)
               ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y
+              score = p % last_wgt * yield % y * flux
             class default
               ! the yield was already incorporated in to p % wgt per the
               ! scattering routine
-              score = p % wgt
+              score = p % wgt * flux
             end select
           end associate
         end if
@@ -290,7 +283,7 @@ contains
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
           ! Don't waste time on very common reactions we know have multiplicities
           ! of one.
-          score = p % last_wgt
+          score = p % last_wgt * flux
         else
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
@@ -300,11 +293,11 @@ contains
             select type (yield => rxn % products(1) % yield)
             type is (Constant1D)
               ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y
+              score = p % last_wgt * yield % y * flux
             class default
               ! the yield was already incorporated in to p % wgt per the
               ! scattering routine
-              score = p % wgt
+              score = p % wgt * flux
             end select
           end associate
         end if
@@ -324,7 +317,7 @@ contains
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
           ! Don't waste time on very common reactions we know have multiplicities
           ! of one.
-          score = p % last_wgt
+          score = p % last_wgt * flux
         else
           m = nuclides(p%event_nuclide)%reaction_index% &
                get_key(p % event_MT)
@@ -334,11 +327,11 @@ contains
             select type (yield => rxn % products(1) % yield)
             type is (Constant1D)
               ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y
+              score = p % last_wgt * yield % y * flux
             class default
               ! the yield was already incorporated in to p % wgt per the
               ! scattering routine
-              score = p % wgt
+              score = p % wgt * flux
             end select
           end associate
         end if
@@ -349,13 +342,13 @@ contains
           if (survival_biasing) then
             ! No absorption events actually occur if survival biasing is on --
             ! just use weight absorbed in survival biasing
-            score = p % absorb_wgt
+            score = p % absorb_wgt * flux
           else
             ! Skip any event where the particle wasn't absorbed
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission and absorption events will contribute here, so we
             ! can just use the particle's weight entering the collision
-            score = p % last_wgt
+            score = p % last_wgt * flux
           end if
 
         else
@@ -375,7 +368,7 @@ contains
             ! fission
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
               score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission &
-                   / micro_xs(p % event_nuclide) % absorption
+                   / micro_xs(p % event_nuclide) % absorption * flux
             else
               score = ZERO
             end if
@@ -386,7 +379,7 @@ contains
             ! particle's weight entering the collision as the estimate for the
             ! fission reaction rate
             score = p % last_wgt * micro_xs(p % event_nuclide) % fission &
-                 / micro_xs(p % event_nuclide) % absorption
+                 / micro_xs(p % event_nuclide) % absorption * flux
           end if
 
         else
@@ -417,7 +410,7 @@ contains
             ! nu-fission
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
               score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
-                   nu_fission / micro_xs(p % event_nuclide) % absorption
+                   nu_fission / micro_xs(p % event_nuclide) % absorption * flux
             else
               score = ZERO
             end if
@@ -429,7 +422,7 @@ contains
             ! score the number of particles that were banked in the fission
             ! bank. Since this was weighted by 1/keff, we multiply by keff
             ! to get the proper score.
-            score = keff * p % wgt_bank
+            score = keff * p % wgt_bank * flux
           end if
 
         else
@@ -478,16 +471,17 @@ contains
           end if
 
         else
+          ! make sure the correct energy is used
+          if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+            E = p % E
+          else
+            E = p % last_E
+          end if
+
           if (i_nuclide > 0) then
               score = micro_xs(i_nuclide) % fission * nuclides(i_nuclide) % &
                    nu(E, EMISSION_PROMPT) * atom_density * flux
           else
-            ! make sure the correct energy is used
-            if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-              E = p % E
-            else
-              E = p % last_E
-            end if
 
             score = ZERO
 
@@ -540,23 +534,28 @@ contains
 
               ! Check if the delayed group filter is present
               if (dg_filter > 0) then
+                select type(filt => t % filters(dg_filter) % obj)
+                type is (DelayedGroupFilter)
 
-                ! Loop over all delayed group bins and tally to them
-                ! individually
-                do d_bin = 1, t % filters(dg_filter) % n_bins
+                  ! Loop over all delayed group bins and tally to them
+                  ! individually
+                  do d_bin = 1, filt % n_bins
 
-                  ! Get the delayed group for this bin
-                  d = t % filters(dg_filter) % int_bins(d_bin)
+                    ! Get the delayed group for this bin
+                    d = filt % groups(d_bin)
 
-                  ! Compute the yield for this delayed group
-                  yield = nuclides(p % event_nuclide) % nu(E, EMISSION_DELAYED, d)
+                    ! Compute the yield for this delayed group
+                    yield = nuclides(p % event_nuclide) &
+                            % nu(E, EMISSION_DELAYED, d)
 
-                  ! Compute the score and tally to bin
-                  score = p % absorb_wgt * yield * micro_xs(p % event_nuclide) &
-                       % fission / micro_xs(p % event_nuclide) % absorption
-                  call score_fission_delayed_dg(t, d_bin, score, score_index)
-                end do
-                cycle SCORE_LOOP
+                    ! Compute the score and tally to bin
+                    score = p % absorb_wgt * yield &
+                         * micro_xs(p % event_nuclide) % fission &
+                         / micro_xs(p % event_nuclide) % absorption
+                    call score_fission_delayed_dg(t, d_bin, score, score_index)
+                  end do
+                  cycle SCORE_LOOP
+                end select
               else
                 ! If the delayed group filter is not present, compute the score
                 ! by multiplying the absorbed weight by the fraction of the
@@ -580,18 +579,22 @@ contains
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
+              select type(filt => t % filters(dg_filter) % obj)
+              type is (DelayedGroupFilter)
 
-              ! Loop over all delayed group bins and tally to them individually
-              do d_bin = 1, t % filters(dg_filter) % n_bins
+                ! Loop over all delayed group bins and tally to them
+                ! individually
+                do d_bin = 1, filt % n_bins
 
-                ! Get the delayed group for this bin
-                d = t % filters(dg_filter) % int_bins(d_bin)
+                  ! Get the delayed group for this bin
+                  d = filt % groups(d_bin)
 
-                ! Compute the score and tally to bin
-                score = keff * p % wgt_bank / p % n_bank * p % n_delayed_bank(d)
-                call score_fission_delayed_dg(t, d_bin, score, score_index)
-              end do
-              cycle SCORE_LOOP
+                  ! Compute the score and tally to bin
+                  score = keff * p % wgt_bank / p % n_bank * p % n_delayed_bank(d)
+                  call score_fission_delayed_dg(t, d_bin, score, score_index)
+                end do
+                cycle SCORE_LOOP
+              end select
             else
 
               ! Add the contribution from all delayed groups
@@ -605,22 +608,26 @@ contains
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
+              select type(filt => t % filters(dg_filter) % obj)
+              type is (DelayedGroupFilter)
 
-              ! Loop over all delayed group bins and tally to them individually
-              do d_bin = 1, t % filters(dg_filter) % n_bins
+                ! Loop over all delayed group bins and tally to them
+                ! individually
+                do d_bin = 1, filt % n_bins
 
-                ! Get the delayed group for this bin
-                d = t % filters(dg_filter) % int_bins(d_bin)
+                  ! Get the delayed group for this bin
+                  d = filt % groups(d_bin)
 
-                ! Compute the yield for this delayed group
-                yield = nuclides(i_nuclide) % nu(E, EMISSION_DELAYED, d)
+                  ! Compute the yield for this delayed group
+                  yield = nuclides(i_nuclide) % nu(E, EMISSION_DELAYED, d)
 
-                ! Compute the score and tally to bin
-                score = micro_xs(i_nuclide) % fission * yield * &
-                     atom_density * flux
-                call score_fission_delayed_dg(t, d_bin, score, score_index)
-              end do
-              cycle SCORE_LOOP
+                  ! Compute the score and tally to bin
+                  score = micro_xs(i_nuclide) % fission * yield * &
+                       atom_density * flux
+                  call score_fission_delayed_dg(t, d_bin, score, score_index)
+                end do
+                cycle SCORE_LOOP
+              end select
             else
 
               ! If the delayed group filter is not present, compute the score
@@ -634,31 +641,35 @@ contains
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
+              select type(filt => t % filters(dg_filter) % obj)
+              type is (DelayedGroupFilter)
 
-              ! Loop over all nuclides in the current material
-              do l = 1, materials(p % material) % n_nuclides
+                ! Loop over all nuclides in the current material
+                do l = 1, materials(p % material) % n_nuclides
 
-                ! Get atom density
-                atom_density_ = materials(p % material) % atom_density(l)
+                  ! Get atom density
+                  atom_density_ = materials(p % material) % atom_density(l)
 
-                ! Get index in nuclides array
-                i_nuc = materials(p % material) % nuclide(l)
+                  ! Get index in nuclides array
+                  i_nuc = materials(p % material) % nuclide(l)
 
-                ! Loop over all delayed group bins and tally to them individually
-                do d_bin = 1, t % filters(dg_filter) % n_bins
+                  ! Loop over all delayed group bins and tally to them
+                  ! individually
+                  do d_bin = 1, filt % n_bins
 
-                  ! Get the delayed group for this bin
-                  d = t % filters(dg_filter) % int_bins(d_bin)
+                    ! Get the delayed group for this bin
+                    d = filt % groups(d_bin)
 
-                  ! Get the yield for the desired nuclide and delayed group
-                  yield = nuclides(i_nuc) % nu(E, EMISSION_DELAYED, d)
+                    ! Get the yield for the desired nuclide and delayed group
+                    yield = nuclides(i_nuc) % nu(E, EMISSION_DELAYED, d)
 
-                  ! Compute the score and tally to bin
-                  score = micro_xs(i_nuc) % fission * yield * atom_density_ * flux
-                  call score_fission_delayed_dg(t, d_bin, score, score_index)
+                    ! Compute the score and tally to bin
+                    score = micro_xs(i_nuc) % fission * yield * atom_density_ * flux
+                    call score_fission_delayed_dg(t, d_bin, score, score_index)
+                  end do
                 end do
-              end do
-              cycle SCORE_LOOP
+                cycle SCORE_LOOP
+              end select
             else
 
               score = ZERO
@@ -699,7 +710,7 @@ contains
                 score = p%absorb_wgt * &
                      nuc%reactions(nuc%index_fission(1))%Q_value * &
                      micro_xs(p%event_nuclide)%fission / &
-                     micro_xs(p%event_nuclide)%absorption
+                     micro_xs(p%event_nuclide)%absorption * flux
               end if
             end associate
           else
@@ -713,7 +724,7 @@ contains
                 score = p%last_wgt * &
                      nuc%reactions(nuc%index_fission(1))%Q_value * &
                      micro_xs(p%event_nuclide)%fission / &
-                     micro_xs(p%event_nuclide)%absorption
+                     micro_xs(p%event_nuclide)%absorption * flux
               end if
             end associate
           end if
@@ -751,7 +762,7 @@ contains
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Check if event MT matches
           if (p % event_MT /= ELASTIC) cycle SCORE_LOOP
-          score = p % last_wgt
+          score = p % last_wgt * flux
 
         else
           if (i_nuclide > 0) then
@@ -766,7 +777,7 @@ contains
           ! Any other score is assumed to be a MT number. Thus, we just need
           ! to check if it matches the MT number of the event
           if (p % event_MT /= score_bin) cycle SCORE_LOOP
-          score = p % last_wgt
+          score = p % last_wgt * flux
 
         else
           ! Any other cross section has to be calculated on-the-fly. For
@@ -922,7 +933,7 @@ contains
           else
             score = p % last_wgt
           end if
-          score = score / material_xs % total
+          score = score / material_xs % total * flux
 
         else
           ! For flux, we need no cross section
@@ -945,7 +956,7 @@ contains
           if (i_nuclide > 0) then
             score = score * atom_density * &
                  nucxs % get_xs('total', p_g, UVW=p_uvw) / &
-                 matxs % get_xs('total', p_g, UVW=p_uvw)
+                 matxs % get_xs('total', p_g, UVW=p_uvw) * flux
           end if
 
         else
@@ -971,7 +982,7 @@ contains
           else
             score = p % last_wgt
           end if
-          score = score * inverse_velocities(p_g) / material_xs % total
+          score = score * inverse_velocities(p_g) / material_xs % total * flux
 
         else
           ! For inverse velocity, we need no cross section
@@ -994,7 +1005,7 @@ contains
           ! Since only scattering events make it here, again we can use
           ! the weight entering the collision as the estimator for the
           ! reaction rate
-          score = p % last_wgt
+          score = p % last_wgt * flux
 
           ! Since we transport based on material data, the angle selected
           ! was not selected from the f(mu) for the nuclide.  Therefore
@@ -1037,7 +1048,7 @@ contains
           ! For scattering production, we need to use the pre-collision
           ! weight times the multiplicity as the estimate for the number of
           ! neutrons exiting a reaction with neutrons in the exit channel
-          score = p % wgt
+          score = p % wgt * flux
 
           ! Since we transport based on material data, the angle selected
           ! was not selected from the f(mu) for the nuclide.  Therefore
@@ -1067,13 +1078,13 @@ contains
           if (survival_biasing) then
             ! No absorption events actually occur if survival biasing is on --
             ! just use weight absorbed in survival biasing
-            score = p % absorb_wgt
+            score = p % absorb_wgt * flux
           else
             ! Skip any event where the particle wasn't absorbed
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission and absorption events will contribute here, so we
             ! can just use the particle's weight entering the collision
-            score = p % last_wgt
+            score = p % last_wgt * flux
           end if
           if (i_nuclide > 0) then
             score = score * atom_density * &
@@ -1096,24 +1107,24 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! fission
-            score = p % absorb_wgt
+            score = p % absorb_wgt * flux
           else
             ! Skip any non-absorption events
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission events will contribute, so again we can use
             ! particle's weight entering the collision as the estimate for the
             ! fission reaction rate
-            score = p % last_wgt
+            score = p % last_wgt * flux
           end if
           if (i_nuclide > 0) then
-              score = score * atom_density * &
-                   nucxs % get_xs('fission', p_g, UVW=p_uvw) / &
-                   matxs % get_xs('absorption', p_g, UVW=p_uvw)
-            else
-              score = score * &
-                   matxs % get_xs('fission', p_g, UVW=p_uvw) / &
-                   matxs % get_xs('absorption', p_g, UVW=p_uvw)
-            end if
+            score = score * atom_density * &
+                 nucxs % get_xs('fission', p_g, UVW=p_uvw) / &
+                 matxs % get_xs('absorption', p_g, UVW=p_uvw)
+          else
+            score = score * &
+                 matxs % get_xs('fission', p_g, UVW=p_uvw) / &
+                 matxs % get_xs('absorption', p_g, UVW=p_uvw)
+          end if
         else
           if (i_nuclide > 0) then
             score = nucxs % get_xs('fission', p_g, UVW=p_uvw) * &
@@ -1143,7 +1154,7 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! nu-fission
-            score = p % absorb_wgt
+            score = p % absorb_wgt * flux
             if (i_nuclide > 0) then
               score = score * atom_density * &
                    nucxs % get_xs('nu_fission', p_g, UVW=p_uvw) / &
@@ -1161,7 +1172,7 @@ contains
             ! score the number of particles that were banked in the fission
             ! bank. Since this was weighted by 1/keff, we multiply by keff
             ! to get the proper score.
-            score = keff * p % wgt_bank
+            score = keff * p % wgt_bank * flux
             if (i_nuclide > 0) then
               score = score * atom_density * &
                    nucxs % get_xs('fission', p_g, UVW=p_uvw) / &
@@ -1185,14 +1196,14 @@ contains
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
             ! fission
-            score = p % absorb_wgt
+            score = p % absorb_wgt * flux
           else
             ! Skip any non-absorption events
             if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
             ! All fission events will contribute, so again we can use
             ! particle's weight entering the collision as the estimate for the
             ! fission reaction rate
-            score = p % last_wgt
+            score = p % last_wgt * flux
           end if
           if (i_nuclide > 0) then
             score = score * atom_density * &
@@ -1408,11 +1419,12 @@ contains
 
     integer :: i
     integer :: i_tally
+    integer :: i_filt
     integer :: k                    ! loop index for nuclide bins
                                     ! position during the loop
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array
-    logical :: found_bin            ! scoring bin found?
+    real(8) :: filter_weight        ! combined weight of all filters
     type(TallyObject), pointer :: t
 
     ! A loop over all tallies is necessary because we need to simultaneously
@@ -1423,63 +1435,103 @@ contains
       i_tally = active_analog_tallies % get_item(i)
       t => tallies(i_tally)
 
-      ! =======================================================================
-      ! DETERMINE SCORING BIN COMBINATION
+      ! Find the first bin in each filter. There may be more than one matching
+      ! bin per filter, but we'll deal with those later.
+      do i_filt = 1, size(t % filters)
+        call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+             NO_BIN_FOUND, matching_bins(i_filt), filter_weights(i_filt))
+        ! If there are no valid bins for this filter, then there is nothing to
+        ! score and we can move on to the next tally.
+        if (matching_bins(i_filt) == NO_BIN_FOUND) cycle TALLY_LOOP
+      end do
 
-      call get_scoring_bins(p, i_tally, found_bin)
-      if (.not. found_bin) cycle
+      ! ========================================================================
+      ! Loop until we've covered all valid bins on each of the filters.
 
-      ! =======================================================================
-      ! CALCULATE RESULTS AND ACCUMULATE TALLY
+      FILTER_LOOP: do
 
-      ! If we have made it here, we have a scoring combination of bins for this
-      ! tally -- now we need to determine where in the results array we should
-      ! be accumulating the tally values
+        ! Determine scoring index and weight for this filter combination
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        filter_weight = product(filter_weights(:size(t % filters)))
 
-      ! Determine scoring index for this filter combination
-      filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+        ! ======================================================================
+        ! Nuclide logic
 
-      ! Check for nuclide bins
-      k = 0
-      NUCLIDE_LOOP: do while (k < t % n_nuclide_bins)
+        ! Check for nuclide bins
+        k = 0
+        NUCLIDE_LOOP: do while (k < t % n_nuclide_bins)
 
-        ! Increment the index in the list of nuclide bins
-        k = k + 1
+          ! Increment the index in the list of nuclide bins
+          k = k + 1
 
-        if (t % all_nuclides) then
-          ! In the case that the user has requested to tally all nuclides, we
-          ! can take advantage of the fact that we know exactly how nuclide
-          ! bins correspond to nuclide indices.
-          if (k == 1) then
-            ! If we just entered, set the nuclide bin index to the index in
-            ! the nuclides array since this will match the index in the
-            ! nuclide bin array.
-            k = p % event_nuclide
-          elseif (k == p % event_nuclide + 1) then
-            ! After we've tallied the individual nuclide bin, we also need
-            ! to contribute to the total material bin which is the last bin
-            k = n_nuclides_total + 1
+          if (t % all_nuclides) then
+            ! In the case that the user has requested to tally all nuclides, we
+            ! can take advantage of the fact that we know exactly how nuclide
+            ! bins correspond to nuclide indices.
+            if (k == 1) then
+              ! If we just entered, set the nuclide bin index to the index in
+              ! the nuclides array since this will match the index in the
+              ! nuclide bin array.
+              k = p % event_nuclide
+            elseif (k == p % event_nuclide + 1) then
+              ! After we've tallied the individual nuclide bin, we also need
+              ! to contribute to the total material bin which is the last bin
+              k = n_nuclides_total + 1
+            else
+              ! After we've tallied in both the individual nuclide bin and the
+              ! total material bin, we're done
+              exit
+            end if
+
           else
-            ! After we've tallied in both the individual nuclide bin and the
-            ! total material bin, we're done
-            exit
+            ! If the user has explicitly specified nuclides (or specified
+            ! none), we need to search through the nuclide bin list one by
+            ! one. First we need to get the value of the nuclide bin
+            i_nuclide = t % nuclide_bins(k)
+
+            ! Now compare the value against that of the colliding nuclide.
+            if (i_nuclide /= p % event_nuclide .and. i_nuclide /= -1) cycle
           end if
 
-        else
-          ! If the user has explicitly specified nuclides (or specified
-          ! none), we need to search through the nuclide bin list one by
-          ! one. First we need to get the value of the nuclide bin
-          i_nuclide = t % nuclide_bins(k)
+          ! Determine score for each bin
+          call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
+               i_nuclide, ZERO, filter_weight)
 
-          ! Now compare the value against that of the colliding nuclide.
-          if (i_nuclide /= p % event_nuclide .and. i_nuclide /= -1) cycle
-        end if
+        end do NUCLIDE_LOOP
 
-        ! Determine score for each bin
-        call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
-             i_nuclide, ZERO, ZERO)
+        ! ======================================================================
+        ! Filter logic
 
-      end do NUCLIDE_LOOP
+        ! If there are no filters, then we are done.
+        if (size(t % filters) == 0) exit FILTER_LOOP
+
+        ! Increment the filter bins, starting with the last filter. If we get a
+        ! NO_BIN_FOUND for the last filter, it means we finished all valid bins
+        ! for that filter, but next-to-last filter might have more than one
+        ! valid bin so we need to increment that one as well, and so on.
+        do i_filt = size(t % filters), 1, -1
+          call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+               matching_bins(i_filt), matching_bins(i_filt), &
+               filter_weights(i_filt))
+          if (matching_bins(i_filt) /= NO_BIN_FOUND) exit
+        end do
+
+        ! If we got all NO_BIN_FOUNDs, then we have finished all valid bins for
+        ! each of the filters. Exit the loop.
+        if (all(matching_bins(:size(t % filters)) == NO_BIN_FOUND)) &
+             exit FILTER_LOOP
+
+        ! Reset all the filters with NO_BIN_FOUND. This will set them back to
+        ! their first valid bin.
+        do i_filt = 1, size(t % filters)
+          if (matching_bins(i_filt) == NO_BIN_FOUND) then
+            call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+                 matching_bins(i_filt), matching_bins(i_filt), &
+                 filter_weights(i_filt))
+          end if
+        end do
+      end do FILTER_LOOP
 
       ! If the user has specified that we can assume all tallies are spatially
       ! separate, this implies that once a tally has been scored to, we needn't
@@ -1501,14 +1553,15 @@ contains
 
     integer :: i, m
     integer :: i_tally
+    integer :: i_filt
     integer :: k                    ! loop index for nuclide bins
                                     ! position during the loop
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array
-    logical :: found_bin            ! scoring bin found?
+    real(8) :: filter_weight        ! combined weight of all filters
+    real(8) :: atom_density
     type(TallyObject), pointer :: t
     type(Material),    pointer :: mat
-    real(8) :: atom_density
 
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
@@ -1522,44 +1575,84 @@ contains
       ! nuclides are in the material
       mat => materials(p % material)
 
-      ! =======================================================================
-      ! DETERMINE SCORING BIN COMBINATION
+      ! Find the first bin in each filter. There may be more than one matching
+      ! bin per filter, but we'll deal with those later.
+      do i_filt = 1, size(t % filters)
+        call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+             NO_BIN_FOUND, matching_bins(i_filt), filter_weights(i_filt))
+        ! If there are no valid bins for this filter, then there is nothing to
+        ! score and we can move on to the next tally.
+        if (matching_bins(i_filt) == NO_BIN_FOUND) cycle TALLY_LOOP
+      end do
 
-      call get_scoring_bins(p, i_tally, found_bin)
-      if (.not. found_bin) cycle
+      ! ========================================================================
+      ! Loop until we've covered all valid bins on each of the filters.
 
-      ! =======================================================================
-      ! CALCULATE RESULTS AND ACCUMULATE TALLY
+      FILTER_LOOP: do
 
-      ! If we have made it here, we have a scoring combination of bins for this
-      ! tally -- now we need to determine where in the results array we should
-      ! be accumulating the tally values
+        ! Determine scoring index and weight for this filter combination
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        filter_weight = product(filter_weights(:size(t % filters)))
 
-      ! Determine scoring index for this filter combination
-      filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+        ! ======================================================================
+        ! Nuclide logic
 
-      ! Check for nuclide bins
-      k = 0
-      NUCLIDE_LOOP: do while (k < t % n_nuclide_bins)
+        ! Check for nuclide bins
+        k = 0
+        NUCLIDE_LOOP: do while (k < t % n_nuclide_bins)
 
-        ! Increment the index in the list of nuclide bins
-        k = k + 1
+          ! Increment the index in the list of nuclide bins
+          k = k + 1
 
-        i_nuclide = t % nuclide_bins(k)
+          i_nuclide = t % nuclide_bins(k)
 
-        ! Check to see if this nuclide was in the material of our collision.
-        do m = 1, mat % n_nuclides
-          if (mat % nuclide(m) == i_nuclide) then
-            atom_density = mat % atom_density(m)
-            exit
-          end if
+          ! Check to see if this nuclide was in the material of our collision.
+          do m = 1, mat % n_nuclides
+            if (mat % nuclide(m) == i_nuclide) then
+              atom_density = mat % atom_density(m)
+              exit
+            end if
+          end do
+
+          ! Determine score for each bin
+          call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
+               i_nuclide, atom_density, filter_weight)
+
+        end do NUCLIDE_LOOP
+
+        ! ======================================================================
+        ! Filter logic
+
+        ! If there are no filters, then we are done.
+        if (size(t % filters) == 0) exit FILTER_LOOP
+
+        ! Increment the filter bins, starting with the last filter. If we get a
+        ! NO_BIN_FOUND for the last filter, it means we finished all valid bins
+        ! for that filter, but next-to-last filter might have more than one
+        ! valid bin so we need to increment that one as well, and so on.
+        do i_filt = size(t % filters), 1, -1
+          call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+               matching_bins(i_filt), matching_bins(i_filt), &
+               filter_weights(i_filt))
+          if (matching_bins(i_filt) /= NO_BIN_FOUND) exit
         end do
 
-        ! Determine score for each bin
-        call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
-             i_nuclide, atom_density, ZERO)
+        ! If we got all NO_BIN_FOUNDs, then we have finished all valid bins for
+        ! each of the filters. Exit the loop.
+        if (all(matching_bins(:size(t % filters)) == NO_BIN_FOUND)) &
+             exit FILTER_LOOP
 
-      end do NUCLIDE_LOOP
+        ! Reset all the filters with NO_BIN_FOUND. This will set them back to
+        ! their first valid bin.
+        do i_filt = 1, size(t % filters)
+          if (matching_bins(i_filt) == NO_BIN_FOUND) then
+            call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+                 matching_bins(i_filt), matching_bins(i_filt), &
+                 filter_weights(i_filt))
+          end if
+        end do
+      end do FILTER_LOOP
 
       ! If the user has specified that we can assume all tallies are spatially
       ! separate, this implies that once a tally has been scored to, we needn't
@@ -1598,6 +1691,7 @@ contains
     integer :: k             ! loop index for bank sites
     integer :: bin_energyout ! original outgoing energy bin
     integer :: i_filter      ! index for matching filter bin combination
+    real(8) :: filter_weight ! combined weight of all filters
     real(8) :: score         ! actual score
     real(8) :: E_out         ! energy of fission bank site
 
@@ -1605,77 +1699,93 @@ contains
     i = t % find_filter(FILTER_ENERGYOUT)
     bin_energyout = matching_bins(i)
 
-    ! Get number of energies on filter
-    n = size(t % filters(i) % real_bins)
+    ! declare the energyout filter type
+    select type(eo_filt => t % filters(i) % obj)
+    type is (EnergyoutFilter)
 
-    ! Since the creation of fission sites is weighted such that it is
-    ! expected to create n_particles sites, we need to multiply the
-    ! score by keff to get the true nu-fission rate. Otherwise, the sum
-    ! of all nu-fission rates would be ~1.0.
+      ! Get number of energies on filter
+      n = size(eo_filt % bins)
 
-    ! loop over number of particles banked
-    do k = 1, p % n_bank
+      ! Since the creation of fission sites is weighted such that it is
+      ! expected to create n_particles sites, we need to multiply the
+      ! score by keff to get the true nu-fission rate. Otherwise, the sum
+      ! of all nu-fission rates would be ~1.0.
 
-      ! get the delayed group
-      g = fission_bank(n_bank - p % n_bank + k) % delayed_group
+      ! loop over number of particles banked
+      do k = 1, p % n_bank
 
-      ! determine score based on bank site weight and keff
-      score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
+        ! get the delayed group
+        g = fission_bank(n_bank - p % n_bank + k) % delayed_group
 
-      ! determine outgoing energy from fission bank
-      E_out = fission_bank(n_bank - p % n_bank + k) % E
+        ! determine score based on bank site weight and keff
+        score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
 
-      ! check if outgoing energy is within specified range on filter
-      if (E_out < t % filters(i) % real_bins(1) .or. &
-           E_out > t % filters(i) % real_bins(n)) cycle
+        ! determine outgoing energy from fission bank
+        E_out = fission_bank(n_bank - p % n_bank + k) % E
 
-      ! change outgoing energy bin
-      matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
+        ! check if outgoing energy is within specified range on filter
+        if (E_out < eo_filt % bins(1) .or. E_out > eo_filt % bins(n)) cycle
 
-      ! Case for tallying prompt neutrons
-      if (score_bin == SCORE_NU_FISSION .or. &
-           (score_bin == SCORE_PROMPT_NU_FISSION .and. g == 0)) then
+        ! change outgoing energy bin
+        Matching_bins(i) = binary_search(eo_filt % bins, n, E_out)
 
-        ! determine scoring index
-        i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+        ! Case for tallying prompt neutrons
+        if (score_bin == SCORE_NU_FISSION .or. &
+             (score_bin == SCORE_PROMPT_NU_FISSION .and. g == 0)) then
 
-        ! Add score to tally
-!$omp atomic
-        t % results(i_score, i_filter) % value = &
-             t % results(i_score, i_filter) % value + score
-
-      ! Case for tallying delayed emissions
-      else if (score_bin == SCORE_DELAYED_NU_FISSION .and. g /= 0) then
-
-        ! Get the index of delayed group filter
-        j = t % find_filter(FILTER_DELAYEDGROUP)
-
-        ! if the delayed group filter is present, tally to corresponding
-        ! delayed group bin if it exists
-        if (j > 0) then
-
-          ! loop over delayed group bins until the corresponding bin is found
-          do d_bin = 1, t % filters(j) % n_bins
-            d = t % filters(j) % int_bins(d_bin)
-
-            ! check whether the delayed group of the particle is equal to the
-            ! delayed group of this bin
-            if (d == g) call score_fission_delayed_dg(t, d_bin, score, i_score)
-          end do
-
-        ! if the delayed group filter is not present, add score to tally
-        else
-
-          ! determine scoring index
-          i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+          ! determine scoring index and weight for this filter combination
+          i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride) &
+               + 1
+          filter_weight = product(filter_weights(:size(t % filters)))
 
           ! Add score to tally
 !$omp atomic
           t % results(i_score, i_filter) % value = &
-               t % results(i_score, i_filter) % value + score
+               t % results(i_score, i_filter) % value + score * filter_weight
+
+        ! Case for tallying delayed emissions
+        else if (score_bin == SCORE_DELAYED_NU_FISSION .and. g /= 0) then
+
+          ! Get the index of delayed group filter
+          j = t % find_filter(FILTER_DELAYEDGROUP)
+
+          ! if the delayed group filter is present, tally to corresponding
+          ! delayed group bin if it exists
+          if (j > 0) then
+
+            ! declare the delayed group filter type
+            select type(dg_filt => t % filters(j) % obj)
+            type is (DelayedGroupFilter)
+
+              ! loop over delayed group bins until the corresponding bin is
+              ! found
+              do d_bin = 1, dg_filt % n_bins
+                d = dg_filt % groups(d_bin)
+
+                ! check whether the delayed group of the particle is equal to
+                ! the delayed group of this bin
+                if (d == g) then
+                  call score_fission_delayed_dg(t, d_bin, score, i_score)
+                end if
+              end do
+            end select
+
+          ! if the delayed group filter is not present, add score to tally
+          else
+
+            ! determine scoring index and weight for this filter combination
+            i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride)&
+                 + 1
+            filter_weight = product(filter_weights(:size(t % filters)))
+
+            ! Add score to tally
+!$omp atomic
+            t % results(i_score, i_filter) % value = &
+                 t % results(i_score, i_filter) % value + score * filter_weight
+          end if
         end if
-      end if
-    end do
+      end do
+    end select
 
     ! reset outgoing energy bin and score index
     matching_bins(i) = bin_energyout
@@ -1694,6 +1804,7 @@ contains
     integer :: k             ! loop index for bank sites
     integer :: bin_energyout ! original outgoing energy bin
     integer :: i_filter      ! index for matching filter bin combination
+    real(8) :: filter_weight ! combined weight of all filters
     real(8) :: score         ! actual score
     integer :: gout          ! energy group of fission bank site
     integer :: gin           ! energy group of incident particle
@@ -1703,60 +1814,65 @@ contains
     i = t % find_filter(FILTER_ENERGYOUT)
     bin_energyout = matching_bins(i)
 
-    ! Get number of energies on filter
-    n = size(t % filters(i) % real_bins)
+    ! Declare the filter type
+    select type(filt => t % filters(i) % obj)
+    type is (EnergyoutFilter)
 
-    ! Since the creation of fission sites is weighted such that it is
-    ! expected to create n_particles sites, we need to multiply the
-    ! score by keff to get the true nu-fission rate. Otherwise, the sum
-    ! of all nu-fission rates would be ~1.0.
+      ! Get number of energies on filter
+      n = size(filt % bins)
 
-    ! loop over number of particles banked
-    do k = 1, p % n_bank
-      ! determine score based on bank site weight and keff
-      score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
-      if (i_nuclide > 0) then
-        if (survival_biasing) then
-          gin = p % g
-        else
-          gin = p % last_g
+      ! Since the creation of fission sites is weighted such that it is
+      ! expected to create n_particles sites, we need to multiply the
+      ! score by keff to get the true nu-fission rate. Otherwise, the sum
+      ! of all nu-fission rates would be ~1.0.
+
+      ! loop over number of particles banked
+      do k = 1, p % n_bank
+        ! determine score based on bank site weight and keff
+        score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
+        if (i_nuclide > 0) then
+          if (survival_biasing) then
+            gin = p % g
+          else
+            gin = p % last_g
+          end if
+          score = score * atom_density * &
+               nuclides_MG(i_nuclide) % obj % get_xs('fission', gin, &
+                                                     UVW=p % last_uvw) / &
+               macro_xs(p % material) % obj % get_xs('fission', gin, &
+                                                     UVW=p % last_uvw)
         end if
-        score = score * atom_density * &
-             nuclides_MG(i_nuclide) % obj % get_xs('fission', gin, &
-                                                   UVW=p % last_uvw) / &
-             macro_xs(p % material) % obj % get_xs('fission', gin, &
-                                                   UVW=p % last_uvw)
-      end if
 
-      if (t % energyout_matches_groups) then
-        ! determine outgoing energy from fission bank
-        gout = int(fission_bank(n_bank - p % n_bank + k) % E)
+        if (filt % matches_transport_groups) then
+          ! determine outgoing energy from fission bank
+          gout = int(fission_bank(n_bank - p % n_bank + k) % E)
 
-        ! change outgoing energy bin
-        matching_bins(i) = gout
-      else
-        ! determine outgoing energy from fission bank
-        E_out = energy_bin_avg(int(fission_bank(n_bank - p % n_bank + k) % E))
+          ! change outgoing energy bin
+          matching_bins(i) = gout
+        else
+          ! determine outgoing energy from fission bank
+          E_out = energy_bin_avg(int(fission_bank(n_bank - p % n_bank + k) % E))
 
-        ! check if outgoing energy is within specified range on filter
-        if (E_out < t % filters(i) % real_bins(1) .or. &
-             E_out > t % filters(i) % real_bins(n)) cycle
+          ! check if outgoing energy is within specified range on filter
+          if (E_out < filt % bins(1) .or. E_out > filt % bins(n)) cycle
 
-        ! change outgoing energy bin
-        matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
-      end if
+          ! change outgoing energy bin
+          matching_bins(i) = binary_search(filt % bins, n, E_out)
+        end if
 
-      ! determine scoring index
-      i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+        ! determine scoring index and weight for this filter combination
+        i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride) + 1
+        filter_weight = product(filter_weights(:size(t % filters)))
 
-      ! Add score to tally
+        ! Add score to tally
 !$omp atomic
-      t % results(i_score, i_filter) % value = &
-           t % results(i_score, i_filter) % value + score
-    end do
+        t % results(i_score, i_filter) % value = &
+             t % results(i_score, i_filter) % value + score * filter_weight
+      end do
 
     ! reset outgoing energy bin and score index
     matching_bins(i) = bin_energyout
+  end select
 
   end subroutine score_fission_eout_mg
 
@@ -1768,23 +1884,26 @@ contains
   subroutine score_fission_delayed_dg(t, d_bin, score, score_index)
 
     type(TallyObject), intent(inout) :: t
-    integer, intent(in)              :: score_index ! index for score
     integer, intent(in)              :: d_bin       ! delayed group bin index
+    real(8), intent(in)              :: score       ! actual score
+    integer, intent(in)              :: score_index ! index for score
 
     integer :: bin_original  ! original bin index
     integer :: filter_index  ! index for matching filter bin combination
-    real(8) :: score         ! actual score
+    real(8) :: filter_weight ! combined weight of all filters
 
     ! save original delayed group bin
     bin_original = matching_bins(t % find_filter(FILTER_DELAYEDGROUP))
     matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = d_bin
 
-    ! Compute the filter index based on the modified matching_bins
-    filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+    ! determine scoring index and weight on the modified matching_bins
+    filter_index = sum((matching_bins(1:size(t % filters)) - 1) * t % stride) &
+         + 1
+    filter_weight = product(filter_weights(:size(t % filters)))
 
 !$omp atomic
     t % results(score_index, filter_index) % value = &
-         t % results(score_index, filter_index) % value + score
+         t % results(score_index, filter_index) % value + score * filter_weight
 
     ! reset original delayed group bin
     matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = bin_original
@@ -1805,13 +1924,14 @@ contains
 
     integer :: i
     integer :: i_tally
+    integer :: i_filt
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array (from bins)
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
-    logical :: found_bin            ! scoring bin found?
+    real(8) :: filter_weight        ! combined weight of all filters
     type(TallyObject), pointer :: t
     type(Material),    pointer :: mat
 
@@ -1826,70 +1946,103 @@ contains
       i_tally = active_tracklength_tallies % get_item(i)
       t => tallies(i_tally)
 
-      ! Check if this tally has a mesh filter -- if so, we treat it separately
-      ! since multiple bins can be scored to with a single track
+      ! Find the first bin in each filter. There may be more than one matching
+      ! bin per filter, but we'll deal with those later.
+      do i_filt = 1, size(t % filters)
+        call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+             NO_BIN_FOUND, matching_bins(i_filt), filter_weights(i_filt))
+        ! If there are no valid bins for this filter, then there is nothing to
+        ! score and we can move on to the next tally.
+        if (matching_bins(i_filt) == NO_BIN_FOUND) cycle TALLY_LOOP
+      end do
 
-      if (t % find_filter(FILTER_MESH) > 0) then
-        call score_tl_on_mesh(p, i_tally, distance)
-        cycle
-      end if
+      ! ========================================================================
+      ! Loop until we've covered all valid bins on each of the filters.
 
-      ! =======================================================================
-      ! DETERMINE SCORING BIN COMBINATION
+      FILTER_LOOP: do
 
-      call get_scoring_bins(p, i_tally, found_bin)
-      if (.not. found_bin) cycle
+        ! Determine scoring index and weight for this filter combination
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        filter_weight = product(filter_weights(:size(t % filters)))
 
-      ! =======================================================================
-      ! CALCULATE RESULTS AND ACCUMULATE TALLY
+        ! ======================================================================
+        ! Nuclide logic
 
-      ! If we have made it here, we have a scoring combination of bins for this
-      ! tally -- now we need to determine where in the results array we should
-      ! be accumulating the tally values
-
-      ! Determine scoring index for this filter combination
-      filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-
-      if (t % all_nuclides) then
-        if (p % material /= MATERIAL_VOID) then
-          call score_all_nuclides(p, i_tally, flux, filter_index)
-        end if
-      else
-
-        NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
-          ! Get index of nuclide in nuclides array
-          i_nuclide = t % nuclide_bins(k)
-
-          if (i_nuclide > 0) then
-            if (p % material /= MATERIAL_VOID) then
-              ! Get pointer to current material
-              mat => materials(p % material)
-
-              ! Determine if nuclide is actually in material
-              NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-                ! If index of nuclide matches the j-th nuclide listed in the
-                ! material, break out of the loop
-                if (i_nuclide == mat % nuclide(j)) exit
-
-                ! If we've reached the last nuclide in the material, it means
-                ! the specified nuclide to be tallied is not in this material
-                if (j == mat % n_nuclides) then
-                  cycle NUCLIDE_BIN_LOOP
-                end if
-              end do NUCLIDE_MAT_LOOP
-
-              atom_density = mat % atom_density(j)
-            else
-              atom_density = ZERO
-            end if
+        if (t % all_nuclides) then
+          if (p % material /= MATERIAL_VOID) then
+            call score_all_nuclides(p, i_tally, flux, filter_index)
           end if
+        else
 
-          ! Determine score for each bin
-          call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
-               i_nuclide, atom_density, flux)
+          NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
+            ! Get index of nuclide in nuclides array
+            i_nuclide = t % nuclide_bins(k)
 
-        end do NUCLIDE_BIN_LOOP
-      end if
+            if (i_nuclide > 0) then
+              if (p % material /= MATERIAL_VOID) then
+                ! Get pointer to current material
+                mat => materials(p % material)
+
+                ! Determine if nuclide is actually in material
+                NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
+                  ! If index of nuclide matches the j-th nuclide listed in the
+                  ! material, break out of the loop
+                  if (i_nuclide == mat % nuclide(j)) exit
+
+                  ! If we've reached the last nuclide in the material, it means
+                  ! the specified nuclide to be tallied is not in this material
+                  if (j == mat % n_nuclides) then
+                    cycle NUCLIDE_BIN_LOOP
+                  end if
+                end do NUCLIDE_MAT_LOOP
+
+                atom_density = mat % atom_density(j)
+              else
+                atom_density = ZERO
+              end if
+            end if
+
+            ! Determine score for each bin
+            call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
+                 i_nuclide, atom_density, flux * filter_weight)
+
+          end do NUCLIDE_BIN_LOOP
+
+        end if
+
+        ! ======================================================================
+        ! Filter logic
+
+        ! If there are no filters, then we are done.
+        if (size(t % filters) == 0) exit FILTER_LOOP
+
+        ! Increment the filter bins, starting with the last filter. If we get a
+        ! NO_BIN_FOUND for the last filter, it means we finished all valid bins
+        ! for that filter, but next-to-last filter might have more than one
+        ! valid bin so we need to increment that one as well, and so on.
+        do i_filt = size(t % filters), 1, -1
+          call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+               matching_bins(i_filt), matching_bins(i_filt), &
+               filter_weights(i_filt))
+          if (matching_bins(i_filt) /= NO_BIN_FOUND) exit
+        end do
+
+        ! If we got all NO_BIN_FOUNDs, then we have finished all valid bins for
+        ! each of the filters. Exit the loop.
+        if (all(matching_bins(:size(t % filters)) == NO_BIN_FOUND)) &
+             exit FILTER_LOOP
+
+        ! Reset all the filters with NO_BIN_FOUND. This will set them back to
+        ! their first valid bin.
+        do i_filt = 1, size(t % filters)
+          if (matching_bins(i_filt) == NO_BIN_FOUND) then
+            call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+                 matching_bins(i_filt), matching_bins(i_filt), &
+                 filter_weights(i_filt))
+          end if
+        end do
+      end do FILTER_LOOP
 
       ! If the user has specified that we can assume all tallies are spatially
       ! separate, this implies that once a tally has been scored to, we needn't
@@ -1906,289 +2059,6 @@ contains
   end subroutine score_tracklength_tally
 
 !===============================================================================
-! SCORE_TL_ON_MESH calculate fluxes and reaction rates based on the track-length
-! estimate of the flux specifically for tallies that have mesh filters. For
-! these tallies, it is possible to score to multiple mesh cells for each track.
-!===============================================================================
-
-  subroutine score_tl_on_mesh(p, i_tally, d_track)
-
-    type(Particle), intent(in) :: p
-    integer,        intent(in) :: i_tally
-    real(8),        intent(in) :: d_track
-
-    integer :: i                    ! loop index for filter/score bins
-    integer :: j                    ! loop index for direction
-    integer :: k                    ! loop index for mesh cell crossings
-    integer :: b                    ! loop index for nuclide bins
-    integer :: ijk0(3)              ! indices of starting coordinates
-    integer :: ijk1(3)              ! indices of ending coordinates
-    integer :: ijk_cross(3)         ! indices of mesh cell crossed
-    integer :: n_cross              ! number of surface crossings
-    integer :: filter_index         ! single index for single bin
-    integer :: i_nuclide            ! index in nuclides array
-    integer :: i_filter_mesh        ! index of mesh filter in filters array
-    real(8) :: atom_density         ! density of individual nuclide in atom/b-cm
-    real(8) :: flux                 ! tracklength estimate of flux
-    real(8) :: uvw(3)               ! cosine of angle of particle
-    real(8) :: xyz0(3)              ! starting/intermediate coordinates
-    real(8) :: xyz1(3)              ! ending coordinates of particle
-    real(8) :: xyz_cross(3)         ! coordinates of next boundary
-    real(8) :: d(3)                 ! distance to each bounding surface
-    real(8) :: distance             ! distance traveled in mesh cell
-    logical :: found_bin            ! was a scoring bin found?
-    logical :: start_in_mesh        ! starting coordinates inside mesh?
-    logical :: end_in_mesh          ! ending coordinates inside mesh?
-    real(8) :: theta
-    real(8) :: phi
-    type(TallyObject), pointer :: t
-    type(RegularMesh), pointer :: m
-    type(Material),    pointer :: mat
-
-    t => tallies(i_tally)
-    matching_bins(1:t%n_filters) = 1
-
-    ! ==========================================================================
-    ! CHECK IF THIS TRACK INTERSECTS THE MESH
-
-    ! Copy starting and ending location of particle
-    xyz0 = p % coord(1) % xyz - (d_track - TINY_BIT) * p % coord(1) % uvw
-    xyz1 = p % coord(1) % xyz  - TINY_BIT * p % coord(1) % uvw
-
-    ! Get index for mesh filter
-    i_filter_mesh = t % find_filter(FILTER_MESH)
-
-    ! Determine indices for starting and ending location
-    m => meshes(t % filters(i_filter_mesh) % int_bins(1))
-    call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-    call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
-
-    ! Check if start or end is in mesh -- if not, check if track still
-    ! intersects with mesh
-    if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-      if (m % n_dimension == 2) then
-        if (.not. mesh_intersects_2d(m, xyz0, xyz1)) return
-      else
-        if (.not. mesh_intersects_3d(m, xyz0, xyz1)) return
-      end if
-    end if
-
-    ! Reset starting and ending location
-    xyz0 = p % coord(1) % xyz - d_track * p % coord(1) % uvw
-    xyz1 = p % coord(1) % xyz
-
-    ! =========================================================================
-    ! CHECK FOR SCORING COMBINATION FOR FILTERS OTHER THAN MESH
-
-    FILTER_LOOP: do i = 1, t % n_filters
-
-      select case (t % filters(i) % type)
-      case (FILTER_UNIVERSE)
-        ! determine next universe bin
-        ! TODO: Account for multiple universes when performing this filter
-        matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
-             p % coord(p % n_coord) % universe, i_tally)
-
-      case (FILTER_MATERIAL)
-        matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
-             p % material, i_tally)
-
-      case (FILTER_CELL)
-        ! determine next cell bin
-        do j = 1, p % n_coord
-          position(FILTER_CELL) = 0
-          matching_bins(i) = get_next_bin(FILTER_CELL, &
-               p % coord(j) % cell, i_tally)
-          if (matching_bins(i) /= NO_BIN_FOUND) exit
-        end do
-
-      case (FILTER_CELLBORN)
-        ! determine next cellborn bin
-        matching_bins(i) = get_next_bin(FILTER_CELLBORN, &
-             p % cell_born, i_tally)
-
-      case (FILTER_SURFACE)
-        ! determine next surface bin
-        matching_bins(i) = get_next_bin(FILTER_SURFACE, &
-             p % surface, i_tally)
-
-      case (FILTER_ENERGYIN)
-        ! determine incoming energy bin
-        k = t % filters(i) % n_bins
-
-        ! check if energy of the particle is within energy bins
-        if (p % E < t % filters(i) % real_bins(1) .or. &
-             p % E > t % filters(i) % real_bins(k + 1)) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          ! search to find incoming energy bin
-          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               k + 1, p % E)
-        end if
-
-      case (FILTER_POLAR)
-        ! Get theta value
-        theta = acos(p % coord(1) % uvw(3))
-
-        ! determine polar angle bin
-        k = t % filters(i) % n_bins
-
-        ! check if particle is within polar angle bins
-        if (theta < t % filters(i) % real_bins(1) .or. &
-             theta > t % filters(i) % real_bins(k + 1)) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          ! search to find polar angle bin
-          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               k + 1, theta)
-        end if
-
-      case (FILTER_AZIMUTHAL)
-        ! make sure the correct direction vector is used
-        phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
-
-        ! determine mu bin
-        k = t % filters(i) % n_bins
-
-        ! check if particle is within azimuthal angle bins
-        if (phi < t % filters(i) % real_bins(1) .or. &
-             phi > t % filters(i) % real_bins(k + 1)) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          ! search to find azimuthal angle bin
-          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               k + 1, phi)
-        end if
-
-      end select
-
-      ! Check if no matching bin was found
-      if (matching_bins(i) == NO_BIN_FOUND) return
-
-    end do FILTER_LOOP
-
-    ! ==========================================================================
-    ! DETERMINE WHICH MESH CELLS TO SCORE TO
-
-    ! Calculate number of surface crossings
-    n_cross = sum(abs(ijk1(:m % n_dimension) - ijk0(:m % n_dimension))) + 1
-
-    ! Copy particle's direction
-    uvw = p % coord(1) % uvw
-
-    ! Bounding coordinates
-    do j = 1, m % n_dimension
-      if (uvw(j) > 0) then
-        xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
-      else
-        xyz_cross(j) = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
-      end if
-    end do
-
-    MESH_LOOP: do k = 1, n_cross
-      found_bin = .false.
-
-      ! Calculate distance to each bounding surface. We need to treat special
-      ! case where the cosine of the angle is zero since this would result in a
-      ! divide-by-zero.
-
-      if (k == n_cross) xyz_cross = xyz1
-
-      do j = 1, m % n_dimension
-        if (uvw(j) == 0) then
-          d(j) = INFINITY
-        else
-          d(j) = (xyz_cross(j) - xyz0(j))/uvw(j)
-        end if
-      end do
-
-      ! Determine the closest bounding surface of the mesh cell by calculating
-      ! the minimum distance
-
-      j = minloc(d(:m % n_dimension), 1)
-      distance = d(j)
-
-      ! Now use the minimum distance and diretion of the particle to determine
-      ! which surface was crossed
-
-      if (all(ijk0(:m % n_dimension) >= 1) .and. all(ijk0(:m % n_dimension) <= m % dimension)) then
-        ijk_cross = ijk0
-        found_bin = .true.
-      end if
-
-      ! Increment indices and determine new crossing point
-      if (uvw(j) > 0) then
-        ijk0(j) = ijk0(j) + 1
-        xyz_cross(j) = xyz_cross(j) + m % width(j)
-      else
-        ijk0(j) = ijk0(j) - 1
-        xyz_cross(j) = xyz_cross(j) - m % width(j)
-      end if
-
-      ! =======================================================================
-      ! SCORE TO THIS MESH CELL
-
-      if (found_bin) then
-        ! Calculate track-length estimate of flux
-        flux = p % wgt * distance
-
-        ! Determine mesh bin
-        matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, ijk_cross)
-
-        ! Determining scoring index
-        filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-
-        if (t % all_nuclides) then
-          if (p % material /= MATERIAL_VOID) then
-            ! Score reaction rates for each nuclide in material
-            call score_all_nuclides(p, i_tally, flux, filter_index)
-          end if
-        else
-          NUCLIDE_BIN_LOOP: do b = 1, t % n_nuclide_bins
-            ! Get index of nuclide in nuclides array
-            i_nuclide = t % nuclide_bins(b)
-
-            if (i_nuclide > 0) then
-              if (p % material /= MATERIAL_VOID) then
-                ! Get pointer to current material
-                mat => materials(p % material)
-
-                ! Determine if nuclide is actually in material
-                NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-                  ! If index of nuclide matches the j-th nuclide listed in
-                  ! the material, break out of the loop
-                  if (i_nuclide == mat % nuclide(j)) exit
-
-                  ! If we've reached the last nuclide in the material, it
-                  ! means the specified nuclide to be tallied is not in this
-                  ! material
-                  if (j == mat % n_nuclides) then
-                    cycle NUCLIDE_BIN_LOOP
-                  end if
-                end do NUCLIDE_MAT_LOOP
-
-                atom_density = mat % atom_density(j)
-              else
-                atom_density = ZERO
-              end if
-            end if
-
-            ! Determine score for each bin
-            call score_general(p, t, (b-1)*t % n_score_bins, filter_index, &
-                 i_nuclide, atom_density, flux)
-
-          end do NUCLIDE_BIN_LOOP
-        end if
-      end if
-
-      ! Calculate new coordinates
-      xyz0 = xyz0 + distance * uvw
-
-    end do MESH_LOOP
-
-  end subroutine score_tl_on_mesh
-
-!===============================================================================
 ! SCORE_COLLISION_TALLY calculates fluxes and reaction rates based on the
 ! 1/Sigma_t estimate of the flux.  This is triggered after every collision.  It
 ! is invalid for tallies that require post-collison information because it can
@@ -2202,6 +2072,7 @@ contains
 
     integer :: i
     integer :: i_tally
+    integer :: i_filt
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
     integer :: filter_index         ! single index for single bin
@@ -2209,7 +2080,7 @@ contains
     real(8) :: flux                 ! collision estimate of flux
     real(8) :: atom_density         ! atom density of single nuclide
                                     !   in atom/b-cm
-    logical :: found_bin            ! scoring bin found?
+    real(8) :: filter_weight        ! combined weight of all filters
     type(TallyObject), pointer :: t
     type(Material),    pointer :: mat
 
@@ -2229,62 +2100,103 @@ contains
       i_tally = active_collision_tallies % get_item(i)
       t => tallies(i_tally)
 
-      ! =======================================================================
-      ! DETERMINE SCORING BIN COMBINATION
+      ! Find the first bin in each filter. There may be more than one matching
+      ! bin per filter, but we'll deal with those later.
+      do i_filt = 1, size(t % filters)
+        call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+             NO_BIN_FOUND, matching_bins(i_filt), filter_weights(i_filt))
+        ! If there are no valid bins for this filter, then there is nothing to
+        ! score and we can move on to the next tally.
+        if (matching_bins(i_filt) == NO_BIN_FOUND) cycle TALLY_LOOP
+      end do
 
-      call get_scoring_bins(p, i_tally, found_bin)
-      if (.not. found_bin) cycle
+      ! ========================================================================
+      ! Loop until we've covered all valid bins on each of the filters.
 
-      ! =======================================================================
-      ! CALCULATE RESULTS AND ACCUMULATE TALLY
+      FILTER_LOOP: do
 
-      ! If we have made it here, we have a scoring combination of bins for this
-      ! tally -- now we need to determine where in the results array we should
-      ! be accumulating the tally values
+        ! Determine scoring index and weight for this filter combination
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        filter_weight = product(filter_weights(:size(t % filters)))
 
-      ! Determine scoring index for this filter combination
-      filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+        ! ======================================================================
+        ! Nuclide logic
 
-      if (t % all_nuclides) then
-        if (p % material /= MATERIAL_VOID) then
-          call score_all_nuclides(p, i_tally, flux, filter_index)
-        end if
-      else
-
-        NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
-          ! Get index of nuclide in nuclides array
-          i_nuclide = t % nuclide_bins(k)
-
-          if (i_nuclide > 0) then
-            if (p % material /= MATERIAL_VOID) then
-              ! Get pointer to current material
-              mat => materials(p % material)
-
-              ! Determine if nuclide is actually in material
-              NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-                ! If index of nuclide matches the j-th nuclide listed in the
-                ! material, break out of the loop
-                if (i_nuclide == mat % nuclide(j)) exit
-
-                ! If we've reached the last nuclide in the material, it means
-                ! the specified nuclide to be tallied is not in this material
-                if (j == mat % n_nuclides) then
-                  cycle NUCLIDE_BIN_LOOP
-                end if
-              end do NUCLIDE_MAT_LOOP
-
-              atom_density = mat % atom_density(j)
-            else
-              atom_density = ZERO
-            end if
+        if (t % all_nuclides) then
+          if (p % material /= MATERIAL_VOID) then
+            call score_all_nuclides(p, i_tally, flux, filter_index)
           end if
+        else
 
-          ! Determine score for each bin
-          call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
-               i_nuclide, atom_density, flux)
+          NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
+            ! Get index of nuclide in nuclides array
+            i_nuclide = t % nuclide_bins(k)
 
-        end do NUCLIDE_BIN_LOOP
-      end if
+            if (i_nuclide > 0) then
+              if (p % material /= MATERIAL_VOID) then
+                ! Get pointer to current material
+                mat => materials(p % material)
+
+                ! Determine if nuclide is actually in material
+                NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
+                  ! If index of nuclide matches the j-th nuclide listed in the
+                  ! material, break out of the loop
+                  if (i_nuclide == mat % nuclide(j)) exit
+
+                  ! If we've reached the last nuclide in the material, it means
+                  ! the specified nuclide to be tallied is not in this material
+                  if (j == mat % n_nuclides) then
+                    cycle NUCLIDE_BIN_LOOP
+                  end if
+                end do NUCLIDE_MAT_LOOP
+
+                atom_density = mat % atom_density(j)
+              else
+                atom_density = ZERO
+              end if
+            end if
+
+            ! Determine score for each bin
+            call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
+                 i_nuclide, atom_density, flux * filter_weight)
+
+          end do NUCLIDE_BIN_LOOP
+
+        end if
+
+        ! ======================================================================
+        ! Filter logic
+
+        ! If there are no filters, then we are done.
+        if (size(t % filters) == 0) exit FILTER_LOOP
+
+        ! Increment the filter bins, starting with the last filter. If we get a
+        ! NO_BIN_FOUND for the last filter, it means we finished all valid bins
+        ! for that filter, but next-to-last filter might have more than one
+        ! valid bin so we need to increment that one as well, and so on.
+        do i_filt = size(t % filters), 1, -1
+          call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+               matching_bins(i_filt), matching_bins(i_filt), &
+               filter_weights(i_filt))
+          if (matching_bins(i_filt) /= NO_BIN_FOUND) exit
+        end do
+
+        ! If we got all NO_BIN_FOUNDs, then we have finished all valid bins for
+        ! each of the filters. Exit the loop.
+        if (all(matching_bins(:size(t % filters)) == NO_BIN_FOUND)) &
+             exit FILTER_LOOP
+
+        ! Reset all the filters with NO_BIN_FOUND. This will set them back to
+        ! their first valid bin.
+        do i_filt = 1, size(t % filters)
+          if (matching_bins(i_filt) == NO_BIN_FOUND) then
+            call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+                 matching_bins(i_filt), matching_bins(i_filt), &
+                 filter_weights(i_filt))
+          end if
+        end do
+      end do FILTER_LOOP
 
       ! If the user has specified that we can assume all tallies are spatially
       ! separate, this implies that once a tally has been scored to, we needn't
@@ -2299,433 +2211,6 @@ contains
     position = 0
 
   end subroutine score_collision_tally
-
-!===============================================================================
-! GET_SCORING_BINS determines a combination of filter bins that should be scored
-! for a tally based on the particle's current attributes.
-!===============================================================================
-
-  subroutine get_scoring_bins_ce(p, i_tally, found_bin)
-
-    type(Particle), intent(in)  :: p
-    integer,        intent(in)  :: i_tally
-    logical,        intent(out) :: found_bin
-
-    integer :: i ! loop index for filters
-    integer :: j
-    integer :: n ! number of bins for single filter
-    integer :: offset ! offset for distribcell
-    integer :: distribcell_index ! index in distribcell arrays
-    real(8) :: E ! particle energy
-    real(8) :: theta, phi ! Polar and Azimuthal Angles, respectively
-    type(TallyObject), pointer :: t
-    type(RegularMesh), pointer :: m
-
-    found_bin = .true.
-    t => tallies(i_tally)
-    matching_bins(1:t%n_filters) = 1
-
-    FILTER_LOOP: do i = 1, t % n_filters
-
-      select case (t % filters(i) % type)
-      case (FILTER_MESH)
-        ! determine mesh bin
-        m => meshes(t % filters(i) % int_bins(1))
-
-        ! Determine if we're in the mesh first
-        call get_mesh_bin(m, p % coord(1) % xyz, matching_bins(i))
-
-      case (FILTER_UNIVERSE)
-        ! determine next universe bin
-        ! TODO: Account for multiple universes when performing this filter
-        matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
-             p % coord(p % n_coord) % universe, i_tally)
-
-      case (FILTER_MATERIAL)
-        if (p % material == MATERIAL_VOID) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
-               p % material, i_tally)
-        endif
-
-      case (FILTER_CELL)
-        ! determine next cell bin
-        do j = 1, p % n_coord
-          position(FILTER_CELL) = 0
-          matching_bins(i) = get_next_bin(FILTER_CELL, &
-               p % coord(j) % cell, i_tally)
-          if (matching_bins(i) /= NO_BIN_FOUND) exit
-        end do
-
-      case (FILTER_DISTRIBCELL)
-        ! determine next distribcell bin
-        distribcell_index = cells(t % filters(i) % int_bins(1)) &
-                                  % distribcell_index
-        matching_bins(i) = NO_BIN_FOUND
-        offset = 0
-        do j = 1, p % n_coord
-          if (cells(p % coord(j) % cell) % type == CELL_FILL) then
-            offset = offset + cells(p % coord(j) % cell) % &
-                 offset(distribcell_index)
-          elseif(cells(p % coord(j) % cell) % type == CELL_LATTICE) then
-            if (lattices(p % coord(j + 1) % lattice) % obj &
-                 % are_valid_indices([&
-                 p % coord(j + 1) % lattice_x, &
-                 p % coord(j + 1) % lattice_y, &
-                 p % coord(j + 1) % lattice_z])) then
-              offset = offset + lattices(p % coord(j + 1) % lattice) % obj % &
-                   offset(distribcell_index, &
-                   p % coord(j + 1) % lattice_x, &
-                   p % coord(j + 1) % lattice_y, &
-                   p % coord(j + 1) % lattice_z)
-            end if
-          end if
-          if (t % filters(i) % int_bins(1) == p % coord(j) % cell) then
-            matching_bins(i) = offset + 1
-            exit
-          end if
-        end do
-
-      case (FILTER_CELLBORN)
-        ! determine next cellborn bin
-        matching_bins(i) = get_next_bin(FILTER_CELLBORN, &
-             p % cell_born, i_tally)
-
-      case (FILTER_SURFACE)
-        ! determine next surface bin
-        matching_bins(i) = get_next_bin(FILTER_SURFACE, &
-             p % surface, i_tally)
-
-      case (FILTER_ENERGYIN)
-        ! determine incoming energy bin
-        n = t % filters(i) % n_bins
-
-        ! make sure the correct energy is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
-
-        ! check if energy of the particle is within energy bins
-        if (E < t % filters(i) % real_bins(1) .or. &
-             E > t % filters(i) % real_bins(n + 1)) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          ! search to find incoming energy bin
-          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               n + 1, E)
-        end if
-
-      case (FILTER_ENERGYOUT)
-        ! determine outgoing energy bin
-        n = t % filters(i) % n_bins
-
-        ! check if energy of the particle is within energy bins
-        if (p % E < t % filters(i) % real_bins(1) .or. &
-             p % E > t % filters(i) % real_bins(n + 1)) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          ! search to find incoming energy bin
-          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               n + 1, p % E)
-        end if
-
-      case (FILTER_DELAYEDGROUP)
-
-        if (survival_biasing .and. t % find_filter(FILTER_ENERGYOUT) <= 0) then
-          matching_bins(i) = 1
-        elseif (active_tracklength_tallies % size() > 0) then
-          matching_bins(i) = 1
-        else
-          if (p % delayed_group == 0) then
-            matching_bins = NO_BIN_FOUND
-          else
-            matching_bins(i) = p % delayed_group
-          end if
-        end if
-
-      case (FILTER_MU)
-        ! determine mu bin
-        n = t % filters(i) % n_bins
-
-        ! check if particle is within mu bins
-        if (p % mu < t % filters(i) % real_bins(1) .or. &
-             p % mu > t % filters(i) % real_bins(n + 1)) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          ! search to find mu bin
-          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               n + 1, p % mu)
-        end if
-
-      case (FILTER_POLAR)
-        ! make sure the correct direction vector is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          theta = acos(p % coord(1) % uvw(3))
-        else
-          theta = acos(p % last_uvw(3))
-        end if
-
-        ! determine polar angle bin
-        n = t % filters(i) % n_bins
-
-        ! check if particle is within polar angle bins
-        if (theta < t % filters(i) % real_bins(1) .or. &
-             theta > t % filters(i) % real_bins(n + 1)) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          ! search to find polar angle bin
-          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               n + 1, theta)
-        end if
-
-      case (FILTER_AZIMUTHAL)
-        ! make sure the correct direction vector is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
-        else
-          phi = atan2(p % last_uvw(2), p % last_uvw(1))
-        end if
-        ! determine mu bin
-        n = t % filters(i) % n_bins
-
-        ! check if particle is within azimuthal angle bins
-        if (phi < t % filters(i) % real_bins(1) .or. &
-             phi > t % filters(i) % real_bins(n + 1)) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          ! search to find azimuthal angle bin
-          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               n + 1, phi)
-        end if
-
-      end select
-
-      ! If the current filter didn't match, exit this subroutine
-      if (matching_bins(i) == NO_BIN_FOUND) then
-        found_bin = .false.
-        return
-      end if
-
-    end do FILTER_LOOP
-
-  end subroutine get_scoring_bins_ce
-
-  subroutine get_scoring_bins_mg(p, i_tally, found_bin)
-
-    type(Particle), intent(in)  :: p
-    integer,        intent(in)  :: i_tally
-    logical,        intent(out) :: found_bin
-
-    integer :: i ! loop index for filters
-    integer :: j
-    integer :: n ! number of bins for single filter
-    integer :: distribcell_index ! index in distribcell arrays
-    integer :: offset ! offset for distribcell
-    real(8) :: theta, phi ! Polar and Azimuthal Angles, respectively
-    real(8) :: E
-    type(TallyObject),    pointer :: t
-    type(RegularMesh), pointer :: m
-
-    found_bin = .true.
-    t => tallies(i_tally)
-    matching_bins(1:t%n_filters) = 1
-
-    FILTER_LOOP: do i = 1, t % n_filters
-
-      select case (t % filters(i) % type)
-      case (FILTER_MESH)
-        ! determine mesh bin
-        m => meshes(t % filters(i) % int_bins(1))
-
-        ! Determine if we're in the mesh first
-        call get_mesh_bin(m, p % coord(1) % xyz, matching_bins(i))
-
-      case (FILTER_UNIVERSE)
-        ! determine next universe bin
-        ! TODO: Account for multiple universes when performing this filter
-        matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
-             p % coord(p % n_coord) % universe, i_tally)
-
-      case (FILTER_MATERIAL)
-        if (p % material == MATERIAL_VOID) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
-               p % material, i_tally)
-        endif
-
-      case (FILTER_CELL)
-        ! determine next cell bin
-        do j = 1, p % n_coord
-          position(FILTER_CELL) = 0
-          matching_bins(i) = get_next_bin(FILTER_CELL, &
-               p % coord(j) % cell, i_tally)
-          if (matching_bins(i) /= NO_BIN_FOUND) exit
-        end do
-
-      case (FILTER_DISTRIBCELL)
-        ! determine next distribcell bin
-        distribcell_index = cells(t % filters(i) % int_bins(1)) &
-                                  % distribcell_index
-        matching_bins(i) = NO_BIN_FOUND
-        offset = 0
-        do j = 1, p % n_coord
-          if (cells(p % coord(j) % cell) % type == CELL_FILL) then
-            offset = offset + cells(p % coord(j) % cell) % &
-                 offset(distribcell_index)
-          elseif(cells(p % coord(j) % cell) % type == CELL_LATTICE) then
-            if (lattices(p % coord(j + 1) % lattice) % obj &
-                 % are_valid_indices([&
-                 p % coord(j + 1) % lattice_x, &
-                 p % coord(j + 1) % lattice_y, &
-                 p % coord(j + 1) % lattice_z])) then
-              offset = offset + lattices(p % coord(j + 1) % lattice) % obj % &
-                   offset(distribcell_index, &
-                   p % coord(j + 1) % lattice_x, &
-                   p % coord(j + 1) % lattice_y, &
-                   p % coord(j + 1) % lattice_z)
-            end if
-          end if
-          if (t % filters(i) % int_bins(1) == p % coord(j) % cell) then
-            matching_bins(i) = offset + 1
-            exit
-          end if
-        end do
-
-      case (FILTER_CELLBORN)
-        ! determine next cellborn bin
-        matching_bins(i) = get_next_bin(FILTER_CELLBORN, &
-             p % cell_born, i_tally)
-
-      case (FILTER_SURFACE)
-        ! determine next surface bin
-        matching_bins(i) = get_next_bin(FILTER_SURFACE, &
-             p % surface, i_tally)
-
-      case (FILTER_ENERGYIN)
-        if (t % energy_matches_groups) then
-          ! make sure the correct energy group is used
-          ! Since all groups are filters, the filter bin is the group
-          if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-            matching_bins(i) = p % g
-          else
-            matching_bins(i) = p % last_g
-          end if
-          ! Tallies are ordered in increasing groups, group indices
-          ! however are the opposite, so switch
-          matching_bins(i) = energy_groups - matching_bins(i) + 1
-        else
-          ! make sure the correct energy is used
-          if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-            E = p % E
-          else
-            E = p % last_E
-          end if
-          n = t % filters(i) % n_bins
-
-          ! check if energy of the particle is within energy bins
-          if (E < t % filters(i) % real_bins(1) .or. &
-               E > t % filters(i) % real_bins(n + 1)) then
-            matching_bins(i) = NO_BIN_FOUND
-          else
-            ! search to find incoming energy bin
-            matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-                 n + 1, E)
-          end if
-        end if
-
-      case (FILTER_ENERGYOUT)
-        if (t % energyout_matches_groups) then
-          ! Since all groups are filters, the filter bin is the group
-          matching_bins(i) = p % g
-
-          ! Tallies are ordered in increasing groups, group indices
-          ! however are the opposite, so switch
-          matching_bins(i) = energy_groups - matching_bins(i) + 1
-        else
-          ! determine outgoing energy bin
-          n = t % filters(i) % n_bins
-
-          ! check if energy of the particle is within energy bins
-          if (p % E < t % filters(i) % real_bins(1) .or. &
-               p % E > t % filters(i) % real_bins(n + 1)) then
-            matching_bins(i) = NO_BIN_FOUND
-          else
-            ! search to find incoming energy bin
-            matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-                 n + 1, p % E)
-          end if
-        end if
-
-      case (FILTER_MU)
-        ! determine mu bin
-        n = t % filters(i) % n_bins
-
-        ! check if particle is within mu bins
-        if (p % mu < t % filters(i) % real_bins(1) .or. &
-             p % mu > t % filters(i) % real_bins(n + 1)) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          ! search to find mu bin
-          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               n + 1, p % mu)
-        end if
-
-      case (FILTER_POLAR)
-        ! make sure the correct direction vector is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          theta = acos(p % coord(1) % uvw(3))
-        else
-          theta = acos(p % last_uvw(3))
-        end if
-
-        ! determine polar angle bin
-        n = t % filters(i) % n_bins
-
-        ! check if particle is within polar angle bins
-        if (theta < t % filters(i) % real_bins(1) .or. &
-             theta > t % filters(i) % real_bins(n + 1)) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          ! search to find polar angle bin
-          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               n + 1, theta)
-        end if
-
-      case (FILTER_AZIMUTHAL)
-        ! make sure the correct direction vector is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
-        else
-          phi = atan2(p % last_uvw(2), p % last_uvw(1))
-        end if
-        ! determine mu bin
-        n = t % filters(i) % n_bins
-
-        ! check if particle is within azimuthal angle bins
-        if (phi < t % filters(i) % real_bins(1) .or. &
-             phi > t % filters(i) % real_bins(n + 1)) then
-          matching_bins(i) = NO_BIN_FOUND
-        else
-          ! search to find azimuthal angle bin
-          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               n + 1, phi)
-        end if
-
-      end select
-
-      ! If the current filter didn't match, exit this subroutine
-      if (matching_bins(i) == NO_BIN_FOUND) then
-        found_bin = .false.
-        return
-      end if
-
-    end do FILTER_LOOP
-
-  end subroutine get_scoring_bins_mg
 
 !===============================================================================
 ! SCORE_SURFACE_CURRENT tallies surface crossings in a mesh tally by manually
@@ -2743,7 +2228,6 @@ contains
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: n_cross              ! number of surface crossings
-    integer :: n                    ! number of incoming energy bins
     integer :: filter_index         ! index of scoring bin
     integer :: i_filter_mesh        ! index of mesh filter in filters array
     integer :: i_filter_surf        ! index of surface filter in filters
@@ -2753,6 +2237,7 @@ contains
     real(8) :: xyz_cross(3)         ! coordinates of bounding surfaces
     real(8) :: d(3)                 ! distance to each bounding surface
     real(8) :: distance             ! actual distance traveled
+    real(8) :: filt_score           ! score applied by filters
     logical :: start_in_mesh        ! particle's starting xyz in mesh?
     logical :: end_in_mesh          ! particle's ending xyz in mesh?
     logical :: x_same               ! same starting/ending x index (i)
@@ -2763,7 +2248,7 @@ contains
 
     TALLY_LOOP: do i = 1, active_current_tallies % size()
       ! Copy starting and ending location of particle
-      xyz0 = p % last_xyz
+      xyz0 = p % last_xyz_current
       xyz1 = p % coord(1) % xyz
 
       ! Get pointer to tally
@@ -2774,8 +2259,13 @@ contains
       i_filter_mesh = t % find_filter(FILTER_MESH)
       i_filter_surf = t % find_filter(FILTER_SURFACE)
 
+      ! Get pointer to mesh
+      select type(filt => t % filters(i_filter_mesh) % obj)
+      type is (MeshFilter)
+        m => meshes(filt % mesh)
+      end select
+
       ! Determine indices for starting and ending location
-      m => meshes(t % filters(i_filter_mesh) % int_bins(1))
       call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
       call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
 
@@ -2798,19 +2288,13 @@ contains
       ! Copy particle's direction
       uvw = p % coord(1) % uvw
 
-      ! determine incoming energy bin
+      ! Determine incoming energy bin.  We need to tell the energy filter this
+      ! is a tracklength tally so it uses the pre-collision energy.
       j = t % find_filter(FILTER_ENERGYIN)
       if (j > 0) then
-        n = t % filters(j) % n_bins
-        ! check if energy of the particle is within energy bins
-        if (p % E < t % filters(j) % real_bins(1) .or. &
-             p % E > t % filters(j) % real_bins(n + 1)) then
-          cycle
-        end if
-
-        ! search to find incoming energy bin
-        matching_bins(j) = binary_search(t % filters(j) % real_bins, &
-             n + 1, p % E)
+        call t % filters(i) % obj % get_next_bin(p, ESTIMATOR_TRACKLENGTH, &
+             & NO_BIN_FOUND, matching_bins(j), filt_score)
+        if (matching_bins(j) == NO_BIN_FOUND) cycle
       end if
 
       ! =======================================================================
@@ -2829,7 +2313,8 @@ contains
               matching_bins(i_filter_surf) = OUT_TOP
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2842,7 +2327,8 @@ contains
               matching_bins(i_filter_surf) = IN_TOP
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2859,7 +2345,8 @@ contains
               matching_bins(i_filter_surf) = OUT_FRONT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2872,7 +2359,8 @@ contains
               matching_bins(i_filter_surf) = IN_FRONT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2889,7 +2377,8 @@ contains
               matching_bins(i_filter_surf) = OUT_RIGHT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -2902,7 +2391,8 @@ contains
               matching_bins(i_filter_surf) = IN_RIGHT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                   * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
@@ -3018,7 +2508,8 @@ contains
 
         ! Determine scoring index
         if (matching_bins(i_filter_surf) > 0) then
-          filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+               * t % stride) + 1
 
           ! Check for errors
           if (filter_index <= 0 .or. filter_index > &
@@ -3039,61 +2530,6 @@ contains
     end do TALLY_LOOP
 
   end subroutine score_surface_current
-
-!===============================================================================
-! GET_NEXT_BIN determines the next scoring bin for a particular filter variable
-!===============================================================================
-
-  function get_next_bin(filter_type, filter_value, i_tally) result(bin)
-
-    integer, intent(in) :: filter_type  ! e.g. FILTER_MATERIAL
-    integer, intent(in) :: filter_value ! value of filter, e.g. material 3
-    integer, intent(in) :: i_tally      ! index of tally
-    integer             :: bin          ! index of filter
-
-    integer :: i_tally_check
-    integer :: n
-
-    ! If there are no scoring bins for this item, then return immediately
-    if (.not. allocated(tally_maps(filter_type) % items(filter_value) % elements)) then
-      bin = NO_BIN_FOUND
-      return
-    end if
-
-    ! Check how many elements there are for this item
-    n = size(tally_maps(filter_type) % items(filter_value) % elements)
-
-    do
-      ! Increment position in elements
-      position(filter_type) = position(filter_type) + 1
-
-      ! If we've reached the end of the array, there is no more bin to score to
-      if (position(filter_type) > n) then
-        position(filter_type) = 0
-        bin = NO_BIN_FOUND
-        return
-      end if
-
-      i_tally_check = tally_maps(filter_type) % items(filter_value) % &
-           elements(position(filter_type)) % index_tally
-
-      if (i_tally_check > i_tally) then
-        ! Since the index being checked against is greater than the index we
-        ! need (and the tally indices were added to elements sequentially), we
-        ! know that no more bins will be scoring bins for this tally
-        position(filter_type) = 0
-        bin = NO_BIN_FOUND
-        return
-      elseif (i_tally_check == i_tally) then
-        ! Found a match
-        bin = tally_maps(filter_type) % items(filter_value) % &
-             elements(position(filter_type)) % index_bin
-        return
-      end if
-
-    end do
-
-  end function get_next_bin
 
 !===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history

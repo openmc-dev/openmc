@@ -497,7 +497,7 @@ class Material(object):
 
         Returns
         -------
-        nuclides : list
+        nuclides : list of str
             List of nuclide names
 
         """

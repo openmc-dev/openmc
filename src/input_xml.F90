@@ -3029,9 +3029,7 @@ contains
                    // " specified on tally " // trim(to_str(t % id)))
             end if
 
-            ! Determine number of bins -- this is assuming that the tally is
-            ! a volume tally and not a surface current tally. If it is a
-            ! surface current tally, the number of bins will get reset later
+            ! Determine number of bins
             t % filters(j) % n_bins = product(m % dimension)
 
             ! Allocate and store index of mesh
@@ -3646,10 +3644,6 @@ contains
                    &same tally as surface currents")
             end if
 
-            ! Since the number of bins for the mesh filter was already set
-            ! assuming it was a volume tally, we need to adjust the number
-            ! of bins
-
             ! Get index of mesh filter
             k = t % find_filter(FILTER_MESH)
 
@@ -3662,10 +3656,6 @@ contains
             ! Get pointer to mesh
             i_mesh = t % filters(k) % int_bins(1)
             m => meshes(i_mesh)
-
-            ! We need to increase the dimension by one since we also need
-            ! currents coming into and out of the boundary mesh cells.
-            t % filters(k) % n_bins = product(m % dimension + 1)
 
             ! Copy filters to temporary array
             allocate(filters(t % n_filters + 1))
@@ -3682,11 +3672,11 @@ contains
             allocate(t % filters(t % n_filters) % int_bins(&
                  2 * m % n_dimension))
             if (m % n_dimension == 2) then
-              t % filters(t % n_filters) % int_bins = (/ IN_RIGHT, &
-                   OUT_RIGHT, IN_FRONT, OUT_FRONT /)
+              t % filters(t % n_filters) % int_bins = (/ OUT_LEFT, &
+                   OUT_RIGHT, OUT_BACK, OUT_FRONT /)
             elseif (m % n_dimension == 3) then
-              t % filters(t % n_filters) % int_bins = (/ IN_RIGHT, &
-                   OUT_RIGHT, IN_FRONT, OUT_FRONT, IN_TOP, OUT_TOP /)
+              t % filters(t % n_filters) % int_bins = (/ OUT_LEFT, &
+                   OUT_RIGHT, OUT_BACK, OUT_FRONT, OUT_BOTTOM, OUT_TOP /)
             end if
             t % find_filter(FILTER_SURFACE) = t % n_filters
 

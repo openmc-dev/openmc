@@ -438,8 +438,7 @@ class MGXS(object):
         ----------
         mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission'}
             The type of multi-group cross section object to return
-        domain : openmc.Material or openmc.Cell or openmc.Universe or
-            openmc.Mesh
+        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
             The domain for spatial homogenization
         domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
             The domain type for spatial homogenization
@@ -1490,7 +1489,10 @@ class MGXS(object):
                 distribcell_paths=distribcell_paths)
 
             # Remove nuclide column since it is homogeneous and redundant
-            df.drop('nuclide', axis=1, inplace=True)
+            if self.domain_type == 'mesh':
+                df.drop('nuclide', axis=1, level=0, inplace=True)
+            else:
+                df.drop('nuclide', axis=1, inplace=True)
 
         # If the user requested a specific set of nuclides
         elif self.by_nuclide and nuclides != 'all':

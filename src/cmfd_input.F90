@@ -526,11 +526,11 @@ contains
         filters(n_filters) % n_bins = 2 * m % n_dimension
         allocate(filters(n_filters) % int_bins(2 * m % n_dimension))
         if (m % n_dimension == 2) then
-          filters(n_filters) % int_bins = (/ IN_RIGHT, OUT_RIGHT, IN_FRONT, &
+          filters(n_filters) % int_bins = (/ OUT_LEFT, OUT_RIGHT, OUT_BACK, &
                OUT_FRONT /)
         elseif (m % n_dimension == 3) then
-          filters(n_filters) % int_bins = (/ IN_RIGHT, OUT_RIGHT, IN_FRONT, &
-               OUT_FRONT, IN_TOP, OUT_TOP /)
+          filters(n_filters) % int_bins = (/ OUT_LEFT, OUT_RIGHT, OUT_BACK, &
+               OUT_FRONT, OUT_BOTTOM, OUT_TOP /)
         end if
         t % find_filter(FILTER_SURFACE) = n_filters
 

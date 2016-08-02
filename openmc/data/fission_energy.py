@@ -1,7 +1,6 @@
 from collections import Callable
 from copy import deepcopy
 import sys
-#from warnings import warn
 
 import h5py
 import numpy as np
@@ -199,6 +198,82 @@ def write_compact_458_library(endf_files, output_name=None, comment=None,
 
 
 class FissionEnergyRelease(object):
+    """Energy relased by fission reactions.
+
+    Energy is carried away from fission reactions by many different particles.
+    The attributes of this class specify how much energy is released in the form
+    of fission fragments, neutrons, photons, etc.  Each component is also (in
+    general) a function of the incident neutron energy.
+
+    Following a fission reaction, most of the energy release is carried by the
+    daughter nuclei fragments.  These fragments accelerate apart from the
+    Coulomb force on the time scale of ~10^-20 s [1].  Those fragments emit
+    prompt neutrons between ~10^-18 and ~10^-13 s after scission (although some
+    prompt neutrons may come directly from the scission point) [1].  Prompt
+    photons follow with a time scale of ~10^-14 to ~10^-7 s [1].  The fission
+    products then emit delayed neutrons with half lives between 0.1 and 100 s.
+    The remaining fission energy comes from beta decays of the fission products
+    which release beta particles, photons, and neutrinos (that escape the
+    reactor and do not produce usable heat).
+
+    Use the class methods to instantiate this class from an HDF5 or ENDF
+    dataset.  The :meth:`FissionEnergyRelease.from_hdf5` method builds this
+    class from the usual OpenMC HDF5 data files.
+    :meth:`FissionEnergyRelease.from_endf` uses ENDF-formatted data.
+    :meth:`FissionEnergyRelease.from_compact_hdf5` uses a different HDF5 format
+    that is meant to be compact and store the exact same data as the ENDF
+    format.  Files with this format can be generated with the
+    :func:`openmc.data.write_compact_458_library` function.
+
+    References
+    ----------
+    [1] D. G. Madland, "Total prompt energy release in the neutron-induced
+    fission of ^235U, ^238U, and ^239Pu", Nuclear Physics A 772:113--137 (2006).
+    <http://dx.doi.org/10.1016/j.nuclphysa.2006.03.013>
+
+    Attributes
+    ----------
+    fragments : Callable
+        Function that accepts incident neutron energy value(s) and returns the
+        kinetic energy of the fission daughter nuclides (after prompt neutron
+        emission).
+    prompt_neutrons : Callable
+        Function of energy that returns the kinetic energy of prompt fission
+        neutrons.
+    delayed_neutrons : Callable
+        Function of energy that returns the kinetic energy of delayed neutrons
+        emitted from fission products.
+    prompt_photons : Callable
+        Function of energy that returns the kinetic energy of prompt fission
+        photons.
+    delayed_photons : Callable
+        Function of energy that returns the kinetic energy of delayed photons.
+    betas : Callable
+        Function of energy that returns the kinetic energy of delayed beta
+        particles.
+    neutrinos : Callable
+        Function of energy that returns the kinetic energy of neutrinos.
+    recoverable : Callable
+        Function of energy that returns the kinetic energy of all products that
+        can be absorbed in the reactor (all of the energy except for the
+        neutrinos).
+    total : Callable
+        Function of energy that returns the kinetic energy of all products.
+    q_prompt : Callable
+        Function of energy that returns the prompt fission Q-value (fragments +
+        prompt neutrons + prompt photons - incident neutron energy).
+    q_recoverable : Callable
+        Function of energy that returns the recoverable fission Q-value
+        (total release - neutrinos - incident neutron energy).  This value is
+        sometimes referred to as the pseudo-Q-value.
+    q_total : Callable
+        Function of energy that returns the total fission Q-value (total release
+        - incident neutron energy).
+    form : str
+        Format used to compute the energy-dependence of the data.  Either
+        'Sher-Beck' or 'Madland'.
+
+    """
     def __init__(self):
         self._fragments = None
         self._prompt_neutrons = None
@@ -453,8 +528,10 @@ class FissionEnergyRelease(object):
         obj.neutrinos = Polynomial(group['neutrinos'].value)
 
         if group.attrs['format'].decode() == 'Madland':
+            obj.form = 'Madland'
             obj.prompt_neutrons = Polynomial(group['prompt_neutrons'].value)
         elif group.attrs['format'].decode() == 'Sher-Beck':
+            obj.form = 'Sher-Beck'
             obj.prompt_neutrons = Tabulated1D.from_hdf5(
                                                        group['prompt_neutrons'])
         else:
@@ -471,7 +548,7 @@ class FissionEnergyRelease(object):
         fname : str
             Path to an HDF5 file containing fission energy release data.  This
             file should have been generated form the
-            openmc.data.write_compact_458_library function.
+            :func:`openmc.data.write_compact_458_library` function.
 
         incident_neutron : openmc.data.IncidentNeutron
             Corresponding incident neutron dataset

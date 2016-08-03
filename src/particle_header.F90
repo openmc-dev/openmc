@@ -59,10 +59,13 @@ module particle_header
     logical    :: alive         ! is particle alive?
 
     ! Pre-collision physical data
-    real(8)    :: last_xyz(3)   ! previous coordinates
-    real(8)    :: last_uvw(3)   ! previous direction coordinates
-    real(8)    :: last_wgt      ! pre-collision particle weight
-    real(8)    :: absorb_wgt    ! weight absorbed for survival biasing
+    real(8)    :: last_xyz_current(3) ! coordinates of the last collision or
+                                      !  reflective/periodic surface crossing
+                                      !  for current tallies
+    real(8)    :: last_xyz(3)         ! previous coordinates
+    real(8)    :: last_uvw(3)         ! previous direction coordinates
+    real(8)    :: last_wgt            ! pre-collision particle weight
+    real(8)    :: absorb_wgt          ! weight absorbed for survival biasing
 
     ! What event last took place
     logical    :: fission       ! did the particle cause implicit fission
@@ -193,20 +196,21 @@ contains
     call this % initialize()
 
     ! copy attributes from source bank site
-    this % wgt            = src % wgt
-    this % last_wgt       = src % wgt
-    this % coord(1) % xyz = src % xyz
-    this % coord(1) % uvw = src % uvw
-    this % last_xyz       = src % xyz
-    this % last_uvw       = src % uvw
+    this % wgt              = src % wgt
+    this % last_wgt         = src % wgt
+    this % coord(1) % xyz   = src % xyz
+    this % coord(1) % uvw   = src % uvw
+    this % last_xyz_current = src % xyz
+    this % last_xyz         = src % xyz
+    this % last_uvw         = src % uvw
     if (run_CE) then
-      this % E            = src % E
+      this % E              = src % E
     else
-      this % g            = int(src % E)
-      this % last_g       = int(src % E)
-      this % E            = energy_bin_avg(this % g)
+      this % g              = int(src % E)
+      this % last_g         = int(src % E)
+      this % E              = energy_bin_avg(this % g)
     end if
-    this % last_E       = this % E
+    this % last_E           = this % E
 
   end subroutine initialize_from_source
 

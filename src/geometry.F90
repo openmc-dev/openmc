@@ -499,7 +499,7 @@ contains
       end if
 
       ! Set previous coordinate going slightly past surface crossing
-      p % last_xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
+      p % last_xyz_current = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
 
       ! Diagnostic message
       if (verbosity >= 10 .or. trace) then
@@ -563,7 +563,7 @@ contains
       end if
 
       ! Set previous coordinate going slightly past surface crossing
-      p % last_xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
+      p % last_xyz_current = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
 
       ! Diagnostic message
       if (verbosity >= 10 .or. trace) then

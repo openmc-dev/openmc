@@ -257,6 +257,16 @@ Energy Groups
 
     openmc.mgxs.EnergyGroups
 
+Delayed Groups
+-------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.mgxs.DelayedGroups
+
 Multi-group Cross Sections
 --------------------------
 
@@ -283,6 +293,19 @@ Multi-group Cross Sections
     openmc.mgxs.ScatterMatrixXS
     openmc.mgxs.TotalXS
     openmc.mgxs.TransportXS
+
+Multi-delayed-group Cross Sections
+----------------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclassinherit.rst
+
+    openmc.mgxs.MDGXS
+    openmc.mgxs.ChiDelayed
+    openmc.mgxs.DelayedNuFissionXS
+    openmc.mgxs.Beta
 
 Multi-group Cross Section Libraries
 -----------------------------------

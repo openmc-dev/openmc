@@ -113,10 +113,11 @@ class TalliesTestHarness(PyAPITestHarness):
         polar_tally4.estimator = 'tracklength'
 
         universe_tally = Tally()
-        universe_tally.filters = [Filter(type='universe', bins=(1, 2, 3, 4))]
+        universe_tally.filters = [
+             Filter(type='universe', bins=(1, 2, 3, 4, 6, 8))]
         universe_tally.scores = ['total']
 
-        cell_filter = Filter(type='cell', bins=(10, 21, 22, 23))
+        cell_filter = Filter(type='cell', bins=(10, 21, 22, 23, 60))
         score_tallies = [Tally(), Tally(), Tally()]
         for t in score_tallies:
             t.filters = [cell_filter]
@@ -128,7 +129,7 @@ class TalliesTestHarness(PyAPITestHarness):
         score_tallies[1].estimator = 'analog'
         score_tallies[2].estimator = 'collision'
 
-        cell_filter2 = Filter(type='cell', bins=(21, 22, 23, 27, 28, 29))
+        cell_filter2 = Filter(type='cell', bins=(21, 22, 23, 27, 28, 29, 60))
         flux_tallies = [Tally() for i in range(4)]
         for t in flux_tallies:
             t.filters = [cell_filter2]

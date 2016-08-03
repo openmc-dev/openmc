@@ -237,57 +237,13 @@ contains
           end select
           call write_dataset(tally_group, "n_realizations", &
                tally % n_realizations)
-          call write_dataset(tally_group, "n_filters", tally % n_filters)
+          call write_dataset(tally_group, "n_filters", size(tally % filters))
 
           ! Write filter information
-          FILTER_LOOP: do j = 1, tally % n_filters
+          FILTER_LOOP: do j = 1, size(tally % filters)
             filter_group = create_group(tally_group, "filter " // &
                  trim(to_str(j)))
-
-            ! Write name of type
-            select case (tally % filters(j) % type)
-            case(FILTER_UNIVERSE)
-              call write_dataset(filter_group, "type", "universe")
-            case(FILTER_MATERIAL)
-              call write_dataset(filter_group, "type", "material")
-            case(FILTER_CELL)
-              call write_dataset(filter_group, "type", "cell")
-            case(FILTER_CELLBORN)
-              call write_dataset(filter_group, "type", "cellborn")
-            case(FILTER_SURFACE)
-              call write_dataset(filter_group, "type", "surface")
-            case(FILTER_MESH)
-              call write_dataset(filter_group, "type", "mesh")
-            case(FILTER_ENERGYIN)
-              call write_dataset(filter_group, "type", "energy")
-            case(FILTER_ENERGYOUT)
-              call write_dataset(filter_group, "type", "energyout")
-            case(FILTER_MU)
-              call write_dataset(filter_group, "type", "mu")
-            case(FILTER_POLAR)
-              call write_dataset(filter_group, "type", "polar")
-            case(FILTER_AZIMUTHAL)
-              call write_dataset(filter_group, "type", "azimuthal")
-            case(FILTER_DISTRIBCELL)
-              call write_dataset(filter_group, "type", "distribcell")
-            case(FILTER_DELAYEDGROUP)
-              call write_dataset(filter_group, "type", "delayedgroup")
-            end select
-
-            call write_dataset(filter_group, "n_bins", &
-                 tally % filters(j) % n_bins)
-            if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
-                 tally % filters(j) % type == FILTER_ENERGYOUT .or. &
-                 tally % filters(j) % type == FILTER_MU .or. &
-                 tally % filters(j) % type == FILTER_POLAR .or. &
-                 tally % filters(j) % type == FILTER_AZIMUTHAL) then
-              call write_dataset(filter_group, "bins", &
-                   tally % filters(j) % real_bins)
-            else
-              call write_dataset(filter_group, "bins", &
-                   tally % filters(j) % int_bins)
-            end if
-
+            call tally % filters(j) % obj % to_statepoint(filter_group)
             call close_group(filter_group)
           end do FILTER_LOOP
 

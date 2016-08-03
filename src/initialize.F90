@@ -22,8 +22,9 @@ module initialize
   use state_point,     only: load_state_point
   use string,          only: to_str, starts_with, ends_with, str_to_int
   use summary,         only: write_summary
-  use tally_header,    only: TallyObject, TallyResult, TallyFilter
+  use tally_header,    only: TallyObject, TallyResult
   use tally_initialize,only: configure_tallies
+  use tally_filter
   use tally,           only: init_tally_routines
 
 #ifdef MPI
@@ -711,76 +712,15 @@ contains
       ! =======================================================================
       ! ADJUST INDICES FOR EACH TALLY FILTER
 
-      FILTER_LOOP: do j = 1, t%n_filters
+      FILTER_LOOP: do j = 1, size(t % filters)
 
-        select case (t%filters(j)%type)
-        case (FILTER_DISTRIBCELL)
-          do k = 1, size(t%filters(j)%int_bins)
-            id = t%filters(j)%int_bins(k)
-            if (cell_dict%has_key(id)) then
-              t%filters(j)%int_bins(k) = cell_dict%get_key(id)
-            else
-              call fatal_error("Could not find cell " // trim(to_str(id)) // &
-                               " specified on tally " // trim(to_str(t%id)))
-            end if
-
-          end do
-        case (FILTER_CELL, FILTER_CELLBORN)
-
-          do k = 1, t%filters(j)%n_bins
-            id = t%filters(j)%int_bins(k)
-            if (cell_dict%has_key(id)) then
-              t%filters(j)%int_bins(k) = cell_dict%get_key(id)
-            else
-              call fatal_error("Could not find cell " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t%id)))
-            end if
-          end do
-
-        case (FILTER_SURFACE)
-
+        select type(filt => t % filters(j) % obj)
+        type is (SurfaceFilter)
           ! Check if this is a surface filter only for surface currents
-          if (any(t%score_bins == SCORE_CURRENT)) cycle FILTER_LOOP
-
-          do k = 1, t%filters(j)%n_bins
-            id = t%filters(j)%int_bins(k)
-            if (surface_dict%has_key(id)) then
-              t%filters(j)%int_bins(k) = surface_dict%get_key(id)
-            else
-              call fatal_error("Could not find surface " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t%id)))
-            end if
-          end do
-
-        case (FILTER_UNIVERSE)
-
-          do k = 1, t%filters(j)%n_bins
-            id = t%filters(j)%int_bins(k)
-            if (universe_dict%has_key(id)) then
-              t%filters(j)%int_bins(k) = universe_dict%get_key(id)
-            else
-              call fatal_error("Could not find universe " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t%id)))
-            end if
-          end do
-
-        case (FILTER_MATERIAL)
-
-          do k = 1, t%filters(j)%n_bins
-            id = t%filters(j)%int_bins(k)
-            if (material_dict%has_key(id)) then
-              t%filters(j)%int_bins(k) = material_dict%get_key(id)
-            else
-              call fatal_error("Could not find material " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t%id)))
-            end if
-          end do
-
-        case (FILTER_MESH)
-
-          ! The mesh filter already has been set to the index in meshes rather
-          ! than the user-specified id, so it doesn't need to be changed.
-
+          if (.not. any(t % score_bins == SCORE_CURRENT)) &
+               call filt % initialize()
+        class default
+          call filt % initialize()
         end select
 
       end do FILTER_LOOP
@@ -894,14 +834,11 @@ contains
 
     ! We need distribcell if any tallies have distribcell filters.
     do i = 1, n_tallies
-      do j = 1, tallies(i) % n_filters
-        if (tallies(i) % filters(j) % type == FILTER_DISTRIBCELL) then
+      do j = 1, size(tallies(i) % filters)
+        select type(filt => tallies(i) % filters(j) % obj)
+        type is (DistribcellFilter)
           distribcell_active = .true.
-          if (size(tallies(i) % filters(j) % int_bins) > 1) then
-            call fatal_error("A distribcell filter was specified with &
-                             &multiple bins. This feature is not supported.")
-          end if
-        end if
+        end select
       end do
     end do
 
@@ -924,13 +861,12 @@ contains
 
     ! Set the number of bins in all distribcell filters.
     do i = 1, n_tallies
-      do j = 1, tallies(i) % n_filters
-        associate (filt => tallies(i) % filters(j))
-          if (filt % type == FILTER_DISTRIBCELL) then
-            ! Set the number of bins to the number of instances of the cell.
-            filt % n_bins = cells(filt % int_bins(1)) % instances
-          end if
-        end associate
+      do j = 1, size(tallies(i) % filters)
+        select type(filt => tallies(i) % filters(j) % obj)
+        type is (DistribcellFilter)
+          ! Set the number of bins to the number of instances of the cell.
+          filt % n_bins = cells(filt % cell) % instances
+        end select
       end do
     end do
 
@@ -990,10 +926,11 @@ contains
 
     ! List all cells referenced in distribcell filters.
     do i = 1, n_tallies
-      do j = 1, tallies(i) % n_filters
-        if (tallies(i) % filters(j) % type == FILTER_DISTRIBCELL) then
-          call cell_list % add(tallies(i) % filters(j) % int_bins(1))
-        end if
+      do j = 1, size(tallies(i) % filters)
+        select type(filt => tallies(i) % filters(j) % obj)
+        type is (DistribcellFilter)
+          call cell_list % add(filt % cell)
+        end select
       end do
     end do
 

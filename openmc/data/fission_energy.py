@@ -603,12 +603,12 @@ class FissionEnergyRelease(object):
                                  data=self.prompt_neutrons.coef)
 
             q_prompt = (self.fragments + self.prompt_neutrons +
-                        self.prompt_photons + Polynomial((-1.0, 0.0)))
+                        self.prompt_photons + Polynomial((0.0, -1.0)))
             group.create_dataset('q_prompt', data=q_prompt.coef)
             q_recoverable = (self.fragments + self.prompt_neutrons +
                              self.delayed_neutrons + self.prompt_photons +
                              self.delayed_photons + self.betas +
-                             Polynomial((-1.0, 0.0)))
+                             Polynomial((0.0, -1.0)))
             group.create_dataset('q_recoverable', data=q_recoverable.coef)
         elif self.form == 'Sher-Beck':
             group.attrs['format'] = np.string_('Sher-Beck')

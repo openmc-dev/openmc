@@ -400,7 +400,7 @@ class Reaction(object):
         # Read cross section
         if 'xs' in group:
             xs = group['xs'].value
-            rx.xs = Tabulated1D(energy, xs)
+            rx.xs = Tabulated1D(energy[rx.threshold_idx:], xs)
 
         # Determine number of products
         n_product = 0

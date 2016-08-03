@@ -212,7 +212,7 @@ def check_less_than(name, value, maximum, equality=False):
             raise ValueError(msg)
 
 def check_greater_than(name, value, minimum, equality=False):
-    """Ensure that an object's value is less than a given value.
+    """Ensure that an object's value is greater than a given value.
 
     Parameters
     ----------

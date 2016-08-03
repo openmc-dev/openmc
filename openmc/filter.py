@@ -162,6 +162,11 @@ class Filter(object):
         if not isinstance(bins, Iterable):
             bins = [bins]
 
+        # If the bin is 0D numpy array, promote to 1D
+        elif isinstance(bins, np.ndarray):
+            if bins.shape == ():
+                bins.shape = (1,)
+
         # If the bins are in a collection, convert it to a list
         else:
             bins = list(bins)
@@ -563,7 +568,7 @@ class Filter(object):
             # Initialize dictionary to build Pandas Multi-index column
             filter_dict = {}
 
-            # Append Mesh ID as outermost index of mult-index
+            # Append Mesh ID as outermost index of multi-index
             mesh_key = 'mesh {0}'.format(self.mesh.id)
 
             # Find mesh dimensions - use 3D indices for simplicity

@@ -255,12 +255,14 @@ class Library(object):
 
     @mgxs_types.setter
     def mgxs_types(self, mgxs_types):
+        all_mgxs_types = np.append(openmc.mgxs.MGXS_TYPES,
+                                   openmc.mgxs.MDGXS_TYPES)
         if mgxs_types == 'all':
-            self._mgxs_types = openmc.mgxs.MGXS_TYPES
+            self._mgxs_types = all_mgxs_types
         else:
             cv.check_iterable_type('mgxs_types', mgxs_types, basestring)
             for mgxs_type in mgxs_types:
-                cv.check_value('mgxs_type', mgxs_type, openmc.mgxs.MGXS_TYPES)
+                cv.check_value('mgxs_type', mgxs_type, all_mgxs_types)
             self._mgxs_types = mgxs_types
 
     @by_nuclide.setter

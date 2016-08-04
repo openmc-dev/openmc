@@ -6,12 +6,16 @@ import glob
 import hashlib
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
+from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
 
 
 class MDGXSTestHarness(PyAPITestHarness):
     def _build_inputs(self):
+        # Set the input set to use the pincell model
+        self._input_set = PinCellInputSet()
+
         # Generate inputs using parent class routine
         super(MDGXSTestHarness, self)._build_inputs()
 
@@ -31,8 +35,8 @@ class MDGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.delayed_groups = delayed_groups
         self.mgxs_lib.domain_type = 'distribcell'
-        material_cells = self.mgxs_lib.openmc_geometry.get_all_material_cells()
-        self.mgxs_lib.domains = [material_cells[-1]]
+        cells = self.mgxs_lib.openmc_geometry.get_all_material_cells()
+        self.mgxs_lib.domains = [c for c in cells if c.name == 'cell 1']
         self.mgxs_lib.build_library()
 
         # Initialize a tallies file

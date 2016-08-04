@@ -1035,7 +1035,7 @@ contains
             ! Left Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /))
-            matching_bins(i_filter_surf) = OUT_RIGHT
+            matching_bins(i_filter_surf) = OUT_LEFT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &

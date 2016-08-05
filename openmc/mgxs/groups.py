@@ -376,9 +376,10 @@ class DelayedGroups(object):
         # Check that the groups are within [1, MAX_DELAYED_GROUPS]
         for group in groups:
             cv.check_greater_than('delayed group', group, 0)
-            cv.check_less_than('delayed group', group, MAX_DELAYED_GROUPS + 1)
+            cv.check_less_than('delayed group', group, MAX_DELAYED_GROUPS,
+                               equality=True)
 
-        self._groups = np.array(groups, dtype=int)
+        self._groups = np.asarray(groups, dtype=int)
 
     def can_merge(self, other):
         """Determine if delayed groups can be merged with another.
@@ -395,10 +396,7 @@ class DelayedGroups(object):
 
         """
 
-        if not isinstance(other, DelayedGroups):
-            return False
-        else:
-            return True
+        return isinstance(other, DelayedGroups)
 
     def merge(self, other):
         """Merge this delayed groups with another.
@@ -424,7 +422,7 @@ class DelayedGroups(object):
         # Merge unique filter bins
         groups = np.concatenate((self.groups, other.groups))
         groups = np.unique(groups)
-        groups = sorted(groups)
+        groups.sort()
 
         # Assign groups to merged groups
         merged_groups.groups = list(groups)

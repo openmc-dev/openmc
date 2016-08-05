@@ -254,7 +254,7 @@ contains
                 ! Right surface
                 if (i < nx) then
                   matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                     (/ i+1, j, k /) )
+                       (/ i+1, j, k /) )
                   matching_bins(i_filter_surf) = OUT_LEFT
                   score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                        * t % stride) + 1 ! incoming

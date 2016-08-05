@@ -329,7 +329,7 @@ contains
             end if
 
             matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /) + 1)
+                 mesh_indices_to_bin(m, (/ i, j, k /))
 
             ! Left Surface
             matching_bins(i_filter_surf) = OUT_LEFT

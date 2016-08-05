@@ -31,17 +31,6 @@ module endf_header
   end interface
 
 !===============================================================================
-! CONSTANT1D represents a constant one-dimensional function
-!===============================================================================
-
-  type, extends(Function1D) :: Constant1D
-    real(8) :: y
-  contains
-    procedure :: from_hdf5 => constant1d_from_hdf5
-    procedure :: evaluate => constant1d_evaluate
-  end type Constant1D
-
-!===============================================================================
 ! POLYNOMIAL represents a one-dimensional function expressed as a polynomial
 !===============================================================================
 
@@ -71,25 +60,6 @@ module endf_header
   end type Tabulated1D
 
 contains
-
-!===============================================================================
-! Constant1D implementation
-!===============================================================================
-
-  subroutine constant1d_from_hdf5(this, dset_id)
-    class(Constant1D), intent(inout) :: this
-    integer(HID_T),    intent(in)    :: dset_id
-
-    call read_dataset(this % y, dset_id)
-  end subroutine constant1d_from_hdf5
-
-  pure function constant1d_evaluate(this, x) result(y)
-    class(Constant1D), intent(in) :: this
-    real(8),           intent(in) :: x
-    real(8)                       :: y
-
-    y = this % y
-  end function constant1d_evaluate
 
 !===============================================================================
 ! Polynomial implementation

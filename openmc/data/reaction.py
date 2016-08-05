@@ -5,13 +5,12 @@ from numbers import Real
 from warnings import warn
 
 import numpy as np
-from numpy.polynomial import Polynomial
 
 import openmc.checkvalue as cv
 from openmc.stats import Uniform
 from .angle_distribution import AngleDistribution
 from .angle_energy import AngleEnergy
-from .function import Tabulated1D
+from .function import Tabulated1D, Polynomial
 from .data import REACTION_NAME
 from .product import Product
 from .uncorrelated import UncorrelatedAngleEnergy
@@ -465,7 +464,8 @@ class Reaction(object):
                         idx = ace.jxs[11] + abs(ty) - 101
                         yield_ = Tabulated1D.from_ace(ace, idx)
                     else:
-                        yield_ = abs(ty)
+                        # 0-order polynomial i.e. a constant
+                        yield_ = Polynomial((abs(ty),))
 
                     neutron = Product('neutron')
                     neutron.yield_ = yield_

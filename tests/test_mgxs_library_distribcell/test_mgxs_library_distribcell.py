@@ -6,29 +6,39 @@ import glob
 import hashlib
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
+from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
 
 
 class MGXSTestHarness(PyAPITestHarness):
     def _build_inputs(self):
+        # Set the input set to use the pincell model
+        self._input_set = PinCellInputSet()
+
         # Generate inputs using parent class routine
         super(MGXSTestHarness, self)._build_inputs()
 
         # Initialize a one-group structure
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.])
 
+        # Initialize a six-delayed-group structure
+        delayed_groups = openmc.mgxs.DelayedGroups(range(1,7))
+
         # Initialize MGXS Library for a few cross section types
         # for one material-filled cell in the geometry
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
         self.mgxs_lib.by_nuclide = False
+
         # Test all MGXS types
-        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES
+        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES + \
+                                   openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
+        self.mgxs_lib.delayed_groups = delayed_groups
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'distribcell'
-        material_cells = self.mgxs_lib.openmc_geometry.get_all_material_cells()
-        self.mgxs_lib.domains = [material_cells[-1]]
+        cells = self.mgxs_lib.openmc_geometry.get_all_material_cells()
+        self.mgxs_lib.domains = [c for c in cells if c.name == 'cell 1']
         self.mgxs_lib.build_library()
 
         # Initialize a tallies file

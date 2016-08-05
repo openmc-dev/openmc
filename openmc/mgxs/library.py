@@ -255,8 +255,7 @@ class Library(object):
 
     @mgxs_types.setter
     def mgxs_types(self, mgxs_types):
-        all_mgxs_types = np.append(openmc.mgxs.MGXS_TYPES,
-                                   openmc.mgxs.MDGXS_TYPES)
+        all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES
         if mgxs_types == 'all':
             self._mgxs_types = all_mgxs_types
         else:
@@ -270,7 +269,7 @@ class Library(object):
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if by_nuclide == True and self.domain_type == 'mesh':
-            raise ValueError('Unable to create MGXS library by nuclide with ' +
+            raise ValueError('Unable to create MGXS library by nuclide with '
                              'mesh domain')
 
         self._by_nuclide = by_nuclide
@@ -280,7 +279,7 @@ class Library(object):
         cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
 
         if self.by_nuclide == True and domain_type == 'mesh':
-            raise ValueError('Unable to create MGXS library by nuclide with ' +
+            raise ValueError('Unable to create MGXS library by nuclide with '
                              'mesh domain')
 
         self._domain_type = domain_type

@@ -75,8 +75,15 @@ elif args.xsdir is not None:
     else:
         raise IOError("Could not find 'directory' section in MCNP xsdir file")
 
+    # Handle continuation lines indicated by '+' at end of line
+    lines = lines[index + 1:]
+    continue_lines = [i for i, line in enumerate(lines)
+                      if line.strip().endswith('+')]
+    for i in reversed(continue_lines):
+        lines[i] += lines[i].strip()[:-1] + lines.pop(i + 1)
+
     # Create list of ACE libraries
-    for line in lines[index + 1:]:
+    for line in lines:
         words = line.split()
         if len(words) < 3:
             continue
@@ -111,12 +118,12 @@ for filename in ace_libraries:
             # Continuous-energy neutron data
             neutron = openmc.data.IncidentNeutron.from_ace(
                 table, args.metastable)
-            print(neutron.name)
+            print('Converting {} (ACE) to {} (HDF5)'.format(table.name, neutron.name))
 
             # Determine filename
             outfile = os.path.join(args.destination,
                                    neutron.name.replace('.', '_') + '.h5')
-            neutron.export_to_hdf5(outfile)
+            neutron.export_to_hdf5(outfile, 'w')
 
             # Register with library
             library.register_file(outfile)
@@ -124,12 +131,12 @@ for filename in ace_libraries:
         elif table.name.endswith('t'):
             # Thermal scattering data
             thermal = openmc.data.ThermalScattering.from_ace(table)
-            print(thermal.name)
+            print('Converting {} (ACE) to {} (HDF5)'.format(table.name, thermal.name))
 
             # Determine filename
             outfile = os.path.join(args.destination,
                                    thermal.name.replace('.', '_') + '.h5')
-            thermal.export_to_hdf5(outfile)
+            thermal.export_to_hdf5(outfile, 'w')
 
             # Register with library
             library.register_file(outfile, 'thermal')

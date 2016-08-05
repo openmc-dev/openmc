@@ -16,7 +16,7 @@ from openmc.stats import Discrete, Tabular
 
 _THERMAL_NAMES = {'al': 'c_Al27', 'al27': 'c_Al27',
                   'be': 'c_Be',
-                  'bebeo': 'c_Be_in_BeO', 'be-o': 'c_Be_in_BeO',
+                  'bebeo': 'c_Be_in_BeO', 'be-o': 'c_Be_in_BeO', 'be/o': 'c_Be_in_BeO',
                   'benz': 'c_Benzine',
                   'cah': 'c_Ca_in_CaH2',
                   'dd2o': 'c_D_in_D2O', 'hwtr': 'c_D_in_D2O',
@@ -25,18 +25,18 @@ _THERMAL_NAMES = {'al': 'c_Al27', 'al27': 'c_Al27',
                   'hca': 'c_H_in_CaH2',
                   'hch2': 'c_H_in_CH2', 'poly': 'c_H_in_CH2',
                   'hh2o': 'c_H_in_H2O', 'lwtr': 'c_H_in_H2O',
-                  'hzrh': 'c_H_in_ZrH', 'h-zr': 'c_H_in_ZrH',
+                  'hzrh': 'c_H_in_ZrH', 'h-zr': 'c_H_in_ZrH', 'h/zr': 'c_H_in_ZrH',
                   'lch4': 'c_liquid_CH4', 'lmeth': 'c_liquid_CH4',
                   'mg': 'c_Mg24',
-                  'obeo': 'c_O_in_BeO', 'o-be': 'c_O_in_BeO',
+                  'obeo': 'c_O_in_BeO', 'o-be': 'c_O_in_BeO', 'o/be': 'c_O_in_BeO',
                   'orthod': 'c_ortho_D', 'dortho': 'c_ortho_D',
                   'orthoh': 'c_ortho_H', 'hortho': 'c_ortho_H',
-                  'ouo2': 'c_O_in_UO2', 'o2-u': 'c_O_in_UO2',
+                  'ouo2': 'c_O_in_UO2', 'o2-u': 'c_O_in_UO2', 'o2/u': 'c_O_in_UO2',
                   'parad': 'c_para_D', 'dpara': 'c_para_D',
                   'parah': 'c_para_H', 'hpara': 'c_para_H',
                   'sch4': 'c_solid_CH4', 'smeth': 'c_solid_CH4',
-                  'uuo2': 'c_U_in_UO2', 'u-o2': 'c_U_in_UO2',
-                  'zrzrh': 'c_Zr_in_ZrH', 'zr-h': 'c_Zr_in_ZrH'}
+                  'uuo2': 'c_U_in_UO2', 'u-o2': 'c_U_in_UO2', 'u/o2': 'c_U_in_UO2',
+                  'zrzrh': 'c_Zr_in_ZrH', 'zr-h': 'c_Zr_in_ZrH', 'zr/h': 'c_Zr_in_ZrH'}
 
 
 class CoherentElastic(object):

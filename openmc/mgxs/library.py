@@ -866,49 +866,57 @@ class Library(object):
             xsdata.zaid = self._nuclides[nuclide][0]
             xsdata.awr = self._nuclides[nuclide][1]
 
+        if subdomain is None:
+            subdomain_val = 'all'
+        else:
+            subdomain_val = [subdomain]
+
         # Now get xs data itself
         if 'nu-transport' in self.mgxs_types and self.correction == 'P0':
             mymgxs = self.get_mgxs(domain, 'nu-transport')
-            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide])
+            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
+                                  subdomains=subdomain_val)
         elif 'total' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'total')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                  subdomain=subdomain)
+                                  subdomain=subdomain_val)
         if 'absorption' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'absorption')
             xsdata.set_absorption_mgxs(mymgxs, xs_type=xs_type,
-                                       nuclide=[nuclide], subdomain=subdomain)
+                                       nuclide=[nuclide],
+                                       subdomain=subdomain_val)
         if 'fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'fission')
             xsdata.set_fission_mgxs(mymgxs, xs_type=xs_type,
-                                    nuclide=[nuclide], subdomain=subdomain)
+                                    nuclide=[nuclide], subdomain=subdomain_val)
         if 'kappa-fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'kappa-fission')
             xsdata.set_kappa_fission_mgxs(mymgxs, xs_type=xs_type,
                                           nuclide=[nuclide],
-                                          subdomain=subdomain)
+                                          subdomain=subdomain_val)
         # For chi and nu-fission we can either have only a nu-fission matrix
         # provided, or vectors of chi and nu-fission provided
         if 'nu-fission matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'nu-fission matrix')
             xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
-                                       nuclide=[nuclide], subdomain=subdomain)
+                                       nuclide=[nuclide],
+                                       subdomain=subdomain_val)
         else:
             if 'chi' in self.mgxs_types:
                 mymgxs = self.get_mgxs(domain, 'chi')
                 xsdata.set_chi_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                    subdomain=subdomain)
+                                    subdomain=subdomain_val)
             if 'nu-fission' in self.mgxs_types:
                 mymgxs = self.get_mgxs(domain, 'nu-fission')
                 xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
                                            nuclide=[nuclide],
-                                           subdomain=subdomain)
+                                           subdomain=subdomain_val)
         # If multiplicity matrix is available, prefer that
         if 'multiplicity matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'multiplicity matrix')
             xsdata.set_multiplicity_mgxs(mymgxs, xs_type=xs_type,
                                          nuclide=[nuclide],
-                                         subdomain=subdomain)
+                                         subdomain=subdomain_val)
             using_multiplicity = True
         # multiplicity wil fall back to using scatter and nu-scatter
         elif ((('scatter matrix' in self.mgxs_types) and
@@ -917,7 +925,7 @@ class Library(object):
             nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
             xsdata.set_multiplicity_mgxs(nuscatt_mgxs, scatt_mgxs,
                                          xs_type=xs_type, nuclide=[nuclide],
-                                         subdomain=subdomain)
+                                         subdomain=subdomain_val)
             using_multiplicity = True
         else:
             using_multiplicity = False
@@ -925,12 +933,13 @@ class Library(object):
         if using_multiplicity:
             nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
             xsdata.set_scatter_mgxs(nuscatt_mgxs, xs_type=xs_type,
-                                    nuclide=[nuclide], subdomain=subdomain)
+                                    nuclide=[nuclide], subdomain=subdomain_val)
         else:
             if 'nu-scatter matrix' in self.mgxs_types:
                 nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
                 xsdata.set_scatter_mgxs(nuscatt_mgxs, xs_type=xs_type,
-                                        nuclide=[nuclide], subdomain=subdomain)
+                                        nuclide=[nuclide],
+                                        subdomain=subdomain_val)
 
                 # Since we are not using multiplicity, then
                 # scattering multiplication (nu-scatter) must be

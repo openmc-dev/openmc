@@ -604,7 +604,7 @@ class XSdata(object):
             self._fissionable = True
 
     def set_total_mgxs(self, total, nuclide='total', xs_type='macro',
-                       subdomain=None):
+                       subdomain='all'):
         """This method allows for an openmc.mgxs.TotalXS or
         openmc.mgxs.TransportXS to be used to set the total cross section
         for this XSdata object.
@@ -636,14 +636,10 @@ class XSdata(object):
         check_value('energy_groups', total.energy_groups, [self.energy_groups])
         check_value('domain_type', total.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
-        if subdomain is None:
-            subdomain_val = None
-        else:
-            subdomain_val = [subdomain]
 
         if self.representation is 'isotropic':
             self._total = total.get_xs(nuclides=nuclide, xs_type=xs_type,
-                                       subdomains=subdomain_val)
+                                       subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -680,15 +676,11 @@ class XSdata(object):
                     [self.energy_groups])
         check_value('domain_type', absorption.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
-        if subdomain is None:
-            subdomain_val = None
-        else:
-            subdomain_val = [subdomain]
 
         if self.representation is 'isotropic':
             self._absorption = absorption.get_xs(nuclides=nuclide,
                                                  xs_type=xs_type,
-                                                 subdomains=subdomain_val)
+                                                 subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -725,15 +717,11 @@ class XSdata(object):
                     [self.energy_groups])
         check_value('domain_type', fission.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
-        if subdomain is None:
-            subdomain_val = None
-        else:
-            subdomain_val = [subdomain]
 
         if self.representation is 'isotropic':
             self._fission = fission.get_xs(nuclides=nuclide,
                                            xs_type=xs_type,
-                                           subdomains=subdomain_val)
+                                           subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -771,15 +759,11 @@ class XSdata(object):
                     [self.energy_groups])
         check_value('domain_type', nu_fission.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
-        if subdomain is None:
-            subdomain_val = None
-        else:
-            subdomain_val = [subdomain]
 
         if self.representation is 'isotropic':
             self._nu_fission = nu_fission.get_xs(nuclides=nuclide,
                                                  xs_type=xs_type,
-                                                 subdomains=subdomain_val)
+                                                 subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -825,15 +809,11 @@ class XSdata(object):
                     [self.energy_groups])
         check_value('domain_type', k_fission.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
-        if subdomain is None:
-            subdomain_val = None
-        else:
-            subdomain_val = [subdomain]
 
         if self.representation is 'isotropic':
             self._kappa_fission = k_fission.get_xs(nuclides=nuclide,
                                                    xs_type=xs_type,
-                                                   subdomains=subdomain_val)
+                                                   subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -874,14 +854,10 @@ class XSdata(object):
         check_value('energy_groups', chi.energy_groups, [self.energy_groups])
         check_value('domain_type', chi.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
-        if subdomain is None:
-            subdomain_val = None
-        else:
-            subdomain_val = [subdomain]
 
         if self.representation is 'isotropic':
             self._chi = chi.get_xs(nuclides=nuclide,
-                                   xs_type=xs_type, subdomains=subdomain_val)
+                                   xs_type=xs_type, subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -940,11 +916,6 @@ class XSdata(object):
             check_value('legendre_order', scatter.legendre_order,
                         [self.order])
 
-        if subdomain is None:
-            subdomain_val = None
-        else:
-            subdomain_val = [subdomain]
-
         if self.representation is 'isotropic':
             # Get the scattering orders in the outermost dimension
             self._scatter = np.zeros((self.num_orders,
@@ -953,7 +924,7 @@ class XSdata(object):
             for moment in range(self.num_orders):
                 self._scatter[moment, :, :] = \
                     scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
-                                   moment=moment, subdomains=subdomain_val)
+                                   moment=moment, subdomains=subdomain)
 
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
@@ -1013,21 +984,17 @@ class XSdata(object):
                         [self.energy_groups])
             check_value('domain_type', scatter.domain_type,
                         ['universe', 'cell', 'material', 'mesh'])
-        if subdomain is None:
-            subdomain_val = None
-        else:
-            subdomain_val = [subdomain]
 
         if self.representation is 'isotropic':
             nuscatt = nuscatter.get_xs(nuclides=nuclide,
                                        xs_type=xs_type, moment=0,
-                                       subdomains=subdomain_val)
+                                       subdomains=subdomain)
             if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrixXS):
                 self._multiplicity = nuscatt
             else:
                 scatt = scatter.get_xs(nuclides=nuclide,
                                        xs_type=xs_type, moment=0,
-                                       subdomains=subdomain_val)
+                                       subdomains=subdomain)
                 self._multiplicity = np.divide(nuscatt, scatt)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'

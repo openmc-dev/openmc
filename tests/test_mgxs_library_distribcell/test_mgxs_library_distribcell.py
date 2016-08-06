@@ -6,7 +6,7 @@ import glob
 import hashlib
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from input_set import PinCellInputSet
+from input_set import AssemblyInputSet
 import openmc
 import openmc.mgxs
 
@@ -14,7 +14,7 @@ import openmc.mgxs
 class MGXSTestHarness(PyAPITestHarness):
     def _build_inputs(self):
         # Set the input set to use the pincell model
-        self._input_set = PinCellInputSet()
+        self._input_set = AssemblyInputSet()
 
         # Generate inputs using parent class routine
         super(MGXSTestHarness, self)._build_inputs()
@@ -23,7 +23,7 @@ class MGXSTestHarness(PyAPITestHarness):
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.])
 
         # Initialize a six-delayed-group structure
-        delayed_groups = openmc.mgxs.DelayedGroups(range(1,7))
+        delayed_groups = range(1,7)
 
         # Initialize MGXS Library for a few cross section types
         # for one material-filled cell in the geometry
@@ -38,7 +38,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'distribcell'
         cells = self.mgxs_lib.openmc_geometry.get_all_material_cells()
-        self.mgxs_lib.domains = [c for c in cells if c.name == 'cell 1']
+        self.mgxs_lib.domains = [c for c in cells if c.name == 'fuel']
         self.mgxs_lib.build_library()
 
         # Initialize a tallies file

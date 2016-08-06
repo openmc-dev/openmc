@@ -25,7 +25,7 @@ class MGXSTestHarness(PyAPITestHarness):
                                                               20.])
 
         # Initialize a six-delayed-group structure
-        delayed_groups = openmc.mgxs.DelayedGroups(range(1,7))
+        delayed_groups = range(1,7)
 
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)

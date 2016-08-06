@@ -1,63 +1,63 @@
-  avg(distribcell)  group in nuclide      mean  std. dev.
-0             (0,)         1   total  0.453624    0.02261
-  avg(distribcell)  group in nuclide      mean  std. dev.
-0             (0,)         1   total  0.400852   0.024589
-  avg(distribcell)  group in nuclide      mean  std. dev.
-0             (0,)         1   total  0.400852   0.024589
-  avg(distribcell)  group in nuclide      mean  std. dev.
-0             (0,)         1   total  0.064903   0.004684
-  avg(distribcell)  group in nuclide      mean  std. dev.
-0             (0,)         1   total  0.028048   0.004982
-  avg(distribcell)  group in nuclide      mean  std. dev.
-0             (0,)         1   total  0.036855   0.002749
-  avg(distribcell)  group in nuclide      mean  std. dev.
-0             (0,)         1   total  0.090649   0.006763
-  avg(distribcell)  group in nuclide      mean  std. dev.
-0             (0,)         1   total  7.137955   0.532092
-  avg(distribcell)  group in nuclide      mean  std. dev.
-0             (0,)         1   total  0.388721   0.018415
-  avg(distribcell)  group in nuclide      mean  std. dev.
-0             (0,)         1   total  0.389304   0.023619
-  avg(distribcell)  group in  group out nuclide moment      mean  std. dev.
-0             (0,)         1          1   total     P0  0.389304   0.023619
-1             (0,)         1          1   total     P1  0.046224   0.005672
-2             (0,)         1          1   total     P2  0.017984   0.002178
-3             (0,)         1          1   total     P3  0.006628   0.001620
-  avg(distribcell)  group in  group out nuclide moment      mean  std. dev.
-0             (0,)         1          1   total     P0  0.389304   0.023619
-1             (0,)         1          1   total     P1  0.046224   0.005672
-2             (0,)         1          1   total     P2  0.017984   0.002178
-3             (0,)         1          1   total     P3  0.006628   0.001620
-  avg(distribcell)  group in  group out nuclide  mean  std. dev.
-0             (0,)         1          1   total   1.0   0.066327
-  avg(distribcell)  group in  group out nuclide      mean  std. dev.
-0             (0,)         1          1   total  0.085835   0.004328
-  avg(distribcell)  group out nuclide  mean  std. dev.
-0             (0,)          1   total   1.0   0.046071
-  avg(distribcell)  group out nuclide  mean  std. dev.
-0             (0,)          1   total   1.0   0.051471
-  avg(distribcell)  group in nuclide          mean     std. dev.
-0             (0,)         1   total  4.996730e-07  3.741595e-08
-  avg(distribcell)  group in nuclide      mean  std. dev.
-0             (0,)         1   total  0.090004   0.006717
-  avg(distribcell)  delayedgroup  group in nuclide      mean  std. dev.
-0             (0,)             1         1   total  0.000021   0.000002
-1             (0,)             2         1   total  0.000110   0.000008
-2             (0,)             3         1   total  0.000107   0.000008
-3             (0,)             4         1   total  0.000249   0.000018
-4             (0,)             5         1   total  0.000112   0.000008
-5             (0,)             6         1   total  0.000046   0.000003
-  avg(distribcell)  delayedgroup  group out nuclide  mean  std. dev.
-0             (0,)             1          1   total   0.0   0.000000
-1             (0,)             2          1   total   1.0   0.869128
-2             (0,)             3          1   total   1.0   1.414214
-3             (0,)             4          1   total   1.0   0.360359
-4             (0,)             5          1   total   0.0   0.000000
-5             (0,)             6          1   total   0.0   0.000000
-  avg(distribcell)  delayedgroup  group in nuclide      mean  std. dev.
-0             (0,)             1         1   total  0.000227   0.000022
-1             (0,)             2         1   total  0.001214   0.000115
-2             (0,)             3         1   total  0.001184   0.000111
-3             (0,)             4         1   total  0.002752   0.000257
-4             (0,)             5         1   total  0.001231   0.000113
-5             (0,)             6         1   total  0.000512   0.000047
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.457353   0.010474
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.405649   0.015784
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.405641   0.015787
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.066556    0.00251
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.028979   0.002712
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.037577   0.001487
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.092377   0.003628
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  7.276707   0.287579
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.390797   0.008717
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.387332   0.014241
+                                    avg(distribcell)  group in  group out nuclide moment      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P0  0.387009   0.014230
+1  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P1  0.047179   0.004923
+2  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P2  0.015713   0.003654
+3  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P3  0.005378   0.003137
+                                    avg(distribcell)  group in  group out nuclide moment      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P0  0.387332   0.014241
+1  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P1  0.047187   0.004933
+2  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P2  0.015727   0.003654
+3  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total     P3  0.005387   0.003141
+                                    avg(distribcell)  group in  group out nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total  1.000834   0.037242
+                                    avg(distribcell)  group in  group out nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1          1   total  0.094516     0.0059
+                                    avg(distribcell)  group out nuclide  mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...          1   total   1.0   0.080455
+                                    avg(distribcell)  group out nuclide  mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...          1   total   1.0   0.080541
+                                    avg(distribcell)  group in nuclide          mean     std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  5.139437e-07  2.133314e-08
+                                    avg(distribcell)  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.091725   0.003604
+                                    avg(distribcell)  delayedgroup  group in nuclide      mean     std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             1         1   total  0.000021  8.253907e-07
+1  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             2         1   total  0.000112  4.284000e-06
+2  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             3         1   total  0.000109  4.105197e-06
+3  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             4         1   total  0.000252  9.271420e-06
+4  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             5         1   total  0.000112  3.888625e-06
+5  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             6         1   total  0.000047  1.625563e-06
+                                    avg(distribcell)  delayedgroup  group out nuclide  mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             1          1   total   0.0   0.000000
+1  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             2          1   total   1.0   1.414214
+2  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             3          1   total   1.0   1.414214
+3  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             4          1   total   0.0   0.000000
+4  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             5          1   total   0.0   0.000000
+5  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             6          1   total   1.0   1.414214
+                                    avg(distribcell)  delayedgroup  group in nuclide      mean  std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             1         1   total  0.000227   0.000012
+1  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             2         1   total  0.001209   0.000061
+2  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             3         1   total  0.001177   0.000059
+3  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             4         1   total  0.002727   0.000135
+4  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             5         1   total  0.001210   0.000058
+5  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...             6         1   total  0.000504   0.000024

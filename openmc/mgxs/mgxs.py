@@ -1517,15 +1517,14 @@ class MGXS(object):
         if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
             df.rename(columns={'energy low [MeV]': 'group in'},
                       inplace=True)
-            in_groups = np.tile(all_groups, self.num_subdomains)
+            in_groups = np.tile(all_groups, df.shape[0] / all_groups.size)
             in_groups = np.repeat(in_groups, df.shape[0] / in_groups.size)
             df['group in'] = in_groups
             del df['energy high [MeV]']
 
             df.rename(columns={'energyout low [MeV]': 'group out'},
                       inplace=True)
-            out_groups = np.repeat(all_groups, self.xs_tally.num_scores)
-            out_groups = np.tile(out_groups, df.shape[0] / out_groups.size)
+            out_groups = np.tile(all_groups, df.shape[0] / all_groups.size)
             df['group out'] = out_groups
             del df['energyout high [MeV]']
             columns = ['group in', 'group out']
@@ -1533,14 +1532,14 @@ class MGXS(object):
         elif 'energyout low [MeV]' in df:
             df.rename(columns={'energyout low [MeV]': 'group out'},
                       inplace=True)
-            in_groups = np.tile(all_groups, self.num_subdomains)
+            in_groups = np.tile(all_groups, df.shape[0] / all_groups.size)
             df['group out'] = in_groups
             del df['energyout high [MeV]']
             columns = ['group out']
 
         elif 'energy low [MeV]' in df:
             df.rename(columns={'energy low [MeV]': 'group in'}, inplace=True)
-            in_groups = np.tile(all_groups, self.num_subdomains)
+            in_groups = np.tile(all_groups, df.shape[0] / all_groups.size)
             df['group in'] = in_groups
             del df['energy high [MeV]']
             columns = ['group in']

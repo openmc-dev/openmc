@@ -19,7 +19,7 @@ class MGXSTestHarness(PyAPITestHarness):
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.])
 
         # Initialize a six-delayed-group structure
-        delayed_groups = openmc.mgxs.DelayedGroups(range(1,7))
+        delayed_groups = range(1,7)
 
         # Initialize MGXS Library for a few cross section types
         # for one material-filled cell in the geometry

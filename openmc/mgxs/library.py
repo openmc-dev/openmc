@@ -65,7 +65,7 @@ class Library(object):
         The highest legendre moment in the scattering matrices (default is 0)
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    delayed_groups : openmc.mgxs.DelayedGroups
+    delayed_groups : list of int
         Delayed groups to filter out the xs
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
@@ -224,7 +224,7 @@ class Library(object):
         if self.delayed_groups == None:
             return 0
         else:
-            return self.delayed_groups.num_groups
+            return len(self.delayed_groups)
 
     @property
     def all_mgxs(self):
@@ -327,8 +327,16 @@ class Library(object):
 
     @delayed_groups.setter
     def delayed_groups(self, delayed_groups):
-        cv.check_type('delayed groups', delayed_groups,
-                      openmc.mgxs.DelayedGroups)
+
+        cv.check_type('delayed groups', delayed_groups, list, int)
+        cv.check_greater_than('num delayed groups', len(delayed_groups), 0)
+
+        # Check that the groups are within [1, MAX_DELAYED_GROUPS]
+        for group in delayed_groups:
+            cv.check_greater_than('delayed group', group, 0)
+            cv.check_less_than('delayed group', group,
+                               openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
+
         self._delayed_groups = delayed_groups
 
     @correction.setter

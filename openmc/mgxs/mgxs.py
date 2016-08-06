@@ -724,11 +724,13 @@ class MGXS(object):
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
-               value='mean', **kwargs):
+               value='mean', squeeze=True, **kwargs):
         r"""Returns an array of multi-group cross sections.
 
-        This method constructs a 2D NumPy array for the requested multi-group
-        cross section data data for one or more energy groups and subdomains.
+        This method constructs a 3D NumPy array for the requested
+        multi-group cross section data for one or more subdomains
+        (1st dimension), energy groups (2nd dimension), and nuclides
+        (3rd dimension).
 
         Parameters
         ----------
@@ -750,6 +752,10 @@ class MGXS(object):
             Defaults to 'increasing'.
         value : {'mean', 'std_dev', 'rel_err'}
             A string for the type of value to return. Defaults to 'mean'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array this is to be retured. Defaults to
+            True.
 
         Returns
         -------
@@ -819,25 +825,29 @@ class MGXS(object):
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
 
+        # Eliminate the trivial score dimension
+        xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+        xs = np.nan_to_num(xs)
+
+        if groups == 'all':
+            num_groups = self.num_groups
+        else:
+            num_groups = len(groups)
+
+        # Reshape tally data array with separate axes for domain and energy
+        num_subdomains = int(xs.shape[0] / num_groups)
+        new_shape = (num_subdomains, num_groups) + xs.shape[1:]
+        xs = np.reshape(xs, new_shape)
+
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            if groups == 'all':
-                num_groups = self.num_groups
-            else:
-                num_groups = len(groups)
-
-            # Reshape tally data array with separate axes for domain and energy
-            num_subdomains = int(xs.shape[0] / num_groups)
-            new_shape = (num_subdomains, num_groups) + xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, :]
 
-        # Eliminate trivial dimensions
-        xs = np.squeeze(xs)
-        xs = np.atleast_1d(xs)
+        if squeeze:
+            xs = np.squeeze(xs)
+            xs = np.atleast_1d(xs)
+
         return xs
 
     def get_condensed_xs(self, coarse_groups):
@@ -1350,8 +1360,6 @@ class MGXS(object):
                 std_dev = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
                                       xs_type=xs_type, value='std_dev',
                                       row_column=row_column)
-                average = average.squeeze()
-                std_dev = std_dev.squeeze()
 
                 # Add MGXS results data to the HDF5 group
                 nuclide_group.require_dataset('average', dtype=np.float64,
@@ -1517,14 +1525,14 @@ class MGXS(object):
         if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
             df.rename(columns={'energy low [MeV]': 'group in'},
                       inplace=True)
-            in_groups = np.tile(all_groups, df.shape[0] / all_groups.size)
-            in_groups = np.repeat(in_groups, df.shape[0] / in_groups.size)
+            in_groups = np.tile(all_groups, int(self.num_subdomains))
+            in_groups = np.repeat(in_groups, int(df.shape[0] / in_groups.size))
             df['group in'] = in_groups
             del df['energy high [MeV]']
 
             df.rename(columns={'energyout low [MeV]': 'group out'},
                       inplace=True)
-            out_groups = np.tile(all_groups, df.shape[0] / all_groups.size)
+            out_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
             df['group out'] = out_groups
             del df['energyout high [MeV]']
             columns = ['group in', 'group out']
@@ -1532,14 +1540,14 @@ class MGXS(object):
         elif 'energyout low [MeV]' in df:
             df.rename(columns={'energyout low [MeV]': 'group out'},
                       inplace=True)
-            in_groups = np.tile(all_groups, df.shape[0] / all_groups.size)
+            in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
             df['group out'] = in_groups
             del df['energyout high [MeV]']
             columns = ['group out']
 
         elif 'energy low [MeV]' in df:
             df.rename(columns={'energy low [MeV]': 'group in'}, inplace=True)
-            in_groups = np.tile(all_groups, df.shape[0] / all_groups.size)
+            in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
             df['group in'] = in_groups
             del df['energy high [MeV]']
             columns = ['group in']
@@ -1570,6 +1578,7 @@ class MGXS(object):
                                (mesh_str, 'z')] + columns, inplace=True)
         else:
             df.sort_values(by=[self.domain_type] + columns, inplace=True)
+
         return df
 
     def get_units(self, xs_type='macro'):
@@ -1700,11 +1709,13 @@ class MatrixMGXS(MGXS):
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
-               row_column='inout', value='mean', **kwargs):
+               row_column='inout', value='mean', squeeze=True, **kwargs):
         """Returns an array of multi-group cross sections.
 
-        This method constructs a 2D NumPy array for the requested multi-group
-        matrix data for one or more energy groups and subdomains.
+        This method constructs a 4D NumPy array for the requested
+        multi-group cross section data for one or more subdomains
+        (1st dimension), energy groups in (2nd dimension), energy groups out
+        (3rd dimension), and nuclides (4th dimension).
 
         Parameters
         ----------
@@ -1733,6 +1744,10 @@ class MatrixMGXS(MGXS):
             Defaults to 'inout'.
         value : {'mean', 'std_dev', 'rel_err'}
             A string for the type of value to return. Defaults to 'mean'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array this is to be retured. Defaults to
+            True.
 
         Returns
         -------
@@ -1804,8 +1819,6 @@ class MatrixMGXS(MGXS):
                                           filter_bins=filter_bins,
                                           nuclides=query_nuclides, value=value)
 
-        xs = np.nan_to_num(xs)
-
         # Divide by atom number densities for microscopic cross sections
         if xs_type == 'micro':
             if self.by_nuclide:
@@ -1815,33 +1828,36 @@ class MatrixMGXS(MGXS):
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
 
+        # Eliminate the trivial score dimension
+        xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+        xs = np.nan_to_num(xs)
+
+        if in_groups == 'all':
+            num_in_groups = self.num_groups
+        else:
+            num_in_groups = len(in_groups)
+
+        if out_groups == 'all':
+            num_out_groups = self.num_groups
+        else:
+            num_out_groups = len(out_groups)
+
+        # Reshape tally data array with separate axes for domain and energy
+        num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups))
+        new_shape = (num_subdomains, num_in_groups, num_out_groups)
+        new_shape += xs.shape[1:]
+        xs = np.reshape(xs, new_shape)
+
+        # Transpose the matrix if requested by user
+        if row_column == 'outin':
+            xs = np.swapaxes(xs, 1, 2)
+
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            if in_groups == 'all':
-                num_in_groups = self.num_groups
-            else:
-                num_in_groups = len(in_groups)
-            if out_groups == 'all':
-                num_out_groups = self.num_groups
-            else:
-                num_out_groups = len(out_groups)
-
-            # Reshape tally data array with separate axes for domain and energy
-            num_subdomains = int(xs.shape[0] /
-                                 (num_in_groups * num_out_groups))
-            new_shape = (num_subdomains, num_in_groups, num_out_groups)
-            new_shape += xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Transpose the matrix if requested by user
-            if row_column == 'outin':
-                xs = np.swapaxes(xs, 1, 2)
-
-            # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, ::-1, :]
 
-            # Eliminate trivial dimensions
+        if squeeze:
             xs = np.squeeze(xs)
             xs = np.atleast_2d(xs)
 
@@ -3518,11 +3534,13 @@ class ScatterMatrixXS(MatrixMGXS):
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all', moment='all',
                xs_type='macro', order_groups='increasing',
-               row_column='inout', value='mean'):
+               row_column='inout', value='mean', squeeze=True):
         r"""Returns an array of multi-group cross sections.
 
-        This method constructs a 2D NumPy array for the requested scattering
-        matrix data data for one or more energy groups and subdomains.
+        This method constructs a 5D NumPy array for the requested
+        multi-group cross section data for one or more subdomains
+        (1st dimension), energy groups in (2nd dimension), energy groups out
+        (3rd dimension), nuclides (4th dimension), and moments (5th dimension).
 
         NOTE: The scattering moments are not multiplied by the :math:`(2l+1)/2`
         prefactor in the expansion of the scattering source into Legendre
@@ -3558,6 +3576,10 @@ class ScatterMatrixXS(MatrixMGXS):
             Defaults to 'inout'.
         value : {'mean', 'std_dev', 'rel_err'}
             A string for the type of value to return. Defaults to 'mean'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array this is to be retured. Defaults to
+            False.
 
         Returns
         -------
@@ -3636,8 +3658,6 @@ class ScatterMatrixXS(MatrixMGXS):
                                           filter_bins=filter_bins,
                                           nuclides=query_nuclides, value=value)
 
-        xs = np.nan_to_num(xs)
-
         # Divide by atom number densities for microscopic cross sections
         if xs_type == 'micro':
             if self.by_nuclide:
@@ -3647,32 +3667,35 @@ class ScatterMatrixXS(MatrixMGXS):
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
 
+        # Convert and nans to zero
+        xs = np.nan_to_num(xs)
+
+        if in_groups == 'all':
+            num_in_groups = self.num_groups
+        else:
+            num_in_groups = len(in_groups)
+
+        if out_groups == 'all':
+            num_out_groups = self.num_groups
+        else:
+            num_out_groups = len(out_groups)
+
+        # Reshape tally data array with separate axes for domain and energy
+        num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups))
+        new_shape = (num_subdomains, num_in_groups, num_out_groups)
+        new_shape += xs.shape[1:]
+        xs = np.reshape(xs, new_shape)
+
+        # Transpose the scattering matrix if requested by user
+        if row_column == 'outin':
+            xs = np.swapaxes(xs, 1, 2)
+
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            if in_groups == 'all':
-                num_in_groups = self.num_groups
-            else:
-                num_in_groups = len(in_groups)
-            if out_groups == 'all':
-                num_out_groups = self.num_groups
-            else:
-                num_out_groups = len(out_groups)
-
-            # Reshape tally data array with separate axes for domain and energy
-            num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups))
-            new_shape = (num_subdomains, num_in_groups, num_out_groups)
-            new_shape += xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Transpose the scattering matrix if requested by user
-            if row_column == 'outin':
-                xs = np.swapaxes(xs, 1, 2)
-
-            # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, ::-1, :]
 
-            # Eliminate trivial dimensions
+        if squeeze:
             xs = np.squeeze(xs)
             xs = np.atleast_2d(xs)
 
@@ -3729,7 +3752,7 @@ class ScatterMatrixXS(MatrixMGXS):
         if self.legendre_order > 0:
             # Insert a column corresponding to the Legendre moments
             moments = ['P{}'.format(i) for i in range(self.legendre_order+1)]
-            moments = np.tile(moments, df.shape[0] / len(moments))
+            moments = np.tile(moments, int(df.shape[0] / len(moments)))
             df['moment'] = moments
 
             # Place the moment column before the mean column
@@ -4513,11 +4536,13 @@ class Chi(MGXS):
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
-               value='mean', **kwargs):
+               value='mean', squeeze=True, **kwargs):
         """Returns an array of the fission spectrum.
 
-        This method constructs a 2D NumPy array for the requested multi-group
-        cross section data data for one or more energy groups and subdomains.
+        This method constructs a 3D NumPy array for the requested
+        multi-group cross section data for one or more subdomains
+        (1st dimension), energy groups (2nd dimension), and nuclides
+        (3rd dimension).
 
         Parameters
         ----------
@@ -4539,6 +4564,10 @@ class Chi(MGXS):
             Defaults to 'increasing'.
         value : {'mean', 'std_dev', 'rel_err'}
             A string for the type of value to return. Defaults to 'mean'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array this is to be retured. Defaults to
+            True.
 
         Returns
         -------
@@ -4630,27 +4659,29 @@ class Chi(MGXS):
             xs = self.xs_tally.get_values(filters=filters,
                                           filter_bins=filter_bins, value=value)
 
+        # Eliminate the trivial score dimension
+        xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+        xs = np.nan_to_num(xs)
+
+        # Reshape tally data array with separate axes for domain and energy
+        if groups == 'all':
+            num_groups = self.num_groups
+        else:
+            num_groups = len(groups)
+
+        num_subdomains = int(xs.shape[0] / num_groups)
+        new_shape = (num_subdomains, num_groups) + xs.shape[1:]
+        xs = np.reshape(xs, new_shape)
+
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-
-            # Reshape tally data array with separate axes for domain and energy
-            if groups == 'all':
-                num_groups = self.num_groups
-            else:
-                num_groups = len(groups)
-            num_subdomains = int(xs.shape[0] / num_groups)
-            new_shape = (num_subdomains, num_groups) + xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, :]
 
-            # Eliminate trivial dimensions
+        if squeeze:
             xs = np.squeeze(xs)
             xs = np.atleast_1d(xs)
 
-        xs = np.nan_to_num(xs)
         return xs
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',

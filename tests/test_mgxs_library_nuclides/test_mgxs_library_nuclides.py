@@ -9,6 +9,7 @@ from testing_harness import PyAPITestHarness
 from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
+import numpy as np
 
 
 class MGXSTestHarness(PyAPITestHarness):

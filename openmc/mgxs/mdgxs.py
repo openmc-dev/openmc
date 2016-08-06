@@ -14,6 +14,9 @@ import openmc
 from openmc.mgxs import MGXS
 import openmc.checkvalue as cv
 
+if sys.version_info[0] >= 3:
+    basestring = str
+
 # Supported cross section types
 MDGXS_TYPES = ['delayed-nu-fission',
                'chi-delayed',
@@ -102,12 +105,12 @@ class MDGXS(MGXS):
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
-        Whether or not the MDGXS' tallies use SciPy's LIL sparse matrix format
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
         for compressed data storage
     loaded_sp : bool
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
-        Whether or not the MDGXS is merged from one or more other MDGXS
+        Whether or not the MGXS is merged from one or more other MGXS
     hdf5_key : str
         The key used to index multi-group cross sections in an HDF5 data store
 
@@ -165,23 +168,25 @@ class MDGXS(MGXS):
     @property
     def num_delayed_groups(self):
         if self.delayed_groups == None:
-            return 0
+            return 1
         else:
             return len(self.delayed_groups)
 
     @delayed_groups.setter
     def delayed_groups(self, delayed_groups):
 
-        cv.check_type('delayed groups', delayed_groups, list, int)
-        cv.check_greater_than('num delayed groups', len(delayed_groups), 0)
+        if delayed_groups != None:
 
-        # Check that the groups are within [1, MAX_DELAYED_GROUPS]
-        for group in delayed_groups:
-            cv.check_greater_than('delayed group', group, 0)
-            cv.check_less_than('delayed group', group, MAX_DELAYED_GROUPS,
-                               equality=True)
+            cv.check_type('delayed groups', delayed_groups, list, int)
+            cv.check_greater_than('num delayed groups', len(delayed_groups), 0)
 
-        self._delayed_groups = delayed_groups
+            # Check that the groups are within [1, MAX_DELAYED_GROUPS]
+            for group in delayed_groups:
+                cv.check_greater_than('delayed group', group, 0)
+                cv.check_less_than('delayed group', group, MAX_DELAYED_GROUPS,
+                                   equality=True)
+
+            self._delayed_groups = delayed_groups
 
     @property
     def filters(self):
@@ -251,12 +256,13 @@ class MDGXS(MGXS):
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
-               value='mean', delayed_groups='all', **kwargs):
+               value='mean', delayed_groups='all', squeeze=True, **kwargs):
         """Returns an array of multi-delayed-group cross sections.
 
-        This method constructs a 2D NumPy array for the requested
-        multi-delayed-group cross section data data for one or more energy
-        groups, delayed groups, and subdomains.
+        This method constructs a 4D NumPy array for the requested
+        multi-delayed-group cross section data for one or more
+        subdomains (1st dimension), delayed groups (2nd demension),
+        energy groups (3rd dimension), and nuclides (4th dimension).
 
         Parameters
         ----------
@@ -280,6 +286,10 @@ class MDGXS(MGXS):
             A string for the type of value to return. Defaults to 'mean'.
         delayed_groups : list of int or 'all'
             Delayed groups of interest. Defaults to 'all'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array this is to be retured. Defaults to
+            True.
 
         Returns
         -------
@@ -359,25 +369,36 @@ class MDGXS(MGXS):
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
 
+        # Eliminate the trivial score dimension
+        xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+        xs = np.nan_to_num(xs)
+
+        if groups == 'all':
+            num_groups = self.num_groups
+        else:
+            num_groups = len(groups)
+
+        if delayed_groups == 'all':
+            num_delayed_groups = self.num_delayed_groups
+        else:
+            num_delayed_groups = len(delayed_groups)
+
+        # Reshape tally data array with separate axes for domain, energy groups,
+        # delayed groups, and nuclides
+        num_subdomains = int(xs.shape[0] / (num_groups * num_delayed_groups))
+        new_shape = (num_subdomains, num_delayed_groups, num_groups)
+        new_shape += xs.shape[1:]
+        xs = np.reshape(xs, new_shape)
+
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            if groups == 'all':
-                num_groups = self.num_groups
-            else:
-                num_groups = len(groups)
+            xs = xs[:, :, ::-1, :]
 
-            # Reshape tally data array with separate axes for domain and energy
-            num_subdomains = int(xs.shape[0] / num_groups)
-            new_shape = (num_subdomains, num_groups) + xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
+        if squeeze:
+            xs = np.squeeze(xs)
+            xs = np.atleast_1d(xs)
 
-            # Reverse energies to align with increasing energy groups
-            xs = xs[:, ::-1, :]
-
-        # Eliminate trivial dimensions
-        xs = np.squeeze(xs)
-        xs = np.atleast_1d(xs)
         return xs
 
     def get_slice(self, nuclides=[], groups=[], delayed_groups=[]):
@@ -467,11 +488,11 @@ class MDGXS(MGXS):
         return slice_xs
 
     def merge(self, other):
-        """Merge another MDGXS with this one
+        """Merge another MGXS with this one
 
-        MDGXS are only mergeable if their energy groups and nuclides are either
+        MGXS are only mergeable if their energy groups and nuclides are either
         identical or mutually exclusive. If results have been loaded from a
-        statepoint, then MDGXS are only mergeable along one and only one of
+        statepoint, then MGXS are only mergeable along one and only one of
         energy groups or nuclides.
 
         Parameters
@@ -718,8 +739,111 @@ class MDGXS(MGXS):
 
         """
 
+        if not isinstance(groups, basestring):
+            cv.check_iterable_type('groups', groups, Integral)
+        if nuclides != 'all' and nuclides != 'sum':
+            cv.check_iterable_type('nuclides', nuclides, basestring)
         if not isinstance(delayed_groups, basestring):
             cv.check_type('delayed groups', delayed_groups, list, int)
+
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        # Get a Pandas DataFrame from the derived xs tally
+        if self.by_nuclide and nuclides == 'sum':
+
+            # Use tally summation to sum across all nuclides
+            query_nuclides = self.get_all_nuclides()
+            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            df = xs_tally.get_pandas_dataframe(
+                distribcell_paths=distribcell_paths)
+
+            # Remove nuclide column since it is homogeneous and redundant
+            if self.domain_type == 'mesh':
+                df.drop('nuclide', axis=1, level=0, inplace=True)
+            else:
+                df.drop('nuclide', axis=1, inplace=True)
+
+        # If the user requested a specific set of nuclides
+        elif self.by_nuclide and nuclides != 'all':
+            xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
+            df = xs_tally.get_pandas_dataframe(
+                distribcell_paths=distribcell_paths)
+
+        # If the user requested all nuclides, keep nuclide column in dataframe
+        else:
+            df = self.xs_tally.get_pandas_dataframe(
+                distribcell_paths=distribcell_paths)
+
+        # Remove the score column since it is homogeneous and redundant
+        if self.domain_type == 'mesh':
+            df = df.drop('score', axis=1, level=0)
+        else:
+            df = df.drop('score', axis=1)
+
+        # Override energy groups bounds with indices
+        all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
+        all_groups = np.repeat(all_groups, self.num_nuclides)
+        if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
+            df.rename(columns={'energy low [MeV]': 'group in'},
+                      inplace=True)
+            in_groups = np.tile(all_groups, int(self.num_subdomains *
+                                                self.num_delayed_groups))
+            in_groups = np.repeat(in_groups, int(df.shape[0] / in_groups.size))
+            df['group in'] = in_groups
+            del df['energy high [MeV]']
+
+            df.rename(columns={'energyout low [MeV]': 'group out'},
+                      inplace=True)
+            out_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
+            df['group out'] = out_groups
+            del df['energyout high [MeV]']
+            columns = ['group in', 'group out']
+
+        elif 'energyout low [MeV]' in df:
+            df.rename(columns={'energyout low [MeV]': 'group out'},
+                      inplace=True)
+            in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
+            df['group out'] = in_groups
+            del df['energyout high [MeV]']
+            columns = ['group out']
+
+        elif 'energy low [MeV]' in df:
+            df.rename(columns={'energy low [MeV]': 'group in'}, inplace=True)
+            in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
+            df['group in'] = in_groups
+            del df['energy high [MeV]']
+            columns = ['group in']
+
+        # Select out those groups the user requested
+        if not isinstance(groups, basestring):
+            if 'group in' in df:
+                df = df[df['group in'].isin(groups)]
+            if 'group out' in df:
+                df = df[df['group out'].isin(groups)]
+
+        # If user requested micro cross sections, divide out the atom densities
+        if xs_type == 'micro':
+            if self.by_nuclide:
+                densities = self.get_nuclide_densities(nuclides)
+            else:
+                densities = self.get_nuclide_densities('sum')
+            densities = np.repeat(densities, len(self.rxn_rate_tally.scores))
+            tile_factor = df.shape[0] / len(densities)
+            df['mean'] /= np.tile(densities, tile_factor)
+            df['std. dev.'] /= np.tile(densities, tile_factor)
+
+        # Sort the dataframe by domain type id (e.g., distribcell id) and
+        # energy groups such that data is from fast to thermal
+        if self.domain_type == 'mesh':
+            mesh_str = 'mesh {0}'.format(self.domain.id)
+            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'), \
+                               (mesh_str, 'z')] + columns, inplace=True)
+        else:
+            df.sort_values(by=[self.domain_type] + columns, inplace=True)
+
+        return df
+
+
 
         df = super(MDGXS, self).get_pandas_dataframe(groups, nuclides, xs_type,
                                                      distribcell_paths)
@@ -744,7 +868,7 @@ class ChiDelayed(MDGXS):
     domain are generated automatically via the :attr:`ChiDelayed.tallies`
     property, which can then be appended to a :class:`openmc.Tallies` instance.
 
-    For post-processing, the :meth:`MDGXS.load_from_statepoint` will pull in the
+    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross
     section can then be obtained from the :attr:`ChiDelayed.xs_tally` property.
@@ -961,7 +1085,7 @@ class ChiDelayed(MDGXS):
 
             # Slice nu-fission-out tally along energyout filter
             delayed_nu_fission_out = slice_xs.tallies['delayed-nu-fission-out']
-            tally_slice = delayed_nu_fission_out.get_slice\
+            tally_slice = delayed_nu_fission_out.get_slice \
                           (filters=filters, filter_bins=filter_bins)
             slice_xs._tallies['delayed-nu-fission-out'] = tally_slice
 
@@ -980,8 +1104,8 @@ class ChiDelayed(MDGXS):
 
         Parameters
         ----------
-        other : openmc.mdgxs.MDGXS
-            MDGXS to merge with this one
+        other : openmc.mdgxs.MGXS
+            MGXS to merge with this one
 
         Returns
         -------
@@ -1030,12 +1154,13 @@ class ChiDelayed(MDGXS):
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
-               value='mean', delayed_groups='all', **kwargs):
+               value='mean', delayed_groups='all', squeeze=True, **kwargs):
         """Returns an array of the delayed fission spectrum.
 
-        This method constructs a 2D NumPy array for the requested multi-group
-        and multi-delayed group cross section data data for one or more energy
-        groups and subdomains.
+        This method constructs a 4D NumPy array for the requested
+        multi-delayed-group cross section data for one or more
+        subdomains (1st dimension), delayed groups (2nd demension),
+        energy groups (3rd dimension), and nuclides (4th dimension).
 
         Parameters
         ----------
@@ -1052,13 +1177,17 @@ class ChiDelayed(MDGXS):
             cross section summed over all nuclides. Defaults to 'all'.
         xs_type: {'macro', 'micro'}
             This parameter is not relevant for chi but is included here to
-            mirror the parent MDGXS.get_xs(...) class method
+            mirror the parent MGXS.get_xs(...) class method
         order_groups: {'increasing', 'decreasing'}
             Return the cross section indexed according to increasing or
             decreasing energy groups (decreasing or increasing energies).
             Defaults to 'increasing'.
         value : {'mean', 'std_dev', 'rel_err'}
             A string for the type of value to return. Defaults to 'mean'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array this is to be retured. Defaults to
+            True.
 
         Returns
         -------
@@ -1162,27 +1291,37 @@ class ChiDelayed(MDGXS):
             xs = self.xs_tally.get_values(filters=filters,
                                           filter_bins=filter_bins, value=value)
 
+        # Eliminate the trivial score dimension
+        xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+        xs = np.nan_to_num(xs)
+
+        # Reshape tally data array with separate axes for domain and energy
+        if groups == 'all':
+            num_groups = self.num_groups
+        else:
+            num_groups = len(groups)
+
+        if delayed_groups == 'all':
+            num_delayed_groups = self.num_delayed_groups
+        else:
+            num_delayed_groups = len(delayed_groups)
+
+        # Reshape tally data array with separate axes for domain, energy groups,
+        # delayed groups, and nuclides
+        num_subdomains = int(xs.shape[0] / (num_groups * num_delayed_groups))
+        new_shape = (num_subdomains, num_delayed_groups, num_groups)
+        new_shape += xs.shape[1:]
+        xs = np.reshape(xs, new_shape)
+
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
+            xs = xs[:, :, ::-1, :]
 
-            # Reshape tally data array with separate axes for domain and energy
-            if groups == 'all':
-                num_groups = self.num_groups
-            else:
-                num_groups = len(groups)
-            num_subdomains = int(xs.shape[0] / num_groups)
-            new_shape = (num_subdomains, num_groups) + xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Reverse energies to align with increasing energy groups
-            xs = xs[:, ::-1, :]
-
-            # Eliminate trivial dimensions
+        if squeeze:
             xs = np.squeeze(xs)
             xs = np.atleast_1d(xs)
 
-        xs = np.nan_to_num(xs)
         return xs
 
 
@@ -1199,7 +1338,7 @@ class DelayedNuFissionXS(MDGXS):
     :attr:`DelayedNuFissionXS.tallies` property, which can then be appended to a
     :class:`openmc.Tallies` instance.
 
-    For post-processing, the :meth:`MDGXS.load_from_statepoint` will pull in the
+    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`DelayedNuFissionXS.xs_tally` property.
@@ -1315,7 +1454,7 @@ class Beta(MDGXS):
     generated automatically via the :attr:`Beta.tallies` property, which can
     then be appended to a :class:`openmc.Tallies` instance.
 
-    For post-processing, the :meth:`MDGXS.load_from_statepoint` will pull in the
+    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
     can then be obtained from the :attr:`Beta.xs_tally` property.

@@ -328,16 +328,19 @@ class Library(object):
     @delayed_groups.setter
     def delayed_groups(self, delayed_groups):
 
-        cv.check_type('delayed groups', delayed_groups, list, int)
-        cv.check_greater_than('num delayed groups', len(delayed_groups), 0)
+        if delayed_groups != None:
 
-        # Check that the groups are within [1, MAX_DELAYED_GROUPS]
-        for group in delayed_groups:
-            cv.check_greater_than('delayed group', group, 0)
-            cv.check_less_than('delayed group', group,
-                               openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
+            cv.check_type('delayed groups', delayed_groups, list, int)
+            cv.check_greater_than('num delayed groups', len(delayed_groups), 0)
 
-        self._delayed_groups = delayed_groups
+            # Check that the groups are within [1, MAX_DELAYED_GROUPS]
+            for group in delayed_groups:
+                cv.check_greater_than('delayed group', group, 0)
+                cv.check_less_than('delayed group', group,
+                                   openmc.mgxs.MAX_DELAYED_GROUPS,
+                                   equality=True)
+
+            self._delayed_groups = delayed_groups
 
     @correction.setter
     def correction(self, correction):
@@ -508,7 +511,7 @@ class Library(object):
         ----------
         domain : Material or Cell or Universe or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'delayed-nu-fission', 'chi-delayed', 'beta'}
             The type of multi-group cross section object to return
 
         Returns

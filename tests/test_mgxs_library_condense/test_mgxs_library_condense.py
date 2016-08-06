@@ -9,6 +9,7 @@ from testing_harness import PyAPITestHarness
 from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
+import numpy as np
 
 
 class MGXSTestHarness(PyAPITestHarness):
@@ -24,7 +25,7 @@ class MGXSTestHarness(PyAPITestHarness):
                                                               20.])
 
         # Initialize a six-delayed-group structure
-        delayed_groups = range(1,7)
+        delayed_groups = list(range(1,7))
 
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)

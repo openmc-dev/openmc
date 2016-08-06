@@ -795,7 +795,9 @@ class Library(object):
         subdomain : iterable of int
             This parameter is not used unless using a mesh domain. In that
             case, the subdomain is an [i,j,k] index (1-based indexing) of the
-            mesh cell of interest in the openmc.Mesh object.
+            mesh cell of interest in the openmc.Mesh object.  Note:
+            this parameter currently only supports subdomains within a mesh,
+            and not the subdomains of a distribcell.
 
         Returns
         -------
@@ -918,7 +920,7 @@ class Library(object):
                                          nuclide=[nuclide],
                                          subdomain=subdomain_val)
             using_multiplicity = True
-        # multiplicity wil fall back to using scatter and nu-scatter
+        # multiplicity will fall back to using scatter and nu-scatter
         elif ((('scatter matrix' in self.mgxs_types) and
                ('nu-scatter matrix' in self.mgxs_types))):
             scatt_mgxs = self.get_mgxs(domain, 'scatter matrix')
@@ -1018,33 +1020,33 @@ class Library(object):
         # Initialize file
         mgxs_file = openmc.MGXSLibrary(self.energy_groups)
 
+        # Get the number of domains to size arrays with
+        if self.domain_type is 'mesh':
+            num_domains = np.sum(d.num_mesh_cells for d in self.domains)
+        else:
+            num_domains = len(self.domains)
+
+        # Set id names
         if xs_ids is not None:
             if isinstance(xs_ids, basestring):
                 # If we only have a string lets convert it now to a list
                 # of strings.
-                xs_id_input = xs_ids
-                xs_ids = []
-                for domain in self.domains:
-                    if self.domain_type is 'mesh':
-                        for subdomain in domain.cell_generator():
-                            xs_ids.append(xs_id_input)
-                    else:
-                        xs_ids.append(xs_id_input)
+                all_xs_ids = [xs_ids] * num_domains
             else:
                 cv.check_iterable_type('xs_ids', xs_ids, basestring)
+                cv.check_length('xs_ids', xs_ids, num_domains, num_domains)
+                all_xs_ids = xs_ids
+
         else:
-            xs_ids = []
-            for domain in self.domains:
-                if self.domain_type is 'mesh':
-                    for subdomain in domain.cell_generator():
-                        xs_ids.append('1m')
-                else:
-                    xs_ids.append('1m')
+            all_xs_ids = ['1m'] * num_domains
 
         if self.domain_type == 'mesh':
             # Create the xsdata objects and add to the mgxs_file
             i = 0
             for domain in self.domains:
+                if self.by_nuclide:
+                    raise NotImplementedError("Mesh domains do not currently "
+                                              "support nuclidic tallies")
                 for subdomain in domain.cell_generator():
                     # Build & add metadata to XSdata object
                     if xsdata_names is None:
@@ -1055,7 +1057,8 @@ class Library(object):
                     # Create XSdata and Macroscopic for this domain
                     xsdata = self.get_xsdata(domain, xsdata_name,
                                              nuclide='total',
-                                             xs_type=xs_type, xs_id=xs_ids[i],
+                                             xs_type=xs_type,
+                                             xs_id=all_xs_ids[i],
                                              tabular_legendre=tabular_legendre,
                                              tabular_points=tabular_points,
                                              subdomain=subdomain)
@@ -1079,8 +1082,8 @@ class Library(object):
                         xsdata_name += '_' + nuclide
 
                     xsdata = self.get_xsdata(domain, xsdata_name,
-                                             nuclide=nuclide,
-                                             xs_type=xs_type, xs_id=xs_ids[i],
+                                             nuclide=nuclide, xs_type=xs_type,
+                                             xs_id=all_xs_ids[i],
                                              tabular_legendre=tabular_legendre,
                                              tabular_points=tabular_points)
 
@@ -1120,9 +1123,12 @@ class Library(object):
             parameter is set to `True`.  In this case, this parameter sets the
             number of equally-spaced points in the domain of [-1,1] to be used
             in building the tabular distribution. Default is `33`.
-        bc : iterable of {'reflective', 'periodic', or 'vacuum'}
-            Boundary conditions for each of the six faces of a parallelopiped:
-            North, East, South, Wwest, Up, and Down.
+        bc : iterable of {'reflective', 'periodic', 'transmission', or 'vacuum'}
+            Boundary conditions for each of the four faces of a rectangle
+            (if aplying to a 2D mesh) or six faces of a parallelepiped
+            (if applying to a 3D mesh) provided in the following order:
+            [x min, x max, y min, y max, z min, z max].  2-D cells do not
+            contain the z min and z max entries.
 
         Returns
         -------
@@ -1160,40 +1166,39 @@ class Library(object):
         # Initialize MGXS File
         mgxs_file = openmc.MGXSLibrary(self.energy_groups)
 
-        # Set ID names
+        # Get the number of domains to size arrays with
+        if self.domain_type is 'mesh':
+            num_domains = np.sum(d.num_mesh_cells for d in self.domains)
+        else:
+            num_domains = len(self.domains)
+
+        # Set id names
         if xs_ids is not None:
             if isinstance(xs_ids, basestring):
                 # If we only have a string lets convert it now to a list
                 # of strings.
-                xs_id_input = xs_ids
-                xs_ids = []
-                for domain in self.domains:
-                    if self.domain_type is 'mesh':
-                        for subdomain in domain.cell_generator():
-                            xs_ids.append(xs_id_input)
-                    else:
-                        xs_ids.append(xs_id_input)
+                all_xs_ids = [xs_ids] * num_domains
             else:
                 cv.check_iterable_type('xs_ids', xs_ids, basestring)
+                cv.check_length('xs_ids', xs_ids, num_domains, num_domains)
+                all_xs_ids = xs_ids
+
         else:
-            xs_ids = []
-            for domain in self.domains:
-                if self.domain_type is 'mesh':
-                    for subdomain in domain.cell_generator():
-                        xs_ids.append('1m')
-                else:
-                    xs_ids.append('1m')
+            all_xs_ids = ['1m'] * num_domains
 
         if self.domain_type == 'mesh':
-            # Before continuing, we cant build a model automatically if
-            # the user provided multiple mesh domains for library generation.
-            # So check and complain as needed.
+            # We cant build a model automatically if the user provided multiple
+            # mesh domains for library generation since the multiple meshes
+            # could be overlapping or in disparate regions of the continuous
+            # energy model. The next step makes sure there is only one before
+            # continuing.
             cv.check_length("domains", self.domains, 1, 1)
 
             # Create the xsdata objects and add to the mgxs_file
             # and assign to materials and geometry as we go
             materials = openmc.Materials()
             root = openmc.Universe(name='root', universe_id=0)
+
             # Add cells representative of the mesh with reflective BC
             root_cell, cells = \
                 self.domains[0].build_cells(bc)
@@ -1209,19 +1214,20 @@ class Library(object):
                     xsdata_name = xsdata_names[i]
 
                 # Create XSdata and Macroscopic for this domain
-                xsdata = self.get_xsdata(domain, xsdata_name,
+                xsdata = self.get_xsdata(self.domains[0], xsdata_name,
                                          nuclide='total',
-                                         xs_type=xs_type, xs_id=xs_ids[i],
+                                         xs_type=xs_type,
+                                         xs_id=all_xs_ids[i],
                                          tabular_legendre=tabular_legendre,
                                          tabular_points=tabular_points,
                                          subdomain=subdomain)
                 mgxs_file.add_xsdata(xsdata)
                 macroscopic = openmc.Macroscopic(name=xsdata_name,
-                                                 xs=xs_ids[i])
+                                                 xs=all_xs_ids[i])
 
                 # Create Material and add to collection
                 material = openmc.Material(name=xsdata_name + '.' +
-                                           xs_ids[i])
+                                           all_xs_ids[i])
                 material.add_macroscopic(macroscopic)
                 materials.append(material)
 
@@ -1247,15 +1253,16 @@ class Library(object):
 
                 # Create XSdata and Macroscopic for this domain
                 xsdata = self.get_xsdata(domain, xsdata_name, nuclide='total',
-                                         xs_type=xs_type, xs_id=xs_ids[i],
+                                         xs_type=xs_type, xs_id=all_xs_ids[i],
                                          tabular_legendre=tabular_legendre,
                                          tabular_points=tabular_points)
                 mgxs_file.add_xsdata(xsdata)
                 macroscopic = openmc.Macroscopic(name=xsdata_name,
-                                                 xs=xs_ids[i])
+                                                 xs=all_xs_ids[i])
 
                 # Create Material and add to collection
-                material = openmc.Material(name=xsdata_name + '.' + xs_ids[i])
+                material = openmc.Material(name=xsdata_name + '.' +
+                                           all_xs_ids[i])
                 material.add_macroscopic(macroscopic)
                 materials.append(material)
 

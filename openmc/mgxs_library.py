@@ -1120,6 +1120,10 @@ class MGXSLibrary(object):
     def energy_groups(self):
         return self._energy_groups
 
+    @property
+    def xsdatas(self):
+        return self._xsdatas
+
     @inverse_velocities.setter
     def inverse_velocities(self, inverse_velocities):
         check_type('inverse_velocities', inverse_velocities, Iterable, Real)

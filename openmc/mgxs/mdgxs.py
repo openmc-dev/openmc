@@ -10,12 +10,9 @@ import abc
 
 import numpy as np
 
-from openmc import Mesh
 import openmc
+from openmc.mgxs import MGXS
 import openmc.checkvalue as cv
-from openmc.mgxs.groups import EnergyGroups
-from openmc.mgxs.mgxs import MGXS, MGXS_TYPES, DOMAIN_TYPES, _DOMAINS
-
 
 # Supported cross section types
 MDGXS_TYPES = ['delayed-nu-fission',

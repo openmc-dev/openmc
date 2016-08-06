@@ -869,56 +869,56 @@ class Library(object):
             xsdata.awr = self._nuclides[nuclide][1]
 
         if subdomain is None:
-            subdomain_val = 'all'
+            subdomain = 'all'
         else:
-            subdomain_val = [subdomain]
+            subdomain = [subdomain]
 
         # Now get xs data itself
         if 'nu-transport' in self.mgxs_types and self.correction == 'P0':
             mymgxs = self.get_mgxs(domain, 'nu-transport')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                  subdomains=subdomain_val)
+                                  subdomains=subdomain)
         elif 'total' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'total')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                  subdomain=subdomain_val)
+                                  subdomain=subdomain)
         if 'absorption' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'absorption')
             xsdata.set_absorption_mgxs(mymgxs, xs_type=xs_type,
                                        nuclide=[nuclide],
-                                       subdomain=subdomain_val)
+                                       subdomain=subdomain)
         if 'fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'fission')
             xsdata.set_fission_mgxs(mymgxs, xs_type=xs_type,
-                                    nuclide=[nuclide], subdomain=subdomain_val)
+                                    nuclide=[nuclide], subdomain=subdomain)
         if 'kappa-fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'kappa-fission')
             xsdata.set_kappa_fission_mgxs(mymgxs, xs_type=xs_type,
                                           nuclide=[nuclide],
-                                          subdomain=subdomain_val)
+                                          subdomain=subdomain)
         # For chi and nu-fission we can either have only a nu-fission matrix
         # provided, or vectors of chi and nu-fission provided
         if 'nu-fission matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'nu-fission matrix')
             xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
                                        nuclide=[nuclide],
-                                       subdomain=subdomain_val)
+                                       subdomain=subdomain)
         else:
             if 'chi' in self.mgxs_types:
                 mymgxs = self.get_mgxs(domain, 'chi')
                 xsdata.set_chi_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                    subdomain=subdomain_val)
+                                    subdomain=subdomain)
             if 'nu-fission' in self.mgxs_types:
                 mymgxs = self.get_mgxs(domain, 'nu-fission')
                 xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
                                            nuclide=[nuclide],
-                                           subdomain=subdomain_val)
+                                           subdomain=subdomain)
         # If multiplicity matrix is available, prefer that
         if 'multiplicity matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'multiplicity matrix')
             xsdata.set_multiplicity_mgxs(mymgxs, xs_type=xs_type,
                                          nuclide=[nuclide],
-                                         subdomain=subdomain_val)
+                                         subdomain=subdomain)
             using_multiplicity = True
         # multiplicity will fall back to using scatter and nu-scatter
         elif ((('scatter matrix' in self.mgxs_types) and
@@ -927,7 +927,7 @@ class Library(object):
             nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
             xsdata.set_multiplicity_mgxs(nuscatt_mgxs, scatt_mgxs,
                                          xs_type=xs_type, nuclide=[nuclide],
-                                         subdomain=subdomain_val)
+                                         subdomain=subdomain)
             using_multiplicity = True
         else:
             using_multiplicity = False
@@ -935,13 +935,13 @@ class Library(object):
         if using_multiplicity:
             nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
             xsdata.set_scatter_mgxs(nuscatt_mgxs, xs_type=xs_type,
-                                    nuclide=[nuclide], subdomain=subdomain_val)
+                                    nuclide=[nuclide], subdomain=subdomain)
         else:
             if 'nu-scatter matrix' in self.mgxs_types:
                 nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
                 xsdata.set_scatter_mgxs(nuscatt_mgxs, xs_type=xs_type,
                                         nuclide=[nuclide],
-                                        subdomain=subdomain_val)
+                                        subdomain=subdomain)
 
                 # Since we are not using multiplicity, then
                 # scattering multiplication (nu-scatter) must be
@@ -1159,44 +1159,21 @@ class Library(object):
         # multi-group cross section types
         self.check_library_for_openmc_mgxs()
 
-        if xsdata_names is not None:
-            cv.check_iterable_type('xsdata_names', xsdata_names, basestring)
-        xs_type = 'macro'
-
-        # Initialize MGXS File
-        mgxs_file = openmc.MGXSLibrary(self.energy_groups)
-
-        # Get the number of domains to size arrays with
-        if self.domain_type is 'mesh':
-            num_domains = np.sum(d.num_mesh_cells for d in self.domains)
-        else:
-            num_domains = len(self.domains)
-
-        # Set id names
-        if xs_ids is not None:
-            if isinstance(xs_ids, basestring):
-                # If we only have a string lets convert it now to a list
-                # of strings.
-                all_xs_ids = [xs_ids] * num_domains
-            else:
-                cv.check_iterable_type('xs_ids', xs_ids, basestring)
-                cv.check_length('xs_ids', xs_ids, num_domains, num_domains)
-                all_xs_ids = xs_ids
-
-        else:
-            all_xs_ids = ['1m'] * num_domains
-
+        # If the domain type is a mesh, then there can only be one domain for
+        # this method. Thi is because we can build a model automatically if
+        # the user provided multiple mesh domains for library generation since
+        # the multiple meshes could be overlapping or in disparate regions
+        # of the continuous energy model. The next step makes sure there is
+        # only one before continuing.
         if self.domain_type == 'mesh':
-            # We cant build a model automatically if the user provided multiple
-            # mesh domains for library generation since the multiple meshes
-            # could be overlapping or in disparate regions of the continuous
-            # energy model. The next step makes sure there is only one before
-            # continuing.
             cv.check_length("domains", self.domains, 1, 1)
 
-            # Create the xsdata objects and add to the mgxs_file
-            # and assign to materials and geometry as we go
-            materials = openmc.Materials()
+        # Get the MGXS File Data
+        mgxs_file = self.create_mg_library('macro', xsdata_names, xs_ids,
+                                           tabular_legendre, tabular_points)
+
+        # Now move on the creating the geometry and assigning materials
+        if self.domain_type == 'mesh':
             root = openmc.Universe(name='root', universe_id=0)
 
             # Add cells representative of the mesh with reflective BC
@@ -1205,29 +1182,17 @@ class Library(object):
             root.add_cell(root_cell)
             geometry = openmc.Geometry()
             geometry.root_universe = root
+            materials = openmc.Materials()
 
             for i, subdomain in enumerate(self.domains[0].cell_generator()):
-                # Build & add metadata to XSdata object
-                if xsdata_names is None:
-                    xsdata_name = 'set' + str(i + 1)
-                else:
-                    xsdata_name = xsdata_names[i]
-
-                # Create XSdata and Macroscopic for this domain
-                xsdata = self.get_xsdata(self.domains[0], xsdata_name,
-                                         nuclide='total',
-                                         xs_type=xs_type,
-                                         xs_id=all_xs_ids[i],
-                                         tabular_legendre=tabular_legendre,
-                                         tabular_points=tabular_points,
-                                         subdomain=subdomain)
-                mgxs_file.add_xsdata(xsdata)
-                macroscopic = openmc.Macroscopic(name=xsdata_name,
-                                                 xs=all_xs_ids[i])
+                xsdata = mgxs_file.xsdatas[i]
+                [name, id] = xsdata.name.split('.')
+                # Build the macroscopic and assign it to the cell of
+                # interest
+                macroscopic = openmc.Macroscopic(name=name, xs=id)
 
                 # Create Material and add to collection
-                material = openmc.Material(name=xsdata_name + '.' +
-                                           all_xs_ids[i])
+                material = openmc.Material(name=xsdata.name)
                 material.add_macroscopic(macroscopic)
                 materials.append(material)
 
@@ -1244,25 +1209,13 @@ class Library(object):
 
             # Create the xsdata object and add it to the mgxs_file
             for i, domain in enumerate(self.domains):
+                xsdata = mgxs_file.xsdatas[i]
+                [name, id] = xsdata.name.split('.')
 
-                # Build & add metadata to XSdata object
-                if xsdata_names is None:
-                    xsdata_name = 'set' + str(i + 1)
-                else:
-                    xsdata_name = xsdata_names[i]
-
-                # Create XSdata and Macroscopic for this domain
-                xsdata = self.get_xsdata(domain, xsdata_name, nuclide='total',
-                                         xs_type=xs_type, xs_id=all_xs_ids[i],
-                                         tabular_legendre=tabular_legendre,
-                                         tabular_points=tabular_points)
-                mgxs_file.add_xsdata(xsdata)
-                macroscopic = openmc.Macroscopic(name=xsdata_name,
-                                                 xs=all_xs_ids[i])
+                macroscopic = openmc.Macroscopic(name=name, xs=id)
 
                 # Create Material and add to collection
-                material = openmc.Material(name=xsdata_name + '.' +
-                                           all_xs_ids[i])
+                material = openmc.Material(name=xsdata.name)
                 material.add_macroscopic(macroscopic)
                 materials.append(material)
 

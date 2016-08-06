@@ -1,5 +1,5 @@
 from collections import Iterable
-from numbers import Real, Integral
+from numbers import Real
 import copy
 import sys
 
@@ -10,10 +10,6 @@ import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
     basestring = str
-
-# Maximum number of delayed groups
-# TODO: Get value from OpenMC
-MAX_DELAYED_GROUPS = 8
 
 
 class EnergyGroups(object):
@@ -302,128 +298,4 @@ class EnergyGroups(object):
 
         # Assign merged edges to merged groups
         merged_groups.group_edges = list(merged_edges)
-        return merged_groups
-
-
-class DelayedGroups(object):
-    """A delayed groups structure used for multi-delayed-group parameters.
-
-    Parameters
-    ----------
-    groups : Iterable of Int
-        The delayed groups
-
-    Attributes
-    ----------
-    groups : Iterable of Int
-        The delayed groups
-    num_groups : int
-        The number of delayed groups
-
-    """
-
-    def __init__(self, groups=None):
-        self._groups = None
-
-        if groups is not None:
-            self.groups = groups
-
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy object, create copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._groups = copy.deepcopy(self.groups, memo)
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
-    def __eq__(self, other):
-        if not isinstance(other, DelayedGroups):
-            return False
-        elif self.num_groups != other.num_groups:
-            return False
-        elif np.allclose(self.groups, other.groups):
-            return True
-        else:
-            return False
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash(tuple(self.groups))
-
-    @property
-    def groups(self):
-        return self._groups
-
-    @property
-    def num_groups(self):
-        return len(self.groups)
-
-    @groups.setter
-    def groups(self, groups):
-        cv.check_type('groups', groups, Iterable, Integral)
-        cv.check_greater_than('number of delayed groups', len(groups), 0)
-
-        # Check that the groups are within [1, MAX_DELAYED_GROUPS]
-        for group in groups:
-            cv.check_greater_than('delayed group', group, 0)
-            cv.check_less_than('delayed group', group, MAX_DELAYED_GROUPS,
-                               equality=True)
-
-        self._groups = np.asarray(groups, dtype=int)
-
-    def can_merge(self, other):
-        """Determine if delayed groups can be merged with another.
-
-        Parameters
-        ----------
-        other : openmc.mgxs.DelayedGroups
-            DelayedGroups to compare with
-
-        Returns
-        -------
-        bool
-            Whether the delayed groups can be merged
-
-        """
-
-        return isinstance(other, DelayedGroups)
-
-    def merge(self, other):
-        """Merge this delayed groups with another.
-
-        Parameters
-        ----------
-        other : openmc.mgxs.DelayedGroups
-            DelayedGroups to merge with
-
-        Returns
-        -------
-        merged_groups : openmc.mgxs.DelayedGroups
-            DelayedGroups resulting from the merge
-
-        """
-
-        if not self.can_merge(other):
-            raise ValueError('Unable to merge delayed groups')
-
-        # Create deep copy to return as merged delayed groups
-        merged_groups = copy.deepcopy(self)
-
-        # Merge unique filter bins
-        groups = np.concatenate((self.groups, other.groups))
-        groups = np.unique(groups)
-        groups.sort()
-
-        # Assign groups to merged groups
-        merged_groups.groups = list(groups)
         return merged_groups

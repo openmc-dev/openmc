@@ -10,16 +10,21 @@ import abc
 
 import numpy as np
 
-from mgxs import MGXS, MGXS_TYPES, DOMAIN_TYPES, _DOMAINS
-from openmc.mgxs import EnergyGroups, DelayedGroups
 from openmc import Mesh
 import openmc
 import openmc.checkvalue as cv
+from openmc.mgxs.groups import EnergyGroups
+from openmc.mgxs.mgxs import MGXS, MGXS_TYPES, DOMAIN_TYPES, _DOMAINS
+
 
 # Supported cross section types
 MDGXS_TYPES = ['delayed-nu-fission',
                'chi-delayed',
                'beta']
+
+# Maximum number of delayed groups, from src/constants.F90
+MAX_DELAYED_GROUPS = 8
+
 
 class MDGXS(MGXS):
     """An abstract multi-delayed-group cross section for some energy and delayed
@@ -45,7 +50,7 @@ class MDGXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
-    delayed_groups : openmc.mgxs.DelayedGroups
+    delayed_groups : list of int
         Delayed groups to filter out the xs
 
     Attributes
@@ -62,7 +67,7 @@ class MDGXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    delayed_groups : openmc.mgxs.DelayedGroups
+    delayed_groups : list of int
         Delayed groups to filter out the xs
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
@@ -118,6 +123,7 @@ class MDGXS(MGXS):
                  delayed_groups=None, by_nuclide=False, name=''):
         super(MDGXS, self).__init__(domain, domain_type, energy_groups,
                                     by_nuclide, name)
+
         self._delayed_groups = None
 
         if delayed_groups is not None:
@@ -164,12 +170,20 @@ class MDGXS(MGXS):
         if self.delayed_groups == None:
             return 0
         else:
-            return self.delayed_groups.num_groups
+            return len(self.delayed_groups)
 
     @delayed_groups.setter
     def delayed_groups(self, delayed_groups):
-        cv.check_type('delayed groups', delayed_groups,
-                      openmc.mgxs.DelayedGroups)
+
+        cv.check_type('delayed groups', delayed_groups, list, int)
+        cv.check_greater_than('num delayed groups', len(delayed_groups), 0)
+
+        # Check that the groups are within [1, MAX_DELAYED_GROUPS]
+        for group in delayed_groups:
+            cv.check_greater_than('delayed group', group, 0)
+            cv.check_less_than('delayed group', group, MAX_DELAYED_GROUPS,
+                               equality=True)
+
         self._delayed_groups = delayed_groups
 
     @property
@@ -180,8 +194,7 @@ class MDGXS(MGXS):
         energy_filter = openmc.Filter('energy', group_edges)
 
         if self.delayed_groups != None:
-            delayed_groups = self.delayed_groups.groups
-            delayed_filter = openmc.Filter('delayedgroup', delayed_groups)
+            delayed_filter = openmc.Filter('delayedgroup', self.delayed_groups)
             return [[energy_filter], [delayed_filter, energy_filter]]
         else:
             return [[energy_filter], [energy_filter]]
@@ -213,7 +226,7 @@ class MDGXS(MGXS):
         name : str, optional
             Name of the multi-group cross section. Used as a label to identify
             tallies in OpenMC 'tallies.xml' file. Defaults to the empty string.
-        delayed_groups : openmc.mgxs.DelayedGroups
+        delayed_groups : list of int
             Delayed groups to filter out the xs
 
         Returns
@@ -268,7 +281,7 @@ class MDGXS(MGXS):
             Defaults to 'increasing'.
         value : {'mean', 'std_dev', 'rel_err'}
             A string for the type of value to return. Defaults to 'mean'.
-        delayed_groups : Iterable of Integral or 'all'
+        delayed_groups : list of int or 'all'
             Delayed groups of interest. Defaults to 'all'.
 
         Returns
@@ -316,7 +329,7 @@ class MDGXS(MGXS):
 
         # Construct list of delayed group tuples for all requested groups
         if not isinstance(delayed_groups, basestring):
-            cv.check_iterable_type('delayed_groups', delayed_groups, Integral)
+            cv.check_type('delayed groups', delayed_groups, list, int)
             for delayed_group in delayed_groups:
                 filters.append('delayedgroup')
                 filter_bins.append((delayed_group,))
@@ -402,7 +415,7 @@ class MDGXS(MGXS):
 
         cv.check_iterable_type('nuclides', nuclides, basestring)
         cv.check_iterable_type('energy_groups', groups, Integral)
-        cv.check_iterable_type('delayed_groups', delayed_groups, Integral)
+        cv.check_type('delayed groups', delayed_groups, list, int)
 
         # Build lists of filters and filter bins to slice
         filters = []
@@ -447,7 +460,7 @@ class MDGXS(MGXS):
 
         # Assign sliced delayed group structure to sliced MDGXS
         if delayed_groups:
-            slice_xs.delayed_groups.groups = delayed_groups
+            slice_xs.delayed_groups = delayed_groups
 
         # Assign sliced nuclides to sliced MGXS
         if nuclides:
@@ -455,28 +468,6 @@ class MDGXS(MGXS):
 
         slice_xs.sparse = self.sparse
         return slice_xs
-
-    def can_merge(self, other):
-        """Determine if another MDGXS can be merged with this one
-
-        If results have been loaded from a statepoint, then MGXS are only
-        mergeable along one and only one of enegy groups or nuclides.
-
-        Parameters
-        ----------
-        other : openmc.mgxs.MGXS
-            MGXS to check for merging
-
-        """
-
-        can_merge = super(MDGXS, self).can_merge(other)
-
-        # Compare delayed groups
-        if not self.delayed_groups.can_merge(other.delayed_groups):
-            can_merge = False
-
-        # If all conditionals pass then MDGXS are mergeable
-        return can_merge
 
     def merge(self, other):
         """Merge another MDGXS with this one
@@ -502,9 +493,8 @@ class MDGXS(MGXS):
 
         # Merge delayed groups
         if self.delayed_groups != other.delayed_groups:
-            merged_delayed_groups = self.delayed_groups.merge(
-                other.delayed_groups)
-            merged_mdgxs.delayed_groups = merged_delayed_groups
+            merged_mdgxs.delayed_groups = list(set(self.delayed_groups +
+                                                   other.delayed_groups))
 
         return merged_mdgxs
 
@@ -586,7 +576,7 @@ class MDGXS(MGXS):
                 # Add the cross section header
                 string += '{0: <16}\n'.format(xs_header)
 
-                for delayed_group in self.delayed_groups.groups:
+                for delayed_group in self.delayed_groups:
 
                     template = '{0: <12}Delayed Group {1}:\t'
                     string += template.format('', delayed_group)
@@ -635,7 +625,7 @@ class MDGXS(MGXS):
         xs_type: {'macro', 'micro'}
             Store the macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
-        delayed_groups : Iterable of Integral or 'all'
+        delayed_groups : list of int or 'all'
             Delayed groups of interest. Defaults to 'all'.
 
         """
@@ -715,7 +705,7 @@ class MDGXS(MGXS):
             The geometric information in the Summary object is embedded into
             a Multi-index column with a geometric "path" to each distribcell
             instance.
-        delayed_groups : Iterable of Integral or 'all'
+        delayed_groups : list of int or 'all'
             Delayed groups of interest. Defaults to 'all'.
 
         Returns
@@ -731,112 +721,11 @@ class MDGXS(MGXS):
 
         """
 
-        if not isinstance(groups, basestring):
-            cv.check_iterable_type('groups', groups, Integral)
-        if nuclides != 'all' and nuclides != 'sum':
-            cv.check_iterable_type('nuclides', nuclides, basestring)
         if not isinstance(delayed_groups, basestring):
-            cv.check_iterable_type('delayed groups', delayed_groups, Integral)
+            cv.check_type('delayed groups', delayed_groups, list, int)
 
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-
-        num_delayed_groups = 1
-        if self.delayed_groups != None:
-            num_delayed_groups = self.delayed_groups.num_groups
-
-        # Get a Pandas DataFrame from the derived xs tally
-        if self.by_nuclide and nuclides == 'sum':
-
-            # Use tally summation to sum across all nuclides
-            query_nuclides = self.get_all_nuclides()
-            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
-            df = xs_tally.get_pandas_dataframe(
-                distribcell_paths=distribcell_paths)
-
-            # Remove nuclide column since it is homogeneous and redundant
-            if self.domain_type == 'mesh':
-                df.drop('nuclide', axis=1, level=0, inplace=True)
-            else:
-                df.drop('nuclide', axis=1, inplace=True)
-
-        # If the user requested a specific set of nuclides
-        elif self.by_nuclide and nuclides != 'all':
-            xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
-            df = xs_tally.get_pandas_dataframe(
-                distribcell_paths=distribcell_paths)
-
-        # If the user requested all nuclides, keep nuclide column in dataframe
-        else:
-            df = self.xs_tally.get_pandas_dataframe(
-                distribcell_paths=distribcell_paths)
-
-        # Remove the score column since it is homogeneous and redundant
-        if self.domain_type == 'mesh':
-            df = df.drop('score', axis=1, level=0)
-        else:
-            df = df.drop('score', axis=1)
-
-        # Override energy groups bounds with indices
-        all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
-        all_groups = np.repeat(all_groups, self.num_nuclides)
-        if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
-            df.rename(columns={'energy low [MeV]': 'group in'},
-                      inplace=True)
-            in_groups = np.tile(all_groups, self.num_subdomains * num_delayed_groups)
-            in_groups = np.repeat(in_groups, df.shape[0] / in_groups.size)
-            df['group in'] = in_groups
-            del df['energy high [MeV]']
-
-            df.rename(columns={'energyout low [MeV]': 'group out'},
-                      inplace=True)
-            out_groups = np.repeat(all_groups, self.xs_tally.num_scores)
-            out_groups = np.tile(out_groups, df.shape[0] / out_groups.size * num_delayed_groups)
-            df['group out'] = out_groups
-            del df['energyout high [MeV]']
-            columns = ['group in', 'group out']
-
-        elif 'energyout low [MeV]' in df:
-            df.rename(columns={'energyout low [MeV]': 'group out'},
-                      inplace=True)
-            in_groups = np.tile(all_groups, self.num_subdomains * num_delayed_groups)
-            df['group out'] = in_groups
-            del df['energyout high [MeV]']
-            columns = ['group out']
-
-        elif 'energy low [MeV]' in df:
-            df.rename(columns={'energy low [MeV]': 'group in'}, inplace=True)
-            in_groups = np.tile(all_groups, self.num_subdomains * num_delayed_groups)
-            df['group in'] = in_groups
-            del df['energy high [MeV]']
-            columns = ['group in']
-
-        # Select out those groups the user requested
-        if not isinstance(groups, basestring):
-            if 'group in' in df:
-                df = df[df['group in'].isin(groups)]
-            if 'group out' in df:
-                df = df[df['group out'].isin(groups)]
-
-        # If user requested micro cross sections, divide out the atom densities
-        if xs_type == 'micro':
-            if self.by_nuclide:
-                densities = self.get_nuclide_densities(nuclides)
-            else:
-                densities = self.get_nuclide_densities('sum')
-            densities = np.repeat(densities, len(self.rxn_rate_tally.scores))
-            tile_factor = df.shape[0] / len(densities)
-            df['mean'] /= np.tile(densities, tile_factor)
-            df['std. dev.'] /= np.tile(densities, tile_factor)
-
-        # Sort the dataframe by domain type id (e.g., distribcell id) and
-        # energy groups such that data is from fast to thermal
-        if self.domain_type == 'mesh':
-            mesh_str = 'mesh {0}'.format(self.domain.id)
-            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'), \
-                               (mesh_str, 'z')] + columns, inplace=True)
-        else:
-            df.sort_values(by=[self.domain_type] + columns, inplace=True)
-        return df
+        df = super(MDGXS, self).get_pandas_dataframe(groups, nuclides, xs_type,
+                                                     distribcell_paths)
 
         # Select out those delayed groups the user requested
         if not isinstance(delayed_groups, basestring):
@@ -890,7 +779,7 @@ class ChiDelayed(MDGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
-    delayed_groups : openmc.mgxs.DelayedGroups
+    delayed_groups : list of int
         Delayed groups to filter out the xs
 
     Attributes
@@ -907,7 +796,7 @@ class ChiDelayed(MDGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    delayed_groups : openmc.mgxs.DelayedGroups
+    delayed_groups : list of int
         Delayed groups to filter out the xs
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
@@ -974,8 +863,7 @@ class ChiDelayed(MDGXS):
         energyout = openmc.Filter('energyout', group_edges)
         energyin = openmc.Filter('energy', [group_edges[0], group_edges[-1]])
         if self.delayed_groups != None:
-            delayed_groups = self.delayed_groups.groups
-            delayed_filter = openmc.Filter('delayedgroup', delayed_groups)
+            delayed_filter = openmc.Filter('delayedgroup', self.delayed_groups)
             return [[delayed_filter, energyin], [delayed_filter, energyout]]
         else:
             return [[energyin], [energyout]]
@@ -1120,9 +1008,8 @@ class ChiDelayed(MDGXS):
 
         # Merge delayed groups
         if self.delayed_groups != other.delayed_groups:
-            merged_delayed_groups = self.delayed_groups.merge\
-                                    (other.delayed_groups)
-            merged_mdgxs.delayed_groups = merged_delayed_groups
+            merged_mdgxs.delayed_groups = list(set(self.delayed_groups +
+                                                   other.delayed_groups))
 
         # Merge nuclides
         if self.nuclides != other.nuclides:
@@ -1157,7 +1044,7 @@ class ChiDelayed(MDGXS):
         ----------
         groups : Iterable of Integral or 'all'
             Energy groups of interest. Defaults to 'all'.
-        delayed_groups : Iterable of Integral or 'all'
+        delayed_groups : list of int or 'all'
             Delayed groups of interest. Defaults to 'all'.
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
@@ -1222,7 +1109,7 @@ class ChiDelayed(MDGXS):
 
         # Construct list of delayed group tuples for all requested groups
         if not isinstance(delayed_groups, basestring):
-            cv.check_iterable_type('delayed_groups', delayed_groups, Integral)
+            cv.check_type('delayed groups', delayed_groups, list, int)
             for delayed_group in delayed_groups:
                 filters.append('delayedgroup')
                 filter_bins.append((delayed_group,))
@@ -1344,7 +1231,7 @@ class DelayedNuFissionXS(MDGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
-    delayed_groups : openmc.mgxs.DelayedGroups
+    delayed_groups : list of int
         Delayed groups to filter out the xs
 
     Attributes
@@ -1361,7 +1248,7 @@ class DelayedNuFissionXS(MDGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    delayed_groups : openmc.mgxs.DelayedGroups
+    delayed_groups : list of int
         Delayed groups to filter out the xs
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
@@ -1463,7 +1350,7 @@ class Beta(MDGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
-    delayed_groups : openmc.mgxs.DelayedGroups
+    delayed_groups : list of int
         Delayed groups to filter out the xs
 
     Attributes
@@ -1480,7 +1367,7 @@ class Beta(MDGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    delayed_groups : openmc.mgxs.DelayedGroups
+    delayed_groups : list of int
         Delayed groups to filter out the xs
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to

@@ -6,6 +6,8 @@ import sys
 import numpy as np
 
 import openmc.checkvalue as cv
+import openmc.surface
+import openmc.cell
 
 
 if sys.version_info[0] >= 3:
@@ -181,6 +183,21 @@ class Mesh(object):
         string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._width)
         return string
 
+    def cell_generator(self):
+        """Generator function to traverse through every [i,j,k] index
+        of the mesh.
+
+        """
+        if len(self.dimension) == 2:
+            for x in range(self.dimension[0]):
+                for y in range(self.dimension[1]):
+                    yield [x + 1, y + 1, 1]
+        else:
+            for x in range(self.dimension[0]):
+                for y in range(self.dimension[1]):
+                    for z in range(self.dimension[2]):
+                        yield [x + 1, y + 1, z + 1]
+
     def get_mesh_xml(self):
         """Return XML representation of the mesh
 
@@ -210,3 +227,90 @@ class Mesh(object):
             subelement.text = ' '.join(map(str, self._width))
 
         return element
+
+    def build_cells(self, bc=['reflective'] * 6):
+        """Generates a list of cells which mimic the mesh geometry.
+
+        Parameters
+        ----------
+        bc : iterable of {'reflective', 'periodic', or 'vacuum'}
+            Boundary conditions for each of the six faces of a parallelopiped:
+            North, East, South, West, Up, and Down.
+
+        Returns
+        -------
+        root_cell : openmc.Cell
+            The cell containing the lattice mimicking the mesh geometry.
+        cells : iterable of openmc.Cell
+            The list of cells within each lattice position mimicking the mesh
+            geometry.
+
+        """
+
+        cv.check_length('bc', bc, length_min=6, length_max=6)
+        for entry in bc:
+            cv.check_value('bc', entry, ['transmission', 'vacuum',
+                                         'reflective', 'periodic'])
+
+        if len(self.dimension) == 2:
+            twod = True
+        else:
+            twod = False
+
+        # Build enclosing cell
+        xplanes = [openmc.XPlane(x0=self.lower_left[0],
+                                 boundary_type=bc[3]),
+                   openmc.XPlane(x0=self.upper_right[0],
+                                 boundary_type=bc[1])]
+        yplanes = [openmc.YPlane(y0=self.lower_left[1],
+                                 boundary_type=bc[2]),
+                   openmc.YPlane(y0=self.upper_right[1],
+                                 boundary_type=bc[0])]
+        if twod:
+            zplanes = [openmc.ZPlane(z0=-1.E50, boundary_type=bc[5]),
+                       openmc.ZPlane(z0=+1.E50, boundary_type=bc[5])]
+        else:
+            zplanes = [openmc.ZPlane(z0=self.lower_left[2],
+                                     boundary_type=bc[5]),
+                       openmc.ZPlane(z0=self.upper_right[2],
+                                     boundary_type=bc[5])]
+        root_cell = openmc.Cell()
+        root_cell.region = ((+xplanes[0] & -xplanes[1]) &
+                            (+yplanes[0] & -yplanes[1]) &
+                            (+zplanes[0] & -zplanes[1]))
+
+        # Build our universes
+        universes = np.ndarray(self.dimension[::-1], dtype=np.object)
+        cells = []
+        for [i, j, k] in self.cell_generator():
+            if twod:
+                universes[j - 1, i - 1] = openmc.Universe()
+                cells.append(openmc.Cell())
+                universes[j - 1, i - 1].add_cells([cells[-1]])
+            else:
+                universes[k - 1, j - 1, i - 1] = openmc.Universe()
+                cells.append(openmc.Cell())
+                universes[k - 1, j - 1, i - 1].add_cells([cells[-1]])
+
+        lattice = openmc.RectLattice()
+        lattice.lower_left = self.lower_left
+
+        if self.width is not None:
+            lattice.pitch = self.width
+        else:
+            dx = ((self.upper_right[0] - self.lower_left[0]) /
+                  self.dimension[0])
+            dy = ((self.upper_right[1] - self.lower_left[1]) /
+                  self.dimension[1])
+            if twod:
+                lattice.pitch = [dx, dy]
+            else:
+                dz = ((self.upper_right[2] - self.lower_left[2]) /
+                      self.dimension[2])
+                lattice.pitch = [dx, dy, dz]
+        lattice.universes = universes
+
+        # Fill Cell with the Lattice
+        root_cell.fill = lattice
+
+        return root_cell, cells

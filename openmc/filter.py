@@ -376,7 +376,7 @@ class Filter(object):
             cell instance ID for 'distribcell' Filters. The bin is a 2-tuple of
             floats for 'energy' and 'energyout' filters corresponding to the
             energy boundaries of the bin of interest. The bin is an (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
             interest.
 
         Returns

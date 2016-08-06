@@ -187,6 +187,17 @@ class Mesh(object):
         """Generator function to traverse through every [i,j,k] index
         of the mesh.
 
+        For example the following code:
+        for mesh_index in mymesh.cell_generator():
+            print mesh_index
+
+        will produce the following output for a 3-D 2x2x2 mesh in mymesh:
+        [1, 1, 1]
+        [1, 1, 2]
+        [1, 2, 1]
+        [1, 2, 2]
+        ...
+
         """
         if len(self.dimension) == 2:
             for x in range(self.dimension[0]):
@@ -229,49 +240,56 @@ class Mesh(object):
         return element
 
     def build_cells(self, bc=['reflective'] * 6):
-        """Generates a list of cells which mimic the mesh geometry.
+        """Generates a lattice of universes with the same dimensionality
+        as the mesh object in self.  The individual cells/universes produced
+        will not have material definitions applied and so downstream code
+        will have to apply that information.
 
         Parameters
         ----------
-        bc : iterable of {'reflective', 'periodic', or 'vacuum'}
-            Boundary conditions for each of the six faces of a parallelopiped:
-            North, East, South, West, Up, and Down.
+        bc : iterable of {'reflective', 'periodic', 'transmission', or 'vacuum'}
+            Boundary conditions for each of the four faces of a rectangle
+            (if aplying to a 2D mesh) or six faces of a parallelepiped
+            (if applying to a 3D mesh) provided in the following order:
+            [x min, x max, y min, y max, z min, z max].  2-D cells do not
+            contain the z min and z max entries.
 
         Returns
         -------
         root_cell : openmc.Cell
-            The cell containing the lattice mimicking the mesh geometry.
+            The cell containing the lattice representing the mesh geometry;
+            this cell is a single parallelepiped with boundaries matching
+            the outermost mesh boundary with the boundary conditions from bc
+            applied.
         cells : iterable of openmc.Cell
             The list of cells within each lattice position mimicking the mesh
             geometry.
 
         """
 
-        cv.check_length('bc', bc, length_min=6, length_max=6)
+        twod = len(self.dimension) == 2
+        cv.check_length('bc', bc, length_min=4, length_max=6)
         for entry in bc:
             cv.check_value('bc', entry, ['transmission', 'vacuum',
                                          'reflective', 'periodic'])
 
-        if len(self.dimension) == 2:
-            twod = True
-        else:
-            twod = False
-
-        # Build enclosing cell
+        # Build the cell which will contain the lattice
         xplanes = [openmc.XPlane(x0=self.lower_left[0],
-                                 boundary_type=bc[3]),
+                                 boundary_type=bc[0]),
                    openmc.XPlane(x0=self.upper_right[0],
                                  boundary_type=bc[1])]
         yplanes = [openmc.YPlane(y0=self.lower_left[1],
                                  boundary_type=bc[2]),
                    openmc.YPlane(y0=self.upper_right[1],
-                                 boundary_type=bc[0])]
+                                 boundary_type=bc[3])]
         if twod:
-            zplanes = [openmc.ZPlane(z0=-1.E50, boundary_type=bc[5]),
-                       openmc.ZPlane(z0=+1.E50, boundary_type=bc[5])]
+            zplanes = [openmc.ZPlane(z0=np.finfo(np.float).min,
+                                     boundary_type='reflective'),
+                       openmc.ZPlane(z0=np.finfo(np.float).max,
+                                     boundary_type='reflective')]
         else:
             zplanes = [openmc.ZPlane(z0=self.lower_left[2],
-                                     boundary_type=bc[5]),
+                                     boundary_type=bc[4]),
                        openmc.ZPlane(z0=self.upper_right[2],
                                      boundary_type=bc[5])]
         root_cell = openmc.Cell()
@@ -279,7 +297,9 @@ class Mesh(object):
                             (+yplanes[0] & -yplanes[1]) &
                             (+zplanes[0] & -zplanes[1]))
 
-        # Build our universes
+        # Build the universes which will be used for each of the [i,j,k]
+        # locations within the mesh.
+        # We will also have to build cells to assign to these universes
         universes = np.ndarray(self.dimension[::-1], dtype=np.object)
         cells = []
         for [i, j, k] in self.cell_generator():

@@ -710,7 +710,7 @@ contains
                 score = p % absorb_wgt * &
                      nuc % reactions(nuc % index_fission(1)) % Q_value * &
                      micro_xs(p % event_nuclide) % fission / &
-                     micro_xs(p % event_nuclide) % absorption
+                     micro_xs(p % event_nuclide) % absorption * flux
               end if
             end associate
           else
@@ -724,7 +724,7 @@ contains
                 score = p % last_wgt * &
                      nuc % reactions(nuc % index_fission(1)) % Q_value * &
                      micro_xs(p % event_nuclide) % fission / &
-                     micro_xs(p % event_nuclide) % absorption
+                     micro_xs(p % event_nuclide) % absorption * flux
               end if
             end associate
           end if
@@ -785,7 +785,7 @@ contains
                 score = p % absorb_wgt &
                      * nuc % fission_q_prompt % evaluate(p % last_E) &
                      * micro_xs(p % event_nuclide) % fission &
-                     / micro_xs(p % event_nuclide) % absorption
+                     / micro_xs(p % event_nuclide) % absorption * flux
               end if
             end associate
           else
@@ -799,7 +799,7 @@ contains
                 score = p % last_wgt &
                      * nuc % fission_q_prompt % evaluate(p % last_E) &
                      * micro_xs(p % event_nuclide) % fission &
-                     / micro_xs(p % event_nuclide) % absorption
+                     / micro_xs(p % event_nuclide) % absorption * flux
               end if
             end associate
           end if
@@ -844,7 +844,7 @@ contains
                 score = p % absorb_wgt &
                      * nuc % fission_q_recov % evaluate(p % last_E) &
                      * micro_xs(p % event_nuclide) % fission &
-                     / micro_xs(p % event_nuclide) % absorption
+                     / micro_xs(p % event_nuclide) % absorption * flux
               end if
             end associate
           else
@@ -858,7 +858,7 @@ contains
                 score = p % last_wgt &
                      * nuc % fission_q_recov % evaluate(p % last_E) &
                      * micro_xs(p % event_nuclide) % fission &
-                     / micro_xs(p % event_nuclide) % absorption
+                     / micro_xs(p % event_nuclide) % absorption * flux
               end if
             end associate
           end if

@@ -6,8 +6,9 @@ import h5py
 import numpy as np
 from numpy.polynomial.polynomial import Polynomial
 
-from .function import Tabulated1D, Sum
+from .data import ATOMIC_SYMBOL
 from .endf_utils import read_float, read_CONT_line, identify_nuclide
+from .function import Tabulated1D, Sum
 import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
@@ -70,11 +71,11 @@ def _extract_458_data(filename):
     labels = ('EFR', 'ENP', 'END', 'EGP', 'EGD', 'EB', 'ENU', 'ER', 'ET')
 
     # Associate each set of values and uncertainties with its label.
-    value = dict()
-    uncertainty = dict()
-    for i in range(len(labels)):
-        value[labels[i]] = data[2*i::18]
-        uncertainty[labels[i]] = data[2*i + 1::18]
+    value = {}
+    uncertainty = {}
+    for i, label in enumerate(labels):
+        value[label] = data[2*i::18]
+        uncertainty[label] = data[2*i + 1::18]
 
     # In ENDF/B-7.1, data for 2nd-order coefficients were mistakenly not
     # converted from MeV to eV.  Check for this error and fix it if present.
@@ -94,13 +95,6 @@ def _extract_458_data(filename):
             for coeffs in value.values(): coeffs[2] *= 1e-6
             for coeffs in uncertainty.values(): coeffs[2] *= 1e-6
 
-        # Perform the sanity check again... just in case.
-        for coeffs in value.values():
-            second_order = coeffs[2]
-            if abs(second_order) * 1e12 > 1e8:
-                raise ValueError("Encountered a ludicrously large second-"
-                                 "order polynomial coefficient.")
-
     # Convert eV to MeV.
     for coeffs in value.values():
         for i in range(len(coeffs)):
@@ -112,8 +106,8 @@ def _extract_458_data(filename):
     return value, uncertainty
 
 
-def write_compact_458_library(endf_files, output_name=None, comment=None,
-                              verbose=False):
+def write_compact_458_library(endf_files, output_name='fission_Q_data.h5',
+                              comment=None, verbose=False):
     """Read ENDF files, strip the MF=1 MT=458 data and write to small HDF5.
 
     Parameters
@@ -130,7 +124,6 @@ def write_compact_458_library(endf_files, output_name=None, comment=None,
 
     """
     # Open the output file.
-    if output_name is None: output_name = 'fission_Q_data.h5'
     out = h5py.File(output_name, 'w', libver='latest')
 
     # Write comments, if given.  This commented out comment is the one used for
@@ -179,7 +172,7 @@ def write_compact_458_library(endf_files, output_name=None, comment=None,
         value, uncertainty = data
 
         # Make a group for this isomer.
-        name = str(ident['Z']) + str(ident['A'])
+        name = ATOMIC_SYMBOL[ident['Z']] + str(ident['A'])
         if ident['LISO'] != 0:
             name += '_m' + str(ident['LISO'])
         nuclide_group = out.create_group(name)
@@ -447,7 +440,7 @@ class FissionEnergyRelease(object):
                              and p.emission_mode == 'prompt']
             else:
                 raise ValueError('IncidentNeutron data has no fission '
-                                  'reaction.')
+                                 'reaction.')
             if len(nu_prompt) == 0:
                 raise ValueError('Nu data is needed to compute fission energy '
                                  'release with the Sher-Beck format.')
@@ -533,7 +526,7 @@ class FissionEnergyRelease(object):
         elif group.attrs['format'].decode() == 'Sher-Beck':
             obj.form = 'Sher-Beck'
             obj.prompt_neutrons = Tabulated1D.from_hdf5(
-                                                       group['prompt_neutrons'])
+                group['prompt_neutrons'])
         else:
             raise ValueError('Unrecognized energy release format')
 
@@ -565,14 +558,14 @@ class FissionEnergyRelease(object):
 
         components = [s.decode() for s in fin.attrs['component order']]
 
-        nuclide_name = str(incident_neutron.atomic_number)
+        nuclide_name = ATOMIC_SYMBOL[incident_neutron.atomic_number]
         nuclide_name += str(incident_neutron.mass_number)
         if incident_neutron.metastable != 0:
             nuclide_name += '_m' + str(incident_neutron.metastable)
 
         if nuclide_name not in fin: return None
 
-        data = {c : fin[nuclide_name + '/data'][i, 0, :]
+        data = {c: fin[nuclide_name + '/data'][i, 0, :]
                 for i, c in enumerate(components)}
 
         return cls._from_dictionary(data, incident_neutron)

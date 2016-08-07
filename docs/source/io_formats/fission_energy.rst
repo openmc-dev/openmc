@@ -22,10 +22,9 @@ created from ENDF files with the
                prompt neutrons.
 
 **/<nuclide name>/**
-    Nuclides are named by concatenating their Z and their A numbers.  For
-    example, U235 is named 92235.  Metastable nuclides are appended with an
-    '_m' and their metastable number.  For example, the first excited isomer
-    of Am-242 is named 95242_m1.
+    Nuclides are named by concatenating their atomic symbol and mass number. For
+    example, 'U235' or 'Pu239'.  Metastable nuclides are appended with an
+    '_m' and their metastable number.  For example, 'Am242_m1'
 
 :Datasets: - **data** (*double[][][]*) -- The energy release coefficients.  The
              first axis indexes the component type.  The second axis specifies

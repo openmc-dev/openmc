@@ -12,9 +12,8 @@ import re
 def read_float(float_string):
     """Parse ENDF 6E11.0 formatted string into a float."""
     assert len(float_string) == 11
-    pattern = '([\s\\-]\d+\\.\d+)([\\+\\-]\d+)'
-    mantissa, exponent = re.match(pattern, float_string).groups()
-    return float(mantissa + 'e' + exponent)
+    pattern = r'([\s\-]\d+\.\d+)([\+\-]\d+)'
+    return float(re.sub(pattern, r'\1e\2', float_string))
 
 
 def read_CONT_line(line):

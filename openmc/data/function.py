@@ -97,7 +97,7 @@ class Tabulated1D(object):
 
             if self.interpolation[k] == 1:
                 # Histogram
-                y[contined] = yi
+                y[contained] = yi
 
             elif self.interpolation[k] == 2:
                 # Linear-linear

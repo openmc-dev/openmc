@@ -324,6 +324,16 @@ Functions
 :mod:`openmc.data` -- Nuclear Data Interface
 --------------------------------------------
 
+Physical Data
+-------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myfunction.rst
+
+    openmc.data.atomic_mass
+
 Core Classes
 ------------
 

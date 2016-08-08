@@ -60,6 +60,10 @@ contains
       string = "events"
     case (SCORE_INVERSE_VELOCITY)
       string = "inverse-velocity"
+    case (SCORE_FISS_Q_PROMPT)
+      string = "fission-q-prompt"
+    case (SCORE_FISS_Q_RECOV)
+      string = "fission-q-recoverable"
 
     ! Normal ENDF-based reactions
     case (TOTAL_XS)

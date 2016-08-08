@@ -13,7 +13,7 @@ INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
 class Function1D(object):
     """A function of one independent variable with HDF5 support."""
 
-    __meta__class = ABCMeta
+    __metaclass__ = ABCMeta
 
     def __init__(self): pass
 

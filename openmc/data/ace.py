@@ -282,7 +282,7 @@ class Library(object):
 
         lines = [ace_file.readline() for i in range(13)]
 
-        while len(lines) != 0 and lines[0] != '':
+        while len(lines) != 0 and lines[0].strip() != '':
             # Read name of table, atomic mass ratio, and temperature. If first
             # line is empty, we are at end of file
 

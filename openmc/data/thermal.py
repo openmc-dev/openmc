@@ -16,6 +16,7 @@ from openmc.stats import Discrete, Tabular
 
 _THERMAL_NAMES = {'al': 'c_Al27', 'al27': 'c_Al27',
                   'be': 'c_Be',
+                  'beo': 'c_BeO',
                   'bebeo': 'c_Be_in_BeO', 'be-o': 'c_Be_in_BeO', 'be/o': 'c_Be_in_BeO',
                   'benz': 'c_Benzine',
                   'cah': 'c_Ca_in_CaH2',

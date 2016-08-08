@@ -14,7 +14,7 @@ contains
   pure function reaction_name(MT) result(string)
 
     integer, intent(in) :: MT
-    character(20)       :: string
+    character(MAX_WORD_LEN) :: string
 
     select case (MT)
     ! Special reactions for tallies

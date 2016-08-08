@@ -35,7 +35,7 @@ class Product(object):
         yield represents particles from prompt and delayed sources.
     particle : str
         What particle the reaction product is.
-    yield_ : float or openmc.data.Tabulated1D or openmc.data.Polynomial
+    yield_ : openmc.data.Function1D
         Yield of secondary particle in the reaction.
 
     """
@@ -118,8 +118,7 @@ class Product(object):
 
     @yield_.setter
     def yield_(self, yield_):
-        cv.check_type('product yield', yield_,
-                      (Tabulated1D, Polynomial))
+        cv.check_type('product yield', yield_, Function1D)
         self._yield = yield_
 
     def to_hdf5(self, group):

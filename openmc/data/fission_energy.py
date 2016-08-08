@@ -495,22 +495,13 @@ class FissionEnergyRelease(object):
 
         obj = cls()
 
-        obj.fragments = Polynomial(group['fragments'].value)
-        obj.delayed_neutrons = Polynomial(group['delayed_neutrons'].value)
-        obj.prompt_photons = Polynomial(group['prompt_photons'].value)
-        obj.delayed_photons = Polynomial(group['delayed_photons'].value)
-        obj.betas = Polynomial(group['betas'].value)
-        obj.neutrinos = Polynomial(group['neutrinos'].value)
-
-        if group.attrs['format'].decode() == 'Madland':
-            obj.form = 'Madland'
-            obj.prompt_neutrons = Polynomial(group['prompt_neutrons'].value)
-        elif group.attrs['format'].decode() == 'Sher-Beck':
-            obj.form = 'Sher-Beck'
-            obj.prompt_neutrons = Tabulated1D.from_hdf5(
-                group['prompt_neutrons'])
-        else:
-            raise ValueError('Unrecognized energy release format')
+        obj.fragments = Function1D.from_hdf5(group['fragments'])
+        obj.prompt_neutrons = Function1D.from_hdf5(group['prompt_neutrons'])
+        obj.delayed_neutrons = Function1D.from_hdf5(group['delayed_neutrons'])
+        obj.prompt_photons = Function1D.from_hdf5(group['prompt_photons'])
+        obj.delayed_photons = Function1D.from_hdf5(group['delayed_photons'])
+        obj.betas = Function1D.from_hdf5(group['betas'])
+        obj.neutrinos = Function1D.from_hdf5(group['neutrinos'])
 
         return obj
 

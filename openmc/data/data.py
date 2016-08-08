@@ -213,4 +213,8 @@ def atomic_mass(isotope):
                     line[100:106] + '.' + line[107:112])
                 _ATOMIC_MASS[name.lower()] = mass
 
+    # Get rid of metastable information
+    if '_' in isotope:
+        isotope = isotope[:isotope.find('_')]
+
     return _ATOMIC_MASS.get(isotope.lower())

@@ -1,7 +1,6 @@
 module tally
 
   use constants
-  use endf_header,      only: Constant1D
   use error,            only: fatal_error
   use geometry_header
   use global
@@ -247,24 +246,17 @@ contains
         ! reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          ! Don't waste time on very common reactions we know have multiplicities
-          ! of one.
+          ! Don't waste time on very common reactions we know have
+          ! multiplicities of one.
           score = p % last_wgt * flux
         else
-          m = nuclides(p%event_nuclide)%reaction_index% &
+          m = nuclides(p % event_nuclide) % reaction_index % &
                get_key(p % event_MT)
 
           ! Get yield and apply to score
-          associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            select type (yield => rxn % products(1) % yield)
-            type is (Constant1D)
-              ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y * flux
-            class default
-              ! the yield was already incorporated in to p % wgt per the
-              ! scattering routine
-              score = p % wgt * flux
-            end select
+          associate (rxn => nuclides(p % event_nuclide) % reactions(m))
+            score = p % last_wgt * flux &
+                 * rxn % products(1) % yield % evaluate(p % last_E)
           end associate
         end if
 
@@ -289,16 +281,9 @@ contains
                get_key(p % event_MT)
 
           ! Get yield and apply to score
-          associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            select type (yield => rxn % products(1) % yield)
-            type is (Constant1D)
-              ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y * flux
-            class default
-              ! the yield was already incorporated in to p % wgt per the
-              ! scattering routine
-              score = p % wgt * flux
-            end select
+          associate (rxn => nuclides(p % event_nuclide) % reactions(m))
+            score = p % last_wgt * flux &
+                 * rxn % products(1) % yield % evaluate(p % last_E)
           end associate
         end if
 
@@ -324,15 +309,8 @@ contains
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            select type (yield => rxn % products(1) % yield)
-            type is (Constant1D)
-              ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y * flux
-            class default
-              ! the yield was already incorporated in to p % wgt per the
-              ! scattering routine
-              score = p % wgt * flux
-            end select
+            score = p % last_wgt * flux &
+                 * rxn % products(1) % yield % evaluate(p % last_E)
           end associate
         end if
 

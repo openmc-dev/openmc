@@ -51,7 +51,7 @@ contains
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
                       mesh_group, filter_group, runtime_group
-    character(20), allocatable :: str_array(:)
+    character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
     type(RegularMesh), pointer :: meshp
     type(TallyObject), pointer    :: tally

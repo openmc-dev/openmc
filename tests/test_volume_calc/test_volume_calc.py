@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import glob
 import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
@@ -43,9 +44,12 @@ class VolumeTest(PyAPITestHarness):
         geometry.export_to_xml()
 
         # Set up stochastic volume calculation
-        vol_calc = openmc.VolumeCalculation(
-            [inside_cyl, top_hemisphere, bottom_hemisphere],
-            100000)
+        ll, ur = openmc.Union(*[c.region for c in root.cells.values()]).bounding_box
+        vol_calcs = [
+            openmc.VolumeCalculation(list(root.cells.values()), 100000),
+            openmc.VolumeCalculation([water, fuel], 100000, ll, ur),
+            openmc.VolumeCalculation([root], 100000, ll, ur)
+        ]
 
         # Define settings
         settings = openmc.Settings()
@@ -54,7 +58,7 @@ class VolumeTest(PyAPITestHarness):
         settings.inactive = 0
         settings.source = openmc.Source(space=openmc.stats.Box(
             [-1., -1., -5.], [1., 1., 5.]))
-        settings.volume_calculations = vol_calc
+        settings.volume_calculations = vol_calcs
         settings.export_to_xml()
 
     def _get_results(self):
@@ -65,15 +69,18 @@ class VolumeTest(PyAPITestHarness):
         # Write out k-combined.
         outstr = 'k-combined: {:12.6e} {:12.6e}\n'.format(*sp.k_combined)
 
-        # Read volume calculation results
-        vol = openmc.VolumeCalculation.from_hdf5(
-            os.path.join(os.getcwd(), 'volume_1.h5'))
+        for i, filename in enumerate(sorted(glob.glob(os.path.join(
+                os.getcwd(), 'volume_*.h5')))):
+            outstr += 'Volume calculation {}\n'.format(i)
 
-        # Write cell volumes and total # of atoms for each nuclide
-        for cell_id, results in sorted(vol.results.items()):
-            outstr += 'Cell {0}: {1[0]:.4f} +/- {1[1]:.4f} cm^3\n'.format(
-                cell_id, results['volume'])
-        outstr += str(vol.atoms_dataframe) + '\n'
+            # Read volume calculation results
+            vol = openmc.VolumeCalculation.from_hdf5(filename)
+
+            # Write cell volumes and total # of atoms for each nuclide
+            for uid, results in sorted(vol.results.items()):
+                outstr += 'Domain {0}: {1[0]:.4f} +/- {1[1]:.4f} cm^3\n'.format(
+                    uid, results['volume'])
+            outstr += str(vol.atoms_dataframe) + '\n'
 
         return outstr
 

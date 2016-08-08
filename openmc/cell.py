@@ -369,10 +369,13 @@ class Cell(object):
             Results from a stochastic volume calculation
 
         """
-        for cell_id in volume_calc.results:
-            if cell_id == self.id:
-                self._volume_information = volume_calc.results[cell_id]
-                break
+        if volume_calc.domain_type == 'cell':
+            for cell_id in volume_calc.results:
+                if cell_id == self.id:
+                    self._volume_information = volume_calc.results[cell_id]
+                    break
+            else:
+                raise ValueError('No volume information found for this cell.')
         else:
             raise ValueError('No volume information found for this cell.')
 

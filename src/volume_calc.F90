@@ -9,7 +9,7 @@ module volume_calc
   use geometry,     only: find_cell
   use global
   use hdf5_interface, only: file_create, file_close, write_attribute, &
-       create_group, close_group, write_dataset
+       create_group, close_group, write_dataset, write_attribute_string
   use output,       only: write_message, header
   use message_passing
   use particle_header, only: Particle
@@ -33,7 +33,8 @@ contains
   subroutine run_volume_calculations()
     integer :: i, j
     integer :: n
-    real(8), allocatable :: volume(:,:)  ! volume mean/stdev in each cell
+    real(8), allocatable :: volume(:,:)  ! volume mean/stdev in each domain
+    character(10) :: domain_type
     character(MAX_FILE_LEN) :: filename  ! filename for HDF5 file
     type(Timer) :: time_volume           ! timer for volume calculation
     type(VectorInt), allocatable :: nuclide_vec(:) ! indices in nuclides array
@@ -46,7 +47,7 @@ contains
     end if
 
     do i = 1, size(volume_calcs)
-      n = size(volume_calcs(i) % cell_id)
+      n = size(volume_calcs(i) % domain_id)
       allocate(nuclide_vec(n))
       allocate(atoms_vec(n), uncertainty_vec(n))
       allocate(volume(2,n))
@@ -60,11 +61,20 @@ contains
            uncertainty_vec)
 
       if (master) then
-        ! Display cell volumes
-        do j = 1, size(volume_calcs(i) % cell_id)
-          call write_message("  Cell " // trim(to_str(volume_calcs(i) % &
-               cell_id(j))) // ": " // trim(to_str(volume(1,j))) // " +/- " // &
-               trim(to_str(volume(2,j))) // " cm^3")
+        select case (volume_calcs(i) % domain_type)
+        case (FILTER_CELL)
+          domain_type = '  Cell'
+        case (FILTER_MATERIAL)
+          domain_type = '  Material'
+        case (FILTER_UNIVERSE)
+          domain_type = '  Universe'
+        end select
+
+        ! Display domain volumes
+        do j = 1, size(volume_calcs(i) % domain_id)
+          call write_message(trim(domain_type) // " " // trim(to_str(&
+               volume_calcs(i) % domain_id(j))) // ": " // trim(to_str(&
+               volume(1,j))) // " +/- " // trim(to_str(volume(2,j))) // " cm^3")
         end do
         call write_message("")
 
@@ -85,13 +95,13 @@ contains
   end subroutine run_volume_calculations
 
 !===============================================================================
-! GET_VOLUME stochastically determines the volume of a set of cells along with
-! the average number densities of nuclides within the cell
+! GET_VOLUME stochastically determines the volume of a set of domains along with
+! the average number densities of nuclides within the domain
 !===============================================================================
 
   subroutine get_volume(this, volume, nuclide_vec, atoms_vec, uncertainty_vec)
     type(VolumeCalculation), intent(in) :: this
-    real(8),          intent(out) :: volume(:,:)     ! volume mean/stdev in each cell
+    real(8),          intent(out) :: volume(:,:)     ! volume mean/stdev in each domain
     type(VectorInt),  intent(out) :: nuclide_vec(:)  ! indices in nuclides array
     type(VectorReal), intent(out) :: atoms_vec(:)    ! total # of atoms of each nuclide
     type(VectorReal), intent(out) :: uncertainty_vec(:) ! uncertainty of total # of atoms
@@ -99,22 +109,22 @@ contains
     ! Variables that are private to each thread
     integer(8) :: i
     integer :: j, k
-    integer :: i_cell      ! index in cell_id array
+    integer :: i_domain      ! index in domain_id array
     integer :: i_material  ! index in materials array
     integer :: level       ! local coordinate level
     logical :: found_cell
-    type(VectorInt) :: indices(size(this % cell_id)) ! List of material indices
-    type(VectorInt) :: hits(size(this % cell_id))    ! Number of hits for each material
+    type(VectorInt) :: indices(size(this % domain_id)) ! List of material indices
+    type(VectorInt) :: hits(size(this % domain_id))    ! Number of hits for each material
     type(Particle) :: p
 
     ! Shared variables
     integer :: i_start, i_end  ! Starting/ending sample for each process
-    type(VectorInt) :: master_indices(size(this % cell_id))
-    type(VectorInt) :: master_hits(size(this % cell_id))
+    type(VectorInt) :: master_indices(size(this % domain_id))
+    type(VectorInt) :: master_hits(size(this % domain_id))
 
     ! Variables used outside of parallel region
     integer :: i_nuclide    ! index in nuclides array
-    integer :: total_hits   ! total hits for a single cell (summed over materials)
+    integer :: total_hits   ! total hits for a single domain (summed over materials)
     integer :: min_samples ! minimum number of samples per process
     integer :: remainder        ! leftover samples from uneven divide
 #ifdef MPI
@@ -140,15 +150,15 @@ contains
 
     call p % initialize()
 
-!$omp parallel private(i, j, k, i_cell, i_material, level, found_cell, &
+!$omp parallel private(i, j, k, i_domain, i_material, level, found_cell, &
 !$omp&                 indices, hits) firstprivate(p)
 
     ! Reset vectors -- this is really to get around a gfortran 4.6 bug. Ideally,
     ! indices and hits would just be firstprivate but 4.6 complains because they
     ! have allocatable components...
-    do i_cell = 1, size(this % cell_id)
-      call indices(i_cell) % clear()
-      call hits(i_cell) % clear()
+    do i_domain = 1, size(this % domain_id)
+      call indices(i_domain) % clear()
+      call hits(i_domain) % clear()
     end do
 
     call prn_set_stream(STREAM_VOLUME)
@@ -174,32 +184,89 @@ contains
       call find_cell(p, found_cell)
       if (.not. found_cell) cycle
 
-      ! Determine if point is within desired cell
-      LEVEL_LOOP: do level = 1, p % n_coord
-        CELL_CHECK_LOOP: do i_cell = 1, size(this % cell_id)
-          if (cells(p % coord(level) % cell) % id == this % cell_id(i_cell)) then
+      if (this % domain_type == FILTER_MATERIAL) then
+        ! ======================================================================
+        ! MATERIAL VOLUME
 
-            ! Determine what material this is
-            i_material = p % material
-
+        i_material = p % material
+        MATERIAL_LOOP: do i_domain = 1, size(this % domain_id)
+          if (i_material == materials(i_domain) % id) then
             ! Check if we've already had a hit in this material and if so,
             ! simply add one
-            do j = 1, indices(i_cell) % size()
-              if (indices(i_cell) % data(j) == i_material) then
-                hits(i_cell) % data(j) = hits(i_cell) % data(j) + 1
-                cycle CELL_CHECK_LOOP
+            do j = 1, indices(i_domain) % size()
+              if (indices(i_domain) % data(j) == i_material) then
+                hits(i_domain) % data(j) = hits(i_domain) % data(j) + 1
+                cycle MATERIAL_LOOP
               end if
             end do
 
             ! If we make it here, that means we haven't yet had a hit in this
             ! material. Add an entry to both the indices list and the hits list
-            call indices(i_cell) % push_back(i_material)
-            call hits(i_cell) % push_back(1)
+            call indices(i_domain) % push_back(i_material)
+            call hits(i_domain) % push_back(1)
           end if
-        end do CELL_CHECK_LOOP
-      end do LEVEL_LOOP
+        end do MATERIAL_LOOP
+
+      elseif (this % domain_type == FILTER_CELL) THEN
+        ! ======================================================================
+        ! CELL VOLUME
+
+        do level = 1, p % n_coord
+          CELL_LOOP: do i_domain = 1, size(this % domain_id)
+            if (cells(p % coord(level) % cell) % id == this % domain_id(i_domain)) then
+
+              ! Determine what material this is
+              i_material = p % material
+
+              ! Check if we've already had a hit in this material and if so,
+              ! simply add one
+              do j = 1, indices(i_domain) % size()
+                if (indices(i_domain) % data(j) == i_material) then
+                  hits(i_domain) % data(j) = hits(i_domain) % data(j) + 1
+                  cycle CELL_LOOP
+                end if
+              end do
+
+              ! If we make it here, that means we haven't yet had a hit in this
+              ! material. Add an entry to both the indices list and the hits list
+              call indices(i_domain) % push_back(i_material)
+              call hits(i_domain) % push_back(1)
+            end if
+          end do CELL_LOOP
+        end do
+
+      elseif (this % domain_type == FILTER_UNIVERSE) then
+        ! ======================================================================
+        ! UNIVERSE VOLUME
+
+        do level = 1, p % n_coord
+          UNIVERSE_LOOP: do i_domain = 1, size(this % domain_id)
+            if (universes(p % coord(level) % universe) % id == &
+                 this % domain_id(i_domain)) then
+
+              ! Determine what material this is
+              i_material = p % material
+
+              ! Check if we've already had a hit in this material and if so,
+              ! simply add one
+              do j = 1, indices(i_domain) % size()
+                if (indices(i_domain) % data(j) == i_material) then
+                  hits(i_domain) % data(j) = hits(i_domain) % data(j) + 1
+                  cycle UNIVERSE_LOOP
+                end if
+              end do
+
+              ! If we make it here, that means we haven't yet had a hit in this
+              ! material. Add an entry to both the indices list and the hits list
+              call indices(i_domain) % push_back(i_material)
+              call hits(i_domain) % push_back(1)
+            end if
+          end do UNIVERSE_LOOP
+        end do
+
+      end if
     end do SAMPLE_LOOP
-    !$omp end do
+!$omp end do
 
     ! ==========================================================================
     ! REDUCE HITS ONTO MASTER THREAD
@@ -212,14 +279,14 @@ contains
 !$omp do ordered schedule(static)
     THREAD_LOOP: do i = 1, omp_get_num_threads()
 !$omp ordered
-      do i_cell = 1, size(this % cell_id)
-        INDEX_LOOP: do j = 1, indices(i_cell) % size()
+      do i_domain = 1, size(this % domain_id)
+        INDEX_LOOP: do j = 1, indices(i_domain) % size()
           ! Check if this material has been added to the master list and if so,
           ! accumulate the number of hits
-          do k = 1, master_indices(i_cell) % size()
-            if (indices(i_cell) % data(j) == master_indices(i_cell) % data(k)) then
-              master_hits(i_cell) % data(k) = &
-                   master_hits(i_cell) % data(k) + hits(i_cell) % data(j)
+          do k = 1, master_indices(i_domain) % size()
+            if (indices(i_domain) % data(j) == master_indices(i_domain) % data(k)) then
+              master_hits(i_domain) % data(k) = &
+                   master_hits(i_domain) % data(k) + hits(i_domain) % data(j)
               cycle INDEX_LOOP
             end if
           end do
@@ -227,8 +294,8 @@ contains
           ! If we made it here, this means the material hasn't yet been added to
           ! the master list, so add an entry to both the master indices and master
           ! hits lists
-          call master_indices(i_cell) % push_back(indices(i_cell) % data(j))
-          call master_hits(i_cell) % push_back(hits(i_cell) % data(j))
+          call master_indices(i_domain) % push_back(indices(i_domain) % data(j))
+          call master_hits(i_domain) % push_back(hits(i_domain) % data(j))
         end do INDEX_LOOP
       end do
 !$omp end ordered
@@ -247,7 +314,7 @@ contains
 
     volume_sample = product(this % upper_right - this % lower_left)
 
-    do i_cell = 1, size(this % cell_id)
+    do i_domain = 1, size(this % domain_id)
       atoms(:, :) = ZERO
       total_hits = 0
 
@@ -261,9 +328,9 @@ contains
           call MPI_RECV(data, 2*n, MPI_INTEGER, j, 1, MPI_COMM_WORLD, &
                MPI_STATUS_IGNORE, mpi_err)
           do k = 0, n - 1
-            do m = 1, master_indices(i_cell) % size()
-              if (data(2*k + 1) == master_indices(i_cell) % data(m)) then
-                master_hits(i_cell) % data(m) = master_hits(i_cell) % data(m) + &
+            do m = 1, master_indices(i_domain) % size()
+              if (data(2*k + 1) == master_indices(i_domain) % data(m)) then
+                master_hits(i_domain) % data(m) = master_hits(i_domain) % data(m) + &
                      data(2*k + 2)
               end if
             end do
@@ -272,12 +339,12 @@ contains
         end do
 #endif
 
-        do j = 1, master_indices(i_cell) % size()
-          total_hits = total_hits + master_hits(i_cell) % data(j)
-          f = real(master_hits(i_cell) % data(j), 8) / this % samples
+        do j = 1, master_indices(i_domain) % size()
+          total_hits = total_hits + master_hits(i_domain) % data(j)
+          f = real(master_hits(i_domain) % data(j), 8) / this % samples
           var_f = f*(ONE - f) / this % samples
 
-          i_material = master_indices(i_cell) % data(j)
+          i_material = master_indices(i_domain) % data(j)
           if (i_material == MATERIAL_VOID) cycle
 
           associate (mat => materials(i_material))
@@ -293,9 +360,9 @@ contains
         end do
 
         ! Determine volume
-        volume(1, i_cell) = real(total_hits, 8) / this % samples * volume_sample
-        volume(2, i_cell) = sqrt(volume(1, i_cell) * (volume_sample - &
-             volume(1, i_cell)) / this % samples)
+        volume(1, i_domain) = real(total_hits, 8) / this % samples * volume_sample
+        volume(2, i_domain) = sqrt(volume(1, i_domain) * (volume_sample - &
+             volume(1, i_domain)) / this % samples)
 
         ! Determine total number of atoms. At this point, we have values in
         ! atoms/b-cm. To get to atoms we multiple by 10^24 V.
@@ -307,19 +374,19 @@ contains
         ! Convert full arrays to vectors
         do j = 1, size(nuclides)
           if (atoms(1, j) > ZERO) then
-            call nuclide_vec(i_cell) % push_back(j)
-            call atoms_vec(i_cell) % push_back(atoms(1, j))
-            call uncertainty_vec(i_cell) % push_back(atoms(2, j))
+            call nuclide_vec(i_domain) % push_back(j)
+            call atoms_vec(i_domain) % push_back(atoms(1, j))
+            call uncertainty_vec(i_domain) % push_back(atoms(2, j))
           end if
         end do
 
       else
 #ifdef MPI
-        n = master_indices(i_cell) % size()
+        n = master_indices(i_domain) % size()
         allocate(data(2*n))
         do k = 0, n - 1
-          data(2*k + 1) = master_indices(i_cell) % data(k + 1)
-          data(2*k + 2) = master_hits(i_cell) % data(k + 1)
+          data(2*k + 1) = master_indices(i_domain) % data(k + 1)
+          data(2*k + 2) = master_hits(i_domain) % data(k + 1)
         end do
 
         call MPI_SEND(n, 1, MPI_INTEGER, 0, 0, MPI_COMM_WORLD, mpi_err)
@@ -340,7 +407,7 @@ contains
        uncertainty_vec)
     type(VolumeCalculation), intent(in) :: this
     character(*),     intent(in) :: filename       ! filename for HDF5 file
-    real(8),          intent(in) :: volume(:,:)    ! volume mean/stdev in each cell
+    real(8),          intent(in) :: volume(:,:)    ! volume mean/stdev in each domain
     type(VectorInt),  intent(in) :: nuclide_vec(:) ! indices in nuclides array
     type(VectorReal), intent(in) :: atoms_vec(:)   ! total # of atoms of each nuclide
     type(VectorReal), intent(in) :: uncertainty_vec(:) ! uncertainty of total # of atoms
@@ -357,15 +424,23 @@ contains
     file_id = file_create(filename)
 
     ! Write basic metadata
+    select case (this % domain_type)
+    case (FILTER_CELL)
+      call write_attribute_string(file_id, ".", "domain_type", "cell")
+    case (FILTER_MATERIAL)
+      call write_attribute_string(file_id, ".", "domain_type", "material")
+    case (FILTER_UNIVERSE)
+      call write_attribute_string(file_id, ".", "domain_type", "universe")
+    end select
     call write_attribute(file_id, "samples", this % samples)
     call write_attribute(file_id, "lower_left", this % lower_left)
     call write_attribute(file_id, "upper_right", this % upper_right)
 
-    do i = 1, size(this % cell_id)
-      group_id = create_group(file_id, "cell_" // trim(to_str(&
-           this % cell_id(i))))
+    do i = 1, size(this % domain_id)
+      group_id = create_group(file_id, "domain_" // trim(to_str(&
+           this % domain_id(i))))
 
-      ! Write volume for cell
+      ! Write volume for domain
       call write_dataset(group_id, "volume", volume(:, i))
 
       ! Create array of nuclide names from the vector

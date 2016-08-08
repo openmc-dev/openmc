@@ -629,17 +629,25 @@
       <element name="volume_calc">
         <interleave>
           <choice>
-            <element name="cells">
+            <element name="domain_type">
+              <data type="string"/>
+            </element>
+            <attribute name="domain_type">
+              <data type="string"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="domain_ids">
               <list>
                 <oneOrMore>
-                  <data type="positiveInteger"/>
+                  <data type="integer"/>
                 </oneOrMore>
               </list>
             </element>
-            <attribute name="cells">
+            <attribute name="domain_ids">
               <list>
                 <oneOrMore>
-                  <data type="positiveInteger"/>
+                  <data type="integer"/>
                 </oneOrMore>
               </list>
             </attribute>

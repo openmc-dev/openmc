@@ -4,11 +4,10 @@ import sys
 
 import h5py
 import numpy as np
-from numpy.polynomial.polynomial import Polynomial
 
 from .data import ATOMIC_SYMBOL
 from .endf_utils import read_float, read_CONT_line, identify_nuclide
-from .function import Tabulated1D, Sum
+from .function import Function1D, Tabulated1D, Polynomial, Sum
 import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
@@ -262,9 +261,6 @@ class FissionEnergyRelease(object):
     q_total : Callable
         Function of energy that returns the total fission Q-value (total release
         - incident neutron energy).
-    form : str
-        Format used to compute the energy-dependence of the data.  Either
-        'Sher-Beck' or 'Madland'.
 
     """
     def __init__(self):
@@ -275,7 +271,6 @@ class FissionEnergyRelease(object):
         self._delayed_photons = None
         self._betas = None
         self._neutrinos = None
-        self._form = None
 
     @property
     def fragments(self):
@@ -328,10 +323,6 @@ class FissionEnergyRelease(object):
     @property
     def q_total(self):
         return Sum([self.total, lambda E: -E])
-    
-    @property
-    def form(self):
-        return self._form
 
     @fragments.setter
     def fragments(self, energy_release):
@@ -368,11 +359,6 @@ class FissionEnergyRelease(object):
         cv.check_type('neutrinos', energy_release, Callable)
         self._neutrinos = energy_release
 
-    @form.setter
-    def form(self, form):
-        cv.check_value('format', form, ('Madland', 'Sher-Beck'))
-        self._form = form
-
     @classmethod
     def _from_dictionary(cls, energy_release, incident_neutron):
         """Generate fission energy release data from a dictionary.
@@ -401,7 +387,6 @@ class FissionEnergyRelease(object):
         # energy dependence.  Otherwise, it is a polynomial.
         n_coeffs = len(energy_release['EFR'])
         if n_coeffs > 1:
-            out.form = 'Madland'
             out.fragments = Polynomial(energy_release['EFR'])
             out.prompt_neutrons = Polynomial(energy_release['ENP'])
             out.delayed_neutrons = Polynomial(energy_release['END'])
@@ -410,12 +395,9 @@ class FissionEnergyRelease(object):
             out.betas = Polynomial(energy_release['EB'])
             out.neutrinos = Polynomial(energy_release['ENU'])
         else:
-            out.form = 'Sher-Beck'
-
-            # EFR and ENP are energy independent.  Polynomial is used because it
-            # has a __call__ attribute that handles Iterable inputs.  The
-            # energy-dependence of END is unspecified in ENDF-102 so assume it
-            # is independent.
+            # EFR and ENP are energy independent.  Use 0-order polynomials to
+            # make a constant function.  The energy-dependence of END is
+            # unspecified in ENDF-102 so assume it is independent.
             out.fragments = Polynomial((energy_release['EFR'][0]))
             out.prompt_photons = Polynomial((energy_release['EGP'][0]))
             out.delayed_neutrons = Polynomial((energy_release['END'][0]))
@@ -580,41 +562,40 @@ class FissionEnergyRelease(object):
 
         """
 
-        group.create_dataset('fragments', data=self.fragments.coef)
-        group.create_dataset('delayed_neutrons',
-                             data=self.delayed_neutrons.coef)
-        group.create_dataset('prompt_photons',
-                             data=self.prompt_photons.coef)
-        group.create_dataset('delayed_photons',
-                             data=self.delayed_photons.coef)
-        group.create_dataset('betas', data=self.betas.coef)
-        group.create_dataset('neutrinos', data=self.neutrinos.coef)
-
-        if self.form == 'Madland':
-            group.attrs['format'] = np.string_('Madland')
-            group.create_dataset('prompt_neutrons',
-                                 data=self.prompt_neutrons.coef)
-
+        self.fragments.to_hdf5(group, 'fragments')
+        self.prompt_neutrons.to_hdf5(group, 'prompt_neutrons')
+        self.delayed_neutrons.to_hdf5(group, 'delayed_neutrons')
+        self.prompt_photons.to_hdf5(group, 'prompt_photons')
+        self.delayed_photons.to_hdf5(group, 'delayed_photons')
+        self.betas.to_hdf5(group, 'betas')
+        self.neutrinos.to_hdf5(group, 'neutrinos')
+        
+        if isinstance(self.prompt_neutrons, Polynomial):
+            # Add the polynomials for the relevant components together. Use a
+            # Polynomial((0.0, -1.0)) to subtract incident energy.
             q_prompt = (self.fragments + self.prompt_neutrons +
                         self.prompt_photons + Polynomial((0.0, -1.0)))
-            group.create_dataset('q_prompt', data=q_prompt.coef)
+            q_prompt.to_hdf5(group, 'q_prompt')
             q_recoverable = (self.fragments + self.prompt_neutrons +
                              self.delayed_neutrons + self.prompt_photons +
                              self.delayed_photons + self.betas +
                              Polynomial((0.0, -1.0)))
-            group.create_dataset('q_recoverable', data=q_recoverable.coef)
-        elif self.form == 'Sher-Beck':
-            group.attrs['format'] = np.string_('Sher-Beck')
-            self.prompt_neutrons.to_hdf5(group, 'prompt_neutrons')
+            q_recoverable.to_hdf5(group, 'q_recoverable')
 
+        elif isinstance(self.prompt_neutrons, Tabulated1D):
+            # Make a Tabulated1D and evaluate the polynomial components at the
+            # table x points to get new y points.  Subtract x from y to remove
+            # incident energy.
             q_prompt = deepcopy(self.prompt_neutrons)
             q_prompt.y += self.fragments(q_prompt.x)
             q_prompt.y += self.prompt_photons(q_prompt.x)
+            q_prompt.y -= q_prompt.x
             q_prompt.to_hdf5(group, 'q_prompt')
             q_recoverable = q_prompt
             q_recoverable.y += self.delayed_neutrons(q_recoverable.x)
             q_recoverable.y += self.delayed_photons(q_recoverable.x)
             q_recoverable.y += self.betas(q_recoverable.x)
             q_recoverable.to_hdf5(group, 'q_recoverable')
+
         else:
             raise ValueError('Unrecognized energy release format')

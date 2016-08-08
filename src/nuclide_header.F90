@@ -305,13 +305,13 @@ module nuclide_header
                           hdf5_err)
     if (exists) then
       fer_group = open_group(group_id, 'fission_energy_release')
-      call read_attribute(temp, fer_group, 'format')
-      if (temp == 'Madland') then
-        ! The data uses the Madland format, i.e. polynomials
 
+      ! Check to see if this is polynomial or tabulated data
+      fer_dset = open_dataset(fer_group, 'q_prompt')
+      call read_attribute(temp, fer_dset, 'type')
+      if (temp == 'Polynomial') then
         ! Read the prompt Q-value
         allocate(Polynomial :: this % fission_q_prompt)
-        fer_dset = open_dataset(fer_group, 'q_prompt')
         call this % fission_q_prompt % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
 
@@ -320,13 +320,9 @@ module nuclide_header
         fer_dset = open_dataset(fer_group, 'q_recoverable')
         call this % fission_q_recov % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
-      else if (temp == 'Sher-Beck') then
-        ! The data uses the Sher-Beck format.  Python has handily converted this
-        ! format to Tabulated1Ds.
-
+      else if (temp == 'Tabulated1D') then
         ! Read the prompt Q-value
         allocate(Tabulated1D :: this % fission_q_prompt)
-        fer_dset = open_dataset(fer_group, 'q_prompt')
         call this % fission_q_prompt % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
 

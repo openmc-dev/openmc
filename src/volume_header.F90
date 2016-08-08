@@ -1,12 +1,14 @@
 module volume_header
 
-  use error, only: fatal_error
+  use constants, only: FILTER_CELL, FILTER_MATERIAL, FILTER_UNIVERSE
+  use error,     only: fatal_error
   use xml_interface
 
   implicit none
 
   type VolumeCalculation
-    integer, allocatable :: cell_id(:)
+    integer :: domain_type
+    integer, allocatable :: domain_id(:)
     real(8) :: lower_left(3)
     real(8) :: upper_right(3)
     integer :: samples
@@ -20,16 +22,31 @@ contains
     class(VolumeCalculation), intent(out) :: this
     type(Node), pointer :: node_vol
 
-    integer :: num_cells
+    integer :: num_domains
+    character(10) :: temp_str
+
+    ! Check domain type
+    call get_node_value(node_vol, "domain_type", temp_str)
+    select case (temp_str)
+    case ('cell')
+      this % domain_type = FILTER_CELL
+    case ('material')
+      this % domain_type = FILTER_MATERIAL
+    case ('universe')
+      this % domain_type = FILTER_UNIVERSE
+    case default
+      call fatal_error("Unrecognized domain type for stochastic volume &
+           &calculation: " // trim(temp_str))
+    end select
 
     ! Read cell IDs
-    if (check_for_node(node_vol, "cells")) then
-      num_cells = get_arraysize_integer(node_vol, "cells")
+    if (check_for_node(node_vol, "domain_ids")) then
+      num_domains = get_arraysize_integer(node_vol, "domain_ids")
     else
       call fatal_error("Must specify at least one cell for a volume calculation")
     end if
-    allocate(this % cell_id(num_cells))
-    call get_node_array(node_vol, "cells", this % cell_id)
+    allocate(this % domain_id(num_domains))
+    call get_node_array(node_vol, "domain_ids", this % domain_id)
 
     ! Read lower-left and upper-right bounding coordinates
     call get_node_array(node_vol, "lower_left", this % lower_left)

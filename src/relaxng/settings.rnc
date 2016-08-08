@@ -143,8 +143,10 @@ element settings {
   element verbosity { xsd:positiveInteger }? &
 
   element volume_calc {
-    (element cells { list { xsd:positiveInteger+ } } |
-      attribute cells { list { xsd:positiveInteger+ } }) &
+    (element domain_type { xsd:string } |
+      attribute domain_type { xsd:string }) &
+    (element domain_ids { list { xsd:integer+ } } |
+      attribute domain_ids { list { xsd:integer+ } }) &
     (element samples { xsd:positiveInteger } |
       attribute samples { xsd:positiveInteger }) &
     (element lower_left { list { xsd:double+ } } |

@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 import numpy as np
 import pandas as pd
 
-from openmc import Cell, Union
+import openmc
 import openmc.checkvalue as cv
 
 
@@ -14,8 +14,8 @@ class VolumeCalculation(object):
 
     Parameters
     ----------
-    cells : Iterable of Cell
-        Cells to find volumes of
+    domains : Iterable of openmc.Cell, openmc.Material, or openmc.Universe
+        Domains to find volumes of
     samples : int
         Number of samples used to generate volume estimates
     lower_left : Iterable of float
@@ -29,8 +29,10 @@ class VolumeCalculation(object):
 
     Attributes
     ----------
-    cell_ids : Iterable of int
-        IDs of cells to find volumes of
+    ids : Iterable of int
+        IDs of domains to find volumes of
+    domain_type : {'cell', 'material', 'universe'}
+        Type of each domain
     samples : int
         Number of samples used to generate volume estimates
     lower_left : Iterable of float
@@ -38,23 +40,31 @@ class VolumeCalculation(object):
     upper_right : Iterable of float
         Upper-right coordinates of bounding box used to sample points
     results : dict
-        Dictionary whose keys are unique IDs of cells and values are
+        Dictionary whose keys are unique IDs of domains and values are
         dictionaries with calculated volumes and total number of atoms for each
-        nuclide present in the cell.
+        nuclide present in the domain.
     volumes : dict
-        Dictionary whose keys are unique IDs of cells and values are the
+        Dictionary whose keys are unique IDs of domains and values are the
         estimated volumes
     atoms_dataframe : pandas.DataFrame
         DataFrame showing the estimated number of atoms for each nuclide present
-        in each cell specified.
+        in each domain specified.
 
     """
-    def __init__(self, cells, samples, lower_left=None,
+    def __init__(self, domains, samples, lower_left=None,
                  upper_right=None):
         self._results = None
 
-        cv.check_type('cells', cells, Iterable, Cell)
-        self.cell_ids = [c.id for c in cells]
+        cv.check_type('domains', domains, Iterable,
+                      (openmc.Cell, openmc.Material, openmc.Universe))
+        if isinstance(domains[0], openmc.Cell):
+            self._domain_type = 'cell'
+        elif isinstance(domains[0], openmc.Material):
+            self._domain_type = 'material'
+        elif isinstance(domains[0], openmc.Universe):
+            self._domain_type = 'universe'
+        self.ids = [d.id for d in domains]
+
         self.samples = samples
 
         if lower_left is not None:
@@ -64,17 +74,21 @@ class VolumeCalculation(object):
                                  'should be specified')
             self.upper_right = upper_right
         else:
-            ll, ur = Union(*[c.region for c in cells]).bounding_box
-            if np.any(np.isinf(ll)) or np.any(np.isinf(ur)):
+            if self.domain_type == 'cell':
+                ll, ur = openmc.Union(*[c.region for c in domains]).bounding_box
+                if np.any(np.isinf(ll)) or np.any(np.isinf(ur)):
+                    raise ValueError('Could not automatically determine bounding '
+                                     'box for stochastic volume calculation.')
+                else:
+                    self.lower_left = ll
+                    self.upper_right = ur
+            else:
                 raise ValueError('Could not automatically determine bounding box '
                                  'for stochastic volume calculation.')
-            else:
-                self.lower_left = ll
-                self.upper_right = ur
 
     @property
-    def cell_ids(self):
-        return self._cell_ids
+    def ids(self):
+        return self._ids
 
     @property
     def samples(self):
@@ -93,23 +107,28 @@ class VolumeCalculation(object):
         return self._results
 
     @property
+    def domain_type(self):
+        return self._domain_type
+
+    @property
     def volumes(self):
         return {uid: results['volume'] for uid, results in self.results.items()}
 
     @property
     def atoms_dataframe(self):
         items = []
-        columns = ['Cell', 'Nuclide', 'Atoms', 'Uncertainty']
-        for cell_id, results in self.results.items():
+        columns = [self.domain_type.capitalize(), 'Nuclide', 'Atoms',
+                   'Uncertainty']
+        for uid, results in self.results.items():
             for name, atoms in results['atoms']:
-                items.append((cell_id, name, atoms[0], atoms[1]))
+                items.append((uid, name, atoms[0], atoms[1]))
 
         return pd.DataFrame.from_records(items, columns=columns)
 
-    @cell_ids.setter
-    def cell_ids(self, cell_ids):
-        cv.check_type('cell IDs', cell_ids, Iterable, Real)
-        self._cell_ids = cell_ids
+    @ids.setter
+    def ids(self, ids):
+        cv.check_type('domain IDs', ids, Iterable, Real)
+        self._ids = ids
 
     @samples.setter
     def samples(self, samples):
@@ -154,16 +173,17 @@ class VolumeCalculation(object):
         import h5py
 
         with h5py.File(filename, 'r') as f:
+            domain_type = f.attrs['domain_type'].decode()
             samples = f.attrs['samples']
             lower_left = f.attrs['lower_left']
             upper_right = f.attrs['upper_right']
 
             results = {}
-            cell_ids = []
+            ids = []
             for obj_name in f:
-                if obj_name.startswith('cell_'):
-                    cell_id = int(obj_name[5:])
-                    cell_ids.append(cell_id)
+                if obj_name.startswith('domain_'):
+                    domain_id = int(obj_name[7:])
+                    ids.append(domain_id)
                     group = f[obj_name]
                     volume = tuple(group['volume'].value)
                     nucnames = group['nuclides'].value
@@ -172,14 +192,19 @@ class VolumeCalculation(object):
                     atom_list = []
                     for name_i, atoms_i in zip(nucnames, atoms):
                         atom_list.append((name_i.decode(), tuple(atoms_i)))
-                    results[cell_id] = {'volume': volume, 'atoms': atom_list}
+                    results[domain_id] = {'volume': volume, 'atoms': atom_list}
 
-        # Instantiate some throw-away cells that are used by the constructor to
-        # assign IDs
-        cells = [Cell(uid) for uid in cell_ids]
+        # Instantiate some throw-away domains that are used by the constructor
+        # to assign IDs
+        if domain_type == 'cell':
+            domains = [openmc.Cell(uid) for uid in ids]
+        elif domain_type == 'material':
+            domains = [openmc.Material(uid) for uid in ids]
+        elif domain_type == 'universe':
+            domains = [openmc.Universe(uid) for uid in ids]
 
         # Instantiate the class and assign results
-        vol = cls(cells, samples, lower_left, upper_right)
+        vol = cls(domains, samples, lower_left, upper_right)
         vol.results = results
         return vol
 
@@ -193,8 +218,10 @@ class VolumeCalculation(object):
 
         """
         element = ET.Element("volume_calc")
-        cell_elem = ET.SubElement(element, "cells")
-        cell_elem.text = ' '.join(str(uid) for uid in self.cell_ids)
+        dt_elem = ET.SubElement(element, "domain_type")
+        dt_elem.text = self.domain_type
+        id_elem = ET.SubElement(element, "domain_ids")
+        id_elem.text = ' '.join(str(uid) for uid in self.ids)
         samples_elem = ET.SubElement(element, "samples")
         samples_elem.text = str(self.samples)
         ll_elem = ET.SubElement(element, "lower_left")

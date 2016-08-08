@@ -59,9 +59,10 @@ class Geometry(object):
             Results from a stochastic volume calculation
 
         """
-        for cell in self.get_all_cells():
-            if cell.id in volume_calc.results:
-                cell.add_volume_information(volume_calc)
+        if volume_calc.domain_type == 'cell':
+            for cell in self.get_all_cells():
+                if cell.id in volume_calc.results:
+                    cell.add_volume_information(volume_calc)
 
     def export_to_xml(self):
         """Create a geometry.xml file that can be used for a simulation.

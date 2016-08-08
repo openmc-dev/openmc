@@ -10,7 +10,7 @@ module nuclide_header
   use constants
   use dict_header, only: DictIntInt
   use endf,        only: reaction_name, is_fission, is_disappearance
-  use endf_header, only: Function1D, Constant1D, Polynomial, Tabulated1D
+  use endf_header, only: Function1D, Polynomial, Tabulated1D
   use error,       only: fatal_error, warning
   use hdf5_interface, only: read_attribute, open_group, close_group, &
        open_dataset, read_dataset, close_dataset, get_shape
@@ -283,11 +283,9 @@ module nuclide_header
       total_nu = open_dataset(nu_group, 'yield')
       call read_attribute(temp, total_nu, 'type')
       select case (temp)
-      case ('constant')
-        allocate(Constant1D :: this % total_nu)
-      case ('tabulated')
+      case ('Tabulated1D')
         allocate(Tabulated1D :: this % total_nu)
-      case ('polynomial')
+      case ('Polynomial')
         allocate(Polynomial :: this % total_nu)
       end select
       call this % total_nu % from_hdf5(total_nu)

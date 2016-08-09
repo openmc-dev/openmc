@@ -112,9 +112,10 @@ contains
     integer :: i_domain      ! index in domain_id array
     integer :: i_material  ! index in materials array
     integer :: level       ! local coordinate level
+    integer :: n_mat(size(this % domain_id))  ! Number of materials for each domain
+    integer, allocatable :: indices(:,:) ! List of material indices for each domain
+    integer, allocatable :: hits(:,:)    ! Number of hits for each material in each domain
     logical :: found_cell
-    type(VectorInt) :: indices(size(this % domain_id)) ! List of material indices
-    type(VectorInt) :: hits(size(this % domain_id))    ! Number of hits for each material
     type(Particle) :: p
 
     ! Shared variables
@@ -123,10 +124,10 @@ contains
     type(VectorInt) :: master_hits(size(this % domain_id))
 
     ! Variables used outside of parallel region
-    integer :: i_nuclide    ! index in nuclides array
-    integer :: total_hits   ! total hits for a single domain (summed over materials)
+    integer :: i_nuclide   ! index in nuclides array
+    integer :: total_hits  ! total hits for a single domain (summed over materials)
     integer :: min_samples ! minimum number of samples per process
-    integer :: remainder        ! leftover samples from uneven divide
+    integer :: remainder   ! leftover samples from uneven divide
 #ifdef MPI
     integer :: m  ! index over materials
     integer :: n  ! number of materials
@@ -151,15 +152,12 @@ contains
     call p % initialize()
 
 !$omp parallel private(i, j, k, i_domain, i_material, level, found_cell, &
-!$omp&                 indices, hits) firstprivate(p)
+!$omp&                 indices, hits, n_mat) firstprivate(p)
 
-    ! Reset vectors -- this is really to get around a gfortran 4.6 bug. Ideally,
-    ! indices and hits would just be firstprivate but 4.6 complains because they
-    ! have allocatable components...
-    do i_domain = 1, size(this % domain_id)
-      call indices(i_domain) % clear()
-      call hits(i_domain) % clear()
-    end do
+    ! Create space for material indices and number of hits for each
+    allocate(indices(size(this % domain_id), 8))
+    allocate(hits(size(this % domain_id), 8))
+    n_mat(:) = 0
 
     call prn_set_stream(STREAM_VOLUME)
 
@@ -185,83 +183,32 @@ contains
       if (.not. found_cell) cycle
 
       if (this % domain_type == FILTER_MATERIAL) then
-        ! ======================================================================
-        ! MATERIAL VOLUME
-
         i_material = p % material
-        MATERIAL_LOOP: do i_domain = 1, size(this % domain_id)
+        do i_domain = 1, size(this % domain_id)
           if (i_material == materials(i_domain) % id) then
-            ! Check if we've already had a hit in this material and if so,
-            ! simply add one
-            do j = 1, indices(i_domain) % size()
-              if (indices(i_domain) % data(j) == i_material) then
-                hits(i_domain) % data(j) = hits(i_domain) % data(j) + 1
-                cycle MATERIAL_LOOP
-              end if
-            end do
-
-            ! If we make it here, that means we haven't yet had a hit in this
-            ! material. Add an entry to both the indices list and the hits list
-            call indices(i_domain) % push_back(i_material)
-            call hits(i_domain) % push_back(1)
+            call check_hit(i_domain, i_material, indices, hits, n_mat)
           end if
-        end do MATERIAL_LOOP
+        end do
 
       elseif (this % domain_type == FILTER_CELL) THEN
-        ! ======================================================================
-        ! CELL VOLUME
-
         do level = 1, p % n_coord
-          CELL_LOOP: do i_domain = 1, size(this % domain_id)
+          do i_domain = 1, size(this % domain_id)
             if (cells(p % coord(level) % cell) % id == this % domain_id(i_domain)) then
-
-              ! Determine what material this is
               i_material = p % material
-
-              ! Check if we've already had a hit in this material and if so,
-              ! simply add one
-              do j = 1, indices(i_domain) % size()
-                if (indices(i_domain) % data(j) == i_material) then
-                  hits(i_domain) % data(j) = hits(i_domain) % data(j) + 1
-                  cycle CELL_LOOP
-                end if
-              end do
-
-              ! If we make it here, that means we haven't yet had a hit in this
-              ! material. Add an entry to both the indices list and the hits list
-              call indices(i_domain) % push_back(i_material)
-              call hits(i_domain) % push_back(1)
+              call check_hit(i_domain, i_material, indices, hits, n_mat)
             end if
-          end do CELL_LOOP
+          end do
         end do
 
       elseif (this % domain_type == FILTER_UNIVERSE) then
-        ! ======================================================================
-        ! UNIVERSE VOLUME
-
         do level = 1, p % n_coord
-          UNIVERSE_LOOP: do i_domain = 1, size(this % domain_id)
+          do i_domain = 1, size(this % domain_id)
             if (universes(p % coord(level) % universe) % id == &
                  this % domain_id(i_domain)) then
-
-              ! Determine what material this is
               i_material = p % material
-
-              ! Check if we've already had a hit in this material and if so,
-              ! simply add one
-              do j = 1, indices(i_domain) % size()
-                if (indices(i_domain) % data(j) == i_material) then
-                  hits(i_domain) % data(j) = hits(i_domain) % data(j) + 1
-                  cycle UNIVERSE_LOOP
-                end if
-              end do
-
-              ! If we make it here, that means we haven't yet had a hit in this
-              ! material. Add an entry to both the indices list and the hits list
-              call indices(i_domain) % push_back(i_material)
-              call hits(i_domain) % push_back(1)
+              call check_hit(i_domain, i_material, indices, hits, n_mat)
             end if
-          end do UNIVERSE_LOOP
+          end do
         end do
 
       end if
@@ -280,13 +227,13 @@ contains
     THREAD_LOOP: do i = 1, omp_get_num_threads()
 !$omp ordered
       do i_domain = 1, size(this % domain_id)
-        INDEX_LOOP: do j = 1, indices(i_domain) % size()
+        INDEX_LOOP: do j = 1, n_mat(i_domain)
           ! Check if this material has been added to the master list and if so,
           ! accumulate the number of hits
           do k = 1, master_indices(i_domain) % size()
-            if (indices(i_domain) % data(j) == master_indices(i_domain) % data(k)) then
+            if (indices(i_domain, j) == master_indices(i_domain) % data(k)) then
               master_hits(i_domain) % data(k) = &
-                   master_hits(i_domain) % data(k) + hits(i_domain) % data(j)
+                   master_hits(i_domain) % data(k) + hits(i_domain, j)
               cycle INDEX_LOOP
             end if
           end do
@@ -294,16 +241,20 @@ contains
           ! If we made it here, this means the material hasn't yet been added to
           ! the master list, so add an entry to both the master indices and master
           ! hits lists
-          call master_indices(i_domain) % push_back(indices(i_domain) % data(j))
-          call master_hits(i_domain) % push_back(hits(i_domain) % data(j))
+          call master_indices(i_domain) % push_back(indices(i_domain, j))
+          call master_hits(i_domain) % push_back(hits(i_domain, j))
         end do INDEX_LOOP
       end do
 !$omp end ordered
     end do THREAD_LOOP
 !$omp end do
 #else
-    master_indices = indices
-    master_hits = hits
+    do i_domain = 1, size(this % domain_id)
+      do j = 1, n_mat(i_domain)
+        call master_indices(i_domain) % push_back(indices(i_domain, j))
+        call master_hits(i_domain) % push_back(hits(i_domain, j))
+      end do
+    end do
 #endif
 
     call prn_set_stream(STREAM_TRACKING)
@@ -395,6 +346,58 @@ contains
 #endif
       end if
     end do
+
+  contains
+
+    !===========================================================================
+    ! CHECK_HIT is an internal subroutine that checks for whether a material has
+    ! already been hit for a given domain. If not, it increases the list size by
+    ! one (taking care of re-allocation if needed).
+    !===========================================================================
+
+    subroutine check_hit(i_domain, i_material, indices, hits, n_mat)
+      integer :: i_domain
+      integer :: i_material
+      integer, allocatable :: indices(:,:)
+      integer, allocatable :: hits(:,:)
+      integer :: n_mat(:)
+
+      integer, allocatable :: temp(:,:)
+      logical :: already_hit
+      integer :: j, k, nm
+
+      ! Check if we've already had a hit in this material and if so,
+      ! simply add one
+      already_hit = .false.
+      nm = n_mat(i_domain)
+      do j = 1, nm
+        if (indices(i_domain, j) == i_material) then
+          hits(i_domain, j) = hits(i_domain, j) + 1
+          already_hit = .true.
+        end if
+      end do
+
+      if (.not. already_hit) then
+        ! If we make it here, that means we haven't yet had a hit in this
+        ! material. First check if the indices and hits arrays are large enough
+        ! and if not, double them.
+        if (nm == size(indices, 2)) then
+          k = 2*size(indices, 2)
+          allocate(temp(size(this % domain_id), k))
+          temp(:, 1:nm) = indices(:, 1:nm)
+          call move_alloc(FROM=temp, TO=indices)
+
+          allocate(temp(size(this % domain_id), k))
+          temp(:, 1:nm) = hits(:, 1:nm)
+          call move_alloc(FROM=temp, TO=indices)
+        end if
+
+        ! Add an entry to both the indices list and the hits list
+        n_mat(i_domain) = n_mat(i_domain) + 1
+        indices(i_domain, n_mat(i_domain)) = i_material
+        hits(i_domain, n_mat(i_domain)) = 1
+      end if
+    end subroutine check_hit
 
   end subroutine get_volume
 

@@ -13,12 +13,11 @@ INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
 class Function1D(object):
     """A function of one independent variable with HDF5 support."""
 
-    __metaclass__ = ABCMeta
-
     def __init__(self): pass
 
-    @abstractmethod
-    def __call__(self): pass
+    def __call__(self):
+        raise NotImplemented('Subclasses of Function1D should overwrite the '
+                             '__call__ and to_hdf5 methods')
 
     @abstractmethod
     def to_hdf5(self, group, name='xy'):
@@ -32,7 +31,8 @@ class Function1D(object):
             Name of the dataset to create
 
         """
-        pass
+        raise NotImplemented('Subclasses of Function1D should overwrite the '
+                             '__call__ and to_hdf5 methods')
 
     @classmethod
     def from_hdf5(cls, dataset):

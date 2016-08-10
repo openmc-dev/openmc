@@ -9,8 +9,8 @@ ENDF-102_ for details).  It gives the information needed to compute the energy
 carried away from fission reactions by each reaction product (e.g. fragment
 nuclei, neutrons) which depends on the incident neutron energy.  OpenMC is
 distributed with one of these files under
-openmc/data/fission_Q_data_endfb71.h5.  More files of this format can be
-created from ENDF files with the
+data/fission_Q_data_endfb71.h5.  More files of this format can be created from
+ENDF files with the
 ``openmc.data.write_compact_458_library`` function.  They can be read with the
 ``openmc.data.FissionEnergyRelease.from_compact_hdf5`` class method.
 

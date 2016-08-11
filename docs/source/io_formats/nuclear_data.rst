@@ -1,4 +1,4 @@
-.. _usersguide_nuclear_data:
+.. _io_nuclear_data:
 
 ========================
 Nuclear Data File Format

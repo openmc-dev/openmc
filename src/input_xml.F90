@@ -88,8 +88,10 @@ contains
     type(Node), pointer :: node_scatterer => null()
     type(Node), pointer :: node_trigger   => null()
     type(Node), pointer :: node_keff_trigger => null()
+    type(Node), pointer :: node_vol => null()
     type(NodeList), pointer :: node_scat_list => null()
     type(NodeList), pointer :: node_source_list => null()
+    type(NodeList), pointer :: node_vol_list => null()
 
     ! Check if settings.xml exists
     filename = trim(path_input) // "settings.xml"
@@ -1119,6 +1121,14 @@ contains
              &settings.xml")
       end select
     end if
+
+    call get_node_list(doc, "volume_calc", node_vol_list)
+    n = get_list_size(node_vol_list)
+    allocate(volume_calcs(n))
+    do i = 1, n
+      call get_list_item(node_vol_list, i, node_vol)
+      call volume_calcs(i) % from_xml(node_vol)
+    end do
 
     ! Close settings XML file
     call close_xmldoc(doc)

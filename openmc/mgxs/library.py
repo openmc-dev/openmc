@@ -1059,7 +1059,7 @@ class Library(object):
         # Create the xsdata object and add it to the mgxs_file
         for i, domain in enumerate(self.domains):
             if self.by_nuclide:
-                nuclides = list(domain.get_all_nuclides().keys())
+                nuclides = domain.get_nuclides()
             else:
                 nuclides = ['total']
             for nuclide in nuclides:

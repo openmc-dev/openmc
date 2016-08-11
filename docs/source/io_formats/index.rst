@@ -30,3 +30,4 @@ Output Files
    particle_restart
    track
    voxel
+   volume

@@ -6,6 +6,7 @@ from xml.etree import ElementTree as ET
 import sys
 
 import openmc
+import openmc.data
 import openmc.checkvalue as cv
 from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
 
@@ -484,7 +485,7 @@ class Material(object):
                   'non-string cross-section identifier "{1}"'.format(self._id, xs)
             raise ValueError(msg)
 
-        self._sab.append((name, xs))
+        self._sab.append((openmc.data.get_thermal_name(name), xs))
 
     def make_isotropic_in_lab(self):
         for nuclide, percent, percent_type in self._nuclides:

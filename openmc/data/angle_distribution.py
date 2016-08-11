@@ -32,6 +32,16 @@ class AngleDistribution(object):
         self.energy = energy
         self.mu = mu
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (not np.array_equal(self.energy, other.energy) or
+                not np.array_equal(self.mu, other.mu)):
+                eqval = False
+            return eqval
+
     @property
     def energy(self):
         return self._energy

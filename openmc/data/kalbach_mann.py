@@ -59,6 +59,20 @@ class KalbachMann(AngleEnergy):
         self.precompound = precompound
         self.slope = slope
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (not np.array_equal(self.breakpoints, other.breakpoints) or
+                not np.array_equal(self.interpolation, other.interpolation) or
+                not np.array_equal(self.energy, other.energy) or
+                not np.array_equal(self.energy_out, other.energy_out) or
+                not np.array_equal(self.precompound, other.precompound) or
+                not np.array_equal(self.slope, other.slope)):
+                eqval = False
+            return eqval
+
     @property
     def breakpoints(self):
         return self._breakpoints

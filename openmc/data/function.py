@@ -65,6 +65,18 @@ class Tabulated1D(object):
         self.x = np.asarray(x)
         self.y = np.asarray(y)
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (not np.array_equal(self.x, other.x) or
+                not np.array_equal(self.y, other.y) or
+                not np.array_equal(self.breakpoints, other.breakpoints) or
+                not np.array_equal(self.interpolation, other.interpolation)):
+                eqval = False
+            return eqval
+
     def __call__(self, x):
         # Check if input is array or scalar
         if isinstance(x, Iterable):

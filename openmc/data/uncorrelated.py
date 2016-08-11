@@ -34,6 +34,16 @@ class UncorrelatedAngleEnergy(AngleEnergy):
         if energy is not None:
             self.energy = energy
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (self.angle != other.angle or
+                self.energy != other.energy):
+                eqval = False
+            return eqval
+
     @property
     def angle(self):
         return self._angle

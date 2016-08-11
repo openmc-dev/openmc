@@ -1,7 +1,10 @@
+from abc import ABCMeta, abstractproperty
 from collections import Iterable, OrderedDict
 import copy
+from six import with_metaclass
 from numbers import Real, Integral
 import sys
+from xml.etree import ElementTree as ET
 
 import numpy as np
 
@@ -17,59 +20,43 @@ _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
                  'distribcell', 'delayedgroup']
 
-class Filter(object):
-    """A filter used to constrain a tally to a specific criterion, e.g. only
-    tally events when the particle is in a certain cell and energy range.
+class FilterMeta(ABCMeta):
+    def __new__(cls, name, bases, namespace, **kwargs):
+        if not name.endswith('Filter'):
+            raise ValueError("All filter class names must end with 'Filter'")
+        namespace['short_name'] = name[:-6]
+        return super(FilterMeta, cls).__new__(cls, name, bases, namespace,
+                                              **kwargs)
+
+
+class Filter(with_metaclass(FilterMeta, object)):
+    """A constraint on transport events that can score a tally
 
     Parameters
     ----------
-    type : str
-        The type of the tally filter. Acceptable values are "universe",
-        "material", "cell", "cellborn", "surface", "mesh", "energy",
-        "energyout", "distribcell", "mu", "polar", "azimuthal", and
-        "delayedgroup".
     bins : Integral or Iterable of Integral or Iterable of Real
         The bins for the filter. This takes on different meaning for different
         filters. See the OpenMC online documentation for more details.
 
     Attributes
     ----------
-    type : str
-        The type of the tally filter
-    bins : Integral or Iterable of Real
+    bins : Integral or Iterable of Integral or Iterable of Real
         The bins for the filter
     num_bins : Integral
         The number of filter bins
-    mesh : openmc.Mesh or None
-        A Mesh object for 'mesh' type filters.
     stride : Integral
         The number of filter, nuclide and score bins within each of this
         filter's bins.
-    distribcell_paths : list of str
-        The paths traversed through the CSG tree to reach each distribcell
-        instance (for 'distribcell' filters only)
 
     """
 
-    # Initialize Filter class attributes
-    def __init__(self, type=None, bins=None):
-
-        self._type = None
+    def __init__(self, bins):
+        self.bins = bins
         self._num_bins = 0
-        self._bins = None
-        self._mesh = None
         self._stride = None
-        self._distribcell_paths = None
-
-        if type is not None:
-            self.type = type
-        if bins is not None:
-            self.bins = bins
 
     def __eq__(self, other):
-        if not isinstance(other, Filter):
-            return False
-        elif self.type != other.type:
+        if type(self) != type(other):
             return False
         elif len(self.bins) != len(other.bins):
             return False
@@ -82,20 +69,16 @@ class Filter(object):
         return not self == other
 
     def __gt__(self, other):
-        if self.type != other.type:
-            if self.type in _FILTER_TYPES and other.type in _FILTER_TYPES:
-                delta = _FILTER_TYPES.index(self.type) - \
-                        _FILTER_TYPES.index(other.type)
+        if type(self) != type(other):
+            if self.short_name in _FILTER_TYPES and \
+                other.short_name in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.short_name) - \
+                        _FILTER_TYPES.index(other.short_name)
                 return delta > 0
             else:
                 return False
         else:
-            # Compare largest/smallest energy bin edges in energy filters
-            # This logic is used when merging tallies with energy filters
-            if 'energy' in self.type and 'energy' in other.type:
-                return self.bins[0] >= other.bins[-1]
-            else:
-                return max(self.bins) > max(other.bins)
+            return max(self.bins) > max(other.bins)
 
     def __lt__(self, other):
         return not self > other
@@ -104,14 +87,26 @@ class Filter(object):
         return hash(repr(self))
 
     def __repr__(self):
-        string = 'Filter\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
+        string = type(self).__name__ + '\n'
         string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
         return string
 
-    @property
-    def type(self):
-        return self._type
+    @classmethod
+    def recursive_subclasses(cls):
+        subs = cls.__subclasses__()
+        subsubs = [grand for s in subs for grand in s.__subclasses__()]
+        return subs + subsubs
+
+    @classmethod
+    def from_hdf5(cls, group):
+        for subclass in cls.recursive_subclasses():
+            if group['type'].value.decode() == subclass.short_name.lower():
+                out = subclass(group['bins'].value)
+                out.num_bins = group['n_bins'].value
+                return out
+
+        raise ValueError("Unrecognized Filter class: '"
+                         + group['type'].value.decode() + "'")
 
     @property
     def bins(self):
@@ -119,46 +114,15 @@ class Filter(object):
 
     @property
     def num_bins(self):
-        if self.bins is None:
-            return 0
-        elif self.type in ['energy', 'energyout']:
-            return len(self.bins) - 1
-        elif self.type in ['cell', 'cellborn', 'surface', 'universe', 'material']:
-            return len(self.bins)
-        else:
-            return self._num_bins
-
-    @property
-    def mesh(self):
-        return self._mesh
+        return self._num_bins
 
     @property
     def stride(self):
         return self._stride
 
-    @property
-    def distribcell_paths(self):
-        return self._distribcell_paths
-
-    @type.setter
-    def type(self, type):
-        if type is None:
-            self._type = type
-        elif type not in _FILTER_TYPES:
-            msg = 'Unable to set Filter type to "{0}" since it is not one ' \
-                  'of the supported types'.format(type)
-            raise ValueError(msg)
-
-        self._type = type
-
     @bins.setter
     def bins(self, bins):
-        if self.type is None:
-            msg = 'Unable to set bins for Filter to "{0}" since ' \
-                  'the Filter type has not yet been set'.format(bins)
-            raise ValueError(msg)
-
-        # If the bin edge is a single value, it is a Cell, Material, etc. ID
+        # We might be given a single value.  Stick it into a list.
         if not isinstance(bins, Iterable):
             bins = [bins]
 
@@ -171,63 +135,19 @@ class Filter(object):
         else:
             bins = list(bins)
 
-        if self.type in ['cell', 'cellborn', 'surface', 'material',
-                         'universe', 'distribcell', 'delayedgroup']:
-            cv.check_iterable_type('filter bins', bins, Integral)
-            for edge in bins:
-                cv.check_greater_than('filter bin', edge, 0, equality=True)
+        # Convert to a numpy array
+        bins = np.array(bins)
 
-        elif self.type in ['energy', 'energyout']:
-            for edge in bins:
-                if not isinstance(edge, Real):
-                    msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
-                          'since it is a non-integer or floating point ' \
-                          'value'.format(edge, self.type)
-                    raise ValueError(msg)
-                elif edge < 0.:
-                    msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
-                          'since it is a negative value'.format(edge, self.type)
-                    raise ValueError(msg)
+        # Check the bin values
+        self.check_bins(bins)
 
-            # Check that bin edges are monotonically increasing
-            for index in range(len(bins)):
-                if index > 0 and bins[index] < bins[index-1]:
-                    msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
-                          'since they are not monotonically ' \
-                          'increasing'.format(bins, self.type)
-                    raise ValueError(msg)
-
-        # mesh filters
-        elif self.type == 'mesh':
-            if not len(bins) == 1:
-                msg = 'Unable to add bins "{0}" to a mesh Filter since ' \
-                      'only a single mesh can be used per tally'.format(bins)
-                raise ValueError(msg)
-            elif not isinstance(bins[0], Integral):
-                msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
-                       'is a non-integer'.format(bins[0])
-                raise ValueError(msg)
-            elif bins[0] < 0:
-                msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
-                       'is a negative integer'.format(bins[0])
-                raise ValueError(msg)
-
-        # If all error checks passed, add bin edges
-        self._bins = np.array(bins)
+        self._bins = bins
 
     @num_bins.setter
     def num_bins(self, num_bins):
         cv.check_type('filter num_bins', num_bins, Integral)
         cv.check_greater_than('filter num_bins', num_bins, 0, equality=True)
         self._num_bins = num_bins
-
-    @mesh.setter
-    def mesh(self, mesh):
-        cv.check_type('filter mesh', mesh, Mesh)
-
-        self._mesh = mesh
-        self.type = 'mesh'
-        self.bins = self.mesh.id
 
     @stride.setter
     def stride(self, stride):
@@ -239,10 +159,22 @@ class Filter(object):
 
         self._stride = stride
 
-    @distribcell_paths.setter
-    def distribcell_paths(self, distribcell_paths):
-        cv.check_iterable_type('distribcell_paths', distribcell_paths, str)
-        self._distribcell_paths = distribcell_paths
+    def check_bins(self, bins):
+        """Make sure given bins are valid for this filter.
+
+        Raises
+        ------
+        TypeError
+        ValueError
+
+        """
+        pass
+
+    def to_xml(self):
+        element = ET.Element('filter')
+        element.set('type', self.short_name.lower())
+        element.set('bins', ' '.join(str(b) for b in self.bins))
+        return element
 
     def can_merge(self, other):
         """Determine if filter can be merged with another.
@@ -259,35 +191,9 @@ class Filter(object):
 
         """
 
-        if not isinstance(other, Filter):
-            return False
+        if type(self) != type(other): return False
 
-        # Filters must be of the same type
-        if self.type != other.type:
-            return False
-
-        # Distribcell filters cannot have more than one bin
-        if self.type == 'distribcell':
-            return False
-
-        # Mesh filters cannot have more than one bin
-        elif self.type == 'mesh':
-            return False
-
-        # Different energy bins structures must be mutually exclusive and
-        # share only one shared bin edge at the minimum or maximum energy
-        elif 'energy' in self.type:
-            # This low energy edge coincides with other's high energy edge
-            if self.bins[0] == other.bins[-1]:
-                return True
-            # This high energy edge coincides with other's low energy edge
-            elif self.bins[-1] == other.bins[0]:
-                return True
-            else:
-                return False
-
-        else:
-            return True
+        return True
 
     def merge(self, other):
         """Merge this filter with another.
@@ -309,27 +215,12 @@ class Filter(object):
                   'filters'.format(self.type, other.type)
             raise ValueError(msg)
 
-        # Create deep copy of filter to return as merged filter
-        merged_filter = copy.deepcopy(self)
-
         # Merge unique filter bins
         merged_bins = np.concatenate((self.bins, other.bins))
         merged_bins = np.unique(merged_bins)
 
-        # Sort energy bin edges
-        if 'energy' in self.type:
-            merged_bins = sorted(merged_bins)
-
-        # Assign merged bins to merged filter
-        merged_filter.bins = list(merged_bins)
-
-        # Count bins in the merged filter
-        if 'energy' in merged_filter.type:
-            merged_filter.num_bins = len(merged_bins) - 1
-        else:
-            merged_filter.num_bins = len(merged_bins)
-
-        return merged_filter
+        # Create a new filter with these bins
+        return type(self)(merged_bins)
 
     def is_subset(self, other):
         """Determine if another filter is a subset of this filter.
@@ -349,15 +240,8 @@ class Filter(object):
 
         """
 
-        if not isinstance(other, Filter):
+        if type(self) != type(other):
             return False
-        elif self.type != other.type:
-            return False
-        elif self.type in ['energy', 'energyout']:
-            if len(self.bins) != len(other.bins):
-                return False
-            else:
-                return np.allclose(self.bins, other.bins)
 
         for bin in other.bins:
             if bin not in self.bins:
@@ -390,48 +274,12 @@ class Filter(object):
 
         """
 
-        try:
-            # Filter bins for a mesh are an (x,y,z) tuple
-            if self.type == 'mesh':
-                # Convert (x,y,z) to a single bin -- this is similar to
-                # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
-                if len(self.mesh.dimension) == 3:
-                    nx, ny, nz = self.mesh.dimension
-                    val = (filter_bin[0] - 1) * ny * nz + \
-                          (filter_bin[1] - 1) * nz + \
-                          (filter_bin[2] - 1)
-                else:
-                    nx, ny = self.mesh.dimension
-                    val = (filter_bin[0] - 1) * ny + \
-                          (filter_bin[1] - 1)
-
-                filter_index = val
-
-            # Use lower energy bound to find index for energy Filters
-            elif self.type in ['energy', 'energyout']:
-                deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
-                min_delta = np.min(deltas)
-                if min_delta < 1E-3:
-                    filter_index = deltas.argmin() - 1
-                else:
-                    raise ValueError
-
-            # Filter bins for distribcells are "IDs" of each unique placement
-            # of the Cell in the Geometry (integers starting at 0)
-            elif self.type == 'distribcell':
-                filter_index = filter_bin
-
-            # Use ID for all other Filters (e.g., material, cell, etc.)
-            else:
-                val = np.where(self.bins == filter_bin)[0][0]
-                filter_index = val
-
-        except ValueError:
+        if not filter_bin in self.bins:
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
 
-        return filter_index
+        return np.where(self.bins == filter_bin)[0][0]
 
     def get_bin(self, bin_index):
         """Returns the filter bin for some filter bin index.
@@ -470,34 +318,8 @@ class Filter(object):
         cv.check_greater_than('bin_index', bin_index, 0, equality=True)
         cv.check_less_than('bin_index', bin_index, self.num_bins)
 
-        if self.type == 'mesh':
-
-            # Construct 3-tuple of x,y,z cell indices for a 3D mesh
-            if len(self.mesh.dimension) == 3:
-                nx, ny, nz = self.mesh.dimension
-                x = bin_index / (ny * nz)
-                y = (bin_index - (x * ny * nz)) / nz
-                z = bin_index - (x * ny * nz) - (y * nz)
-                filter_bin = (x, y, z)
-
-            # Construct 2-tuple of x,y cell indices for a 2D mesh
-            else:
-                nx, ny = self.mesh.dimension
-                x = bin_index / ny
-                y = bin_index - (x * ny)
-                filter_bin = (x, y)
-
-        # Construct 2-tuple of lower, upper energies for energy(out) filters
-        elif self.type in ['energy', 'energyout']:
-            filter_bin = (self.bins[bin_index], self.bins[bin_index+1])
-        # Construct 1-tuple of with the cell ID for distribcell filters
-        elif self.type == 'distribcell':
-            filter_bin = (self.bins[0],)
-        # Construct 1-tuple with domain ID (e.g., material) for other filters
-        else:
-            filter_bin = (self.bins[bin_index],)
-
-        return filter_bin
+        # Return a 1-tuple of the bin.
+        return (self.bins[bin_index],)
 
     def get_pandas_dataframe(self, data_size, distribcell_paths=True):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -562,227 +384,501 @@ class Filter(object):
         import pandas as pd
         df = pd.DataFrame()
 
-        # mesh filters
-        if self.type == 'mesh':
-
-            # Initialize dictionary to build Pandas Multi-index column
-            filter_dict = {}
-
-            # Append Mesh ID as outermost index of multi-index
-            mesh_key = 'mesh {0}'.format(self.mesh.id)
-
-            # Find mesh dimensions - use 3D indices for simplicity
-            if len(self.mesh.dimension) == 3:
-                nx, ny, nz = self.mesh.dimension
-            else:
-                nx, ny = self.mesh.dimension
-                nz = 1
-
-            # Generate multi-index sub-column for x-axis
-            filter_bins = np.arange(1, nx+1)
-            repeat_factor = ny * nz * self.stride
-            filter_bins = np.repeat(filter_bins, repeat_factor)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_dict[(mesh_key, 'x')] = filter_bins
-
-            # Generate multi-index sub-column for y-axis
-            filter_bins = np.arange(1, ny+1)
-            repeat_factor = nz * self.stride
-            filter_bins = np.repeat(filter_bins, repeat_factor)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_dict[(mesh_key, 'y')] = filter_bins
-
-            # Generate multi-index sub-column for z-axis
-            filter_bins = np.arange(1, nz+1)
-            repeat_factor = self.stride
-            filter_bins = np.repeat(filter_bins, repeat_factor)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_dict[(mesh_key, 'z')] = filter_bins
-
-            # Initialize a Pandas DataFrame from the mesh dictionary
-            df = pd.concat([df, pd.DataFrame(filter_dict)])
-
-        # distribcell filters
-        elif self.type == 'distribcell':
-            level_df = None
-
-            # Create Pandas Multi-index columns for each level in CSG tree
-            if distribcell_paths:
-
-                # Distribcell paths require linked metadata from the Summary
-                if self.distribcell_paths is None:
-                    msg = 'Unable to construct distribcell paths since ' \
-                          'the Summary is not linked to the StatePoint'
-                    raise ValueError(msg)
-
-                # Make copy of array of distribcell paths to use in
-                # Pandas Multi-index column construction
-                distribcell_paths = copy.deepcopy(self.distribcell_paths)
-                num_offsets = len(distribcell_paths)
-
-                # Loop over CSG levels in the distribcell paths
-                level_counter = 0
-                levels_remain = True
-                while levels_remain:
-
-                    # Use level key as first index in Pandas Multi-index column
-                    level_counter += 1
-                    level_key = 'level {}'.format(level_counter)
-
-                    # Use the first distribcell path to determine if level
-                    # is a universe/cell or lattice level
-                    first_path = distribcell_paths[0]
-                    next_index = first_path.index('-')
-                    level = first_path[:next_index]
-
-                    # Trim universe/lattice info from path
-                    first_path = first_path[next_index+2:]
-
-                    # Create a dictionary for this level for Pandas Multi-index
-                    level_dict = OrderedDict()
-
-                    # This level is a lattice (e.g., ID(x,y,z))
-                    if '(' in level:
-                        level_type = 'lattice'
-
-                        # Initialize prefix Multi-index keys
-                        lat_id_key = (level_key, 'lat', 'id')
-                        lat_x_key = (level_key, 'lat', 'x')
-                        lat_y_key = (level_key, 'lat', 'y')
-                        lat_z_key = (level_key, 'lat', 'z')
-
-                        # Allocate NumPy arrays for each CSG level and
-                        # each Multi-index column in the DataFrame
-                        level_dict[lat_id_key] = np.empty(num_offsets)
-                        level_dict[lat_x_key] = np.empty(num_offsets)
-                        level_dict[lat_y_key] = np.empty(num_offsets)
-                        level_dict[lat_z_key] = np.empty(num_offsets)
-
-                    # This level is a universe / cell (e.g., ID->ID)
-                    else:
-                        level_type = 'universe'
-
-                        # Initialize prefix Multi-index keys
-                        univ_key = (level_key, 'univ', 'id')
-                        cell_key = (level_key, 'cell', 'id')
-
-                        # Allocate NumPy arrays for each CSG level and
-                        # each Multi-index column in the DataFrame
-                        level_dict[univ_key] = np.empty(num_offsets)
-                        level_dict[cell_key] = np.empty(num_offsets)
-
-                        # Determine any levels remain in path
-                        if '-' not in first_path:
-                            levels_remain = False
-
-                    # Populate Multi-index arrays with all distribcell paths
-                    for i, path in enumerate(distribcell_paths):
-
-                        if level_type == 'lattice':
-                            # Extract lattice ID, indices from path
-                            next_index = path.index('-')
-                            lat_id_indices = path[:next_index]
-
-                            # Trim lattice info from distribcell path
-                            distribcell_paths[i] = path[next_index+2:]
-
-                            # Extract the lattice cell indices from the path
-                            i1 = lat_id_indices.index('(')
-                            i2 = lat_id_indices.index(')')
-                            i3 = lat_id_indices[i1+1:i2]
-
-                            # Assign entry to Lattice Multi-index column
-                            level_dict[lat_id_key][i] = path[:i1]
-                            level_dict[lat_x_key][i] = int(i3.split(',')[0]) - 1
-                            level_dict[lat_y_key][i] = int(i3.split(',')[1]) - 1
-                            level_dict[lat_z_key][i] = int(i3.split(',')[2]) - 1
-
-                        else:
-                            # Extract universe ID from path
-                            next_index = path.index('-')
-                            universe_id = int(path[:next_index])
-
-                            # Trim universe info from distribcell path
-                            path = path[next_index+2:]
-
-                            # Extract cell ID from path
-                            if '-' in path:
-                                next_index = path.index('-')
-                                cell_id = int(path[:next_index])
-                                distribcell_paths[i] = path[next_index+2:]
-                            else:
-                                cell_id = int(path)
-                                distribcell_paths[i] = ''
-
-                            # Assign entry to Universe, Cell Multi-index columns
-                            level_dict[univ_key][i] = universe_id
-                            level_dict[cell_key][i] = cell_id
-
-                    # Tile the Multi-index columns
-                    for level_key, level_bins in level_dict.items():
-                        level_bins = np.repeat(level_bins, self.stride)
-                        tile_factor = data_size / len(level_bins)
-                        level_bins = np.tile(level_bins, tile_factor)
-                        level_dict[level_key] = level_bins
-
-                    # Initialize a Pandas DataFrame from the level dictionary
-                    if level_df is None:
-                        level_df = pd.DataFrame(level_dict)
-                    else:
-                        level_df = pd.concat([level_df, pd.DataFrame(level_dict)], axis=1)
-
-            # Create DataFrame column for distribcell instance IDs
-            # NOTE: This is performed regardless of whether the user
-            # requests Summary geometric information
-            filter_bins = np.arange(self.num_bins)
-            filter_bins = np.repeat(filter_bins, self.stride)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            df = pd.DataFrame({self.type : filter_bins})
-
-            # If OpenCG level info DataFrame was created, concatenate
-            # with DataFrame of distribcell instance IDs
-            if level_df is not None:
-                level_df = level_df.dropna(axis=1, how='all')
-                level_df = level_df.astype(np.int)
-                df = pd.concat([level_df, df], axis=1)
-
-        # energy, energyout filters
-        elif 'energy' in self.type:
-            # Extract the lower and upper energy bounds, then repeat and tile
-            # them as necessary to account for other filters.
-            lo_bins = np.repeat(self.bins[:-1], self.stride)
-            hi_bins = np.repeat(self.bins[1:], self.stride)
-            tile_factor = data_size / len(lo_bins)
-            lo_bins = np.tile(lo_bins, tile_factor)
-            hi_bins = np.tile(hi_bins, tile_factor)
-
-            # Add the new energy columns to the DataFrame.
-            df.loc[:, self.type + ' low [MeV]'] = lo_bins
-            df.loc[:, self.type + ' high [MeV]'] = hi_bins
-
-        elif self.type in ('azimuthal', 'polar'):
-            # Extract the lower and upper angle bounds, then repeat and tile
-            # them as necessary to account for other filters.
-            lo_bins = np.repeat(self.bins[:-1], self.stride)
-            hi_bins = np.repeat(self.bins[1:], self.stride)
-            tile_factor = data_size / len(lo_bins)
-            lo_bins = np.tile(lo_bins, tile_factor)
-            hi_bins = np.tile(hi_bins, tile_factor)
-
-            # Add the new angle columns to the DataFrame.
-            df.loc[:, self.type + ' low'] = lo_bins
-            df.loc[:, self.type + ' high'] = hi_bins
-
-        # universe, material, surface, cell, and cellborn filters
-        else:
-            filter_bins = np.repeat(self.bins, self.stride)
-            tile_factor = data_size / len(filter_bins)
-            filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = filter_bins
-            df = pd.concat([df, pd.DataFrame({self.type : filter_bins})])
+        filter_bins = np.repeat(self.bins, self.stride)
+        tile_factor = data_size / len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        filter_bins = filter_bins
+        df = pd.concat([df, pd.DataFrame(
+            {self.short_name.lower() : filter_bins})])
 
         return df
+
+
+class IntegralFilter(Filter):
+    """A Filter with Integral bins"""
+    @property
+    def num_bins(self):
+        return len(self.bins)
+
+    @num_bins.setter
+    def num_bins(self, num_bins):
+        cv.check_type('filter num_bins', num_bins, Integral)
+        cv.check_greater_than('filter num_bins', num_bins, 0, equality=True)
+        self._num_bins = num_bins
+
+    def check_bins(self, bins):
+        cv.check_iterable_type('filter bins', bins, Integral)
+        for edge in bins:
+            cv.check_greater_than('filter bin', edge, 0, equality=True)
+
+
+class UniverseFilter(IntegralFilter): pass
+class MaterialFilter(IntegralFilter): pass
+class CellFilter(IntegralFilter): pass
+class CellbornFilter(IntegralFilter): pass
+class SurfaceFilter(IntegralFilter): pass
+
+
+class MeshFilter(Filter):
+    def check_bins(self, bins):
+        if not len(bins) == 1:
+            msg = 'Unable to add bins "{0}" to a MeshFilter since ' \
+                  'only a single mesh can be used per tally'.format(bins)
+            raise ValueError(msg)
+        elif not isinstance(bins[0], Integral):
+            msg = 'Unable to add bin "{0}" to MeshFilter since it ' \
+                  'is a non-integer'.format(bins[0])
+            raise ValueError(msg)
+        elif bins[0] < 0:
+            msg = 'Unable to add bin "{0}" to MeshFilter since it ' \
+                  'is a negative integer'.format(bins[0])
+            raise ValueError(msg)
+
+    def can_merge(self, other):
+        # Mesh filters cannot have more than one bin
+        return False
+
+    def get_bin_index(self, filter_bin):
+        # Filter bins for a mesh are an (x,y,z) tuple. Convert (x,y,z) to a
+        # single bin -- this is similar to subroutine mesh_indices_to_bin in
+        # openmc/src/mesh.F90.
+        if len(self.mesh.dimension) == 3:
+            nx, ny, nz = self.mesh.dimension
+            val = (filter_bin[0] - 1) * ny * nz + \
+                  (filter_bin[1] - 1) * nz + \
+                  (filter_bin[2] - 1)
+        else:
+            nx, ny = self.mesh.dimension
+            val = (filter_bin[0] - 1) * ny + \
+                  (filter_bin[1] - 1)
+
+        return val
+
+    def get_bin(self, bin_index):
+        cv.check_type('bin_index', bin_index, Integral)
+        cv.check_greater_than('bin_index', bin_index, 0, equality=True)
+        cv.check_less_than('bin_index', bin_index, self.num_bins)
+
+        # Construct 3-tuple of x,y,z cell indices for a 3D mesh
+        if len(self.mesh.dimension) == 3:
+            nx, ny, nz = self.mesh.dimension
+            x = bin_index / (ny * nz)
+            y = (bin_index - (x * ny * nz)) / nz
+            z = bin_index - (x * ny * nz) - (y * nz)
+            return (x, y, z)
+
+        # Construct 2-tuple of x,y cell indices for a 2D mesh
+        else:
+            nx, ny = self.mesh.dimension
+            x = bin_index / ny
+            y = bin_index - (x * ny)
+            return (x, y)
+
+    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+        # Initialize Pandas DataFrame
+        import pandas as pd
+        df = pd.DataFrame()
+
+        # Initialize dictionary to build Pandas Multi-index column
+        filter_dict = {}
+
+        # Append Mesh ID as outermost index of multi-index
+        mesh_key = 'mesh {0}'.format(self.mesh.id)
+
+        # Find mesh dimensions - use 3D indices for simplicity
+        if len(self.mesh.dimension) == 3:
+            nx, ny, nz = self.mesh.dimension
+        else:
+            nx, ny = self.mesh.dimension
+            nz = 1
+
+        # Generate multi-index sub-column for x-axis
+        filter_bins = np.arange(1, nx+1)
+        repeat_factor = ny * nz * self.stride
+        filter_bins = np.repeat(filter_bins, repeat_factor)
+        tile_factor = data_size / len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        filter_dict[(mesh_key, 'x')] = filter_bins
+
+        # Generate multi-index sub-column for y-axis
+        filter_bins = np.arange(1, ny+1)
+        repeat_factor = nz * self.stride
+        filter_bins = np.repeat(filter_bins, repeat_factor)
+        tile_factor = data_size / len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        filter_dict[(mesh_key, 'y')] = filter_bins
+
+        # Generate multi-index sub-column for z-axis
+        filter_bins = np.arange(1, nz+1)
+        repeat_factor = self.stride
+        filter_bins = np.repeat(filter_bins, repeat_factor)
+        tile_factor = data_size / len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        filter_dict[(mesh_key, 'z')] = filter_bins
+
+        # Initialize a Pandas DataFrame from the mesh dictionary
+        df = pd.concat([df, pd.DataFrame(filter_dict)])
+
+        return df
+
+
+class EnergyFilter(Filter):
+    def __gt__(self, other):
+        if type(self) == type(other):
+            # Compare largest/smallest energy bin edges in energy filters
+            # This logic is used when merging tallies with energy filters
+            return self.bins[0] >= other.bins[-1]
+        else:
+            return super(EnergyFilter, self).__gt__(other)
+
+    @property
+    def num_bins(self):
+        return len(self.bins) - 1
+
+    @num_bins.setter
+    def num_bins(self, num_bins):
+        cv.check_type('filter num_bins', num_bins, Integral)
+        cv.check_greater_than('filter num_bins', num_bins, 0, equality=True)
+        self._num_bins = num_bins
+
+    def check_bins(self, bins):
+        for edge in bins:
+            if not isinstance(edge, Real):
+                msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
+                      'since it is a non-integer or floating point ' \
+                      'value'.format(edge, self.type)
+                raise ValueError(msg)
+            elif edge < 0.:
+                msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
+                      'since it is a negative value'.format(edge, self.type)
+                raise ValueError(msg)
+
+        # Check that bin edges are monotonically increasing
+        for index in range(1, len(bins)):
+            if bins[index] < bins[index-1]:
+                msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
+                      'since they are not monotonically ' \
+                      'increasing'.format(bins, self.type)
+                raise ValueError(msg)
+
+    def can_merge(self, other):
+        if type(self) != type(other): return False
+
+        if self.bins[0] == other.bins[-1]:
+            # This low energy edge coincides with other's high energy edge
+            return True
+        elif self.bins[-1] == other.bins[0]:
+            # This high energy edge coincides with other's low energy edge
+            return True
+        else:
+            return False
+
+    def merge(self, other):
+        if not self.can_merge(other):
+            msg = 'Unable to merge "{0}" with "{1}" ' \
+                  'filters'.format(self.type, other.type)
+            raise ValueError(msg)
+
+        # Merge unique filter bins
+        merged_bins = np.concatenate((self.bins, other.bins))
+        merged_bins = np.unique(merged_bins)
+
+        # Create a new filter with these bins
+        return type(self)(sorted(merged_bins))
+
+    def is_subset(self, other):
+        if len(self.bins) != len(other.bins):
+            return False
+        else:
+            return np.allclose(self.bins, other.bins)
+
+    def get_bin_index(self, filter_bin):
+        # Use lower energy bound to find index for energy Filters
+        deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
+        min_delta = np.min(deltas)
+        if min_delta < 1E-3:
+            return deltas.argmin() - 1
+        else:
+            msg = 'Unable to get the bin index for Filter since "{0}" ' \
+                  'is not one of the bins'.format(filter_bin)
+            raise ValueError(msg)
+
+    def get_bin(self, bin_index):
+        cv.check_type('bin_index', bin_index, Integral)
+        cv.check_greater_than('bin_index', bin_index, 0, equality=True)
+        cv.check_less_than('bin_index', bin_index, self.num_bins)
+
+        # Construct 2-tuple of lower, upper energies for energy(out) filters
+        return (self.bins[bin_index], self.bins[bin_index+1])
+
+    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+        # Initialize Pandas DataFrame
+        import pandas as pd
+        df = pd.DataFrame()
+
+        # Extract the lower and upper energy bounds, then repeat and tile
+        # them as necessary to account for other filters.
+        lo_bins = np.repeat(self.bins[:-1], self.stride)
+        hi_bins = np.repeat(self.bins[1:], self.stride)
+        tile_factor = data_size / len(lo_bins)
+        lo_bins = np.tile(lo_bins, tile_factor)
+        hi_bins = np.tile(hi_bins, tile_factor)
+
+        # Add the new energy columns to the DataFrame.
+        df.loc[:, self.type + ' low [MeV]'] = lo_bins
+        df.loc[:, self.type + ' high [MeV]'] = hi_bins
+
+        return df
+
+
+class EnergyoutFilter(EnergyFilter): pass
+
+
+class DistribcellFilter(Filter):
+    """A constraint on transport events that can score a tally
+
+    Parameters
+    ----------
+    bins : Integral or Iterable of Integral or Iterable of Real
+        The bins for the filter. This takes on different meaning for different
+        filters. See the OpenMC online documentation for more details.
+
+    Attributes
+    ----------
+    bins : Integral or Iterable of Integral or Iterable of Real
+        The bins for the filter
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+    distribcell_paths : list of str
+        The paths traversed through the CSG tree to reach each distribcell
+        instance (for 'distribcell' filters only)
+
+    """
+
+    def __init__(self, bins):
+        self._distribcell_paths = None
+        super(DistribcellFilter, self).__init__(bins)
+
+    @property
+    def distribcell_paths(self):
+        return self._distribcell_paths
+
+    @distribcell_paths.setter
+    def distribcell_paths(self, distribcell_paths):
+        cv.check_iterable_type('distribcell_paths', distribcell_paths, str)
+        self._distribcell_paths = distribcell_paths
+
+    def check_bins(self, bins):
+        bins = self._format_bins(bins)
+        if not len(bins) == 1:
+            msg = 'Unable to add bins "{0}" to a DistribcellFilter since ' \
+                  'only a single distribcell can be used per tally'.format(bins)
+            raise ValueError(msg)
+
+        cv.check_iterable_type('filter bins', bins, Integral)
+        for edge in bins:
+            cv.check_greater_than('filter bin', edge, 0, equality=True)
+
+    def can_merge(self, other):
+        # Distribcell filters cannot have more than one bin
+        return False
+
+    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+        # Initialize Pandas DataFrame
+        import pandas as pd
+        df = pd.DataFrame()
+
+        level_df = None
+
+        # Create Pandas Multi-index columns for each level in CSG tree
+        if distribcell_paths:
+
+            # Distribcell paths require linked metadata from the Summary
+            if self.distribcell_paths is None:
+                msg = 'Unable to construct distribcell paths since ' \
+                      'the Summary is not linked to the StatePoint'
+                raise ValueError(msg)
+
+            # Make copy of array of distribcell paths to use in
+            # Pandas Multi-index column construction
+            distribcell_paths = copy.deepcopy(self.distribcell_paths)
+            num_offsets = len(distribcell_paths)
+
+            # Loop over CSG levels in the distribcell paths
+            level_counter = 0
+            levels_remain = True
+            while levels_remain:
+
+                # Use level key as first index in Pandas Multi-index column
+                level_counter += 1
+                level_key = 'level {}'.format(level_counter)
+
+                # Use the first distribcell path to determine if level
+                # is a universe/cell or lattice level
+                first_path = distribcell_paths[0]
+                next_index = first_path.index('-')
+                level = first_path[:next_index]
+
+                # Trim universe/lattice info from path
+                first_path = first_path[next_index+2:]
+
+                # Create a dictionary for this level for Pandas Multi-index
+                level_dict = OrderedDict()
+
+                # This level is a lattice (e.g., ID(x,y,z))
+                if '(' in level:
+                    level_type = 'lattice'
+
+                    # Initialize prefix Multi-index keys
+                    lat_id_key = (level_key, 'lat', 'id')
+                    lat_x_key = (level_key, 'lat', 'x')
+                    lat_y_key = (level_key, 'lat', 'y')
+                    lat_z_key = (level_key, 'lat', 'z')
+
+                    # Allocate NumPy arrays for each CSG level and
+                    # each Multi-index column in the DataFrame
+                    level_dict[lat_id_key] = np.empty(num_offsets)
+                    level_dict[lat_x_key] = np.empty(num_offsets)
+                    level_dict[lat_y_key] = np.empty(num_offsets)
+                    level_dict[lat_z_key] = np.empty(num_offsets)
+
+                # This level is a universe / cell (e.g., ID->ID)
+                else:
+                    level_type = 'universe'
+
+                    # Initialize prefix Multi-index keys
+                    univ_key = (level_key, 'univ', 'id')
+                    cell_key = (level_key, 'cell', 'id')
+
+                    # Allocate NumPy arrays for each CSG level and
+                    # each Multi-index column in the DataFrame
+                    level_dict[univ_key] = np.empty(num_offsets)
+                    level_dict[cell_key] = np.empty(num_offsets)
+
+                    # Determine any levels remain in path
+                    if '-' not in first_path:
+                        levels_remain = False
+
+                # Populate Multi-index arrays with all distribcell paths
+                for i, path in enumerate(distribcell_paths):
+
+                    if level_type == 'lattice':
+                        # Extract lattice ID, indices from path
+                        next_index = path.index('-')
+                        lat_id_indices = path[:next_index]
+
+                        # Trim lattice info from distribcell path
+                        distribcell_paths[i] = path[next_index+2:]
+
+                        # Extract the lattice cell indices from the path
+                        i1 = lat_id_indices.index('(')
+                        i2 = lat_id_indices.index(')')
+                        i3 = lat_id_indices[i1+1:i2]
+
+                        # Assign entry to Lattice Multi-index column
+                        level_dict[lat_id_key][i] = path[:i1]
+                        level_dict[lat_x_key][i] = int(i3.split(',')[0]) - 1
+                        level_dict[lat_y_key][i] = int(i3.split(',')[1]) - 1
+                        level_dict[lat_z_key][i] = int(i3.split(',')[2]) - 1
+
+                    else:
+                        # Extract universe ID from path
+                        next_index = path.index('-')
+                        universe_id = int(path[:next_index])
+
+                        # Trim universe info from distribcell path
+                        path = path[next_index+2:]
+
+                        # Extract cell ID from path
+                        if '-' in path:
+                            next_index = path.index('-')
+                            cell_id = int(path[:next_index])
+                            distribcell_paths[i] = path[next_index+2:]
+                        else:
+                            cell_id = int(path)
+                            distribcell_paths[i] = ''
+
+                        # Assign entry to Universe, Cell Multi-index columns
+                        level_dict[univ_key][i] = universe_id
+                        level_dict[cell_key][i] = cell_id
+
+                # Tile the Multi-index columns
+                for level_key, level_bins in level_dict.items():
+                    level_bins = np.repeat(level_bins, self.stride)
+                    tile_factor = data_size / len(level_bins)
+                    level_bins = np.tile(level_bins, tile_factor)
+                    level_dict[level_key] = level_bins
+
+                # Initialize a Pandas DataFrame from the level dictionary
+                if level_df is None:
+                    level_df = pd.DataFrame(level_dict)
+                else:
+                    level_df = pd.concat([level_df, pd.DataFrame(level_dict)],
+                                         axis=1)
+
+        # Create DataFrame column for distribcell instance IDs
+        # NOTE: This is performed regardless of whether the user
+        # requests Summary geometric information
+        filter_bins = np.arange(self.num_bins)
+        filter_bins = np.repeat(filter_bins, self.stride)
+        tile_factor = data_size / len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        df = pd.DataFrame({self.type : filter_bins})
+
+        # If OpenCG level info DataFrame was created, concatenate
+        # with DataFrame of distribcell instance IDs
+        if level_df is not None:
+            level_df = level_df.dropna(axis=1, how='all')
+            level_df = level_df.astype(np.int)
+            df = pd.concat([level_df, df], axis=1)
+
+        return df
+
+
+class MuFilter(Filter): pass
+
+
+class PolarFilter(Filter):
+    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+        # Initialize Pandas DataFrame
+        import pandas as pd
+        df = pd.DataFrame()
+
+        # Extract the lower and upper angle bounds, then repeat and tile
+        # them as necessary to account for other filters.
+        lo_bins = np.repeat(self.bins[:-1], self.stride)
+        hi_bins = np.repeat(self.bins[1:], self.stride)
+        tile_factor = data_size / len(lo_bins)
+        lo_bins = np.tile(lo_bins, tile_factor)
+        hi_bins = np.tile(hi_bins, tile_factor)
+
+        # Add the new angle columns to the DataFrame.
+        df.loc[:, self.type + ' low'] = lo_bins
+
+        return df
+
+
+class AzimuthalFilter(Filter):
+    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+        # Initialize Pandas DataFrame
+        import pandas as pd
+        df = pd.DataFrame()
+
+        # Extract the lower and upper angle bounds, then repeat and tile
+        # them as necessary to account for other filters.
+        lo_bins = np.repeat(self.bins[:-1], self.stride)
+        hi_bins = np.repeat(self.bins[1:], self.stride)
+        tile_factor = data_size / len(lo_bins)
+        lo_bins = np.tile(lo_bins, tile_factor)
+        hi_bins = np.tile(hi_bins, tile_factor)
+
+        # Add the new angle columns to the DataFrame.
+        df.loc[:, self.type + ' low'] = lo_bins
+
+        return df
+
+
+class DelayedGroupFilter(IntegralFilter): pass

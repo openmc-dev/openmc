@@ -13,10 +13,10 @@ from xml.etree import ElementTree as ET
 
 import numpy as np
 
-from openmc import Filter, Trigger, Nuclide
+from openmc import Trigger, Nuclide
 from openmc.arithmetic import CrossScore, CrossNuclide, CrossFilter, \
     AggregateScore, AggregateNuclide, AggregateFilter
-from openmc.filter import _FILTER_TYPES
+from openmc.filter import Filter, MeshFilter
 import openmc.checkvalue as cv
 from openmc.clean_xml import clean_xml_indentation
 
@@ -178,8 +178,8 @@ class Tally(object):
         string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
 
         for self_filter in self.filters:
-            string += '{0: <16}\t\t{1}\t{2}\n'.format('', self_filter.type,
-                                                      self_filter.bins)
+            string += '{0: <16}\t\t{1}\t{2}\n'.format('',
+                type(self_filter).__name__, self_filter.bins)
 
         string += '{0: <16}{1}'.format('\tNuclides', '=\t')
 
@@ -1021,15 +1021,7 @@ class Tally(object):
 
         # Optional Tally filters
         for self_filter in self.filters:
-            subelement = ET.SubElement(element, "filter")
-            subelement.set("type", str(self_filter.type))
-
-            if self_filter.bins is not None:
-                bins = ''
-                for bin in self_filter.bins:
-                    bins += '{0} '.format(bin)
-
-                subelement.set("bins", bins.rstrip(' '))
+            element.append(self_filter.to_xml())
 
         # Optional Nuclides
         if len(self.nuclides) > 0:
@@ -1119,7 +1111,7 @@ class Tally(object):
 
         # Look through all of this Tally's Filters for the type requested
         for test_filter in self.filters:
-            if test_filter.type == filter_type:
+            if test_filter.short_name.lower() == filter_type.lower():
                 filter_found = test_filter
                 break
 
@@ -3548,13 +3540,14 @@ class Tallies(cv.CheckedList):
         already_written = set()
         for tally in self:
             for f in tally.filters:
-                if f.type == 'mesh' and f.mesh not in already_written:
-                    if len(f.mesh.name) > 0:
-                        self._tallies_file.append(ET.Comment(f.mesh.name))
+                if isinstance(f, MeshFilter):
+                    if f.mesh not in already_written:
+                        if len(f.mesh.name) > 0:
+                            self._tallies_file.append(ET.Comment(f.mesh.name))
 
-                    xml_element = f.mesh.get_mesh_xml()
-                    self._tallies_file.append(xml_element)
-                    already_written.add(f.mesh)
+                        xml_element = f.mesh.get_mesh_xml()
+                        self._tallies_file.append(xml_element)
+                        already_written.add(f.mesh)
 
     def export_to_xml(self):
         """Create a tallies.xml file that can be used for a simulation.

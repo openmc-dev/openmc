@@ -567,28 +567,10 @@ class Summary(object):
             # Read filter metadata
             num_filters = self._f['{0}/n_filters'.format(subbase)].value
 
-            # Initialize all Filters
+            # Read all filters
             for j in range(1, num_filters+1):
                 subsubbase = '{0}/filter {1}'.format(subbase, j)
-
-                # Read filter type (e.g., "cell", "energy", etc.)
-                filter_type = self._f['{0}/type'.format(subsubbase)].value.decode()
-
-                # Read the filter bins
-                num_bins = self._f['{0}/n_bins'.format(subsubbase)].value
-                bins = self._f['{0}/bins'.format(subsubbase)][...]
-
-                # Create Filter object
-                new_filter = openmc.Filter(filter_type, bins)
-                new_filter.num_bins = num_bins
-
-                # Read in distribcell paths
-                if filter_type == 'distribcell':
-                    paths = self._f['{0}/paths'.format(subsubbase)][...]
-                    paths = [str(path.decode()) for path in paths]
-                    new_filter.distribcell_paths = paths
-
-                # Add Filter to the Tally
+                new_filter = openmc.Filter.from_hdf5(self._f[subsubbase])
                 tally.filters.append(new_filter)
 
             # Add Tally to the global dictionary of all Tallies

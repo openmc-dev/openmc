@@ -1,5 +1,6 @@
 from numbers import Integral
 import sys
+import warnings
 
 from openmc.checkvalue import check_type
 
@@ -98,7 +99,14 @@ class Nuclide(object):
     @name.setter
     def name(self, name):
         check_type('name', name, basestring)
-        self._name = name
+
+        if '-' in name:
+            new_name = name.strip('-', '')
+            msg = 'OpenMC nuclide names follow the GND standard. Nuclide ' \
+                  '"{}" is being transformed to "{}".'.format(name, new_name)
+            warnings.warn(msg, DeprecationWarning)
+
+        self._name = name.replace('-', '')
 
     @xs.setter
     def xs(self, xs):

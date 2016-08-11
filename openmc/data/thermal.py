@@ -43,7 +43,9 @@ _THERMAL_NAMES = {'al': 'c_Al27', 'al27': 'c_Al27',
 def get_thermal_name(name):
     """Get proper S(a,b) table name, e.g. 'HH2O' -> 'c_H_in_H2O'"""
 
-    if name.lower() in _THERMAL_NAMES:
+    if name in _THERMAL_NAMES.values():
+        return name
+    elif name.lower() in _THERMAL_NAMES:
         return _THERMAL_NAMES[name.lower()]
     else:
         # Make an educated guess?? This actually works well for
@@ -52,7 +54,7 @@ def get_thermal_name(name):
         matches = get_close_matches(
             name.lower(), _THERMAL_NAMES.keys(), cutoff=0.5)
         if len(matches) > 0:
-            return _THERMAL_NAMES[matches[0]] + '.' + xs
+            return _THERMAL_NAMES[matches[0]]
         else:
             # OK, we give up. Just use the ACE name.
             return 'c_' + name

@@ -29,7 +29,7 @@ class Univariate(object):
         pass
 
     @abstractmethod
-    def to_xml(self, element_name):
+    def to_xml_element(self, element_name):
         return ''
 
     @abstractmethod
@@ -102,7 +102,20 @@ class Discrete(Univariate):
             cv.check_greater_than('discrete probability', pk, 0.0, True)
         self._p = p
 
-    def to_xml(self, element_name):
+    def to_xml_element(self, element_name):
+        """Return XML representation of the discrete distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing discrete distribution data
+
+        """
         element = ET.Element(element_name)
         element.set("type", "discrete")
 
@@ -173,7 +186,20 @@ class Uniform(Univariate):
         t.c = [0., 1.]
         return t
 
-    def to_xml(self, element_name):
+    def to_xml_element(self, element_name):
+        """Return XML representation of the uniform distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing uniform distribution data
+
+        """
         element = ET.Element(element_name)
         element.set("type", "uniform")
         element.set("parameters", '{} {}'.format(self.a, self.b))
@@ -225,7 +251,20 @@ class Maxwell(Univariate):
         cv.check_greater_than('Maxwell temperature', theta, 0.0)
         self._theta = theta
 
-    def to_xml(self, element_name):
+    def to_xml_element(self, element_name):
+        """Return XML representation of the Maxwellian distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing Maxwellian distribution data
+
+        """
         element = ET.Element(element_name)
         element.set("type", "maxwell")
         element.set("parameters", str(self.theta))
@@ -293,7 +332,20 @@ class Watt(Univariate):
         cv.check_greater_than('Watt b', b, 0.0)
         self._b = b
 
-    def to_xml(self, element_name):
+    def to_xml_element(self, element_name):
+        """Return XML representation of the Watt distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing Watt distribution data
+
+        """
         element = ET.Element(element_name)
         element.set("type", "watt")
         element.set("parameters", '{} {}'.format(self.a, self.b))
@@ -384,7 +436,20 @@ class Tabular(Univariate):
         cv.check_value('interpolation', interpolation, _INTERPOLATION_SCHEMES)
         self._interpolation = interpolation
 
-    def to_xml(self, element_name):
+    def to_xml_element(self, element_name):
+        """Return XML representation of the tabular distribution
+
+        Parameters
+        ----------
+        element_name : str
+            XML element name
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing tabular distribution data
+
+        """
         element = ET.Element(element_name)
         element.set("type", "tabular")
         element.set("interpolation", self.interpolation)
@@ -446,7 +511,7 @@ class Legendre(Univariate):
         self._legendre_polynomial = np.polynomial.legendre.Legendre(
             coefficients)
 
-    def to_xml(self, element_name):
+    def to_xml_element(self, element_name):
         raise NotImplementedError
 
 
@@ -510,5 +575,5 @@ class Mixture(Univariate):
                       Iterable, Univariate)
         self._distribution = distribution
 
-    def to_xml(self, element_name):
+    def to_xml_element(self, element_name):
         raise NotImplementedError

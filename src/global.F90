@@ -17,6 +17,7 @@ module global
   use tally_header,     only: TallyObject, TallyResult
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
+  use volume_header,    only: VolumeCalculation
 
 #ifdef MPIF08
   use mpi_f08
@@ -34,6 +35,8 @@ module global
   type(SurfaceContainer), allocatable, target :: surfaces(:)
   type(Material),         allocatable, target :: materials(:)
   type(ObjectPlot),       allocatable, target :: plots(:)
+
+  type(VolumeCalculation), allocatable :: volume_calcs(:)
 
   ! Size of main arrays
   integer :: n_cells     ! # of cells

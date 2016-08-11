@@ -594,6 +594,17 @@ class Summary(object):
             # Add Tally to the global dictionary of all Tallies
             self.tallies[tally_id] = tally
 
+    def add_volume_information(self, volume_calc):
+        """Add volume information to the geometry within the summary file
+
+        Parameters
+        ----------
+        volume_calc : openmc.VolumeCalculation
+            Results from a stochastic volume calculation
+
+        """
+        self.openmc_geometry.add_volume_information(volume_calc)
+
     def get_material_by_id(self, material_id):
         """Return a Material object given the material id
 

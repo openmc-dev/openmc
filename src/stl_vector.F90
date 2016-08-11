@@ -114,6 +114,11 @@ contains
     ! Since integer is trivially destructible, we only need to set size to zero
     ! and can leave capacity as is
     this%size_ = 0
+    if (allocated(this % data)) then
+      this%capacity_ = size(this % data)
+    else
+      this%capacity_ = 0
+    end if
   end subroutine clear_int
 
   subroutine initialize_fill_int(this, n, val)
@@ -249,6 +254,11 @@ contains
     ! Since real is trivially destructible, we only need to set size to zero and
     ! can leave capacity as is
     this%size_ = 0
+    if (allocated(this % data)) then
+      this%capacity_ = size(this % data)
+    else
+      this%capacity_ = 0
+    end if
   end subroutine clear_real
 
   subroutine initialize_fill_real(this, n, val)
@@ -384,6 +394,11 @@ contains
     ! Since char is trivially destructible, we only need to set size to zero and
     ! can leave capacity as is
     this%size_ = 0
+    if (allocated(this % data)) then
+      this%capacity_ = size(this % data)
+    else
+      this%capacity_ = 0
+    end if
   end subroutine clear_char
 
   subroutine initialize_fill_char(this, n, val)

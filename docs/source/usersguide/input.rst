@@ -836,6 +836,35 @@ displayed. This element takes the following attributes:
 
     *Default*: 5
 
+``<volume_calc>`` Element
+-------------------------
+
+The ``<volume_calc>`` element indicates that a stochastic volume calculation
+should be run at the beginning of the simulation. This element has the following
+sub-elements/attributes:
+
+  :cells:
+    The unique IDs of cells for which the volume should be estimated.
+
+    *Default*: None
+
+  :samples:
+    The number of samples used to estimate volumes.
+
+    *Default*: None
+
+  :lower_left:
+     The lower-left Cartesian coordinates of a bounding box that is used to
+     sample points within.
+
+     *Default*: None
+
+  :upper_right:
+     The upper-right Cartesian coordinates of a bounding box that is used to
+     sample points within.
+
+     *Default*: None
+
 --------------------------------------
 Geometry Specification -- geometry.xml
 --------------------------------------

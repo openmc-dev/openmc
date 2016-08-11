@@ -287,9 +287,7 @@ class MGXS(object):
 
                 # If this is a by-nuclide cross-section, add nuclides to Tally
                 if self.by_nuclide and score != 'flux':
-                    all_nuclides = self.get_all_nuclides()
-                    for nuclide in all_nuclides:
-                        self._tallies[key].nuclides.append(nuclide)
+                    self._tallies[key].nuclides += self.get_nuclides()
                 else:
                     self._tallies[key].nuclides.append('total')
 
@@ -328,14 +326,14 @@ class MGXS(object):
     @property
     def num_nuclides(self):
         if self.by_nuclide:
-            return len(self.get_all_nuclides())
+            return len(self.get_nuclides())
         else:
             return 1
 
     @property
     def nuclides(self):
         if self.by_nuclide:
-            return self.get_all_nuclides()
+            return self.get_nuclides()
         else:
             return 'sum'
 
@@ -502,7 +500,7 @@ class MGXS(object):
         mgxs.name = name
         return mgxs
 
-    def get_all_nuclides(self):
+    def get_nuclides(self):
         """Get all nuclides in the cross section's spatial domain.
 
         Returns
@@ -527,8 +525,7 @@ class MGXS(object):
 
         # Otherwise, return all nuclides in the spatial domain
         else:
-            nuclides = self.domain.get_all_nuclides()
-            return list(nuclides.keys())
+            return self.domain.get_nuclides()
 
     def get_nuclide_density(self, nuclide):
         """Get the atomic number density in units of atoms/b-cm for a nuclide
@@ -555,7 +552,7 @@ class MGXS(object):
         cv.check_type('nuclide', nuclide, basestring)
 
         # Get list of all nuclides in the spatial domain
-        nuclides = self.domain.get_all_nuclides()
+        nuclides = self.domain.get_nuclide_densities()
 
         if nuclide not in nuclides:
             msg = 'Unable to get density for nuclide "{0}" which is not in ' \
@@ -596,14 +593,14 @@ class MGXS(object):
 
         # Sum the atomic number densities for all nuclides
         if nuclides == 'sum':
-            nuclides = self.get_all_nuclides()
+            nuclides = self.get_nuclides()
             densities = np.zeros(1, dtype=np.float)
             for nuclide in nuclides:
                 densities[0] += self.get_nuclide_density(nuclide)
 
         # Tabulate the atomic number densities for all nuclides
         elif nuclides == 'all':
-            nuclides = self.get_all_nuclides()
+            nuclides = self.get_nuclides()
             densities = np.zeros(self.num_nuclides, dtype=np.float)
             for i, nuclide in enumerate(nuclides):
                 densities[i] += self.get_nuclide_density(nuclide)
@@ -634,7 +631,7 @@ class MGXS(object):
         # If computing xs for each nuclide, replace CrossNuclides with originals
         if self.by_nuclide:
             self.xs_tally._nuclides = []
-            nuclides = self.get_all_nuclides()
+            nuclides = self.get_nuclides()
             for nuclide in nuclides:
                 self.xs_tally.nuclides.append(openmc.Nuclide(nuclide))
 
@@ -800,7 +797,7 @@ class MGXS(object):
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
             if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
-                query_nuclides = self.get_all_nuclides()
+                query_nuclides = self.get_nuclides()
             else:
                 query_nuclides = nuclides
         else:
@@ -1172,7 +1169,7 @@ class MGXS(object):
         # Construct a collection of the nuclides to report
         if self.by_nuclide:
             if nuclides == 'all':
-                nuclides = self.get_all_nuclides()
+                nuclides = self.get_nuclides()
             elif nuclides == 'sum':
                 nuclides = ['sum']
             else:
@@ -1310,7 +1307,7 @@ class MGXS(object):
         # Construct a collection of the nuclides to report
         if self.by_nuclide:
             if nuclides == 'all':
-                nuclides = self.get_all_nuclides()
+                nuclides = self.get_nuclides()
                 densities = np.zeros(len(nuclides), dtype=np.float)
             elif nuclides == 'sum':
                 nuclides = ['sum']
@@ -1490,7 +1487,7 @@ class MGXS(object):
         if self.by_nuclide and nuclides == 'sum':
 
             # Use tally summation to sum across all nuclides
-            query_nuclides = self.get_all_nuclides()
+            query_nuclides = self.get_nuclides()
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
@@ -1801,7 +1798,7 @@ class MatrixMGXS(MGXS):
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
             if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
-                query_nuclides = self.get_all_nuclides()
+                query_nuclides = self.get_nuclides()
             else:
                 query_nuclides = nuclides
         else:
@@ -1949,7 +1946,7 @@ class MatrixMGXS(MGXS):
         # Construct a collection of the nuclides to report
         if self.by_nuclide:
             if nuclides == 'all':
-                nuclides = self.get_all_nuclides()
+                nuclides = self.get_nuclides()
             if nuclides == 'sum':
                 nuclides = ['sum']
             else:
@@ -3639,7 +3636,7 @@ class ScatterMatrixXS(MatrixMGXS):
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
             if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
-                query_nuclides = self.get_all_nuclides()
+                query_nuclides = self.get_nuclides()
             else:
                 query_nuclides = nuclides
         else:
@@ -3807,7 +3804,7 @@ class ScatterMatrixXS(MatrixMGXS):
         # Construct a collection of the nuclides to report
         if self.by_nuclide:
             if nuclides == 'all':
-                nuclides = self.get_all_nuclides()
+                nuclides = self.get_nuclides()
             if nuclides == 'sum':
                 nuclides = ['sum']
             else:
@@ -4618,7 +4615,7 @@ class Chi(MGXS):
                 nu_fission_out = self.tallies['nu-fission-out']
 
                 # Sum out all nuclides
-                nuclides = self.get_all_nuclides()
+                nuclides = self.get_nuclides()
                 nu_fission_in = nu_fission_in.summation(nuclides=nuclides)
                 nu_fission_out = nu_fission_out.summation(nuclides=nuclides)
 
@@ -4638,7 +4635,7 @@ class Chi(MGXS):
 
             # Get chi for all nuclides in the domain
             elif nuclides == 'all':
-                nuclides = self.get_all_nuclides()
+                nuclides = self.get_nuclides()
                 xs = self.xs_tally.get_values(filters=filters,
                                               filter_bins=filter_bins,
                                               nuclides=nuclides, value=value)

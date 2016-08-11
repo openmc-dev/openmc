@@ -50,7 +50,7 @@ class UnitSphere(object):
         self._reference_uvw = uvw/np.linalg.norm(uvw)
 
     @abstractmethod
-    def to_xml(self):
+    def to_xml_element(self):
         return ''
 
 
@@ -109,13 +109,21 @@ class PolarAzimuthal(UnitSphere):
         cv.check_type('azimuthal angle', phi, Univariate)
         self._phi = phi
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the angular distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing angular distribution data
+
+        """
         element = ET.Element('angle')
         element.set("type", "mu-phi")
         if self.reference_uvw is not None:
             element.set("reference_uvw", ' '.join(map(str, self.reference_uvw)))
-        element.append(self.mu.to_xml('mu'))
-        element.append(self.phi.to_xml('phi'))
+        element.append(self.mu.to_xml_element('mu'))
+        element.append(self.phi.to_xml_element('phi'))
         return element
 
 
@@ -127,7 +135,15 @@ class Isotropic(UnitSphere):
     def __init__(self):
         super(Isotropic, self).__init__()
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the isotropic distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing isotropic distribution data
+
+        """
         element = ET.Element('angle')
         element.set("type", "isotropic")
         return element
@@ -152,7 +168,15 @@ class Monodirectional(UnitSphere):
     def __init__(self, reference_uvw=[1., 0., 0.]):
         super(Monodirectional, self).__init__(reference_uvw)
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the monodirectional distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing monodirectional distribution data
+
+        """
         element = ET.Element('angle')
         element.set("type", "monodirectional")
         if self.reference_uvw is not None:
@@ -174,7 +198,7 @@ class Spatial(object):
         pass
 
     @abstractmethod
-    def to_xml(self):
+    def to_xml_element(self):
         return ''
 
 
@@ -238,12 +262,20 @@ class CartesianIndependent(Spatial):
         cv.check_type('z coordinate', z, Univariate)
         self._z = z
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing spatial distribution data
+
+        """
         element = ET.Element('space')
         element.set('type', 'cartesian')
-        element.append(self.x.to_xml('x'))
-        element.append(self.y.to_xml('y'))
-        element.append(self.z.to_xml('z'))
+        element.append(self.x.to_xml_element('x'))
+        element.append(self.y.to_xml_element('y'))
+        element.append(self.z.to_xml_element('z'))
         return element
 
 
@@ -308,7 +340,15 @@ class Box(Spatial):
         cv.check_type('only fissionable', only_fissionable, bool)
         self._only_fissionable = only_fissionable
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the box distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing box distribution data
+
+        """
         element = ET.Element('space')
         if self.only_fissionable:
             element.set("type", "fission")
@@ -352,7 +392,15 @@ class Point(Spatial):
         cv.check_length('coordinate', xyz, 3)
         self._xyz = xyz
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the point distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing point distribution location
+
+        """
         element = ET.Element('space')
         element.set("type", "point")
         params = ET.SubElement(element, "parameters")

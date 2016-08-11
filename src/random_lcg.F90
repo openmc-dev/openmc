@@ -29,7 +29,6 @@ module random_lcg
   public :: set_particle_seed
   public :: advance_prn_seed
   public :: prn_set_stream
-  public :: STREAM_TRACKING, STREAM_TALLIES
 
 contains
 

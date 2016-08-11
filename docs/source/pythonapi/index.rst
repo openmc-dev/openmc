@@ -27,6 +27,8 @@ Example Jupyter Notebooks
     examples/mgxs-part-ii
     examples/mgxs-part-iii
     examples/mgxs-part-iv
+    examples/mdgxs-part-i
+    examples/mdgxs-part-ii
     examples/nuclear-data
 
 ------------------------------------
@@ -256,16 +258,6 @@ Energy Groups
     :template: myclass.rst
 
     openmc.mgxs.EnergyGroups
-
-Delayed Groups
--------------
-
-.. autosummary::
-    :toctree: generated
-    :nosignatures:
-    :template: myclass.rst
-
-    openmc.mgxs.DelayedGroups
 
 Multi-group Cross Sections
 --------------------------

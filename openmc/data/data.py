@@ -1,3 +1,7 @@
+import itertools
+import os
+
+
 # Isotopic abundances from M. Berglund and M. E. Wieser, "Isotopic compositions
 # of the elements 2009 (IUPAC Technical Report)", Pure. Appl. Chem. 83 (2),
 # pp. 397--410 (2011).
@@ -119,8 +123,11 @@ ATOMIC_SYMBOL = {1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N',
                  98: 'Cf', 99: 'Es', 100: 'Fm', 101: 'Md', 102: 'No',
                  103: 'Lr', 104: 'Rf', 105: 'Db', 106: 'Sg', 107: 'Bh',
                  108: 'Hs', 109: 'Mt', 110: 'Ds', 111: 'Rg', 112: 'Cn',
-                 114: 'Fl', 116: 'Lv'}
+                 113: 'Nh', 114: 'Fl', 115: 'Mc', 116: 'Lv', 117: 'Ts',
+                 118: 'Og'}
 ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
+
+_ATOMIC_MASS = {}
 
 REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
                  5: '(n,misc)', 11: '(n,2nd)', 16: '(n,2n)', 17: '(n,3n)',
@@ -175,3 +182,39 @@ SUM_RULES = {1: [2, 3],
              105: list(range(700, 750)),
              106: list(range(750, 800)),
              107: list(range(800, 850))}
+
+
+def atomic_mass(isotope):
+    """Return atomic mass of isotope in atomic mass units.
+
+    Atomic mass data comes from the Atomic Mass Evaluation 2012, published in
+    Chinese Physics C 36 (2012), 1287--1602.
+
+    Parameters
+    ----------
+    isotope : str
+        Name of isotope, e.g. 'Pu239'
+
+    Returns
+    -------
+    float or None
+        Atomic mass of isotope in atomic mass units. If the isotope listed does
+        not have a known atomic mass, None is returned.
+
+    """
+    if not _ATOMIC_MASS:
+        # Load data from AME2012 file
+        mass_file = os.path.join(os.path.dirname(__file__), 'mass.mas12')
+        with open(mass_file, 'r') as ame:
+            # Read lines in file starting at line 40
+            for line in itertools.islice(ame, 40, None):
+                name = '{}{}'.format(line[20:22].strip(), int(line[16:19]))
+                mass = float(line[96:99]) + 1e-6*float(
+                    line[100:106] + '.' + line[107:112])
+                _ATOMIC_MASS[name.lower()] = mass
+
+    # Get rid of metastable information
+    if '_' in isotope:
+        isotope = isotope[:isotope.find('_')]
+
+    return _ATOMIC_MASS.get(isotope.lower())

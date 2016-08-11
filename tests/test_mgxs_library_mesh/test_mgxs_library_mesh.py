@@ -8,7 +8,6 @@ sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
 import openmc
 import openmc.mgxs
-import numpy as np
 
 
 class MGXSTestHarness(PyAPITestHarness):

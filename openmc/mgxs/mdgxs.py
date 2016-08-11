@@ -288,8 +288,7 @@ class MDGXS(MGXS):
             Delayed groups of interest. Defaults to 'all'.
         squeeze : bool
             A boolean representing whether to eliminate the extra dimensions
-            of the multi-dimensional array this is to be retured. Defaults to
-            True.
+            of the multi-dimensional array to be returned. Defaults to True.
 
         Returns
         -------
@@ -844,18 +843,6 @@ class MDGXS(MGXS):
         return df
 
 
-
-        df = super(MDGXS, self).get_pandas_dataframe(groups, nuclides, xs_type,
-                                                     distribcell_paths)
-
-        # Select out those delayed groups the user requested
-        if not isinstance(delayed_groups, basestring):
-            if 'delayedgroup' in df:
-                df = df[df['delayedgroup'].isin(delayed_groups)]
-
-        return df
-
-
 class ChiDelayed(MDGXS):
     r"""The delayed fission spectrum.
 
@@ -1186,8 +1173,7 @@ class ChiDelayed(MDGXS):
             A string for the type of value to return. Defaults to 'mean'.
         squeeze : bool
             A boolean representing whether to eliminate the extra dimensions
-            of the multi-dimensional array this is to be retured. Defaults to
-            True.
+            of the multi-dimensional array to be returned. Defaults to True.
 
         Returns
         -------

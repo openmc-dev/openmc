@@ -754,8 +754,7 @@ class MGXS(object):
             A string for the type of value to return. Defaults to 'mean'.
         squeeze : bool
             A boolean representing whether to eliminate the extra dimensions
-            of the multi-dimensional array this is to be retured. Defaults to
-            True.
+            of the multi-dimensional array to be returned. Defaults to True.
 
         Returns
         -------
@@ -1746,8 +1745,7 @@ class MatrixMGXS(MGXS):
             A string for the type of value to return. Defaults to 'mean'.
         squeeze : bool
             A boolean representing whether to eliminate the extra dimensions
-            of the multi-dimensional array this is to be retured. Defaults to
-            True.
+            of the multi-dimensional array to be returned. Defaults to True.
 
         Returns
         -------
@@ -3578,8 +3576,7 @@ class ScatterMatrixXS(MatrixMGXS):
             A string for the type of value to return. Defaults to 'mean'.
         squeeze : bool
             A boolean representing whether to eliminate the extra dimensions
-            of the multi-dimensional array this is to be retured. Defaults to
-            False.
+            of the multi-dimensional array to be returned. Defaults to True.
 
         Returns
         -------
@@ -4566,8 +4563,7 @@ class Chi(MGXS):
             A string for the type of value to return. Defaults to 'mean'.
         squeeze : bool
             A boolean representing whether to eliminate the extra dimensions
-            of the multi-dimensional array this is to be retured. Defaults to
-            True.
+            of the multi-dimensional array to be returned. Defaults to True.
 
         Returns
         -------

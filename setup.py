@@ -40,6 +40,12 @@ if have_setuptools:
             'sparse' : ['scipy'],
             'vtk': ['vtk', 'silomesh'],
             'validate': ['lxml']
-        }})
+        },
+
+        # Data files
+        'package_data': {
+            'openmc.data': ['mass.mas12']
+        },
+    })
 
 setup(**kwargs)

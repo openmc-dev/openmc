@@ -3,7 +3,7 @@
 openmc \- Executes the OpenMC Monte Carlo code
 .SH DESCRIPTION
 This command is used to execute the OpenMC Monte Carlo code. It is assumed that
-a set of XML input files has already been created and that ACE format cross
+a set of XML input files has already been created and that HDF5 format cross
 sections are available.
 .SH SYNOPSIS
 \fBopenmc\fR [\fIoptions\fR] [\fIpath\fR]
@@ -40,10 +40,20 @@ The behavior of
 .B openmc
 is affected by the following environment variables.
 .TP
-.B CROSS_SECTIONS
+.B OPENMC_CROSS_SECTIONS
 Indicates the default path to the cross_sections.xml summary file that is used
-to locate ACE format cross section libraries if the user has not specified the
+to locate HDF5 format cross section libraries if the user has not specified the
 <cross_sections> tag in
+.I settings.xml\fP.
+.TP
+.B OPENMC_MG_CROSS_SECTIONS
+Indicates the default path to the mgxs.xml file that contains multi-group cross
+section libraries if the user has not specified the <cross_sections> tag in
+.I settings.xml\fP.
+.TP
+.B OPENMC_MULTIPOLE_LIBRARY
+Indicates the default path to a directory containing windowed multipole data if
+the user has not specified the <multipole_library> tag in
 .I settings.xml\fP.
 .SH LICENSE
 Copyright \(co 2011-2016 Massachusetts Institute of Technology.

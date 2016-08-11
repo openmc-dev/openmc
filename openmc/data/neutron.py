@@ -178,7 +178,7 @@ class IncidentNeutron(object):
     @temperature.setter
     def temperature(self, temperature):
         cv.check_type('temperature', temperature, Real)
-        cv.check_greater_than('temperature', temperature, 0.0)
+        cv.check_greater_than('temperature', temperature, 0.0, True)
         self._temperature = temperature
 
     @energy.setter
@@ -448,6 +448,10 @@ class IncidentNeutron(object):
                 # Create summed reaction with appropriate cross section
                 rx = Reaction(mt)
                 mts = data.get_reaction_components(mt)
+                if len(mts) == 0:
+                    warn('Photon production is present for MT={} but no '
+                         'reaction components exist.'.format(mt))
+                    continue
                 rx.xs = Sum([data.reactions[mt_i].xs for mt_i in mts])
 
                 # Determine summed cross section

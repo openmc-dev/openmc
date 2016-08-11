@@ -102,8 +102,8 @@ class Nuclide(object):
 
         if '-' in name:
             new_name = name.replace('-', '')
-            msg = 'OpenMC nuclide names follow the GND standard. Nuclide ' \
-                  '"{}" is being transformed to "{}".'.format(name, new_name)
+            msg = 'OpenMC nuclides follow the GND naming convention. Nuclide ' \
+                  '"{}" is being renamed as "{}".'.format(name, new_name)
             warnings.warn(msg, DeprecationWarning)
 
         self._name = name.replace('-', '')

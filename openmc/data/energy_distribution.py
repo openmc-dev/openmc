@@ -84,6 +84,16 @@ class ArbitraryTabulated(EnergyDistribution):
         self.energy = energy
         self.pdf = pdf
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (not np.array_equal(self.energy, other.energy) or
+                not np.array_equal(self.pdf, other.pdf)):
+                eqval = False
+            return eqval
+
     def to_hdf5(self, group):
         raise NotImplementedError
 
@@ -122,6 +132,17 @@ class GeneralEvaporation(EnergyDistribution):
         self.g = g
         self.u = u
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (self.theta != other.theta or
+                self.g != other.g or
+                self.u != other.u):
+                eqval = False
+            return eqval
+
     def to_hdf5(self, group):
         raise NotImplementedError
 
@@ -158,6 +179,16 @@ class MaxwellEnergy(EnergyDistribution):
         super(MaxwellEnergy, self).__init__()
         self.theta = theta
         self.u = u
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (self.theta != other.theta or
+                self.u != other.u):
+                eqval = False
+            return eqval
 
     @property
     def theta(self):
@@ -266,6 +297,16 @@ class Evaporation(EnergyDistribution):
         super(Evaporation, self).__init__()
         self.theta = theta
         self.u = u
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (self.theta != other.theta or
+                self.u != other.u):
+                eqval = False
+            return eqval
 
     @property
     def theta(self):
@@ -378,6 +419,17 @@ class WattEnergy(EnergyDistribution):
         self.a = a
         self.b = b
         self.u = u
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (self.a != other.a or
+                self.b != other.b or
+                self.u != other.u):
+                eqval = False
+            return eqval
 
     @property
     def a(self):
@@ -520,6 +572,17 @@ class MadlandNix(EnergyDistribution):
         self.efh = efh
         self.tm = tm
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (self.efl != other.efl or
+                self.efh != other.efh or
+                self.tm != other.tm):
+                eqval = False
+            return eqval
+
     @property
     def efl(self):
         return self._efl
@@ -617,6 +680,17 @@ class DiscretePhoton(EnergyDistribution):
         self.primary_flag = primary_flag
         self.energy = energy
         self.atomic_weight_ratio = atomic_weight_ratio
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (self.primary_flag != other.primary_flag or
+                self.energy != other.energy or
+                self.atomic_weight_ratio != other.atomic_weight_ratio):
+                eqval = False
+            return eqval
 
     @property
     def primary_flag(self):
@@ -726,6 +800,16 @@ class LevelInelastic(EnergyDistribution):
         self.threshold = threshold
         self.mass_ratio = mass_ratio
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (self.threshold != other.threshold or
+                self.mass_ratio != other.mass_ratio):
+                eqval = False
+            return eqval
+
     @property
     def threshold(self):
         return self._threshold
@@ -831,6 +915,18 @@ class ContinuousTabular(EnergyDistribution):
         self.interpolation = interpolation
         self.energy = energy
         self.energy_out = energy_out
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (not np.array_equal(self.breakpoints, other.breakpoints) or
+                not np.array_equal(self.interpolation, other.interpolation) or
+                not np.array_equal(self.energy, other.energy) or
+                not np.array_equal(self.energy_out, other.energy_out)):
+                eqval = False
+            return eqval
 
     @property
     def breakpoints(self):

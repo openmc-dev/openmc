@@ -69,6 +69,16 @@ class CoherentElastic(object):
         idx = np.searchsorted(self.bragg_edges, E)
         return self.factors[idx]/E
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (not np.array_equal(self.bragg_edges, other.bragg_edges) or
+                not np.array_equal(self.factors, other.factors)):
+                eqval = False
+            return eqval
+
     def __len__(self):
         return len(self.bragg_edges)
 
@@ -170,6 +180,23 @@ class ThermalScattering(object):
         self.secondary_mode = None
         self.zaids = []
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (self.name != other.name or
+                self.atomic_weight_ratio != other.atomic_weight_ratio or
+                self.elastic_xs != other.elastic_xs or
+                self.elastic_mu_out != other.elastic_mu_out or
+                self.inelastic_xs != other.inelastic_xs or
+                self.inelastic_mu_out != other.inelastic_mu_out or
+                self.temperature != other.temperature or
+                not np.array_equal(self.zaids, other.zaids) or
+                self.secondary_mode != other.secondary_mode):
+                eqval = False
+            return eqval
+
     def __repr__(self):
         if hasattr(self, 'name'):
             return "<Thermal Scattering Data: {0}>".format(self.name)
@@ -216,13 +243,15 @@ class ThermalScattering(object):
                 self.inelastic_dist.to_hdf5(inelastic_group)
 
     @classmethod
-    def from_hdf5(cls, group):
+    def from_hdf5(cls, group_or_filename):
         """Generate thermal scattering data from HDF5 group
 
         Parameters
         ----------
-        group : h5py.Group
-            HDF5 group to read from
+        group_or_filename : h5py.Group or str
+            HDF5 group containing interaction data. If given as a string, it is
+            assumed to be the filename for the HDF5 file, and the first group
+            is used to read from.
 
         Returns
         -------
@@ -230,6 +259,12 @@ class ThermalScattering(object):
             Neutron thermal scattering data
 
         """
+        if isinstance(group_or_filename, h5py.Group):
+            group = group_or_filename
+        else:
+            h5file = h5py.File(group_or_filename, 'r')
+            group = list(h5file.values())[0]
+
         name = group.name[1:]
         atomic_weight_ratio = group.attrs['atomic_weight_ratio']
         temperature = group.attrs['temperature']

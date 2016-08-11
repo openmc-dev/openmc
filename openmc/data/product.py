@@ -49,6 +49,20 @@ class Product(object):
         self.applicability = []
         self.yield_ = 1
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        else:
+            eqval = True
+            if (self.particle != other.particle or
+                self.decay_rate != other.decay_rate or
+                self.emission_mode != other.emission_mode or
+                self.distribution.all() != other.distribution.all() or
+                self.applicability.all() != other.applicability.all() or
+                self.yield_ != other.yield_):
+                eqval = False
+            return eqval
+
     def __repr__(self):
         if isinstance(self.yield_, Real):
             return "<Product: {}, emission={}, yield={}>".format(

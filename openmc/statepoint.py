@@ -521,7 +521,6 @@ class StatePoint(object):
         if self.summary is not None:
             self.summary.add_volume_information(volume_calc)
 
-
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None, exact_filters=False,
                   exact_nuclides=False, exact_scores=False):

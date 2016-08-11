@@ -689,13 +689,14 @@ def get_openmc_cell(opencg_cell):
         translation = np.asarray(opencg_cell.translation, dtype=np.float64)
         openmc_cell.translation = translation
 
-    surfaces = []
-    operators = []
-    for surface, halfspace in opencg_cell.surfaces.values():
-        surfaces.append(get_openmc_surface(surface))
-        operators.append(operator.neg if halfspace == -1 else operator.pos)
-    openmc_cell.region = openmc.Intersection(
-        *[op(s) for op, s in zip(operators, surfaces)])
+    if opencg_cell.surfaces:
+        surfaces = []
+        operators = []
+        for surface, halfspace in opencg_cell.surfaces.values():
+            surfaces.append(get_openmc_surface(surface))
+            operators.append(operator.neg if halfspace == -1 else operator.pos)
+        openmc_cell.region = openmc.Intersection(
+            *[op(s) for op, s in zip(operators, surfaces)])
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell

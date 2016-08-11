@@ -75,8 +75,15 @@ module hdf5_interface
     module procedure read_attribute_string
   end interface read_attribute
 
+  interface write_attribute
+    module procedure write_attribute_double
+    module procedure write_attribute_double_1D
+    module procedure write_attribute_integer
+  end interface write_attribute
+
   public :: write_dataset
   public :: read_dataset
+  public :: write_attribute
   public :: read_attribute
   public :: file_create
   public :: file_open
@@ -2059,6 +2066,25 @@ contains
     call h5aclose_f(attr_id, hdf5_err)
   end subroutine read_attribute_double
 
+  subroutine write_attribute_double(obj_id, name, buffer)
+    integer(HID_T), intent(in)  :: obj_id
+    character(*),   intent(in)  :: name
+    real(8), intent(in), target :: buffer
+
+    integer        :: hdf5_err
+    integer(HID_T) :: dspace_id
+    integer(HID_T) :: attr_id
+    type(C_PTR)    :: f_ptr
+
+    call h5screate_f(H5S_SCALAR_F, dspace_id, hdf5_err)
+    call h5acreate_f(obj_id, trim(name), H5T_NATIVE_DOUBLE, dspace_id, &
+         attr_id, hdf5_err)
+    f_ptr = c_loc(buffer)
+    call h5awrite_f(attr_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
+    call h5aclose_f(attr_id, hdf5_err)
+    call h5sclose_f(dspace_id, hdf5_err)
+  end subroutine write_attribute_double
+
   subroutine read_attribute_double_1D(buffer, obj_id, name)
     real(8), target, allocatable, intent(inout) :: buffer(:)
     integer(HID_T),  intent(in)    :: obj_id
@@ -2096,6 +2122,37 @@ contains
     f_ptr = c_loc(buffer)
     call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
   end subroutine read_attribute_double_1D_explicit
+
+  subroutine write_attribute_double_1D(obj_id, name, buffer)
+    integer(HID_T),  intent(in) :: obj_id
+    character(*),    intent(in) :: name
+    real(8), target, intent(in) :: buffer(:)
+
+    integer(HSIZE_T) :: dims(1)
+
+    dims(:) = shape(buffer)
+    call write_attribute_double_1D_explicit(obj_id, dims, name, buffer)
+  end subroutine write_attribute_double_1D
+
+  subroutine write_attribute_double_1D_explicit(obj_id, dims, name, buffer)
+    integer(HID_T),   intent(in) :: obj_id
+    integer(HSIZE_T), intent(in) :: dims(1)
+    character(*),     intent(in) :: name
+    real(8), target,  intent(in) :: buffer(dims(1))
+
+    integer        :: hdf5_err
+    integer(HID_T) :: dspace_id
+    integer(HID_T) :: attr_id
+    type(C_PTR)    :: f_ptr
+
+    call h5screate_simple_f(1, dims, dspace_id, hdf5_err)
+    call h5acreate_f(obj_id, trim(name), H5T_NATIVE_DOUBLE, dspace_id, &
+         attr_id, hdf5_err)
+    f_ptr = c_loc(buffer)
+    call h5awrite_f(attr_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
+    call h5aclose_f(attr_id, hdf5_err)
+    call h5sclose_f(dspace_id, hdf5_err)
+  end subroutine write_attribute_double_1D_explicit
 
   subroutine read_attribute_double_2D(buffer, obj_id, name)
     real(8), target, allocatable, intent(inout) :: buffer(:,:)
@@ -2149,6 +2206,25 @@ contains
     call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
     call h5aclose_f(attr_id, hdf5_err)
   end subroutine read_attribute_integer
+
+  subroutine write_attribute_integer(obj_id, name, buffer)
+    integer(HID_T), intent(in)  :: obj_id
+    character(*),   intent(in)  :: name
+    integer, intent(in), target :: buffer
+
+    integer        :: hdf5_err
+    integer(HID_T) :: dspace_id
+    integer(HID_T) :: attr_id
+    type(C_PTR)    :: f_ptr
+
+    call h5screate_f(H5S_SCALAR_F, dspace_id, hdf5_err)
+    call h5acreate_f(obj_id, trim(name), H5T_NATIVE_INTEGER, dspace_id, &
+         attr_id, hdf5_err)
+    f_ptr = c_loc(buffer)
+    call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+    call h5aclose_f(attr_id, hdf5_err)
+    call h5sclose_f(dspace_id, hdf5_err)
+  end subroutine write_attribute_integer
 
   subroutine read_attribute_integer_1D(buffer, obj_id, name)
     integer, target, allocatable, intent(inout) :: buffer(:)

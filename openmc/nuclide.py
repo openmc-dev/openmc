@@ -99,18 +99,17 @@ class Nuclide(object):
     @name.setter
     def name(self, name):
         check_type('name', name, basestring)
+        self._name = name
 
         if '-' in name:
-            new_name = name.replace('-', '')
-            new_name = new_name.replace('Nat', '0')
-            if new_name.endswith('m'):
-                new_name = new_name[:-1] + '_m1'
+            self._name = name.replace('-', '')
+            self._name = self._name.replace('Nat', '0')
+            if self._name.endswith('m'):
+                self._name = self._name[:-1] + '_m1'
 
             msg = 'OpenMC nuclides follow the GND naming convention. Nuclide ' \
-                  '"{}" is being renamed as "{}".'.format(name, new_name)
+                  '"{}" is being renamed as "{}".'.format(name, self._name)
             warnings.warn(msg)
-
-        self._name = name.replace('-', '')
 
     @xs.setter
     def xs(self, xs):

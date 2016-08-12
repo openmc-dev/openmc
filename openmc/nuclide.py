@@ -108,7 +108,7 @@ class Nuclide(object):
 
             msg = 'OpenMC nuclides follow the GND naming convention. Nuclide ' \
                   '"{}" is being renamed as "{}".'.format(name, new_name)
-            warnings.warn(msg, DeprecationWarning)
+            warnings.warn(msg)
 
         self._name = name.replace('-', '')
 

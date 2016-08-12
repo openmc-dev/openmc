@@ -59,8 +59,6 @@ def get_thermal_name(name):
             # OK, we give up. Just use the ACE name.
             return 'c_' + name
 
-    return name
-
 
 class CoherentElastic(object):
     r"""Coherent elastic scattering data from a crystalline material

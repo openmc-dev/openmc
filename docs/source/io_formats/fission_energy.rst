@@ -26,7 +26,8 @@ ENDF files with the
     example, 'U235' or 'Pu239'.  Metastable nuclides are appended with an
     '_m' and their metastable number.  For example, 'Am242_m1'
 
-:Datasets: - **data** (*double[][][]*) -- The energy release coefficients.  The
+:Datasets:
+          - **data** (*double[][][]*) -- The energy release coefficients.  The
              first axis indexes the component type.  The second axis specifies
              values or uncertainties.  The third axis indexes the polynomial
              order.  If the data uses the Sher-Beck format, then the last axis

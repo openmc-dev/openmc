@@ -1,7 +1,7 @@
 module simulation
 
 #ifdef MPI
-  use mpi
+  use message_passing
 #endif
 
   use cmfd_execute,    only: cmfd_init_batch, execute_cmfd
@@ -17,13 +17,14 @@ module simulation
                              print_batch_keff, print_generation
   use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed, prn_seed
-  use source,          only: initialize_source
+  use source,          only: initialize_source, sample_external_source
   use state_point,     only: write_state_point, write_source_point
   use string,          only: to_str
   use tally,           only: synchronize_tallies, setup_active_usertallies, &
                              reset_result
   use trigger,         only: check_triggers
   use tracking,        only: transport
+  use volume_calc,     only: run_volume_calculations
   use geometry_header, only: BASE_UNIVERSE
   use dd_comm,         only: synchronize_bank_dd, synchronize_particles
 
@@ -43,6 +44,9 @@ contains
 
     type(Particle) :: p
     integer(8)     :: i_work
+
+    ! Volume calculations
+    if (size(volume_calcs) > 0) call run_volume_calculations()
 
     if (.not. restart_run) call initialize_source()
 
@@ -356,6 +360,8 @@ contains
 
   subroutine finalize_generation()
 
+    integer(8) :: i
+
     ! Update global tallies with the omp private accumulation variables
 !$omp parallel
 !$omp critical
@@ -404,6 +410,12 @@ contains
 
       ! Write generation output
       if (master .and. current_gen /= gen_per_batch) call print_generation()
+    elseif (run_mode == MODE_FIXEDSOURCE) then
+      ! For fixed-source mode, we need to sample the external source
+      do i = 1, work
+        call set_particle_seed(overall_gen*n_particles + work_index(rank) + i)
+        call sample_external_source(source_bank(i))
+      end do
     end if
 
   end subroutine finalize_generation

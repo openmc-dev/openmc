@@ -27,6 +27,8 @@ element settings {
 
   element cross_sections { xsd:string { maxLength = "255" } }? &
 
+  element multipole_library { xsd:string { maxLength = "255" } }? &
+
   element cutoff {
     (element weight { xsd:double } | attribute weight { xsd:double })? &
     (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })?
@@ -140,6 +142,19 @@ element settings {
 
   element verbosity { xsd:positiveInteger }? &
 
+  element volume_calc {
+    (element domain_type { xsd:string } |
+      attribute domain_type { xsd:string }) &
+    (element domain_ids { list { xsd:integer+ } } |
+      attribute domain_ids { list { xsd:integer+ } }) &
+    (element samples { xsd:positiveInteger } |
+      attribute samples { xsd:positiveInteger }) &
+    (element lower_left { list { xsd:double+ } } |
+      attribute lower_left { list { xsd:double+ } }) &
+    (element upper_right { list { xsd:double+ } } |
+      attribute upper_right { list { xsd:double+ } })
+  }+ &
+
   element uniform_fs{
     (element dimension { list { xsd:positiveInteger+ } } |
       attribute dimension { list { xsd:positiveInteger+ } }) &
@@ -184,5 +199,7 @@ element settings {
     
     (element count_interactions { xsd:boolean } |
       attribute count_interactions { xsd:boolean })? 
-  }?
+  }? &
+
+  element use_windowed_multipole { xsd:boolean }?
 }

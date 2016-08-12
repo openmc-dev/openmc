@@ -34,10 +34,6 @@ contains
       string = "nu-scatter-n"
     case (SCORE_NU_SCATTER_PN)
       string = "nu-scatter-pn"
-    case (SCORE_TRANSPORT)
-      string = "transport"
-    case (SCORE_N_1N)
-      string = "n1n"
     case (SCORE_ABSORPTION)
       string = "absorption"
     case (SCORE_FISSION)
@@ -46,6 +42,8 @@ contains
       string = "nu-fission"
     case (SCORE_DELAYED_NU_FISSION)
       string = "delayed-nu-fission"
+    case (SCORE_PROMPT_NU_FISSION)
+      string = "prompt-nu-fission"
     case (SCORE_KAPPA_FISSION)
       string = "kappa-fission"
     case (SCORE_CURRENT)

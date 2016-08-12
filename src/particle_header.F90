@@ -2,7 +2,8 @@ module particle_header
 
   use bank_header,     only: Bank
   use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
-                             MAX_DELAYED_GROUPS, NO_OUTSCATTER, N_STREAMS
+                             MAX_DELAYED_GROUPS, ERROR_REAL, NO_OUTSCATTER, &
+                             N_STREAMS
   use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
 
@@ -59,10 +60,13 @@ module particle_header
     logical    :: alive         ! is particle alive?
 
     ! Pre-collision physical data
-    real(8)    :: last_xyz(3)   ! previous coordinates
-    real(8)    :: last_uvw(3)   ! previous direction coordinates
-    real(8)    :: last_wgt      ! pre-collision particle weight
-    real(8)    :: absorb_wgt    ! weight absorbed for survival biasing
+    real(8)    :: last_xyz_current(3) ! coordinates of the last collision or
+                                      !  reflective/periodic surface crossing
+                                      !  for current tallies
+    real(8)    :: last_xyz(3)         ! previous coordinates
+    real(8)    :: last_uvw(3)         ! previous direction coordinates
+    real(8)    :: last_wgt            ! pre-collision particle weight
+    real(8)    :: absorb_wgt          ! weight absorbed for survival biasing
 
     ! What event last took place
     logical    :: fission       ! did the particle cause implicit fission
@@ -82,6 +86,9 @@ module particle_header
     integer    :: cell_born     ! index for cell particle was born in
     integer    :: material      ! index for current material
     integer    :: last_material ! index for last material
+
+    ! Temperature of the current cell
+    real(8)    :: sqrtkT        ! sqrt(k_Boltzmann * temperature) in MeV
 
     ! Statistical data
     integer    :: n_collision   ! # of collisions
@@ -168,6 +175,7 @@ contains
     this % absorb_wgt        = ZERO
     this % n_bank            = 0
     this % wgt_bank          = ZERO
+    this % sqrtkT            = ERROR_REAL
     this % n_collision       = 0
     this % fission           = .false.
     this % delayed_group     = 0
@@ -290,21 +298,22 @@ contains
     call this % initialize()
 
     ! copy attributes from source bank site
-    this % wgt            = src % wgt
-    this % last_wgt       = src % wgt
-    this % coord(1) % xyz = src % xyz
-    this % coord(1) % uvw = src % uvw
-    this % last_xyz       = src % xyz
-    this % last_uvw       = src % uvw
+    this % wgt              = src % wgt
+    this % last_wgt         = src % wgt
+    this % coord(1) % xyz   = src % xyz
+    this % coord(1) % uvw   = src % uvw
+    this % last_xyz_current = src % xyz
+    this % last_xyz         = src % xyz
+    this % last_uvw         = src % uvw
     if (run_CE) then
-      this % E            = src % E
+      this % E              = src % E
     else
-      this % g            = int(src % E)
-      this % last_g       = int(src % E)
-      this % E            = energy_bin_avg(this % g)
+      this % g              = int(src % E)
+      this % last_g         = int(src % E)
+      this % E              = energy_bin_avg(this % g)
     end if
-    this % last_E         = src % E
-    this % prn_seed       = src % prn_seed
+    this % last_E           = this % E
+    this % prn_seed         = src % prn_seed
 
   end subroutine initialize_from_source
 

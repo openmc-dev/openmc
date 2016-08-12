@@ -1,5 +1,9 @@
 import sys
 import re
+import os
+import warnings
+import glob
+
 import numpy as np
 
 import openmc
@@ -14,63 +18,75 @@ class StatePoint(object):
     of a given batch). Statepoints can be used to analyze tally results as well
     as restart a simulation.
 
+    Parameters
+    ----------
+    filename : str
+        Path to file to load
+    autolink : bool, optional
+        Whether to automatically link in metadata from a summary.h5 file and
+        stochastic volume calculation results from volume_*.h5 files. Defaults
+        to True.
+
     Attributes
     ----------
     cmfd_on : bool
         Indicate whether CMFD is active
-    cmfd_balance : ndarray
+    cmfd_balance : numpy.ndarray
         Residual neutron balance for each batch
     cmfd_dominance
         Dominance ratio for each batch
-    cmfd_entropy : ndarray
+    cmfd_entropy : numpy.ndarray
         Shannon entropy of CMFD fission source for each batch
-    cmfd_indices : ndarray
+    cmfd_indices : numpy.ndarray
         Number of CMFD mesh cells and energy groups. The first three indices
         correspond to the x-, y-, and z- spatial directions and the fourth index
         is the number of energy groups.
-    cmfd_srccmp : ndarray
+    cmfd_srccmp : numpy.ndarray
         Root-mean-square difference between OpenMC and CMFD fission source for
         each batch
-    cmfd_src : ndarray
+    cmfd_src : numpy.ndarray
         CMFD fission source distribution over all mesh cells and energy groups.
-    current_batch : Integral
+    current_batch : int
         Number of batches simulated
     date_and_time : str
         Date and time when simulation began
-    entropy : ndarray
+    entropy : numpy.ndarray
         Shannon entropy of fission source at each batch
     gen_per_batch : Integral
         Number of fission generations per batch
-    global_tallies : ndarray of compound datatype
+    global_tallies : numpy.ndarray of compound datatype
         Global tallies for k-effective estimates and leakage. The compound
         datatype has fields 'name', 'sum', 'sum_sq', 'mean', and 'std_dev'.
     k_combined : list
         Combined estimator for k-effective and its uncertainty
-    k_col_abs : Real
+    k_col_abs : float
         Cross-product of collision and absorption estimates of k-effective
-    k_col_tra : Real
+    k_col_tra : float
         Cross-product of collision and tracklength estimates of k-effective
-    k_abs_tra : Real
+    k_abs_tra : float
         Cross-product of absorption and tracklength estimates of k-effective
-    k_generation : ndarray
+    k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are Mesh objects
-    n_batches : Integral
+    n_batches : int
         Number of batches
-    n_inactive : Integral
+    n_inactive : int
         Number of inactive batches
-    n_particles : Integral
+    n_particles : int
         Number of particles per generation
-    n_realizations : Integral
+    n_realizations : int
         Number of tally realizations
     path : str
         Working directory for simulation
     run_mode : str
         Simulation run mode, e.g. 'k-eigenvalue'
-    seed : Integral
+    runtime : dict
+        Dictionary whose keys are strings describing various runtime metrics
+        and whose values are time values in seconds.
+    seed : int
         Pseudorandom number generator seed
-    source : ndarray of compound datatype
+    source : numpy.ndarray of compound datatype
         Array of source sites. The compound datatype has fields 'wgt', 'xyz',
         'uvw', and 'E' corresponding to the weight, position, direction, and
         energy of the source site.
@@ -85,13 +101,18 @@ class StatePoint(object):
         Indicate whether user-defined tallies are present
     version: tuple of Integral
         Version of OpenMC
-    summary : None or openmc.summary.Summary
+    summary : None or openmc.Summary
         A summary object if the statepoint has been linked with a summary file
 
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, autolink=True):
         import h5py
+        if h5py.__version__ == '2.6.0':
+            raise ImportError("h5py 2.6.0 has a known bug which makes it "
+                              "incompatible with OpenMC's HDF5 files. "
+                              "Please switch to a different version.")
+
         self._f = h5py.File(filename, 'r')
 
         # Ensure filetype and revision are correct
@@ -101,8 +122,9 @@ class StatePoint(object):
                 raise IOError('{} is not a statepoint file.'.format(filename))
         except AttributeError:
             raise IOError('Could not read statepoint file. This most likely '
-                          'means the statepoint file was produced by a different '
-                          'version of OpenMC than the one you are using.')
+                          'means the statepoint file was produced by a '
+                          'different version of OpenMC than the one you are '
+                          'using.')
         if self._f['revision'].value != 15:
             raise IOError('Statepoint file has a file revision of {} '
                           'which is not consistent with the revision this '
@@ -112,9 +134,22 @@ class StatePoint(object):
         # Set flags for what data has been read
         self._meshes_read = False
         self._tallies_read = False
-        self._summary = False
+        self._summary = None
         self._global_tallies = None
         self._sparse = False
+
+        # Automatically link in a summary file if one exists
+        if autolink:
+            path_summary = os.path.join(os.path.dirname(filename), 'summary.h5')
+            if os.path.exists(path_summary):
+                su = openmc.Summary(path_summary)
+                self.link_with_summary(su)
+
+            path_volume = os.path.join(os.path.dirname(filename), 'volume_*.h5')
+            for path_i in glob.glob(path_volume):
+                if re.search(r'volume_\d+\.h5', path_i):
+                    vol = openmc.VolumeCalculation.from_hdf5(path_i)
+                    self.add_volume_information(vol)
 
     def close(self):
         self._f.close()
@@ -312,6 +347,11 @@ class StatePoint(object):
         return self._f['run_mode'].value.decode()
 
     @property
+    def runtime(self):
+        return {name: dataset.value
+                for name, dataset in self._f['runtime'].items()}
+
+    @property
     def seed(self):
         return self._f['seed'].value
 
@@ -469,14 +509,31 @@ class StatePoint(object):
             for tally_id in self.tallies:
                 self.tallies[tally_id].sparse = self.sparse
 
+    def add_volume_information(self, volume_calc):
+        """Add volume information to the geometry within the file
+
+        Parameters
+        ----------
+        volume_calc : openmc.VolumeCalculation
+            Results from a stochastic volume calculation
+
+        """
+        if self.summary is not None:
+            self.summary.add_volume_information(volume_calc)
+
     def get_tally(self, scores=[], filters=[], nuclides=[],
-                  name=None, id=None, estimator=None):
+                  name=None, id=None, estimator=None, exact_filters=False,
+                  exact_nuclides=False, exact_scores=False):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
         found which satisfies all of the input parameters.
-        NOTE: The input parameters do not need to match the complete Tally
-        specification and may only represent a subset of the Tally's properties.
+
+        NOTE: If any of the "exact" parameters are False (default), the input
+        parameters do not need to match the complete Tally specification and
+        may only represent a subset of the Tally's properties. If an "exact"
+        parameter is True then number of scores, filters, or nuclides in the
+        parameters must precisely match those of any matching Tally.
 
         Parameters
         ----------
@@ -492,10 +549,22 @@ class StatePoint(object):
             The id specified for the Tally (default is None).
         estimator: str, optional
             The type of estimator ('tracklength', 'analog'; default is None).
+        exact_filters : bool
+            If True, the number of filters in the parameters must be identical
+            to those in the matching Tally. If False (default), the filters in
+            the parameters may be a subset of those in the matching Tally.
+        exact_nuclides : bool
+            If True, the number of nuclides in the parameters must be identical
+            to those in the matching Tally. If False (default), the nuclides in
+            the parameters may be a subset of those in the matching Tally.
+        exact_scores : bool
+            If True, the number of scores in the parameters must be identical
+            to those in the matching Tally. If False (default), the scores
+            in the parameters may be a subset of those in the matching Tally.
 
         Returns
         -------
-        tally : Tally
+        tally : openmc.Tally
             A tally matching the specified criteria
 
         Raises
@@ -509,7 +578,7 @@ class StatePoint(object):
         tally = None
 
         # Iterate over all tallies to find the appropriate one
-        for tally_id, test_tally in self.tallies.items():
+        for test_tally in self.tallies.values():
 
             # Determine if Tally has queried name
             if name and name != test_tally.name:
@@ -520,7 +589,15 @@ class StatePoint(object):
                 continue
 
             # Determine if Tally has queried estimator
-            if estimator and not estimator == test_tally.estimator:
+            if estimator and estimator != test_tally.estimator:
+                continue
+
+            # The number of filters, nuclides and scores must exactly match
+            if exact_scores and len(scores) != test_tally.num_scores:
+                continue
+            if exact_nuclides and len(nuclides) != test_tally.num_nuclides:
+                continue
+            if exact_filters and len(filters) != test_tally.num_filters:
                 continue
 
             # Determine if Tally has the queried score(s)
@@ -592,7 +669,7 @@ class StatePoint(object):
 
         Parameters
         ----------
-        summary : Summary
+        summary : openmc.Summary
              A Summary object.
 
         Raises
@@ -603,17 +680,24 @@ class StatePoint(object):
 
         """
 
+        if self.summary is not None:
+            warnings.warn('A Summary object has already been linked.',
+                          RuntimeWarning)
+            return
+
         if not isinstance(summary, openmc.summary.Summary):
             msg = 'Unable to link statepoint with "{0}" which ' \
                   'is not a Summary object'.format(summary)
             raise ValueError(msg)
 
         for tally_id, tally in self.tallies.items():
-            # Get the Tally name from the summary file
-            tally.name = summary.tallies[tally_id].name
+            summary_tally = summary.tallies[tally_id]
+            tally.name = summary_tally.name
             tally.with_summary = True
 
             for tally_filter in tally.filters:
+                summary_filter = summary_tally.find_filter(tally_filter.type)
+
                 if tally_filter.type == 'surface':
                     surface_ids = []
                     for bin in tally_filter.bins:
@@ -625,6 +709,10 @@ class StatePoint(object):
                     for bin in tally_filter.bins:
                         distribcell_ids.append(summary.cells[bin].id)
                     tally_filter.bins = distribcell_ids
+
+                if tally_filter.type == 'distribcell':
+                    tally_filter.distribcell_paths = \
+                        summary_filter.distribcell_paths
 
                 if tally_filter.type == 'universe':
                     universe_ids = []

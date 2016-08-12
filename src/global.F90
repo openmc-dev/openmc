@@ -6,18 +6,19 @@ module global
   use dd_header,        only: DomainDecomType
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
-  use macroxs_header,   only: MacroXSContainer
   use material_header,  only: Material
   use mesh_header,      only: RegularMesh
+  use mgxs_header,      only: Mgxs, MgxsContainer
   use nuclide_header
   use plot_header,      only: ObjectPlot
   use sab_header,       only: SAlphaBeta
   use set_header,       only: SetInt
   use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
-  use tally_header,     only: TallyObject, TallyMap, TallyResult
+  use tally_header,     only: TallyObject, TallyResult
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
+  use volume_header,    only: VolumeCalculation
 
 #ifdef MPIF08
   use mpi_f08
@@ -35,6 +36,8 @@ module global
   type(SurfaceContainer), allocatable, target :: surfaces(:)
   type(Material),         allocatable, target :: materials(:)
   type(ObjectPlot),       allocatable, target :: plots(:)
+
+  type(VolumeCalculation), allocatable :: volume_calcs(:)
 
   ! Size of main arrays
   integer :: n_cells     ! # of cells
@@ -66,11 +69,7 @@ module global
   ! ============================================================================
   ! CROSS SECTION RELATED VARIABLES NEEDED REGARDLESS OF CE OR MG
 
-  ! Cross section arrays
-  type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings
-
   integer :: n_nuclides_total ! Number of nuclide cross section tables
-  integer :: n_listings       ! Number of listings in cross_sections.xml
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
@@ -78,7 +77,6 @@ module global
 
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict
-  type(DictCharInt) :: xs_listing_dict
 
   ! Default xs identifier (e.g. 70c or 300K)
   character(5):: default_xs
@@ -87,7 +85,7 @@ module global
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
 
   ! Cross section arrays
-  type(NuclideCE), allocatable, target :: nuclides(:)    ! Nuclide cross-sections
+  type(Nuclide), allocatable, target :: nuclides(:)    ! Nuclide cross-sections
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
 
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
@@ -105,7 +103,11 @@ module global
   ! What to assume for expanding natural elements
   integer :: default_expand = ENDF_BVII1
 
-  ! Total amount of nuclide ZAID and dictionary of nuclide ZAID and index
+  ! Whether or not windowed multipole cross sections should be used.
+  logical :: multipole_active = .false.
+
+  ! Total amount of nuclide ZAID and dictionary of nuclide ZAID and index --
+  ! this is used when sampling unresolved resonance probability tables
   integer(8)       :: n_nuc_zaid_total
   type(DictIntInt) :: nuc_zaid_dict
 
@@ -113,10 +115,10 @@ module global
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
 
   ! Cross section arrays
-  type(NuclideMGContainer), allocatable, target :: nuclides_MG(:)
+  type(MgxsContainer), allocatable, target :: nuclides_MG(:)
 
   ! Cross section caches
-  type(MacroXSContainer), target, allocatable :: macro_xs(:)
+  type(MgxsContainer), target, allocatable :: macro_xs(:)
 
   ! Number of energy groups
   integer :: energy_groups
@@ -139,6 +141,7 @@ module global
   type(RegularMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
   integer, allocatable :: matching_bins(:)
+  real(8), allocatable :: filter_weights(:)
 
   ! Pointers for different tallies
   type(TallyObject), pointer :: user_tallies(:) => null()
@@ -177,9 +180,6 @@ module global
   real(8) :: global_tally_leakage     = ZERO
 !$omp threadprivate(global_tally_collision, global_tally_absorption, &
 !$omp&              global_tally_tracklength, global_tally_leakage)
-
-  ! Tally map structure
-  type(TallyMap), allocatable :: tally_maps(:)
 
   integer :: n_meshes       = 0 ! # of structured meshes
   integer :: n_user_meshes  = 0 ! # of structured user meshes
@@ -345,6 +345,7 @@ module global
 
   character(MAX_FILE_LEN) :: path_input            ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections   ! Path to cross_sections.xml
+  character(MAX_FILE_LEN) :: path_multipole        ! Path to wmp library
   character(MAX_FILE_LEN) :: path_source = ''      ! Path to binary source
   character(MAX_FILE_LEN) :: path_state_point      ! Path to binary state point
   character(MAX_FILE_LEN) :: path_source_point     ! Path to binary source point
@@ -465,7 +466,8 @@ module global
   type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
 
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
-!$omp&              trace, thread_id, current_work, matching_bins)
+!$omp&              trace, thread_id, current_work, matching_bins, &
+!$omp&              filter_weights)
 
 contains
 
@@ -516,7 +518,6 @@ contains
     end if
 
     if (allocated(sab_tables)) deallocate(sab_tables)
-    if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)
 
     ! Deallocate external source
@@ -532,7 +533,7 @@ contains
     if (allocated(meshes)) deallocate(meshes)
     if (allocated(tallies)) deallocate(tallies)
     if (allocated(matching_bins)) deallocate(matching_bins)
-    if (allocated(tally_maps)) deallocate(tally_maps)
+    if (allocated(filter_weights)) deallocate(filter_weights)
 
     ! Deallocate fission and source bank and entropy
 !$omp parallel
@@ -571,7 +572,6 @@ contains
     call plot_dict % clear()
     call nuclide_dict % clear()
     call sab_dict % clear()
-    call xs_listing_dict % clear()
 
     ! Clear statepoint and sourcepoint batch set
     call statepoint_batch % clear()

@@ -2,8 +2,9 @@ from numbers import Real
 from xml.etree import ElementTree as ET
 import sys
 import warnings
+from collections import Iterable
 
-from openmc.checkvalue import check_type, check_value
+import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -38,30 +39,8 @@ class Trigger(object):
         self.threshold = threshold
         self._scores = []
 
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._trigger_type = self._trigger_type
-            clone._threshold = self._threshold
-
-            clone.scores = self.scores
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
     def __eq__(self, other):
-        if str(self) == str(other):
-            return True
-        else:
-            return False
+        return str(self) == str(other)
 
     def __ne__(self, other):
         return not self == other
@@ -87,13 +66,13 @@ class Trigger(object):
 
     @trigger_type.setter
     def trigger_type(self, trigger_type):
-        check_value('tally trigger type', trigger_type,
-                    ['variance', 'std_dev', 'rel_err'])
+        cv.check_value('tally trigger type', trigger_type,
+                       ['variance', 'std_dev', 'rel_err'])
         self._trigger_type = trigger_type
 
     @threshold.setter
     def threshold(self, threshold):
-        check_type('tally trigger threshold', threshold, Real)
+        cv.check_type('tally trigger threshold', threshold, Real)
         self._threshold = threshold
 
     @scores.setter

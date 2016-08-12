@@ -8,7 +8,6 @@ module tracking
                                 distance_to_mesh_surface, calibrate_coord
   use geometry_header,    only: Universe, BASE_UNIVERSE
   use global
-  use macroxs_header,     only: MacroXS
   use output,             only: write_message
   use particle_header,    only: LocalCoord, Particle
   use physics,            only: collision
@@ -114,6 +113,7 @@ contains
           material_xs % total      = ZERO
           material_xs % elastic    = ZERO
           material_xs % absorption = ZERO
+          material_xs % fission    = ZERO
           material_xs % nu_fission = ZERO
         end if
       end if
@@ -250,7 +250,7 @@ contains
           p % fission = .false.
 
           ! Save coordinates for tallying purposes
-          p % last_xyz = p % coord(1) % xyz
+          p % last_xyz_current = p % coord(1) % xyz
 
           ! Set last material to none since cross sections will need to be
           ! re-evaluated
@@ -269,6 +269,9 @@ contains
             end if
           end do
         end if
+
+        ! Save coordinates for tallying purposes
+        p % last_xyz = p % coord(1) % xyz
 
         ! If particle has too many events, display warning and kill it
         n_event = n_event + 1

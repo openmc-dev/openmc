@@ -205,7 +205,7 @@ traveling in its current direction, it will not hit the surface. The complete
 derivation for different types of surfaces used in OpenMC will be presented in
 the following sections.
 
-Since :math:f(x,y,z)` in general is quadratic in :math:`x`, :math:`y`, and
+Since :math:`f(x,y,z)` in general is quadratic in :math:`x`, :math:`y`, and
 :math:`z`, this implies that :math:`f(x_0 + du_0, y + dv_0, z + dw_0)` is
 quadratic in :math:`d`. Thus we expect at most two real solutions to
 :eq:`dist-to-boundary-1`. If no solutions to :eq:`dist-to-boundary-1` exist or
@@ -436,6 +436,8 @@ In general, a lattice tile is specified by the three indices,
 where :math:`(x_0, y_0, z_0)` are the coordinates to the lower-left-bottom
 corner of the lattice, and :math:`p_0, p_1, p_2` are the pitches along the
 :math:`x`, :math:`y`, and :math:`z` axes, respectively.
+
+.. _hexagonal_indexing:
 
 Hexagonal Lattice Indexing
 --------------------------

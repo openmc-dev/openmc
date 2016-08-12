@@ -2,7 +2,6 @@ module output
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use ace_header,      only: Reaction, UrrData
   use constants
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
@@ -18,6 +17,7 @@ module output
   use sab_header,      only: SAlphaBeta
   use string,          only: to_upper, to_str, zero_padded, count_digits
   use tally_header,    only: TallyObject
+  use tally_filter
 
   implicit none
 
@@ -53,9 +53,9 @@ contains
 
     ! Write version information
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     Copyright:      2011-2015 Massachusetts Institute of Technology'
+         '     Copyright:      2011-2016 Massachusetts Institute of Technology'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     License:        http://mit-crpg.github.io/openmc/license.html'
+         '     License:        http://openmc.readthedocs.io/en/latest/license.html'
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",8X,I1,".",I1,".",I1)') &
          VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1
@@ -336,10 +336,10 @@ contains
     ! Open log file for writing
     open(NEWUNIT=unit_xs, FILE=path, STATUS='replace', ACTION='write')
 
-    ! Write header
-    call header("CROSS SECTION TABLES", unit=unit_xs)
-
     if (run_CE) then
+      ! Write header
+      call header("CROSS SECTION TABLES", unit=unit_xs)
+
       NUCLIDE_LOOP: do i = 1, n_nuclides_total
         ! Print information about nuclide
         call nuclides(i) % print(unit=unit_xs)
@@ -350,10 +350,17 @@ contains
         call sab_tables(i) % print(unit=unit_xs)
       end do SAB_TABLES_LOOP
     else
+      ! Write header
+      call header("MGXS LIBRARY TABLES", unit=unit_xs)
       NuclideMG_LOOP: do i = 1, n_nuclides_total
         ! Print information about nuclide
         call nuclides_mg(i) % obj % print(unit=unit_xs)
       end do NuclideMG_LOOP
+      call header("MATERIAL MGXS TABLES", unit=unit_xs)
+      MATERIAL_LOOP: do i = 1, n_materials
+        ! Print information about Materials
+        call macro_xs(i) % obj % print(unit=unit_xs)
+      end do MATERIAL_LOOP
     end if
 
     ! Close cross section summary file
@@ -756,19 +763,16 @@ contains
     integer :: k            ! loop index for scoring bins
     integer :: n            ! loop index for nuclides
     integer :: l            ! loop index for user scores
-    integer :: type         ! type of tally filter
     integer :: indent       ! number of spaces to preceed output
     integer :: filter_index ! index in results array for filters
     integer :: score_index  ! scoring bin index
     integer :: i_nuclide    ! index in nuclides array
-    integer :: i_listing    ! index in xs_listings array
     integer :: n_order      ! loop index for moment orders
     integer :: nm_order     ! loop index for Ynm moment orders
     integer :: unit_tally   ! tallies.out file unit
     real(8) :: t_value      ! t-values for confidence intervals
     real(8) :: alpha        ! significance level for CI
     character(MAX_FILE_LEN) :: filename                    ! name of output file
-    character(16)           :: filter_name(N_FILTER_TYPES) ! names of tally filters
     character(36)           :: score_names(N_SCORE_TYPES)  ! names of scoring function
     character(36)           :: score_name                  ! names of scoring function
                                                            ! to be applied at write-time
@@ -777,28 +781,11 @@ contains
     ! Skip if there are no tallies
     if (n_tallies == 0) return
 
-    ! Initialize names for tally filter types
-    filter_name(FILTER_UNIVERSE)     = "Universe"
-    filter_name(FILTER_MATERIAL)     = "Material"
-    filter_name(FILTER_DISTRIBCELL)  = "Distributed Cell"
-    filter_name(FILTER_CELL)         = "Cell"
-    filter_name(FILTER_CELLBORN)     = "Birth Cell"
-    filter_name(FILTER_SURFACE)      = "Surface"
-    filter_name(FILTER_MESH)         = "Mesh"
-    filter_name(FILTER_ENERGYIN)     = "Incoming Energy"
-    filter_name(FILTER_ENERGYOUT)    = "Outgoing Energy"
-    filter_name(FILTER_MU)           = "Change-in-Angle"
-    filter_name(FILTER_POLAR)        = "Polar Angle"
-    filter_name(FILTER_AZIMUTHAL)    = "Azimuthal Angle"
-    filter_name(FILTER_DELAYEDGROUP) = "Delayed Group"
-
     ! Initialize names for scores
     score_names(abs(SCORE_FLUX))               = "Flux"
     score_names(abs(SCORE_TOTAL))              = "Total Reaction Rate"
     score_names(abs(SCORE_SCATTER))            = "Scattering Rate"
     score_names(abs(SCORE_NU_SCATTER))         = "Scattering Production Rate"
-    score_names(abs(SCORE_TRANSPORT))          = "Transport Rate"
-    score_names(abs(SCORE_N_1N))               = "(n,1n) Rate"
     score_names(abs(SCORE_ABSORPTION))         = "Absorption Rate"
     score_names(abs(SCORE_FISSION))            = "Fission Rate"
     score_names(abs(SCORE_NU_FISSION))         = "Nu-Fission Rate"
@@ -813,6 +800,7 @@ contains
     score_names(abs(SCORE_NU_SCATTER_PN))      = "Scattering Prod. Rate Moment"
     score_names(abs(SCORE_NU_SCATTER_YN))      = "Scattering Prod. Rate Moment"
     score_names(abs(SCORE_DELAYED_NU_FISSION)) = "Delayed-Nu-Fission Rate"
+    score_names(abs(SCORE_PROMPT_NU_FISSION))  = "Prompt-Nu-Fission Rate"
     score_names(abs(SCORE_INVERSE_VELOCITY))   = "Flux-Weighted Inverse Velocity"
 
     ! Create filename for tally output
@@ -871,14 +859,14 @@ contains
       ! to be used for a given tally.
 
       ! Initialize bins, filter level, and indentation
-      matching_bins(1:t%n_filters) = 0
+      matching_bins(1:size(t % filters)) = 0
       j = 1
       indent = 0
 
       print_bin: do
         find_bin: do
           ! Check for no filters
-          if (t % n_filters == 0) exit find_bin
+          if (size(t % filters) == 0) exit find_bin
 
           ! Increment bin combination
           matching_bins(j) = matching_bins(j) + 1
@@ -886,7 +874,7 @@ contains
           ! =================================================================
           ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
 
-          if (matching_bins(j) > t % filters(j) % n_bins) then
+          if (matching_bins(j) > t % filters(j) % obj % n_bins) then
             ! If this is the first filter, then exit
             if (j == 1) exit print_bin
 
@@ -899,24 +887,30 @@ contains
 
           else
             ! Check if this is last filter
-            if (j == t % n_filters) exit find_bin
+            if (j == size(t % filters)) exit find_bin
 
             ! Print current filter information
-            type = t % filters(j) % type
-            write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-                 trim(filter_name(type)), trim(get_label(t, j))
+            write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
+                 trim(t % filters(j) % obj % text_label(matching_bins(j)))
             indent = indent + 2
             j = j + 1
           end if
 
         end do find_bin
 
+        ! Print filter information
+        if (size(t % filters) > 0) then
+          write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
+               trim(t % filters(j) % obj % text_label(matching_bins(j)))
+        end if
+
         ! Determine scoring index for this bin combination -- note that unlike
         ! in the score_tally subroutine, we have to use max(bins,1) since all
         ! bins below the lowest filter level will be zeros
 
-        if (t % n_filters > 0) then
-          filter_index = sum((max(matching_bins(1:t%n_filters),1) - 1) * t % stride) + 1
+        if (size(t % filters) > 0) then
+          filter_index = sum((max(matching_bins(1:size(t % filters)),1) - 1) &
+               * t % stride) + 1
         else
           filter_index = 1
         end if
@@ -927,15 +921,14 @@ contains
         end if
 
         ! Print filter information
-        if (t % n_filters > 0) then
-          type = t % filters(j) % type
-          write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-               trim(filter_name(type)), trim(get_label(t, j))
+        if (size(t % filters) > 0) then
+          write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
+                 trim(t % filters(j) % obj % text_label(matching_bins(j)))
         end if
 
         ! Write results for this filter bin combination
         score_index = 0
-        if (t % n_filters > 0) indent = indent + 2
+        if (size(t % filters) > 0) indent = indent + 2
         do n = 1, t % n_nuclide_bins
           ! Write label for nuclide
           i_nuclide = t % nuclide_bins(n)
@@ -943,9 +936,8 @@ contains
             write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                  "Total Material"
           else
-            i_listing = nuclides(i_nuclide) % listing
             write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-                 trim(xs_listings(i_listing) % alias)
+                 trim(nuclides(i_nuclide) % name)
           end if
 
           indent = indent + 2
@@ -1008,7 +1000,7 @@ contains
         end do
         indent = indent - 2
 
-        if (t % n_filters == 0) exit print_bin
+        if (size(t % filters) == 0) exit print_bin
 
       end do print_bin
 
@@ -1046,16 +1038,19 @@ contains
     ! Get pointer to mesh
     i_filter_mesh = t % find_filter(FILTER_MESH)
     i_filter_surf = t % find_filter(FILTER_SURFACE)
-    m => meshes(t % filters(i_filter_mesh) % int_bins(1))
+    select type(filt => t % filters(i_filter_mesh) % obj)
+    type is (MeshFilter)
+      m => meshes(filt % mesh)
+    end select
 
     ! initialize bins array
-    matching_bins(1:t%n_filters) = 1
+    matching_bins(1:size(t % filters)) = 1
 
     ! determine how many energy in bins there are
     i_filter_ein = t % find_filter(FILTER_ENERGYIN)
     if (i_filter_ein > 0) then
       print_ebin = .true.
-      n = t % filters(i_filter_ein) % n_bins
+      n = t % filters(i_filter_ein) % obj % n_bins
     else
       print_ebin = .false.
       n = 1
@@ -1078,15 +1073,17 @@ contains
               matching_bins(i_filter_ein) = l
 
               ! Write incoming energy bin
-              write(UNIT=unit_tally, FMT='(3X,A,1X,A)') &
-                   "Incoming Energy", trim(get_label(t, i_filter_ein))
+              write(UNIT=unit_tally, FMT='(3X,A)') &
+                   trim(t % filters(i_filter_ein) % obj % text_label( &
+                   matching_bins(i_filter_ein)))
             end if
 
             ! Left Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i-1, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1102,7 +1099,8 @@ contains
                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_RIGHT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1121,7 +1119,8 @@ contains
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1137,7 +1136,8 @@ contains
                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_RIGHT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1156,7 +1156,8 @@ contains
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j-1, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_FRONT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1172,7 +1173,8 @@ contains
                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_FRONT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1191,7 +1193,8 @@ contains
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_FRONT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1207,7 +1210,8 @@ contains
                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_FRONT
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1226,7 +1230,8 @@ contains
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1242,7 +1247,8 @@ contains
                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_TOP
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1261,7 +1267,8 @@ contains
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1277,7 +1284,8 @@ contains
                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_TOP
-            filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
             can_print = .true.
             if (t % on_the_fly_allocation) then
               if (.not. t % filter_index_map % has_key(filter_index)) then
@@ -1298,330 +1306,5 @@ contains
     end do
 
   end subroutine write_surface_current
-
-!===============================================================================
-! GET_LABEL returns a label for a cell/surface/etc given a tally, filter type,
-! and corresponding bin
-!===============================================================================
-
-  function get_label(t, i_filter) result(label)
-    type(TallyObject), intent(in) :: t        ! tally object
-    integer,           intent(in) :: i_filter ! index in filters array
-    character(100)                :: label    ! user-specified identifier
-
-    integer :: i      ! index in cells/surfaces/etc array
-    integer :: bin
-    integer :: offset
-    integer, allocatable :: ijk(:) ! indices in mesh
-    real(8)              :: E0     ! lower bound for energy bin
-    real(8)              :: E1     ! upper bound for energy bin
-    type(RegularMesh), pointer :: m
-    type(Universe), pointer :: univ
-
-    bin = matching_bins(i_filter)
-
-    select case(t % filters(i_filter) % type)
-    case (FILTER_UNIVERSE)
-      i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(universes(i) % id)
-    case (FILTER_MATERIAL)
-      i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(materials(i) % id)
-    case (FILTER_CELL, FILTER_CELLBORN)
-      i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(cells(i) % id)
-    case (FILTER_DISTRIBCELL)
-      label = ''
-      univ => universes(BASE_UNIVERSE)
-      offset = 0
-      call find_offset(t % filters(i_filter) % int_bins(1), &
-           univ, bin-1, offset, label)
-    case (FILTER_SURFACE)
-      i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(surfaces(i)%obj%id)
-    case (FILTER_MESH)
-      m => meshes(t % filters(i_filter) % int_bins(1))
-      allocate(ijk(m % n_dimension))
-      call bin_to_mesh_indices(m, bin, ijk)
-      if (m % n_dimension == 2) then
-        label = "Index (" // trim(to_str(ijk(1))) // ", " // &
-             trim(to_str(ijk(2))) // ")"
-      elseif (m % n_dimension == 3) then
-        label = "Index (" // trim(to_str(ijk(1))) // ", " // &
-             trim(to_str(ijk(2))) // ", " // trim(to_str(ijk(3))) // ")"
-      end if
-    case (FILTER_ENERGYIN, FILTER_ENERGYOUT, FILTER_MU, FILTER_POLAR, &
-          FILTER_AZIMUTHAL)
-      E0 = t % filters(i_filter) % real_bins(bin)
-      E1 = t % filters(i_filter) % real_bins(bin + 1)
-      label = "[" // trim(to_str(E0)) // ", " // trim(to_str(E1)) // ")"
-    case (FILTER_DELAYEDGROUP)
-      i = t % filters(i_filter) % int_bins(bin)
-      label = to_str(i)
-    end select
-
-  end function get_label
-
-!===============================================================================
-! FIND_OFFSET uses a given map number, a target cell ID, and a target offset
-! to build a string which is the path from the base universe to the target cell
-! with the given offset
-!===============================================================================
-
-  recursive subroutine find_offset(goal, univ, final, offset, path)
-
-    integer, intent(in) :: goal         ! The target cell index
-    type(Universe), intent(in) :: univ  ! Universe to begin search
-    integer, intent(in) :: final        ! Target offset
-    integer, intent(inout) :: offset    ! Current offset
-    character(*), intent(inout) :: path ! Path to offset
-
-    integer :: map                  ! Index in maps vector
-    integer :: i, j                 ! Index over cells
-    integer :: k, l, m              ! Indices in lattice
-    integer :: old_k, old_l, old_m  ! Previous indices in lattice
-    integer :: n_x, n_y, n_z        ! Lattice cell array dimensions
-    integer :: n                    ! Number of cells to search
-    integer :: cell_index           ! Index in cells array
-    integer :: lat_offset           ! Offset from lattice
-    integer :: temp_offset          ! Looped sum of offsets
-    logical :: this_cell = .false.  ! Advance in this cell?
-    logical :: later_cell = .false. ! Fill cells after this one?
-    type(Cell), pointer :: c           ! Pointer to current cell
-    type(Universe), pointer :: next_univ  ! Next universe to loop through
-    class(Lattice), pointer :: lat        ! Pointer to current lattice
-
-    ! Get the distribcell index for this cell
-    map = cells(goal) % distribcell_index
-
-    n = univ % n_cells
-
-    ! Write to the geometry stack
-    if (univ%id == 0) then
-      path = trim(path) // to_str(univ%id)
-    else
-      path = trim(path) // "->" // to_str(univ%id)
-    end if
-
-    ! Look through all cells in this universe
-    do i = 1, n
-      ! If the cell matches the goal and the offset matches final, write to the
-      ! geometry stack
-      if (univ % cells(i) == goal .AND. offset == final) then
-        c => cells(univ % cells(i))
-        path = trim(path) // "->" // to_str(c % id)
-        return
-      end if
-    end do
-
-    ! Find the fill cell or lattice cell that we need to enter
-    do i = 1, n
-
-      later_cell = .false.
-
-      cell_index = univ % cells(i)
-      c => cells(cell_index)
-
-      this_cell = .false.
-
-      ! If we got here, we still think the target is in this universe
-      ! or further down, but it's not this exact cell.
-      ! Compare offset to next cell to see if we should enter this cell
-      if (i /= n) then
-
-        do j = i+1, n
-
-          cell_index = univ % cells(j)
-          c => cells(cell_index)
-
-          ! Skip normal cells which do not have offsets
-          if (c % type == CELL_NORMAL) then
-            cycle
-          end if
-
-          ! Break loop once we've found the next cell with an offset
-          exit
-        end do
-
-        ! Ensure we didn't just end the loop by iteration
-        if (c % type /= CELL_NORMAL) then
-
-          ! There are more cells in this universe that it could be in
-          later_cell = .true.
-
-          ! Two cases, lattice or fill cell
-          if (c % type == CELL_FILL) then
-            temp_offset = c % offset(map)
-
-          ! Get the offset of the first lattice location
-          else
-            lat => lattices(c % fill) % obj
-            temp_offset = lat % offset(map, 1, 1, 1)
-          end if
-
-          ! If the final offset is in the range of offset - temp_offset+offset
-          ! then the goal is in this cell
-          if (final < temp_offset + offset) then
-            this_cell = .true.
-          end if
-        end if
-      end if
-
-      if (n == 1 .and. c % type /= CELL_NORMAL) then
-        this_cell = .true.
-      end if
-
-      if (.not. later_cell) then
-        this_cell = .true.
-      end if
-
-      ! Get pointer to THIS cell because target must be in this cell
-      if (this_cell) then
-
-        cell_index = univ % cells(i)
-        c => cells(cell_index)
-
-        path = trim(path) // "->" // to_str(c%id)
-
-        ! ====================================================================
-        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-        if (c % type == CELL_FILL) then
-
-          ! Enter this cell to update the current offset
-          offset = c % offset(map) + offset
-
-          next_univ => universes(c % fill)
-          call find_offset(goal, next_univ, final, offset, path)
-          return
-
-        ! ====================================================================
-        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-        elseif (c % type == CELL_LATTICE) then
-
-          ! Set current lattice
-          lat => lattices(c % fill) % obj
-
-          select type (lat)
-
-          ! ==================================================================
-          ! RECTANGULAR LATTICES
-          type is (RectLattice)
-
-            ! Write to the geometry stack
-            path = trim(path) // "->" // to_str(lat%id)
-
-            n_x = lat % n_cells(1)
-            n_y = lat % n_cells(2)
-            n_z = lat % n_cells(3)
-            old_m = 1
-            old_l = 1
-            old_k = 1
-
-            ! Loop over lattice coordinates
-            do k = 1, n_x
-              do l = 1, n_y
-                do m = 1, n_z
-
-                  if (final >= lat % offset(map, k, l, m) + offset) then
-                    if (k == n_x .and. l == n_y .and. m == n_z) then
-                      ! This is last lattice cell, so target must be here
-                      lat_offset = lat % offset(map, k, l, m)
-                      offset = offset + lat_offset
-                      next_univ => universes(lat % universes(k, l, m))
-                      path = trim(path) // "(" // trim(to_str(k)) // &
-                           "," // trim(to_str(l)) // "," // &
-                           trim(to_str(m)) // ")"
-                      call find_offset(goal, next_univ, final, offset, path)
-                      return
-                    else
-                      old_m = m
-                      old_l = l
-                      old_k = k
-                      cycle
-                    end if
-                  else
-                    ! Target is at this lattice position
-                    lat_offset = lat % offset(map, old_k, old_l, old_m)
-                    offset = offset + lat_offset
-                    next_univ => universes(lat % universes(old_k, old_l, old_m))
-                    path = trim(path) // "(" // trim(to_str(old_k)) // &
-                         "," // trim(to_str(old_l)) // "," // &
-                         trim(to_str(old_m)) // ")"
-                    call find_offset(goal, next_univ, final, offset, path)
-                    return
-                  end if
-
-                end do
-              end do
-            end do
-
-          ! ==================================================================
-          ! HEXAGONAL LATTICES
-          type is (HexLattice)
-
-            ! Write to the geometry stack
-            path = trim(path) // "->" // to_str(lat%id)
-
-            n_z = lat % n_axial
-            n_y = 2 * lat % n_rings - 1
-            n_x = 2 * lat % n_rings - 1
-            old_m = 1
-            old_l = 1
-            old_k = 1
-
-            ! Loop over lattice coordinates
-            do m = 1, n_z
-              do l = 1, n_y
-                do k = 1, n_x
-
-                  ! This array position is never used
-                  if (k + l < lat % n_rings + 1) then
-                    cycle
-                  ! This array position is never used
-                  else if (k + l > 3*lat % n_rings - 1) then
-                    cycle
-                  end if
-
-                  if (final >= lat % offset(map, k, l, m) + offset) then
-                    if (k == lat % n_rings .and. l == n_y .and. m == n_z) then
-                      ! This is last lattice cell, so target must be here
-                      lat_offset = lat % offset(map, k, l, m)
-                      offset = offset + lat_offset
-                      next_univ => universes(lat % universes(k, l, m))
-                      path = trim(path) // "(" // &
-                           trim(to_str(k - lat % n_rings)) // "," // &
-                           trim(to_str(l - lat % n_rings)) // "," // &
-                           trim(to_str(m)) // ")"
-                      call find_offset(goal, next_univ, final, offset, path)
-                      return
-                    else
-                      old_m = m
-                      old_l = l
-                      old_k = k
-                      cycle
-                    end if
-                  else
-                    ! Target is at this lattice position
-                    lat_offset = lat % offset(map, old_k, old_l, old_m)
-                    offset = offset + lat_offset
-                    next_univ => universes(lat % universes(old_k, old_l, old_m))
-                    path = trim(path) // "(" // &
-                         trim(to_str(old_k - lat % n_rings)) // "," // &
-                         trim(to_str(old_l - lat % n_rings)) // "," // &
-                         trim(to_str(old_m)) // ")"
-                    call find_offset(goal, next_univ, final, offset, path)
-                    return
-                  end if
-
-                end do
-              end do
-            end do
-
-          end select
-
-        end if
-      end if
-    end do
-  end subroutine find_offset
 
 end module output

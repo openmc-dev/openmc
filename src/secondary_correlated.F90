@@ -1,8 +1,12 @@
 module secondary_correlated
 
-  use constants, only: ZERO, ONE, TWO, HISTOGRAM, LINEAR_LINEAR
-  use distribution_univariate, only: DistributionContainer
-  use secondary_header, only: AngleEnergy
+  use hdf5, only: HID_T, HSIZE_T
+
+  use angleenergy_header, only: AngleEnergy
+  use constants, only: ZERO, ONE, HALF, TWO, HISTOGRAM, LINEAR_LINEAR
+  use distribution_univariate, only: DistributionContainer, Tabular
+  use hdf5_interface, only: get_shape, read_attribute, open_dataset, &
+       read_dataset, close_dataset
   use random_lcg, only: prn
   use search, only: binary_search
 
@@ -24,10 +28,11 @@ module secondary_correlated
     integer :: n_region                      ! number of interpolation regions
     integer, allocatable :: breakpoints(:)   ! breakpoints of interpolation regions
     integer, allocatable :: interpolation(:) ! interpolation region codes
-    real(8), allocatable :: energy_in(:)     ! incoming energies
-    type(AngleEnergyTable), allocatable :: table(:) ! outgoing E/mu distributions
+    real(8), allocatable :: energy(:)        ! incoming energies
+    type(AngleEnergyTable), allocatable :: distribution(:) ! outgoing E/mu distributions
   contains
     procedure :: sample => correlated_sample
+    procedure :: from_hdf5 => correlated_from_hdf5
   end type CorrelatedAngleEnergy
 
 contains
@@ -61,17 +66,17 @@ contains
 
     ! find energy bin and calculate interpolation factor -- if the energy is
     ! outside the range of the tabulated energies, choose the first or last bins
-    n_energy_in = size(this%energy_in)
-    if (E_in < this%energy_in(1)) then
+    n_energy_in = size(this%energy)
+    if (E_in < this%energy(1)) then
       i = 1
       r = ZERO
-    elseif (E_in > this%energy_in(n_energy_in)) then
+    elseif (E_in > this%energy(n_energy_in)) then
       i = n_energy_in - 1
       r = ONE
     else
-      i = binary_search(this%energy_in, n_energy_in, E_in)
-      r = (E_in - this%energy_in(i)) / &
-           (this%energy_in(i+1) - this%energy_in(i))
+      i = binary_search(this%energy, n_energy_in, E_in)
+      r = (E_in - this%energy(i)) / &
+           (this%energy(i+1) - this%energy(i))
     end if
 
     ! Sample between the ith and (i+1)th bin
@@ -82,23 +87,23 @@ contains
     end if
 
     ! interpolation for energy E1 and EK
-    n_energy_out = size(this%table(i)%e_out)
-    E_i_1 = this%table(i)%e_out(1)
-    E_i_K = this%table(i)%e_out(n_energy_out)
+    n_energy_out = size(this%distribution(i)%e_out)
+    E_i_1 = this%distribution(i)%e_out(1)
+    E_i_K = this%distribution(i)%e_out(n_energy_out)
 
-    n_energy_out = size(this%table(i+1)%e_out)
-    E_i1_1 = this%table(i+1)%e_out(1)
-    E_i1_K = this%table(i+1)%e_out(n_energy_out)
+    n_energy_out = size(this%distribution(i+1)%e_out)
+    E_i1_1 = this%distribution(i+1)%e_out(1)
+    E_i1_K = this%distribution(i+1)%e_out(n_energy_out)
 
     E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
     E_K = E_i_K + r*(E_i1_K - E_i_K)
 
     ! determine outgoing energy bin
-    n_energy_out = size(this%table(l)%e_out)
+    n_energy_out = size(this%distribution(l)%e_out)
     r1 = prn()
-    c_k = this%table(l)%c(1)
+    c_k = this%distribution(l)%c(1)
     do k = 1, n_energy_out - 1
-      c_k1 = this%table(l)%c(k+1)
+      c_k1 = this%distribution(l)%c(k+1)
       if (r1 < c_k1) exit
       c_k = c_k1
     end do
@@ -106,9 +111,9 @@ contains
     ! check to make sure k is <= NP - 1
     k = min(k, n_energy_out - 1)
 
-    E_l_k = this%table(l)%e_out(k)
-    p_l_k = this%table(l)%p(k)
-    if (this%table(l)%interpolation == HISTOGRAM) then
+    E_l_k = this%distribution(l)%e_out(k)
+    p_l_k = this%distribution(l)%p(k)
+    if (this%distribution(l)%interpolation == HISTOGRAM) then
       ! Histogram interpolation
       if (p_l_k > ZERO) then
         E_out = E_l_k + (r1 - c_k)/p_l_k
@@ -116,10 +121,10 @@ contains
         E_out = E_l_k
       end if
 
-    elseif (this%table(l)%interpolation == LINEAR_LINEAR) then
+    elseif (this%distribution(l)%interpolation == LINEAR_LINEAR) then
       ! Linear-linear interpolation
-      E_l_k1 = this%table(l)%e_out(k+1)
-      p_l_k1 = this%table(l)%p(k+1)
+      E_l_k1 = this%distribution(l)%e_out(k+1)
+      p_l_k1 = this%distribution(l)%p(k+1)
 
       frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
       if (frac == ZERO) then
@@ -139,10 +144,162 @@ contains
 
     ! Find correlated angular distribution for closest outgoing energy bin
     if (r1 - c_k < c_k1 - r1) then
-      mu = this%table(l)%angle(k)%obj%sample()
+      mu = this%distribution(l)%angle(k)%obj%sample()
     else
-      mu = this%table(l)%angle(k + 1)%obj%sample()
+      mu = this%distribution(l)%angle(k + 1)%obj%sample()
     end if
   end subroutine correlated_sample
+
+  subroutine correlated_from_hdf5(this, group_id)
+    class(CorrelatedAngleEnergy), intent(inout) :: this
+    integer(HID_T),               intent(in)    :: group_id
+
+    integer :: i, j, k
+    integer :: n_energy
+    integer :: m, n
+    integer :: offset_mu
+    integer :: interp_mu
+    integer(HID_T) :: dset_id
+    integer(HSIZE_T) :: dims(1), dims2(2)
+    integer, allocatable :: temp(:,:)
+    integer, allocatable :: offsets(:)
+    integer, allocatable :: interp(:)
+    integer, allocatable :: n_discrete(:)
+    real(8), allocatable :: eout(:,:)
+    real(8), allocatable :: mu(:,:)
+
+    ! Open incoming energy dataset
+    dset_id = open_dataset(group_id, 'energy')
+
+    ! Get interpolation parameters
+    call read_attribute(temp, dset_id, 'interpolation')
+    allocate(this%breakpoints(size(temp, 1)))
+    allocate(this%interpolation(size(temp, 1)))
+    this%breakpoints(:) = temp(:, 1)
+    this%interpolation(:) = temp(:, 2)
+    this%n_region = size(this%breakpoints)
+    deallocate(temp)
+
+    ! Get incoming energies
+    call get_shape(dset_id, dims)
+    n_energy = int(dims(1), 4)
+    allocate(this%energy(n_energy))
+    allocate(this%distribution(n_energy))
+    call read_dataset(this%energy, dset_id)
+    call close_dataset(dset_id)
+
+    ! Get outgoing energy distribution data
+    dset_id = open_dataset(group_id, 'energy_out')
+    call read_attribute(offsets, dset_id, 'offsets')
+    call read_attribute(interp, dset_id, 'interpolation')
+    call read_attribute(n_discrete, dset_id, 'n_discrete_lines')
+    call get_shape(dset_id, dims2)
+    allocate(eout(dims2(1), dims2(2)))
+    call read_dataset(eout, dset_id)
+    call close_dataset(dset_id)
+
+    ! Get outgoing angle data
+    dset_id = open_dataset(group_id, 'mu')
+    call get_shape(dset_id, dims2)
+    allocate(mu(dims2(1), dims2(2)))
+    call read_dataset(mu, dset_id)
+    call close_dataset(dset_id)
+
+    do i = 1, n_energy
+      ! Determine number of outgoing energies
+      j = offsets(i)
+      if (i < n_energy) then
+        n = offsets(i+1) - j
+      else
+        n = size(eout, 1) - j
+      end if
+
+      associate (d => this % distribution(i))
+        ! Assign interpolation scheme and number of discrete lines
+        d % interpolation = interp(i)
+        d % n_discrete = n_discrete(i)
+
+        ! Allocate arrays for energies and PDF/CDF
+        allocate(d % e_out(n))
+        allocate(d % p(n))
+        allocate(d % c(n))
+        allocate(d % angle(n))
+
+        ! Copy data
+        d % e_out(:) = eout(j+1:j+n, 1)
+        d % p(:) = eout(j+1:j+n, 2)
+        d % c(:) = eout(j+1:j+n, 3)
+
+        ! To get answers that match ACE data, for now we still use the tabulated
+        ! CDF values that were passed through to the HDF5 library. At a later
+        ! time, we can remove the CDF values from the HDF5 library and
+        ! reconstruct them using the PDF
+        if (.false.) then
+          ! Calculate cumulative distribution function -- discrete portion
+          do k = 1, d % n_discrete
+            if (k == 1) then
+              d % c(k) = d % p(k)
+            else
+              d % c(k) = d % c(k-1) + d % p(k)
+            end if
+          end do
+
+          ! Continuous portion
+          do k = d % n_discrete + 1, n
+            if (k == d % n_discrete + 1) then
+              d % c(k) = sum(d % p(1:d % n_discrete))
+            else
+              if (d % interpolation == HISTOGRAM) then
+                d % c(k) = d % c(k-1) + d % p(k-1) * &
+                     (d % e_out(k) - d % e_out(k-1))
+              elseif (d % interpolation == LINEAR_LINEAR) then
+                d % c(k) = d % c(k-1) + HALF*(d % p(k-1) + d % p(k)) * &
+                     (d % e_out(k) - d % e_out(k-1))
+              end if
+            end if
+          end do
+
+          ! Normalize density and distribution functions
+          d % p(:) = d % p(:)/d % c(n)
+          d % c(:) = d % c(:)/d % c(n)
+        end if
+      end associate
+
+      do j = 1, n
+        allocate(Tabular :: this%distribution(i)%angle(j)%obj)
+        select type(mudist => this%distribution(i)%angle(j)%obj)
+        type is (Tabular)
+          ! Get interpolation scheme
+          interp_mu = nint(eout(offsets(i)+j, 4))
+
+          ! Determine offset and size of distribution
+          offset_mu = nint(eout(offsets(i)+j, 5))
+          if (offsets(i) + j < size(eout, 1)) then
+            m = nint(eout(offsets(i)+j+1, 5)) - offset_mu
+          else
+            m = size(mu, 1) - offset_mu
+          end if
+
+          ! To get answers that match ACE data, for now we still use the tabulated
+          ! CDF values that were passed through to the HDF5 library. At a later
+          ! time, we can remove the CDF values from the HDF5 library and
+          ! reconstruct them using the PDF
+          if (.true.) then
+            mudist % interpolation = interp_mu
+            allocate(mudist % x(m))
+            allocate(mudist % p(m))
+            allocate(mudist % c(m))
+            mudist % x(:) = mu(offset_mu+1:offset_mu+m, 1)
+            mudist % p(:) = mu(offset_mu+1:offset_mu+m, 2)
+            mudist % c(:) = mu(offset_mu+1:offset_mu+m, 3)
+          else
+            ! Initialize tabular distribution
+            call mudist % initialize(mu(offset_mu+1:offset_mu+m, 1), &
+                 mu(offset_mu+1:offset_mu+m, 2), interp_mu)
+          end if
+        end select
+      end do
+    end do
+  end subroutine correlated_from_hdf5
 
 end module secondary_correlated

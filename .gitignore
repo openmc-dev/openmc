@@ -26,6 +26,7 @@ examples/python/**/*.xml
 docs/build
 docs/source/_images/*.pdf
 docs/source/_images/*.aux
+docs/source/pythonapi/generated/
 
 # Source build
 build
@@ -57,10 +58,19 @@ src/bin/
 src/cmake_install.cmake
 src/install_manifest.txt
 
-# Data downloaded from NNDC
+# Nuclear data
 data/nndc
+data/nndc_hdf5
+data/wmp
+data/multipole_lib.tar.gz
+data/ENDF-B-VII.1-*.tar.gz
+data/JEFF32-ACE-*.tar.gz
+data/JEFF32-ACE-*.zip
+data/TSLs.tar.gz
+data/jeff-3.2
+data/jeff-3.2-hdf5
 
-#Images
+# Images
 *.ppm
 *.voxel
 

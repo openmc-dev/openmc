@@ -15,9 +15,7 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
-import numpy as np
-
-from openmc.clean_xml import *
+from openmc.clean_xml import clean_xml_indentation
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
 
@@ -69,7 +67,7 @@ class CMFDMesh(object):
         to any tallies far away from fission source neutron regions.  A ``2``
         must be used to identify any fission source region.
 
-"""
+    """
 
     def __init__(self):
         self._lower_left = None
@@ -187,8 +185,8 @@ class CMFDMesh(object):
         return element
 
 
-class CMFDFile(object):
-    """Parameters that control the use of coarse-mesh finite difference acceleration
+class CMFD(object):
+    r"""Parameters that control the use of coarse-mesh finite difference acceleration
     in OpenMC. This corresponds directly to the cmfd.xml input file.
 
     Attributes
@@ -219,7 +217,7 @@ class CMFDFile(object):
         inner tolerance for Gauss-Seidel iterations when performing CMFD.
     ktol : float
         Tolerance on the eigenvalue when performing CMFD power iteration
-    cmfd_mesh : CMFDMesh
+    cmfd_mesh : openmc.CMFDMesh
         Structured mesh to be used for acceleration
     norm : float
         Normalization factor applied to the CMFD fission source distribution

@@ -1,41 +1,13 @@
 module tally_header
 
-  use constants,          only: NONE, N_FILTER_TYPES, OTF_HEADROOM
+  use constants,           only: NONE, N_FILTER_TYPES, OTF_HEADROOM
+  use tally_filter_header, only: TallyFilterContainer
   use dict_header,        only: DictIntInt
-  use trigger_header,     only: TriggerObject
+  use trigger_header,      only: TriggerObject
+
   use, intrinsic :: ISO_C_BINDING
 
   implicit none
-
-!===============================================================================
-! TALLYMAPELEMENT gives an index to a tally which is to be scored and the
-! corresponding bin for the filter variable
-!===============================================================================
-
-  type TallyMapElement
-    integer :: index_tally
-    integer :: index_bin
-  end type TallyMapElement
-
-!===============================================================================
-! TALLYMAPITEM contains a list of tally/bin combinations for each mappable
-! filter bin specified.
-!===============================================================================
-
-  type TallyMapItem
-    type(TallyMapElement), allocatable :: elements(:)
-  end type TallyMapItem
-
-!===============================================================================
-! TALLYMAP contains a list of pairs of indices to tallies and the corresponding
-! bin for a given filter. There is one TallyMap for each mappable filter
-! type. The items array is as long as the corresponding array for that filter,
-! e.g. for tally_maps(FILTER_CELL), items is n_cells long.
-!===============================================================================
-
-  type TallyMap
-    type(TallyMapItem), allocatable :: items(:)
-  end type TallyMap
 
 !===============================================================================
 ! TALLYRESULT provides accumulation of results in a particular tally bin
@@ -46,19 +18,6 @@ module tally_header
     real(C_DOUBLE) :: sum      = 0.
     real(C_DOUBLE) :: sum_sq   = 0.
   end type TallyResult
-
-!===============================================================================
-! TALLYFILTER describes a filter that limits what events score to a tally. For
-! example, a cell filter indicates that only particles in a specified cell
-! should score to the tally.
-!===============================================================================
-
-  type TallyFilter
-    integer :: type = NONE
-    integer :: n_bins = 0
-    integer, allocatable :: int_bins(:)
-    real(8), allocatable :: real_bins(:) ! Only used for energy filters
-  end type TallyFilter
 
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
@@ -74,11 +33,7 @@ module tally_header
     integer :: type                 ! volume, surface current
     integer :: estimator            ! collision, track-length
     real(8) :: volume               ! volume of region
-
-    ! Information about what filters should be used
-
-    integer                        :: n_filters    ! Number of filters
-    type(TallyFilter), allocatable :: filters(:)   ! Filter data (type/bins)
+    type(TallyFilterContainer), allocatable :: filters(:)
 
     ! The stride attribute is used for determining the index in the results
     ! array for a matching_bin combination. Since multiple dimensions are
@@ -144,10 +99,6 @@ module tally_header
     integer                           :: n_triggers = 0  ! # of triggers
     type(TriggerObject),  allocatable :: triggers(:)     ! Array of triggers
 
-    ! Multi-Group Specific Information To Enable Rapid Tallying
-    logical :: energy_matches_groups    = .false.
-    logical :: energyout_matches_groups = .false.
-
     ! Type-Bound procedures
     contains
       procedure :: get_filter_index => filter_index
@@ -170,7 +121,7 @@ module tally_header
       integer :: idx
 
       ! Get index in total array
-      idx = sum((matching_bins(1:this % n_filters) - 1) * this % stride) + 1
+      idx = sum((matching_bins(1:size(this % filters)) - 1) * this % stride) + 1
 
       ! If the results array is fully allocated, this index is valid
       if (this % on_the_fly_allocation) then

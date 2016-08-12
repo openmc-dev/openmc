@@ -15,13 +15,10 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         # The summary.h5 file needs to be created to read in the tallies
         self._input_set.settings.output = {'summary': True}
 
-        # Initialize the tallies file
-        tallies_file = openmc.TalliesFile()
-
         # Initialize the nuclides
-        u235 = openmc.Nuclide('U-235')
-        u238 = openmc.Nuclide('U-238')
-        pu239 = openmc.Nuclide('Pu-239')
+        u235 = openmc.Nuclide('U235')
+        u238 = openmc.Nuclide('U238')
+        pu239 = openmc.Nuclide('Pu239')
 
         # Initialize the filters
         energy_filter = openmc.Filter(type='energy', bins=[0.0, 0.253e-6,
@@ -33,7 +30,7 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         tally.filters = [energy_filter, distrib_filter]
         tally.scores = ['nu-fission', 'total']
         tally.nuclides = [u235, u238, pu239]
-        tallies_file.add_tally(tally)
+        tallies_file = openmc.Tallies([tally])
 
         # Export tallies to file
         self._input_set.tallies = tallies_file
@@ -45,11 +42,6 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = openmc.StatePoint(statepoint)
-
-        # Read the summary file.
-        summary = glob.glob(os.path.join(os.getcwd(), 'summary.h5'))[0]
-        su = openmc.Summary(summary)
-        sp.link_with_summary(su)
 
         # Extract the tally of interest
         tally = sp.get_tally(name='distribcell tally')
@@ -68,7 +60,7 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         outstr += ', '.join(map(str, tally_sum.std_dev))
 
         # Sum across all nuclides
-        tally_sum = tally.summation(nuclides=['U-235', 'U-238', 'Pu-239'])
+        tally_sum = tally.summation(nuclides=['U235', 'U238', 'Pu239'])
         outstr += ', '.join(map(str, tally_sum.mean))
         outstr += ', '.join(map(str, tally_sum.std_dev))
 

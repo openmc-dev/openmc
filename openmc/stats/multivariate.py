@@ -22,12 +22,12 @@ class UnitSphere(object):
 
     Parameters
     ----------
-    reference_uvw : Iterable of Real
+    reference_uvw : Iterable of float
         Direction from which polar angle is measured
 
     Attributes
     ----------
-    reference_uvw : Iterable of Real
+    reference_uvw : Iterable of float
         Direction from which polar angle is measured
 
     """
@@ -50,7 +50,7 @@ class UnitSphere(object):
         self._reference_uvw = uvw/np.linalg.norm(uvw)
 
     @abstractmethod
-    def to_xml(self):
+    def to_xml_element(self):
         return ''
 
 
@@ -62,19 +62,19 @@ class PolarAzimuthal(UnitSphere):
 
     Parameters
     ----------
-    mu : Univariate
+    mu : openmc.stats.Univariate
         Distribution of the cosine of the polar angle
-    phi : Univariate
+    phi : openmc.stats.Univariate
         Distribution of the azimuthal angle in radians
-    reference_uvw : Iterable of Real
+    reference_uvw : Iterable of float
         Direction from which polar angle is measured. Defaults to the positive
         z-direction.
 
     Attributes
     ----------
-    mu : Univariate
+    mu : openmc.stats.Univariate
         Distribution of the cosine of the polar angle
-    phi : Univariate
+    phi : openmc.stats.Univariate
         Distribution of the azimuthal angle in radians
 
     """
@@ -109,13 +109,21 @@ class PolarAzimuthal(UnitSphere):
         cv.check_type('azimuthal angle', phi, Univariate)
         self._phi = phi
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the angular distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing angular distribution data
+
+        """
         element = ET.Element('angle')
         element.set("type", "mu-phi")
         if self.reference_uvw is not None:
             element.set("reference_uvw", ' '.join(map(str, self.reference_uvw)))
-        element.append(self.mu.to_xml('mu'))
-        element.append(self.phi.to_xml('phi'))
+        element.append(self.mu.to_xml_element('mu'))
+        element.append(self.phi.to_xml_element('phi'))
         return element
 
 
@@ -127,7 +135,15 @@ class Isotropic(UnitSphere):
     def __init__(self):
         super(Isotropic, self).__init__()
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the isotropic distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing isotropic distribution data
+
+        """
         element = ET.Element('angle')
         element.set("type", "isotropic")
         return element
@@ -142,7 +158,7 @@ class Monodirectional(UnitSphere):
 
     Parameters
     ----------
-    reference_uvw : Iterable of Real
+    reference_uvw : Iterable of float
         Direction from which polar angle is measured. Defaults to the positive
         x-direction.
 
@@ -152,7 +168,15 @@ class Monodirectional(UnitSphere):
     def __init__(self, reference_uvw=[1., 0., 0.]):
         super(Monodirectional, self).__init__(reference_uvw)
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the monodirectional distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing monodirectional distribution data
+
+        """
         element = ET.Element('angle')
         element.set("type", "monodirectional")
         if self.reference_uvw is not None:
@@ -174,7 +198,7 @@ class Spatial(object):
         pass
 
     @abstractmethod
-    def to_xml(self):
+    def to_xml_element(self):
         return ''
 
 
@@ -186,20 +210,20 @@ class CartesianIndependent(Spatial):
 
     Parameters
     ----------
-    x : Univariate
+    x : openmc.stats.Univariate
         Distribution of x-coordinates
-    y : Univariate
+    y : openmc.stats.Univariate
         Distribution of y-coordinates
-    z : Univariate
+    z : openmc.stats.Univariate
         Distribution of z-coordinates
 
     Attributes
     ----------
-    x : Univariate
+    x : openmc.stats.Univariate
         Distribution of x-coordinates
-    y : Univariate
+    y : openmc.stats.Univariate
         Distribution of y-coordinates
-    z : Univariate
+    z : openmc.stats.Univariate
         Distribution of z-coordinates
 
     """
@@ -238,12 +262,20 @@ class CartesianIndependent(Spatial):
         cv.check_type('z coordinate', z, Univariate)
         self._z = z
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing spatial distribution data
+
+        """
         element = ET.Element('space')
         element.set('type', 'cartesian')
-        element.append(self.x.to_xml('x'))
-        element.append(self.y.to_xml('y'))
-        element.append(self.z.to_xml('z'))
+        element.append(self.x.to_xml_element('x'))
+        element.append(self.y.to_xml_element('y'))
+        element.append(self.z.to_xml_element('z'))
         return element
 
 
@@ -252,9 +284,9 @@ class Box(Spatial):
 
     Parameters
     ----------
-    lower_left : Iterable of Real
+    lower_left : Iterable of float
         Lower-left coordinates of cuboid
-    upper_right : Iterable of Real
+    upper_right : Iterable of float
         Upper-right coordinates of cuboid
     only_fissionable : bool, optional
         Whether spatial sites should only be accepted if they occur in
@@ -262,9 +294,9 @@ class Box(Spatial):
 
     Attributes
     ----------
-    lower_left : Iterable of Real
+    lower_left : Iterable of float
         Lower-left coordinates of cuboid
-    upper_right : Iterable of Real
+    upper_right : Iterable of float
         Upper-right coordinates of cuboid
     only_fissionable : bool, optional
         Whether spatial sites should only be accepted if they occur in
@@ -308,7 +340,15 @@ class Box(Spatial):
         cv.check_type('only fissionable', only_fissionable, bool)
         self._only_fissionable = only_fissionable
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the box distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing box distribution data
+
+        """
         element = ET.Element('space')
         if self.only_fissionable:
             element.set("type", "fission")
@@ -328,17 +368,17 @@ class Point(Spatial):
 
     Parameters
     ----------
-    xyz : Iterable of Real
-        Cartesian coordinates of location
+    xyz : Iterable of float, optional
+        Cartesian coordinates of location. Defaults to (0., 0., 0.).
 
     Attributes
     ----------
-    xyz : Iterable of Real
+    xyz : Iterable of float
         Cartesian coordinates of location
 
     """
 
-    def __init__(self, xyz):
+    def __init__(self, xyz=(0., 0., 0.)):
         super(Point, self).__init__()
         self.xyz = xyz
 
@@ -352,7 +392,15 @@ class Point(Spatial):
         cv.check_length('coordinate', xyz, 3)
         self._xyz = xyz
 
-    def to_xml(self):
+    def to_xml_element(self):
+        """Return XML representation of the point distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing point distribution location
+
+        """
         element = ET.Element('space')
         element.set("type", "point")
         params = ET.SubElement(element, "parameters")

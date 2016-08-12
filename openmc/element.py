@@ -1,9 +1,13 @@
+import re
 import sys
 
-from openmc.checkvalue import check_type
+import openmc
+from openmc.checkvalue import check_type, check_length
+from openmc.data import NATURAL_ABUNDANCE
 
 if sys.version_info[0] >= 3:
     basestring = str
+
 
 
 class Element(object):
@@ -24,7 +28,7 @@ class Element(object):
         Chemical symbol of the element, e.g. Pu
     xs : str
         Cross section identifier, e.g. 71c
-    scattering : 'data' or 'iso-in-lab' or None
+    scattering : {'data', 'iso-in-lab', None}
         The type of angular scattering distribution to use
 
     """
@@ -43,9 +47,9 @@ class Element(object):
 
     def __eq__(self, other):
         if isinstance(other, Element):
-            if self._name != other._name:
+            if self.name != other.name:
                 return False
-            elif self._xs != other._xs:
+            elif self.xs != other.xs:
                 return False
             else:
                 return True
@@ -62,9 +66,6 @@ class Element(object):
 
     def __lt__(self, other):
         return not self > other
-
-    def __hash__(self):
-        return hash(repr(self))
 
     def __hash__(self):
         return hash(repr(self))
@@ -97,7 +98,8 @@ class Element(object):
 
     @name.setter
     def name(self, name):
-        check_type('name', name, basestring)
+        check_type('element name', name, basestring)
+        check_length('element name', name, 1, 2)
         self._name = name
 
     @scattering.setter
@@ -109,3 +111,22 @@ class Element(object):
             raise ValueError(msg)
 
         self._scattering = scattering
+
+    def expand(self):
+        """Expand natural element into its naturally-occurring isotopes.
+
+        Returns
+        -------
+        isotopes : list
+            Naturally-occurring isotopes of the element. Each item of the list
+            is a tuple consisting of an openmc.Nuclide instance and the natural
+            abundance of the isotope.
+
+        """
+
+        isotopes = []
+        for isotope, abundance in sorted(NATURAL_ABUNDANCE.items()):
+            if re.match(r'{}\d+'.format(self.name), isotope):
+                nuc = openmc.Nuclide(isotope, self.xs)
+                isotopes.append((nuc, abundance))
+        return isotopes

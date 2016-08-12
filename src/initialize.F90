@@ -1,6 +1,5 @@
 module initialize
 
-  use ace,             only: read_ace_xs
   use bank_header,     only: Bank
   use constants
   use dd_init,         only: initialize_domain_decomp
@@ -25,8 +24,9 @@ module initialize
   use state_point,     only: load_state_point
   use string,          only: to_str, starts_with, ends_with, str_to_int
   use summary,         only: write_summary
-  use tally_header,    only: TallyObject, TallyResult, TallyFilter
+  use tally_header,    only: TallyObject, TallyResult
   use tally_initialize,only: configure_tallies
+  use tally_filter
   use tally,           only: init_tally_routines
 
 #ifdef MPI
@@ -113,21 +113,11 @@ contains
     end if
 
     if (run_mode /= MODE_PLOTTING) then
-      ! With the AWRs from the xs_listings, change all material specifications
-      ! so that they contain atom percents summing to 1
-      call normalize_ao()
-
-      ! Read ACE-format cross sections
-      call time_read_xs%start()
-      if (run_CE) then
-        call read_ace_xs()
-      else
-        call read_mgxs()
-      end if
-      call time_read_xs%stop()
-
       ! Construct information needed for nuclear data
       if (run_CE) then
+        ! Set undefined cell temperatures to match the material data.
+        call lookup_material_temperatures()
+
         ! Construct unionized or log energy grid for cross-sections
         select case (grid_method)
         case (GRID_NUCLIDE)
@@ -141,7 +131,10 @@ contains
         end select
       else
         ! Create material macroscopic data for MGXS
+        call time_read_xs%start()
+        call read_mgxs()
         call create_macro_xs()
+        call time_read_xs%stop()
       end if
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
@@ -417,7 +410,7 @@ contains
 
           ! Check what type of file this is
           file_id = file_open(argv(i), 'r', parallel=.true.)
-          call read_dataset(file_id, 'filetype', filetype)
+          call read_dataset(filetype, file_id, 'filetype')
           call file_close(file_id)
 
           ! Set path and flag for type of run
@@ -443,7 +436,7 @@ contains
 
               ! Check file type is a source file
               file_id = file_open(argv(i), 'r', parallel=.true.)
-              call read_dataset(file_id, 'filetype', filetype)
+              call read_dataset(filetype, file_id, 'filetype')
               call file_close(file_id)
               if (filetype /= 'source') then
                 call fatal_error("Second file after restart flag must be a &
@@ -761,76 +754,15 @@ contains
       ! =======================================================================
       ! ADJUST INDICES FOR EACH TALLY FILTER
 
-      FILTER_LOOP: do j = 1, t%n_filters
+      FILTER_LOOP: do j = 1, size(t % filters)
 
-        select case (t%filters(j)%type)
-        case (FILTER_DISTRIBCELL)
-          do k = 1, size(t%filters(j)%int_bins)
-            id = t%filters(j)%int_bins(k)
-            if (cell_dict%has_key(id)) then
-              t%filters(j)%int_bins(k) = cell_dict%get_key(id)
-            else
-              call fatal_error("Could not find cell " // trim(to_str(id)) // &
-                               " specified on tally " // trim(to_str(t%id)))
-            end if
-
-          end do
-        case (FILTER_CELL, FILTER_CELLBORN)
-
-          do k = 1, t%filters(j)%n_bins
-            id = t%filters(j)%int_bins(k)
-            if (cell_dict%has_key(id)) then
-              t%filters(j)%int_bins(k) = cell_dict%get_key(id)
-            else
-              call fatal_error("Could not find cell " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t%id)))
-            end if
-          end do
-
-        case (FILTER_SURFACE)
-
+        select type(filt => t % filters(j) % obj)
+        type is (SurfaceFilter)
           ! Check if this is a surface filter only for surface currents
-          if (any(t%score_bins == SCORE_CURRENT)) cycle FILTER_LOOP
-
-          do k = 1, t%filters(j)%n_bins
-            id = t%filters(j)%int_bins(k)
-            if (surface_dict%has_key(id)) then
-              t%filters(j)%int_bins(k) = surface_dict%get_key(id)
-            else
-              call fatal_error("Could not find surface " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t%id)))
-            end if
-          end do
-
-        case (FILTER_UNIVERSE)
-
-          do k = 1, t%filters(j)%n_bins
-            id = t%filters(j)%int_bins(k)
-            if (universe_dict%has_key(id)) then
-              t%filters(j)%int_bins(k) = universe_dict%get_key(id)
-            else
-              call fatal_error("Could not find universe " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t%id)))
-            end if
-          end do
-
-        case (FILTER_MATERIAL)
-
-          do k = 1, t%filters(j)%n_bins
-            id = t%filters(j)%int_bins(k)
-            if (material_dict%has_key(id)) then
-              t%filters(j)%int_bins(k) = material_dict%get_key(id)
-            else
-              call fatal_error("Could not find material " // trim(to_str(id)) &
-                   &// " specified on tally " // trim(to_str(t%id)))
-            end if
-          end do
-
-        case (FILTER_MESH)
-
-          ! The mesh filter already has been set to the index in meshes rather
-          ! than the user-specified id, so it doesn't need to be changed.
-
+          if (.not. any(t % score_bins == SCORE_CURRENT)) &
+               call filt % initialize()
+        class default
+          call filt % initialize()
         end select
 
       end do FILTER_LOOP
@@ -838,71 +770,6 @@ contains
     end do TALLY_LOOP
 
   end subroutine adjust_indices
-
-!===============================================================================
-! NORMALIZE_AO normalizes the atom or weight percentages for each material
-!===============================================================================
-
-  subroutine normalize_ao()
-
-    integer        :: index_list      ! index in xs_listings array
-    integer        :: i               ! index in materials array
-    integer        :: j               ! index over nuclides in material
-    real(8)        :: sum_percent     ! summation
-    real(8)        :: awr             ! atomic weight ratio
-    real(8)        :: x               ! atom percent
-    logical        :: percent_in_atom ! nuclides specified in atom percent?
-    logical        :: density_in_atom ! density specified in atom/b-cm?
-    type(Material), pointer :: mat => null()
-
-    ! first find the index in the xs_listings array for each nuclide in each
-    ! material
-    do i = 1, n_materials
-      mat => materials(i)
-
-      percent_in_atom = (mat%atom_density(1) > ZERO)
-      density_in_atom = (mat%density > ZERO)
-
-      sum_percent = ZERO
-      do j = 1, mat%n_nuclides
-        ! determine atomic weight ratio
-        index_list = xs_listing_dict%get_key(mat%names(j))
-        awr = xs_listings(index_list)%awr
-
-        ! if given weight percent, convert all values so that they are divided
-        ! by awr. thus, when a sum is done over the values, it's actually
-        ! sum(w/awr)
-        if (.not. percent_in_atom) then
-          mat%atom_density(j) = -mat%atom_density(j) / awr
-        end if
-      end do
-
-      ! determine normalized atom percents. if given atom percents, this is
-      ! straightforward. if given weight percents, the value is w/awr and is
-      ! divided by sum(w/awr)
-      sum_percent = sum(mat%atom_density)
-      mat%atom_density = mat%atom_density / sum_percent
-
-      ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
-      ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
-      if (.not. density_in_atom) then
-        sum_percent = ZERO
-        do j = 1, mat%n_nuclides
-          index_list = xs_listing_dict%get_key(mat%names(j))
-          awr = xs_listings(index_list)%awr
-          x = mat%atom_density(j)
-          sum_percent = sum_percent + x*awr
-        end do
-        sum_percent = ONE / sum_percent
-        mat%density = -mat%density * N_AVOGADRO &
-             / MASS_NEUTRON * sum_percent
-      end if
-
-      ! Calculate nuclide atom densities
-      mat%atom_density = mat%density * mat%atom_density
-    end do
-
-  end subroutine normalize_ao
 
 !===============================================================================
 ! CALCULATE_WORK determines how many particles each processor should simulate
@@ -1015,21 +882,19 @@ contains
 
     ! We need distribcell if any tallies have distribcell filters.
     do i = 1, n_tallies
-      do j = 1, tallies(i) % n_filters
-        if (tallies(i) % filters(j) % type == FILTER_DISTRIBCELL) then
+      do j = 1, size(tallies(i) % filters)
+        select type(filt => tallies(i) % filters(j) % obj)
+        type is (DistribcellFilter)
           distribcell_active = .true.
-          if (size(tallies(i) % filters(j) % int_bins) > 1) then
-            call fatal_error("A distribcell filter was specified with &
-                             &multiple bins. This feature is not supported.")
-          end if
-        end if
+        end select
       end do
     end do
 
-    ! We also need distribcell if any distributed materials are present.
+    ! We also need distribcell if any distributed materials or distributed
+    ! temperatues are present.
     if (.not. distribcell_active) then
       do i = 1, n_cells
-        if (size(cells(i) % material) > 1) then
+        if (size(cells(i) % material) > 1 .or. size(cells(i) % sqrtkT) > 1) then
           distribcell_active = .true.
           exit
         end if
@@ -1044,18 +909,17 @@ contains
 
     ! Set the number of bins in all distribcell filters.
     do i = 1, n_tallies
-      do j = 1, tallies(i) % n_filters
-        associate (filt => tallies(i) % filters(j))
-          if (filt % type == FILTER_DISTRIBCELL) then
-            ! Set the number of bins to the number of instances of the cell.
-            filt % n_bins = cells(filt % int_bins(1)) % instances
-          end if
-        end associate
+      do j = 1, size(tallies(i) % filters)
+        select type(filt => tallies(i) % filters(j) % obj)
+        type is (DistribcellFilter)
+          ! Set the number of bins to the number of instances of the cell.
+          filt % n_bins = cells(filt % cell) % instances
+        end select
       end do
     end do
 
-    ! Make sure the number of materials matches the number of cell instances for
-    ! distributed materials.
+    ! Make sure the number of materials and temperatures matches the number of
+    ! cell instances.
     do i = 1, n_cells
       associate (c => cells(i))
         if (size(c % material) > 1) then
@@ -1064,6 +928,15 @@ contains
                  &specified with " // trim(to_str(size(c % material))) &
                  // " materials but has " // trim(to_str(c % instances)) &
                  // " distributed instances. The number of materials must &
+                 &equal one or the number of instances.")
+          end if
+        end if
+        if (size(c % sqrtkT) > 1) then
+          if (size(c % sqrtkT) /= c % instances) then
+            call fatal_error("Cell " // trim(to_str(c % id)) // " was &
+                 &specified with " // trim(to_str(size(c % sqrtkT))) &
+                 // " temperatures but has " // trim(to_str(c % instances)) &
+                 // " distributed instances. The number of temperatures must &
                  &equal one or the number of instances.")
           end if
         end if
@@ -1101,16 +974,17 @@ contains
 
     ! List all cells referenced in distribcell filters.
     do i = 1, n_tallies
-      do j = 1, tallies(i) % n_filters
-        if (tallies(i) % filters(j) % type == FILTER_DISTRIBCELL) then
-          call cell_list % add(tallies(i) % filters(j) % int_bins(1))
-        end if
+      do j = 1, size(tallies(i) % filters)
+        select type(filt => tallies(i) % filters(j) % obj)
+        type is (DistribcellFilter)
+          call cell_list % add(filt % cell)
+        end select
       end do
     end do
 
-    ! List all cells with multiple (distributed) materials.
+    ! List all cells with multiple (distributed) materials or temperatures.
     do i = 1, n_cells
-      if (size(cells(i) % material) > 1) then
+      if (size(cells(i) % material) > 1 .or. size(cells(i) % sqrtkT) > 1) then
         call cell_list % add(i)
       end if
     end do
@@ -1178,5 +1052,58 @@ contains
     call cell_list % clear()
 
   end subroutine allocate_offsets
+
+!===============================================================================
+! LOOKUP_MATERIAL_TEMPERATURES If any cells have undefined temperatures, try to
+! find their temperatures from material data.
+!===============================================================================
+
+  subroutine lookup_material_temperatures()
+    integer :: i, j, k
+    real(8) :: min_temp
+    logical :: warning_given
+
+    warning_given = .false.
+    do i = 1, n_cells
+      ! Ignore non-normal cells and cells with defined temperature.
+      if (cells(i) % type /= CELL_NORMAL) cycle
+      if (cells(i) % sqrtkT(1) /= ERROR_REAL) cycle
+
+      ! Set the number of temperatures equal to the number of materials.
+      deallocate(cells(i) % sqrtkT)
+      allocate(cells(i) % sqrtkT(size(cells(i) % material)))
+
+      ! Check each of the cell materials for temperature data.
+      do j = 1, size(cells(i) % material)
+        ! Arbitrarily set void regions to 0K.
+        if (cells(i) % material(j) == MATERIAL_VOID) then
+          cells(i) % sqrtkT(j) = ZERO
+          cycle
+        end if
+
+        associate (mat => materials(cells(i) % material(j)))
+          ! Find the temperature of the coldest nuclide.
+          min_temp = nuclides(mat % nuclide(1)) % kT
+          do k = 2, mat % n_nuclides
+            ! Warn the user if the nuclides don't have identical temperatues.
+            if (nuclides(mat % nuclide(k)) % kT /= min_temp &
+                 .and. .not. warning_given .and. multipole_active) then
+              call warning("OpenMC cannot &
+                   &identify the temperature of at least one cell. For the &
+                   &purposes of multipole cross section evaluations, all cells &
+                   &with unknown temperature will be set to the coldest &
+                   &temperature found in the nuclear data for that cell's &
+                   &material")
+              warning_given = .true.
+            end if
+            min_temp = min(min_temp, nuclides(mat % nuclide(k)) % kT)
+          end do
+
+          ! Set the temperature for this cell instance.
+          cells(i) % sqrtkT(j) = sqrt(min_temp)
+        end associate
+      end do
+    end do
+  end subroutine lookup_material_temperatures
 
 end module initialize

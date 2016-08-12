@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import glob
-import os
 try:
     from setuptools import setup
     have_setuptools = True
@@ -10,8 +9,9 @@ except ImportError:
     have_setuptools = False
 
 kwargs = {'name': 'openmc',
-          'version': '0.7.1',
-          'packages': ['openmc', 'openmc.mgxs', 'openmc.stats'],
+          'version': '0.8.0',
+          'packages': ['openmc', 'openmc.data', 'openmc.mgxs', 'openmc.model',
+                       'openmc.stats'],
           'scripts': glob.glob('scripts/openmc-*'),
 
           # Metadata
@@ -40,6 +40,12 @@ if have_setuptools:
             'sparse' : ['scipy'],
             'vtk': ['vtk', 'silomesh'],
             'validate': ['lxml']
-        }})
+        },
+
+        # Data files
+        'package_data': {
+            'openmc.data': ['mass.mas12']
+        },
+    })
 
 setup(**kwargs)

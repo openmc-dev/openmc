@@ -1,6 +1,4 @@
 import openmc
-from openmc.source import Source
-from openmc.stats import Box
 
 ###############################################################################
 #                      Simulation Input File Parameters
@@ -13,43 +11,43 @@ particles = 1000
 
 
 ###############################################################################
-#                 Exporting to OpenMC materials.xml File
+#                 Exporting to OpenMC materials.xml file
 ###############################################################################
 
 # Instantiate some Nuclides
-h1 = openmc.Nuclide('H-1')
-h2 = openmc.Nuclide('H-2')
-he4 = openmc.Nuclide('He-4')
-b10 = openmc.Nuclide('B-10')
-b11 = openmc.Nuclide('B-11')
-o16 = openmc.Nuclide('O-16')
-o17 = openmc.Nuclide('O-17')
-cr50 = openmc.Nuclide('Cr-50')
-cr52 = openmc.Nuclide('Cr-52')
-cr53 = openmc.Nuclide('Cr-53')
-cr54 = openmc.Nuclide('Cr-54')
-fe54 = openmc.Nuclide('Fe-54')
-fe56 = openmc.Nuclide('Fe-56')
-fe57 = openmc.Nuclide('Fe-57')
-fe58 = openmc.Nuclide('Fe-58')
-zr90 = openmc.Nuclide('Zr-90')
-zr91 = openmc.Nuclide('Zr-91')
-zr92 = openmc.Nuclide('Zr-92')
-zr94 = openmc.Nuclide('Zr-94')
-zr96 = openmc.Nuclide('Zr-96')
-sn112 = openmc.Nuclide('Sn-112')
-sn114 = openmc.Nuclide('Sn-114')
-sn115 = openmc.Nuclide('Sn-115')
-sn116 = openmc.Nuclide('Sn-116')
-sn117 = openmc.Nuclide('Sn-117')
-sn118 = openmc.Nuclide('Sn-118')
-sn119 = openmc.Nuclide('Sn-119')
-sn120 = openmc.Nuclide('Sn-120')
-sn122 = openmc.Nuclide('Sn-122')
-sn124 = openmc.Nuclide('Sn-124')
-u234 = openmc.Nuclide('U-234')
-u235 = openmc.Nuclide('U-235')
-u238 = openmc.Nuclide('U-238')
+h1 = openmc.Nuclide('H1')
+h2 = openmc.Nuclide('H2')
+he4 = openmc.Nuclide('He4')
+b10 = openmc.Nuclide('B10')
+b11 = openmc.Nuclide('B11')
+o16 = openmc.Nuclide('O16')
+o17 = openmc.Nuclide('O17')
+cr50 = openmc.Nuclide('Cr50')
+cr52 = openmc.Nuclide('Cr52')
+cr53 = openmc.Nuclide('Cr53')
+cr54 = openmc.Nuclide('Cr54')
+fe54 = openmc.Nuclide('Fe54')
+fe56 = openmc.Nuclide('Fe56')
+fe57 = openmc.Nuclide('Fe57')
+fe58 = openmc.Nuclide('Fe58')
+zr90 = openmc.Nuclide('Zr90')
+zr91 = openmc.Nuclide('Zr91')
+zr92 = openmc.Nuclide('Zr92')
+zr94 = openmc.Nuclide('Zr94')
+zr96 = openmc.Nuclide('Zr96')
+sn112 = openmc.Nuclide('Sn112')
+sn114 = openmc.Nuclide('Sn114')
+sn115 = openmc.Nuclide('Sn115')
+sn116 = openmc.Nuclide('Sn116')
+sn117 = openmc.Nuclide('Sn117')
+sn118 = openmc.Nuclide('Sn118')
+sn119 = openmc.Nuclide('Sn119')
+sn120 = openmc.Nuclide('Sn120')
+sn122 = openmc.Nuclide('Sn122')
+sn124 = openmc.Nuclide('Sn124')
+u234 = openmc.Nuclide('U234')
+u235 = openmc.Nuclide('U235')
+u238 = openmc.Nuclide('U238')
 
 # Instantiate some Materials and register the appropriate Nuclides
 uo2 = openmc.Material(material_id=1, name='UO2 fuel at 2.4% wt enrichment')
@@ -100,17 +98,16 @@ borated_water.add_nuclide(h1, 4.9457e-2)
 borated_water.add_nuclide(h2, 7.4196e-6)
 borated_water.add_nuclide(o16, 2.4672e-2)
 borated_water.add_nuclide(o17, 6.0099e-5)
-borated_water.add_s_alpha_beta('HH2O', '71t')
+borated_water.add_s_alpha_beta('c_H_in_H2O', '71t')
 
-# Instantiate a MaterialsFile, register all Materials, and export to XML
-materials_file = openmc.MaterialsFile()
+# Instantiate a Materials collection and export to XML
+materials_file = openmc.Materials([uo2, helium, zircaloy, borated_water])
 materials_file.default_xs = '71c'
-materials_file.add_materials([uo2, helium, zircaloy, borated_water])
 materials_file.export_to_xml()
 
 
 ###############################################################################
-#                 Exporting to OpenMC geometry.xml File
+#                 Exporting to OpenMC geometry.xml file
 ###############################################################################
 
 # Instantiate ZCylinder surfaces
@@ -151,27 +148,26 @@ root = openmc.Universe(universe_id=0, name='root universe')
 # Register Cells with Universe
 root.add_cells([fuel, gap, clad, water])
 
-# Instantiate a Geometry and register the root Universe
-geometry = openmc.Geometry()
-geometry.root_universe = root
-
-# Instantiate a GeometryFile, register Geometry, and export to XML
-geometry_file = openmc.GeometryFile()
-geometry_file.geometry = geometry
-geometry_file.export_to_xml()
+# Instantiate a Geometry, register the root Universe, and export to XML
+geometry = openmc.Geometry(root)
+geometry.export_to_xml()
 
 
 ###############################################################################
-#                   Exporting to OpenMC settings.xml File
+#                   Exporting to OpenMC settings.xml file
 ###############################################################################
 
-# Instantiate a SettingsFile, set all runtime parameters, and export to XML
-settings_file = openmc.SettingsFile()
+# Instantiate a Settings object, set all runtime parameters, and export to XML
+settings_file = openmc.Settings()
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
-settings_file.source = Source(space=Box(
-    [-0.62992, -0.62992, -1], [0.62992, 0.62992, 1]))
+
+# Create an initial uniform spatial source distribution over fissionable zones
+bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
+uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
+settings_file.source = openmc.source.Source(space=uniform_dist)
+
 settings_file.entropy_lower_left = [-0.39218, -0.39218, -1.e50]
 settings_file.entropy_upper_right = [0.39218, 0.39218, 1.e50]
 settings_file.entropy_dimension = [10, 10, 1]
@@ -179,7 +175,7 @@ settings_file.export_to_xml()
 
 
 ###############################################################################
-#                   Exporting to OpenMC tallies.xml File
+#                   Exporting to OpenMC tallies.xml file
 ###############################################################################
 
 # Instantiate a tally mesh
@@ -199,8 +195,6 @@ tally = openmc.Tally(tally_id=1, name='tally 1')
 tally.filters = [energy_filter, mesh_filter]
 tally.scores = ['flux', 'fission', 'nu-fission']
 
-# Instantiate a TalliesFile, register all Tallies, and export to XML
-tallies_file = openmc.TalliesFile()
-tallies_file.add_mesh(mesh)
-tallies_file.add_tally(tally)
+# Instantiate a Tallies collection and export to XML
+tallies_file = openmc.Tallies([tally])
 tallies_file.export_to_xml()

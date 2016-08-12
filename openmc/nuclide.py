@@ -102,6 +102,10 @@ class Nuclide(object):
 
         if '-' in name:
             new_name = name.replace('-', '')
+            new_name = new_name.replace('Nat', '0')
+            if new_name.endswith('m'):
+                new_name = new_name[:-1] + '_m1'
+
             msg = 'OpenMC nuclides follow the GND naming convention. Nuclide ' \
                   '"{}" is being renamed as "{}".'.format(name, new_name)
             warnings.warn(msg, DeprecationWarning)

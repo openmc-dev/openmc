@@ -6,6 +6,7 @@ from xml.etree import ElementTree as ET
 import sys
 
 import openmc
+import openmc.data
 import openmc.checkvalue as cv
 from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
 
@@ -484,7 +485,13 @@ class Material(object):
                   'non-string cross-section identifier "{1}"'.format(self._id, xs)
             raise ValueError(msg)
 
-        self._sab.append((name, xs))
+        new_name = openmc.data.get_thermal_name(name)
+        if new_name != name:
+            msg = 'OpenMC S(a,b) tables follow the GND naming convention. ' \
+                  'Table "{}" is being renamed as "{}".'.format(name, new_name)
+            warnings.warn(msg)
+
+        self._sab.append((new_name, xs))
 
     def make_isotropic_in_lab(self):
         for nuclide, percent, percent_type in self._nuclides:

@@ -912,6 +912,7 @@ def get_openmc_lattice(opencg_lattice):
     if lattice_id in OPENMC_LATTICES:
         return OPENMC_LATTICES[lattice_id]
 
+    name = opencg_lattice.name
     dimension = opencg_lattice.dimension
     width = opencg_lattice.width
     offset = opencg_lattice.offset
@@ -942,7 +943,7 @@ def get_openmc_lattice(opencg_lattice):
                  ((np.array(width, dtype=np.float64) *
                    np.array(dimension, dtype=np.float64))) / -2.0
 
-    openmc_lattice = openmc.RectLattice(lattice_id=lattice_id)
+    openmc_lattice = openmc.RectLattice(lattice_id=lattice_id, name=name)
     openmc_lattice.pitch = width
     openmc_lattice.universes = universe_array
     openmc_lattice.lower_left = lower_left

@@ -253,23 +253,6 @@ def update_geometry(geometry_root):
 
     return was_updated
 
-def get_thermal_name(name):
-    """Get proper S(a,b) table name, e.g. 'HH2O' -> 'c_H_in_H2O'"""
-    if name.lower() in _THERMAL_NAMES:
-        return _THERMAL_NAMES[name.lower()]
-    else:
-        # Make an educated guess?? This actually works well for
-        # JEFF-3.2 which stupidly uses names like lw00.32t,
-        # lw01.32t, etc. for different temperatures
-        matches = get_close_matches(
-            name.lower(), _THERMAL_NAMES.keys(), cutoff=0.5)
-        if len(matches) > 0:
-            return _THERMAL_NAMES[matches[0]] + '.' + xs
-        else:
-            # OK, we give up. Just use the ACE name.
-            return 'c_' + name
-    return name
-
 def update_materials(root):
     """Update the given XML materials tree. Return True if changes were made."""
     was_updated = False
@@ -298,13 +281,13 @@ def update_materials(root):
         for sab in material.findall('sab'):
             if 'name' in sab.attrib:
                 sabname = sab.attrib['name']
-                sab.set('name', get_thermal_name(sabname))
+                sab.set('name', openmc.data.get_thermal_name(sabname))
                 was_updated = True
 
             elif sab.find('name') is not None:
                 name_elem = sab.find('name')
                 sabname = name_elem.text
-                name_elem.text = get_thermal(sabname)
+                name_elem.text = openmc.data.get_thermal_name(sabname)
                 was_updated = True
 
     return was_updated

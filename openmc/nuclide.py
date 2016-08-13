@@ -1,5 +1,6 @@
 from numbers import Integral
 import sys
+import warnings
 
 from openmc.checkvalue import check_type
 
@@ -99,6 +100,16 @@ class Nuclide(object):
     def name(self, name):
         check_type('name', name, basestring)
         self._name = name
+
+        if '-' in name:
+            self._name = name.replace('-', '')
+            self._name = self._name.replace('Nat', '0')
+            if self._name.endswith('m'):
+                self._name = self._name[:-1] + '_m1'
+
+            msg = 'OpenMC nuclides follow the GND naming convention. Nuclide ' \
+                  '"{}" is being renamed as "{}".'.format(name, self._name)
+            warnings.warn(msg)
 
     @xs.setter
     def xs(self, xs):

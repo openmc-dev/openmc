@@ -5,7 +5,7 @@ module product_header
   use angleenergy_header, only: AngleEnergyContainer
   use constants, only: ZERO, MAX_WORD_LEN, EMISSION_PROMPT, EMISSION_DELAYED, &
        EMISSION_TOTAL, NEUTRON, PHOTON
-  use endf_header, only: Tabulated1D, Function1D, Constant1D, Polynomial
+  use endf_header, only: Tabulated1D, Function1D, Polynomial
   use hdf5_interface, only: read_attribute, open_group, close_group, &
        open_dataset, close_dataset, read_dataset
   use random_lcg, only: prn
@@ -109,11 +109,9 @@ contains
     yield = open_dataset(group_id, 'yield')
     call read_attribute(temp, yield, 'type')
     select case (temp)
-    case ('constant')
-      allocate(Constant1D :: this % yield)
-    case ('tabulated')
+    case ('Tabulated1D')
       allocate(Tabulated1D :: this % yield)
-    case ('polynomial')
+    case ('Polynomial')
       allocate(Polynomial :: this % yield)
     end select
     call this % yield % from_hdf5(yield)

@@ -1838,6 +1838,27 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |:math:`\gamma`-rays are assumed to deposit their   |
         |                      |energy locally. Units are MeV per source particle. |
         +----------------------+---------------------------------------------------+
+        |fission-q-prompt      |The prompt fission energy production rate. This    |
+        |                      |energy comes in the form of fission fragment       |
+        |                      |nuclei, prompt neutrons, and prompt                |
+        |                      |:math:`\gamma`-rays. This value depends on the     |
+        |                      |incident energy and it requires that the nuclear   |
+        |                      |data library contains the optional fission energy  |
+        |                      |release data. Energy is assumed to be deposited    |
+        |                      |locally. Units are MeV per source particle.        |
+        +----------------------+---------------------------------------------------+
+        |fission-q-recoverable |The recoverable fission energy production rate.    |
+        |                      |This energy comes in the form of fission fragment  |
+        |                      |nuclei, prompt and delayed neutrons, prompt and    |
+        |                      |delayed :math:`\gamma`-rays, and delayed           |
+        |                      |:math:`\beta`-rays. This tally differs from the    |
+        |                      |kappa-fission tally in that it is dependent on     |
+        |                      |incident neutron energy and it requires that the   |
+        |                      |nuclear data library contains the optional fission |
+        |                      |energy release data. Energy is assumed to be       |
+        |                      |deposited locally. Units are MeV per source        |
+        |                      |paticle.                                           |
+        +----------------------+---------------------------------------------------+
 
     .. note::
        The ``analog`` estimator is actually identical to the ``collision``

@@ -123,8 +123,9 @@ class TalliesTestHarness(PyAPITestHarness):
             t.filters = [cell_filter]
             t.scores = ['absorption', 'delayed-nu-fission', 'events', 'fission',
                         'inverse-velocity', 'kappa-fission', '(n,2n)', '(n,n1)',
-                        '(n,gamma)', 'nu-fission', 'scatter', 'elastic', 'total',
-                        'prompt-nu-fission']
+                        '(n,gamma)', 'nu-fission', 'scatter', 'elastic', 
+                        'total', 'prompt-nu-fission', 'fission-q-prompt',
+                        'fission-q-recoverable']
         score_tallies[0].estimator = 'tracklength'
         score_tallies[1].estimator = 'analog'
         score_tallies[2].estimator = 'collision'

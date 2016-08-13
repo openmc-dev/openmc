@@ -3661,6 +3661,10 @@ contains
             t % score_bins(j) = SCORE_KAPPA_FISSION
           case ('inverse-velocity')
             t % score_bins(j) = SCORE_INVERSE_VELOCITY
+          case ('fission-q-prompt')
+            t % score_bins(j) = SCORE_FISS_Q_PROMPT
+          case ('fission-q-recoverable')
+            t % score_bins(j) = SCORE_FISS_Q_RECOV
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
             t % type = TALLY_SURFACE_CURRENT

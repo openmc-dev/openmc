@@ -1,3 +1,4 @@
+from abc import ABCMeta, abstractmethod
 from collections import Iterable, Callable
 from numbers import Real, Integral
 
@@ -9,7 +10,51 @@ INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
                         4: 'log-linear', 5: 'log-log'}
 
 
-class Tabulated1D(object):
+class Function1D(object):
+    """A function of one independent variable with HDF5 support."""
+
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def __call__(self): pass
+
+    @abstractmethod
+    def to_hdf5(self, group, name='xy'):
+        """Write function to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+        name : str
+            Name of the dataset to create
+
+        """
+        pass
+
+    @classmethod
+    def from_hdf5(cls, dataset):
+        """Generate function from an HDF5 dataset
+
+        Parameters
+        ----------
+        dataset : h5py.Dataset
+            Dataset to read from
+
+        Returns
+        -------
+        openmc.data.Function1D
+            Function read from dataset
+
+        """
+        for subclass in cls.__subclasses__():
+            if dataset.attrs['type'].decode() == subclass.__name__:
+                return subclass.from_hdf5(dataset)
+        raise ValueError("Unrecognized Function1D class: '"
+                         + dataset.attrs['type'].decode() + "'")
+
+
+class Tabulated1D(Function1D):
     """A one-dimensional tabulated function.
 
     This class mirrors the TAB1 type from the ENDF-6 format. A tabulated
@@ -239,7 +284,7 @@ class Tabulated1D(object):
         """
         dataset = group.create_dataset(name, data=np.vstack(
             [self.x, self.y]))
-        dataset.attrs['type'] = np.string_('tab1')
+        dataset.attrs['type'] = np.string_(type(self).__name__)
         dataset.attrs['breakpoints'] = self.breakpoints
         dataset.attrs['interpolation'] = self.interpolation
 
@@ -258,6 +303,10 @@ class Tabulated1D(object):
             Function read from dataset
 
         """
+        if dataset.attrs['type'].decode() != cls.__name__:
+            raise ValueError("Expected an HDF5 attribute 'type' equal to '"
+                             + cls.__name__ + "'")
+
         x = dataset.value[0, :]
         y = dataset.value[1, :]
         breakpoints = dataset.attrs['breakpoints']
@@ -302,6 +351,42 @@ class Tabulated1D(object):
         y = ace.xss[idx + n_pairs:idx + 2*n_pairs]
 
         return Tabulated1D(x, y, breakpoints, interpolation)
+
+
+class Polynomial(np.polynomial.Polynomial, Function1D):
+    def to_hdf5(self, group, name='xy'):
+        """Write polynomial function to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+        name : str
+            Name of the dataset to create
+
+        """
+        dataset = group.create_dataset(name, data=self.coef)
+        dataset.attrs['type'] = np.string_(type(self).__name__)
+
+    @classmethod
+    def from_hdf5(cls, dataset):
+        """Generate function from an HDF5 dataset
+
+        Parameters
+        ----------
+        dataset : h5py.Dataset
+            Dataset to read from
+
+        Returns
+        -------
+        openmc.data.Function1D
+            Function read from dataset
+
+        """
+        if dataset.attrs['type'].decode() != cls.__name__:
+            raise ValueError("Expected an HDF5 attribute 'type' equal to '"
+                             + cls.__name__ + "'")
+        return cls(dataset.value)
 
 
 class Sum(object):

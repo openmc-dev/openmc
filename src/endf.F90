@@ -14,7 +14,7 @@ contains
   pure function reaction_name(MT) result(string)
 
     integer, intent(in) :: MT
-    character(20)       :: string
+    character(MAX_WORD_LEN) :: string
 
     select case (MT)
     ! Special reactions for tallies
@@ -60,6 +60,10 @@ contains
       string = "events"
     case (SCORE_INVERSE_VELOCITY)
       string = "inverse-velocity"
+    case (SCORE_FISS_Q_PROMPT)
+      string = "fission-q-prompt"
+    case (SCORE_FISS_Q_RECOV)
+      string = "fission-q-recoverable"
 
     ! Normal ENDF-based reactions
     case (TOTAL_XS)

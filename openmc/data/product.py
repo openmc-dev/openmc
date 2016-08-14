@@ -57,8 +57,8 @@ class Product(object):
             if (self.particle != other.particle or
                 self.decay_rate != other.decay_rate or
                 self.emission_mode != other.emission_mode or
-                self.distribution.all() != other.distribution.all() or
-                self.applicability.all() != other.applicability.all() or
+                not np.narray_equal(self.distribution, other.distribution) or
+                not np.narray_equal(self.applicability, other.applicability) or
                 self.yield_ != other.yield_):
                 eqval = False
             return eqval

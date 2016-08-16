@@ -13,6 +13,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+from openmc.tallies import ESTIMATOR_TYPES
 from openmc.mgxs import EnergyGroups
 
 if sys.version_info[0] >= 3:
@@ -38,7 +39,6 @@ MGXS_TYPES = ['total',
               'chi-prompt',
               'inverse-velocity',
               'prompt-nu-fission']
-
 
 # Supported domain types
 DOMAIN_TYPES = ['cell',
@@ -102,7 +102,7 @@ class MGXS(object):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section
@@ -144,11 +144,11 @@ class MGXS(object):
 
     def __init__(self, domain=None, domain_type=None,
                  energy_groups=None, by_nuclide=False, name=''):
-
         self._name = ''
         self._rxn_type = None
         self._by_nuclide = None
         self._nuclides = None
+        self._estimator = 'tracklength'
         self._domain = None
         self._domain_type = None
         self._energy_groups = None
@@ -160,6 +160,7 @@ class MGXS(object):
         self._loaded_sp = False
         self._derived = False
         self._hdf5_key = None
+        self._valid_estimators = ESTIMATOR_TYPES
 
         self.name = name
         self.by_nuclide = by_nuclide
@@ -250,7 +251,7 @@ class MGXS(object):
 
     @property
     def estimator(self):
-        return 'tracklength'
+        return self._estimator
 
     @property
     def tallies(self):
@@ -367,6 +368,11 @@ class MGXS(object):
     def nuclides(self, nuclides):
         cv.check_iterable_type('nuclides', nuclides, basestring)
         self._nuclides = nuclides
+
+    @estimator.setter
+    def estimator(self, estimator):
+        cv.check_value('estimator', estimator, self._valid_estimators)
+        self._estimator = estimator
 
     @domain.setter
     def domain(self, domain):
@@ -1643,7 +1649,7 @@ class MatrixMGXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section
@@ -1691,10 +1697,6 @@ class MatrixMGXS(MGXS):
         energyout = openmc.Filter('energyout', group_edges)
 
         return [[energy], [energy, energyout]]
-
-    @property
-    def estimator(self):
-        return 'analog'
 
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all',
@@ -2072,7 +2074,7 @@ class TotalXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2190,7 +2192,7 @@ class TransportXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2233,6 +2235,8 @@ class TransportXS(MGXS):
         super(TransportXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name)
         self._rxn_type = 'transport'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
     @property
     def scores(self):
@@ -2244,10 +2248,6 @@ class TransportXS(MGXS):
         energy_filter = openmc.Filter('energy', group_edges)
         energyout_filter = openmc.Filter('energyout', group_edges)
         return [[energy_filter], [energy_filter], [energyout_filter]]
-
-    @property
-    def estimator(self):
-        return 'analog'
 
     @property
     def rxn_rate_tally(self):
@@ -2320,7 +2320,7 @@ class NuTransportXS(TransportXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2441,7 +2441,7 @@ class AbsorptionXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2557,7 +2557,7 @@ class CaptureXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2679,7 +2679,7 @@ class FissionXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2790,7 +2790,7 @@ class NuFissionXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2906,7 +2906,7 @@ class KappaFissionXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -3019,7 +3019,7 @@ class ScatterXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -3134,7 +3134,7 @@ class NuScatterXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -3177,10 +3177,8 @@ class NuScatterXS(MGXS):
         super(NuScatterXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name)
         self._rxn_type = 'nu-scatter'
-
-    @property
-    def estimator(self):
-        return 'analog'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
 
 class ScatterMatrixXS(MatrixMGXS):
@@ -3268,7 +3266,7 @@ class ScatterMatrixXS(MatrixMGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -3314,6 +3312,8 @@ class ScatterMatrixXS(MatrixMGXS):
         self._correction = 'P0'
         self._legendre_order = 0
         self._hdf5_key = 'scatter matrix'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
     def __deepcopy__(self, memo):
         clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
@@ -3929,7 +3929,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4051,7 +4051,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4094,6 +4094,8 @@ class MultiplicityMatrixXS(MatrixMGXS):
         super(MultiplicityMatrixXS, self).__init__(domain, domain_type, groups,
                                                    by_nuclide, name)
         self._rxn_type = 'multiplicity matrix'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
     @property
     def scores(self):
@@ -4198,7 +4200,7 @@ class NuFissionMatrixXS(MatrixMGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4242,6 +4244,8 @@ class NuFissionMatrixXS(MatrixMGXS):
                                                 groups, by_nuclide, name)
         self._rxn_type = 'nu-fission'
         self._hdf5_key = 'nu-fission matrix'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
 
 class Chi(MGXS):
@@ -4313,7 +4317,7 @@ class Chi(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4355,6 +4359,8 @@ class Chi(MGXS):
                  groups=None, by_nuclide=False, name=''):
         super(Chi, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'chi'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
     @property
     def scores(self):
@@ -4371,10 +4377,6 @@ class Chi(MGXS):
     @property
     def tally_keys(self):
         return ['nu-fission-in', 'nu-fission-out']
-
-    @property
-    def estimator(self):
-        return 'analog'
 
     @property
     def rxn_rate_tally(self):
@@ -4803,7 +4805,7 @@ class ChiPrompt(Chi):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4918,7 +4920,7 @@ class InverseVelocity(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -5052,7 +5054,7 @@ class PromptNuFissionXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys

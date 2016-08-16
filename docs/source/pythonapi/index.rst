@@ -363,6 +363,7 @@ Core Classes
     openmc.data.Tabulated1D
     openmc.data.ThermalScattering
     openmc.data.CoherentElastic
+    openmc.data.FissionEnergyRelease
 
 Angle-Energy Distributions
 --------------------------
@@ -396,21 +397,22 @@ Classes
 +++++++
 
 .. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myclass.rst
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
 
-   openmc.data.ace.Library
-   openmc.data.ace.Table
+    openmc.data.ace.Library
+    openmc.data.ace.Table
 
 Functions
 +++++++++
 
 .. autosummary::
-   :toctree: generated
-   :nosignatures:
+    :toctree: generated
+    :nosignatures:
 
-   openmc.data.ace.ascii_to_binary
+    openmc.data.ace.ascii_to_binary
+    openmc.data.write_compact_458_library
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

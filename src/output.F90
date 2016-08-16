@@ -776,6 +776,8 @@ contains
     score_names(abs(SCORE_DELAYED_NU_FISSION)) = "Delayed-Nu-Fission Rate"
     score_names(abs(SCORE_PROMPT_NU_FISSION))  = "Prompt-Nu-Fission Rate"
     score_names(abs(SCORE_INVERSE_VELOCITY))   = "Flux-Weighted Inverse Velocity"
+    score_names(abs(SCORE_FISS_Q_PROMPT))      = "Prompt fission power"
+    score_names(abs(SCORE_FISS_Q_RECOV))       = "Recoverable fission power"
 
     ! Create filename for tally output
     filename = trim(path_output) // "tallies.out"

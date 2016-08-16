@@ -11,6 +11,7 @@ import numpy as np
 import openmc
 import openmc.mgxs
 import openmc.checkvalue as cv
+from openmc.tallies import ESTIMATOR_TYPES
 
 
 if sys.version_info[0] >= 3:
@@ -40,7 +41,7 @@ class Library(object):
     mgxs_types : Iterable of str
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     name : str, optional
-        Name of the multi-group cross section. library Used as a label to
+        Name of the multi-group cross section library. Used as a label to
         identify tallies in OpenMC 'tallies.xml' file.
 
     Attributes
@@ -67,6 +68,9 @@ class Library(object):
         Energy group structure for energy condensation
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    estimator : str or None
+        The tally estimator used to compute multi-group cross sections. If None,
+        the default for each MGXS type is used.
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -106,6 +110,7 @@ class Library(object):
         self._sp_filename = None
         self._keff = None
         self._sparse = False
+        self._estimator = None
 
         self.name = name
         self.openmc_geometry = openmc_geometry
@@ -214,6 +219,10 @@ class Library(object):
     @property
     def tally_trigger(self):
         return self._tally_trigger
+
+    @property
+    def estimator(self):
+        return self._estimator
 
     @property
     def num_groups(self):
@@ -371,6 +380,11 @@ class Library(object):
         cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
         self._tally_trigger = tally_trigger
 
+    @estimator.setter
+    def estimator(self, estimator):
+        cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
+        self._estimator = estimator
+
     @sparse.setter
     def sparse(self, sparse):
         """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
@@ -416,12 +430,14 @@ class Library(object):
                 mgxs.domain_type = self.domain_type
                 mgxs.energy_groups = self.energy_groups
                 mgxs.by_nuclide = self.by_nuclide
+                if self.estimator is not None:
+                    mgxs.estimator = self.estimator
 
                 if mgxs_type in openmc.mgxs.MDGXS_TYPES:
                     mgxs.delayed_groups = self.delayed_groups
 
                 # If a tally trigger was specified, add it to the MGXS
-                if self.tally_trigger:
+                if self.tally_trigger is not None:
                     mgxs.tally_trigger = self.tally_trigger
 
                 # Specify whether to use a transport ('P0') correction

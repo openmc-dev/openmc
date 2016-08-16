@@ -40,6 +40,9 @@ _SCORE_CLASSES = (basestring, CrossScore, AggregateScore)
 _NUCLIDE_CLASSES = (basestring, Nuclide, CrossNuclide, AggregateNuclide)
 _FILTER_CLASSES = (Filter, CrossFilter, AggregateFilter)
 
+# Valid types of estimators
+ESTIMATOR_TYPES = ['tracklength', 'collision', 'analog']
+
 
 def reset_auto_tally_id():
     """Reset counter for auto-generated tally IDs."""
@@ -387,8 +390,7 @@ class Tally(object):
 
     @estimator.setter
     def estimator(self, estimator):
-        cv.check_value('estimator', estimator,
-                       ['analog', 'tracklength', 'collision'])
+        cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
         self._estimator = estimator
 
     @triggers.setter

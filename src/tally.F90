@@ -2327,6 +2327,7 @@ contains
     integer :: filter_index         ! index of scoring bin
     integer :: i_filter_mesh        ! index of mesh filter in filters array
     integer :: i_filter_surf        ! index of surface filter in filters
+    integer :: i_filter_energy      ! index of energy filter in filters
     real(8) :: uvw(3)               ! cosine of angle of particle
     real(8) :: xyz0(3)              ! starting/intermediate coordinates
     real(8) :: xyz1(3)              ! ending coordinates of particle
@@ -2351,9 +2352,10 @@ contains
       i_tally = active_current_tallies % get_item(i)
       t => tallies(i_tally)
 
-      ! Get index for mesh and surface filters
+      ! Get index for mesh, surface, and energy filters
       i_filter_mesh = t % find_filter(FILTER_MESH)
       i_filter_surf = t % find_filter(FILTER_SURFACE)
+      i_filter_energy = t % find_filter(FILTER_ENERGYIN)
 
       ! Get pointer to mesh
       select type(filt => t % filters(i_filter_mesh) % obj)
@@ -2386,11 +2388,11 @@ contains
 
       ! Determine incoming energy bin.  We need to tell the energy filter this
       ! is a tracklength tally so it uses the pre-collision energy.
-      j = t % find_filter(FILTER_ENERGYIN)
-      if (j > 0) then
-        call t % filters(i) % obj % get_next_bin(p, ESTIMATOR_TRACKLENGTH, &
-             & NO_BIN_FOUND, matching_bins(j), filt_score)
-        if (matching_bins(j) == NO_BIN_FOUND) cycle
+      if (i_filter_energy > 0) then
+        call t % filters(i_filter_energy) % obj % get_next_bin(p, &
+             ESTIMATOR_TRACKLENGTH, NO_BIN_FOUND, &
+             matching_bins(i_filter_energy), filt_score)
+        if (matching_bins(i_filter_energy) == NO_BIN_FOUND) cycle
       end if
 
       ! =======================================================================

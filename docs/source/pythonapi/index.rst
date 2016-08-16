@@ -27,6 +27,8 @@ Example Jupyter Notebooks
     examples/mgxs-part-ii
     examples/mgxs-part-iii
     examples/mgxs-part-iv
+    examples/mdgxs-part-i
+    examples/mdgxs-part-ii
     examples/nuclear-data
 
 ------------------------------------
@@ -283,6 +285,19 @@ Multi-group Cross Sections
     openmc.mgxs.ScatterMatrixXS
     openmc.mgxs.TotalXS
     openmc.mgxs.TransportXS
+
+Multi-delayed-group Cross Sections
+----------------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclassinherit.rst
+
+    openmc.mgxs.MDGXS
+    openmc.mgxs.ChiDelayed
+    openmc.mgxs.DelayedNuFissionXS
+    openmc.mgxs.Beta
 
 Multi-group Cross Section Libraries
 -----------------------------------

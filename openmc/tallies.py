@@ -797,6 +797,9 @@ class Tally(object):
             else:
                 no_scores_match = False
 
+            if score == 'current' and score not in self.scores:
+                return False
+
         # Nuclides cannot be specified on 'flux' scores
         if 'flux' in self.scores or 'flux' in other.scores:
             if self.nuclides != other.nuclides:
@@ -2199,8 +2202,8 @@ class Tally(object):
 
         """
 
-        cv.check_type('filter1', filter1, (Filter, CrossFilter, AggregateFilter))
-        cv.check_type('filter2', filter2, (Filter, CrossFilter, AggregateFilter))
+        cv.check_type('filter1', filter1, _FILTER_CLASSES)
+        cv.check_type('filter2', filter2, _FILTER_CLASSES)
 
         # Check that the filters exist in the tally and are not the same
         if filter1 == filter2:
@@ -2282,8 +2285,8 @@ class Tally(object):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        cv.check_type('nuclide1', nuclide1, Nuclide)
-        cv.check_type('nuclide2', nuclide2, Nuclide)
+        cv.check_type('nuclide1', nuclide1, _NUCLIDE_CLASSES)
+        cv.check_type('nuclide2', nuclide2, _NUCLIDE_CLASSES)
 
         # Check that the nuclides exist in the tally and are not the same
         if nuclide1 == nuclide2:
@@ -3320,7 +3323,7 @@ class Tally(object):
 
         """
 
-        cv.check_type('new_filter', new_filter, Filter)
+        cv.check_type('new_filter', new_filter, _FILTER_CLASSES)
 
         if new_filter in self.filters:
             msg = 'Unable to diagonalize Tally ID="{0}" which already ' \

@@ -1,9 +1,10 @@
 from abc import ABCMeta, abstractmethod
 
 import openmc.data
+from openmc.mixin import Equality
 
 
-class AngleEnergy(object):
+class AngleEnergy(Equality):
     """Distribution in angle and energy of a secondary particle."""
 
     __metaclass = ABCMeta

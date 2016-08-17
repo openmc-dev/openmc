@@ -4,11 +4,12 @@ from numbers import Real
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc.mixin import Equality
 from openmc.stats import Univariate, Tabular, Uniform
 from .function import INTERPOLATION_SCHEME
 
 
-class AngleDistribution(object):
+class AngleDistribution(Equality):
     """Angle distribution as a function of incoming energy
 
     Parameters
@@ -31,16 +32,6 @@ class AngleDistribution(object):
         super(AngleDistribution, self).__init__()
         self.energy = energy
         self.mu = mu
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (not np.array_equal(self.energy, other.energy) or
-                not np.array_equal(self.mu, other.mu)):
-                eqval = False
-            return eqval
 
     @property
     def energy(self):

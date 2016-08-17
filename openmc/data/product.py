@@ -5,6 +5,7 @@ import sys
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc.mixin import Equality
 from .function import Tabulated1D, Polynomial, Function1D
 from .angle_energy import AngleEnergy
 
@@ -12,7 +13,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-class Product(object):
+class Product(Equality):
     """Secondary particle emitted in a nuclear reaction
 
     Parameters
@@ -47,20 +48,6 @@ class Product(object):
         self.distribution = []
         self.applicability = []
         self.yield_ = Polynomial((1,))  # 0-order polynomial i.e. a constant
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (self.particle != other.particle or
-                self.decay_rate != other.decay_rate or
-                self.emission_mode != other.emission_mode or
-                not np.narray_equal(self.distribution, other.distribution) or
-                not np.narray_equal(self.applicability, other.applicability) or
-                self.yield_ != other.yield_):
-                eqval = False
-            return eqval
 
     def __repr__(self):
         if isinstance(self.yield_, Real):

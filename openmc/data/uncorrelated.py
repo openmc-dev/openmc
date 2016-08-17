@@ -1,6 +1,7 @@
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc.mixin import Equality
 from .angle_energy import AngleEnergy
 from .energy_distribution import EnergyDistribution
 from .angle_distribution import AngleDistribution
@@ -33,15 +34,6 @@ class UncorrelatedAngleEnergy(AngleEnergy):
             self.angle = angle
         if energy is not None:
             self.energy = energy
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            if self.__dict__ != other.__dict__:
-                return False
-            else:
-                return True
 
     @property
     def angle(self):

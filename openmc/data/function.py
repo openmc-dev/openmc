@@ -5,12 +5,13 @@ from numbers import Real, Integral
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc.mixin import Equality
 
 INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
                         4: 'log-linear', 5: 'log-log'}
 
 
-class Function1D(object):
+class Function1D(Equality):
     """A function of one independent variable with HDF5 support."""
 
     __metaclass__ = ABCMeta
@@ -109,18 +110,6 @@ class Tabulated1D(Function1D):
 
         self.x = np.asarray(x)
         self.y = np.asarray(y)
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (not np.array_equal(self.x, other.x) or
-                not np.array_equal(self.y, other.y) or
-                not np.array_equal(self.breakpoints, other.breakpoints) or
-                not np.array_equal(self.interpolation, other.interpolation)):
-                eqval = False
-            return eqval
 
     def __call__(self, x):
         # Check if input is array or scalar
@@ -401,7 +390,7 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
         return cls(dataset.value)
 
 
-class Sum(object):
+class Sum(Equality):
     """Sum of multiple functions.
 
     This class allows you to create a callable object which represents the sum

@@ -542,12 +542,6 @@ class MGXS(object):
         float
             The atomic number density (atom/b-cm) for the nuclide of interest
 
-        Raises
-        -------
-        ValueError
-            When the density is requested for a nuclide which is not found in
-            the spatial domain.
-
         """
 
         cv.check_type('nuclide', nuclide, basestring)
@@ -555,13 +549,7 @@ class MGXS(object):
         # Get list of all nuclides in the spatial domain
         nuclides = self.domain.get_nuclide_densities()
 
-        if nuclide not in nuclides:
-            msg = 'Unable to get density for nuclide "{0}" which is not in ' \
-                  '{1} "{2}"'.format(nuclide, self.domain_type, self.domain.id)
-            ValueError(msg)
-
-        density = nuclides[nuclide][1]
-        return density
+        return nuclides[nuclide][1] if nuclide in nuclides else 0.0
 
     def get_nuclide_densities(self, nuclides='all'):
         """Get an array of atomic number densities in units of atom/b-cm for all
@@ -816,6 +804,7 @@ class MGXS(object):
                 densities = self.get_nuclide_densities('sum')
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
+                xs[np.isnan(xs)] = 0.0
 
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
@@ -1561,6 +1550,10 @@ class MGXS(object):
             df['mean'] /= np.tile(densities, tile_factor)
             df['std. dev.'] /= np.tile(densities, tile_factor)
 
+            # Replace NaNs by zeros (happens if nuclide density is zero)
+            df['mean'].replace(np.nan, 0.0, inplace=True)
+            df['std. dev.'].replace(np.nan, 0.0, inplace=True)
+
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal
         if self.domain_type == 'mesh':
@@ -1813,6 +1806,7 @@ class MatrixMGXS(MGXS):
                 densities = self.get_nuclide_densities('sum')
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
+                xs[np.isnan(xs)] = 0.0
 
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
@@ -3645,6 +3639,7 @@ class ScatterMatrixXS(MatrixMGXS):
                 densities = self.get_nuclide_densities('sum')
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
+                xs[np.isnan(xs)] = 0.0
 
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies

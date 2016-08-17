@@ -4,14 +4,14 @@ from collections import Iterable, defaultdict
 from numbers import Real
 import warnings
 import itertools
-import scipy.spatial
-from scipy.spatial.distance import cdist
 import random
 from random import uniform, gauss
 from heapq import heappush, heappop
 from math import pi, sin, cos, floor, log10
 
 import numpy as np
+import scipy.spatial
+from scipy.spatial.distance import cdist
 
 import openmc
 import openmc.checkvalue as cv
@@ -433,8 +433,8 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         """
 
         rod = [d, i, j]
-        rods_map[i] = j, rod
-        rods_map[j] = i, rod
+        rods_map[i] = (j, rod)
+        rods_map[j] = (i, rod)
         heappush(rods, rod)
 
 
@@ -516,7 +516,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
 
         # Remove duplicate rods and sort by distance
         r = map(list, set([(x[2], int(min(x[0:2])), int(max(x[0:2])))
-                for x in r]))
+                            for x in r]))
 
         # Clear priority queue and add rods
         del rods[:]
@@ -617,7 +617,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         # Moving each particle distance 'r' away from the other along the line
         # joining the particle centers will ensure their final distance is equal
         # to the outer diameter
-        r = (outer_diameter[0] - d)/2;
+        r = (outer_diameter[0] - d)/2
 
         v = (particles[i] - particles[j])/d
         particles[i] = particles[i] + r*v
@@ -735,7 +735,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
             cl = cell_length
 
         return tuple([int((p[0] + domain_radius)/cl[0]),
-                     int((p[1] + domain_radius)/cl[1]), int(p[2]/cl[2])])
+                      int((p[1] + domain_radius)/cl[1]), int(p[2]/cl[2])])
 
 
     def cell_index_sphere(p, cl=None):
@@ -787,7 +787,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
             cl = cell_length
 
         r = [[a/cl[i] for a in [p[i]-d, p[i], p[i]+d] if a > 0 and
-             a < domain_length] for i in range(3)]
+              a < domain_length] for i in range(3)]
 
         return list(itertools.product(*({int(i) for i in j} for j in r)))
 
@@ -816,13 +816,13 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         if cl is None:
             cl = cell_length
 
-        x,y = [[(a + domain_radius)/cl[i] for a in [p[i]-d, p[i], p[i]+d]
-               if a > -domain_radius and a < domain_radius] for i in range(2)]
+        x, y = [[(a + domain_radius)/cl[i] for a in [p[i]-d, p[i], p[i]+d]
+                 if a > -domain_radius and a < domain_radius] for i in range(2)]
 
         z = [a/cl[2] for a in [p[2]-d, p[2], p[2]+d] if a > 0
              and a < domain_length]
 
-        return list(itertools.product(*({int(i) for i in j} for j in (x,y,z))))
+        return list(itertools.product(*({int(i) for i in j} for j in (x, y, z))))
 
 
     def cell_list_sphere(p, d, cl=None):
@@ -850,7 +850,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
             cl = cell_length
 
         r = [[(a + domain_radius)/cl[i] for a in [p[i]-d, p[i], p[i]+d]
-             if a > -domain_radius and a < domain_radius] for i in range(3)]
+              if a > -domain_radius and a < domain_radius] for i in range(3)]
 
         return list(itertools.product(*({int(i) for i in j} for j in r)))
 
@@ -878,13 +878,13 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         for i in range(n_particles):
             # Randomly sample new center coordinates while there are any overlaps
             while True:
-               p = random_point()
-               idx = cell_index(p, cl)
-               if any((p[0]-q[0])**2 + (p[1]-q[1])**2 + (p[2]-q[2])**2 < sqd
-                      for q in mesh[idx]):
-                   continue
-               else:
-                   break
+                p = random_point()
+                idx = cell_index(p, cl)
+                if any((p[0]-q[0])**2 + (p[1]-q[1])**2 + (p[2]-q[2])**2 < sqd
+                       for q in mesh[idx]):
+                    continue
+                else:
+                    break
             particles.append(p)
 
             for idx in cell_list(p, d, cl):
@@ -998,7 +998,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         close_random_pack()
 
     trisos = []
-    for i in range(n_particles):
-        trisos.append(TRISO(radius, fill, particles[i] + offset))
+    for p in particles:
+        trisos.append(TRISO(radius, fill, p + offset))
 
     return trisos

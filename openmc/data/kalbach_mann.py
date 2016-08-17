@@ -5,6 +5,7 @@ from warnings import warn
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc.mixin import Equality
 from openmc.stats import Tabular, Univariate, Discrete, Mixture
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from .angle_energy import AngleEnergy
@@ -58,20 +59,6 @@ class KalbachMann(AngleEnergy):
         self.energy_out = energy_out
         self.precompound = precompound
         self.slope = slope
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (not np.array_equal(self.breakpoints, other.breakpoints) or
-                not np.array_equal(self.interpolation, other.interpolation) or
-                not np.array_equal(self.energy, other.energy) or
-                not np.array_equal(self.energy_out, other.energy_out) or
-                not np.array_equal(self.precompound, other.precompound) or
-                not np.array_equal(self.slope, other.slope)):
-                eqval = False
-            return eqval
 
     @property
     def breakpoints(self):

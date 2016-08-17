@@ -7,6 +7,7 @@ from xml.etree import ElementTree as ET
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc.mixin import Equality
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -15,7 +16,7 @@ _INTERPOLATION_SCHEMES = ['histogram', 'linear-linear', 'linear-log',
                           'log-linear', 'log-log']
 
 
-class Univariate(object):
+class Univariate(Equality):
     """Probability distribution of a single random variable.
 
     The Univariate class is an abstract class that can be derived to implement a
@@ -64,16 +65,6 @@ class Discrete(Univariate):
         super(Discrete, self).__init__()
         self.x = x
         self.p = p
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (not np.array_equal(self.x, other.x) or
-                not np.array_equal(self.p, other.p)):
-                eqval = False
-            return eqval
 
     def __len__(self):
         return len(self.x)
@@ -149,16 +140,6 @@ class Uniform(Univariate):
         self.a = a
         self.b = b
 
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (self.a != other.a or
-                self.b != other.b):
-                eqval = False
-            return eqval
-
     def __len__(self):
         return 2
 
@@ -229,15 +210,6 @@ class Maxwell(Univariate):
         super(Maxwell, self).__init__()
         self.theta = theta
 
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (self.theta != other.theta):
-                eqval = False
-            return eqval
-
     def __len__(self):
         return 1
 
@@ -298,16 +270,6 @@ class Watt(Univariate):
         super(Watt, self).__init__()
         self.a = a
         self.b = b
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (self.a != other.a or
-                self.b != other.b):
-                eqval = False
-            return eqval
 
     def __len__(self):
         return 2
@@ -391,18 +353,6 @@ class Tabular(Univariate):
         self.p = p
         self.interpolation = interpolation
 
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (self._ignore_negative != other._ignore_negative or
-                not np.array_equal(self.x, other.x) or
-                not np.array_equal(self.p, other.p) or
-                self.interpolation != other.interpolation):
-                eqval = False
-            return eqval
-
     def __len__(self):
         return len(self.x)
 
@@ -484,15 +434,6 @@ class Legendre(Univariate):
     def __call__(self, x):
         return self._legendre_polynomial(x)
 
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if not np.array_equal(self.coefficients, other.coefficients):
-                eqval = False
-            return eqval
-
     def __len__(self):
         return len(self._legendre_polynomial.coef)
 
@@ -538,16 +479,6 @@ class Mixture(Univariate):
         super(Mixture, self).__init__()
         self.probability = probability
         self.distribution = distribution
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (not np.array_equal(self.probability, other.probability) or
-                not np.array_equal(self.distribution, other.distribution)):
-                eqval = False
-            return eqval
 
     def __len__(self):
         return sum(len(d) for d in self.distribution)

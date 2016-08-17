@@ -22,6 +22,8 @@ import sys
 
 import numpy as np
 
+from openmc.mixin import Equality
+
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -131,7 +133,7 @@ def get_table(filename, name=None):
                              .format(name))
 
 
-class Library(object):
+class Library(Equality):
     """A Library objects represents an ACE-formatted file which may contain
     multiple tables with data.
 
@@ -353,7 +355,7 @@ class Library(object):
             lines = [ace_file.readline() for i in range(13)]
 
 
-class Table(object):
+class Table(Equality):
     """ACE cross section table
 
     Parameters

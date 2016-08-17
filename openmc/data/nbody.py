@@ -38,18 +38,6 @@ class NBodyPhaseSpace(AngleEnergy):
         self.atomic_weight_ratio = atomic_weight_ratio
         self.q_value = q_value
 
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (self.total_mass != other.total_mass or
-                self.n_particles != other.n_particles or
-                self.atomic_weight_ratio != other.atomic_weight_ratio or
-                self.q_value != other.q_value):
-                eqval = False
-            return eqval
-
     @property
     def total_mass(self):
         return self._total_mass

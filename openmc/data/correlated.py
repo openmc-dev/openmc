@@ -49,19 +49,6 @@ class CorrelatedAngleEnergy(AngleEnergy):
         self.energy_out = energy_out
         self.mu = mu
 
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (not np.array_equal(self.breakpoints, other.breakpoints) or
-                not np.array_equal(self.interpolation, other.interpolation) or
-                not np.array_equal(self.energy, other.energy) or
-                not np.array_equal(self.energy_out, other.energy_out) or
-                not np.array_equal(self.mu, other.mu)):
-                eqval = False
-            return eqval
-
     @property
     def breakpoints(self):
         return self._breakpoints
@@ -69,6 +56,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
     @property
     def interpolation(self):
         return self._interpolation
+
     @property
     def energy(self):
         return self._energy

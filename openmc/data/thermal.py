@@ -7,6 +7,7 @@ import numpy as np
 import h5py
 
 import openmc.checkvalue as cv
+from openmc.mixin import Equality
 from .ace import Table, get_table
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D
@@ -60,7 +61,7 @@ def get_thermal_name(name):
             return 'c_' + name
 
 
-class CoherentElastic(object):
+class CoherentElastic(Equality):
     r"""Coherent elastic scattering data from a crystalline material
 
     Parameters
@@ -89,15 +90,6 @@ class CoherentElastic(object):
         idx = np.searchsorted(self.bragg_edges, E)
         return self.factors[idx]/E
 
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (not np.array_equal(self.bragg_edges, other.bragg_edges) or
-                not np.array_equal(self.factors, other.factors)):
-                eqval = False
-            return eqval
 
     def __len__(self):
         return len(self.bragg_edges)
@@ -156,7 +148,7 @@ class CoherentElastic(object):
         return cls(bragg_edges, factors)
 
 
-class ThermalScattering(object):
+class ThermalScattering(Equality):
     """A ThermalScattering object contains thermal scattering data as represented by
     an S(alpha, beta) table.
 
@@ -199,23 +191,6 @@ class ThermalScattering(object):
         self.inelastic_mu_out = None
         self.secondary_mode = None
         self.zaids = []
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-        else:
-            eqval = True
-            if (self.name != other.name or
-                self.atomic_weight_ratio != other.atomic_weight_ratio or
-                self.elastic_xs != other.elastic_xs or
-                self.elastic_mu_out != other.elastic_mu_out or
-                self.inelastic_xs != other.inelastic_xs or
-                self.inelastic_mu_out != other.inelastic_mu_out or
-                self.temperature != other.temperature or
-                not np.array_equal(self.zaids, other.zaids) or
-                self.secondary_mode != other.secondary_mode):
-                eqval = False
-            return eqval
 
     def __repr__(self):
         if hasattr(self, 'name'):

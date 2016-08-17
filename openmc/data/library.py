@@ -5,7 +5,7 @@ import h5py
 
 from openmc.clean_xml import clean_xml_indentation
 
-class DataLibrary(object):
+class DataLibrary(Equality):
     def __init__(self):
         self.libraries = []
 

@@ -13,6 +13,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+from openmc.tallies import ESTIMATOR_TYPES
 from openmc.mgxs import EnergyGroups
 
 if sys.version_info[0] >= 3:
@@ -38,7 +39,6 @@ MGXS_TYPES = ['total',
               'chi-prompt',
               'inverse-velocity',
               'prompt-nu-fission']
-
 
 # Supported domain types
 DOMAIN_TYPES = ['cell',
@@ -102,7 +102,7 @@ class MGXS(object):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section
@@ -144,11 +144,11 @@ class MGXS(object):
 
     def __init__(self, domain=None, domain_type=None,
                  energy_groups=None, by_nuclide=False, name=''):
-
         self._name = ''
         self._rxn_type = None
         self._by_nuclide = None
         self._nuclides = None
+        self._estimator = 'tracklength'
         self._domain = None
         self._domain_type = None
         self._energy_groups = None
@@ -160,6 +160,7 @@ class MGXS(object):
         self._loaded_sp = False
         self._derived = False
         self._hdf5_key = None
+        self._valid_estimators = ESTIMATOR_TYPES
 
         self.name = name
         self.by_nuclide = by_nuclide
@@ -250,7 +251,7 @@ class MGXS(object):
 
     @property
     def estimator(self):
-        return 'tracklength'
+        return self._estimator
 
     @property
     def tallies(self):
@@ -367,6 +368,11 @@ class MGXS(object):
     def nuclides(self, nuclides):
         cv.check_iterable_type('nuclides', nuclides, basestring)
         self._nuclides = nuclides
+
+    @estimator.setter
+    def estimator(self, estimator):
+        cv.check_value('estimator', estimator, self._valid_estimators)
+        self._estimator = estimator
 
     @domain.setter
     def domain(self, domain):
@@ -710,11 +716,13 @@ class MGXS(object):
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
-               value='mean', **kwargs):
+               value='mean', squeeze=True, **kwargs):
         r"""Returns an array of multi-group cross sections.
 
-        This method constructs a 2D NumPy array for the requested multi-group
-        cross section data data for one or more energy groups and subdomains.
+        This method constructs a 3D NumPy array for the requested
+        multi-group cross section data for one or more subdomains
+        (1st dimension), energy groups (2nd dimension), and nuclides
+        (3rd dimension).
 
         Parameters
         ----------
@@ -736,6 +744,9 @@ class MGXS(object):
             Defaults to 'increasing'.
         value : {'mean', 'std_dev', 'rel_err'}
             A string for the type of value to return. Defaults to 'mean'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array to be returned. Defaults to True.
 
         Returns
         -------
@@ -806,25 +817,29 @@ class MGXS(object):
                 xs /= densities[np.newaxis, :, np.newaxis]
                 xs[np.isnan(xs)] = 0.0
 
+        # Eliminate the trivial score dimension
+        xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+        xs = np.nan_to_num(xs)
+
+        if groups == 'all':
+            num_groups = self.num_groups
+        else:
+            num_groups = len(groups)
+
+        # Reshape tally data array with separate axes for domain and energy
+        num_subdomains = int(xs.shape[0] / num_groups)
+        new_shape = (num_subdomains, num_groups) + xs.shape[1:]
+        xs = np.reshape(xs, new_shape)
+
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            if groups == 'all':
-                num_groups = self.num_groups
-            else:
-                num_groups = len(groups)
-
-            # Reshape tally data array with separate axes for domain and energy
-            num_subdomains = int(xs.shape[0] / num_groups)
-            new_shape = (num_subdomains, num_groups) + xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, :]
 
-        # Eliminate trivial dimensions
-        xs = np.squeeze(xs)
-        xs = np.atleast_1d(xs)
+        if squeeze:
+            xs = np.squeeze(xs)
+            xs = np.atleast_1d(xs)
+
         return xs
 
     def get_condensed_xs(self, coarse_groups):
@@ -1337,8 +1352,6 @@ class MGXS(object):
                 std_dev = self.get_xs(subdomains=[subdomain], nuclides=[nuclide],
                                       xs_type=xs_type, value='std_dev',
                                       row_column=row_column)
-                average = average.squeeze()
-                std_dev = std_dev.squeeze()
 
                 # Add MGXS results data to the HDF5 group
                 nuclide_group.require_dataset('average', dtype=np.float64,
@@ -1504,15 +1517,14 @@ class MGXS(object):
         if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
             df.rename(columns={'energy low [MeV]': 'group in'},
                       inplace=True)
-            in_groups = np.tile(all_groups, self.num_subdomains)
-            in_groups = np.repeat(in_groups, df.shape[0] / in_groups.size)
+            in_groups = np.tile(all_groups, int(self.num_subdomains))
+            in_groups = np.repeat(in_groups, int(df.shape[0] / in_groups.size))
             df['group in'] = in_groups
             del df['energy high [MeV]']
 
             df.rename(columns={'energyout low [MeV]': 'group out'},
                       inplace=True)
-            out_groups = np.repeat(all_groups, self.xs_tally.num_scores)
-            out_groups = np.tile(out_groups, df.shape[0] / out_groups.size)
+            out_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
             df['group out'] = out_groups
             del df['energyout high [MeV]']
             columns = ['group in', 'group out']
@@ -1520,14 +1532,14 @@ class MGXS(object):
         elif 'energyout low [MeV]' in df:
             df.rename(columns={'energyout low [MeV]': 'group out'},
                       inplace=True)
-            in_groups = np.tile(all_groups, self.num_subdomains)
+            in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
             df['group out'] = in_groups
             del df['energyout high [MeV]']
             columns = ['group out']
 
         elif 'energy low [MeV]' in df:
             df.rename(columns={'energy low [MeV]': 'group in'}, inplace=True)
-            in_groups = np.tile(all_groups, self.num_subdomains)
+            in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
             df['group in'] = in_groups
             del df['energy high [MeV]']
             columns = ['group in']
@@ -1562,6 +1574,7 @@ class MGXS(object):
                                (mesh_str, 'z')] + columns, inplace=True)
         else:
             df.sort_values(by=[self.domain_type] + columns, inplace=True)
+
         return df
 
     def get_units(self, xs_type='macro'):
@@ -1636,7 +1649,7 @@ class MatrixMGXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section
@@ -1685,18 +1698,16 @@ class MatrixMGXS(MGXS):
 
         return [[energy], [energy, energyout]]
 
-    @property
-    def estimator(self):
-        return 'analog'
-
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
-               row_column='inout', value='mean', **kwargs):
+               row_column='inout', value='mean', squeeze=True, **kwargs):
         """Returns an array of multi-group cross sections.
 
-        This method constructs a 2D NumPy array for the requested multi-group
-        matrix data for one or more energy groups and subdomains.
+        This method constructs a 4D NumPy array for the requested
+        multi-group cross section data for one or more subdomains
+        (1st dimension), energy groups in (2nd dimension), energy groups out
+        (3rd dimension), and nuclides (4th dimension).
 
         Parameters
         ----------
@@ -1725,6 +1736,9 @@ class MatrixMGXS(MGXS):
             Defaults to 'inout'.
         value : {'mean', 'std_dev', 'rel_err'}
             A string for the type of value to return. Defaults to 'mean'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array to be returned. Defaults to True.
 
         Returns
         -------
@@ -1796,8 +1810,6 @@ class MatrixMGXS(MGXS):
                                           filter_bins=filter_bins,
                                           nuclides=query_nuclides, value=value)
 
-        xs = np.nan_to_num(xs)
-
         # Divide by atom number densities for microscopic cross sections
         if xs_type == 'micro':
             if self.by_nuclide:
@@ -1808,33 +1820,36 @@ class MatrixMGXS(MGXS):
                 xs /= densities[np.newaxis, :, np.newaxis]
                 xs[np.isnan(xs)] = 0.0
 
+        # Eliminate the trivial score dimension
+        xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+        xs = np.nan_to_num(xs)
+
+        if in_groups == 'all':
+            num_in_groups = self.num_groups
+        else:
+            num_in_groups = len(in_groups)
+
+        if out_groups == 'all':
+            num_out_groups = self.num_groups
+        else:
+            num_out_groups = len(out_groups)
+
+        # Reshape tally data array with separate axes for domain and energy
+        num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups))
+        new_shape = (num_subdomains, num_in_groups, num_out_groups)
+        new_shape += xs.shape[1:]
+        xs = np.reshape(xs, new_shape)
+
+        # Transpose the matrix if requested by user
+        if row_column == 'outin':
+            xs = np.swapaxes(xs, 1, 2)
+
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            if in_groups == 'all':
-                num_in_groups = self.num_groups
-            else:
-                num_in_groups = len(in_groups)
-            if out_groups == 'all':
-                num_out_groups = self.num_groups
-            else:
-                num_out_groups = len(out_groups)
-
-            # Reshape tally data array with separate axes for domain and energy
-            num_subdomains = int(xs.shape[0] /
-                                 (num_in_groups * num_out_groups))
-            new_shape = (num_subdomains, num_in_groups, num_out_groups)
-            new_shape += xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Transpose the matrix if requested by user
-            if row_column == 'outin':
-                xs = np.swapaxes(xs, 1, 2)
-
-            # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, ::-1, :]
 
-            # Eliminate trivial dimensions
+        if squeeze:
             xs = np.squeeze(xs)
             xs = np.atleast_2d(xs)
 
@@ -2066,7 +2081,7 @@ class TotalXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2184,7 +2199,7 @@ class TransportXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2227,6 +2242,8 @@ class TransportXS(MGXS):
         super(TransportXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name)
         self._rxn_type = 'transport'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
     @property
     def scores(self):
@@ -2238,10 +2255,6 @@ class TransportXS(MGXS):
         energy_filter = openmc.Filter('energy', group_edges)
         energyout_filter = openmc.Filter('energyout', group_edges)
         return [[energy_filter], [energy_filter], [energyout_filter]]
-
-    @property
-    def estimator(self):
-        return 'analog'
 
     @property
     def rxn_rate_tally(self):
@@ -2314,7 +2327,7 @@ class NuTransportXS(TransportXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2435,7 +2448,7 @@ class AbsorptionXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2452,7 +2465,8 @@ class AbsorptionXS(MGXS):
         The number of subdomains is unity for 'material', 'cell' and 'universe'
         domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
-        tally data from a statepoint file).
+        tally data from a statepoint file) and the number of mesh cells for
+        'mesh' domain types.
     num_nuclides : int
         The number of nuclides for which the multi-group cross section is
         being tracked. This is unity if the by_nuclide attribute is False.
@@ -2551,7 +2565,7 @@ class CaptureXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2673,7 +2687,7 @@ class FissionXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2784,7 +2798,7 @@ class NuFissionXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -2827,7 +2841,6 @@ class NuFissionXS(MGXS):
         super(NuFissionXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name)
         self._rxn_type = 'nu-fission'
-
 
 class KappaFissionXS(MGXS):
     r"""A recoverable fission energy production rate multi-group cross section.
@@ -2900,7 +2913,7 @@ class KappaFissionXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -3013,7 +3026,7 @@ class ScatterXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -3128,7 +3141,7 @@ class NuScatterXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -3171,10 +3184,8 @@ class NuScatterXS(MGXS):
         super(NuScatterXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name)
         self._rxn_type = 'nu-scatter'
-
-    @property
-    def estimator(self):
-        return 'analog'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
 
 class ScatterMatrixXS(MatrixMGXS):
@@ -3262,7 +3273,7 @@ class ScatterMatrixXS(MatrixMGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -3308,6 +3319,8 @@ class ScatterMatrixXS(MatrixMGXS):
         self._correction = 'P0'
         self._legendre_order = 0
         self._hdf5_key = 'scatter matrix'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
     def __deepcopy__(self, memo):
         clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
@@ -3511,11 +3524,13 @@ class ScatterMatrixXS(MatrixMGXS):
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all', moment='all',
                xs_type='macro', order_groups='increasing',
-               row_column='inout', value='mean'):
+               row_column='inout', value='mean', squeeze=True):
         r"""Returns an array of multi-group cross sections.
 
-        This method constructs a 2D NumPy array for the requested scattering
-        matrix data data for one or more energy groups and subdomains.
+        This method constructs a 5D NumPy array for the requested
+        multi-group cross section data for one or more subdomains
+        (1st dimension), energy groups in (2nd dimension), energy groups out
+        (3rd dimension), nuclides (4th dimension), and moments (5th dimension).
 
         NOTE: The scattering moments are not multiplied by the :math:`(2l+1)/2`
         prefactor in the expansion of the scattering source into Legendre
@@ -3551,6 +3566,9 @@ class ScatterMatrixXS(MatrixMGXS):
             Defaults to 'inout'.
         value : {'mean', 'std_dev', 'rel_err'}
             A string for the type of value to return. Defaults to 'mean'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array to be returned. Defaults to True.
 
         Returns
         -------
@@ -3629,8 +3647,6 @@ class ScatterMatrixXS(MatrixMGXS):
                                           filter_bins=filter_bins,
                                           nuclides=query_nuclides, value=value)
 
-        xs = np.nan_to_num(xs)
-
         # Divide by atom number densities for microscopic cross sections
         if xs_type == 'micro':
             if self.by_nuclide:
@@ -3641,32 +3657,35 @@ class ScatterMatrixXS(MatrixMGXS):
                 xs /= densities[np.newaxis, :, np.newaxis]
                 xs[np.isnan(xs)] = 0.0
 
+        # Convert and nans to zero
+        xs = np.nan_to_num(xs)
+
+        if in_groups == 'all':
+            num_in_groups = self.num_groups
+        else:
+            num_in_groups = len(in_groups)
+
+        if out_groups == 'all':
+            num_out_groups = self.num_groups
+        else:
+            num_out_groups = len(out_groups)
+
+        # Reshape tally data array with separate axes for domain and energy
+        num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups))
+        new_shape = (num_subdomains, num_in_groups, num_out_groups)
+        new_shape += xs.shape[1:]
+        xs = np.reshape(xs, new_shape)
+
+        # Transpose the scattering matrix if requested by user
+        if row_column == 'outin':
+            xs = np.swapaxes(xs, 1, 2)
+
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            if in_groups == 'all':
-                num_in_groups = self.num_groups
-            else:
-                num_in_groups = len(in_groups)
-            if out_groups == 'all':
-                num_out_groups = self.num_groups
-            else:
-                num_out_groups = len(out_groups)
-
-            # Reshape tally data array with separate axes for domain and energy
-            num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups))
-            new_shape = (num_subdomains, num_in_groups, num_out_groups)
-            new_shape += xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Transpose the scattering matrix if requested by user
-            if row_column == 'outin':
-                xs = np.swapaxes(xs, 1, 2)
-
-            # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, ::-1, :]
 
-            # Eliminate trivial dimensions
+        if squeeze:
             xs = np.squeeze(xs)
             xs = np.atleast_2d(xs)
 
@@ -3723,7 +3742,7 @@ class ScatterMatrixXS(MatrixMGXS):
         if self.legendre_order > 0:
             # Insert a column corresponding to the Legendre moments
             moments = ['P{}'.format(i) for i in range(self.legendre_order+1)]
-            moments = np.tile(moments, df.shape[0] / len(moments))
+            moments = np.tile(moments, int(df.shape[0] / len(moments)))
             df['moment'] = moments
 
             # Place the moment column before the mean column
@@ -3924,7 +3943,7 @@ class NuScatterMatrixXS(ScatterMatrixXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4046,7 +4065,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4089,6 +4108,8 @@ class MultiplicityMatrixXS(MatrixMGXS):
         super(MultiplicityMatrixXS, self).__init__(domain, domain_type, groups,
                                                    by_nuclide, name)
         self._rxn_type = 'multiplicity matrix'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
     @property
     def scores(self):
@@ -4193,7 +4214,7 @@ class NuFissionMatrixXS(MatrixMGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4237,6 +4258,8 @@ class NuFissionMatrixXS(MatrixMGXS):
                                                 groups, by_nuclide, name)
         self._rxn_type = 'nu-fission'
         self._hdf5_key = 'nu-fission matrix'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
 
 class Chi(MGXS):
@@ -4308,7 +4331,7 @@ class Chi(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4350,6 +4373,8 @@ class Chi(MGXS):
                  groups=None, by_nuclide=False, name=''):
         super(Chi, self).__init__(domain, domain_type, groups, by_nuclide, name)
         self._rxn_type = 'chi'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
 
     @property
     def scores(self):
@@ -4366,10 +4391,6 @@ class Chi(MGXS):
     @property
     def tally_keys(self):
         return ['nu-fission-in', 'nu-fission-out']
-
-    @property
-    def estimator(self):
-        return 'analog'
 
     @property
     def rxn_rate_tally(self):
@@ -4507,11 +4528,13 @@ class Chi(MGXS):
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
                xs_type='macro', order_groups='increasing',
-               value='mean', **kwargs):
+               value='mean', squeeze=True, **kwargs):
         """Returns an array of the fission spectrum.
 
-        This method constructs a 2D NumPy array for the requested multi-group
-        cross section data data for one or more energy groups and subdomains.
+        This method constructs a 3D NumPy array for the requested
+        multi-group cross section data for one or more subdomains
+        (1st dimension), energy groups (2nd dimension), and nuclides
+        (3rd dimension).
 
         Parameters
         ----------
@@ -4533,6 +4556,9 @@ class Chi(MGXS):
             Defaults to 'increasing'.
         value : {'mean', 'std_dev', 'rel_err'}
             A string for the type of value to return. Defaults to 'mean'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array to be returned. Defaults to True.
 
         Returns
         -------
@@ -4624,27 +4650,29 @@ class Chi(MGXS):
             xs = self.xs_tally.get_values(filters=filters,
                                           filter_bins=filter_bins, value=value)
 
+        # Eliminate the trivial score dimension
+        xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+        xs = np.nan_to_num(xs)
+
+        # Reshape tally data array with separate axes for domain and energy
+        if groups == 'all':
+            num_groups = self.num_groups
+        else:
+            num_groups = len(groups)
+
+        num_subdomains = int(xs.shape[0] / num_groups)
+        new_shape = (num_subdomains, num_groups) + xs.shape[1:]
+        xs = np.reshape(xs, new_shape)
+
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-
-            # Reshape tally data array with separate axes for domain and energy
-            if groups == 'all':
-                num_groups = self.num_groups
-            else:
-                num_groups = len(groups)
-            num_subdomains = int(xs.shape[0] / num_groups)
-            new_shape = (num_subdomains, num_groups) + xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Reverse energies to align with increasing energy groups
             xs = xs[:, ::-1, :]
 
-            # Eliminate trivial dimensions
+        if squeeze:
             xs = np.squeeze(xs)
             xs = np.atleast_1d(xs)
 
-        xs = np.nan_to_num(xs)
         return xs
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',
@@ -4753,7 +4781,7 @@ class ChiPrompt(Chi):
 
        \langle \nu^p \sigma_{f,g' \rightarrow g} \phi \rangle &= \int_{r \in V}
        dr \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \;
-       \chi(E) \nu^p \sigma_f (r, E') \psi(r, E', \Omega')\\
+       \chi(E)^p \nu^p \sigma_f (r, E') \psi(r, E', \Omega')\\
        \langle \nu^p \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^p \sigma_f (r,
        E') \psi(r, E', \Omega') \\
@@ -4798,7 +4826,7 @@ class ChiPrompt(Chi):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4913,7 +4941,7 @@ class InverseVelocity(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4930,7 +4958,8 @@ class InverseVelocity(MGXS):
         The number of subdomains is unity for 'material', 'cell' and 'universe'
         domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
-        tally data from a statepoint file).
+        tally data from a statepoint file) and the number of mesh cells for
+        'mesh' domain types.
     num_nuclides : int
         The number of nuclides for which the multi-group cross section is
         being tracked. This is unity if the by_nuclide attribute is False.
@@ -5047,7 +5076,7 @@ class PromptNuFissionXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys

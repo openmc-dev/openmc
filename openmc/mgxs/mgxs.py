@@ -815,7 +815,6 @@ class MGXS(object):
                 densities = self.get_nuclide_densities('sum')
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
-                xs[np.isnan(xs)] = 0.0
 
         # Eliminate the trivial score dimension
         xs = np.squeeze(xs, axis=len(xs.shape) - 1)
@@ -1818,7 +1817,6 @@ class MatrixMGXS(MGXS):
                 densities = self.get_nuclide_densities('sum')
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
-                xs[np.isnan(xs)] = 0.0
 
         # Eliminate the trivial score dimension
         xs = np.squeeze(xs, axis=len(xs.shape) - 1)
@@ -3655,7 +3653,6 @@ class ScatterMatrixXS(MatrixMGXS):
                 densities = self.get_nuclide_densities('sum')
             if value == 'mean' or value == 'std_dev':
                 xs /= densities[np.newaxis, :, np.newaxis]
-                xs[np.isnan(xs)] = 0.0
 
         # Convert and nans to zero
         xs = np.nan_to_num(xs)

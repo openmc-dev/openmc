@@ -11,6 +11,7 @@ import numpy as np
 import openmc
 import openmc.mgxs
 import openmc.checkvalue as cv
+from openmc.tallies import ESTIMATOR_TYPES
 
 
 if sys.version_info[0] >= 3:
@@ -18,17 +19,18 @@ if sys.version_info[0] >= 3:
 
 
 class Library(object):
-    """A multi-group cross section library for some energy group structure.
+    """A multi-energy-group and multi-delayed-group cross section library for
+    some energy group structure.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for deterministic neutronics calculations.
 
-    This class helps automate the generation of MGXS objects for some energy
-    group structure and domain type. The Library serves as a collection for
-    MGXS objects with routines to automate the initialization of tallies for
-    input files, the loading of tally data from statepoint files, data storage,
-    energy group condensation and more.
+    This class helps automate the generation of MGXS and MDGXS objects for some
+    energy group structure and domain type. The Library serves as a collection
+    for MGXS and MDGXS objects with routines to automate the initialization of
+    tallies for input files, the loading of tally data from statepoint files,
+    data storage, energy group condensation and more.
 
     Parameters
     ----------
@@ -39,7 +41,7 @@ class Library(object):
     mgxs_types : Iterable of str
         The types of cross sections in the library (e.g., ['total', 'scatter'])
     name : str, optional
-        Name of the multi-group cross section. library Used as a label to
+        Name of the multi-group cross section library. Used as a label to
         identify tallies in OpenMC 'tallies.xml' file.
 
     Attributes
@@ -64,6 +66,11 @@ class Library(object):
         The highest legendre moment in the scattering matrices (default is 0)
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    delayed_groups : list of int
+        Delayed groups to filter out the xs
+    estimator : str or None
+        The tally estimator used to compute multi-group cross sections. If None,
+        the default for each MGXS type is used.
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -95,6 +102,7 @@ class Library(object):
         self._domain_type = None
         self._domains = 'all'
         self._energy_groups = None
+        self._delayed_groups = None
         self._correction = 'P0'
         self._legendre_order = 0
         self._tally_trigger = None
@@ -102,6 +110,7 @@ class Library(object):
         self._sp_filename = None
         self._keff = None
         self._sparse = False
+        self._estimator = None
 
         self.name = name
         self.openmc_geometry = openmc_geometry
@@ -126,6 +135,7 @@ class Library(object):
             clone._correction = self.correction
             clone._legendre_order = self.legendre_order
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
+            clone._delayed_groups = copy.deepcopy(self.delayed_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = copy.deepcopy(self.all_mgxs)
             clone._sp_filename = self._sp_filename
@@ -195,6 +205,10 @@ class Library(object):
         return self._energy_groups
 
     @property
+    def delayed_groups(self):
+        return self._delayed_groups
+
+    @property
     def correction(self):
         return self._correction
 
@@ -207,8 +221,19 @@ class Library(object):
         return self._tally_trigger
 
     @property
+    def estimator(self):
+        return self._estimator
+
+    @property
     def num_groups(self):
         return self.energy_groups.num_groups
+
+    @property
+    def num_delayed_groups(self):
+        if self.delayed_groups == None:
+            return 0
+        else:
+            return len(self.delayed_groups)
 
     @property
     def all_mgxs(self):
@@ -239,22 +264,33 @@ class Library(object):
 
     @mgxs_types.setter
     def mgxs_types(self, mgxs_types):
+        all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES
         if mgxs_types == 'all':
-            self._mgxs_types = openmc.mgxs.MGXS_TYPES
+            self._mgxs_types = all_mgxs_types
         else:
             cv.check_iterable_type('mgxs_types', mgxs_types, basestring)
             for mgxs_type in mgxs_types:
-                cv.check_value('mgxs_type', mgxs_type, openmc.mgxs.MGXS_TYPES)
+                cv.check_value('mgxs_type', mgxs_type, all_mgxs_types)
             self._mgxs_types = mgxs_types
 
     @by_nuclide.setter
     def by_nuclide(self, by_nuclide):
         cv.check_type('by_nuclide', by_nuclide, bool)
+
+        if by_nuclide == True and self.domain_type == 'mesh':
+            raise ValueError('Unable to create MGXS library by nuclide with '
+                             'mesh domain')
+
         self._by_nuclide = by_nuclide
 
     @domain_type.setter
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
+
+        if self.by_nuclide == True and domain_type == 'mesh':
+            raise ValueError('Unable to create MGXS library by nuclide with '
+                             'mesh domain')
+
         self._domain_type = domain_type
 
     @domains.setter
@@ -298,6 +334,23 @@ class Library(object):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
 
+    @delayed_groups.setter
+    def delayed_groups(self, delayed_groups):
+
+        if delayed_groups != None:
+
+            cv.check_type('delayed groups', delayed_groups, list, int)
+            cv.check_greater_than('num delayed groups', len(delayed_groups), 0)
+
+            # Check that the groups are within [1, MAX_DELAYED_GROUPS]
+            for group in delayed_groups:
+                cv.check_greater_than('delayed group', group, 0)
+                cv.check_less_than('delayed group', group,
+                                   openmc.mgxs.MAX_DELAYED_GROUPS,
+                                   equality=True)
+
+            self._delayed_groups = delayed_groups
+
     @correction.setter
     def correction(self, correction):
         cv.check_value('correction', correction, ('P0', None))
@@ -326,6 +379,11 @@ class Library(object):
     def tally_trigger(self, tally_trigger):
         cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
         self._tally_trigger = tally_trigger
+
+    @estimator.setter
+    def estimator(self, estimator):
+        cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
+        self._estimator = estimator
 
     @sparse.setter
     def sparse(self, sparse):
@@ -363,14 +421,23 @@ class Library(object):
         for domain in self.domains:
             self.all_mgxs[domain.id] = OrderedDict()
             for mgxs_type in self.mgxs_types:
-                mgxs = openmc.mgxs.MGXS.get_mgxs(mgxs_type, name=self.name)
+                if mgxs_type in openmc.mgxs.MDGXS_TYPES:
+                    mgxs = openmc.mgxs.MDGXS.get_mgxs(mgxs_type, name=self.name)
+                else:
+                    mgxs = openmc.mgxs.MGXS.get_mgxs(mgxs_type, name=self.name)
+
                 mgxs.domain = domain
                 mgxs.domain_type = self.domain_type
                 mgxs.energy_groups = self.energy_groups
                 mgxs.by_nuclide = self.by_nuclide
+                if self.estimator is not None:
+                    mgxs.estimator = self.estimator
+
+                if mgxs_type in openmc.mgxs.MDGXS_TYPES:
+                    mgxs.delayed_groups = self.delayed_groups
 
                 # If a tally trigger was specified, add it to the MGXS
-                if self.tally_trigger:
+                if self.tally_trigger is not None:
                     mgxs.tally_trigger = self.tally_trigger
 
                 # Specify whether to use a transport ('P0') correction
@@ -460,7 +527,7 @@ class Library(object):
         ----------
         domain : Material or Cell or Universe or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'delayed-nu-fission', 'chi-delayed', 'beta'}
             The type of multi-group cross section object to return
 
         Returns
@@ -763,7 +830,7 @@ class Library(object):
 
         Parameters
         ----------
-        domain : openmc.Material or openmc.Cell or openmc.Universe
+        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
             The domain for spatial homogenization
         xsdata_name : str
             Name to apply to the "xsdata" entry produced by this method
@@ -811,7 +878,7 @@ class Library(object):
         """
 
         cv.check_type('domain', domain, (openmc.Material, openmc.Cell,
-                                         openmc.Cell))
+                                         openmc.Cell, openmc.Mesh))
         cv.check_type('xsdata_name', xsdata_name, basestring)
         cv.check_type('nuclide', nuclide, basestring)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])

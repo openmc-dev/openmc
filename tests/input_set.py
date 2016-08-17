@@ -2,6 +2,7 @@ import openmc
 from openmc.source import Source
 from openmc.stats import Box
 
+import numpy as np
 
 class InputSet(object):
     def __init__(self):
@@ -667,6 +668,158 @@ class PinCellInputSet(object):
         plot.filename = 'mat'
         plot.origin = (0.0, 0.0, 0)
         plot.width = (1.26, 1.26)
+        plot.pixels = (300, 300)
+        plot.color = 'mat'
+
+        self.plots.add_plot(plot)
+
+
+class AssemblyInputSet(object):
+    def __init__(self):
+        self.settings = openmc.Settings()
+        self.materials = openmc.Materials()
+        self.geometry = openmc.Geometry()
+        self.tallies = None
+        self.plots = None
+
+    def export(self):
+        self.settings.export_to_xml()
+        self.materials.export_to_xml()
+        self.geometry.export_to_xml()
+        if self.tallies is not None:
+            self.tallies.export_to_xml()
+        if self.plots is not None:
+            self.plots.export_to_xml()
+
+    def build_default_materials_and_geometry(self):
+        # Define materials.
+        fuel = openmc.Material(name='Fuel')
+        fuel.set_density('g/cm3', 10.29769)
+        fuel.add_nuclide("U234", 4.4843e-6)
+        fuel.add_nuclide("U235", 5.5815e-4)
+        fuel.add_nuclide("U238", 2.2408e-2)
+        fuel.add_nuclide("O16", 4.5829e-2)
+
+        clad = openmc.Material(name='Cladding')
+        clad.set_density('g/cm3', 6.55)
+        clad.add_nuclide("Zr90", 2.1827e-2)
+        clad.add_nuclide("Zr91", 4.7600e-3)
+        clad.add_nuclide("Zr92", 7.2758e-3)
+        clad.add_nuclide("Zr94", 7.3734e-3)
+        clad.add_nuclide("Zr96", 1.1879e-3)
+
+        hot_water = openmc.Material(name='Hot borated water')
+        hot_water.set_density('g/cm3', 0.740582)
+        hot_water.add_nuclide("H1", 4.9457e-2)
+        hot_water.add_nuclide("O16", 2.4672e-2)
+        hot_water.add_nuclide("B10", 8.0042e-6)
+        hot_water.add_nuclide("B11", 3.2218e-5)
+        hot_water.add_s_alpha_beta('c_H_in_H2O', '71t')
+
+        # Define the materials file.
+        self.materials.default_xs = '71c'
+        self.materials += (fuel, clad, hot_water)
+
+        # Instantiate ZCylinder surfaces
+        fuel_or = openmc.ZCylinder(x0=0, y0=0, R=0.39218, name='Fuel OR')
+        clad_or = openmc.ZCylinder(x0=0, y0=0, R=0.45720, name='Clad OR')
+
+        # Create boundary planes to surround the geometry
+        min_x = openmc.XPlane(x0=-10.71, boundary_type='reflective')
+        max_x = openmc.XPlane(x0=+10.71, boundary_type='reflective')
+        min_y = openmc.YPlane(y0=-10.71, boundary_type='reflective')
+        max_y = openmc.YPlane(y0=+10.71, boundary_type='reflective')
+
+        # Create a Universe to encapsulate a fuel pin
+        fuel_pin_universe = openmc.Universe(name='Fuel Pin')
+
+        # Create fuel Cell
+        fuel_cell = openmc.Cell(name='fuel')
+        fuel_cell.fill = fuel
+        fuel_cell.region = -fuel_or
+        fuel_pin_universe.add_cell(fuel_cell)
+
+        # Create a clad Cell
+        clad_cell = openmc.Cell(name='clad')
+        clad_cell.fill = clad
+        clad_cell.region = +fuel_or & -clad_or
+        fuel_pin_universe.add_cell(clad_cell)
+
+        # Create a moderator Cell
+        hot_water_cell = openmc.Cell(name='hot water')
+        hot_water_cell.fill = hot_water
+        hot_water_cell.region = +clad_or
+        fuel_pin_universe.add_cell(hot_water_cell)
+
+        # Create a Universe to encapsulate a control rod guide tube
+        guide_tube_universe = openmc.Universe(name='Guide Tube')
+
+        # Create guide tube inner Cell
+        gt_inner_cell = openmc.Cell(name='guide tube inner water')
+        gt_inner_cell.fill = hot_water
+        gt_inner_cell.region = -fuel_or
+        guide_tube_universe.add_cell(gt_inner_cell)
+
+        # Create a clad Cell
+        gt_clad_cell = openmc.Cell(name='guide tube clad')
+        gt_clad_cell.fill = clad
+        gt_clad_cell.region = +fuel_or & -clad_or
+        guide_tube_universe.add_cell(gt_clad_cell)
+
+        # Create a guide tube outer Cell
+        gt_outer_cell = openmc.Cell(name='guide tube outer water')
+        gt_outer_cell.fill = hot_water
+        gt_outer_cell.region = +clad_or
+        guide_tube_universe.add_cell(gt_outer_cell)
+
+        # Create fuel assembly Lattice
+        assembly = openmc.RectLattice(name='Fuel Assembly')
+        assembly.pitch = (1.26, 1.26)
+        assembly.lower_left = [-1.26 * 17. / 2.0] * 2
+
+        # Create array indices for guide tube locations in lattice
+        template_x = np.array([5, 8, 11, 3, 13, 2, 5, 8, 11, 14, 2, 5, 8,
+                               11, 14, 2, 5, 8, 11, 14, 3, 13, 5, 8, 11])
+        template_y = np.array([2, 2, 2, 3, 3, 5, 5, 5, 5, 5, 8, 8, 8, 8,
+                               8, 11, 11, 11, 11, 11, 13, 13, 14, 14, 14])
+
+        # Initialize an empty 17x17 array of the lattice universes
+        universes = np.empty((17, 17), dtype=openmc.Universe)
+
+        # Fill the array with the fuel pin and guide tube universes
+        universes[:,:] = fuel_pin_universe
+        universes[template_x, template_y] = guide_tube_universe
+
+        # Store the array of universes in the lattice
+        assembly.universes = universes
+
+        # Create root Cell
+        root_cell = openmc.Cell(name='root cell')
+        root_cell.fill = assembly
+
+        # Add boundary planes
+        root_cell.region = +min_x & -max_x & +min_y & -max_y
+
+        # Create root Universe
+        root_universe = openmc.Universe(universe_id=0, name='root universe')
+        root_universe.add_cell(root_cell)
+
+        # Instantiate a Geometry, register the root Universe, and export to XML
+        self.geometry.root_universe = root_universe
+
+    def build_default_settings(self):
+        self.settings.batches = 10
+        self.settings.inactive = 5
+        self.settings.particles = 100
+        self.settings.source = Source(space=Box([-10.71, -10.71, -1],
+                                                [10.71, 10.71, 1],
+                                                only_fissionable=True))
+
+    def build_defualt_plots(self):
+        plot = openmc.Plot()
+        plot.filename = 'mat'
+        plot.origin = (0.0, 0.0, 0)
+        plot.width = (21.42, 21.42)
         plot.pixels = (300, 300)
         plot.color = 'mat'
 

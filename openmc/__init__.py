@@ -22,6 +22,7 @@ from openmc.executor import *
 from openmc.statepoint import *
 from openmc.summary import *
 from openmc.particle_restart import *
+from openmc.mixin import *
 
 try:
     from openmc.opencg_compatible import *

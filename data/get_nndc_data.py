@@ -151,5 +151,6 @@ if not response or response.lower().startswith('y'):
     env = os.environ.copy()
     env['PYTHONPATH'] = os.path.join(cwd, '..')
 
-    subprocess.call(['../scripts/openmc-ace-to-hdf5', '-d', 'nndc_hdf5']
+    subprocess.call(['../scripts/openmc-ace-to-hdf5', '-d', 'nndc_hdf5',
+                     '--fission_energy_release', 'fission_Q_data_endfb71.h5']
                     + ace_files, env=env)

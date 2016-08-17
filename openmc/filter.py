@@ -777,6 +777,18 @@ class Filter(object):
             df.loc[:, self.type + ' low'] = lo_bins
             df.loc[:, self.type + ' high'] = hi_bins
 
+        elif self.type == 'surface':
+            filter_bins = np.repeat(self.bins, self.stride)
+            tile_factor = data_size / len(filter_bins)
+            filter_bins = np.tile(filter_bins, tile_factor)
+            filter_bins = [x if x != 1 else 'x-min' for x in filter_bins]
+            filter_bins = [x if x != 2 else 'x-max' for x in filter_bins]
+            filter_bins = [x if x != 3 else 'y-min' for x in filter_bins]
+            filter_bins = [x if x != 4 else 'y-max' for x in filter_bins]
+            filter_bins = [x if x != 5 else 'z-min' for x in filter_bins]
+            filter_bins = [x if x != 6 else 'z-max' for x in filter_bins]
+            df = pd.concat([df, pd.DataFrame({self.type : filter_bins})])
+
         # universe, material, surface, cell, and cellborn filters
         else:
             filter_bins = np.repeat(self.bins, self.stride)

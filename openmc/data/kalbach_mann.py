@@ -5,7 +5,6 @@ from warnings import warn
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.mixin import Equality
 from openmc.stats import Tabular, Univariate, Discrete, Mixture
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from .angle_energy import AngleEnergy

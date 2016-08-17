@@ -3,7 +3,9 @@ import xml.etree.ElementTree as ET
 
 import h5py
 
+from openmc.mixin import Equality
 from openmc.clean_xml import clean_xml_indentation
+
 
 class DataLibrary(Equality):
     def __init__(self):

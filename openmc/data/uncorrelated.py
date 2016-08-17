@@ -1,7 +1,6 @@
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.mixin import Equality
 from .angle_energy import AngleEnergy
 from .energy_distribution import EnergyDistribution
 from .angle_distribution import AngleDistribution

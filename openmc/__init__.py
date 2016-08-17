@@ -13,10 +13,10 @@ from openmc.settings import *
 from openmc.surface import *
 from openmc.universe import *
 from openmc.mesh import *
-from openmc.mgxs_library import *
 from openmc.filter import *
 from openmc.trigger import *
 from openmc.tallies import *
+from openmc.mgxs_library import *
 from openmc.cmfd import *
 from openmc.executor import *
 from openmc.statepoint import *

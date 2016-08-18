@@ -1005,7 +1005,7 @@ def get_openmc_geometry(opencg_geometry, compatible=True):
     opencg_geometry : opencg.Geometry
         OpenCG geometry
     compatible : bool
-        Whether the OpenCG geometry is compatible with OpenMOC's geometric
+        Whether the OpenCG geometry is compatible with OpenMC's geometric
         primitives. This should be set to False if the OpenCG geometry
         uses SquarePrism surfaces. True by default as an optimization.
 

@@ -1732,8 +1732,7 @@ contains
              (score_bin == SCORE_PROMPT_NU_FISSION .and. g == 0)) then
 
           ! determine scoring index and weight for this filter combination
-          i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride) &
-               + 1
+          i_filter = t % get_filter_index(matching_bins)
           filter_weight = product(filter_weights(:size(t % filters)))
 
           ! Add score to tally
@@ -1772,8 +1771,7 @@ contains
           else
 
             ! determine scoring index and weight for this filter combination
-            i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride)&
-                 + 1
+            i_filter = t % get_filter_index(matching_bins)
             filter_weight = product(filter_weights(:size(t % filters)))
 
             ! Add score to tally
@@ -1859,7 +1857,7 @@ contains
         end if
 
         ! determine scoring index and weight for this filter combination
-        i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride) + 1
+        i_filter = t % get_filter_index(matching_bins)
         filter_weight = product(filter_weights(:size(t % filters)))
 
         ! Add score to tally
@@ -1895,8 +1893,7 @@ contains
     matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = d_bin
 
     ! determine scoring index and weight on the modified matching_bins
-    filter_index = sum((matching_bins(1:size(t % filters)) - 1) * t % stride) &
-         + 1
+    filter_index = t % get_filter_index(matching_bins)
     filter_weight = product(filter_weights(:size(t % filters)))
 
 !$omp atomic
@@ -1960,8 +1957,7 @@ contains
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
-        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-             * t % stride) + 1
+        filter_index = t % get_filter_index(matching_bins)
         filter_weight = product(filter_weights(:size(t % filters)))
 
         ! ======================================================================
@@ -2114,8 +2110,7 @@ contains
       FILTER_LOOP: do
 
         ! Determine scoring index and weight for this filter combination
-        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-             * t % stride) + 1
+        filter_index = t % get_filter_index(matching_bins)
         filter_weight = product(filter_weights(:size(t % filters)))
 
         ! ======================================================================

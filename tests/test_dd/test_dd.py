@@ -6,8 +6,7 @@ import glob
 
 sys.path.insert(0, os.pardir)
 from testing_harness import TestHarness
-from openmc.executor import Executor
-from openmc.statepoint import StatePoint
+import openmc
 import numpy as np
 
 def order_by(arr, ordering):
@@ -86,10 +85,9 @@ class DomainDecomTestHarness(TestHarness):
         elif domain_num == 4:
             p_num = 5
         
-        executor = Executor()
-        returncode = executor.run_simulation(mpi_procs=p_num, threads=1,
-                                             openmc_exec=self._opts.exe,
-                                             mpi_exec=self._opts.mpi_exec)
+        returncode = openmc.run(mpi_procs=p_num, threads=1,
+                                openmc_exec=self._opts.exe,
+                                mpi_exec=self._opts.mpi_exec)
         assert returncode == 0, 'OpenMC did not exit successfully.'
 
     def _test_output_created(self, domain_num):
@@ -113,7 +111,7 @@ class DomainDecomTestHarness(TestHarness):
         if domain_num == 1:
             # Read the statepoint file.
             statepoint = glob.glob(os.path.join(os.getcwd(), 'statepoint.20.domain_1.h5'))[0]
-            sp = StatePoint(statepoint)
+            sp = openmc.StatePoint(statepoint)
             # extract tally results (means only) and convert to vector
             results = sp.tallies[1].mean[:,:,0]
             otf_filter_bin_map = sp._f['tallies/tally 1/otf_filter_bin_map']
@@ -135,16 +133,16 @@ class DomainDecomTestHarness(TestHarness):
             # read in statepoint files
             spfile = 'statepoint.20.domain_1.h5'
             statepoint = glob.glob(os.path.join(os.getcwd(), spfile))[0]
-            sp1 = StatePoint(statepoint)
+            sp1 = openmc.StatePoint(statepoint)
             spfile = 'statepoint.20.domain_2.h5'
             statepoint = glob.glob(os.path.join(os.getcwd(), spfile))[0]
-            sp2 = StatePoint(statepoint)
+            sp2 = openmc.StatePoint(statepoint)
             spfile = 'statepoint.20.domain_3.h5'
             statepoint = glob.glob(os.path.join(os.getcwd(), spfile))[0]
-            sp3 = StatePoint(statepoint)
+            sp3 = openmc.StatePoint(statepoint)
             spfile = 'statepoint.20.domain_4.h5'
             statepoint = glob.glob(os.path.join(os.getcwd(), spfile))[0]
-            sp4 = StatePoint(statepoint)
+            sp4 = openmc.StatePoint(statepoint)
             # extract tally results, means only since sum_sq won't match the 1_domain case
             mean1=sp1._f['tallies/tally 1/results'].value['sum']/sp1.tallies[1].num_realizations
             mean2=sp2._f['tallies/tally 1/results'].value['sum']/sp2.tallies[1].num_realizations

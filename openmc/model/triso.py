@@ -7,7 +7,7 @@ import itertools
 import random
 from random import uniform, gauss
 from heapq import heappush, heappop
-from math import pi, sin, cos, floor, log10
+from math import pi, sin, cos, floor, log10, sqrt
 
 import numpy as np
 import scipy.spatial
@@ -224,8 +224,8 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
     RSP. This initial configuration of particles is then used as a starting
     point for CRP using Jodrey and Tory's algorithm [1]_.
 
-    In RSP, particle centers are placed one by one at rondom, and placement
-    attempts for a particles are made until the particle is not overlapping any
+    In RSP, particle centers are placed one by one at random, and placement
+    attempts for a particle are made until the particle is not overlapping any
     others. This implementation of the algorithm uses a lattice over the domain
     to speed up the nearest neighbor search by only searching for a particle's
     neighbors within that lattice cell.
@@ -333,7 +333,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         """
 
         if domain_shape is 'cube':
-            return np.array(domain_center) - 3*(domain_length/2,)
+            return np.array(domain_center) - domain_length/2
         elif domain_shape is 'cylinder':
             return np.array(domain_center) - (0, 0, domain_length/2)
         elif domain_shape is 'sphere':
@@ -399,7 +399,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
 
         """
 
-        r = uniform(0, ulim[0]**2)**.5
+        r = sqrt(uniform(0, ulim[0]**2))
         t = uniform(0, 2*pi)
         return [r*cos(t), r*sin(t), uniform(llim[2], ulim[2])]
 
@@ -416,7 +416,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         """
 
         x = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
-        r = (uniform(0, ulim[0]**3)**(1/3) / (x[0]**2 + x[1]**2 + x[2]**2)**.5)
+        r = (uniform(0, ulim[0]**3)**(1/3) / sqrt(x[0]**2 + x[1]**2 + x[2]**2))
         return [r*i for i in x]
 
 
@@ -620,8 +620,8 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         r = (outer_diameter[0] - d)/2
 
         v = (particles[i] - particles[j])/d
-        particles[i] = particles[i] + r*v
-        particles[j] = particles[j] - r*v
+        particles[i] += r*v
+        particles[j] -= r*v
 
         # Apply reflective boundary conditions
         apply_boundary_conditions(i, j)
@@ -643,7 +643,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         -------
         int
             Index in particles array of nearest neighbor of i
-        double
+        float
             distance between i and nearest neighbor.
 
         """
@@ -734,8 +734,8 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         if cl is None:
             cl = cell_length
 
-        return tuple([int((p[0] + domain_radius)/cl[0]),
-                      int((p[1] + domain_radius)/cl[1]), int(p[2]/cl[2])])
+        return (int((p[0] + domain_radius)/cl[0]),
+                int((p[1] + domain_radius)/cl[1]), int(p[2]/cl[2]))
 
 
     def cell_index_sphere(p, cl=None):
@@ -935,7 +935,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
     # Calculate the packing fraction if the number of particles is specified;
     # otherwise, calculate the number of particles from the packing fraction.
     if ((n_particles is None and packing_fraction is None) or
-       (n_particles is not None and packing_fraction is not None)):
+        (n_particles is not None and packing_fraction is not None)):
         raise ValueError('Exactly one of "n_particles" and "packing_fraction" '
                          'must be specified.')
     elif packing_fraction is None:

@@ -622,7 +622,7 @@ class XSdata(object):
             barns. Defaults to 'macro'.
         subdomain : iterable of int
             If the MGXS contains a mesh domain type, the subdomain parameter
-            specifies which mesh cell ([i, j, k]) to use.
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -662,7 +662,7 @@ class XSdata(object):
             barns. Defaults to 'macro'.
         subdomain : iterable of int
             If the MGXS contains a mesh domain type, the subdomain parameter
-            specifies which mesh cell ([i, j, k]) to use.
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -703,7 +703,7 @@ class XSdata(object):
             barns. Defaults to 'macro'.
         subdomain : iterable of int
             If the MGXS contains a mesh domain type, the subdomain parameter
-            specifies which mesh cell ([i, j, k]) to use.
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -744,7 +744,7 @@ class XSdata(object):
             barns. Defaults to 'macro'.
         subdomain : iterable of int
             If the MGXS contains a mesh domain type, the subdomain parameter
-            specifies which mesh cell ([i, j, k]) to use.
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -795,7 +795,7 @@ class XSdata(object):
             barns. Defaults to 'macro'.
         subdomain : iterable of int
             If the MGXS contains a mesh domain type, the subdomain parameter
-            specifies which mesh cell ([i, j, k]) to use.
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -835,7 +835,7 @@ class XSdata(object):
             barns. Defaults to 'macro'.
         subdomain : iterable of int
             If the MGXS contains a mesh domain type, the subdomain parameter
-            specifies which mesh cell ([i, j, k]) to use.
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -885,7 +885,7 @@ class XSdata(object):
             barns. Defaults to 'macro'.
         subdomain : iterable of int
             If the MGXS contains a mesh domain type, the subdomain parameter
-            specifies which mesh cell ([i, j, k]) to use.
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -958,7 +958,7 @@ class XSdata(object):
             barns. Defaults to 'macro'.
         subdomain : iterable of int
             If the MGXS contains a mesh domain type, the subdomain parameter
-            specifies which mesh cell ([i, j, k]) to use.
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------

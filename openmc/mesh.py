@@ -6,8 +6,7 @@ import sys
 import numpy as np
 
 import openmc.checkvalue as cv
-import openmc.surface
-import openmc.cell
+import openmc
 
 
 if sys.version_info[0] >= 3:
@@ -199,6 +198,7 @@ class Mesh(object):
         ...
 
         """
+
         if len(self.dimension) == 2:
             for x in range(self.dimension[0]):
                 for y in range(self.dimension[1]):
@@ -241,7 +241,7 @@ class Mesh(object):
 
     def build_cells(self, bc=['reflective'] * 6):
         """Generates a lattice of universes with the same dimensionality
-        as the mesh object in self.  The individual cells/universes produced
+        as the mesh object.  The individual cells/universes produced
         will not have material definitions applied and so downstream code
         will have to apply that information.
 

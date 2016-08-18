@@ -548,12 +548,6 @@ class MGXS(object):
         float
             The atomic number density (atom/b-cm) for the nuclide of interest
 
-        Raises
-        -------
-        ValueError
-            When the density is requested for a nuclide which is not found in
-            the spatial domain.
-
         """
 
         cv.check_type('nuclide', nuclide, basestring)
@@ -561,13 +555,7 @@ class MGXS(object):
         # Get list of all nuclides in the spatial domain
         nuclides = self.domain.get_nuclide_densities()
 
-        if nuclide not in nuclides:
-            msg = 'Unable to get density for nuclide "{0}" which is not in ' \
-                  '{1} "{2}"'.format(nuclide, self.domain_type, self.domain.id)
-            ValueError(msg)
-
-        density = nuclides[nuclide][1]
-        return density
+        return nuclides[nuclide][1] if nuclide in nuclides else 0.0
 
     def get_nuclide_densities(self, nuclides='all'):
         """Get an array of atomic number densities in units of atom/b-cm for all
@@ -1535,7 +1523,8 @@ class MGXS(object):
 
             df.rename(columns={'energyout low [MeV]': 'group out'},
                       inplace=True)
-            out_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
+            out_groups = np.repeat(all_groups, self.xs_tally.num_scores)
+            out_groups = np.tile(out_groups, int(df.shape[0] / out_groups.size))
             df['group out'] = out_groups
             del df['energyout high [MeV]']
             columns = ['group in', 'group out']
@@ -1572,6 +1561,10 @@ class MGXS(object):
             tile_factor = df.shape[0] / len(densities)
             df['mean'] /= np.tile(densities, tile_factor)
             df['std. dev.'] /= np.tile(densities, tile_factor)
+
+            # Replace NaNs by zeros (happens if nuclide density is zero)
+            df['mean'].replace(np.nan, 0.0, inplace=True)
+            df['std. dev.'].replace(np.nan, 0.0, inplace=True)
 
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal

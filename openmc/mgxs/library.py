@@ -899,7 +899,7 @@ class Library(object):
             cv.check_greater_than('tabular_points', tabular_points, 1)
         if subdomain is not None:
             cv.check_iterable_type('subdomain', subdomain, Integral,
-                                   max_depth=2)
+                                   max_depth=3)
 
         # Make sure statepoint has been loaded
         if self._sp_filename is None:
@@ -1123,8 +1123,6 @@ class Library(object):
 
                     # Create XSdata and Macroscopic for this domain
                     xsdata = self.get_xsdata(domain, xsdata_name,
-                                             nuclide='total',
-                                             xs_type=xs_type,
                                              xs_id=all_xs_ids[i],
                                              tabular_legendre=tabular_legendre,
                                              tabular_points=tabular_points,
@@ -1192,7 +1190,7 @@ class Library(object):
             in building the tabular distribution. Default is `33`.
         bc : iterable of {'reflective', 'periodic', 'transmission', or 'vacuum'}
             Boundary conditions for each of the four faces of a rectangle
-            (if aplying to a 2D mesh) or six faces of a parallelepiped
+            (if applying to a 2D mesh) or six faces of a parallelepiped
             (if applying to a 3D mesh) provided in the following order:
             [x min, x max, y min, y max, z min, z max].  2-D cells do not
             contain the z min and z max entries.
@@ -1227,7 +1225,7 @@ class Library(object):
         self.check_library_for_openmc_mgxs()
 
         # If the domain type is a mesh, then there can only be one domain for
-        # this method. Thi is because we can build a model automatically if
+        # this method. This is because we can build a model automatically if
         # the user provided multiple mesh domains for library generation since
         # the multiple meshes could be overlapping or in disparate regions
         # of the continuous energy model. The next step makes sure there is

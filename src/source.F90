@@ -107,7 +107,7 @@ contains
     real(8) :: r(3)       ! sampled coordinates
     logical :: found      ! Does the source particle exist within geometry?
     type(Particle) :: p   ! Temporary particle for using find_cell
-    integer, save :: n_sample = 0  ! Number of samples
+    integer, save :: n_accept = 0  ! Number of samples accepted
     integer, save :: n_reject = 0  ! Number of samples rejected
 
     ! Set weight to one by default
@@ -161,15 +161,15 @@ contains
       if (.not. found) then
         n_reject = n_reject + 1
         if (n_reject >= EXTSRC_REJECT_THRESHOLD .and. &
-             real(n_sample, 8)/n_reject <= EXTSRC_REJECT_FRACTION) then
+             real(n_accept, 8)/n_reject <= EXTSRC_REJECT_FRACTION) then
           call fatal_error("More than 95% of external source sites sampled &
                &were rejected. Please check your external source definition.")
         end if
       end if
     end do
 
-    ! Increment number of samples
-    n_sample = n_sample + 1
+    ! Increment number of accepted samples
+    n_accept = n_accept + 1
 
     call p % clear()
 

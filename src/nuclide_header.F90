@@ -10,7 +10,7 @@ module nuclide_header
   use constants
   use dict_header, only: DictIntInt
   use endf,        only: reaction_name, is_fission, is_disappearance
-  use endf_header, only: Function1D, Constant1D, Polynomial, Tabulated1D
+  use endf_header, only: Function1D, Polynomial, Tabulated1D
   use error,       only: fatal_error, warning
   use hdf5_interface, only: read_attribute, open_group, close_group, &
        open_dataset, read_dataset, close_dataset, get_shape
@@ -87,6 +87,10 @@ module nuclide_header
     type(Reaction), allocatable :: reactions(:)
     type(DictIntInt) :: reaction_index ! map MT values to index in reactions
                                        ! array; used at tally-time
+
+    ! Fission energy release
+    class(Function1D), allocatable :: fission_q_prompt ! prompt neutrons, gammas
+    class(Function1D), allocatable :: fission_q_recov  ! neutrons, gammas, betas
 
   contains
     procedure :: clear => nuclide_clear
@@ -192,6 +196,8 @@ module nuclide_header
     integer(HID_T) :: rxs_group
     integer(HID_T) :: rx_group
     integer(HID_T) :: total_nu
+    integer(HID_T) :: fer_group                 ! fission_energy_release group
+    integer(HID_T) :: fer_dset
     integer(SIZE_T) :: name_len, name_file_len
     integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
@@ -251,8 +257,8 @@ module nuclide_header
       call this % urr_data % from_hdf5(urr_group)
 
       ! if the inelastic competition flag indicates that the inelastic cross
-      ! section should be determined from a normal reaction cross section, we need
-      ! to get the index of the reaction
+      ! section should be determined from a normal reaction cross section, we
+      ! need to get the index of the reaction
       if (this % urr_data % inelastic_flag > 0) then
         do i = 1, size(this % reactions)
           if (this % reactions(i) % MT == this % urr_data % inelastic_flag) then
@@ -283,17 +289,52 @@ module nuclide_header
       total_nu = open_dataset(nu_group, 'yield')
       call read_attribute(temp, total_nu, 'type')
       select case (temp)
-      case ('constant')
-        allocate(Constant1D :: this % total_nu)
-      case ('tabulated')
+      case ('Tabulated1D')
         allocate(Tabulated1D :: this % total_nu)
-      case ('polynomial')
+      case ('Polynomial')
         allocate(Polynomial :: this % total_nu)
       end select
       call this % total_nu % from_hdf5(total_nu)
       call close_dataset(total_nu)
 
       call close_group(nu_group)
+    end if
+
+    ! Read fission energy release data if present
+    call h5ltpath_valid_f(group_id, 'fission_energy_release', .true., exists, &
+                          hdf5_err)
+    if (exists) then
+      fer_group = open_group(group_id, 'fission_energy_release')
+
+      ! Check to see if this is polynomial or tabulated data
+      fer_dset = open_dataset(fer_group, 'q_prompt')
+      call read_attribute(temp, fer_dset, 'type')
+      if (temp == 'Polynomial') then
+        ! Read the prompt Q-value
+        allocate(Polynomial :: this % fission_q_prompt)
+        call this % fission_q_prompt % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+
+        ! Read the recoverable energy Q-value
+        allocate(Polynomial :: this % fission_q_recov)
+        fer_dset = open_dataset(fer_group, 'q_recoverable')
+        call this % fission_q_recov % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else if (temp == 'Tabulated1D') then
+        ! Read the prompt Q-value
+        allocate(Tabulated1D :: this % fission_q_prompt)
+        call this % fission_q_prompt % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+
+        ! Read the recoverable energy Q-value
+        allocate(Tabulated1D :: this % fission_q_recov)
+        fer_dset = open_dataset(fer_group, 'q_recoverable')
+        call this % fission_q_recov % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission energy release format.')
+      end if
+      call close_group(fer_group)
     end if
 
     ! Create derived cross section data

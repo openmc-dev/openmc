@@ -289,7 +289,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 21
+  integer, parameter :: N_SCORE_TYPES = 23
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -311,7 +311,9 @@ module constants
        SCORE_EVENTS             = -18, & ! number of events
        SCORE_DELAYED_NU_FISSION = -19, & ! delayed neutron production rate
        SCORE_PROMPT_NU_FISSION  = -20, & ! prompt neutron production rate
-       SCORE_INVERSE_VELOCITY   = -21    ! flux-weighted inverse velocity
+       SCORE_INVERSE_VELOCITY   = -21, & ! flux-weighted inverse velocity
+       SCORE_FISS_Q_PROMPT      = -22, & ! prompt fission Q-value
+       SCORE_FISS_Q_RECOV       = -23    ! recoverable fission Q-value
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -356,12 +358,12 @@ module constants
 
   ! Tally surface current directions
   integer, parameter :: &
-       IN_RIGHT  = 1,   &
-       OUT_RIGHT = 2,   &
-       IN_FRONT  = 3,   &
-       OUT_FRONT = 4,   &
-       IN_TOP    = 5,   &
-       OUT_TOP   = 6
+       OUT_LEFT   = 1,   &   ! x min
+       OUT_RIGHT  = 2,   &   ! x max
+       OUT_BACK   = 3,   &   ! y min
+       OUT_FRONT  = 4,   &   ! y max
+       OUT_BOTTOM = 5,   &   ! z min
+       OUT_TOP    = 6        ! z max
 
   ! Tally trigger types and threshold
   integer, parameter :: &

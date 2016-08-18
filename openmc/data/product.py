@@ -3,10 +3,9 @@ from numbers import Real
 import sys
 
 import numpy as np
-from numpy.polynomial.polynomial import Polynomial
 
 import openmc.checkvalue as cv
-from .function import Tabulated1D
+from .function import Tabulated1D, Polynomial, Function1D
 from .angle_energy import AngleEnergy
 
 if sys.version_info[0] >= 3:
@@ -36,7 +35,7 @@ class Product(object):
         yield represents particles from prompt and delayed sources.
     particle : str
         What particle the reaction product is.
-    yield_ : float or openmc.data.Tabulated1D or numpy.polynomial.Polynomial
+    yield_ : openmc.data.Function1D
         Yield of secondary particle in the reaction.
 
     """
@@ -47,7 +46,7 @@ class Product(object):
         self.emission_mode = 'prompt'
         self.distribution = []
         self.applicability = []
-        self.yield_ = 1
+        self.yield_ = Polynomial((1,))  # 0-order polynomial i.e. a constant
 
     def __repr__(self):
         if isinstance(self.yield_, Real):
@@ -119,8 +118,7 @@ class Product(object):
 
     @yield_.setter
     def yield_(self, yield_):
-        cv.check_type('product yield', yield_,
-                      (Real, Tabulated1D, Polynomial))
+        cv.check_type('product yield', yield_, Function1D)
         self._yield = yield_
 
     def to_hdf5(self, group):
@@ -138,16 +136,7 @@ class Product(object):
             group.attrs['decay_rate'] = self.decay_rate
 
         # Write yield
-        if isinstance(self.yield_, Tabulated1D):
-            self.yield_.to_hdf5(group, 'yield')
-            dset = group['yield']
-            dset.attrs['type'] = np.string_('tabulated')
-        elif isinstance(self.yield_, Polynomial):
-            dset = group.create_dataset('yield', data=self.yield_.coef)
-            dset.attrs['type'] = np.string_('polynomial')
-        else:
-            dset = group.create_dataset('yield', data=float(self.yield_))
-            dset.attrs['type'] = np.string_('constant')
+        self.yield_.to_hdf5(group, 'yield')
 
         # Write applicability/distribution
         group.attrs['n_distribution'] = len(self.distribution)
@@ -180,13 +169,7 @@ class Product(object):
             p.decay_rate = group.attrs['decay_rate']
 
         # Read yield
-        yield_type = group['yield'].attrs['type'].decode()
-        if yield_type == 'constant':
-            p.yield_ = group['yield'].value
-        elif yield_type == 'polynomial':
-            p.yield_ = Polynomial(group['yield'].value)
-        elif yield_type == 'tabulated':
-            p.yield_ = Tabulated1D.from_hdf5(group['yield'])
+        p.yield_ = Function1D.from_hdf5(group['yield'])
 
         # Read applicability/distribution
         n_distribution = group.attrs['n_distribution']

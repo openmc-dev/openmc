@@ -28,6 +28,9 @@ MOCK_MODULES = ['numpy', 'numpy.polynomial', 'numpy.polynomial.polynomial',
                 'h5py', 'pandas', 'opencg']
 sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
+import numpy as np
+np.polynomial.Polynomial = MagicMock
+
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the

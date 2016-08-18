@@ -3179,18 +3179,18 @@ contains
                    // " specified on tally " // trim(to_str(t % id)))
             end if
 
-            ! Determine number of bins -- this is assuming that the tally is
-            ! a volume tally and not a surface current tally. If it is a
-            ! surface current tally, the number of bins will get reset later
+            ! Determine number of bins
             filt % n_bins = product(m % dimension)
 
             ! Store the index of the mesh
             filt % mesh = i_mesh
           end select
+
           ! Set the filter index in the tally find_filter array
           t % find_filter(FILTER_MESH) = j
 
         case ('energy')
+
           ! Allocate and declare the filter type
           allocate(EnergyFilter::t % filters(j) % obj)
           select type (filt => t % filters(j) % obj)
@@ -3793,6 +3793,10 @@ contains
             t % score_bins(j) = SCORE_KAPPA_FISSION
           case ('inverse-velocity')
             t % score_bins(j) = SCORE_INVERSE_VELOCITY
+          case ('fission-q-prompt')
+            t % score_bins(j) = SCORE_FISS_Q_PROMPT
+          case ('fission-q-recoverable')
+            t % score_bins(j) = SCORE_FISS_Q_RECOV
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
             t % type = TALLY_SURFACE_CURRENT
@@ -3804,10 +3808,6 @@ contains
                    &same tally as surface currents")
             end if
 
-            ! Since the number of bins for the mesh filter was already set
-            ! assuming it was a volume tally, we need to adjust the number
-            ! of bins
-
             ! Get index of mesh filter
             k = t % find_filter(FILTER_MESH)
 
@@ -3816,19 +3816,6 @@ contains
               call fatal_error("Cannot tally surface current without a mesh &
                    &filter.")
             end if
-
-            ! Declare the type of the mesh filter
-            select type(filt => t % filters(k) % obj)
-            type is (MeshFilter)
-
-              ! Get pointer to mesh
-              i_mesh = filt % mesh
-              m => meshes(i_mesh)
-
-              ! We need to increase the dimension by one since we also need
-              ! currents coming into and out of the boundary mesh cells.
-              filt % n_bins = product(m % dimension + 1)
-            end select
 
             ! Copy filters to temporary array
             allocate(filters(size(t % filters) + 1))
@@ -3846,10 +3833,10 @@ contains
               filt % n_bins = 2 * m % n_dimension
               allocate(filt % surfaces(2 * m % n_dimension))
               if (m % n_dimension == 2) then
-                filt % surfaces = (/ IN_RIGHT, OUT_RIGHT, IN_FRONT, OUT_FRONT /)
+                filt % surfaces = (/ OUT_LEFT, OUT_RIGHT, OUT_BACK, OUT_FRONT /)
               elseif (m % n_dimension == 3) then
-                filt % surfaces = (/ IN_RIGHT,  OUT_RIGHT, IN_FRONT, OUT_FRONT,&
-                     IN_TOP, OUT_TOP /)
+                filt % surfaces = (/ OUT_LEFT,  OUT_RIGHT, OUT_BACK, OUT_FRONT,&
+                     OUT_BOTTOM, OUT_TOP /)
               end if
             end select
             t % find_filter(FILTER_SURFACE) = size(t % filters)

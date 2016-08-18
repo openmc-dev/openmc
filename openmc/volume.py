@@ -1,6 +1,7 @@
 from collections import Iterable, Mapping
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+from warnings import warn
 
 import numpy as np
 import pandas as pd
@@ -68,10 +69,26 @@ class VolumeCalculation(object):
         self.samples = samples
 
         if lower_left is not None:
-            self.lower_left = lower_left
             if upper_right is None:
                 raise ValueError('Both lower-left and upper-right coordinates '
                                  'should be specified')
+
+            # For cell domains, try to compute bounding box and make sure
+            # user-specified one is valid
+            if self.domain_type == 'cell':
+                for c in domains:
+                    if c.region is None:
+                        continue
+                    ll, ur = c.region.bounding_box
+                    if np.any(np.isinf(ll)) or np.any(np.isinf(ur)):
+                        continue
+                    if (np.any(np.asarray(lower_left) > ll) or
+                        np.any(np.asarray(upper_right) < ur)):
+                        warn("Specified bounding box is smaller than computed "
+                             "bounding box for cell {}. Volume calculation may "
+                             "be incorrect!".format(c.id))
+
+            self.lower_left = lower_left
             self.upper_right = upper_right
         else:
             if self.domain_type == 'cell':

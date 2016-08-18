@@ -793,7 +793,8 @@ class MDGXS(MGXS):
 
             df.rename(columns={'energyout low [MeV]': 'group out'},
                       inplace=True)
-            out_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
+            out_groups = np.repeat(all_groups, self.xs_tally.num_scores)
+            out_groups = np.tile(out_groups, int(df.shape[0] / out_groups.size))
             df['group out'] = out_groups
             del df['energyout high [MeV]']
             columns = ['group in', 'group out']

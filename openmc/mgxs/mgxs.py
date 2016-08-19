@@ -777,7 +777,8 @@ class MGXS(object):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
-            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
+            cv.check_iterable_type('subdomains', subdomains, Integral,
+                                   max_depth=3)
             for subdomain in subdomains:
                 filters.append(self.domain_type)
                 filter_bins.append((subdomain,))

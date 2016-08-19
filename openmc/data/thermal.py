@@ -7,7 +7,7 @@ import numpy as np
 import h5py
 
 import openmc.checkvalue as cv
-from openmc.mixin import Equality
+from openmc.mixin import EqualityMixin
 from .ace import Table, get_table
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D
@@ -62,7 +62,7 @@ def get_thermal_name(name):
             return 'c_' + name
 
 
-class CoherentElastic(Equality):
+class CoherentElastic(EqualityMixin):
     r"""Coherent elastic scattering data from a crystalline material
 
     Parameters
@@ -149,7 +149,7 @@ class CoherentElastic(Equality):
         return cls(bragg_edges, factors)
 
 
-class ThermalScattering(Equality):
+class ThermalScattering(EqualityMixin):
     """A ThermalScattering object contains thermal scattering data as represented by
     an S(alpha, beta) table.
 

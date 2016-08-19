@@ -5,7 +5,7 @@ import sys
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.mixin import Equality
+from openmc.mixin import EqualityMixin
 from .function import Tabulated1D, Polynomial, Function1D
 from .angle_energy import AngleEnergy
 
@@ -13,7 +13,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-class Product(Equality):
+class Product(EqualityMixin):
     """Secondary particle emitted in a nuclear reaction
 
     Parameters

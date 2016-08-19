@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Equality(object):
+class EqualityMixin(object):
     """A Class which provides generic __eq__ and __ne__ functionality which
     can easily be inherited by downstream classes.
     """

@@ -8,10 +8,10 @@ import numpy as np
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from openmc.stats.univariate import Univariate, Tabular, Discrete, Mixture
 import openmc.checkvalue as cv
-from openmc.mixin import Equality
+from openmc.mixin import EqualityMixin
 
 
-class EnergyDistribution(Equality):
+class EnergyDistribution(EqualityMixin):
     """Abstract superclass for all energy distributions."""
 
     __metaclass__ = ABCMeta

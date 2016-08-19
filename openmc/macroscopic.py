@@ -30,7 +30,7 @@ class Macroscopic(object):
         self._name = ''
         self._xs = None
 
-        # Set the Material class attributes
+        # Set the Macroscopic class attributes
         self.name = name
 
         if xs is not None:

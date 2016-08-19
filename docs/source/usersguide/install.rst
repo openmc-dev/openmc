@@ -204,20 +204,22 @@ should be used:
 Compiling with MPI
 ++++++++++++++++++
 
-To compile with MPI, set the :envvar:`FC` environment variable to the path to
-the MPI Fortran wrapper. For example, in a bash shell:
+To compile with MPI, set the :envvar:`FC` and :envvar:`CC` environment variables
+to the path to the MPI Fortran and C wrappers, respectively. For example, in a
+bash shell:
 
 .. code-block:: sh
 
     export FC=mpif90
+    export CC=mpicc
     cmake /path/to/openmc
 
-Note that in many shells, an environment variable can be set for a single
-command, i.e.
+Note that in many shells, environment variables can be set for a single command,
+i.e.
 
 .. code-block:: sh
 
-    FC=mpif90 cmake /path/to/openmc
+    FC=mpif90 CC=mpicc cmake /path/to/openmc
 
 Selecting HDF5 Installation
 +++++++++++++++++++++++++++
@@ -343,7 +345,7 @@ compiler, it is necessary to specify that all objects be compiled with the
 .. code-block:: sh
 
     mkdir build && cd build
-    FC=ifort FFLAGS=-mmic cmake -Dopenmp=on ..
+    FC=ifort CC=icc FFLAGS=-mmic cmake -Dopenmp=on ..
     make
 
 Note that unless an HDF5 build for the Intel Xeon Phi is already on your target

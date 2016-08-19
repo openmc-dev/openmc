@@ -7,18 +7,14 @@ class EqualityMixin(object):
     """
 
     def __eq__(self, other):
-        eqval = True
         if isinstance(other, type(self)):
             for key, value in self.__dict__.items():
-                if key in other.__dict__:
-                    if not np.array_equal(value, other.__dict__.get(key)):
-                        eqval = False
-                else:
-                    eqval = False
+                if not np.array_equal(value, other.__dict__.get(key)):
+                    return False
         else:
-            eqval = False
+            return False
 
-        return eqval
+        return True
 
     def __ne__(self, other):
         return not self.__eq__(other)

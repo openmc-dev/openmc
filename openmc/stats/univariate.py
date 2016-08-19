@@ -7,7 +7,7 @@ from xml.etree import ElementTree as ET
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.mixin import Equality
+from openmc.mixin import EqualityMixin
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -16,7 +16,7 @@ _INTERPOLATION_SCHEMES = ['histogram', 'linear-linear', 'linear-log',
                           'log-linear', 'log-log']
 
 
-class Univariate(Equality):
+class Univariate(EqualityMixin):
     """Probability distribution of a single random variable.
 
     The Univariate class is an abstract class that can be derived to implement a

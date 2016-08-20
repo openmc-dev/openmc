@@ -7,6 +7,7 @@ from warnings import warn
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc.mixin import EqualityMixin
 from openmc.stats import Uniform
 from .angle_distribution import AngleDistribution
 from .angle_energy import AngleEnergy
@@ -250,7 +251,7 @@ def _get_photon_products(ace, rx):
     return photons
 
 
-class Reaction(object):
+class Reaction(EqualityMixin):
     """A nuclear reaction
 
     A Reaction object represents a single reaction channel for a nuclide with

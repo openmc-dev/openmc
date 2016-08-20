@@ -15,12 +15,13 @@ from .product import Product
 from .reaction import Reaction, _get_photon_products
 from .urr import ProbabilityTables
 import openmc.checkvalue as cv
+from openmc.mixin import EqualityMixin
 
 if sys.version_info[0] >= 3:
     basestring = str
 
 
-class IncidentNeutron(object):
+class IncidentNeutron(EqualityMixin):
     """Continuous-energy neutron interaction data.
 
     Instances of this class are not normally instantiated by the user but rather

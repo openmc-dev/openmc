@@ -1295,6 +1295,13 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: ""
 
+  :temperature:
+
+    An element with no attributes which is used to set the temperature of the
+    material.  This element accepts a maximum 6-character string that indicates
+    the default temperature rounded to the nearest integer in units of Kelvin,
+    e.g. "294K".
+
   :density:
     An element with attributes/sub-elements called ``value`` and ``units``. The
     ``value`` attribute is the numeric value of the density while the ``units``
@@ -1315,17 +1322,16 @@ Each ``material`` element can have the following attributes or sub-elements:
               ``nuclide``, ``element``, or ``sab`` quantity.
 
   :nuclide:
-    An element with attributes/sub-elements called ``name``, ``xs``, and ``ao``
+    An element with attributes/sub-elements called ``name``, and ``ao``
     or ``wo``. The ``name`` attribute is the name of the cross-section for a
-    desired nuclide while the ``xs`` attribute is the cross-section
-    identifier. Finally, the ``ao`` and ``wo`` attributes specify the atom or
+    desired nuclide. Finally, the ``ao`` and ``wo`` attributes specify the atom or
     weight percent of that nuclide within the material, respectively. One
     example would be as follows:
 
     .. code-block:: xml
 
-        <nuclide name="H-1" xs="70c" ao="2.0" />
-        <nuclide name="O-16" xs="70c" ao="1.0" />
+        <nuclide name="H1" ao="2.0" />
+        <nuclide name="O16" ao="1.0" />
 
     .. note:: If one nuclide is specified in atom percent, all others must also
               be given in atom percent. The same applies for weight percentages.
@@ -1349,11 +1355,10 @@ Each ``material`` element can have the following attributes or sub-elements:
     Specifies that a natural element is present in the material. The natural
     element is split up into individual isotopes based on `IUPAC Isotopic
     Compositions of the Elements 2009`_. This element has
-    attributes/sub-elements called ``name``, ``xs``, and ``ao``. The ``name``
-    attribute is the atomic symbol of the element while the ``xs`` attribute is
-    the cross-section identifier. Finally, the ``ao`` attribute specifies the
-    atom percent of the element within the material, respectively. One example
-    would be as follows:
+    attributes/sub-elements called ``name``, and ``ao``. The ``name``
+    attribute is the atomic symbol of the element. Finally, the ``ao``
+    attribute specifies the atom percent of the element within the material,
+    respectively. One example would be as follows:
 
     .. code-block:: xml
 
@@ -1383,10 +1388,9 @@ Each ``material`` element can have the following attributes or sub-elements:
               multi-group :ref:`energy_mode`.
 
   :sab:
-    Associates an S(a,b) table with the material. This element has
-    attributes/sub-elements called ``name`` and ``xs``. The ``name`` attribute
-    is the name of the S(a,b) table that should be associated with the material,
-    and ``xs`` is the cross-section identifier for the table.
+    Associates an S(a,b) table with the material. This element has one
+    attribute/sub-element called ``name``. The ``name`` attribute
+    is the name of the S(a,b) table that should be associated with the material.
 
     *Default*: None
 
@@ -1397,14 +1401,13 @@ Each ``material`` element can have the following attributes or sub-elements:
     recognizes that some multi-group libraries may be providing material
     specific macroscopic cross sections instead of always providing nuclide
     specific data like in the continuous-energy case.  To that end, the
-    macroscopic element has attributes/sub-elements called ``name``, and ``xs``.
+    macroscopic element has one attribute/sub-element called ``name``.
     The ``name`` attribute is the name of the cross-section for a
-    desired nuclide while the ``xs`` attribute is the cross-section
-    identifier. One example would be as follows:
+    desired nuclide. One example would be as follows:
 
     .. code-block:: xml
 
-        <macroscopic name="UO2" xs="71c" />
+        <macroscopic name="UO2" />
 
     .. note:: This element is only used in the multi-group :ref:`energy_mode`.
 
@@ -1413,15 +1416,16 @@ Each ``material`` element can have the following attributes or sub-elements:
 .. _IUPAC Isotopic Compositions of the Elements 2009:
     http://pac.iupac.org/publications/pac/pdf/2011/pdf/8302x0397.pdf
 
-``<default_xs>`` Element
+``<default_temperature>`` Element
 ------------------------
 
-In some circumstances, the cross-section identifier may be the same for many or
-all nuclides in a given problem. In this case, rather than specifying the
-``xs=...`` attribute on every nuclide, a ``<default_xs>`` element can be used to
-set the default cross-section identifier for any nuclide without an identifier
-explicitly listed. This element has no attributes and accepts a 3-letter string
-that indicates the default cross-section identifier, e.g. "70c".
+In some circumstances, the temperature may be the same for many or
+all materials in a given problem. In this case, rather than specifying the
+``<temperature>`` element on every material, a ``<default_temperature>``
+element can be used to set the default material temperature for any material
+without an explicitly provided temperature. This element has no attributes and
+accepts a maximum 6-character string that indicates the default temperature
+rounded to the nearest integer in units of Kelvin, e.g. "294K".
 
   *Default*: None
 

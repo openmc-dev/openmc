@@ -13,28 +13,20 @@ class Macroscopic(object):
     ----------
     name : str
         Name of the macroscopic data, e.g. UO2
-    xs : str
-        Cross section identifier, e.g. 71c
 
     Attributes
     ----------
     name : str
         Name of the nuclide, e.g. UO2
-    xs : str
-        Cross section identifier, e.g. 71c
 
     """
 
-    def __init__(self, name='', xs=None):
+    def __init__(self, name=''):
         # Initialize class attributes
         self._name = ''
-        self._xs = None
 
         # Set the Macroscopic class attributes
         self.name = name
-
-        if xs is not None:
-            self.xs = xs
 
     def __eq__(self, other):
         if isinstance(other, Macroscopic):
@@ -57,23 +49,13 @@ class Macroscopic(object):
 
     def __repr__(self):
         string = 'Nuclide    -    {0}\n'.format(self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
         return string
 
     @property
     def name(self):
         return self._name
 
-    @property
-    def xs(self):
-        return self._xs
-
     @name.setter
     def name(self, name):
         check_type('name', name, basestring)
         self._name = name
-
-    @xs.setter
-    def xs(self, xs):
-        check_type('cross-section identifier', xs, basestring)
-        self._xs = xs

@@ -77,9 +77,6 @@ module global
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict
 
-  ! Default xs identifier (e.g. 70c or 300K)
-  character(5):: default_xs
-
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
 

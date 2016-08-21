@@ -180,9 +180,10 @@ module nuclide_header
 
   end subroutine nuclide_clear
 
-  subroutine nuclide_from_hdf5(this, group_id)
+  subroutine nuclide_from_hdf5(this, group_id, temperature)
     class(Nuclide), intent(inout) :: this
-    integer(HID_T),   intent(in)    :: group_id
+    integer(HID_T), intent(in)    :: group_id
+    character(6),   intent(in)    :: temperature
 
     integer :: i
     integer :: Z
@@ -192,12 +193,14 @@ module nuclide_header
     integer :: n_links
     integer :: hdf5_err
     integer(HID_T) :: urr_group, nu_group
-    integer(HID_T) :: energy_dset
+    integer(HID_T) :: energy_group, energy_dset
+    integer(HID_T) :: kT_group, kT_dset
     integer(HID_T) :: rxs_group
     integer(HID_T) :: rx_group
     integer(HID_T) :: total_nu
     integer(HID_T) :: fer_group                 ! fission_energy_release group
     integer(HID_T) :: fer_dset
+    integer(HID_T) :: temp_dset
     integer(SIZE_T) :: name_len, name_file_len
     integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
@@ -217,15 +220,21 @@ module nuclide_header
     call read_attribute(this % metastable, group_id, 'metastable')
     this % zaid = 1000*Z + A + 400*this % metastable
     call read_attribute(this % awr, group_id, 'atomic_weight_ratio')
-    call read_attribute(this % kT, group_id, 'temperature')
+    kT_group = open_group(group_id, 'kTs')
+    kT_dset = open_dataset(kT_group, temperature)
+    call read_dataset(this % kT, kT_dset)
+    call close_dataset(kT_dset)
+    call close_group(kT_group)
 
     ! Read energy grid
-    energy_dset = open_dataset(group_id, 'energy')
+    energy_group = open_group(group_id, 'energy')
+    energy_dset = open_dataset(energy_group, temperature)
     call get_shape(energy_dset, dims)
     this % n_grid = int(dims(1), 4)
     allocate(this % energy(this % n_grid))
     call read_dataset(this % energy, energy_dset)
     call close_dataset(energy_dset)
+    call close_group(energy_group)
 
     ! Get MT values based on group names
     rxs_group = open_group(group_id, 'reactions')
@@ -243,7 +252,7 @@ module nuclide_header
     do i = 1, size(this % reactions)
       rx_group = open_group(rxs_group, 'reaction_' // trim(&
            zero_padded(MTs % data(i), 3)))
-      call this % reactions(i) % from_hdf5(rx_group)
+      call this % reactions(i) % from_hdf5(rx_group, temperature)
       call close_group(rx_group)
     end do
     call close_group(rxs_group)

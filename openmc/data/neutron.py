@@ -399,7 +399,9 @@ class IncidentNeutron(EqualityMixin):
         g.attrs['A'] = self.mass_number
         g.attrs['metastable'] = self.metastable
         g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
-        g.attrs['kTs'] = self.kTs
+        ktg = g.create_group('kTs')
+        for i, temperature in enumerate(self.temperatures):
+            ktg.create_dataset(temperature, data=self.kTs[i])
 
         # Write energy grid
         eg = g.create_group('energy')
@@ -457,7 +459,10 @@ class IncidentNeutron(EqualityMixin):
         mass_number = group.attrs['A']
         metastable = group.attrs['metastable']
         atomic_weight_ratio = group.attrs['atomic_weight_ratio']
-        kTs = group.attrs['kTs'].tolist()
+        kTg = group['kTs']
+        kTs = []
+        for temp in kTg:
+            kTs.append(temp.value)
         temperatures = [str(int(round(kT_to_K(kT)))) + "K" for kT in kTs]
 
         data = cls(name, atomic_number, mass_number, metastable,

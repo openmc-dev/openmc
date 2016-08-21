@@ -2159,15 +2159,8 @@ contains
            &exist!")
     end if
 
-    ! Initialize default cross section variable
-    default_xs = ""
-
     ! Parse materials.xml file
     call open_xmldoc(doc, filename)
-
-    ! Copy default cross section if present
-    if (check_for_node(doc, "default_xs")) &
-         call get_node_value(doc, "default_xs", default_xs)
 
     ! Get pointer to list of XML <material>
     call get_node_list(doc, "material", node_mat_list)
@@ -2202,6 +2195,11 @@ contains
       ! Copy material name
       if (check_for_node(node_mat, "name")) then
         call get_node_value(node_mat, "name", mat % name)
+      end if
+
+      ! Copy material temperature
+      if (check_for_node(node_mat, "temperature")) then
+        call get_node_value(node_mat, "temperature", mat % temperature)
       end if
 
       ! =======================================================================
@@ -2301,22 +2299,9 @@ contains
                // trim(to_str(mat % id)))
         end if
 
-        ! Check for cross section
-        if (.not. check_for_node(node_nuc, "xs")) then
-          if (default_xs == '') then
-            call fatal_error("No cross section specified for macroscopic data &
-                 & in material " // trim(to_str(mat % id)))
-          else
-            name = to_lower(trim(default_xs))
-          end if
-        end if
-
-        ! store full name
-        call get_node_value(node_nuc, "name", temp_str)
-        if (check_for_node(node_nuc, "xs")) &
-             call get_node_value(node_nuc, "xs", name)
-        name = trim(temp_str) // "." // trim(name)
-        name = to_lower(name)
+        ! store nuclide name
+        call get_node_value(node_nuc, "name", name)
+        name = trim(name)
 
         ! save name and density to list
         call names % push_back(name)
@@ -2345,16 +2330,6 @@ contains
                  // trim(to_str(mat % id)))
           end if
 
-          ! Check for cross section
-          if (.not. check_for_node(node_nuc, "xs")) then
-            if (default_xs == '') then
-              call fatal_error("No cross section specified for nuclide in &
-                   &material " // trim(to_str(mat % id)))
-            else
-              name = to_lower(trim(default_xs))
-            end if
-          end if
-
           ! Check enforced isotropic lab scattering
           if (run_CE) then
             if (check_for_node(node_nuc, "scattering")) then
@@ -2372,11 +2347,9 @@ contains
             end if
           end if
 
-          ! store full name
-          call get_node_value(node_nuc, "name", temp_str)
-          if (check_for_node(node_nuc, "xs")) &
-               call get_node_value(node_nuc, "xs", name)
-          name = trim(temp_str) // "." // trim(name)
+          ! store nuclide name
+          call get_node_value(node_nuc, "name", name)
+          name = trim(name)
 
           ! save name and density to list
           call names % push_back(name)
@@ -2423,18 +2396,6 @@ contains
                // trim(to_str(mat % id)))
         end if
         call get_node_value(node_ele, "name", name)
-
-        ! Check for cross section
-        if (check_for_node(node_ele, "xs")) then
-          call get_node_value(node_ele, "xs", temp_str)
-        else
-          if (default_xs == '') then
-            call fatal_error("No cross section specified for nuclide in &
-                 &material " // trim(to_str(mat % id)))
-          else
-            temp_str = to_lower(trim(default_xs))
-          end if
-        end if
 
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
@@ -2581,14 +2542,11 @@ contains
             call get_list_item(node_sab_list, j, node_sab)
 
             ! Determine name of S(a,b) table
-            if (.not. check_for_node(node_sab, "name") .or. &
-                 .not. check_for_node(node_sab, "xs")) then
-              call fatal_error("Need to specify <name> and <xs> for S(a,b) &
-                   &table.")
+            if (.not. check_for_node(node_sab, "name")) then
+              call fatal_error("Need to specify <name> for S(a,b) table.")
             end if
             call get_node_value(node_sab, "name", name)
-            call get_node_value(node_sab, "xs", temp_str)
-            name = trim(name) // "." // trim(temp_str)
+            name = trim(name)
             mat % sab_names(j) = name
 
             ! Check that this nuclide is listed in the cross_sections.xml file
@@ -5856,7 +5814,8 @@ contains
           ! Read nuclide data from HDF5
           file_id = file_open(libraries(i_library) % path, 'r')
           group_id = open_group(file_id, name)
-          call nuclides(i_nuclide) % from_hdf5(group_id)
+          call nuclides(i_nuclide) % from_hdf5(group_id, &
+                                               materials(i) % temperature)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -5988,7 +5947,7 @@ contains
         ! Read nuclide data from HDF5
         file_id = file_open(libraries(i_library) % path, 'r')
         group_id = open_group(file_id, name)
-        call resonant_nuc % from_hdf5(group_id)
+        call resonant_nuc % from_hdf5(group_id, '0K')
         call close_group(group_id)
         call file_close(file_id)
 

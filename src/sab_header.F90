@@ -154,16 +154,19 @@ contains
 
   end subroutine salphabeta_print
 
-  subroutine salphabeta_from_hdf5(this, group_id)
+  subroutine salphabeta_from_hdf5(this, group_id, temperature)
     class(SAlphaBeta), intent(inout) :: this
     integer(HID_T),    intent(in)    :: group_id
+    character(6),      intent(in)    :: temperature
 
     integer :: i, j
     integer :: n_energy, n_energy_out, n_mu
     integer :: hdf5_err
+    integer(HID_T) :: T_group
     integer(HID_T) :: elastic_group
     integer(HID_T) :: inelastic_group
     integer(HID_T) :: dset_id
+    integer(HID_T) :: kT_group, kT_dset
     integer(HSIZE_T) :: dims2(2)
     integer(HSIZE_T) :: dims3(3)
     real(8), allocatable :: temp(:,:)
@@ -172,15 +175,31 @@ contains
     type(CorrelatedAngleEnergy) :: correlated_dist
 
     call read_attribute(this % awr, group_id, 'atomic_weight_ratio')
-    call read_attribute(this % kT, group_id, 'temperature')
     call read_attribute(this % zaid, group_id, 'zaids')
+    call read_attribute(type, group_id, 'secondary_mode')
+    select case (type)
+    case ('equal')
+      this % secondary_mode = SAB_SECONDARY_EQUAL
+    case ('skewed')
+      this % secondary_mode = SAB_SECONDARY_SKEWED
+    case ('continuous')
+      this % secondary_mode = SAB_SECONDARY_CONT
+    end select
     this % n_zaid = size(this % zaid)
+    kT_group = open_group(group_id, 'kTs')
+    kT_dset = open_dataset(kT_group, temperature)
+    call read_dataset(this % kT, kT_dset)
+    call close_dataset(kT_dset)
+    call close_group(kT_group)
+
+    ! Open temperature group
+    T_group = open_group(group_id, temperature)
 
     ! Coherent elastic data
-    call h5ltpath_valid_f(group_id, 'elastic', .true., exists, hdf5_err)
+    call h5ltpath_valid_f(T_group, 'elastic', .true., exists, hdf5_err)
     if (exists) then
       ! Read cross section data
-      elastic_group = open_group(group_id, 'elastic')
+      elastic_group = open_group(T_group, 'elastic')
       dset_id = open_dataset(elastic_group, 'xs')
       call read_attribute(type, dset_id, 'type')
       call get_shape(dset_id, dims2)
@@ -219,19 +238,10 @@ contains
     end if
 
     ! Inelastic data
-    call h5ltpath_valid_f(group_id, 'inelastic', .true., exists, hdf5_err)
+    call h5ltpath_valid_f(T_group, 'inelastic', .true., exists, hdf5_err)
     if (exists) then
       ! Read type of inelastic data
-      inelastic_group = open_group(group_id, 'inelastic')
-      call read_attribute(type, inelastic_group, 'secondary_mode')
-      select case (type)
-      case ('equal')
-        this % secondary_mode = SAB_SECONDARY_EQUAL
-      case ('skewed')
-        this % secondary_mode = SAB_SECONDARY_SKEWED
-      case ('continuous')
-        this % secondary_mode = SAB_SECONDARY_CONT
-      end select
+      inelastic_group = open_group(T_group, 'inelastic')
 
       ! Read cross section data
       dset_id = open_dataset(inelastic_group, 'xs')
@@ -308,6 +318,7 @@ contains
 
       call close_group(inelastic_group)
     end if
+    call close_group(T_group)
   end subroutine salphabeta_from_hdf5
 
 end module sab_header

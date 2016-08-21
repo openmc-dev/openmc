@@ -2129,6 +2129,7 @@ contains
     logical :: file_exists    ! does materials.xml exist?
     logical :: sum_density    ! density is taken to be sum of nuclide densities
     character(20) :: name     ! name of isotope, e.g. 92235.03c
+    character(6) :: default_temperature ! Default temperature, e.g., '300K'
     character(MAX_WORD_LEN) :: units    ! units on density
     character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
@@ -2161,6 +2162,13 @@ contains
 
     ! Parse materials.xml file
     call open_xmldoc(doc, filename)
+
+    ! Copy default temperature
+    if (check_for_node(doc, "default_temperature")) then
+      call get_node_value(doc, "default_temperature", default_temperature)
+    else
+      default_temperature = ''
+    end if
 
     ! Get pointer to list of XML <material>
     call get_node_list(doc, "material", node_mat_list)
@@ -2200,6 +2208,11 @@ contains
       ! Copy material temperature
       if (check_for_node(node_mat, "temperature")) then
         call get_node_value(node_mat, "temperature", mat % temperature)
+      else if (default_temperature /= '') then
+        mat % temperature = default_temperature
+      else
+        call fatal_error("Must specify eithe a material temperature or a &
+                         &default temperature")
       end if
 
       ! =======================================================================

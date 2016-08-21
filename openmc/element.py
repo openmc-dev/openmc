@@ -19,37 +19,27 @@ class Element(object):
     ----------
     name : str
         Chemical symbol of the element, e.g. Pu
-    xs : str
-        Cross section identifier, e.g. 71c
 
     Attributes
     ----------
     name : str
         Chemical symbol of the element, e.g. Pu
-    xs : str
-        Cross section identifier, e.g. 71c
     scattering : {'data', 'iso-in-lab', None}
         The type of angular scattering distribution to use
 
     """
 
-    def __init__(self, name='', xs=None):
+    def __init__(self, name=''):
         # Initialize class attributes
         self._name = ''
-        self._xs = None
         self._scattering = None
 
         # Set class attributes
         self.name = name
 
-        if xs is not None:
-            self.xs = xs
-
     def __eq__(self, other):
         if isinstance(other, Element):
             if self.name != other.name:
-                return False
-            elif self.xs != other.xs:
                 return False
             else:
                 return True
@@ -72,16 +62,11 @@ class Element(object):
 
     def __repr__(self):
         string = 'Element    -    {0}\n'.format(self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tXS', '=\t', self._xs)
         if self.scattering is not None:
             string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t',
                                                 self.scattering)
 
         return string
-
-    @property
-    def xs(self):
-        return self._xs
 
     @property
     def name(self):
@@ -90,11 +75,6 @@ class Element(object):
     @property
     def scattering(self):
         return self._scattering
-
-    @xs.setter
-    def xs(self, xs):
-        check_type('cross section identifier', xs, basestring)
-        self._xs = xs
 
     @name.setter
     def name(self, name):
@@ -127,6 +107,6 @@ class Element(object):
         isotopes = []
         for isotope, abundance in sorted(NATURAL_ABUNDANCE.items()):
             if re.match(r'{}\d+'.format(self.name), isotope):
-                nuc = openmc.Nuclide(isotope, self.xs)
+                nuc = openmc.Nuclide(isotope)
                 isotopes.append((nuc, abundance))
         return isotopes

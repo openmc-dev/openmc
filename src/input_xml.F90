@@ -5869,7 +5869,8 @@ contains
           ! Read S(a,b) data from HDF5
           file_id = file_open(libraries(i_library) % path, 'r')
           group_id = open_group(file_id, name)
-          call sab_tables(i_sab) % from_hdf5(group_id)
+          call sab_tables(i_sab) % from_hdf5(group_id, &
+                                             materials(i) % temperature)
           call close_group(group_id)
           call file_close(file_id)
 

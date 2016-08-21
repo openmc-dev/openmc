@@ -92,7 +92,6 @@ class CoherentElastic(EqualityMixin):
         idx = np.searchsorted(self.bragg_edges, E)
         return self.factors[idx] / E
 
-
     def __len__(self):
         return len(self.bragg_edges)
 
@@ -192,7 +191,7 @@ class ThermalScattering(EqualityMixin):
         self.name = name
         self.atomic_weight_ratio = atomic_weight_ratio
         self.kTs = kTs
-        self.temperatures = ["{0:.1f}K".format(kT_to_K(kT)) for kT in kTs]
+        self.temperatures = [str(int(round(kT_to_K(kT)))) + "K" for kT in kTs]
         self.elastic_xs = {}
         self.elastic_mu_out = {}
         self.inelastic_xs = {}
@@ -303,7 +302,7 @@ class ThermalScattering(EqualityMixin):
         if ace.temperature not in self.kTs:
             if name == self.name:
                 # Add temperature and kTs
-                strT = "{0:.1f}K".format(kT_to_K(ace.temperature))
+                strT = str(int(round(kT_to_K(ace.temperature)))) + "K"
                 self.temperatures.append(strT)
                 self.kTs.append(ace.temperature)
 
@@ -438,7 +437,7 @@ class ThermalScattering(EqualityMixin):
         name = group.name[1:]
         atomic_weight_ratio = group.attrs['atomic_weight_ratio']
         kTs = group.attrs['kTs'].tolist()
-        temperatures = ["{0:.1f}K".format(kT_to_K(kT)) for kT in kTs]
+        temperatures = [str(int(round(kT_to_K(kT)))) + "K" for kT in kTs]
 
         table = cls(name, atomic_weight_ratio, kTs)
         table.zaids = group.attrs['zaids']
@@ -526,7 +525,7 @@ class ThermalScattering(EqualityMixin):
 
         # Assign temperature to the running list
         kTs = [ace.temperature]
-        temperatures = ["{0:.1f}K".format(kT_to_K(ace.temperature))]
+        temperatures = [str(int(round(kT_to_K(ace.temperature)))) + "K"]
 
         table = cls(name, ace.atomic_weight_ratio, kTs)
 

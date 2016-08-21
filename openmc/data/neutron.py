@@ -7,7 +7,7 @@ from warnings import warn
 import numpy as np
 import h5py
 
-from .data import ATOMIC_SYMBOL, SUM_RULES
+from .data import ATOMIC_SYMBOL, SUM_RULES, kT_to_K
 from .ace import Table, get_table
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum
@@ -19,6 +19,64 @@ from openmc.mixin import EqualityMixin
 
 if sys.version_info[0] >= 3:
     basestring = str
+
+
+def _get_metadata(zaid, metastable_scheme='nndc'):
+    """Method to obtain the complete element name, element, Z, mass_number,
+    and metastable state
+
+    Parameters
+    ----------
+    zaid : int
+        ZAID (1000*Z + A) obtained from a library
+    metastable_scheme : {'nndc', 'mcnp'}
+        Determine how ZAID identifiers are to be interpreted in the case of
+        a metastable nuclide. Because the normal ZAID (=1000*Z + A) does not
+        encode metastable information, different conventions are used among
+        different libraries. In MCNP libraries, the convention is to add 400
+        for a metastable nuclide except for Am242m, for which 95242 is
+        metastable and 95642 (or 1095242 in newer libraries) is the ground
+        state. For NNDC libraries, ZAID is given as 1000*Z + A + 100*m.
+
+    Returns
+    -------
+
+    """
+
+    cv.check_type('zaid', zaid, int)
+    cv.check_value('metastable_scheme', metastable_scheme, ['nndc', 'mcnp'])
+
+    Z = zaid // 1000
+    mass_number = zaid % 1000
+
+    if metastable_scheme == 'mcnp':
+        if zaid > 1000000:
+            # New SZA format
+            Z = Z % 1000
+            if zaid == 1095242:
+                metastable = 0
+            else:
+                metastable = zaid // 1000000
+        else:
+            if zaid == 95242:
+                metastable = 1
+            elif zaid == 95642:
+                metastable = 0
+            else:
+                metastable = 1 if mass_number > 300 else 0
+    elif metastable_scheme == 'nndc':
+        metastable = 1 if mass_number > 300 else 0
+
+    while mass_number > 3 * Z:
+        mass_number -= 100
+
+    # Determine name
+    element = ATOMIC_SYMBOL[Z]
+    name = '{}{}'.format(element, mass_number)
+    if metastable > 0:
+        name += '_m{}'.format(metastable)
+
+    return (name, element, Z, mass_number, metastable)
 
 
 class IncidentNeutron(EqualityMixin):
@@ -40,8 +98,9 @@ class IncidentNeutron(EqualityMixin):
         Metastable state of the nucleus. A value of zero indicates ground state.
     atomic_weight_ratio : float
         Atomic mass ratio of the target nuclide.
-    temperature : float
-        Temperature of the target nuclide in MeV.
+    kTs : Iterable float
+        List of temperatures of the target nuclide in the data set.
+        The temperatures have units of MeV.
 
     Attributes
     ----------
@@ -51,8 +110,10 @@ class IncidentNeutron(EqualityMixin):
         Atomic symbol of the nuclide, e.g., 'Zr'
     atomic_weight_ratio : float
         Atomic weight ratio of the target nuclide.
-    energy : numpy.ndarray
+    energy : dict of numpy.ndarray
         The energy values (MeV) at which reaction cross-sections are tabulated.
+        They keys of the dict are the temperature string ('296.3K') for each
+        set of energies
     fission_energy : None or openmc.data.FissionEnergyRelease
         The energy released by fission, tabulated by component (e.g. prompt
         neutrons or beta particles) and dependent on incident neutron energy
@@ -69,23 +130,28 @@ class IncidentNeutron(EqualityMixin):
     summed_reactions : collections.OrderedDict
         Contains summed cross sections, e.g., the total cross section. The keys
         are the MT values and the values are Reaction objects.
-    temperature : float
-        Temperature of the target nuclide in MeV.
+    temperatures : Iterable of str
+        List of string representations the temperatures of the target nuclide
+        in the data set.  The temperatures are strings with 1 decimal place,
+        i.e., '293.6K'
+    kTs : Iterable of float
+        List of temperatures of the target nuclide in the data set.
+        The temperatures have units of MeV.
     urr : None or openmc.data.ProbabilityTables
         Unresolved resonance region probability tables
 
     """
 
     def __init__(self, name, atomic_number, mass_number, metastable,
-                 atomic_weight_ratio, temperature):
+                 atomic_weight_ratio, kTs):
         self.name = name
         self.atomic_number = atomic_number
         self.mass_number = mass_number
         self.metastable = metastable
         self.atomic_weight_ratio = atomic_weight_ratio
-        self.temperature = temperature
-
-        self._energy = None
+        self.kTs = kTs
+        self.temperatures = ["{0:.1f}K".format(kT_to_K(kT)) for kT in kTs]
+        self.energy = {}
         self._fission_energy = None
         self.reactions = OrderedDict()
         self.summed_reactions = OrderedDict()
@@ -129,16 +195,8 @@ class IncidentNeutron(EqualityMixin):
         return self._atomic_weight_ratio
 
     @property
-    def energy(self):
-        return self._energy
-
-    @property
     def fission_energy(self):
         return self._fission_energy
-
-    @property
-    def temperature(self):
-        return self._temperature
 
     @property
     def reactions(self):
@@ -159,7 +217,7 @@ class IncidentNeutron(EqualityMixin):
 
     @property
     def atomic_symbol(self):
-        return atomic_symbol[self.atomic_number]
+        return ATOMIC_SYMBOL[self.atomic_number]
 
     @atomic_number.setter
     def atomic_number(self, atomic_number):
@@ -185,17 +243,6 @@ class IncidentNeutron(EqualityMixin):
         cv.check_greater_than('atomic weight ratio', atomic_weight_ratio, 0.0)
         self._atomic_weight_ratio = atomic_weight_ratio
 
-    @temperature.setter
-    def temperature(self, temperature):
-        cv.check_type('temperature', temperature, Real)
-        cv.check_greater_than('temperature', temperature, 0.0, True)
-        self._temperature = temperature
-
-    @energy.setter
-    def energy(self, energy):
-        cv.check_type('energy grid', energy, Iterable, Real)
-        self._energy = energy
-
     @fission_energy.setter
     def fission_energy(self, fission_energy):
         cv.check_type('fission energy release', fission_energy,
@@ -217,6 +264,87 @@ class IncidentNeutron(EqualityMixin):
         cv.check_type('probability tables', urr,
                       (ProbabilityTables, type(None)))
         self._urr = urr
+
+    def add_temperature_from_ace(self, ace_or_filename, metastable_scheme='nndc'):
+        """Add data to the IncidentNeutron object from an ACE file at a
+        different temperature.
+
+        Parameters
+        ----------
+        ace_or_filename : openmc.data.ace.Table or str
+            ACE table to read from. If given as a string, it is assumed to be
+            the filename for the ACE file.
+        metastable_scheme : {'nndc', 'mcnp'}
+            Determine how ZAID identifiers are to be interpreted in the case of
+            a metastable nuclide. Because the normal ZAID (=1000*Z + A) does not
+            encode metastable information, different conventions are used among
+            different libraries. In MCNP libraries, the convention is to add 400
+            for a metastable nuclide except for Am242m, for which 95242 is
+            metastable and 95642 (or 1095242 in newer libraries) is the ground
+            state. For NNDC libraries, ZAID is given as 1000*Z + A + 100*m.
+
+        """
+
+        if isinstance(ace_or_filename, Table):
+            ace = ace_or_filename
+        else:
+            ace = get_table(ace_or_filename)
+
+        # Obtain the information needed to check if this ACE file is for the
+        # same nuclide.
+        zaid, xs = ace.name.split('.')
+        name, element, Z, mass_number, metastable = \
+            _get_metadata(int(zaid), metastable_scheme)
+
+        # If this ACE data matches the data within self then get the data
+        if ace.temperature not in self.kTs:
+            if name == self.name:
+                # Add temperature and kTs
+                strT = "{0:.1f}K".format(kT_to_K(ace.temperature))
+                self.temperatures.append(strT)
+                self.kTs.append(ace.temperature)
+                # Read energy grid
+                n_energy = ace.nxs[3]
+                energy = ace.xss[ace.jxs[1]:ace.jxs[1] + n_energy]
+                self.energy[strT] = energy
+                total_xs = \
+                    Tabulated1D(energy, ace.xss[ace.jxs[1] +
+                                                n_energy:ace.jxs[1] +
+                                                2 * n_energy])
+                abs_xs = Tabulated1D(energy, ace.xss[ace.jxs[1] + 2 *
+                                                     n_energy:ace.jxs[1] +
+                                                     3 * n_energy])
+
+                self.summed_reactions[1].add_temperature(strT, 0, total_xs)
+                if 27 in self.summed_reactions:
+                    self.summed_reactions[27].add_temperature(strT, 0, abs_xs)
+
+                # Read each reaction and get the xs data out of it
+                n_reaction = ace.nxs[4] + 1
+                for i in range(n_reaction):
+                    rx = Reaction.from_ace(ace, i)
+
+                    xsdata = list(rx.T_data.values())[0]
+                    self.reactions[rx.mt].add_temperature(strT,
+                                                          xsdata.threshold_idx,
+                                                          xsdata.xs)
+
+                # Obtain data for the summed photon reactions
+                for mt in self.summed_reactions:
+                    if mt not in [1, 27]:
+                        # Create summed appropriate cross section
+                        mts = self.get_reaction_components(mt)
+                        xsdata = Sum([self.reactions[mt_i].T_data[strT].xs
+                                      for mt_i in mts])
+
+                        self.summed_reactions[mt].add_temperature(strT, 0,
+                                                                  xsdata)
+            else:
+                raise ValueError('Data provided for an incorrect nuclide')
+
+        else:
+            raise Warning('Temperature data set already within '
+                          'IncidentNeutron object')
 
     def get_reaction_components(self, mt):
         """Determine what reactions make up summed reaction.
@@ -271,10 +399,12 @@ class IncidentNeutron(EqualityMixin):
         g.attrs['A'] = self.mass_number
         g.attrs['metastable'] = self.metastable
         g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
-        g.attrs['temperature'] = self.temperature
+        g.attrs['kTs'] = self.kTs
 
         # Write energy grid
-        g.create_dataset('energy', data=self.energy)
+        eg = g.create_group('energy')
+        for temperature in self.temperatures:
+            eg.create_dataset(temperature, data=self.energy[temperature])
 
         # Write reaction data
         rxs_group = g.create_group('reactions')
@@ -327,19 +457,22 @@ class IncidentNeutron(EqualityMixin):
         mass_number = group.attrs['A']
         metastable = group.attrs['metastable']
         atomic_weight_ratio = group.attrs['atomic_weight_ratio']
-        temperature = group.attrs['temperature']
+        kTs = group.attrs['kTs'].tolist()
+        temperatures = ["{0:.1f}K".format(kT_to_K(kT)) for kT in kTs]
 
         data = cls(name, atomic_number, mass_number, metastable,
-                   atomic_weight_ratio, temperature)
+                   atomic_weight_ratio, kTs)
 
         # Read energy grid
-        data.energy = group['energy'].value
+        e_group = group['energy']
+        for temperature in temperatures:
+            data.energy[temperature] = e_group[temperature].value
 
         # Read reaction data
         rxs_group = group['reactions']
         for name, obj in sorted(rxs_group.items()):
             if name.startswith('reaction_'):
-                rx = Reaction.from_hdf5(obj, data.energy)
+                rx = Reaction.from_hdf5(obj, data.energy, temperatures)
                 data.reactions[rx.mt] = rx
 
                 # Read total nu data if available
@@ -351,12 +484,15 @@ class IncidentNeutron(EqualityMixin):
         # MTs never depend on lower MTs.
         for mt_sum in sorted(SUM_RULES, reverse=True):
             if mt_sum not in data:
-                xs_components = [data[mt].xs for mt in SUM_RULES[mt_sum]
-                                 if mt in data]
-                if len(xs_components) > 0:
-                    rxn = Reaction(mt_sum)
-                    rxn.xs = Sum(xs_components)
-                    data.summed_reactions[mt_sum] = rxn
+                for it, T in enumerate(data.temperatures):
+                    xs_components = \
+                        [data[mt].T_data[T].xs for mt in SUM_RULES[mt_sum]
+                         if mt in data]
+                    if len(xs_components) > 0:
+                        if it == 0:
+                            data.summed_reactions[mt_sum] = Reaction(mt_sum)
+                        data.summed_reactions[mt_sum].add_temperature(
+                            T, 0, Sum(xs_components))
 
         # Read unresolved resonance probability tables
         if 'urr' in group:
@@ -376,9 +512,9 @@ class IncidentNeutron(EqualityMixin):
 
         Parameters
         ----------
-        ace : openmc.data.ace.Table or str
-            ACE table to read from. If given as a string, it is assumed to be
-            the filename for the ACE file.
+        ace_or_filename : openmc.data.ace.Table or str
+            ACE table to read from. If the value is a string, it is assumed to
+            be the filename for the ACE file.
         metastable_scheme : {'nndc', 'mcnp'}
             Determine how ZAID identifiers are to be interpreted in the case of
             a metastable nuclide. Because the normal ZAID (=1000*Z + A) does not
@@ -394,6 +530,8 @@ class IncidentNeutron(EqualityMixin):
             Incident neutron continuous-energy data
 
         """
+
+        # First obtain the data for the first provided ACE table/file
         if isinstance(ace_or_filename, Table):
             ace = ace_or_filename
         else:
@@ -401,54 +539,37 @@ class IncidentNeutron(EqualityMixin):
 
         # If mass number hasn't been specified, make an educated guess
         zaid, xs = ace.name.split('.')
-        zaid = int(zaid)
-        Z = zaid // 1000
-        mass_number = zaid % 1000
+        name, element, Z, mass_number, metastable = \
+            _get_metadata(int(zaid), metastable_scheme)
 
-        if metastable_scheme == 'mcnp':
-            if zaid > 1000000:
-                # New SZA format
-                Z = Z % 1000
-                if zaid == 1095242:
-                    metastable = 0
-                else:
-                    metastable = zaid // 1000000
-            else:
-                if zaid == 95242:
-                    metastable = 1
-                elif zaid == 95642:
-                    metastable = 0
-                else:
-                    metastable = 1 if mass_number > 300 else 0
-        elif metastable_scheme == 'nndc':
-            metastable = 1 if mass_number > 300 else 0
+        # Assign temperature to the running list
+        kTs = [ace.temperature]
+        temperatures = ["{0:.1f}K".format(kT_to_K(ace.temperature))]
 
-        while mass_number > 3*Z:
-            mass_number -= 100
-
-        # Determine name for group
-        element = ATOMIC_SYMBOL[Z]
-        if metastable > 0:
-            name = '{}{}_m{}.{}'.format(element, mass_number, metastable, xs)
-        else:
-            name = '{}{}.{}'.format(element, mass_number, xs)
+        # If mass number hasn't been specified, make an educated guess
+        zaid, xs = ace.name.split('.')
+        name, element, Z, mass_number, metastable = \
+            _get_metadata(int(zaid), metastable_scheme)
 
         data = cls(name, Z, mass_number, metastable,
-                   ace.atomic_weight_ratio, ace.temperature)
+                   ace.atomic_weight_ratio, kTs)
 
         # Read energy grid
         n_energy = ace.nxs[3]
         energy = ace.xss[ace.jxs[1]:ace.jxs[1] + n_energy]
-        data.energy = energy
-        total_xs = ace.xss[ace.jxs[1] + n_energy:ace.jxs[1] + 2*n_energy]
-        absorption_xs = ace.xss[ace.jxs[1] + 2*n_energy:ace.jxs[1] + 3*n_energy]
+        data.energy[temperatures[0]] = energy
+        total_xs = ace.xss[ace.jxs[1] + n_energy:ace.jxs[1] + 2 * n_energy]
+        absorption_xs = ace.xss[ace.jxs[1] + 2*n_energy:ace.jxs[1] +
+                                3 * n_energy]
 
         # Create summed reactions (total and absorption)
         total = Reaction(1)
-        total.xs = Tabulated1D(energy, total_xs)
+        total.add_temperature(temperatures[-1], 0,
+                              Tabulated1D(energy, total_xs))
         data.summed_reactions[1] = total
         absorption = Reaction(27)
-        absorption.xs = Tabulated1D(energy, absorption_xs)
+        absorption.add_temperature(temperatures[-1], 0,
+                                   Tabulated1D(energy, absorption_xs))
         data.summed_reactions[27] = absorption
 
         # Read each reaction
@@ -478,7 +599,12 @@ class IncidentNeutron(EqualityMixin):
                     warn('Photon production is present for MT={} but no '
                          'reaction components exist.'.format(mt))
                     continue
-                rx.xs = Sum([data.reactions[mt_i].xs for mt_i in mts])
+                threshold_idx = \
+                    np.amin([data.reactions[mt_i].T_data[temperatures[-1]].xs.x[0]
+                             for mt_i in mts])
+                xsvals = Sum([data.reactions[mt_i].T_data[temperatures[-1]].xs
+                              for mt_i in mts])
+                rx.add_temperature(temperatures[-1], threshold_idx, xsvals)
 
                 # Determine summed cross section
                 rx.products += _get_photon_products(ace, rx)

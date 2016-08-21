@@ -1,7 +1,7 @@
 from __future__ import division, unicode_literals
 from collections import Iterable, Callable
 from copy import deepcopy
-from numbers import Real
+from numbers import Real, Integral
 from warnings import warn
 
 import numpy as np
@@ -12,7 +12,7 @@ from openmc.stats import Uniform
 from .angle_distribution import AngleDistribution
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D, Polynomial
-from .data import REACTION_NAME
+from .data import REACTION_NAME, kT_to_K
 from .product import Product
 from .uncorrelated import UncorrelatedAngleEnergy
 
@@ -211,7 +211,7 @@ def _get_photon_products(ace, rx):
 
             # Get photon production cross section
             photon_prod_xs = ace.xss[idx + 2:idx + 2 + n_energy]
-            neutron_xs = rx.xs(energy)
+            neutron_xs = list(rx.T_data.values())[0].xs(energy)
             idx = np.where(neutron_xs > 0.)
 
             # Calculate photon yield
@@ -251,6 +251,78 @@ def _get_photon_products(ace, rx):
     return photons
 
 
+class XS(EqualityMixin):
+    """An energy-dependent cross-section for a reaction channel
+
+    Parameters
+    ----------
+    threshold_idx : int
+        The index on the energy grid corresponding to the threshold of this
+        reaction.
+    xs : dict of callable
+        Microscopic cross section for this reaction as a function of incident
+        energy; these cross sections are provided in a dictionary where the key
+        is the temperature of the cross section set.
+
+    Attributes
+    ----------
+    threshold : float
+        Threshold of the reaction in MeV
+    threshold_idx : int
+        The index on the energy grid corresponding to the threshold of this
+        reaction.
+    xs : dict of callable
+        Microscopic cross section for this reaction as a function of incident
+        energy; these cross sections are provided in a dictionary where the key
+        is the temperature of the cross section set.
+
+    """
+
+    def __init__(self, threshold_idx, xs):
+        self._threshold_idx = threshold_idx
+        self._xs = xs
+
+    @property
+    def threshold_idx(self):
+        return self._threshold_idx
+
+    @property
+    def threshold(self):
+        return self.xs.x[0]
+
+    @property
+    def xs(self):
+        return self._xs
+
+    @threshold_idx.setter
+    def threshold_idx(self, threshold_idx):
+        cv.check_type('threshold_idx', threshold_idx, Integral)
+        cv.check_greater_than('threshold_idx', threshold_idx, 0, equality=True)
+        self._threshold_idx = threshold_idx
+
+    @xs.setter
+    def xs(self, xs):
+        cv.check_type('reaction cross section', xs, Callable)
+        if isinstance(xs, Tabulated1D):
+            for y in xs.y:
+                cv.check_greater_than('reaction cross section', y, 0.0, True)
+        self._xs = xs
+
+    def to_hdf5(self, group):
+        """Write XS to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
+
+        group.attrs['threshold_idx'] = self.threshold_idx + 1
+        if self.xs is not None:
+            group.create_dataset('xs', data=self.xs.y)
+
+
 class Reaction(EqualityMixin):
     """A nuclear reaction
 
@@ -281,9 +353,10 @@ class Reaction(EqualityMixin):
     threshold_idx : int
         The index on the energy grid corresponding to the threshold of this
         reaction.
-    xs : callable
+    T_data : dict of openmc.data.XS
         Microscopic cross section for this reaction as a function of incident
-        energy
+        energy; these cross sections are provided in a dictionary where the key
+        is the temperature of the cross section set.
     products : Iterable of openmc.data.Product
         Reaction products
     derived_products : Iterable of openmc.data.Product
@@ -296,8 +369,7 @@ class Reaction(EqualityMixin):
         self.center_of_mass = True
         self.mt = mt
         self.q_value = 0.
-        self.threshold_idx = 0
-        self._xs = None
+        self.T_data = {}
         self.products = []
         self.derived_products = []
 
@@ -319,14 +391,6 @@ class Reaction(EqualityMixin):
     def products(self):
         return self._products
 
-    @property
-    def threshold(self):
-        return self.xs.x[0]
-
-    @property
-    def xs(self):
-        return self._xs
-
     @center_of_mass.setter
     def center_of_mass(self, center_of_mass):
         cv.check_type('center of mass', center_of_mass, (bool, np.bool_))
@@ -342,13 +406,9 @@ class Reaction(EqualityMixin):
         cv.check_type('reaction products', products, Iterable, Product)
         self._products = products
 
-    @xs.setter
-    def xs(self, xs):
-        cv.check_type('reaction cross section', xs, Callable)
-        if isinstance(xs, Tabulated1D):
-            for y in xs.y:
-                cv.check_greater_than('reaction cross section', y, 0.0, True)
-        self._xs = xs
+    def add_temperature(self, temperature, threshold_idx, xs):
+        cv.check_type('temperature', temperature, str)
+        self.T_data[temperature] = XS(threshold_idx, xs)
 
     def to_hdf5(self, group):
         """Write reaction to an HDF5 group
@@ -366,16 +426,16 @@ class Reaction(EqualityMixin):
         else:
             group.attrs['label'] = np.string_(self.mt)
         group.attrs['Q_value'] = self.q_value
-        group.attrs['threshold_idx'] = self.threshold_idx + 1
         group.attrs['center_of_mass'] = 1 if self.center_of_mass else 0
-        if self.xs is not None:
-            group.create_dataset('xs', data=self.xs.y)
+        for T in self.T_data:
+            Tgroup = group.create_group(T)
+            self.T_data[T].to_hdf5(Tgroup)
         for i, p in enumerate(self.products):
             pgroup = group.create_group('product_{}'.format(i))
             p.to_hdf5(pgroup)
 
     @classmethod
-    def from_hdf5(cls, group, energy):
+    def from_hdf5(cls, group, energy, temperatures):
         """Generate reaction from an HDF5 group
 
         Parameters
@@ -384,6 +444,8 @@ class Reaction(EqualityMixin):
             HDF5 group to write to
         energy : Iterable of float
             Array of energies at which cross sections are tabulated at
+        temperatures : Iterable of float
+            Array of temperatures at which to obtain the cross sections
 
         Returns
         -------
@@ -391,16 +453,19 @@ class Reaction(EqualityMixin):
             Reaction data
 
         """
+
         mt = group.attrs['mt']
         rx = cls(mt)
         rx.q_value = group.attrs['Q_value']
-        rx.threshold_idx = group.attrs['threshold_idx'] - 1
         rx.center_of_mass = bool(group.attrs['center_of_mass'])
 
-        # Read cross section
-        if 'xs' in group:
-            xs = group['xs'].value
-            rx.xs = Tabulated1D(energy[rx.threshold_idx:], xs)
+        # Read cross section data
+        for T in temperatures:
+            Tgroup = group[T]
+            if 'xs' in Tgroup:
+                threshold_idx = Tgroup.attrs['threshold_idx'] - 1
+                xs = Tabulated1D(energy[T][threshold_idx:], Tgroup['xs'].value)
+                rx.T_data[T] = XS(threshold_idx, xs)
 
         # Determine number of products
         n_product = 0
@@ -421,6 +486,10 @@ class Reaction(EqualityMixin):
         n_grid = ace.nxs[3]
         grid = ace.xss[ace.jxs[1]:ace.jxs[1] + n_grid]
 
+        # Convert data temperature to a "300.0K" number for indexing
+        # temperature data
+        strT = "{0:.1f}K".format(kT_to_K(ace.temperature))
+
         if i_reaction > 0:
             mt = int(ace.xss[ace.jxs[3] + i_reaction - 1])
             rx = cls(mt)
@@ -435,11 +504,11 @@ class Reaction(EqualityMixin):
             loc = int(ace.xss[ace.jxs[6] + i_reaction - 1])
 
             # Determine starting index on energy grid
-            rx.threshold_idx = int(ace.xss[ace.jxs[7] + loc - 1]) - 1
+            threshold_idx = int(ace.xss[ace.jxs[7] + loc - 1]) - 1
 
             # Determine number of energies in reaction
             n_energy = int(ace.xss[ace.jxs[7] + loc])
-            energy = grid[rx.threshold_idx:rx.threshold_idx + n_energy]
+            energy = grid[threshold_idx:threshold_idx + n_energy]
 
             # Read reaction cross section
             xs = ace.xss[ace.jxs[7] + loc + 1:ace.jxs[7] + loc + 1 + n_energy]
@@ -450,7 +519,8 @@ class Reaction(EqualityMixin):
                      "to zero.".format(rx.mt, ace.name))
                 xs[xs < 0.0] = 0.0
 
-            rx.xs = Tabulated1D(energy, xs)
+            tabulated_xs = Tabulated1D(energy, xs)
+            rx.T_data[strT] = XS(threshold_idx, tabulated_xs)
 
             # ==================================================================
             # YIELD AND ANGLE-ENERGY DISTRIBUTION
@@ -509,7 +579,8 @@ class Reaction(EqualityMixin):
                      "Setting to zero.".format(ace.name))
                 elastic_xs[elastic_xs < 0.0] = 0.0
 
-            rx.xs = Tabulated1D(grid, elastic_xs)
+            tabulated_xs = Tabulated1D(grid, elastic_xs)
+            rx.T_data[strT] = XS(0, tabulated_xs)
 
             # No energy distribution for elastic scattering
             neutron = Product('neutron')

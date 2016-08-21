@@ -218,3 +218,7 @@ def atomic_mass(isotope):
         isotope = isotope[:isotope.find('_')]
 
     return _ATOMIC_MASS.get(isotope.lower())
+
+def kT_to_K(kT):
+    K = kT / 8.6173324e-11
+    return K

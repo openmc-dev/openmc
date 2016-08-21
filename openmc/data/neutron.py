@@ -150,7 +150,7 @@ class IncidentNeutron(EqualityMixin):
         self.metastable = metastable
         self.atomic_weight_ratio = atomic_weight_ratio
         self.kTs = kTs
-        self.temperatures = ["{0:.1f}K".format(kT_to_K(kT)) for kT in kTs]
+        self.temperatures = [str(int(round(kT_to_K(kT)))) + "K" for kT in kTs]
         self.energy = {}
         self._fission_energy = None
         self.reactions = OrderedDict()
@@ -300,7 +300,7 @@ class IncidentNeutron(EqualityMixin):
         if ace.temperature not in self.kTs:
             if name == self.name:
                 # Add temperature and kTs
-                strT = "{0:.1f}K".format(kT_to_K(ace.temperature))
+                strT = str(int(round(kT_to_K(ace.temperature)))) + "K"
                 self.temperatures.append(strT)
                 self.kTs.append(ace.temperature)
                 # Read energy grid
@@ -458,7 +458,7 @@ class IncidentNeutron(EqualityMixin):
         metastable = group.attrs['metastable']
         atomic_weight_ratio = group.attrs['atomic_weight_ratio']
         kTs = group.attrs['kTs'].tolist()
-        temperatures = ["{0:.1f}K".format(kT_to_K(kT)) for kT in kTs]
+        temperatures = [str(int(round(kT_to_K(kT)))) + "K" for kT in kTs]
 
         data = cls(name, atomic_number, mass_number, metastable,
                    atomic_weight_ratio, kTs)
@@ -544,7 +544,8 @@ class IncidentNeutron(EqualityMixin):
 
         # Assign temperature to the running list
         kTs = [ace.temperature]
-        temperatures = ["{0:.1f}K".format(kT_to_K(ace.temperature))]
+
+        temperatures = [str(int(round(kT_to_K(ace.temperature)))) + "K"]
 
         # If mass number hasn't been specified, make an educated guess
         zaid, xs = ace.name.split('.')

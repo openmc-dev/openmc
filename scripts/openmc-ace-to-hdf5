@@ -130,14 +130,12 @@ for filename in ace_libraries:
         if xs.endswith('c'):
             # Continuous-energy neutron data
             if name not in nuclides:
-                neutron = openmc.data.IncidentNeutron.from_ace(
+                try:
+                    neutron = openmc.data.IncidentNeutron.from_ace(
                         table, args.metastable)
-                # try:
-                #     neutron = openmc.data.IncidentNeutron.from_ace(
-                #         table, args.metastable)
-                # except Exception as e:
-                #     print('Failed to convert {}: {}'.format(table.name, e))
-                #     continue
+                except Exception as e:
+                    print('Failed to convert {}: {}'.format(table.name, e))
+                    continue
 
                 # Fission energy release data, if available
                 if args.fission_energy_release is not None:
@@ -172,7 +170,11 @@ for filename in ace_libraries:
         elif xs.endswith('t'):
             # Thermal scattering data
             if name not in nuclides:
-                thermal = openmc.data.ThermalScattering.from_ace(table)
+                try:
+                    thermal = openmc.data.ThermalScattering.from_ace(table)
+                except Exception as e:
+                    print('Failed to convert {}: {}'.format(table.name, e))
+                    continue
                 print('Converting {} (ACE) to {} (HDF5)'.format(table.name,
                                                                 thermal.name))
 

@@ -16,7 +16,7 @@ Incident Neutron Data
              - **metastable** (*int*) -- Metastable state (0=ground, 1=first
                excited, etc.)
              - **atomic_weight_ratio** (*double*) -- Mass in units of neutron masses
-             - **temperature** (*double*) -- Temperature in MeV
+             - **kTs** (*double[]*) -- Temperatures (in MeV) contained in the library
              - **n_reaction** (*int*) -- Number of reactions
 
 :Datasets: - **energy** (*double[]*) -- Energy points at which cross sections are tabulated
@@ -26,13 +26,20 @@ Incident Neutron Data
 :Attributes: - **mt** (*int*) -- ENDF MT reaction number
              - **label** (*char[]*) -- Name of the reaction
              - **Q_value** (*double*) -- Q value in MeV
-             - **threshold_idx** (*int*) -- Index on the energy grid that the
-               reaction threshold corresponds to
              - **center_of_mass** (*int*) -- Whether the reference frame for
                scattering is center-of-mass (1) or laboratory (0)
              - **n_product** (*int*) -- Number of reaction products
 
-:Datasets: - **xs** (*double[]*) -- Cross section values tabulated against the nuclide energy grid
+**/<nuclide name>/reactions/reaction_<mt>/<TTTK>/**
+
+<TTTK> is the temperature in Kelvin, rounded to the nearest integer, of the
+temperature-dependent data set.  For example, the data set corresponding to
+300 Kelvin would be located at `300K`.
+
+:Attributes: - **threshold_idx** (*int*) -- Index on the energy grid that the
+               reaction threshold corresponds to for temperature TTT (in Kelvin)
+
+:Datasets: - **xs** (*double[]*) -- Cross section values tabulated against the nuclide energy grid for temperature TTT (in Kelvin)
 
 **/<nuclide name>/reactions/reaction_<mt>/product_<j>/**
 
@@ -92,32 +99,39 @@ Thermal Neutron Scattering Data
 **/<thermal name>/**
 
 :Attributes: - **atomic_weight_ratio** (*double*) -- Mass in units of neutron masses
-             - **temperature** (*double*) -- Temperature in MeV
+             - **kTs** (*double[]*) -- Temperatures (in MeV) contained in the library
              - **zaids** (*int[]*) -- ZAID identifiers for which the thermal
                scattering data applies to
-
-**/<thermal name>/elastic/**
-
-:Datasets: - **xs** (:ref:`tabulated <1d_tabulated>`) -- Thermal inelastic
-             scattering cross section
-           - **mu_out** (*double[][]*) -- Distribution of outgoing energies
-             and angles for coherent elastic scattering
-
-**/<thermal name>/inelastic/**
-
-:Attributes:
              - **secondary_mode** (*char[]*) -- Indicates how the inelastic
                outgoing angle-energy distributions are represented ('equal',
                'skewed', or 'continuous').
 
+**/<thermal name>/elastic/<TTTK>/**
+
+<TTTK> is the temperature in Kelvin, rounded to the nearest integer, of the
+temperature-dependent data set.  For example, the data set corresponding to
+300 Kelvin would be located at `300K`.
+
 :Datasets: - **xs** (:ref:`tabulated <1d_tabulated>`) -- Thermal inelastic
-             scattering cross section
+             scattering cross section for temperature TTT (in Kelvin)
+           - **mu_out** (*double[][]*) -- Distribution of outgoing energies
+             and angles for coherent elastic scattering for temperature TTT
+             (in Kelvin)
+
+**/<thermal name>/inelastic/<TTTK>/**
+
+<TTTK> is the temperature in Kelvin, rounded to the nearest integer, of the
+temperature-dependent data set.  For example, the data set corresponding to
+300 Kelvin would be located at `300K`.
+
+:Datasets: - **xs** (:ref:`tabulated <1d_tabulated>`) -- Thermal inelastic
+             scattering cross section for temperature TTT (in Kelvin)
            - **energy_out** (*double[][]*) -- Distribution of outgoing
-             energies for each incoming energy. Only present if secondary mode
-             is not continuous.
+             energies for each incoming energy for temperature TTT (in Kelvin).
+             Only present if secondary mode is not continuous.
            - **mu_out** (*double[][][]*) -- Distribution of scattering cosines
-             for each pair of incoming and outgoing energies. Only present if
-             secondary mode is not continuous.
+             for each pair of incoming and outgoing energies. for temperature
+             TTT (in Kelvin).  Only present if secondary mode is not continuous.
 
 If the secondary mode is continuous, the outgoing energy-angle distribution is
 given as a :ref:`correlated angle-energy distribution

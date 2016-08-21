@@ -488,7 +488,7 @@ class Reaction(EqualityMixin):
 
         # Convert data temperature to a "300.0K" number for indexing
         # temperature data
-        strT = "{0:.1f}K".format(kT_to_K(ace.temperature))
+        strT = str(int(round(kT_to_K(ace.temperature)))) + "K"
 
         if i_reaction > 0:
             mt = int(ace.xss[ace.jxs[3] + i_reaction - 1])

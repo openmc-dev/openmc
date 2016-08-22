@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_xs>71c</default_xs>
+  <default_temperature>294K</default_temperature>
 
   <!-- Plutonium -->
   <material id="1">

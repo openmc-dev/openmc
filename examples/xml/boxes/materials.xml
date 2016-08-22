@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_xs>71c</default_xs>
+  <default_temperature>294K</default_temperature>
 
   <material id="1">
     <density value="4.5" units="g/cc" />
@@ -17,7 +17,7 @@
     <density value="1.0" units="g/cc" />
     <nuclide name="O16" ao="1.0" />
     <nuclide name="H1" ao="2.0" />
-    <sab name="c_H_in_H2O" xs="71t" />
+    <sab name="c_H_in_H2O" />
   </material>
 
 </materials>

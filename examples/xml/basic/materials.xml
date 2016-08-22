@@ -1,12 +1,11 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_xs>71c</default_xs>
+  <default_temperature>294K</default_temperature>
 
   <material id="40">
     <density value="4.5" units="g/cc" />
     <nuclide name="U235" ao="1.0" />
-    <temperature>294K</temperature>
   </material>
 
   <material id="41">
@@ -14,7 +13,6 @@
     <nuclide name="H1" ao="2.0" />
     <nuclide name="O16" ao="1.0" />
     <sab name="c_H_in_H2O"/>
-    <temperature>294K</temperature>
   </material>
 
 </materials>

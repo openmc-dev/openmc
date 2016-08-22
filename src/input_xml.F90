@@ -2211,7 +2211,7 @@ contains
       else if (default_temperature /= '') then
         mat % temperature = default_temperature
       else
-        call fatal_error("Must specify eithe a material temperature or a &
+        call fatal_error("Must specify either a material temperature or a &
                          &default temperature")
       end if
 

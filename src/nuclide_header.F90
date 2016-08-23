@@ -106,10 +106,8 @@ module nuclide_header
 !===============================================================================
 
   type Nuclide0K
-    character(10) :: nuclide             ! name of nuclide, e.g. U-238
+    character(10) :: nuclide             ! name of nuclide, e.g. U238
     character(16) :: scheme = 'ares'     ! target velocity sampling scheme
-    character(10) :: name                ! name of nuclide, e.g. 92235.03c
-    character(10) :: name_0K             ! name of 0K nuclide, e.g. 92235.00c
     real(8)       :: E_min = 0.01e-6_8   ! lower cutoff energy for res scattering
     real(8)       :: E_max = 1000.0e-6_8 ! upper cutoff energy for res scattering
   end type Nuclide0K
@@ -183,7 +181,7 @@ module nuclide_header
   subroutine nuclide_from_hdf5(this, group_id, temperature)
     class(Nuclide), intent(inout) :: this
     integer(HID_T), intent(in)    :: group_id
-    character(6),   intent(in)    :: temperature
+    character(len=*), intent(in)  :: temperature
 
     integer :: i
     integer :: Z
@@ -246,9 +244,14 @@ module nuclide_header
     ! closest temperature
     my_temperature = temperatures(j)
     if (temperature /= my_temperature) then
-      call warning(trim(this % name) // " does not contain data at a &
-                   &temperature of " // trim(temperature) // "; using the &
-                   &nearest available temperature of " // trim(my_temperature))
+      if (temperature == '0K') then
+        call fatal_error(trim(this % name) // " does not contain 0K data &
+                         &needed for the resonance scattering options selected")
+      else
+        call warning(trim(this % name) // " does not contain data at a &
+                     &temperature of " // trim(temperature) // "; using the &
+                     &nearest available temperature of " // trim(my_temperature))
+      end if
     end if
 
     kT_dset = open_dataset(kT_group, my_temperature)

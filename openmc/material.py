@@ -634,8 +634,9 @@ class Material(object):
             element.set("name", str(self._name))
 
         # Create temperature XML subelement
-        subelement = ET.SubElement(element, "temperature")
-        subelement.text = self.temperature
+        if len(self.temperature) > 0:
+            subelement = ET.SubElement(element, "temperature")
+            subelement.text = self.temperature
 
         # Create density XML subelement
         subelement = ET.SubElement(element, "density")

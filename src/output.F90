@@ -1035,10 +1035,10 @@ contains
             end if
 
             ! Get the bin for this mesh cell
-
-            ! Left Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /))
+
+            ! Left Surface
             matching_bins(i_filter_surf) = OUT_LEFT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
@@ -1047,8 +1047,6 @@ contains
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
             matching_bins(i_filter_surf) = IN_LEFT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
@@ -1058,8 +1056,6 @@ contains
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Right Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
@@ -1068,8 +1064,6 @@ contains
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
@@ -1079,8 +1073,6 @@ contains
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Back Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
             matching_bins(i_filter_surf) = OUT_BACK
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
@@ -1089,8 +1081,6 @@ contains
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
             matching_bins(i_filter_surf) = IN_BACK
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
@@ -1100,8 +1090,6 @@ contains
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Front Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
@@ -1110,8 +1098,6 @@ contains
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
             matching_bins(i_filter_surf) = IN_FRONT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
@@ -1121,8 +1107,6 @@ contains
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Bottom Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
             matching_bins(i_filter_surf) = OUT_BOTTOM
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
@@ -1131,8 +1115,6 @@ contains
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
             matching_bins(i_filter_surf) = IN_BOTTOM
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
@@ -1142,8 +1124,6 @@ contains
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Top Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
@@ -1152,8 +1132,6 @@ contains
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1

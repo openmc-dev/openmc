@@ -126,7 +126,7 @@ contains
     if (.not. allocated(this % hxyz))       allocate(this % hxyz(3,nx,ny,nz))
 
     ! Allocate surface currents
-    if (.not. allocated(this % current))    allocate(this % current(6,ng,nx,ny,nz))
+    if (.not. allocated(this % current))    allocate(this % current(12,ng,nx,ny,nz))
 
     ! Allocate source distributions
     if (.not. allocated(this % cmfd_src)) allocate(this % cmfd_src(ng,nx,ny,nz))

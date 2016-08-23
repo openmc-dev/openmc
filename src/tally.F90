@@ -2410,7 +2410,7 @@ contains
 
             ! OUT_TOP
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = TOP
+              matching_bins(i_filter_surf) = OUT_TOP
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2426,7 +2426,7 @@ contains
                  ijk0(2) <= m % dimension(2) .and. &
                  ijk0(3) <  m % dimension(3)) then
               ijk0(3) = ijk0(3) + 1
-              matching_bins(i_filter_surf) = BOTTOM
+              matching_bins(i_filter_surf) = IN_BOTTOM
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2443,14 +2443,14 @@ contains
 
             ! OUT_BOTTOM
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = BOTTOM
+              matching_bins(i_filter_surf) = OUT_BOTTOM
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
             end if
 
             ! IN_TOP
@@ -2459,14 +2459,14 @@ contains
                  ijk0(2) <= m % dimension(2) .and. &
                  ijk0(3) <= m % dimension(3) + 1) then
               ijk0(3) = ijk0(3) - 1
-              matching_bins(i_filter_surf) = TOP
+              matching_bins(i_filter_surf) = IN_TOP
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
               ijk0(3) = ijk0(3) + 1
             end if
           end do
@@ -2480,7 +2480,7 @@ contains
 
             ! OUT_FRONT
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = FRONT
+              matching_bins(i_filter_surf) = OUT_FRONT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2496,7 +2496,7 @@ contains
                  ijk0(2) <  m % dimension(2) .and. &
                  ijk0(3) <= m % dimension(3)) then
               ijk0(2) = ijk0(2) + 1
-              matching_bins(i_filter_surf) = BACK
+              matching_bins(i_filter_surf) = IN_BACK
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2513,14 +2513,14 @@ contains
 
             ! OUT_BACK
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = BACK
+              matching_bins(i_filter_surf) = OUT_BACK
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
             end if
 
             ! IN_FRONT
@@ -2529,14 +2529,14 @@ contains
                  ijk0(2) <= m % dimension(2) + 1 .and. &
                  ijk0(3) <= m % dimension(3)) then
               ijk0(2) = ijk0(2) - 1
-              matching_bins(i_filter_surf) = FRONT
+              matching_bins(i_filter_surf) = IN_FRONT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
               ijk0(2) = ijk0(2) + 1
             end if
           end do
@@ -2550,7 +2550,7 @@ contains
 
             ! OUT_RIGHT
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = RIGHT
+              matching_bins(i_filter_surf) = OUT_RIGHT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2566,7 +2566,7 @@ contains
                  ijk0(2) <= m % dimension(2) .and. &
                  ijk0(3) <= m % dimension(3)) then
               ijk0(1) = ijk0(1) + 1
-              matching_bins(i_filter_surf) = LEFT
+              matching_bins(i_filter_surf) = IN_LEFT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2583,14 +2583,14 @@ contains
 
             ! OUT_LEFT
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = LEFT
+              matching_bins(i_filter_surf) = OUT_LEFT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
             end if
 
             ! IN_RIGHT
@@ -2599,14 +2599,14 @@ contains
                  ijk0(2) <= m % dimension(2) .and. &
                  ijk0(3) <= m % dimension(3)) then
               ijk0(1) = ijk0(1) - 1
-              matching_bins(i_filter_surf) = RIGHT
+              matching_bins(i_filter_surf) = IN_RIGHT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
               ijk0(1) = ijk0(1) + 1
             end if
           end do
@@ -2655,7 +2655,7 @@ contains
 
             ! OUT_RIGHT
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = RIGHT
+              matching_bins(i_filter_surf) = OUT_RIGHT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2671,7 +2671,7 @@ contains
                  ijk0(2) <= m % dimension(2) .and. &
                  ijk0(3) <= m % dimension(3)) then
               ijk0(1) = ijk0(1) + 1
-              matching_bins(i_filter_surf) = LEFT
+              matching_bins(i_filter_surf) = IN_LEFT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2688,14 +2688,14 @@ contains
 
             ! OUT_LEFT
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = LEFT
+              matching_bins(i_filter_surf) = OUT_LEFT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
             end if
 
             ! IN_RIGHT
@@ -2704,14 +2704,14 @@ contains
                  ijk0(2) <= m % dimension(2) .and. &
                  ijk0(3) <= m % dimension(3)) then
               ijk0(1) = ijk0(1) - 1
-              matching_bins(i_filter_surf) = RIGHT
+              matching_bins(i_filter_surf) = IN_RIGHT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
               ijk0(1) = ijk0(1) + 1
             end if
 
@@ -2723,7 +2723,7 @@ contains
 
             ! OUT_FRONT
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = FRONT
+              matching_bins(i_filter_surf) = OUT_FRONT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2739,7 +2739,7 @@ contains
                  ijk0(2) <  m % dimension(2) .and. &
                  ijk0(3) <= m % dimension(3)) then
               ijk0(2) = ijk0(2) + 1
-              matching_bins(i_filter_surf) = BACK
+              matching_bins(i_filter_surf) = IN_BACK
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2756,14 +2756,14 @@ contains
 
             ! OUT_BACK
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = BACK
+              matching_bins(i_filter_surf) = OUT_BACK
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
             end if
 
             ! IN_FRONT
@@ -2772,14 +2772,14 @@ contains
                  ijk0(2) <= m % dimension(2) + 1 .and. &
                  ijk0(3) <= m % dimension(3)) then
               ijk0(2) = ijk0(2) - 1
-              matching_bins(i_filter_surf) = FRONT
+              matching_bins(i_filter_surf) = IN_FRONT
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
               ijk0(2) = ijk0(2) + 1
             end if
 
@@ -2791,7 +2791,7 @@ contains
 
             ! OUT_TOP
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = TOP
+              matching_bins(i_filter_surf) = OUT_TOP
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2807,7 +2807,7 @@ contains
                  ijk0(2) <= m % dimension(2) .and. &
                  ijk0(3) <  m % dimension(3)) then
               ijk0(3) = ijk0(3) + 1
-              matching_bins(i_filter_surf) = BOTTOM
+              matching_bins(i_filter_surf) = IN_BOTTOM
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2824,14 +2824,14 @@ contains
 
             ! OUT_BOTTOM
             if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = BOTTOM
+              matching_bins(i_filter_surf) = OUT_BOTTOM
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
             end if
 
             ! IN_TOP
@@ -2840,14 +2840,14 @@ contains
                  ijk0(2) <= m % dimension(2) .and. &
                  ijk0(3) <= m % dimension(3) + 1) then
               ijk0(3) = ijk0(3) - 1
-              matching_bins(i_filter_surf) = TOP
+              matching_bins(i_filter_surf) = IN_TOP
               matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0)
               filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                    * t % stride) + 1
 !$omp atomic
               t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value - p % wgt
+                   t % results(1, filter_index) % value + p % wgt
               ijk0(3) = ijk0(3) + 1
             end if
 

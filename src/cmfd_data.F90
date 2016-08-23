@@ -51,8 +51,9 @@ contains
   subroutine compute_xs()
 
     use constants,    only: FILTER_MESH, FILTER_ENERGYIN, FILTER_ENERGYOUT,    &
-                           FILTER_SURFACE, LEFT, RIGHT, BACK,      &
-                           FRONT, BOTTOM, TOP, CMFD_NOACCEL,       &
+                           FILTER_SURFACE, OUT_LEFT, OUT_RIGHT, OUT_BACK,      &
+                           OUT_FRONT, OUT_BOTTOM, OUT_TOP, IN_LEFT, IN_RIGHT,  &
+                           IN_BACK, IN_FRONT, IN_BOTTOM, IN_TOP, CMFD_NOACCEL, &
                            ZERO, ONE, TINY_BIT
     use error,        only: fatal_error
     use global,       only: cmfd, n_cmfd_tallies, cmfd_tallies, meshes,&
@@ -234,106 +235,74 @@ contains
                   matching_bins(i_filter_ein) = ng - h + 1
                 end if
 
-                ! Left surface
+                ! Get the bin for this mesh cell
                 matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k /))
-                matching_bins(i_filter_surf) = LEFT
+
+                ! Left surface
+                matching_bins(i_filter_surf) = OUT_LEFT
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                     * t%stride) + 1 ! outgoing
+                     * t % stride) + 1
                 cmfd % current(1,h,i,j,k) = t % results(1,score_index) % sum
 
-                if (i > 1) then
-                  matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                       (/ i-1, j, k /))
-                  matching_bins(i_filter_surf) = RIGHT
-                  score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                       * t % stride) + 1 ! incoming
-                  cmfd % current(2,h,i,j,k) = t % results(1,score_index) % sum
-                end if
+                matching_bins(i_filter_surf) = IN_LEFT
+                score_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
+                cmfd % current(2,h,i,j,k) = t % results(1,score_index) % sum
 
                 ! Right surface
-                if (i < nx) then
-                  matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                       (/ i+1, j, k /) )
-                  matching_bins(i_filter_surf) = LEFT
-                  score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                       * t % stride) + 1 ! incoming
-                  cmfd % current(3,h,i,j,k) = t % results(1,score_index) % sum
-                end if
-
-                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                     (/ i, j, k /) )
-                matching_bins(i_filter_surf) = RIGHT
+                matching_bins(i_filter_surf) = OUT_RIGHT
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                     * t % stride) + 1 ! outgoing
+                     * t % stride) + 1
+                cmfd % current(3,h,i,j,k) = t % results(1,score_index) % sum
+
+                matching_bins(i_filter_surf) = IN_RIGHT
+                score_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
                 cmfd % current(4,h,i,j,k) = t % results(1,score_index) % sum
 
                 ! Back surface
-                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                     (/ i, j, k /))
-                matching_bins(i_filter_surf) = BACK
+                matching_bins(i_filter_surf) = OUT_BACK
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                     * t % stride) + 1 ! outgoing
+                     * t % stride) + 1
                 cmfd % current(5,h,i,j,k) = t % results(1,score_index) % sum
 
-                if (j > 1) then
-                  matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                       (/ i, j-1, k /))
-                  matching_bins(i_filter_surf) = FRONT
-                  score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                       * t % stride) + 1 ! incoming
-                  cmfd % current(6,h,i,j,k) = t % results(1,score_index) % sum
-                end if
+                matching_bins(i_filter_surf) = IN_BACK
+                score_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
+                cmfd % current(6,h,i,j,k) = t % results(1,score_index) % sum
 
                 ! Front surface
-                if (j < ny) then
-                  matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                       (/ i, j+1, k /))
-                  matching_bins(i_filter_surf) = BACK
-                  score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                       * t % stride) + 1 ! incoming
-                  cmfd % current(7,h,i,j,k) = t % results(1,score_index) % sum
-                end if
-
-                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                     (/ i, j, k /))
-                matching_bins(i_filter_surf) = FRONT
+                matching_bins(i_filter_surf) = OUT_FRONT
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                     * t % stride) + 1 ! outgoing
+                     * t % stride) + 1
+                cmfd % current(7,h,i,j,k) = t % results(1,score_index) % sum
+
+                matching_bins(i_filter_surf) = IN_FRONT
+                score_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
                 cmfd % current(8,h,i,j,k) = t % results(1,score_index) % sum
 
                 ! Bottom surface
-                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                     (/ i, j, k /))
-                matching_bins(i_filter_surf) = BOTTOM
+                matching_bins(i_filter_surf) = OUT_BOTTOM
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                     * t % stride) + 1 ! outgoing
+                     * t % stride) + 1
                 cmfd % current(9,h,i,j,k) = t % results(1,score_index) % sum
 
-                if (k > 1) then
-                  matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                       (/ i, j, k-1 /))
-                  matching_bins(i_filter_surf) = TOP
-                  score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                       * t % stride) + 1 ! incoming
-                  cmfd % current(10,h,i,j,k) = t % results(1,score_index) % sum
-                end if
+                matching_bins(i_filter_surf) = IN_BOTTOM
+                score_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
+                cmfd % current(10,h,i,j,k) = t % results(1,score_index) % sum
 
                 ! Top surface
-                if (k < nz) then
-                  matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                       (/ i, j, k+1 /))
-                  matching_bins(i_filter_surf) = BOTTOM
-                  score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                       * t % stride) + 1 ! incoming
-                  cmfd % current(11,h,i,j,k) = t % results(1,score_index) % sum
-                end if
-
-                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
-                     (/ i, j, k /))
-                matching_bins(i_filter_surf) = TOP
+                matching_bins(i_filter_surf) = OUT_TOP
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                     * t % stride) + 1 ! outgoing
+                     * t % stride) + 1
+                cmfd % current(11,h,i,j,k) = t % results(1,score_index) % sum
+
+                matching_bins(i_filter_surf) = IN_TOP
+                score_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
                 cmfd % current(12,h,i,j,k) = t % results(1,score_index) % sum
 
               end if TALLY
@@ -478,7 +447,6 @@ contains
             ! Get leakage
             leakage = ZERO
             LEAK: do l = 1, 3
-
               leakage = leakage + ((cmfd % current(4*l,g,i,j,k) - &
                    cmfd % current(4*l-1,g,i,j,k))) - &
                    ((cmfd % current(4*l-2,g,i,j,k) - &

@@ -1034,43 +1034,85 @@ contains
                    matching_bins(i_filter_ein)))
             end if
 
+            ! Get the bin for this mesh cell
+
             ! Left Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /))
-            matching_bins(i_filter_surf) = LEFT
+            matching_bins(i_filter_surf) = OUT_LEFT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Net Current on Left", &
+                 "Outgoing Current on Left", &
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
+
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i, j, k /))
+            matching_bins(i_filter_surf) = IN_LEFT
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
+            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 "Incoming Current on Left", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Right Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /))
-            matching_bins(i_filter_surf) = RIGHT
+            matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Net Current on Right", &
+                 "Outgoing Current on Right", &
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
+
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i, j, k /))
+            matching_bins(i_filter_surf) = IN_RIGHT
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
+            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 "Incoming Current on Right", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Back Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /))
-            matching_bins(i_filter_surf) = BACK
+            matching_bins(i_filter_surf) = OUT_BACK
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Net Current on Back", &
+                 "Outgoing Current on Back", &
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
+
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i, j, k /))
+            matching_bins(i_filter_surf) = IN_BACK
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
+            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 "Incoming Current on Back", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Front Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /))
-            matching_bins(i_filter_surf) = FRONT
+            matching_bins(i_filter_surf) = OUT_FRONT
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
+            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 "Net Current on Front", &
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
+
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i, j, k /))
+            matching_bins(i_filter_surf) = IN_FRONT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
@@ -1081,26 +1123,45 @@ contains
             ! Bottom Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /))
-            matching_bins(i_filter_surf) = BOTTOM
+            matching_bins(i_filter_surf) = OUT_BOTTOM
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Net Current on Bottom", &
+                 "Outgoing Current on Bottom", &
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
+
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i, j, k /))
+            matching_bins(i_filter_surf) = IN_BOTTOM
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
+            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 "Incoming Current on Bottom", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Top Surface
             matching_bins(i_filter_mesh) = &
                  mesh_indices_to_bin(m, (/ i, j, k /))
-            matching_bins(i_filter_surf) = TOP
+            matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Net Current on Top", &
+                 "Outgoing Current on Top", &
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
+
+            matching_bins(i_filter_mesh) = &
+                 mesh_indices_to_bin(m, (/ i, j, k /))
+            matching_bins(i_filter_surf) = IN_TOP
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
+            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 "Incoming Current on Top", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
           end do
-
         end do
       end do
     end do

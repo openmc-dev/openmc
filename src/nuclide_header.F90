@@ -13,7 +13,7 @@ module nuclide_header
   use endf_header, only: Function1D, Polynomial, Tabulated1D
   use error,       only: fatal_error, warning
   use hdf5_interface, only: read_attribute, open_group, close_group, &
-       open_dataset, read_dataset, close_dataset, get_shape
+       open_dataset, read_dataset, close_dataset, get_shape, get_datasets
   use list_header, only: ListInt
   use math,        only: evaluate_legendre
   use multipole_header, only: MultipoleArray
@@ -205,6 +205,11 @@ module nuclide_header
     integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
     character(MAX_WORD_LEN) :: temp
+    character(MAX_FILE_LEN), allocatable :: temperatures(:)
+    integer, allocatable :: temperatures_integer(:)
+    integer :: temperature_delta
+    character(6) :: my_temperature
+    integer :: temperature_integer
     type(VectorInt) :: MTs
     logical :: exists
 
@@ -218,17 +223,42 @@ module nuclide_header
     call read_attribute(Z, group_id, 'Z')
     call read_attribute(A, group_id, 'A')
     call read_attribute(this % metastable, group_id, 'metastable')
-    this % zaid = 1000*Z + A + 400*this % metastable
+    this % zaid = 1000 * Z + A + 400 * this % metastable
     call read_attribute(this % awr, group_id, 'atomic_weight_ratio')
     kT_group = open_group(group_id, 'kTs')
-    kT_dset = open_dataset(kT_group, temperature)
+    ! Before accessing the temperature data, see if the user-provied temperature
+    ! exists.  We can find this out by looking at the datasets within kT_group
+    temp = adjustr(trim(temperature))
+    temperature_integer = str_to_int(temp(1:len(temp) - 1))
+    call get_datasets(kT_group, temperatures)
+    allocate(temperatures_integer(size(temperatures)))
+    do i = 1, size(temperatures)
+      temp = adjustr(trim(temperatures(i)))
+      temperatures_integer(i) = str_to_int(temp(1:len(temp) - 1))
+    end do
+    j = 1
+    temperature_delta = temperature_integer - temperatures_integer(j)
+    do i = 2, size(temperatures)
+      if (abs(temperature_integer - temperatures_integer(i)) < temperature_delta) &
+           j = i
+    end do
+    ! Now print a warning if there is no matching temperature and then use the
+    ! closest temperature
+    my_temperature = temperatures(j)
+    if (temperature /= my_temperature) then
+      call warning(trim(this % name) // " does not contain data at a &
+                   &temperature of " // trim(temperature) // "; using the &
+                   &nearest available temperature of " // trim(my_temperature))
+    end if
+
+    kT_dset = open_dataset(kT_group, my_temperature)
     call read_dataset(this % kT, kT_dset)
     call close_dataset(kT_dset)
     call close_group(kT_group)
 
     ! Read energy grid
     energy_group = open_group(group_id, 'energy')
-    energy_dset = open_dataset(energy_group, temperature)
+    energy_dset = open_dataset(energy_group, my_temperature)
     call get_shape(energy_dset, dims)
     this % n_grid = int(dims(1), 4)
     allocate(this % energy(this % n_grid))
@@ -252,7 +282,7 @@ module nuclide_header
     do i = 1, size(this % reactions)
       rx_group = open_group(rxs_group, 'reaction_' // trim(&
            zero_padded(MTs % data(i), 3)))
-      call this % reactions(i) % from_hdf5(rx_group, temperature)
+      call this % reactions(i) % from_hdf5(rx_group, my_temperature)
       call close_group(rx_group)
     end do
     call close_group(rxs_group)

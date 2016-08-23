@@ -3,7 +3,7 @@
 
   <!-- Define how many particles to run and for how many batches -->
   <eigenvalue>
-    <batches>20</batches>
+    <batches>100</batches>
     <inactive>10</inactive>
     <particles>1000</particles>
   </eigenvalue>
@@ -14,8 +14,8 @@
   <source>
     <space type="box">
       <parameters>
-        -8.62992 -8.62992 -1.
-         8.62992  8.62992  1.
+        -0.62992 -0.62992 -1.
+         0.62992  0.62992  1.
       </parameters>
     </space>
   </source>
@@ -24,8 +24,8 @@
        bounds for a mesh over which the Shannon entropy should be
        calculated. The extent in the z direction is made arbitrarily large. -->
   <entropy>
-    <lower_left>-3.39218 -3.39218 -1.e50</lower_left>
-    <upper_right>3.39218  3.39218  1.e50</upper_right>
+    <lower_left>-0.39218 -0.39218 -1.e50</lower_left>
+    <upper_right>0.39218  0.39218  1.e50</upper_right>
     <dimension>10 10 1</dimension>
   </entropy>
 

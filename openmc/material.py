@@ -129,6 +129,7 @@ class Material(object):
         string = 'Material\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._temperature)
 
         string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
         string += ' [{0}]\n'.format(self._density_units)
@@ -631,6 +632,10 @@ class Material(object):
 
         if len(self._name) > 0:
             element.set("name", str(self._name))
+
+        # Create temperature XML subelement
+        subelement = ET.SubElement(element, "temperature")
+        subelement.text = self.temperature
 
         # Create density XML subelement
         subelement = ET.SubElement(element, "density")

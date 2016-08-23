@@ -4,12 +4,13 @@ module sab_header
 
   use constants
   use distribution_univariate, only: Tabular
-  use hdf5, only: HID_T, HSIZE_T
-  use h5lt, only: h5ltpath_valid_f
+  use error,       only: warning
+  use hdf5, only: HID_T, HSIZE_T, SIZE_T
+  use h5lt, only: h5ltpath_valid_f, h5iget_name_f
   use hdf5_interface, only: read_attribute, get_shape, open_group, close_group, &
-       open_dataset, read_dataset, close_dataset
+       open_dataset, read_dataset, close_dataset, get_datasets
   use secondary_correlated, only: CorrelatedAngleEnergy
-  use string, only: to_str
+  use string, only: to_str, str_to_int
 
   implicit none
 
@@ -162,6 +163,7 @@ contains
     integer :: i, j
     integer :: n_energy, n_energy_out, n_mu
     integer :: hdf5_err
+    integer(SIZE_T) :: name_len, name_file_len
     integer(HID_T) :: T_group
     integer(HID_T) :: elastic_group
     integer(HID_T) :: inelastic_group
@@ -173,6 +175,19 @@ contains
     character(20) :: type
     logical :: exists
     type(CorrelatedAngleEnergy) :: correlated_dist
+    character(MAX_FILE_LEN), allocatable :: temperatures(:)
+    character(MAX_FILE_LEN) :: temp_str
+    integer, allocatable :: temperatures_integer(:)
+    integer :: temperature_delta
+    character(6) :: my_temperature
+    integer :: temperature_integer
+
+    ! Get name of table from group
+    name_len = len(this % name)
+    call h5iget_name_f(group_id, this % name, name_len, name_file_len, hdf5_err)
+
+    ! Get rid of leading '/'
+    this % name = trim(this % name(2:))
 
     call read_attribute(this % awr, group_id, 'atomic_weight_ratio')
     call read_attribute(this % zaid, group_id, 'zaids')
@@ -187,13 +202,38 @@ contains
     end select
     this % n_zaid = size(this % zaid)
     kT_group = open_group(group_id, 'kTs')
-    kT_dset = open_dataset(kT_group, temperature)
+    ! Before accessing the temperature data, see if the user-provied temperature
+    ! exists.  We can find this out by looking at the datasets within kT_group
+    temp_str = adjustr(trim(temperature))
+    temperature_integer = str_to_int(temp_str(1:len(temp_str) - 1))
+    call get_datasets(kT_group, temperatures)
+    allocate(temperatures_integer(size(temperatures)))
+    do i = 1, size(temperatures)
+      temp_str = adjustr(trim(temperatures(i)))
+      temperatures_integer(i) = str_to_int(temp_str(1:len(temp_str) - 1))
+    end do
+    j = 1
+    temperature_delta = temperature_integer - temperatures_integer(j)
+    do i = 2, size(temperatures)
+      if (abs(temperature_integer - temperatures_integer(i)) < temperature_delta) &
+           j = i
+    end do
+    ! Now print a warning if there is no matching temperature and then use the
+    ! closest temperature
+    my_temperature = temperatures(j)
+    if (temperature /= my_temperature) then
+      call warning(trim(this % name) // " does not contain data at a &
+                   &temperature of " // trim(temperature) // "; using the &
+                   &nearest available temperature of " // trim(my_temperature))
+    end if
+
+    kT_dset = open_dataset(kT_group, my_temperature)
     call read_dataset(this % kT, kT_dset)
     call close_dataset(kT_dset)
     call close_group(kT_group)
 
-    ! Open temperature group
-    T_group = open_group(group_id, temperature)
+    ! Open my_temperature group
+    T_group = open_group(group_id, my_temperature)
 
     ! Coherent elastic data
     call h5ltpath_valid_f(T_group, 'elastic', .true., exists, hdf5_err)

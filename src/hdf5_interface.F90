@@ -95,6 +95,8 @@ module hdf5_interface
   public :: close_dataset
   public :: get_shape
   public :: write_attribute_string
+  public :: get_groups
+  public :: get_datasets
 
 contains
 
@@ -203,6 +205,82 @@ contains
 
     call h5fclose_f(file_id, hdf5_err)
   end subroutine file_close
+
+!===============================================================================
+! GET_GROUPS Gets a list of all the groups in a given location.
+!===============================================================================
+
+  subroutine get_groups(object_id, names)
+    integer(HID_T), intent(in)  :: object_id
+    character(len=255), allocatable, intent(out) :: names(:)
+
+    integer :: n_members, i, group_count, type
+    integer :: hdf5_err
+    character(len=255) :: name
+
+
+    ! Get number of members in this location
+    call h5gn_members_f(object_id, './', n_members, hdf5_err)
+
+    ! Get the number of groups
+    group_count = 0
+    do i = 0, n_members - 1
+      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
+      if (type == H5G_GROUP_F) then
+        group_count = group_count + 1
+      end if
+    end do
+
+    ! Now we can allocate the storage for the ids
+    allocate(names(group_count))
+    group_count = 0
+    do i = 0, n_members - 1
+      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
+      if (type == H5G_GROUP_F) then
+        group_count = group_count + 1
+        names(group_count) = trim(name)
+      end if
+    end do
+
+  end subroutine get_groups
+
+!===============================================================================
+! GET_DATASETS Gets a list of all the datasets in a given location.
+!===============================================================================
+
+  subroutine get_datasets(object_id, names)
+    integer(HID_T), intent(in)  :: object_id
+    character(len=255), allocatable, intent(out) :: names(:)
+
+    integer :: n_members, i, dset_count, type
+    integer :: hdf5_err
+    character(len=255) :: name
+
+
+    ! Get number of members in this location
+    call h5gn_members_f(object_id, './', n_members, hdf5_err)
+
+    ! Get the number of datasets
+    dset_count = 0
+    do i = 0, n_members - 1
+      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
+      if (type == H5G_DATASET_F ) then
+        dset_count = dset_count + 1
+      end if
+    end do
+
+    ! Now we can allocate the storage for the ids
+    allocate(names(dset_count))
+    dset_count = 0
+    do i = 0, n_members - 1
+      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
+      if (type == H5G_DATASET_F ) then
+        dset_count = dset_count + 1
+        names(dset_count) = trim(name)
+      end if
+    end do
+
+  end subroutine get_datasets
 
 !===============================================================================
 ! OPEN_GROUP opens an existing HDF5 group

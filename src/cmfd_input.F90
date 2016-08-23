@@ -531,15 +531,15 @@ contains
         allocate(SurfaceFilter :: filters(n_filters) % obj)
         select type(filt => filters(n_filters) % obj)
         type is(SurfaceFilter)
-          filt % n_bins = 2 * m % n_dimension
-          allocate(filt % surfaces(2 * m % n_dimension))
+          filt % n_bins = 4 * m % n_dimension
+          allocate(filt % surfaces(4 * m % n_dimension))
           if (m % n_dimension == 2) then
-            filt % surfaces = (/ OUT_LEFT, OUT_RIGHT, OUT_BACK, OUT_FRONT, &
-                 IN_LEFT, IN_RIGHT, IN_BACK, IN_FRONT /)
+            filt % surfaces = (/ OUT_LEFT, IN_LEFT, IN_RIGHT, OUT_RIGHT, &
+                 OUT_BACK, IN_BACK, IN_FRONT, OUT_FRONT /)
           elseif (m % n_dimension == 3) then
-            filt % surfaces = (/ OUT_LEFT, OUT_RIGHT, OUT_BACK, OUT_FRONT, &
-                 OUT_BOTTOM, OUT_TOP, IN_LEFT, IN_RIGHT, IN_BACK, IN_FRONT, &
-                 IN_BOTTOM, IN_TOP /)
+            filt % surfaces = (/ OUT_LEFT, IN_LEFT, IN_RIGHT, OUT_RIGHT, &
+                 OUT_BACK, IN_BACK, IN_FRONT, OUT_FRONT, &
+                 OUT_BOTTOM, IN_BOTTOM, IN_TOP, OUT_TOP /)
           end if
         end select
         t % find_filter(FILTER_SURFACE) = n_filters

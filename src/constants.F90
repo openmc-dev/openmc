@@ -359,12 +359,12 @@ module constants
 
   ! Tally surface current directions
   integer, parameter :: &
-       OUT_LEFT   = 1,   &   ! x min
-       OUT_RIGHT  = 2,   &   ! x max
-       OUT_BACK   = 3,   &   ! y min
-       OUT_FRONT  = 4,   &   ! y max
-       OUT_BOTTOM = 5,   &   ! z min
-       OUT_TOP    = 6        ! z max
+       LEFT   = 1,   &   ! x min
+       RIGHT  = 2,   &   ! x max
+       BACK   = 3,   &   ! y min
+       FRONT  = 4,   &   ! y max
+       BOTTOM = 5,   &   ! z min
+       TOP    = 6        ! z max
 
   ! Tally trigger types and threshold
   integer, parameter :: &

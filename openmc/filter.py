@@ -781,12 +781,18 @@ class Filter(object):
             filter_bins = np.repeat(self.bins, self.stride)
             tile_factor = data_size / len(filter_bins)
             filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = [x if x != 1 else 'x-min' for x in filter_bins]
-            filter_bins = [x if x != 2 else 'x-max' for x in filter_bins]
-            filter_bins = [x if x != 3 else 'y-min' for x in filter_bins]
-            filter_bins = [x if x != 4 else 'y-max' for x in filter_bins]
-            filter_bins = [x if x != 5 else 'z-min' for x in filter_bins]
-            filter_bins = [x if x != 6 else 'z-max' for x in filter_bins]
+            filter_bins = [x if x != 1  else 'x-min out' for x in filter_bins]
+            filter_bins = [x if x != 2  else 'x-max out' for x in filter_bins]
+            filter_bins = [x if x != 3  else 'y-min out' for x in filter_bins]
+            filter_bins = [x if x != 4  else 'y-max out' for x in filter_bins]
+            filter_bins = [x if x != 5  else 'z-min out' for x in filter_bins]
+            filter_bins = [x if x != 6  else 'z-max out' for x in filter_bins]
+            filter_bins = [x if x != 7  else 'x-min in'  for x in filter_bins]
+            filter_bins = [x if x != 8  else 'x-max in'  for x in filter_bins]
+            filter_bins = [x if x != 9  else 'y-min in'  for x in filter_bins]
+            filter_bins = [x if x != 10 else 'y-max in'  for x in filter_bins]
+            filter_bins = [x if x != 11 else 'z-min in'  for x in filter_bins]
+            filter_bins = [x if x != 12 else 'z-max in'  for x in filter_bins]
             df = pd.concat([df, pd.DataFrame({self.type : filter_bins})])
 
         # universe, material, surface, cell, and cellborn filters

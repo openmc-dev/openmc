@@ -1032,23 +1032,6 @@ contains
                  nuclides_0K(i) % scheme)
           end if
 
-          ! check to make sure xs name for which method is applied is given
-          if (.not. check_for_node(node_scatterer, "xs_label")) then
-            call fatal_error("Must specify the temperature dependent name of &
-                 &scatterer " // trim(to_str(i)) &
-                 // " given in cross_sections.xml")
-          end if
-          call get_node_value(node_scatterer, "xs_label", &
-               nuclides_0K(i) % name)
-
-          ! check to make sure 0K xs name for which method is applied is given
-          if (.not. check_for_node(node_scatterer, "xs_label_0K")) then
-            call fatal_error("Must specify the 0K name of scatterer " &
-                 // trim(to_str(i)) // " given in cross_sections.xml")
-          end if
-          call get_node_value(node_scatterer, "xs_label_0K", &
-               nuclides_0K(i) % name_0K)
-
           if (check_for_node(node_scatterer, "E_min")) then
             call get_node_value(node_scatterer, "E_min", &
                  nuclides_0K(i) % E_min)
@@ -1073,8 +1056,6 @@ contains
 
           nuclides_0K(i) % nuclide = trim(nuclides_0K(i) % nuclide)
           nuclides_0K(i) % scheme  = to_lower(trim(nuclides_0K(i) % scheme))
-          nuclides_0K(i) % name    = trim(nuclides_0K(i) % name)
-          nuclides_0K(i) % name_0K = trim(nuclides_0K(i) % name_0K)
         end do
       else
         call fatal_error("No resonant scatterers are specified within the &
@@ -2086,9 +2067,9 @@ contains
     ! Check that 0K nuclides are listed in the cross_sections.xml file
     if (allocated(nuclides_0K)) then
       do i = 1, size(nuclides_0K)
-        if (.not. library_dict % has_key(to_lower(nuclides_0K(i) % name_0K))) then
+        if (.not. library_dict % has_key(to_lower(nuclides_0K(i) % nuclide))) then
           call fatal_error("Could not find resonant scatterer " &
-               // trim(nuclides_0K(i) % name_0K) &
+               // trim(nuclides_0K(i) % nuclide) &
                // " in cross_sections.xml file!")
         end if
       end do
@@ -5942,16 +5923,15 @@ contains
     type(Nuclide) :: resonant_nuc
 
     do i = 1, size(nuclides_0K)
-      if (nuc % name == nuclides_0K(i) % name) then
+      if (nuc % name == nuclides_0K(i) % nuclide) then
         ! Copy basic information from settings.xml
         nuc % resonant = .true.
-        nuc % name_0K = trim(nuclides_0K(i) % name_0K)
         nuc % scheme = trim(nuclides_0K(i) % scheme)
         nuc % E_min = nuclides_0K(i) % E_min
         nuc % E_max = nuclides_0K(i) % E_max
 
         ! Get index in libraries array
-        name = nuc % name_0K
+        name = nuc % name
         i_library = library_dict % get_key(to_lower(name))
 
         call write_message('Reading ' // trim(name) // ' 0K data from ' // &

@@ -12,7 +12,7 @@ from openmc.stats import Uniform
 from .angle_distribution import AngleDistribution
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D, Polynomial
-from .data import REACTION_NAME, kT_to_K
+from .data import REACTION_NAME, K_BOLTZMANN
 from .product import Product
 from .uncorrelated import UncorrelatedAngleEnergy
 
@@ -444,8 +444,10 @@ class Reaction(EqualityMixin):
             HDF5 group to write to
         energy : Iterable of float
             Array of energies at which cross sections are tabulated at
-        temperatures : Iterable of float
-            Array of temperatures at which to obtain the cross sections
+        temperatures : Iterable of str
+            List of string representations the temperatures of the target
+            nuclide in the data set.  The temperatures are strings of the
+            temperature, rounded to the nearest integer; e.g., '294K'
 
         Returns
         -------
@@ -488,7 +490,7 @@ class Reaction(EqualityMixin):
 
         # Convert data temperature to a "300.0K" number for indexing
         # temperature data
-        strT = str(int(round(kT_to_K(ace.temperature)))) + "K"
+        strT = str(int(round(ace.temperature / K_BOLTZMANN))) + "K"
 
         if i_reaction > 0:
             mt = int(ace.xss[ace.jxs[3] + i_reaction - 1])

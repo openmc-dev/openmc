@@ -16,18 +16,17 @@ Incident Neutron Data
              - **metastable** (*int*) -- Metastable state (0=ground, 1=first
                excited, etc.)
              - **atomic_weight_ratio** (*double*) -- Mass in units of neutron masses
-             - **kTs** (*double[]*) -- Temperatures (in MeV) contained in the library
              - **n_reaction** (*int*) -- Number of reactions
 
 :Datasets: - **energy** (*double[]*) -- Energy points at which cross sections are tabulated
 
 **/<nuclide name>/kTs/**
 
-<TTTK> is the temperature in Kelvin, rounded to the nearest integer, of the
+<TTT>K is the temperature in Kelvin, rounded to the nearest integer, of the
 temperature-dependent data set.  For example, the data set corresponding to
 300 Kelvin would be located at `300K`.
 
-:Datasets: - **<TTTK>** (*double[]*) -- kT values (in MeV) for each Temperature
+:Datasets: - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
    TTT (in Kelvin)
 
 **/<nuclide name>/reactions/reaction_<mt>/**
@@ -39,9 +38,9 @@ temperature-dependent data set.  For example, the data set corresponding to
                scattering is center-of-mass (1) or laboratory (0)
              - **n_product** (*int*) -- Number of reaction products
 
-**/<nuclide name>/reactions/reaction_<mt>/<TTTK>/**
+**/<nuclide name>/reactions/reaction_<mt>/<TTT>K/**
 
-<TTTK> is the temperature in Kelvin, rounded to the nearest integer, of the
+<TTT>K is the temperature in Kelvin, rounded to the nearest integer, of the
 temperature-dependent data set.  For example, the data set corresponding to
 300 Kelvin would be located at `300K`.
 
@@ -116,9 +115,9 @@ Thermal Neutron Scattering Data
                outgoing angle-energy distributions are represented ('equal',
                'skewed', or 'continuous').
 
-**/<thermal name>/elastic/<TTTK>/**
+**/<thermal name>/elastic/<TTT>K/**
 
-<TTTK> is the temperature in Kelvin, rounded to the nearest integer, of the
+<TTT>K is the temperature in Kelvin, rounded to the nearest integer, of the
 temperature-dependent data set.  For example, the data set corresponding to
 300 Kelvin would be located at `300K`.
 
@@ -128,9 +127,9 @@ temperature-dependent data set.  For example, the data set corresponding to
              and angles for coherent elastic scattering for temperature TTT
              (in Kelvin)
 
-**/<thermal name>/inelastic/<TTTK>/**
+**/<thermal name>/inelastic/<TTT>K/**
 
-<TTTK> is the temperature in Kelvin, rounded to the nearest integer, of the
+<TTT>K is the temperature in Kelvin, rounded to the nearest integer, of the
 temperature-dependent data set.  For example, the data set corresponding to
 300 Kelvin would be located at `300K`.
 

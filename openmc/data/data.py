@@ -219,6 +219,7 @@ def atomic_mass(isotope):
 
     return _ATOMIC_MASS.get(isotope.lower())
 
-def kT_to_K(kT):
-    K = kT / 8.6173324e-11
-    return K
+# The value of the Boltzman constant in units of MeV / K
+# Values here are from the Committee on Data for Science and Technology
+# (CODATA) 2010 recommendation (doi:10.1103/RevModPhys.84.1527).
+K_BOLTZMANN = 8.6173324E-11

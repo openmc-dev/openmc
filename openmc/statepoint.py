@@ -50,6 +50,10 @@ class StatePoint(object):
         Number of batches simulated
     date_and_time : str
         Date and time when simulation began
+    domain_decomp : bool
+        Indicate whether domain decomposition is active
+    domain_id : int
+        Id of current domain
     entropy : numpy.ndarray
         Shannon entropy of fission source at each batch
     gen_per_batch : Integral
@@ -71,6 +75,8 @@ class StatePoint(object):
         Dictionary whose keys are mesh IDs and whose values are Mesh objects
     n_batches : int
         Number of batches
+    n_domains : int
+        Number of domains
     n_inactive : int
         Number of inactive batches
     n_particles : int
@@ -138,6 +144,31 @@ class StatePoint(object):
         self._global_tallies = None
         self._sparse = False
 
+        # Check domain decomposition
+        self._domain_decomp = False
+        try:
+            self._domain_decomp = self._f['domain_decomp'].value
+        except: pass
+
+        # Search all domain specified statepoint files
+        if self._domain_decomp:
+            if not '.domain_' in filename:
+                warnings.warn('Could not identify domain-specified statepoint '
+                              'files.', RuntimeWarning)
+                self._dd_files = None
+            else:
+                if not filename.endswith('domain_1.h5'):
+                    warnings.warn('Only domain_1.h5 statepoint file contains '
+                             'correct global tally infomation.', RuntimeWarning)
+                
+                dd_files = glob.glob(filename.split('.domain_')[0]+'.domain_*.h5')
+                if len(dd_files) != self._f['n_domains'].value:
+                    warnings.warn('Could not find all domain-specified statepoint'
+                                  ' files.', RuntimeWarning)
+                    self._dd_files = None
+                else:
+                    self._dd_files = dd_files
+
         # Automatically link in a summary file if one exists
         if autolink:
             path_summary = os.path.join(os.path.dirname(filename), 'summary.h5')
@@ -193,6 +224,14 @@ class StatePoint(object):
     @property
     def date_and_time(self):
         return self._f['date_and_time'].value.decode()
+
+    @property
+    def domain_decomp(self):
+        return self._domain_decomp
+
+    @property
+    def domain_id(self):
+        return self._f['domain_id'].value
 
     @property
     def entropy(self):
@@ -322,6 +361,10 @@ class StatePoint(object):
     @property
     def n_batches(self):
         return self._f['n_batches'].value
+
+    @property
+    def n_domains(self):
+        return self._f['n_domains'].value
 
     @property
     def n_inactive(self):
@@ -469,6 +512,48 @@ class StatePoint(object):
 
                 # Add Tally to the global dictionary of all Tallies
                 tally.sparse = self.sparse
+                
+                # Merge on-the-fly tallies from all domain-specified statepoint
+                # files. Only sum and sum_sq data need to be updated.
+                if self.domain_decomp and self._dd_files:
+                    # Initialize arrays for merged sum and sum_sq
+                    sum = np.zeros((tally.num_filter_bins, 
+                                    tally.num_nuclides*tally.num_scores))
+                    sum_sq = np.zeros((tally.num_filter_bins, 
+                                    tally.num_nuclides*tally.num_scores))
+
+                    # Loop for reading otf tallies and merging by filter bins
+                    import h5py
+                    for file in self._dd_files:
+                        with h5py.File(file, 'r') as sp:
+                            otf_bin = sp['{0}{1}/otf_filter_bin_map'.format(
+                                         base, tally_key)].value
+                            otf_sum = sp['{0}{1}/results'.format(
+                                         base, tally_key)].value['sum']
+                            otf_sum_sq = sp['{0}{1}/results'.format(
+                                            base, tally_key)].value['sum_sq']
+
+                        for i, bin in enumerate(otf_bin):
+                            sum[bin-1, :] += otf_sum[i, :]
+                            # sum_sq cannot be reproduced if it is seperated by
+                            # domains, this is a conservative estimate
+                            sum_sq[bin-1, :] = \
+                                sum_sq[bin-1, :] + otf_sum_sq[i, :] + \
+                                2*(sum_sq[bin-1, :]*otf_sum_sq[i, :])**0.5
+
+                    # Update tally data with merged results (shaped)
+                    tally.sum = np.reshape(sum, tally.shape)
+                    tally.sum_sq = np.reshape(sum_sq, tally.shape)
+
+                    # Convert NumPy arrays to SciPy sparse LIL matrices
+                    if tally.sparse:
+                        import scipy.sparse as sps
+
+                        tally.sum = \
+                            sps.lil_matrix(tally.sum.flatten(), tally.sum.shape)
+                        tally.sum_sq = \
+                            sps.lil_matrix(tally.sum_sq.flatten(), tally.sum_sq.shape)
+
                 self._tallies[tally_key] = tally
 
             self._tallies_read = True

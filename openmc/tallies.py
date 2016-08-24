@@ -269,47 +269,49 @@ class Tally(object):
 
     @property
     def sum(self):
-        if not self._sp_filename or self.derived:
-            return None
+        if self._sum is None:
 
-        if not self._results_read:
-            import h5py
-            if h5py.__version__ == '2.6.0':
-                raise ImportError("h5py 2.6.0 has a known bug which makes it "
-                                  "incompatible with OpenMC's HDF5 files. "
-                                  "Please switch to a different version.")
+            if not self._sp_filename or self.derived:
+                return None
 
-            # Open the HDF5 statepoint file
-            f = h5py.File(self._sp_filename, 'r')
+            if not self._results_read:
+                import h5py
+                if h5py.__version__ == '2.6.0':
+                    raise ImportError("h5py 2.6.0 has a known bug which makes it "
+                                      "incompatible with OpenMC's HDF5 files. "
+                                      "Please switch to a different version.")
 
-            # Extract Tally data from the file
-            data = f['tallies/tally {0}/results'.format(
-                self.id)].value
-            sum = data['sum']
-            sum_sq = data['sum_sq']
+                # Open the HDF5 statepoint file
+                f = h5py.File(self._sp_filename, 'r')
 
-            # Reshape the results arrays
-            sum = np.reshape(sum, self.shape)
-            sum_sq = np.reshape(sum_sq, self.shape)
+                # Extract Tally data from the file
+                data = f['tallies/tally {0}/results'.format(
+                    self.id)].value
+                sum = data['sum']
+                sum_sq = data['sum_sq']
 
-            # Set the data for this Tally
-            self._sum = sum
-            self._sum_sq = sum_sq
+                # Reshape the results arrays
+                sum = np.reshape(sum, self.shape)
+                sum_sq = np.reshape(sum_sq, self.shape)
 
-            # Convert NumPy arrays to SciPy sparse LIL matrices
-            if self.sparse:
-                import scipy.sparse as sps
+                # Set the data for this Tally
+                self._sum = sum
+                self._sum_sq = sum_sq
 
-                self._sum = \
-                    sps.lil_matrix(self._sum.flatten(), self._sum.shape)
-                self._sum_sq = \
-                    sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
+                # Convert NumPy arrays to SciPy sparse LIL matrices
+                if self.sparse:
+                    import scipy.sparse as sps
 
-            # Indicate that Tally results have been read
-            self._results_read = True
+                    self._sum = \
+                        sps.lil_matrix(self._sum.flatten(), self._sum.shape)
+                    self._sum_sq = \
+                        sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
 
-            # Close the HDF5 statepoint file
-            f.close()
+                # Indicate that Tally results have been read
+                self._results_read = True
+
+                # Close the HDF5 statepoint file
+                f.close()
 
         if self.sparse:
             return np.reshape(self._sum.toarray(), self.shape)
@@ -318,12 +320,14 @@ class Tally(object):
 
     @property
     def sum_sq(self):
-        if not self._sp_filename:
-            return None
+        if self._sum_sq is None:
 
-        if not self._results_read:
-            # Force reading of sum and sum_sq
-            self.sum
+            if not self._sp_filename:
+                return None
+
+            if not self._results_read:
+                # Force reading of sum and sum_sq
+                self.sum
 
         if self.sparse:
             return np.reshape(self._sum_sq.toarray(), self.shape)

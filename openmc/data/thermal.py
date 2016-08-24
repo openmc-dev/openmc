@@ -441,7 +441,7 @@ class ThermalScattering(EqualityMixin):
         kTg = group['kTs']
         kTs = []
         for temp in kTg:
-            kTs.append(temp.value)
+            kTs.append(kTg[temp].value)
         temperatures = [str(int(round(kT_to_K(kT)))) + "K" for kT in kTs]
 
         table = cls(name, atomic_weight_ratio, kTs)

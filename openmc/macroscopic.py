@@ -32,8 +32,6 @@ class Macroscopic(object):
         if isinstance(other, Macroscopic):
             if self.name != other.name:
                 return False
-            elif self.xs != other.xs:
-                return False
             else:
                 return True
         elif isinstance(other, basestring) and other == self.name:
@@ -45,7 +43,7 @@ class Macroscopic(object):
         return not self == other
 
     def __hash__(self):
-        return hash((self._name, self._xs))
+        return hash((self._name))
 
     def __repr__(self):
         string = 'Nuclide    -    {0}\n'.format(self._name)

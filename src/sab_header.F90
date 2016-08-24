@@ -222,9 +222,14 @@ contains
     ! closest temperature
     my_temperature = temperatures(j)
     if (temperature /= my_temperature) then
-      call warning(trim(this % name) // " does not contain data at a &
-                   &temperature of " // trim(temperature) // "; using the &
-                   &nearest available temperature of " // trim(my_temperature))
+      if (temperature == '0K') then
+        call warning(trim(this % name) // " does not contain 0K data &
+                     &needed for the resonance scattering options selected")
+      else
+        call warning(trim(this % name) // " does not contain data at a &
+                     &temperature of " // trim(temperature) // "; using the &
+                     &nearest available temperature of " // trim(my_temperature))
+      end if
     end if
 
     kT_dset = open_dataset(kT_group, my_temperature)

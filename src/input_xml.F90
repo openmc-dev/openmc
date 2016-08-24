@@ -2147,6 +2147,12 @@ contains
     ! Copy default temperature
     if (check_for_node(doc, "default_temperature")) then
       call get_node_value(doc, "default_temperature", default_temperature)
+    else if (.not. run_CE) then
+      ! FIXME This is only necessary while MG mode does not have a
+      ! temperature dependent library implementation.
+      ! Set a default for MG mode to allow MG libraries to not include
+      ! temperatures
+      default_temperature = '294K'
     else
       default_temperature = ''
     end if

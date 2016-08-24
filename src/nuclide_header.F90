@@ -245,8 +245,8 @@ module nuclide_header
     my_temperature = temperatures(j)
     if (temperature /= my_temperature) then
       if (temperature == '0K') then
-        call fatal_error(trim(this % name) // " does not contain 0K data &
-                         &needed for the resonance scattering options selected")
+        call warning(trim(this % name) // " does not contain 0K data &
+                     &needed for the resonance scattering options selected")
       else
         call warning(trim(this % name) // " does not contain data at a &
                      &temperature of " // trim(temperature) // "; using the &

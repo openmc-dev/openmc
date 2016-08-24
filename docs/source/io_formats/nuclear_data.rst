@@ -108,12 +108,20 @@ Thermal Neutron Scattering Data
 **/<thermal name>/**
 
 :Attributes: - **atomic_weight_ratio** (*double*) -- Mass in units of neutron masses
-             - **kTs** (*double[]*) -- Temperatures (in MeV) contained in the library
              - **zaids** (*int[]*) -- ZAID identifiers for which the thermal
                scattering data applies to
              - **secondary_mode** (*char[]*) -- Indicates how the inelastic
                outgoing angle-energy distributions are represented ('equal',
                'skewed', or 'continuous').
+
+**/<thermal name>/kTs/**
+
+<TTT>K is the temperature in Kelvin, rounded to the nearest integer, of the
+temperature-dependent data set.  For example, the data set corresponding to
+300 Kelvin would be located at `300K`.
+
+:Datasets: - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
+   TTT (in Kelvin)
 
 **/<thermal name>/elastic/<TTT>K/**
 

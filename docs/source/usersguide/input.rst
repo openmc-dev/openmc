@@ -395,19 +395,16 @@ attributes or sub-elements:
 
   :scatterer:
     An element with attributes/sub-elements called ``nuclide``, ``method``,
-    ``xs_label``, ``xs_label_0K``, ``E_min``, and ``E_max``. The ``nuclide``
-    attribute is the name, as given by the ``name`` attribute within the
-    ``nuclide`` sub-element of the ``material`` element in ``materials.xml``,
-    of the nuclide to which a resonance scattering treatment is to be applied.
+    ``E_min``, and ``E_max``. The ``nuclide`` attribute is the name, as given
+    by the ``name`` attribute within the ``nuclide`` sub-element of the
+    ``material`` element in ``materials.xml``, of the nuclide to which a
+    resonance scattering treatment is to be applied.
     The ``method`` attribute gives the type of resonance scattering treatment
     that is to be applied to the ``nuclide``.  Acceptable inputs - none of
     which are case-sensitive - for the ``method`` attribute are ``ARES``,
     ``CXS``, ``WCM``, and ``DBRC``.  Descriptions of each of these methods
-    are documented here_.  The ``xs_label`` attribute gives the label for the
-    cross section data of the ``nuclide`` at a given temperature.  The
-    ``xs_label_0K`` gives the label for the 0 K cross section data for the
-    ``nuclide``.  The ``E_min`` attribute gives the minimum energy above
-    which the ``method`` is applied.  The ``E_max`` attribute gives the
+    are documented here_.  The ``E_min`` attribute gives the minimum energy
+    above which the ``method`` is applied.  The ``E_max`` attribute gives the
     maximum energy below which the ``method`` is applied.  One example would
     be as follows:
 
@@ -419,16 +416,12 @@ attributes or sub-elements:
           <scatterer>
             <nuclide>U-238</nuclide>
             <method>ARES</method>
-            <xs_label>92238.72c</xs_label>
-            <xs_label_0K>92238.00c</xs_label_0K>
             <E_min>5.0e-6</E_min>
             <E_max>40.0e-6</E_max>
          </scatterer>
          <scatterer>
             <nuclide>Pu-239</nuclide>
             <method>dbrc</method>
-            <xs_label>94239.72c</xs_label>
-            <xs_label_0K>94239.00c</xs_label_0K>
             <E_min>0.01e-6</E_min>
             <E_max>210.0e-6</E_max>
           </scatterer>

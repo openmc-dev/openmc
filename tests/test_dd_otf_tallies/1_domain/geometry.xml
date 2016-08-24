@@ -41,4 +41,7 @@
   <surface coeffs="0.0 0.0 0.3" id="6" type="z-cylinder" />
   <surface coeffs="0.0 0.0 0.2" id="7" type="z-cylinder" />
 
-<cell id="7" material="void" universe="7" /><cell id="8" material="void" universe="8" /></geometry>
+<cell id="7" material="void" universe="7" />
+<cell id="8" material="void" universe="8" />
+
+</geometry>

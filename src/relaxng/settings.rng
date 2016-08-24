@@ -779,30 +779,6 @@
                 </attribute>
               </choice>
               <choice>
-                <element name="xs_label">
-                  <data type="string">
-                    <param name="maxLength">12</param>
-                  </data>
-                </element>
-                <attribute name="xs_label">
-                  <data type="string">
-                    <param name="maxLength">12</param>
-                  </data>
-                </attribute>
-              </choice>
-              <choice>
-                <element name="xs_label_0K">
-                  <data type="string">
-                    <param name="maxLength">12</param>
-                  </data>
-                </element>
-                <attribute name="xs_label_0K">
-                  <data type="string">
-                    <param name="maxLength">12</param>
-                  </data>
-                </attribute>
-              </choice>
-              <choice>
                 <element name="E_min">
                   <data type="double"/>
                 </element>

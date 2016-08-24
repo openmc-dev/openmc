@@ -7,7 +7,7 @@ from warnings import warn
 import numpy as np
 import h5py
 
-from .data import ATOMIC_SYMBOL, SUM_RULES, kT_to_K
+from .data import ATOMIC_SYMBOL, SUM_RULES, K_BOLTZMANN
 from .ace import Table, get_table
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum
@@ -40,6 +40,16 @@ def _get_metadata(zaid, metastable_scheme='nndc'):
 
     Returns
     -------
+    name : str
+        Name of the table
+    element : str
+        The atomic symbol of the isotope in the table; e.g., Zr.
+    Z : int
+        Number of protons in the nucleus
+    mass_number : int
+        Number of nucleons in the nucleus
+    metastable : int
+        Metastable state of the nucleus. A value of zero indicates ground state.
 
     """
 
@@ -98,7 +108,7 @@ class IncidentNeutron(EqualityMixin):
         Metastable state of the nucleus. A value of zero indicates ground state.
     atomic_weight_ratio : float
         Atomic mass ratio of the target nuclide.
-    kTs : Iterable float
+    kTs : Iterable of float
         List of temperatures of the target nuclide in the data set.
         The temperatures have units of MeV.
 
@@ -112,7 +122,7 @@ class IncidentNeutron(EqualityMixin):
         Atomic weight ratio of the target nuclide.
     energy : dict of numpy.ndarray
         The energy values (MeV) at which reaction cross-sections are tabulated.
-        They keys of the dict are the temperature string ('296.3K') for each
+        They keys of the dict are the temperature string ('294K') for each
         set of energies
     fission_energy : None or openmc.data.FissionEnergyRelease
         The energy released by fission, tabulated by component (e.g. prompt
@@ -122,7 +132,7 @@ class IncidentNeutron(EqualityMixin):
     metastable : int
         Metastable state of the nucleus. A value of zero indicates ground state.
     name : str
-        ZAID identifier of the table, e.g. 92235.70c.
+        ZAID identifier of the table, e.g. 92235.
     reactions : collections.OrderedDict
         Contains the cross sections, secondary angle and energy distributions,
         and other associated data for each reaction. The keys are the MT values
@@ -132,8 +142,8 @@ class IncidentNeutron(EqualityMixin):
         are the MT values and the values are Reaction objects.
     temperatures : Iterable of str
         List of string representations the temperatures of the target nuclide
-        in the data set.  The temperatures are strings with 1 decimal place,
-        i.e., '293.6K'
+        in the data set.  The temperatures are strings of the temperature,
+        rounded to the nearest integer; e.g., '294K'
     kTs : Iterable of float
         List of temperatures of the target nuclide in the data set.
         The temperatures have units of MeV.
@@ -150,7 +160,8 @@ class IncidentNeutron(EqualityMixin):
         self.metastable = metastable
         self.atomic_weight_ratio = atomic_weight_ratio
         self.kTs = kTs
-        self.temperatures = [str(int(round(kT_to_K(kT)))) + "K" for kT in kTs]
+        self.temperatures = [str(int(round(kT / K_BOLTZMANN))) + "K"
+                             for kT in kTs]
         self.energy = {}
         self._fission_energy = None
         self.reactions = OrderedDict()
@@ -300,7 +311,7 @@ class IncidentNeutron(EqualityMixin):
         if ace.temperature not in self.kTs:
             if name == self.name:
                 # Add temperature and kTs
-                strT = str(int(round(kT_to_K(ace.temperature)))) + "K"
+                strT = str(int(round(ace.temperature / K_BOLTZMANN))) + "K"
                 self.temperatures.append(strT)
                 self.kTs.append(ace.temperature)
                 # Read energy grid
@@ -463,7 +474,7 @@ class IncidentNeutron(EqualityMixin):
         kTs = []
         for temp in kTg:
             kTs.append(kTg[temp].value)
-        temperatures = [str(int(round(kT_to_K(kT)))) + "K" for kT in kTs]
+        temperatures = [str(int(round(kT / K_BOLTZMANN))) + "K" for kT in kTs]
 
         data = cls(name, atomic_number, mass_number, metastable,
                    atomic_weight_ratio, kTs)
@@ -550,7 +561,7 @@ class IncidentNeutron(EqualityMixin):
         # Assign temperature to the running list
         kTs = [ace.temperature]
 
-        temperatures = [str(int(round(kT_to_K(ace.temperature)))) + "K"]
+        temperatures = [str(int(round(ace.temperature / K_BOLTZMANN))) + "K"]
 
         # If mass number hasn't been specified, make an educated guess
         zaid, xs = ace.name.split('.')

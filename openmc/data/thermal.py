@@ -8,7 +8,7 @@ import h5py
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from .data import kT_to_K
+from .data import K_BOLTZMANN
 from .ace import Table, get_table
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D
@@ -177,8 +177,8 @@ class ThermalScattering(EqualityMixin):
         Name of the table, e.g. lwtr.20t.
     temperatures : Iterable of str
         List of string representations the temperatures of the target nuclide
-        in the data set.  The temperatures are strings with 1 decimal place,
-        i.e., '293.6K'
+        in the data set.  The temperatures are strings of the temperature,
+        rounded to the nearest integer; e.g., '294K'
     kTs : Iterable of float
         List of temperatures of the target nuclide in the data set.
         The temperatures have units of MeV.
@@ -191,7 +191,8 @@ class ThermalScattering(EqualityMixin):
         self.name = name
         self.atomic_weight_ratio = atomic_weight_ratio
         self.kTs = kTs
-        self.temperatures = [str(int(round(kT_to_K(kT)))) + "K" for kT in kTs]
+        self.temperatures = [str(int(round(kT / K_BOLTZMANN))) + "K"
+                             for kT in kTs]
         self.elastic_xs = {}
         self.elastic_mu_out = {}
         self.inelastic_xs = {}
@@ -304,7 +305,7 @@ class ThermalScattering(EqualityMixin):
         if ace.temperature not in self.kTs:
             if name == self.name:
                 # Add temperature and kTs
-                strT = str(int(round(kT_to_K(ace.temperature)))) + "K"
+                strT = str(int(round(ace.temperature / K_BOLTZMANN))) + "K"
                 self.temperatures.append(strT)
                 self.kTs.append(ace.temperature)
 
@@ -442,7 +443,7 @@ class ThermalScattering(EqualityMixin):
         kTs = []
         for temp in kTg:
             kTs.append(kTg[temp].value)
-        temperatures = [str(int(round(kT_to_K(kT)))) + "K" for kT in kTs]
+        temperatures = [str(int(round(kT / K_BOLTZMANN))) + "K" for kT in kTs]
 
         table = cls(name, atomic_weight_ratio, kTs)
         table.zaids = group.attrs['zaids']
@@ -530,7 +531,7 @@ class ThermalScattering(EqualityMixin):
 
         # Assign temperature to the running list
         kTs = [ace.temperature]
-        temperatures = [str(int(round(kT_to_K(ace.temperature)))) + "K"]
+        temperatures = [str(int(round(ace.temperature / K_BOLTZMANN))) + "K"]
 
         table = cls(name, ace.atomic_weight_ratio, kTs)
 

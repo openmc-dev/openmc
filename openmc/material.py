@@ -89,7 +89,7 @@ class Material(object):
         # A list of tuples (element, percent, percent type)
         self._elements = []
 
-        # If specified, a list of tuples of (table name, xs identifier)
+        # If specified, a list of table names
         self._sab = []
 
         # If true, the material will be initialized as distributed
@@ -129,7 +129,8 @@ class Material(object):
         string = 'Material\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._temperature)
+        string += '{0: <16}{1}{2}\n'.format('\Temperature', '=\t',
+                                            self._temperature)
 
         string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
         string += ' [{0}]\n'.format(self._density_units)
@@ -137,8 +138,7 @@ class Material(object):
         string += '{0: <16}\n'.format('\tS(a,b) Tables')
 
         for sab in self._sab:
-            string += '{0: <16}{1}[{2}{3}]\n'.format('\tS(a,b)', '=\t',
-                                                     sab[0], sab[1])
+            string += '{0: <16}{1}{2}\n'.format('\tS(a,b)', '=\t', sab)
 
         string += '{0: <16}\n'.format('\tNuclides')
 
@@ -507,7 +507,7 @@ class Material(object):
                   'Table "{}" is being renamed as "{}".'.format(name, new_name)
             warnings.warn(msg)
 
-        self._sab.append((new_name))
+        self._sab.append(new_name)
 
 
     def make_isotropic_in_lab(self):
@@ -579,9 +579,6 @@ class Material(object):
     def _get_macroscopic_xml(self, macroscopic):
         xml_element = ET.Element("macroscopic")
         xml_element.set("name", macroscopic.name)
-
-        if macroscopic.xs is not None:
-            xml_element.set("xs", macroscopic.xs)
 
         return xml_element
 

@@ -21,6 +21,15 @@ Incident Neutron Data
 
 :Datasets: - **energy** (*double[]*) -- Energy points at which cross sections are tabulated
 
+**/<nuclide name>/kTs/**
+
+<TTTK> is the temperature in Kelvin, rounded to the nearest integer, of the
+temperature-dependent data set.  For example, the data set corresponding to
+300 Kelvin would be located at `300K`.
+
+:Datasets: - **<TTTK>** (*double[]*) -- kT values (in MeV) for each Temperature
+   TTT (in Kelvin)
+
 **/<nuclide name>/reactions/reaction_<mt>/**
 
 :Attributes: - **mt** (*int*) -- ENDF MT reaction number
@@ -39,7 +48,8 @@ temperature-dependent data set.  For example, the data set corresponding to
 :Attributes: - **threshold_idx** (*int*) -- Index on the energy grid that the
                reaction threshold corresponds to for temperature TTT (in Kelvin)
 
-:Datasets: - **xs** (*double[]*) -- Cross section values tabulated against the nuclide energy grid for temperature TTT (in Kelvin)
+:Datasets: - **xs** (*double[]*) -- Cross section values tabulated against the
+   nuclide energy grid for temperature TTT (in Kelvin)
 
 **/<nuclide name>/reactions/reaction_<mt>/product_<j>/**
 

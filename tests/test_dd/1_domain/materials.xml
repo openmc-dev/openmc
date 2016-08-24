@@ -3,44 +3,111 @@
 
   <default_xs>71c</default_xs>
 
-  <!-- Fuel water mix composition -->
-  <material id="1">
-    <density value="10" units="g/cm3" />
-    <nuclide name="U234"   ao="4.9476e-6" />
-    <nuclide name="U235"   ao="4.8218e-4" />
-    <nuclide name="U236"   ao="9.0402e-5" />
-    <nuclide name="U238"   ao="2.1504e-2" />
-    <nuclide name="Np237"  ao="7.3733e-6" />
-    <nuclide name="Pu238"  ao="1.5148e-6" />
-    <nuclide name="Pu239"  ao="1.3955e-4" />
-    <nuclide name="Pu240"  ao="3.4405e-5" />
-    <nuclide name="Pu241"  ao="2.1439e-5" />
-    <nuclide name="Pu242"  ao="3.7422e-6" />
-    <nuclide name="Am241"  ao="4.5041e-7" />
-    <nuclide name="Am242_m1" ao="9.2301e-9" />
-    <nuclide name="Am243"  ao="4.7878e-7" />
-    <nuclide name="Cm242"  ao="1.0485e-7" />
-    <nuclide name="Cm243"  ao="1.4268e-9" />
-    <nuclide name="Cm244"  ao="8.8756e-8" />
-    <nuclide name="Cm245"  ao="3.5285e-9" />
-    <nuclide name="Mo95"   ao="2.6497e-5" />
-    <nuclide name="Tc99"   ao="3.2772e-5" />
-    <nuclide name="Ru101"  ao="3.0742e-5" />
-    <nuclide name="Ru103"  ao="2.3505e-6" />
-    <nuclide name="Ag109"  ao="2.0009e-6" />
-    <nuclide name="Xe135"  ao="1.0801e-8" />
-    <nuclide name="Cs133"  ao="3.4612e-5" />
-    <nuclide name="Nd143"  ao="2.6078e-5" />
-    <nuclide name="Nd145"  ao="1.9898e-5" />
-    <nuclide name="Sm147"  ao="1.6128e-6" />
-    <nuclide name="Sm149"  ao="1.1627e-7" />
-    <nuclide name="Sm150"  ao="7.1727e-6" />
-    <nuclide name="Sm151"  ao="5.4947e-7" />
-    <nuclide name="Sm152"  ao="3.0221e-6" />
-    <nuclide name="Eu153"  ao="2.6209e-6" />
-    <nuclide name="Gd155"  ao="1.5369e-9" />
-    <nuclide name="O16"    ao="4.5737e-2" />
-    <nuclide name="H1"     ao="8.5737e-2" />
+  <material id="10">
+    <density value="1" units="g/cc" />
+    <nuclide name="O16" ao="1.0" />
+    <nuclide name="H1" ao="2.0" />
     <sab name="c_H_in_H2O" xs="71t" />
   </material>
+
+  <!-- Distributed materials -->
+  <!-- cell 101 -->
+  <material id="11">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="2.0"/>   
+    <nuclide name="U238" xs="71c" ao="8.0"/> 
+  </material>
+
+  <material id="12">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="3.0"/>   
+    <nuclide name="U238" xs="71c" ao="7.0"/> 
+  </material>
+
+  <material id="13">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="4.0"/>   
+    <nuclide name="U238" xs="71c" ao="6.0"/> 
+  </material>
+
+  <material id="14">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="5.0"/>   
+    <nuclide name="U238" xs="71c" ao="5.0"/> 
+  </material>
+
+  <!-- cell 201 -->
+  <material id="21">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="1.0"/>   
+    <nuclide name="U238" xs="71c" ao="9.0"/> 
+  </material>
+
+  <material id="22">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="2.0"/>   
+    <nuclide name="U238" xs="71c" ao="8.0"/> 
+  </material>
+
+  <material id="23">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="3.0"/>   
+    <nuclide name="U238" xs="71c" ao="7.0"/> 
+  </material>
+
+  <material id="24">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="4.0"/>   
+    <nuclide name="U238" xs="71c" ao="6.0"/> 
+  </material>
+
+  <material id="25">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="5.0"/>   
+    <nuclide name="U238" xs="71c" ao="5.0"/> 
+  </material>
+
+  <material id="26">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="6.0"/>   
+    <nuclide name="U238" xs="71c" ao="4.0"/> 
+  </material>
+
+  <material id="27">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="7.0"/>   
+    <nuclide name="U238" xs="71c" ao="3.0"/> 
+  </material>
+
+  <material id="28">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="8.0"/>   
+    <nuclide name="U238" xs="71c" ao="2.0"/> 
+  </material>
+
+  <!-- cell 301 -->
+  <material id="31">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="5.0"/>   
+    <nuclide name="U238" xs="71c" ao="5.0"/> 
+  </material>
+
+  <material id="32">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="4.0"/>   
+    <nuclide name="U238" xs="71c" ao="6.0"/> 
+  </material>
+
+  <material id="33">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="3.0"/>   
+    <nuclide name="U238" xs="71c" ao="7.0"/> 
+  </material>
+
+  <material id="34">
+    <density value="10" units="g/cc" /> 
+    <nuclide name="U235" xs="71c" ao="2.0"/>   
+    <nuclide name="U238" xs="71c" ao="8.0"/> 
+  </material>
+
 </materials>

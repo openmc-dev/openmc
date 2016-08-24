@@ -125,7 +125,7 @@ class DomainDecomTestHarness(TestHarness):
         output = glob.glob(os.path.join(os.getcwd(), 'statepoint.*.*'))
         output.append(os.path.join(os.getcwd(), 'summary.h5'))
         output.append(os.path.join(os.getcwd(), 'results_test.dat'))
-        output += glob.glob(os.path.join(os.getcwd(), 'tallies*.h5'))
+        output += glob.glob(os.path.join(os.getcwd(), 'tallies*.out'))
         output += glob.glob(os.path.join(os.getcwd(), 'volume_*.h5'))
         for f in output:
             if os.path.exists(f):

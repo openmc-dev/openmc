@@ -1,16 +1,31 @@
-<?xml version="1.0"?>
+<?xml version='1.0' encoding='utf-8'?>
 <tallies>
 
-  <mesh id="1">
-    <type>regular</type>
-    <lower_left> -9.9 -9.9 -9.9 </lower_left>
-    <upper_right> 9.9  9.9  9.9 </upper_right>
-    <dimension>3 3 1</dimension>
-  </mesh>
+    <tally id="1">
+        <filter bins="101" type="distribcell" />
+    <scores>total flux</scores>
+    </tally>
 
-  <tally id="1">
-    <filter type="mesh" bins="1" />
-    <scores>total</scores>
-  </tally>
+    <tally id="2">
+        <filter bins="201" type="distribcell" />
+        <scores>total flux</scores>
+    </tally>
+
+    <tally id="3">
+        <filter bins="301" type="distribcell" />
+        <scores>total flux</scores>
+    </tally>
+
+    <mesh id="1">
+      <type>regular</type>
+      <lower_left> -10.0 -10.0 -10.0 </lower_left>
+      <upper_right> 10.0  10.0  10.0 </upper_right>
+      <dimension>2 2 1</dimension>
+    </mesh>
+   
+    <tally id="4">
+      <filter type="mesh" bins="1" />
+      <scores>total</scores>
+    </tally>
 
 </tallies>

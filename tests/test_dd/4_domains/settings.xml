@@ -10,8 +10,8 @@
   <source>
     <space type="box">
       <parameters>
-        -9.9 -9.9 -9.9
-         9.9  9.9  9.9
+        -10.0 -10.0 -10.0
+         10.0  10.0  10.0
       </parameters>
     </space>
   </source>
@@ -20,8 +20,8 @@
 
     <mesh>
       <dimension> 2 2 1 </dimension>
-      <lower_left> -10 -10 -10 </lower_left>
-      <upper_right> 10 10 10 </upper_right>
+      <lower_left> -10.05 -10.05 -10.05 </lower_left>
+      <upper_right> 10.05  10.05  10.05 </upper_right>
     </mesh>
 
     <nodemap>
@@ -30,6 +30,5 @@
     </nodemap>
 
   </domain_decomposition>
-
 
 </settings>

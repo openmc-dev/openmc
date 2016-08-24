@@ -1264,10 +1264,6 @@ class ResonanceScattering(object):
         if self.method is not None:
             subelement = ET.SubElement(scatterer, 'method')
             subelement.text = self.method
-        subelement = ET.SubElement(scatterer, 'xs_label')
-        subelement.text = self.nuclide.name
-        subelement = ET.SubElement(scatterer, 'xs_label_0K')
-        subelement.text = self.nuclide_0K.name
         if self.E_min is not None:
             subelement = ET.SubElement(scatterer, 'E_min')
             subelement.text = str(self.E_min)

@@ -170,10 +170,6 @@ element settings {
         attribute nuclide { xsd:string { maxLength = "12" }  }) &
       (element method { xsd:string { maxLength = "16" } } |
         attribute method { xsd:string { maxLength = "16" }  }) &
-      (element xs_label { xsd:string { maxLength = "12" } } |
-        attribute xs_label { xsd:string { maxLength = "12" } }) &
-      (element xs_label_0K { xsd:string { maxLength = "12" } } |
-        attribute xs_label_0K { xsd:string { maxLength = "12" } }) &
       (element E_min { xsd:double } |
         attribute E_min { xsd:double }) &
       (element E_max { xsd:double } |

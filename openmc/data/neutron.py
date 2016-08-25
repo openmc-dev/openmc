@@ -1,6 +1,6 @@
 from __future__ import division, unicode_literals
 import sys
-from collections import OrderedDict, Iterable, Mapping
+from collections import OrderedDict, Iterable, Mapping, MutableMapping
 from itertools import chain
 from numbers import Integral, Real
 from warnings import warn
@@ -141,15 +141,16 @@ class IncidentNeutron(EqualityMixin):
     summed_reactions : collections.OrderedDict
         Contains summed cross sections, e.g., the total cross section. The keys
         are the MT values and the values are Reaction objects.
-    temperatures : Iterable of str
+    temperatures : list of str
         List of string representations the temperatures of the target nuclide
         in the data set.  The temperatures are strings of the temperature,
         rounded to the nearest integer; e.g., '294K'
     kTs : Iterable of float
         List of temperatures of the target nuclide in the data set.
         The temperatures have units of MeV.
-    urr : None or openmc.data.ProbabilityTables
-        Unresolved resonance region probability tables
+    urr : dict
+        Dictionary whose keys are temperatures (e.g., '294K') and values are
+        unresolved resonance region probability tables.
 
     """
 
@@ -165,7 +166,7 @@ class IncidentNeutron(EqualityMixin):
         self._fission_energy = None
         self.reactions = OrderedDict()
         self.summed_reactions = OrderedDict()
-        self.urr = None
+        self._urr = {}
 
     def __contains__(self, mt):
         return mt in self.reactions or mt in self.summed_reactions
@@ -275,8 +276,10 @@ class IncidentNeutron(EqualityMixin):
 
     @urr.setter
     def urr(self, urr):
-        cv.check_type('probability tables', urr,
-                      (ProbabilityTables, type(None)))
+        cv.check_type('probability table dictionary', urr, MutableMapping)
+        for key, value in urr:
+            cv.check_type('probability table temperature', key, basestring)
+            cv.check_type('probability tables', value, ProbabilityTables)
         self._urr = urr
 
     def add_temperature_from_ace(self, ace_or_filename, metastable_scheme='nndc'):
@@ -324,6 +327,10 @@ class IncidentNeutron(EqualityMixin):
                                  " but this reaction doesn't exist.".format(
                                      mt, strT))
             self[mt].xs[strT] = data[mt].xs[strT]
+
+        # Add probability tables
+        if strT in data.urr:
+            self.urr[strT] = data.urr[strT]
 
     def get_reaction_components(self, mt):
         """Determine what reactions make up summed reaction.
@@ -399,9 +406,11 @@ class IncidentNeutron(EqualityMixin):
                 rx.derived_products[0].to_hdf5(tgroup)
 
         # Write unresolved resonance probability tables
-        if self.urr is not None:
+        if self.urr:
             urr_group = g.create_group('urr')
-            self.urr.to_hdf5(urr_group)
+            for temperature, urr in self.urr.items():
+                tgroup = urr_group.create_group(temperature)
+                urr.to_hdf5(tgroup)
 
         # Write fission energy release data
         if self.fission_energy is not None:
@@ -448,14 +457,14 @@ class IncidentNeutron(EqualityMixin):
 
         # Read energy grid
         e_group = group['energy']
-        for temperature in temperatures:
-            data.energy[temperature] = e_group[temperature].value
+        for temperature, dset in e_group.items():
+            data.energy[temperature] = dset.value
 
         # Read reaction data
         rxs_group = group['reactions']
         for name, obj in sorted(rxs_group.items()):
             if name.startswith('reaction_'):
-                rx = Reaction.from_hdf5(obj, data.energy, temperatures)
+                rx = Reaction.from_hdf5(obj, data.energy)
                 data.reactions[rx.mt] = rx
 
                 # Read total nu data if available
@@ -467,17 +476,17 @@ class IncidentNeutron(EqualityMixin):
         # MTs never depend on lower MTs.
         for mt_sum in sorted(SUM_RULES, reverse=True):
             if mt_sum not in data:
-                data.summed_reactions[mt_sum] = rx = Reaction(mt_sum)
-                for T in data.temperatures:
-                    xs_components = [data[mt].xs[T] for mt in SUM_RULES[mt_sum]
-                                     if mt in data]
-                    if len(xs_components) > 0:
-                        rx.xs[T] = Sum(xs_components)
+                rxs = [data[mt] for mt in SUM_RULES[mt_sum] if mt in data]
+                if len(rxs) > 0:
+                    data.summed_reactions[mt_sum] = rx = Reaction(mt_sum)
+                    for T in data.temperatures:
+                        rx.xs[T] = Sum([rx.xs[T] for rx in rxs])
 
         # Read unresolved resonance probability tables
         if 'urr' in group:
             urr_group = group['urr']
-            data.urr = ProbabilityTables.from_hdf5(urr_group)
+            for temperature, tgroup in urr_group.items():
+                data.urr[temperature] = ProbabilityTables.from_hdf5(tgroup)
 
         # Read fission energy release data
         if 'fission_energy_release' in group:
@@ -588,6 +597,8 @@ class IncidentNeutron(EqualityMixin):
                 data.summed_reactions[mt] = rx
 
         # Read unresolved resonance probability tables
-        data.urr = ProbabilityTables.from_ace(ace)
+        urr = ProbabilityTables.from_ace(ace)
+        if urr is not None:
+            data.urr[strT] = urr
 
         return data

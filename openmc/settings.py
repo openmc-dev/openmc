@@ -724,10 +724,6 @@ class Settings(object):
 
     @dd_mesh_dimension.setter
     def dd_mesh_dimension(self, dimension):
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
         cv.check_type('DD mesh dimension', dimension, Iterable, Integral)
         cv.check_length('DD mesh dimension', dimension, 3)
 
@@ -735,10 +731,6 @@ class Settings(object):
 
     @dd_mesh_lower_left.setter
     def dd_mesh_lower_left(self, lower_left):
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
         cv.check_type('DD mesh lower left corner', lower_left, Iterable, Real)
         cv.check_length('DD mesh lower left corner', lower_left, 3)
 
@@ -746,10 +738,6 @@ class Settings(object):
 
     @dd_mesh_upper_right.setter
     def dd_mesh_upper_right(self, upper_right):
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
         cv.check_type('DD mesh upper right corner', upper_right, Iterable, Real)
         cv.check_length('DD mesh upper right corner', upper_right, 3)
 
@@ -757,10 +745,6 @@ class Settings(object):
 
     @dd_nodemap.setter
     def dd_nodemap(self, nodemap):
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
         cv.check_type('DD nodemap', nodemap, Iterable)
 
         nodemap = np.array(nodemap).flatten()
@@ -781,22 +765,12 @@ class Settings(object):
 
     @dd_allow_leakage.setter
     def dd_allow_leakage(self, allow):
-
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
         cv.check_type('DD allow leakage', allow, bool)
 
         self._dd_allow_leakage = allow
 
     @dd_count_interactions.setter
     def dd_count_interactions(self, interactions):
-
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
         cv.check_type('DD count interactions', interactions, bool)
 
         self._dd_count_interactions = interactions

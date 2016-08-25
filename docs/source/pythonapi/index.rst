@@ -29,6 +29,7 @@ Example Jupyter Notebooks
     examples/mgxs-part-iv
     examples/mdgxs-part-i
     examples/mdgxs-part-ii
+    examples/domain-decomposition
     examples/nuclear-data
 
 ------------------------------------

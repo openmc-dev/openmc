@@ -1,6 +1,7 @@
 from __future__ import division, unicode_literals
 import sys
 from collections import OrderedDict, Iterable, Mapping
+from itertools import chain
 from numbers import Integral, Real
 from warnings import warn
 
@@ -160,8 +161,6 @@ class IncidentNeutron(EqualityMixin):
         self.metastable = metastable
         self.atomic_weight_ratio = atomic_weight_ratio
         self.kTs = kTs
-        self.temperatures = [str(int(round(kT / K_BOLTZMANN))) + "K"
-                             for kT in kTs]
         self.energy = {}
         self._fission_energy = None
         self.reactions = OrderedDict()
@@ -220,6 +219,10 @@ class IncidentNeutron(EqualityMixin):
     @property
     def urr(self):
         return self._urr
+
+    @property
+    def temperatures(self):
+        return ["{}K".format(int(round(kT / K_BOLTZMANN))) for kT in self.kTs]
 
     @name.setter
     def name(self, name):
@@ -296,66 +299,31 @@ class IncidentNeutron(EqualityMixin):
 
         """
 
-        if isinstance(ace_or_filename, Table):
-            ace = ace_or_filename
-        else:
-            ace = get_table(ace_or_filename)
+        data = IncidentNeutron.from_ace(ace_or_filename, metastable_scheme)
 
-        # Obtain the information needed to check if this ACE file is for the
-        # same nuclide.
-        zaid, xs = ace.name.split('.')
-        name, element, Z, mass_number, metastable = \
-            _get_metadata(int(zaid), metastable_scheme)
+        # Check if temprature already exists
+        strT = data.temperatures[0]
+        if strT in self.temperatures:
+            warn('Cross sections at T={} already exist.'.format(strT))
+            return
 
-        # If this ACE data matches the data within self then get the data
-        if ace.temperature not in self.kTs:
-            if name == self.name:
-                # Add temperature and kTs
-                strT = str(int(round(ace.temperature / K_BOLTZMANN))) + "K"
-                self.temperatures.append(strT)
-                self.kTs.append(ace.temperature)
-                # Read energy grid
-                n_energy = ace.nxs[3]
-                energy = ace.xss[ace.jxs[1]:ace.jxs[1] + n_energy]
-                self.energy[strT] = energy
-                total_xs = \
-                    Tabulated1D(energy, ace.xss[ace.jxs[1] +
-                                                n_energy:ace.jxs[1] +
-                                                2 * n_energy])
-                abs_xs = Tabulated1D(energy, ace.xss[ace.jxs[1] + 2 *
-                                                     n_energy:ace.jxs[1] +
-                                                     3 * n_energy])
+        # Check that name matches
+        if data.name != self.name:
+            raise ValueError('Data provided for an incorrect nuclide.')
 
-                self.summed_reactions[1].add_temperature(strT, 0, total_xs)
-                if 27 in self.summed_reactions:
-                    self.summed_reactions[27].add_temperature(strT, 0, abs_xs)
+        # Add temperature
+        self.kTs += data.kTs
 
-                # Read each reaction and get the xs data out of it
-                n_reaction = ace.nxs[4] + 1
-                for i in range(n_reaction):
-                    rx = Reaction.from_ace(ace, i)
+        # Add energy grid
+        self.energy[strT] = data.energy[strT]
 
-                    xsdata = list(rx.T_data.values())[0]
-                    self.reactions[rx.mt].add_temperature(strT,
-                                                          xsdata.threshold_idx,
-                                                          xsdata.xs)
-
-                # Obtain data for the summed photon reactions
-                for mt in self.summed_reactions:
-                    if mt not in [1, 27]:
-                        # Create summed appropriate cross section
-                        mts = self.get_reaction_components(mt)
-                        xsdata = Sum([self.reactions[mt_i].T_data[strT].xs
-                                      for mt_i in mts])
-
-                        self.summed_reactions[mt].add_temperature(strT, 0,
-                                                                  xsdata)
-            else:
-                raise ValueError('Data provided for an incorrect nuclide')
-
-        else:
-            raise Warning('Temperature data set already within '
-                          'IncidentNeutron object')
+        # Add normal and summed reactions
+        for mt in chain(data.reactions, data.summed_reactions):
+            if mt not in self:
+                raise ValueError("Tried to add cross sections for MT={} at T={}"
+                                 " but this reaction doesn't exist.".format(
+                                     mt, strT))
+            self[mt].xs[strT] = data[mt].xs[strT]
 
     def get_reaction_components(self, mt):
         """Determine what reactions make up summed reaction.
@@ -474,7 +442,6 @@ class IncidentNeutron(EqualityMixin):
         kTs = []
         for temp in kTg:
             kTs.append(kTg[temp].value)
-        temperatures = [str(int(round(kT / K_BOLTZMANN))) + "K" for kT in kTs]
 
         data = cls(name, atomic_number, mass_number, metastable,
                    atomic_weight_ratio, kTs)
@@ -500,15 +467,12 @@ class IncidentNeutron(EqualityMixin):
         # MTs never depend on lower MTs.
         for mt_sum in sorted(SUM_RULES, reverse=True):
             if mt_sum not in data:
-                for it, T in enumerate(data.temperatures):
-                    xs_components = \
-                        [data[mt].T_data[T].xs for mt in SUM_RULES[mt_sum]
-                         if mt in data]
+                data.summed_reactions[mt_sum] = rx = Reaction(mt_sum)
+                for T in data.temperatures:
+                    xs_components = [data[mt].xs[T] for mt in SUM_RULES[mt_sum]
+                                     if mt in data]
                     if len(xs_components) > 0:
-                        if it == 0:
-                            data.summed_reactions[mt_sum] = Reaction(mt_sum)
-                        data.summed_reactions[mt_sum].add_temperature(
-                            T, 0, Sum(xs_components))
+                        rx.xs[T] = Sum(xs_components)
 
         # Read unresolved resonance probability tables
         if 'urr' in group:
@@ -561,8 +525,6 @@ class IncidentNeutron(EqualityMixin):
         # Assign temperature to the running list
         kTs = [ace.temperature]
 
-        temperatures = [str(int(round(ace.temperature / K_BOLTZMANN))) + "K"]
-
         # If mass number hasn't been specified, make an educated guess
         zaid, xs = ace.name.split('.')
         name, element, Z, mass_number, metastable = \
@@ -571,22 +533,24 @@ class IncidentNeutron(EqualityMixin):
         data = cls(name, Z, mass_number, metastable,
                    ace.atomic_weight_ratio, kTs)
 
+        # Get string of temperature to use as a dictionary key
+        strT = data.temperatures[0]
+
         # Read energy grid
         n_energy = ace.nxs[3]
         energy = ace.xss[ace.jxs[1]:ace.jxs[1] + n_energy]
-        data.energy[temperatures[0]] = energy
+        data.energy[strT] = energy
         total_xs = ace.xss[ace.jxs[1] + n_energy:ace.jxs[1] + 2 * n_energy]
         absorption_xs = ace.xss[ace.jxs[1] + 2*n_energy:ace.jxs[1] +
                                 3 * n_energy]
 
         # Create summed reactions (total and absorption)
         total = Reaction(1)
-        total.add_temperature(temperatures[-1], 0,
-                              Tabulated1D(energy, total_xs))
+        total.xs[strT] = Tabulated1D(energy, total_xs)
         data.summed_reactions[1] = total
+
         absorption = Reaction(27)
-        absorption.add_temperature(temperatures[-1], 0,
-                                   Tabulated1D(energy, absorption_xs))
+        absorption.xs[strT] = Tabulated1D(energy, absorption_xs)
         data.summed_reactions[27] = absorption
 
         # Read each reaction
@@ -616,12 +580,8 @@ class IncidentNeutron(EqualityMixin):
                     warn('Photon production is present for MT={} but no '
                          'reaction components exist.'.format(mt))
                     continue
-                threshold_idx = \
-                    np.amin([data.reactions[mt_i].T_data[temperatures[-1]].xs.x[0]
-                             for mt_i in mts])
-                xsvals = Sum([data.reactions[mt_i].T_data[temperatures[-1]].xs
-                              for mt_i in mts])
-                rx.add_temperature(temperatures[-1], threshold_idx, xsvals)
+                rx.xs[strT] = Sum([data.reactions[mt_i].xs[strT]
+                                   for mt_i in mts])
 
                 # Determine summed cross section
                 rx.products += _get_photon_products(ace, rx)

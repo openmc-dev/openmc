@@ -280,6 +280,7 @@ module nuclide_header
     do i = 1, size(this % reactions)
       rx_group = open_group(rxs_group, 'reaction_' // trim(&
            zero_padded(MTs % data(i), 3)))
+
       call this % reactions(i) % from_hdf5(rx_group, my_temperature)
       call close_group(rx_group)
     end do
@@ -290,7 +291,7 @@ module nuclide_header
     if (exists) then
       this % urr_present = .true.
       allocate(this % urr_data)
-      urr_group = open_group(group_id, 'urr')
+      urr_group = open_group(group_id, 'urr/' // trim(my_temperature))
       call this % urr_data % from_hdf5(urr_group)
 
       ! if the inelastic competition flag indicates that the inelastic cross

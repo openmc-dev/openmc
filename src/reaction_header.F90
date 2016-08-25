@@ -55,8 +55,8 @@ contains
 
     ! Read cross section and threshold_idx data
     xs_group = open_group(group_id, temperature)
-    call read_attribute(this % threshold, xs_group, 'threshold_idx')
     xs = open_dataset(xs_group, 'xs')
+    call read_attribute(this % threshold, xs, 'threshold_idx')
     call get_shape(xs, dims)
     allocate(this % sigma(dims(1)))
     call read_dataset(this % sigma, xs)

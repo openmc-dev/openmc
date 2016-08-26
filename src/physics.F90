@@ -1,5 +1,6 @@
 module physics
 
+  use algorithm,              only: binary_search
   use constants
   use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
@@ -15,7 +16,6 @@ module physics
   use physics_common
   use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
   use reaction_header,        only: Reaction
-  use search,                 only: binary_search
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use string,                 only: to_str
 

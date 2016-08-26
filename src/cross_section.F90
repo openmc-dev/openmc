@@ -1,5 +1,6 @@
 module cross_section
 
+  use algorithm,        only: binary_search
   use constants
   use energy_grid,      only: grid_method, log_spacing
   use error,            only: fatal_error
@@ -14,7 +15,6 @@ module cross_section
   use particle_header,  only: Particle
   use random_lcg,       only: prn, future_prn, prn_set_stream
   use sab_header,       only: SAlphaBeta
-  use search,           only: binary_search
 
   implicit none
 

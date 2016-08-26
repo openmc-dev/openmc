@@ -1,5 +1,10 @@
 module tally
 
+#ifdef MPI
+  use message_passing
+#endif
+
+  use algorithm,        only: binary_search
   use constants
   use error,            only: fatal_error
   use geometry_header
@@ -11,14 +16,9 @@ module tally
   use mesh_header,      only: RegularMesh
   use output,           only: header
   use particle_header,  only: LocalCoord, Particle
-  use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult
   use tally_filter
-
-#ifdef MPI
-  use message_passing
-#endif
 
   implicit none
 

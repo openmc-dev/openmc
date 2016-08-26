@@ -2,12 +2,12 @@ module angle_distribution
 
   use hdf5, only: HID_T, HSIZE_T
 
+  use algorithm, only: binary_search
   use constants, only: ZERO, ONE, HISTOGRAM, LINEAR_LINEAR
   use distribution_univariate, only: DistributionContainer, Tabular
   use hdf5_interface, only: read_attribute, get_shape, read_dataset, &
        open_dataset, close_dataset
   use random_lcg, only: prn
-  use search, only: binary_search
 
   implicit none
   private

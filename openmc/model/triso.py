@@ -673,7 +673,7 @@ def _close_random_pack(domain, particles, contraction_rate):
 
         # Array of particle indices, indices of nearest neighbors, and
         # distances to nearest neighbors
-        a = np.dstack(([i for i in range(len(n))], n, d))[0]
+        a = np.vstack((list(range(n.size)), n, d)).T
 
         # Sort along second column and swap first and second columns to create
         # array of nearest neighbor indices, indices of particles they are

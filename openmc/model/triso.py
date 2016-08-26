@@ -982,8 +982,10 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         raise ValueError('Exactly one of "n_particles" and "packing_fraction" '
                          'must be specified.')
     elif packing_fraction is None:
+        n_particles = int(n_particles)
         packing_fraction = 4/3*pi*radius**3*n_particles / domain.volume
     elif n_particles is None:
+        packing_fraction = float(packing_fraction)
         n_particles = int(packing_fraction*domain.volume // (4/3*pi*radius**3))
 
     # Check for valid packing fractions for each algorithm

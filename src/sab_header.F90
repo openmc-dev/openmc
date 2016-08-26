@@ -176,9 +176,7 @@ contains
     logical :: exists
     type(CorrelatedAngleEnergy) :: correlated_dist
     character(MAX_FILE_LEN), allocatable :: temperatures(:)
-    character(MAX_FILE_LEN) :: temp_str
     integer, allocatable :: temperatures_integer(:)
-    integer :: temperature_delta
     character(6) :: my_temperature
     integer :: temperature_integer
 
@@ -202,25 +200,23 @@ contains
     end select
     this % n_zaid = size(this % zaid)
     kT_group = open_group(group_id, 'kTs')
+
     ! Before accessing the temperature data, see if the user-provied temperature
     ! exists.  We can find this out by looking at the datasets within kT_group
-    temp_str = adjustr(trim(temperature))
-    temperature_integer = str_to_int(temp_str(1:len(temp_str) - 1))
+    temperature_integer = &
+         str_to_int(temperature(1: len_trim(adjustl(temperature)) - 1))
     call get_datasets(kT_group, temperatures)
     allocate(temperatures_integer(size(temperatures)))
     do i = 1, size(temperatures)
-      temp_str = adjustr(trim(temperatures(i)))
-      temperatures_integer(i) = str_to_int(temp_str(1:len(temp_str) - 1))
+      temperatures_integer(i) = &
+           str_to_int(temperatures(i)(1: len_trim(adjustl(temperatures(i))) - 1))
     end do
-    j = 1
-    temperature_delta = temperature_integer - temperatures_integer(j)
-    do i = 2, size(temperatures)
-      if (abs(temperature_integer - temperatures_integer(i)) < temperature_delta) &
-           j = i
-    end do
+    my_temperature = &
+         temperatures(minloc(abs(temperature_integer - temperatures_integer), &
+                      dim=1))
+
     ! Now print a warning if there is no matching temperature and then use the
     ! closest temperature
-    my_temperature = temperatures(j)
     if (temperature /= my_temperature) then
       if (temperature == '0K') then
         call warning(trim(this % name) // " does not contain 0K data &

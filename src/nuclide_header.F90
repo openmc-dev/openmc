@@ -198,14 +198,12 @@ module nuclide_header
     integer(HID_T) :: total_nu
     integer(HID_T) :: fer_group                 ! fission_energy_release group
     integer(HID_T) :: fer_dset
-    integer(HID_T) :: temp_dset
     integer(SIZE_T) :: name_len, name_file_len
     integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
     character(MAX_WORD_LEN) :: temp
     character(MAX_FILE_LEN), allocatable :: temperatures(:)
     integer, allocatable :: temperatures_integer(:)
-    integer :: temperature_delta
     character(6) :: my_temperature
     integer :: temperature_integer
     type(VectorInt) :: MTs
@@ -224,25 +222,22 @@ module nuclide_header
     this % zaid = 1000 * Z + A + 400 * this % metastable
     call read_attribute(this % awr, group_id, 'atomic_weight_ratio')
     kT_group = open_group(group_id, 'kTs')
+
     ! Before accessing the temperature data, see if the user-provied temperature
     ! exists.  We can find this out by looking at the datasets within kT_group
-    temp = adjustr(trim(temperature))
-    temperature_integer = str_to_int(temp(1:len(temp) - 1))
+    temperature_integer = &
+         str_to_int(temperature(1: len_trim(adjustl(temperature)) - 1))
     call get_datasets(kT_group, temperatures)
     allocate(temperatures_integer(size(temperatures)))
     do i = 1, size(temperatures)
-      temp = adjustr(trim(temperatures(i)))
-      temperatures_integer(i) = str_to_int(temp(1:len(temp) - 1))
+      temperatures_integer(i) = &
+           str_to_int(temperatures(i)(1: len_trim(adjustl(temperatures(i))) - 1))
     end do
-    j = 1
-    temperature_delta = temperature_integer - temperatures_integer(j)
-    do i = 2, size(temperatures)
-      if (abs(temperature_integer - temperatures_integer(i)) < temperature_delta) &
-           j = i
-    end do
+    my_temperature = &
+         temperatures(minloc(abs(temperature_integer - temperatures_integer), &
+                      dim=1))
     ! Now print a warning if there is no matching temperature and then use the
     ! closest temperature
-    my_temperature = temperatures(j)
     if (temperature /= my_temperature) then
       if (temperature == '0K') then
         call warning(trim(this % name) // " does not contain 0K data &

@@ -54,7 +54,11 @@ temperature-dependent data set.  For example, the data set corresponding to
 
    Reaction product data is described in :ref:`product`.
 
-**/<nuclide name>/urr**
+**/<nuclide name>/urr/<TTT>K/**
+
+<TTT>K is the temperature in Kelvin, rounded to the nearest integer, of the
+temperature-dependent data set.  For example, the data set corresponding to
+300 Kelvin would be located at `300K`.
 
 :Attributes: - **interpolation** (*int*) -- interpolation scheme
              - **inelastic** (*int*) -- flag indicating inelastic scattering

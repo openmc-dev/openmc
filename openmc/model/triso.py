@@ -124,8 +124,6 @@ class _Domain(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, particle_radius, center=[0., 0., 0.]):
-        self._particle_radius = None
-        self._center = None
         self._cell_length = None
         self._limits = None
 
@@ -140,13 +138,13 @@ class _Domain(object):
     def center(self):
         return self._center
 
-    @property
-    def cell_length(self):
-        return self._cell_length
-
-    @property
+    @abstractproperty
     def limits(self):
-        return self._limits
+        pass
+
+    @abstractproperty
+    def cell_length(self):
+        pass
 
     @abstractproperty
     def volume(self):
@@ -155,7 +153,8 @@ class _Domain(object):
     @particle_radius.setter
     def particle_radius(self, particle_radius):
         self._particle_radius = float(particle_radius)
-        self.reset()
+        self._limits = None
+        self._cell_length = None
 
     @center.setter
     def center(self, center):
@@ -163,15 +162,8 @@ class _Domain(object):
             raise ValueError('Unable to set domain center to {} since it must '
                              'be of length 3'.format(center))
         self._center = [float(x) for x in center]
-        self.reset()
-
-    @cell_length.setter
-    def cell_length(self, cell_length):
-        self._cell_length = cell_length
-
-    @limits.setter
-    def limits(self, limits):
-        self._limits = limits
+        self._limits = None
+        self._cell_length = None
 
     def mesh_cell(self, p):
         """Calculate the index of the cell in a mesh overlaid on the domain in
@@ -209,14 +201,6 @@ class _Domain(object):
         r = [[a/self.cell_length[i] for a in [p[i]-d, p[i], p[i]+d]]
              for i in range(3)]
         return list(itertools.product(*({int(x) for x in y} for y in r)))
-
-    @abstractmethod
-    def reset(self):
-        """Recalculate attributes that depend on input parameters if any of the
-        parameters are modified.
-
-        """
-        pass
 
     @abstractmethod
     def random_point(self):
@@ -271,27 +255,38 @@ class _CubicDomain(_Domain):
         self.length = length
 
     @property
-    def volume(self):
-        return self.length**3
-
-    @property
     def length(self):
         return self._length
+
+    @property
+    def limits(self):
+        if self._limits is None:
+            xlim = self.length/2 - self.particle_radius
+            self._limits = [[x - xlim for x in self.center],
+                            [x + xlim for x in self.center]]
+        return self._limits
+
+    @property
+    def cell_length(self):
+        if self._cell_length is None:
+            mesh_length = [self.length, self.length, self.length]
+            self._cell_length = [x/int(x/(4*self.particle_radius))
+                                 for x in mesh_length]
+        return self._cell_length
+
+    @property
+    def volume(self):
+        return self.length**3
 
     @length.setter
     def length(self, length):
         self._length = float(length)
-        self.reset()
+        self._limits = None
+        self._cell_length = None
 
-    def reset(self):
-        if (self.particle_radius is not None and self.center is not None
-            and self.length is not None):
-            xlim = self.length/2 - self.particle_radius
-            self.limits = [[x - xlim for x in self.center],
-                           [x + xlim for x in self.center]]
-            mesh_length = [self.length, self.length, self.length]
-            self.cell_length = [x/int(x/(4*self.particle_radius))
-                                for x in mesh_length]
+    @limits.setter
+    def limits(self, limits):
+        self._limits = limits
 
     def random_point(self):
         return [uniform(self.limits[0][0], self.limits[1][0]),
@@ -342,10 +337,6 @@ class _CylindricalDomain(_Domain):
         self.radius = radius
 
     @property
-    def volume(self):
-        return self.length * pi * self.radius**2
-
-    @property
     def length(self):
         return self._length
 
@@ -353,28 +344,44 @@ class _CylindricalDomain(_Domain):
     def radius(self):
         return self._radius
 
+    @property
+    def limits(self):
+        if self._limits is None:
+            xlim = self.length/2 - self.particle_radius
+            rlim = self.radius - self.particle_radius
+            self._limits = [[self.center[0] - rlim, self.center[1] - rlim,
+                             self.center[2] - xlim],
+                            [self.center[0] + rlim, self.center[1] + rlim,
+                             self.center[2] + xlim]]
+        return self._limits
+
+    @property
+    def cell_length(self):
+        if self._cell_length is None:
+            mesh_length = [2*self.radius, 2*self.radius, self.length]
+            self._cell_length = [x/int(x/(4*self.particle_radius))
+                                 for x in mesh_length]
+        return self._cell_length
+
+    @property
+    def volume(self):
+        return self.length * pi * self.radius**2
+
     @length.setter
     def length(self, length):
         self._length = float(length)
-        self.reset()
+        self._limits = None
+        self._cell_length = None
 
     @radius.setter
     def radius(self, radius):
         self._radius = float(radius)
-        self.reset()
+        self._limits = None
+        self._cell_length = None
 
-    def reset(self):
-        if (self.particle_radius is not None and self.center is not None
-            and self.length is not None and self.radius is not None):
-            xlim = self.length/2 - self.particle_radius
-            rlim = self.radius - self.particle_radius
-            self.limits = [[self.center[0] - rlim, self.center[1] - rlim,
-                            self.center[2] - xlim],
-                           [self.center[0] + rlim, self.center[1] + rlim,
-                            self.center[2] + xlim]]
-            mesh_length = [2*self.radius, 2*self.radius, self.length]
-            self.cell_length = [x/int(x/(4*self.particle_radius))
-                                for x in mesh_length]
+    @limits.setter
+    def limits(self, limits):
+        self._limits = limits
 
     def random_point(self):
         r = sqrt(uniform(0, (self.radius - self.particle_radius)**2))
@@ -420,27 +427,38 @@ class _SphericalDomain(_Domain):
         self.radius = radius
 
     @property
-    def volume(self):
-        return 4/3 * pi * self.radius**3
-
-    @property
     def radius(self):
         return self._radius
+
+    @property
+    def limits(self):
+        if self._limits is None:
+            rlim = self.radius - self.particle_radius
+            self._limits = [[x - rlim for x in self.center],
+                           [x + rlim for x in self.center]]
+        return self._limits
+
+    @property
+    def cell_length(self):
+        if self._cell_length is None:
+            mesh_length = [2*self.radius, 2*self.radius, 2*self.radius]
+            self._cell_length = [x/int(x/(4*self.particle_radius))
+                                for x in mesh_length]
+        return self._cell_length
+
+    @property
+    def volume(self):
+        return 4/3 * pi * self.radius**3
 
     @radius.setter
     def radius(self, radius):
         self._radius = float(radius)
-        self.reset()
+        self._limits = None
+        self._cell_length = None
 
-    def reset(self):
-        if (self.particle_radius is not None and self.center is not None
-            and self.radius is not None):
-            rlim = self.radius - self.particle_radius
-            self.limits = [[x - rlim for x in self.center],
-                           [x + rlim for x in self.center]]
-            mesh_length = [2*self.radius, 2*self.radius, 2*self.radius]
-            self.cell_length = [x/int(x/(4*self.particle_radius))
-                                for x in mesh_length]
+    @limits.setter
+    def limits(self, limits):
+        self._limits = limits
 
     def random_point(self):
         x = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
@@ -592,7 +610,6 @@ def _close_random_pack(domain, particles, contraction_rate):
         rods_map[j] = (i, rod)
         heappush(rods, rod)
 
-
     def remove_rod(i):
         """Mark the rod containing particle i as removed.
 
@@ -608,7 +625,6 @@ def _close_random_pack(domain, particles, contraction_rate):
             del rods_map[j]
             rod[1] = None
             rod[2] = None
-
 
     def pop_rod():
         """Remove and return the shortest rod.
@@ -628,7 +644,6 @@ def _close_random_pack(domain, particles, contraction_rate):
                 del rods_map[i]
                 del rods_map[j]
                 return d, i, j
-
 
     def create_rod_list():
         """Generate sorted list of rods (distances between particle centers).
@@ -660,14 +675,15 @@ def _close_random_pack(domain, particles, contraction_rate):
         # distances to nearest neighbors
         a = np.dstack(([i for i in range(len(n))], n, d))[0]
 
-        # Array of nearest neighbor indices, indices of particles they are
+        # Sort along second column and swap first and second columns to create
+        # array of nearest neighbor indices, indices of particles they are
         # nearest neighbors of, and distances between them
         b = a[a[:,1].argsort()]
         b[:,[0, 1]] = b[:,[1, 0]]
 
         # Find the intersection between 'a' and 'b': a list of particles who
         # are each other's nearest neighbors and the distance between them
-        r = [x for x in {tuple(x) for x in a} & {tuple(x) for x in b}]
+        r = list([x for x in {tuple(x) for x in a} & {tuple(x) for x in b}])
 
         # Remove duplicate rods and sort by distance
         r = map(list, set([(x[2], int(min(x[0:2])), int(max(x[0:2])))
@@ -683,7 +699,6 @@ def _close_random_pack(domain, particles, contraction_rate):
         # distance between any two particles
         if rods:
             inner_diameter[0] = rods[0][0]
-
 
     def update_mesh(i):
         """Update which mesh cells the particle is in based on new particle
@@ -713,7 +728,6 @@ def _close_random_pack(domain, particles, contraction_rate):
             mesh[idx].add(i)
             mesh_map[i].add(idx)
 
-
     def reduce_outer_diameter():
         """Reduce the outer diameter so that at the (i+1)-st iteration it is:
 
@@ -725,9 +739,9 @@ def _close_random_pack(domain, particles, contraction_rate):
 
         """
 
-	inner_pf = (4/3 * pi * (inner_diameter[0]/2)**3 * n_particles /
+        inner_pf = (4/3 * pi * (inner_diameter[0]/2)**3 * n_particles /
                     domain.volume)
-	outer_pf = (4/3 * pi * (outer_diameter[0]/2)**3 * n_particles /
+        outer_pf = (4/3 * pi * (outer_diameter[0]/2)**3 * n_particles /
                     domain.volume)
 
         j = floor(-log10(outer_pf - inner_pf))
@@ -762,19 +776,11 @@ def _close_random_pack(domain, particles, contraction_rate):
         particles[j] -= r*v
 
         # Apply reflective boundary conditions
-        for k in range(3):
-            if particles[i][k] < domain.limits[0][k]:
-                particles[i][k] = domain.limits[0][k]
-            elif particles[i][k] > domain.limits[1][k]:
-                particles[i][k] = domain.limits[1][k]
-            if particles[j][k] < domain.limits[0][k]:
-                particles[j][k] = domain.limits[0][k]
-            elif particles[j][k] > domain.limits[1][k]:
-                particles[j][k] = domain.limits[1][k]
+        particles[i] = particles[i].clip(domain.limits[0], domain.limits[1])
+        particles[j] = particles[j].clip(domain.limits[0], domain.limits[1])
 
         update_mesh(i)
         update_mesh(j)
-
 
     def nearest(i):
         """Find index of nearest neighbor of particle i.
@@ -805,7 +811,6 @@ def _close_random_pack(domain, particles, contraction_rate):
         else:
             return None, None
 
-
     def update_rod_list(i, j):
         """Update the rod list with the new nearest neighbors of particles i
         and j since their overlap was eliminated.
@@ -833,7 +838,6 @@ def _close_random_pack(domain, particles, contraction_rate):
         # centers
         if rods:
             inner_diameter[0] = rods[0][0]
-
 
     n_particles = len(particles)
     diameter = 2*domain.particle_radius

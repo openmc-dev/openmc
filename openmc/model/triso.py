@@ -1,13 +1,14 @@
 from __future__ import division
 import copy
-from collections import Iterable, defaultdict
-from numbers import Real
 import warnings
 import itertools
 import random
+from collections import Iterable, defaultdict
+from numbers import Real
 from random import uniform, gauss
 from heapq import heappush, heappop
 from math import pi, sin, cos, floor, log10, sqrt
+from abc import ABCMeta, abstractproperty, abstractmethod
 
 import numpy as np
 import scipy.spatial
@@ -91,6 +92,363 @@ class TRISO(openmc.Cell):
                 k_min:k_max+1, j_min:j_max+1, i_min:i_max+1]))
 
 
+class _Domain(object):
+    """Container in which to pack particles.
+
+    Parameters
+    ----------
+    particle_radius : float
+        Radius of particles to be packed in container.
+    center : Iterable of float
+        Cartesian coordinates of the center of the container. Default is
+        [0., 0., 0.]
+
+    Attributes
+    ----------
+    particle_radius : float
+        Radius of particles to be packed in container.
+    center : list of float
+        Cartesian coordinates of the center of the container. Default is
+        [0., 0., 0.]
+    cell_length : list of float
+        Length in x-, y-, and z- directions of each cell in mesh overlaid on
+        domain.
+    limits : list of float
+        Minimum and maximum position in x-, y-, and z-directions where particle
+        center can be placed.
+    volume : float
+        Volume of the container.
+
+    """
+
+    __metaclass__ = ABCMeta
+
+    def __init__(self, particle_radius, center=[0., 0., 0.]):
+        self._particle_radius = None
+        self._center = None
+        self._cell_length = None
+        self._limits = None
+
+        self.particle_radius = particle_radius
+        self.center = center
+
+    @property
+    def particle_radius(self):
+        return self._particle_radius
+
+    @property
+    def center(self):
+        return self._center
+
+    @property
+    def cell_length(self):
+        return self._cell_length
+
+    @property
+    def limits(self):
+        return self._limits
+
+    @abstractproperty
+    def volume(self):
+        pass
+
+    @particle_radius.setter
+    def particle_radius(self, particle_radius):
+        self._particle_radius = float(particle_radius)
+        self.reset()
+
+    @center.setter
+    def center(self, center):
+        if np.asarray(center).size != 3:
+            raise ValueError('Unable to set domain center to {} since it must '
+                             'be of length 3'.format(center))
+        self._center = [float(x) for x in center]
+        self.reset()
+
+    @cell_length.setter
+    def cell_length(self, cell_length):
+        self._cell_length = cell_length
+
+    @limits.setter
+    def limits(self, limits):
+        self._limits = limits
+
+    def mesh_cell(self, p):
+        """Calculate the index of the cell in a mesh overlaid on the domain in
+        which the given particle center falls.
+
+        Parameters
+        ----------
+        p : Iterable of float
+            Cartesian coordinates of particle center.
+
+        Returns
+        -------
+        tuple of int
+            Indices of mesh cell.
+
+        """
+        return tuple(int(p[i]/self.cell_length[i]) for i in range(3))
+
+    def nearby_mesh_cells(self, p):
+        """Calculates the indices of all cells in a mesh overlaid on the domain
+        within one diameter of the given particle.
+
+        Parameters
+        ----------
+        p : Iterable of float
+            Cartesian coordinates of particle center.
+
+        Returns
+        -------
+        list of tuple of int
+            Indices of mesh cells.
+
+        """
+        d = 2*self.particle_radius
+        r = [[a/self.cell_length[i] for a in [p[i]-d, p[i], p[i]+d]]
+             for i in range(3)]
+        return list(itertools.product(*({int(x) for x in y} for y in r)))
+
+    @abstractmethod
+    def reset(self):
+        """Recalculate attributes that depend on input parameters if any of the
+        parameters are modified.
+
+        """
+        pass
+
+    @abstractmethod
+    def random_point(self):
+        """Generate Cartesian coordinates of center of a particle that is
+        contained entirely within the domain with uniform probability.
+
+        Returns
+        -------
+        list of float
+            Cartesian coordinates of particle center.
+
+        """
+        pass
+
+
+class _CubicDomain(_Domain):
+    """Cubic container in which to pack particles.
+
+    Parameters
+    ----------
+    length : float
+        Length of each side of the cubic container.
+    particle_radius : float
+        Radius of particles to be packed in container.
+    center : Iterable of float
+        Cartesian coordinates of the center of the container. Default is
+        [0., 0., 0.]
+
+    Attributes
+    ----------
+    length : float
+        Length of each side of the cubic container.
+    particle_radius : float
+        Radius of particles to be packed in container.
+    center : list of float
+        Cartesian coordinates of the center of the container. Default is
+        [0., 0., 0.]
+    cell_length : list of float
+        Length in x-, y-, and z- directions of each cell in mesh overlaid on
+        domain.
+    limits : list of float
+        Minimum and maximum position in x-, y-, and z-directions where particle
+        center can be placed.
+    volume : float
+        Volume of the container.
+
+    """
+
+    def __init__(self, length, particle_radius, center=[0., 0., 0.]):
+        self._length = None
+        super(_CubicDomain, self).__init__(particle_radius, center)
+        self.length = length
+
+    @property
+    def volume(self):
+        return self.length**3
+
+    @property
+    def length(self):
+        return self._length
+
+    @length.setter
+    def length(self, length):
+        self._length = float(length)
+        self.reset()
+
+    def reset(self):
+        if (self.particle_radius is not None and self.center is not None
+            and self.length is not None):
+            xlim = self.length/2 - self.particle_radius
+            self.limits = [[x - xlim for x in self.center],
+                           [x + xlim for x in self.center]]
+            mesh_length = [self.length, self.length, self.length]
+            self.cell_length = [x/int(x/(4*self.particle_radius))
+                                for x in mesh_length]
+
+    def random_point(self):
+        return [uniform(self.limits[0][0], self.limits[1][0]),
+                uniform(self.limits[0][1], self.limits[1][1]),
+                uniform(self.limits[0][2], self.limits[1][2])]
+
+
+class _CylindricalDomain(_Domain):
+    """Cylindrical container in which to pack particles.
+
+    Parameters
+    ----------
+    length : float
+        Length along z-axis of the cylindrical container.
+    radius : float
+        Radius of the cylindrical container.
+    center : Iterable of float
+        Cartesian coordinates of the center of the container. Default is
+        [0., 0., 0.]
+
+    Attributes
+    ----------
+    length : float
+        Length along z-axis of the cylindrical container.
+    radius : float
+        Radius of the cylindrical container.
+    particle_radius : float
+        Radius of particles to be packed in container.
+    center : list of float
+        Cartesian coordinates of the center of the container. Default is
+        [0., 0., 0.]
+    cell_length : list of float
+        Length in x-, y-, and z- directions of each cell in mesh overlaid on
+        domain.
+    limits : list of float
+        Minimum and maximum position in x-, y-, and z-directions where particle
+        center can be placed.
+    volume : float
+        Volume of the container.
+
+    """
+
+    def __init__(self, length, radius, particle_radius, center=[0., 0., 0.]):
+        self._length = None
+        self._radius = None
+        super(_CylindricalDomain, self).__init__(particle_radius, center)
+        self.length = length
+        self.radius = radius
+
+    @property
+    def volume(self):
+        return self.length * pi * self.radius**2
+
+    @property
+    def length(self):
+        return self._length
+
+    @property
+    def radius(self):
+        return self._radius
+
+    @length.setter
+    def length(self, length):
+        self._length = float(length)
+        self.reset()
+
+    @radius.setter
+    def radius(self, radius):
+        self._radius = float(radius)
+        self.reset()
+
+    def reset(self):
+        if (self.particle_radius is not None and self.center is not None
+            and self.length is not None and self.radius is not None):
+            xlim = self.length/2 - self.particle_radius
+            rlim = self.radius - self.particle_radius
+            self.limits = [[self.center[0] - rlim, self.center[1] - rlim,
+                            self.center[2] - xlim],
+                           [self.center[0] + rlim, self.center[1] + rlim,
+                            self.center[2] + xlim]]
+            mesh_length = [2*self.radius, 2*self.radius, self.length]
+            self.cell_length = [x/int(x/(4*self.particle_radius))
+                                for x in mesh_length]
+
+    def random_point(self):
+        r = sqrt(uniform(0, (self.radius - self.particle_radius)**2))
+        t = uniform(0, 2*pi)
+        return [r*cos(t) + self.center[0], r*sin(t) + self.center[1],
+                uniform(self.limits[0][2], self.limits[1][2])]
+
+
+class _SphericalDomain(_Domain):
+    """Spherical container in which to pack particles.
+
+    Parameters
+    ----------
+    radius : float
+        Radius of the spherical container.
+    center : Iterable of float
+        Cartesian coordinates of the center of the container. Default is
+        [0., 0., 0.]
+
+    Attributes
+    ----------
+    radius : float
+        Radius of the spherical container.
+    particle_radius : float
+        Radius of particles to be packed in container.
+    center : list of float
+        Cartesian coordinates of the center of the container. Default is
+        [0., 0., 0.]
+    cell_length : list of float
+        Length in x-, y-, and z- directions of each cell in mesh overlaid on
+        domain.
+    limits : list of float
+        Minimum and maximum position in x-, y-, and z-directions where particle
+        center can be placed.
+    volume : float
+        Volume of the container.
+
+    """
+
+    def __init__(self, radius, particle_radius, center=[0., 0., 0.]):
+        self._radius = None
+        super(_SphericalDomain, self).__init__(particle_radius, center)
+        self.radius = radius
+
+    @property
+    def volume(self):
+        return 4/3 * pi * self.radius**3
+
+    @property
+    def radius(self):
+        return self._radius
+
+    @radius.setter
+    def radius(self, radius):
+        self._radius = float(radius)
+        self.reset()
+
+    def reset(self):
+        if (self.particle_radius is not None and self.center is not None
+            and self.radius is not None):
+            rlim = self.radius - self.particle_radius
+            self.limits = [[x - rlim for x in self.center],
+                           [x + rlim for x in self.center]]
+            mesh_length = [2*self.radius, 2*self.radius, 2*self.radius]
+            self.cell_length = [x/int(x/(4*self.particle_radius))
+                                for x in mesh_length]
+
+    def random_point(self):
+        x = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
+        r = (uniform(0, (self.radius - self.particle_radius)**3)**(1/3) /
+             sqrt(x[0]**2 + x[1]**2 + x[2]**2))
+        return [r*x[i] + self.center[i] for i in range(3)]
+
+
 def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     """Create a lattice containing TRISO particles for optimized tracking.
 
@@ -164,261 +522,58 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     return lattice
 
 
-def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
-                domain_radius=None, domain_center=(0., 0., 0.),
-                n_particles=None, packing_fraction=None,
-                initial_packing_fraction=0.3, contraction_rate=1/400, seed=1):
-    """Generate a random, non-overlapping configuration of TRISO particles
-    within a container.
+def _random_sequential_pack(domain, n_particles):
+    """Random sequential packing of particles within a container.
 
     Parameters
     ----------
-    radius : float
-        Outer radius of TRISO particles.
-    fill : openmc.Universe
-        Universe which contains all layers of the TRISO particle.
-    domain_shape : {'cube', 'cylinder', or 'sphere'}
-        Geometry of the container in which the TRISO particles are packed.
-    domain_length : float
-        Length of the container (if cube or cylinder).
-    domain_radius : float
-        Radius of the container (if cylinder or sphere).
-    domain_center : Iterable of float
-        Cartesian coordinates of the center of the container.
+    domain : openmc.model._Domain
+        Container in which to pack particles.
     n_particles : int
-        Number of TRISO particles to pack in the domain. Exactly one of
-        'n_particles' and 'packing_fraction' should be specified -- the other
-        will be calculated.
-    packing_fraction : float
-        Packing fraction of particles. Exactly one of 'n_particles' and
-        'packing_fraction' should be specified -- the other will be calculated.
-    initial_packing_fraction : float, optional
-        Packing fraction used to initialize the configuration of particles in
-        the domain. Default value is 0.3. It is not recommended to set the
-        initial packing fraction much higher than 0.3 as the random sequential
-        packing algorithm becomes prohibitively slow as it approaches its limit
-        (~0.38).
-    contraction_rate : float, optional
-        Contraction rate of outer diameter. This can affect the speed of the
-        close random packing algorithm. Default value is 1/400.
-    seed : int, optional
-        RNG seed.
+        Number of particles to pack.
 
     Returns
-    -------
-    trisos : list of openmc.model.TRISO
-        List of TRISO particles in the domain.
-
-    Notes
-    -----
-    The particle configuration is generated using a combination of random
-    sequential packing (RSP) and close random packing (CRP). RSP is faster than
-    CRP for lower packing fractions (pf), but it becomes prohibitively slow as
-    it approaches its packing limit (~0.38). CRP can achieve higher pf of up to
-    ~0.64 and scales better with increasing pf.
-
-    If the desired pf is below some threshold for which RSP performs better
-    than CRP ('initial_packing_fraction'), only RSP is used. If a higher pf is
-    required, particles with a radius smaller than the desired final radius
-    (and therefore with a smaller pf) are initialized within the domain using
-    RSP. This initial configuration of particles is then used as a starting
-    point for CRP using Jodrey and Tory's algorithm [1]_.
-
-    In RSP, particle centers are placed one by one at random, and placement
-    attempts for a particle are made until the particle is not overlapping any
-    others. This implementation of the algorithm uses a lattice over the domain
-    to speed up the nearest neighbor search by only searching for a particle's
-    neighbors within that lattice cell.
-
-    In CRP, each particle is assigned two diameters, and inner and an outer,
-    which approach each other during the simulation. The inner diameter,
-    defined as the minimum center-to-center distance, is the true diameter of
-    the particles and defines the pf. At each iteration the worst overlap
-    between particles based on outer diameter is eliminated by moving the
-    particles apart along the line joining their centers and the outer diameter
-    is decreased. Iterations continue until the two diameters converge or until
-    the desired pf is reached.
-
-    References
-    ----------
-    .. [1] W. S. Jodrey and E. M. Tory, "Computer simulation of close random
-       packing of equal spheres", Phys. Rev. A 32 (1985) 2347-2351.
+    ------
+    numpy.ndarray
+        Cartesian coordinates of centers of particles.
 
     """
 
-    def get_domain_volume():
-        """Calculates the volume of the container in which the TRISO particles
-        are packed.
+    sqd = (2*domain.particle_radius)**2
+    particles = []
+    mesh = defaultdict(list)
 
-        Returns
-        -------
-        float
-            Volume of the domain.
+    for i in range(n_particles):
+        # Randomly sample new center coordinates while there are any overlaps
+        while True:
+            p = domain.random_point()
+            idx = domain.mesh_cell(p)
+            if any((p[0]-q[0])**2 + (p[1]-q[1])**2 + (p[2]-q[2])**2 < sqd
+                   for q in mesh[idx]):
+                continue
+            else:
+                break
+        particles.append(p)
 
-        """
+        for idx in domain.nearby_mesh_cells(p):
+            mesh[idx].append(p)
 
-        if domain_shape is 'cube':
-            return domain_length**3
-        elif domain_shape is 'cylinder':
-            return domain_length * pi * domain_radius**2
-        elif domain_shape is 'sphere':
-            return 4/3 * pi * domain_radius**3
-
-
-    def get_cell_length(radius):
-        """Calculates the length of a lattice element in x-, y-, and
-        z-directions.
-
-        Parameters
-        ----------
-        radius : float
-            Radius of the particle.
-
-        Returns
-        -------
-        tuple of float
-            Length of lattice cell in x-, y-, and z-directions.
-
-        """
-
-        if domain_length:
-            m = domain_length/int(domain_length/(4*radius))
-        if domain_radius:
-            n = 2*domain_radius/int(domain_radius/(2*radius))
-
-        if domain_shape is 'cube':
-            return (m, m, m)
-        elif domain_shape is 'cylinder':
-            return (n, n, m)
-        elif domain_shape is 'sphere':
-            return (n, n, n)
+    return np.array(particles)
 
 
-    def get_boundary_extremes():
-        """Calculates the minimum and maximum positions in x-, y-, and
-        z-directions where a particle center can be placed within the domain.
+def _close_random_pack(domain, particles, contraction_rate):
+    """Close random packing of particles using the Jodrey-Tory algorithm.
 
-        Returns
-        -------
-        llim, ulim : tuple of float
-            Minimum and maximum position in x-, y-, and z-directions where
-            particle center can be placed.
+    Parameters
+    ----------
+    domain : openmc.model._Domain
+        Container in which to pack particles.
+    particles : numpy.ndarray
+        Initial Cartesian coordinates of centers of particles.
+    contraction_rate : float
+        Contraction rate of outer diameter.
 
-        """
-
-        if domain_length:
-            x_min = radius
-            x_max = domain_length - radius
-        if domain_radius:
-            r_min = radius - domain_radius
-            r_max = domain_radius - radius
-
-        if domain_shape is 'cube':
-            return (x_min, x_min, x_min), (x_max, x_max, x_max)
-        elif domain_shape is 'cylinder':
-            return (r_min, r_min, x_min), (r_max, r_max, x_max)
-        elif domain_shape is 'sphere':
-            return (r_min, r_min, r_min), (r_max, r_max, r_max)
-
-
-    def get_particle_offset():
-        """Calculates the offset in x-, y-, and z-directions of the particle
-        center based on the domain center
-
-        Returns
-        -------
-        tuple of float
-            Amount to offset particle center in x-, y-, and z-directions
-
-        """
-
-        if domain_shape is 'cube':
-            return np.array(domain_center) - domain_length/2
-        elif domain_shape is 'cylinder':
-            return np.array(domain_center) - (0, 0, domain_length/2)
-        elif domain_shape is 'sphere':
-            return np.array(domain_center)
-
-
-    def inner_packing_fraction():
-        """Calculates the true packing fraction of the particles based on the
-        inner diameter.
-
-        Returns
-        -------
-        float
-            Packing fraction calculated from inner diameter.
-
-        """
-
-        return (4/3 * pi * (inner_diameter[0]/2)**3 * n_particles /
-                domain_volume)
-
-
-    def outer_packing_fraction():
-        """Calculates the nominal packing fraction of the particles based on
-        the outer diameter.
-
-        Returns
-        -------
-        float
-            Packing fraction calculated from outer diameter.
-
-        """
-
-        return (4/3 * pi * (outer_diameter[0]/2)**3 * n_particles /
-                domain_volume)
-
-
-    def random_point_cube():
-        """Generate Cartesian coordinates of center of a particle that is
-        contained entirely within cubic domain with uniform probability.
-
-        Returns
-        -------
-        list of float
-            Cartesian coordinates of particle center.
-
-        """
-
-        return [uniform(llim[0], ulim[0]),
-                uniform(llim[0], ulim[0]),
-                uniform(llim[0], ulim[0])]
-
-
-    def random_point_cylinder():
-        """Generate Cartesian coordinates of center of a particle that is
-        contained entirely within cylindrical domain with uniform probability
-        (see http://mathworld.wolfram.com/DiskPointPicking.html for generating
-        random points on a disk).
-
-        Returns
-        -------
-        list of float
-            Cartesian coordinates of particle center.
-
-        """
-
-        r = sqrt(uniform(0, ulim[0]**2))
-        t = uniform(0, 2*pi)
-        return [r*cos(t), r*sin(t), uniform(llim[2], ulim[2])]
-
-
-    def random_point_sphere():
-        """Generate Cartesian coordinates of center of a particle that is
-        contained entirely within spherical domain with uniform probability.
-
-        Returns
-        -------
-        list of float
-            Cartesian coordinates of particle center.
-
-        """
-
-        x = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
-        r = (uniform(0, ulim[0]**3)**(1/3) / sqrt(x[0]**2 + x[1]**2 + x[2]**2))
-        return [r*i for i in x]
-
+    """
 
     def add_rod(d, i, j):
         """Add a new rod to the priority queue.
@@ -530,6 +685,35 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
             inner_diameter[0] = rods[0][0]
 
 
+    def update_mesh(i):
+        """Update which mesh cells the particle is in based on new particle
+        center coordinates.
+
+        'mesh'/'mesh_map' is a two way dictionary used to look up which
+        particles are located within one diameter of a given mesh cell and
+        which mesh cells a given particle center is within one diameter of.
+        This is used to speed up the nearest neighbor search.
+
+        Parameters
+        ----------
+        i : int
+            Index of particle in particles array.
+
+        """
+
+        # Determine which mesh cells the particle is in and remove the
+        # particle id from those cells
+        for idx in mesh_map[i]:
+            mesh[idx].remove(i)
+        del mesh_map[i]
+
+        # Determine which mesh cells are within one diameter of particle's
+        # center and add this particle to the list of particles in those cells
+        for idx in domain.nearby_mesh_cells(particles[i]):
+            mesh[idx].add(i)
+            mesh_map[i].add(idx)
+
+
     def reduce_outer_diameter():
         """Reduce the outer diameter so that at the (i+1)-st iteration it is:
 
@@ -541,60 +725,14 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
 
         """
 
-        j = floor(-log10(outer_packing_fraction() - inner_packing_fraction()))
-        outer_diameter[0] = (outer_diameter[0] - 0.5**j *
-                             initial_outer_diameter * contraction_rate /
-                             n_particles)
+	inner_pf = (4/3 * pi * (inner_diameter[0]/2)**3 * n_particles /
+                    domain.volume)
+	outer_pf = (4/3 * pi * (outer_diameter[0]/2)**3 * n_particles /
+                    domain.volume)
 
-
-    def update_mesh(i):
-        """Update which lattice cells the particle is in based on new particle
-        center coordinates.
-
-        'mesh'/'mesh_map' is a two way dictionary used to look up which
-        particles are located within one diameter of a given lattice cell and
-        which lattice cells a given particle center is within one diameter of.
-        This is used to speed up the nearest neighbor search.
-
-        Parameters
-        ----------
-        i : int
-            Index of particle in particles array.
-
-        """
-
-        # Determine which lattice cells the particle is in and remove the
-        # particle id from those cells
-        for idx in mesh_map[i]:
-            mesh[idx].remove(i)
-        del mesh_map[i]
-
-        # Determine which lattice cells are within one diameter of particle's
-        # center and add this particle to the list of particles in those cells
-        for idx in cell_list(particles[i], diameter):
-            mesh[idx].add(i)
-            mesh_map[i].add(idx)
-
-
-    def apply_boundary_conditions(i, j):
-        """Apply reflective boundary conditions to particles i and j.
-
-        Parameters
-        ----------
-        i, j : int
-            Index of particles in particles array.
-
-        """
-
-        for k in range(3):
-            if particles[i][k] < llim[k]:
-                particles[i][k] = llim[k]
-            elif particles[i][k] > ulim[k]:
-                particles[i][k] = ulim[k]
-            if particles[j][k] < llim[k]:
-                particles[j][k] = llim[k]
-            elif particles[j][k] > ulim[k]:
-                particles[j][k] = ulim[k]
+        j = floor(-log10(outer_pf - inner_pf))
+        outer_diameter[0] = (outer_diameter[0] - 0.5**j * contraction_rate *
+                             initial_outer_diameter / n_particles)
 
 
     def repel_particles(i, j, d):
@@ -624,7 +762,15 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         particles[j] -= r*v
 
         # Apply reflective boundary conditions
-        apply_boundary_conditions(i, j)
+        for k in range(3):
+            if particles[i][k] < domain.limits[0][k]:
+                particles[i][k] = domain.limits[0][k]
+            elif particles[i][k] > domain.limits[1][k]:
+                particles[i][k] = domain.limits[1][k]
+            if particles[j][k] < domain.limits[0][k]:
+                particles[j][k] = domain.limits[0][k]
+            elif particles[j][k] > domain.limits[1][k]:
+                particles[j][k] = domain.limits[1][k]
 
         update_mesh(i)
         update_mesh(j)
@@ -651,7 +797,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         # Need the second nearest neighbor of i since the nearest neighbor
         # will be itself. Using argpartition, the k-th nearest neighbor is
         # placed at index k.
-        idx = list(mesh[cell_index(particles[i])])
+        idx = list(mesh[domain.mesh_cell(particles[i])])
         dists = cdist([particles[i]], particles[idx])[0]
         if dists.size > 1:
             j = dists.argpartition(1)[1]
@@ -689,232 +835,119 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
             inner_diameter[0] = rods[0][0]
 
 
-    def cell_index_cube(p, cl=None):
-        """Calculate the index of the lattice cell in which the given particle
-        center falls.
+    n_particles = len(particles)
+    diameter = 2*domain.particle_radius
 
-        Parameters
-        ----------
-        p : list of float
-            Cartesian coordinates of particle center.
-        cl : list of float
-            Length of the lattice cells in x-, y-, and z-directions.
+    # Outer diameter initially set to arbitrary value that yields pf of 1
+    initial_outer_diameter = 2*(domain.volume/(n_particles*4/3*pi))**(1/3)
 
-        Returns
-        -------
-        tuple of int
-            Indices of lattice cell.
+    # Inner and outer diameter of particles will change during packing
+    outer_diameter = [initial_outer_diameter]
+    inner_diameter = [0]
 
-        """
+    rods = []
+    rods_map = {}
+    mesh = defaultdict(set)
+    mesh_map = defaultdict(set)
 
-        if cl is None:
-            cl = cell_length
+    for i in range(n_particles):
+        for idx in domain.nearby_mesh_cells(particles[i]):
+            mesh[idx].add(i)
+            mesh_map[i].add(idx)
 
-        return tuple(int(p[i]/cl[i]) for i in range(3))
-
-
-    def cell_index_cylinder(p, cl=None):
-        """Calculate the index of the lattice cell in which the given particle
-        center falls.
-
-        Parameters
-        ----------
-        p : list of float
-            Cartesian coordinates of particle center.
-        cl : list of float
-            Length of the lattice cells in x-, y-, and z-directions.
-
-        Returns
-        -------
-        tuple of int
-            Indices of lattice cell.
-
-        """
-
-        if cl is None:
-            cl = cell_length
-
-        return (int((p[0] + domain_radius)/cl[0]),
-                int((p[1] + domain_radius)/cl[1]), int(p[2]/cl[2]))
-
-
-    def cell_index_sphere(p, cl=None):
-        """Calculate the index of the lattice cell in which the given particle
-        center falls.
-
-        Parameters
-        ----------
-        p : list of float
-            Cartesian coordinates of particle center.
-        cl : list of float
-            Length of the lattice cells in x-, y-, and z-directions.
-
-        Returns
-        -------
-        tuple of int
-            Indices of lattice cell.
-
-        """
-
-        if cl is None:
-            cl = cell_length
-
-        return tuple(int((p[i] + domain_radius)/cl[i]) for i in range(3))
-
-
-    def cell_list_cube(p, d, cl=None):
-        """Return the indices of all cells within the given distance of the
-        point.
-
-        Parameters
-        ----------
-        p : list of float
-            Cartesian coordinates of particle center.
-        d : float
-            Find all lattice cells that are within a radius of length 'd' of
-            the particle center.
-        cl : list of float
-            Length of the lattice cells in x-, y-, and z-directions.
-
-        Returns
-        -------
-        list of tuple of int
-            Indices of lattice cells.
-
-        """
-
-        if cl is None:
-            cl = cell_length
-
-        r = [[a/cl[i] for a in [p[i]-d, p[i], p[i]+d] if a > 0 and
-              a < domain_length] for i in range(3)]
-
-        return list(itertools.product(*({int(i) for i in j} for j in r)))
-
-
-    def cell_list_cylinder(p, d, cl=None):
-        """Return the indices of all cells within the given distance of the
-        point.
-
-        Parameters
-        ----------
-        p : list of float
-            Cartesian coordinates of particle center.
-        d : float
-            Find all lattice cells that are within a radius of length 'd' of
-            the particle center.
-        cl : list of float
-            Length of the lattice cells in x-, y-, and z-directions.
-
-        Returns
-        -------
-        list of tuple of int
-            Indices of lattice cells.
-
-        """
-
-        if cl is None:
-            cl = cell_length
-
-        x, y = [[(a + domain_radius)/cl[i] for a in [p[i]-d, p[i], p[i]+d]
-                 if a > -domain_radius and a < domain_radius] for i in range(2)]
-
-        z = [a/cl[2] for a in [p[2]-d, p[2], p[2]+d] if a > 0
-             and a < domain_length]
-
-        return list(itertools.product(*({int(i) for i in j} for j in (x, y, z))))
-
-
-    def cell_list_sphere(p, d, cl=None):
-        """Return the indices of all cells within the given distance of the
-        point.
-
-        Parameters
-        ----------
-        p : list of float
-            Cartesian coordinates of particle center.
-        d : float
-            Find all lattice cells that are within a radius of length 'd' of
-            the particle center.
-        cl : list of float
-            Length of the lattice cells in x-, y-, and z-directions.
-
-        Returns
-        -------
-        list of tuple of int
-            Indices of lattice cells.
-
-        """
-
-        if cl is None:
-            cl = cell_length
-
-        r = [[(a + domain_radius)/cl[i] for a in [p[i]-d, p[i], p[i]+d]
-              if a > -domain_radius and a < domain_radius] for i in range(3)]
-
-        return list(itertools.product(*({int(i) for i in j} for j in r)))
-
-
-    def random_sequential_pack():
-        """Random sequential packing of particles whose radius is determined by
-        initial packing fraction.
-
-        Returns
-        ------
-        numpy.ndarray
-            Cartesian coordinates of centers of TRISO particles.
-
-        """
-
-        # Set parameters for initial random sequential packing of particles.
-        r = (3/4*initial_packing_fraction*domain_volume/(pi*n_particles))**(1/3)
-        d = 2*r
-        sqd = d**2
-        cl = get_cell_length(r)
-
-        particles = []
-        mesh = defaultdict(list)
-
-        for i in range(n_particles):
-            # Randomly sample new center coordinates while there are any overlaps
-            while True:
-                p = random_point()
-                idx = cell_index(p, cl)
-                if any((p[0]-q[0])**2 + (p[1]-q[1])**2 + (p[2]-q[2])**2 < sqd
-                       for q in mesh[idx]):
-                    continue
-                else:
-                    break
-            particles.append(p)
-
-            for idx in cell_list(p, d, cl):
-                mesh[idx].append(p)
-
-        return np.array(particles)
-
-
-    def close_random_pack():
-        """Close random packing of particles using the Jodrey-Tory algorithm.
-
-        """
-
-        for i in range(n_particles):
-            for idx in cell_list(particles[i], diameter):
-                mesh[idx].add(i)
-                mesh_map[i].add(idx)
-
+    while True:
+        create_rod_list()
+        if inner_diameter[0] >= diameter:
+            break
         while True:
-            create_rod_list()
-            if inner_diameter[0] >= diameter:
+            d, i, j = pop_rod()
+            reduce_outer_diameter()
+            repel_particles(i, j, d)
+            update_rod_list(i, j)
+            if inner_diameter[0] >= diameter or not rods:
                 break
-            while True:
-                d, i, j = pop_rod()
-                reduce_outer_diameter()
-                repel_particles(i, j, d)
-                update_rod_list(i, j)
-                if inner_diameter[0] >= diameter or not rods:
-                    break
 
+
+def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
+                domain_radius=None, domain_center=[0., 0., 0.],
+                n_particles=None, packing_fraction=None,
+                initial_packing_fraction=0.3, contraction_rate=1/400, seed=1):
+    """Generate a random, non-overlapping configuration of TRISO particles
+    within a container.
+
+    Parameters
+    ----------
+    radius : float
+        Outer radius of TRISO particles.
+    fill : openmc.Universe
+        Universe which contains all layers of the TRISO particle.
+    domain_shape : {'cube', 'cylinder', or 'sphere'}
+        Geometry of the container in which the TRISO particles are packed.
+    domain_length : float
+        Length of the container (if cube or cylinder).
+    domain_radius : float
+        Radius of the container (if cylinder or sphere).
+    domain_center : Iterable of float
+        Cartesian coordinates of the center of the container.
+    n_particles : int
+        Number of TRISO particles to pack in the domain. Exactly one of
+        'n_particles' and 'packing_fraction' should be specified -- the other
+        will be calculated.
+    packing_fraction : float
+        Packing fraction of particles. Exactly one of 'n_particles' and
+        'packing_fraction' should be specified -- the other will be calculated.
+    initial_packing_fraction : float, optional
+        Packing fraction used to initialize the configuration of particles in
+        the domain. Default value is 0.3. It is not recommended to set the
+        initial packing fraction much higher than 0.3 as the random sequential
+        packing algorithm becomes prohibitively slow as it approaches its limit
+        (~0.38).
+    contraction_rate : float, optional
+        Contraction rate of outer diameter. This can affect the speed of the
+        close random packing algorithm. Default value is 1/400.
+    seed : int, optional
+        RNG seed.
+
+    Returns
+    -------
+    trisos : list of openmc.model.TRISO
+        List of TRISO particles in the domain.
+
+    Notes
+    -----
+    The particle configuration is generated using a combination of random
+    sequential packing (RSP) and close random packing (CRP). RSP performs
+    better than CRP for lower packing fractions (pf), but it becomes
+    prohibitively slow as it approaches its packing limit (~0.38). CRP can
+    achieve higher pf of up to ~0.64 and scales better with increasing pf.
+
+    If the desired pf is below some threshold for which RSP will be faster than
+    CRP ('initial_packing_fraction'), only RSP is used. If a higher pf is
+    required, particles with a radius smaller than the desired final radius
+    (and therefore with a smaller pf) are initialized within the domain using
+    RSP. This initial configuration of particles is then used as a starting
+    point for CRP using Jodrey and Tory's algorithm [1]_.
+
+    In RSP, particle centers are placed one by one at random, and placement
+    attempts for a particle are made until the particle is not overlapping any
+    others. This implementation of the algorithm uses a mesh over the domain
+    to speed up the nearest neighbor search by only searching for a particle's
+    neighbors within that mesh cell.
+
+    In CRP, each particle is assigned two diameters, and inner and an outer,
+    which approach each other during the simulation. The inner diameter,
+    defined as the minimum center-to-center distance, is the true diameter of
+    the particles and defines the pf. At each iteration the worst overlap
+    between particles based on outer diameter is eliminated by moving the
+    particles apart along the line joining their centers. Iterations continue
+    until the two diameters converge or until the desired pf is reached.
+
+    References
+    ----------
+    .. [1] W. S. Jodrey and E. M. Tory, "Computer simulation of close random
+       packing of equal spheres", Phys. Rev. A 32 (1985) 2347-2351.
+
+    """
 
     # Check for valid container geometry and dimensions
     if domain_shape not in ['cube', 'cylinder', 'sphere']:
@@ -928,9 +961,15 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         raise ValueError('"domain_radius" must be specified for {} domain '
                          'geometry '.format(domain_shape))
 
-    domain_volume = get_domain_volume()
-    llim, ulim = get_boundary_extremes()
-    offset = get_particle_offset()
+    if domain_shape is 'cube':
+        domain = _CubicDomain(length=domain_length, particle_radius=radius,
+                              center=domain_center)
+    elif domain_shape is 'cylinder':
+        domain = _CylindricalDomain(length=domain_length, radius=domain_radius,
+                                    particle_radius=radius, center=domain_center)
+    elif domain_shape is 'sphere':
+        domain = _SphericalDomain(radius=domain_radius, particle_radius=radius,
+                                  center=domain_center)
 
     # Calculate the packing fraction if the number of particles is specified;
     # otherwise, calculate the number of particles from the packing fraction.
@@ -939,9 +978,9 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         raise ValueError('Exactly one of "n_particles" and "packing_fraction" '
                          'must be specified.')
     elif packing_fraction is None:
-        packing_fraction = 4/3*pi*radius**3*n_particles / domain_volume
+        packing_fraction = 4/3*pi*radius**3*n_particles / domain.volume
     elif n_particles is None:
-        n_particles = int(packing_fraction*domain_volume // (4/3*pi*radius**3))
+        n_particles = int(packing_fraction*domain.volume // (4/3*pi*radius**3))
 
     # Check for valid packing fractions for each algorithm
     if packing_fraction >= 0.64:
@@ -957,48 +996,26 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         if packing_fraction > 0.3:
             initial_packing_fraction = 0.3
 
-    # Set domain dependent functions
-    if domain_shape is 'cube':
-        random_point = random_point_cube
-        cell_list = cell_list_cube
-        cell_index = cell_index_cube
-    elif domain_shape is 'cylinder':
-        random_point = random_point_cylinder
-        cell_list = cell_list_cylinder
-        cell_index = cell_index_cylinder
-    elif domain_shape is 'sphere':
-        random_point = random_point_sphere
-        cell_list = cell_list_sphere
-        cell_index = cell_index_sphere
-
     random.seed(seed)
+
+    # Set parameters for initial random sequential packing of particles.
+    initial_radius = (3/4 * initial_packing_fraction * domain.volume /
+                      (pi * n_particles))**(1/3)
+    domain.particle_radius = initial_radius
+    domain.limits = [[x - initial_radius + radius for x in domain.limits[0]],
+                     [x + initial_radius - radius for x in domain.limits[1]]]
 
     # Generate non-overlapping particles for an initial inner radius using
     # random sequential packing algorithm
-    particles = random_sequential_pack()
+    particles = _random_sequential_pack(domain, n_particles)
 
     # Use the particle configuration produced in random sequential packing as a
     # starting point for close random pack with the desired final particle radius
     if initial_packing_fraction != packing_fraction:
-        diameter = 2*radius
-        cell_length = get_cell_length(radius)
-
-        # Outer diameter initially set to arbitrary value that yields pf of 1
-        initial_outer_diameter = 2*(domain_volume/(n_particles*4/3*pi))**(1/3)
-
-        # Inner and outer diameter of particles will change during packing
-        outer_diameter = [initial_outer_diameter]
-        inner_diameter = [0]
-
-        rods = []
-        rods_map = {}
-        mesh = defaultdict(set)
-        mesh_map = defaultdict(set)
-
-        close_random_pack()
+        domain.particle_radius = radius
+        _close_random_pack(domain, particles, contraction_rate)
 
     trisos = []
     for p in particles:
-        trisos.append(TRISO(radius, fill, p + offset))
-
+        trisos.append(TRISO(radius, fill, p))
     return trisos

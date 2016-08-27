@@ -731,6 +731,7 @@ contains
                 end do
               end select
 
+              ! Reset the score to zero
               score = ZERO
             end if
           end if

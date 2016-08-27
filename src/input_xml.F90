@@ -3484,7 +3484,7 @@ contains
           end if
 
           ! Check if delayed group filter is used with any score besides
-          ! delayed-nu-fission or 'decay-rate'
+          ! delayed-nu-fission or decay-rate
           if ((score_name /= 'delayed-nu-fission' .and. &
                score_name /= 'decay-rate') .and. &
                t % find_filter(FILTER_DELAYEDGROUP) > 0) then

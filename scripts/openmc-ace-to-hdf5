@@ -129,7 +129,6 @@ for filename in ace_libraries:
         name, xs = table.name.split('.')
         if xs.endswith('c'):
             # Continuous-energy neutron data
-
             if name not in nuclides:
                 try:
                     neutron = openmc.data.IncidentNeutron.from_ace(
@@ -160,13 +159,17 @@ for filename in ace_libraries:
                 nuclides[name] = outfile
             else:
                 # Then we only need to append the data
-                print('Converting {} (ACE) to {} (HDF5)'.format(table.name,
-                                                                neutron.name))
-                neutron = \
-                    openmc.data.IncidentNeutron.from_hdf5(nuclides[name])
-                neutron.add_temperature_from_ace(table, args.metastable)
-                neutron.export_to_hdf5(outfile + '_1', 'w')
-                os.rename(outfile + '_1', outfile)
+                try:
+                    neutron = \
+                        openmc.data.IncidentNeutron.from_hdf5(nuclides[name])
+                    print('Converting {} (ACE) to {} (HDF5)'.format(table.name,
+                                                                    neutron.name))
+                    neutron.add_temperature_from_ace(table, args.metastable)
+                    neutron.export_to_hdf5(nuclides[name] + '_1', 'w')
+                    os.rename(nuclides[name] + '_1', nuclides[name])
+                except Exception as e:
+                    print('Failed to convert {}: {}'.format(table.name, e))
+                    continue
 
         elif xs.endswith('t'):
             # Thermal scattering data
@@ -192,14 +195,16 @@ for filename in ace_libraries:
 
             else:
                 # Then we only need to append the data
-                print('Converting {} (ACE) to {} (HDF5)'.format(table.name,
-                                                                thermal.name))
-                # if table.name == 'poly.11t':
-                #     import pdb; pdb.set_trace()
-                thermal = openmc.data.ThermalScattering.from_hdf5(nuclides[name])
-                thermal.add_temperature_from_ace(table)
-                thermal.export_to_hdf5(outfile + '_1', 'w')
-                os.rename(outfile + '_1', outfile)
+                try:
+                    thermal = openmc.data.ThermalScattering.from_hdf5(nuclides[name])
+                    print('Converting {} (ACE) to {} (HDF5)'.format(table.name,
+                                                                    thermal.name))
+                    thermal.add_temperature_from_ace(table)
+                    thermal.export_to_hdf5(nuclides[name] + '_1', 'w')
+                    os.rename(nuclides[name] + '_1', nuclides[name])
+                except Exception as e:
+                    print('Failed to convert {}: {}'.format(table.name, e))
+                    continue
 
 # Write cross_sections.xml
 libpath = os.path.join(args.destination, 'cross_sections.xml')

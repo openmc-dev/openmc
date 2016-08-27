@@ -115,6 +115,7 @@ elif args.xsdata is not None:
 else:
     ace_libraries = args.libraries
 
+nuclides = {}
 library = openmc.data.DataLibrary()
 
 for filename in ace_libraries:
@@ -124,11 +125,11 @@ for filename in ace_libraries:
         continue
 
     lib = openmc.data.ace.Library(filename)
-    nuclides = {}
     for table in lib.tables:
         name, xs = table.name.split('.')
         if xs.endswith('c'):
             # Continuous-energy neutron data
+
             if name not in nuclides:
                 try:
                     neutron = openmc.data.IncidentNeutron.from_ace(

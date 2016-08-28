@@ -67,6 +67,16 @@ class Plot(object):
     col_spec : dict
         Dictionary indicating that certain cells/materials (keys) should be
         colored with a specific RGB (values)
+    level : int
+        Universe depth to plot at
+    meshlines_type : {'tally', 'entropy', 'ufs', 'cmfd'}
+        The type of the mesh to be plotted
+    meshlines_id : int
+        ID for the mesh specified on ``tallies.xml`` that should be plotted
+    meshlines_linewidth : int
+        Pixels of linewidth to specify for the mesh boundaries
+    meshlines_color : Iterable of int
+        Color for the meshlines boundaries by RGB.
 
     """
 
@@ -85,6 +95,11 @@ class Plot(object):
         self._mask_components = None
         self._mask_background = None
         self._col_spec = None
+        self._level = None
+        self._meshlines_type = None
+        self._meshlines_id = None
+        self._meshlines_linewidth = None
+        self._meshlines_color = None
 
     @property
     def id(self):
@@ -137,6 +152,26 @@ class Plot(object):
     @property
     def col_spec(self):
         return self._col_spec
+
+    @property
+    def level(self):
+        return self._level
+
+    @property
+    def meshlines_type(self):
+        return self._meshlines_type
+
+    @property
+    def meshlines_id(self):
+        return self._meshlines_id
+
+    @property
+    def meshlines_linewidth(self):
+        return self._meshlines_linewidth
+
+    @property
+    def meshlines_color(self):
+        return self._meshlines_color
 
     @id.setter
     def id(self, plot_id):
@@ -231,9 +266,9 @@ class Plot(object):
 
     @mask_components.setter
     def mask_components(self, mask_components):
-        cv.check_type('plot mask_components', mask_components, Iterable, Integral)
+        cv.check_type('plot mask components', mask_components, Iterable, Integral)
         for component in mask_components:
-            cv.check_greater_than('plot mask_components', component, 0, True)
+            cv.check_greater_than('plot mask components', component, 0, True)
         self._mask_components = mask_components
 
     @mask_background.setter
@@ -244,6 +279,40 @@ class Plot(object):
             cv.check_greater_than('plot mask background', rgb, 0, True)
             cv.check_less_than('plot mask background', rgb, 256)
         self._mask_background = mask_background
+
+    @level.setter
+    def level(self, plot_level):
+        cv.check_type('plot level', plot_level, Integral)
+        cv.check_greater_than('plot level', plot_level, 0, equality=True)
+        self._level = plot_level
+
+    @meshlines_type.setter
+    def meshlines_type(self, meshlines_type):
+        cv.check_type('plot meshlines type', meshlines_type, basestring)
+        cv.check_value('plot meshlines type', meshlines_type,
+                       ['tally', 'entropy', 'ufs', 'cmfd'])
+        self._meshlines_type = meshlines_type
+
+    @meshlines_id.setter
+    def meshlines_id(self, mesh_id):
+        cv.check_type('plot meshlines id', mesh_id, Integral)
+        cv.check_greater_than('plot meshlines id', mesh_id, 0, equality=True)
+        self._meshlines_id = mesh_id
+
+    @meshlines_linewidth.setter
+    def meshlines_linewidth(self, linewidth):
+        cv.check_type('plot mesh linewidth', linewidth, Integral)
+        cv.check_greater_than('plot mesh linewidth', linewidth, 0, equality=True)
+        self._meshlines_linewidth = linewidth
+
+    @meshlines_color.setter
+    def meshlines_color(self, color):
+        cv.check_type('plot meshlines color', color, Iterable, Integral)
+        cv.check_length('plot meshlines color', color, 3)
+        for rgb in color:
+            cv.check_greater_than('plot meshlines color', rgb, 0, True)
+            cv.check_less_than('plot meshlines color', rgb, 256)
+        self._meshlines_color = color
 
     def __repr__(self):
         string = 'Plot\n'
@@ -256,11 +325,20 @@ class Plot(object):
         string += '{0: <16}{1}{2}\n'.format('\tOrigin', '=\t', self._origin)
         string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._origin)
         string += '{0: <16}{1}{2}\n'.format('\tColor', '=\t', self._color)
-        string += '{0: <16}{1}{2}\n'.format('\tMask', '=\t',
+        string += '{0: <16}{1}{2}\n'.format('\tMask components', '=\t',
                                             self._mask_components)
-        string += '{0: <16}{1}{2}\n'.format('\tMask', '=\t',
+        string += '{0: <16}{1}{2}\n'.format('\tMask background', '=\t',
                                             self._mask_background)
         string += '{0: <16}{1}{2}\n'.format('\tCol Spec', '=\t', self._col_spec)
+        string += '{0: <16}{1}{2}\n'.format('\tLevel', '=\t', self._level)
+        string += '{0: <16}{1}{2}\n'.format('\tMeshlines type', '=\t',
+                                            self._meshlines_type)
+        string += '{0: <16}{1}{2}\n'.format('\tMeshlines id', '=\t',
+                                            self._meshlines_id)
+        string += '{0: <16}{1}{2}\n'.format('\tMeshlines color', '=\t',
+                                            self._meshlines_color)
+        string += '{0: <16}{1}{2}\n'.format('\tMeshlines linewidth', '=\t',
+                                            self._meshlines_linewidth)
         return string
 
     def colorize(self, geometry, seed=1):
@@ -382,7 +460,7 @@ class Plot(object):
         subelement = ET.SubElement(element, "pixels")
         subelement.text = ' '.join(map(str, self._pixels))
 
-        if self._mask_background is not None:
+        if self._background is not None:
             subelement = ET.SubElement(element, "background")
             subelement.text = ' '.join(map(str, self._background))
 
@@ -399,6 +477,20 @@ class Plot(object):
                 str, self._mask_components)))
             subelement.set("background", ' '.join(map(
                 str, self._mask_background)))
+
+        if self._level is not None:
+            subelement = ET.SubElement(element, "level")
+            subelement.text = ' '.join(str(self._level))
+
+        if self._meshlines_type is not None:
+            subelement = ET.SubElement(element, "meshlines")
+            subelement.set("meshtype", self._meshlines_type)
+            if self._meshlines_id is not None:
+                subelement.set("id", str(self._meshlines_id))
+            if self._meshlines_linewidth is not None:
+                subelement.set("linewidth", str(self._meshlines_linewidth))
+            if self._meshlines_color is not None:
+                subelement.set("color", ' '.join(map(str, self._meshlines_color)))
 
         return element
 

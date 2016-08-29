@@ -2410,19 +2410,17 @@ contains
 
         ! If cell index in dimension d1 and d2 are the same and the cells is
         ! within the mesh bounds
-        if (ijk0(d1) == ijk1(d1) .and. ijk0(d2) == ijk1(d2) .and. &
-             ijk0(d1) >= 1 .and. ijk0(d1) <= m % dimension(d1) .and. &
-             ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
+        if (ijk0(d1) == ijk1(d1) .and. ijk0(d2) == ijk1(d2)) then
 
           ! Only d3 crossings
           if (uvw(d3) > 0) then
 
             ! Loop over d3 cells
             do j = ijk0(d3), ijk1(d3) - 1
+              ijk0(d3) = j
 
               ! Outward current on d3 max surface
-              if (j >= 1 .and. j <= m % dimension(d3)) then
-                ijk0(d3) = j
+              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
                 matching_bins(i_filter_surf) = d3 * 2
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
@@ -2434,7 +2432,9 @@ contains
               end if
 
               ! Inward current on d3 min surface
-              if (j >= 0 .and. j < m % dimension(d3)) then
+              if (ijk0(d1) >= 1 .and. ijk0(d1) <= m % dimension(d1) .and. &
+                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                   j >= 0 .and. j < m % dimension(d3)) then
                 ijk0(d3) = j + 1
                 matching_bins(i_filter_surf) = d3 * 2 + 5
                 matching_bins(i_filter_mesh) = &
@@ -2444,16 +2444,16 @@ contains
 !$omp atomic
                 t % results(1, filter_index) % value = &
                      t % results(1, filter_index) % value + p % wgt
+                ijk0(d3) = j
               end if
             end do
           else
 
             do j = ijk0(d3), ijk1(d3) + 1, -1
-
+              ijk0(d3) = j
 
               ! Outward current on d3 min surface
-              if (j >= 1 .and. j <= m % dimension(d3)) then
-                ijk0(d3) = j
+              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
                 matching_bins(i_filter_surf) = d3 * 2 - 1
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
@@ -2465,7 +2465,9 @@ contains
               end if
 
               ! Inward current on d3 max surface
-              if (j > 1 .and. j <= m % dimension(d3) + 1) then
+              if (ijk0(d1) >= 1 .and. ijk0(d1) <= m % dimension(d1) .and. &
+                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                   j > 1 .and. j <= m % dimension(d3) + 1) then
                 ijk0(d3) = j - 1
                 matching_bins(i_filter_surf) = d3 * 2 + 6
                 matching_bins(i_filter_mesh) = &
@@ -2475,10 +2477,11 @@ contains
 !$omp atomic
                 t % results(1, filter_index) % value = &
                      t % results(1, filter_index) % value + p % wgt
+                ijk0(d3) = j
               end if
             end do
           end if
-          cycle
+          cycle TALLY_LOOP
         end if
       end do
 
@@ -2525,73 +2528,73 @@ contains
           d2 = mod(d1, 3) + 1
           d3 = mod(d1 + 1, 3) + 1
 
+          ! Check distance and dimension d2 and d3 indices
           if (distance == d(d1)) then
 
-            ! Check dimension d2 and d3 indices
-            if (ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                 ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+            if (uvw(d1) > 0) then
 
-              if (uvw(d1) > 0) then
-
-                ! Outward current on d1 max surface
-                if (ijk0(d1) >= 1 .and. ijk0(d1) <= m % dimension(d1)) then
-                  matching_bins(i_filter_surf) = d1 * 2
-                  matching_bins(i_filter_mesh) = &
-                       mesh_indices_to_bin(m, ijk0)
-                  filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                       * t % stride) + 1
+              ! Outward current on d1 max surface
+              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
+                matching_bins(i_filter_surf) = d1 * 2
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
 !$omp atomic
-                  t % results(1, filter_index) % value = &
-                       t % results(1, filter_index) % value + p % wgt
-                end if
-
-                ! Inward current on d1 min surface
-                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1)) then
-                  ijk0(d1) = ijk0(d1) + 1
-                  matching_bins(i_filter_surf) = d1 * 2 + 5
-                  matching_bins(i_filter_mesh) = &
-                       mesh_indices_to_bin(m, ijk0)
-                  filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                       * t % stride) + 1
-!$omp atomic
-                  t % results(1, filter_index) % value = &
-                       t % results(1, filter_index) % value + p % wgt
-                  ijk0(d1) = ijk0(d1) - 1
-                end if
-
-                ijk0(d1) = ijk0(d1) + 1
-                xyz_cross(d1) = xyz_cross(d1) + m % width(d1)
-              else
-
-                ! Outward current on d1 min surface
-                if (ijk0(d1) >= 1 .and. ijk0(d1) <= m % dimension(d1)) then
-                  matching_bins(i_filter_surf) = d1 * 2 - 1
-                  matching_bins(i_filter_mesh) = &
-                       mesh_indices_to_bin(m, ijk0)
-                  filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                       * t % stride) + 1
-!$omp atomic
-                  t % results(1, filter_index) % value = &
-                       t % results(1, filter_index) % value + p % wgt
-                end if
-
-                ! Inward current on d1 max surface
-                if (ijk0(d1) > 1 .and. ijk0(d1) <= m % dimension(d1) + 1)  then
-                  ijk0(d1) = ijk0(d1) - 1
-                  matching_bins(i_filter_surf) = d1 * 2 + 6
-                  matching_bins(i_filter_mesh) = &
-                       mesh_indices_to_bin(m, ijk0)
-                  filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                       * t % stride) + 1
-!$omp atomic
-                  t % results(1, filter_index) % value = &
-                       t % results(1, filter_index) % value + p % wgt
-                  ijk0(d1) = ijk0(d1) + 1
-                end if
-
-                ijk0(d1) = ijk0(d1) - 1
-                xyz_cross(d1) = xyz_cross(d1) - m % width(d1)
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
               end if
+
+              ! Inward current on d1 min surface
+              if (ijk0(d1) >= 0 .and. ijk0(d1) < m % dimension(d1) .and. &
+                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                   ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+                ijk0(d1) = ijk0(d1) + 1
+                matching_bins(i_filter_surf) = d1 * 2 + 5
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
+!$omp atomic
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
+                ijk0(d1) = ijk0(d1) - 1
+              end if
+
+              ijk0(d1) = ijk0(d1) + 1
+              xyz_cross(d1) = xyz_cross(d1) + m % width(d1)
+            else
+
+              ! Outward current on d1 min surface
+              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
+                matching_bins(i_filter_surf) = d1 * 2 - 1
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
+!$omp atomic
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
+              end if
+
+              ! Inward current on d1 max surface
+              if (ijk0(d1) > 1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and. &
+                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                   ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3))  then
+                ijk0(d1) = ijk0(d1) - 1
+                matching_bins(i_filter_surf) = d1 * 2 + 6
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
+!$omp atomic
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
+                ijk0(d1) = ijk0(d1) + 1
+              end if
+
+              ijk0(d1) = ijk0(d1) - 1
+              xyz_cross(d1) = xyz_cross(d1) - m % width(d1)
             end if
           end if
         end do

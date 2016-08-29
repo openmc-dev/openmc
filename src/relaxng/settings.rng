@@ -566,6 +566,21 @@
       </element>
     </optional>
     <optional>
+      <element name="temperature_default">
+        <data type="double"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="temperature_method">
+        <data type="string"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="temperature_tolerance">
+        <data type="double"/>
+      </element>
+    </optional>
+    <optional>
       <element name="threads">
         <data type="positiveInteger"/>
       </element>

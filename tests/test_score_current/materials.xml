@@ -1,8 +1,6 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_temperature>294K</default_temperature>
-
   <!-- Fuel composition -->
   <material id="1">
     <density value="10.062" units="g/cm3" />

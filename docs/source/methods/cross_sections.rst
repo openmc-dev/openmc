@@ -53,12 +53,12 @@ speed up the calculation.
 Logarithmic Mapping
 +++++++++++++++++++
 
-To speed up energy grid searches, OpenMC uses logarithmic mapping technique
-[Brown]_ to limit the range of energies that must be searched for each
-nuclide. The entire energy range is divided up into equal-lethargy segments, and
-the bounding energies of each segment are mapped to bounding indices on each of
-the nuclide energy grids. By default, OpenMC uses 8000 equal-lethargy segments
-as recommended by Brown.
+To speed up energy grid searches, OpenMC uses a `logarithmic mapping technique`_
+to limit the range of energies that must be searched for each nuclide. The
+entire energy range is divided up into equal-lethargy segments, and the bounding
+energies of each segment are mapped to bounding indices on each of the nuclide
+energy grids. By default, OpenMC uses 8000 equal-lethargy segments as
+recommended by Brown.
 
 Other Methods
 +++++++++++++
@@ -74,9 +74,9 @@ offers support for an experimental data format called windowed multipole (WMP).
 This data format requires less memory than pointwise cross sections, and it
 allows on-the-fly Doppler broadening to arbitrary temperature.
 
-The multipole method was introduced by [Hwang]_ and the faster windowed
-multipole method by [Josey]_.  In the multipole format, cross section resonances
-are represented by poles, :math:`p_j`, and residues, :math:`r_j`, in the complex
+The multipole method was introduced by Hwang_ and the faster windowed multipole
+method by Josey_. In the multipole format, cross section resonances are
+represented by poles, :math:`p_j`, and residues, :math:`r_j`, in the complex
 plane.  The 0K cross sections in the resolved resonance region can be computed
 by summing up a contribution from each pole:
 
@@ -232,21 +232,10 @@ sections. This allows flexibility for the model to use highly anisotropic
 scattering information in the water while the fuel can be simulated with linear
 or even isotropic scattering.
 
-.. only:: html
-
-   .. rubric:: References
-
-.. [Brown] Forrest B. Brown, "New Hash-based Energy Lookup Algorithm for Monte
-           Carlo codes," LA-UR-14-24530, Los Alamos National Laboratory (2014).
-
-.. [Hwang] R. N. Hwang, "A Rigorous Pole Representation of Multilevel Cross
-           Sections and Its Practical Application,"  *Nucl. Sci. Eng.*, **96**,
-           192-209 (1987).
-
-.. [Josey] Colin Josey, Pablo Ducru, Benoit Forget, and Kord Smith, "Windowed
-           Multipole for Cross Section Doppler Broadening," *J. Comp. Phys*,
-           **307**, 715-727 (2016). http://dx.doi.org/10.1016/j.jcp.2015.08.013
-
+.. _logarithmic mapping technique:
+   https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
+.. _Hwang: http://www.ans.org/pubs/journals/nse/a_16381
+.. _Josey: http://dx.doi.org/10.1016/j.jcp.2015.08.013
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _NJOY: http://t2.lanl.gov/codes.shtml

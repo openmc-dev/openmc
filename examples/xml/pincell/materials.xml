@@ -1,9 +1,6 @@
 <?xml version="1.0"?>
 <materials>
 
-  <!-- By default, use 294K cross sections -->
-  <default_temperature>294K</default_temperature>
-
   <!--
       Since O-18 is not present in ENDF/B-VII, it was necessary to combine the
       atom densities for O-17 and O-18 in any materials containing Oxygen.

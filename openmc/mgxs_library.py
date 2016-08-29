@@ -99,9 +99,6 @@ class XSdata(object):
         Unique identifier for the xsdata object
     alias : str
         Separate unique identifier for the xsdata object
-    zaid : int
-        1000*(atomic number) + mass number. As an example, the zaid of U235
-        would be 92235.
     awr : float
         Atomic weight ratio of an isotope.  That is, the ratio of the mass
         of the isotope to the mass of a single neutron.
@@ -227,7 +224,6 @@ class XSdata(object):
         self._energy_groups = energy_groups
         self._representation = representation
         self._alias = None
-        self._zaid = None
         self._awr = None
         self._kT = None
         self._fissionable = False
@@ -261,10 +257,6 @@ class XSdata(object):
     @property
     def alias(self):
         return self._alias
-
-    @property
-    def zaid(self):
-        return self._zaid
 
     @property
     def awr(self):
@@ -395,13 +387,6 @@ class XSdata(object):
             self._alias = alias
         else:
             self._alias = self._name
-
-    @zaid.setter
-    def zaid(self, zaid):
-        # Check type and value
-        check_type('zaid', zaid, Integral)
-        check_greater_than('zaid', zaid, 0)
-        self._zaid = zaid
 
     @awr.setter
     def awr(self, awr):
@@ -1013,17 +998,9 @@ class XSdata(object):
             subelement = ET.SubElement(element, 'kT')
             subelement.text = str(self._kT)
 
-        if self._zaid is not None:
-            subelement = ET.SubElement(element, 'zaid')
-            subelement.text = str(self._zaid)
-
         if self._awr is not None:
             subelement = ET.SubElement(element, 'awr')
             subelement.text = str(self._awr)
-
-        if self._kT is not None:
-            subelement = ET.SubElement(element, 'kT')
-            subelement.text = str(self._kT)
 
         if self._fissionable is not None:
             subelement = ET.SubElement(element, 'fissionable')

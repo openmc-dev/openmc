@@ -1,8 +1,6 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_temperature>294K</default_temperature>
-
   <!-- Plutonium -->
   <material id="1">
     <density value="18.4757" units="g/cm3" />

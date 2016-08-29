@@ -1,8 +1,6 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_temperature>294K</default_temperature>
-
   <material id="1">
     <density value="1.4" units="g/cc" />
     <nuclide name="B10" ao="1.0" />

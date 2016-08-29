@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <settings>
 
-  <energy_grid>nuclide</energy_grid>
+  <log_grid_bins>20000</log_grid_bins>
 
   <eigenvalue>
     <batches>10</batches>

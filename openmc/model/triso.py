@@ -639,7 +639,7 @@ def _close_random_pack(domain, particles, contraction_rate):
 
         while rods:
             d, i, j = heappop(rods)
-            if i is not removed and j is not removed:
+            if i != removed and j != removed:
                 del rods_map[i]
                 del rods_map[j]
                 return d, i, j

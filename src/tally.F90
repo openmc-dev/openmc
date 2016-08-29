@@ -2321,6 +2321,9 @@ contains
     integer :: i_tally
     integer :: j                    ! loop indices
     integer :: k                    ! loop indices
+    integer :: d1                   ! dimension index
+    integer :: d2                   ! dimension index
+    integer :: d3                   ! dimension index
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: n_cross              ! number of surface crossings
@@ -2398,231 +2401,96 @@ contains
       ! =======================================================================
       ! SPECIAL CASES WHERE TWO INDICES ARE THE SAME
 
-      x_same = (ijk0(1) == ijk1(1))
-      y_same = (ijk0(2) == ijk1(2))
-      z_same = (ijk0(3) == ijk1(3))
+      ! Loop over the dimensions
+      do d1 = 1, 3
 
-      if (x_same .and. y_same) then
-        ! Only z crossings
-        if (uvw(3) > 0) then
-          do j = ijk0(3), ijk1(3) - 1
-            ijk0(3) = j
+        ! Get the other dimensions
+        d2 = mod(d1, 3) + 1
+        d3 = mod(d1 + 1, 3) + 1
 
-            ! OUT_TOP
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_TOP
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
+        ! If cell index in dimension d1 and d2 are the same and the cells is
+        ! within the mesh bounds
+        if (ijk0(d1) == ijk1(d1) .and. ijk0(d2) == ijk1(d2) .and. &
+             ijk0(d1) >= 1 .and. ijk0(d1) <= m % dimension(d1) .and. &
+             ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
+
+          ! Only d3 crossings
+          if (uvw(d3) > 0) then
+
+            ! Loop over d3 cells
+            do j = ijk0(d3), ijk1(d3) - 1
+
+              ! Outward current on d3 max surface
+              if (j >= 1 .and. j <= m % dimension(d3)) then
+                ijk0(d3) = j
+                matching_bins(i_filter_surf) = d3 * 2
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
 !$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
+              end if
 
-            ! IN_BOTTOM
-            if (ijk0(1) >= 1 .and. ijk0(2) >= 1 .and. ijk0(3) >= 0 .and. &
-                 ijk0(1) <= m % dimension(1) .and. &
-                 ijk0(2) <= m % dimension(2) .and. &
-                 ijk0(3) <  m % dimension(3)) then
-              ijk0(3) = ijk0(3) + 1
-              matching_bins(i_filter_surf) = IN_BOTTOM
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
+              ! Inward current on d3 min surface
+              if (j >= 0 .and. j < m % dimension(d3)) then
+                ijk0(d3) = j + 1
+                matching_bins(i_filter_surf) = d3 * 2 + 5
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
 !$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(3) = ijk0(3) - 1
-            end if
-          end do
-        else
-          do j = ijk0(3), ijk1(3) + 1, -1
-            ijk0(3) = j
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
+              end if
+            end do
+          else
 
-            ! OUT_BOTTOM
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_BOTTOM
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
+            do j = ijk0(d3), ijk1(d3) + 1, -1
 
-            ! IN_TOP
-            if (ijk0(1) >= 1 .and. ijk0(2) >= 1 .and. ijk0(3) > 1 .and. &
-                 ijk0(1) <= m % dimension(1) .and. &
-                 ijk0(2) <= m % dimension(2) .and. &
-                 ijk0(3) <= m % dimension(3) + 1) then
-              ijk0(3) = ijk0(3) - 1
-              matching_bins(i_filter_surf) = IN_TOP
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
+
+              ! Outward current on d3 min surface
+              if (j >= 1 .and. j <= m % dimension(d3)) then
+                ijk0(d3) = j
+                matching_bins(i_filter_surf) = d3 * 2 - 1
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
 !$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(3) = ijk0(3) + 1
-            end if
-          end do
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
+              end if
+
+              ! Inward current on d3 max surface
+              if (j > 1 .and. j <= m % dimension(d3) + 1) then
+                ijk0(d3) = j - 1
+                matching_bins(i_filter_surf) = d3 * 2 + 6
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
+!$omp atomic
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
+              end if
+            end do
+          end if
+          cycle
         end if
-        cycle
-      elseif (x_same .and. z_same) then
-        ! Only y crossings
-        if (uvw(2) > 0) then
-          do j = ijk0(2), ijk1(2) - 1
-            ijk0(2) = j
-
-            ! OUT_FRONT
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_FRONT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-
-            ! IN_BACK
-            if (ijk0(1) >= 1 .and. ijk0(2) >= 0 .and. ijk0(3) >= 1 .and. &
-                 ijk0(1) <= m % dimension(1) .and. &
-                 ijk0(2) <  m % dimension(2) .and. &
-                 ijk0(3) <= m % dimension(3)) then
-              ijk0(2) = ijk0(2) + 1
-              matching_bins(i_filter_surf) = IN_BACK
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(2) = ijk0(2) - 1
-            end if
-          end do
-        else
-          do j = ijk0(2), ijk1(2) + 1, -1
-            ijk0(2) = j
-
-            ! OUT_BACK
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_BACK
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-
-            ! IN_FRONT
-            if (ijk0(1) >= 1 .and. ijk0(2) > 1 .and. ijk0(3) >= 1 .and. &
-                 ijk0(1) <= m % dimension(1) .and. &
-                 ijk0(2) <= m % dimension(2) + 1 .and. &
-                 ijk0(3) <= m % dimension(3)) then
-              ijk0(2) = ijk0(2) - 1
-              matching_bins(i_filter_surf) = IN_FRONT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(2) = ijk0(2) + 1
-            end if
-          end do
-        end if
-        cycle
-      elseif (y_same .and. z_same) then
-        ! Only x crossings
-        if (uvw(1) > 0) then
-          do j = ijk0(1), ijk1(1) - 1
-            ijk0(1) = j
-
-            ! OUT_RIGHT
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_RIGHT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-
-            ! IN_LEFT
-            if (ijk0(1) >= 0 .and. ijk0(2) >= 1 .and. ijk0(3) >= 1 .and. &
-                 ijk0(1) <  m % dimension(1) .and. &
-                 ijk0(2) <= m % dimension(2) .and. &
-                 ijk0(3) <= m % dimension(3)) then
-              ijk0(1) = ijk0(1) + 1
-              matching_bins(i_filter_surf) = IN_LEFT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(1) = ijk0(1) - 1
-            end if
-          end do
-        else
-          do j = ijk0(1), ijk1(1) + 1, -1
-            ijk0(1) = j
-
-            ! OUT_LEFT
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_LEFT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-
-            ! IN_RIGHT
-            if (ijk0(1) > 1 .and. ijk0(2) >= 1 .and. ijk0(3) >= 1 .and. &
-                 ijk0(1) <= m % dimension(1) + 1 .and. &
-                 ijk0(2) <= m % dimension(2) .and. &
-                 ijk0(3) <= m % dimension(3)) then
-              ijk0(1) = ijk0(1) - 1
-              matching_bins(i_filter_surf) = IN_RIGHT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(1) = ijk0(1) + 1
-            end if
-          end do
-        end if
-        cycle
-      end if
+      end do
 
       ! =======================================================================
       ! GENERIC CASE
 
       ! Bounding coordinates
-      do j = 1, 3
-        if (uvw(j) > 0) then
-          xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
+      do d1 = 1, 3
+        if (uvw(d1) > 0) then
+          xyz_cross(d1) = m % lower_left(d1) + ijk0(d1) * m % width(d1)
         else
-          xyz_cross(j) = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
+          xyz_cross(d1) = m % lower_left(d1) + (ijk0(d1) - 1) * m % width(d1)
         end if
       end do
 
@@ -2634,11 +2502,11 @@ contains
         ! special case where the cosine of the angle is zero since this would
         ! result in a divide-by-zero.
 
-        do j = 1, 3
-          if (uvw(j) == 0) then
-            d(j) = INFINITY
+        do d1 = 1, 3
+          if (uvw(d1) == 0) then
+            d(d1) = INFINITY
           else
-            d(j) = (xyz_cross(j) - xyz0(j))/uvw(j)
+            d(d1) = (xyz_cross(d1) - xyz0(d1))/uvw(d1)
           end if
         end do
 
@@ -2650,211 +2518,83 @@ contains
         ! Now use the minimum distance and direction of the particle to
         ! determine which surface was crossed
 
-        if (distance == d(1)) then
-          if (uvw(1) > 0) then
+        ! Loop over the dimensions
+        do d1 = 1, 3
 
-            ! OUT_RIGHT
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_RIGHT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
+          ! Get the other dimensions
+          d2 = mod(d1, 3) + 1
+          d3 = mod(d1 + 1, 3) + 1
+
+          if (distance == d(d1)) then
+
+            ! Check dimension d2 and d3 indices
+            if (ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                 ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+
+              if (uvw(d1) > 0) then
+
+                ! Outward current on d1 max surface
+                if (ijk0(d1) >= 1 .and. ijk0(d1) <= m % dimension(d1)) then
+                  matching_bins(i_filter_surf) = d1 * 2
+                  matching_bins(i_filter_mesh) = &
+                       mesh_indices_to_bin(m, ijk0)
+                  filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                       * t % stride) + 1
 !$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
+                  t % results(1, filter_index) % value = &
+                       t % results(1, filter_index) % value + p % wgt
+                end if
 
-            ! IN_LEFT
-            if (ijk0(1) >= 0 .and. ijk0(2) >= 1 .and. ijk0(3) >= 1 .and. &
-                 ijk0(1) <  m % dimension(1) .and. &
-                 ijk0(2) <= m % dimension(2) .and. &
-                 ijk0(3) <= m % dimension(3)) then
-              ijk0(1) = ijk0(1) + 1
-              matching_bins(i_filter_surf) = IN_LEFT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
+                ! Inward current on d1 min surface
+                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1)) then
+                  ijk0(d1) = ijk0(d1) + 1
+                  matching_bins(i_filter_surf) = d1 * 2 + 5
+                  matching_bins(i_filter_mesh) = &
+                       mesh_indices_to_bin(m, ijk0)
+                  filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                       * t % stride) + 1
 !$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(1) = ijk0(1) - 1
-            end if
+                  t % results(1, filter_index) % value = &
+                       t % results(1, filter_index) % value + p % wgt
+                  ijk0(d1) = ijk0(d1) - 1
+                end if
 
-            ijk0(1) = ijk0(1) + 1
-            xyz_cross(1) = xyz_cross(1) + m % width(1)
-          else
+                ijk0(d1) = ijk0(d1) + 1
+                xyz_cross(d1) = xyz_cross(d1) + m % width(d1)
+              else
 
-            ! OUT_LEFT
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_LEFT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
+                ! Outward current on d1 min surface
+                if (ijk0(d1) >= 1 .and. ijk0(d1) <= m % dimension(d1)) then
+                  matching_bins(i_filter_surf) = d1 * 2 - 1
+                  matching_bins(i_filter_mesh) = &
+                       mesh_indices_to_bin(m, ijk0)
+                  filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                       * t % stride) + 1
 !$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
+                  t % results(1, filter_index) % value = &
+                       t % results(1, filter_index) % value + p % wgt
+                end if
 
-            ! IN_RIGHT
-            if (ijk0(1) > 1 .and. ijk0(2) >= 1 .and. ijk0(3) >= 1 .and. &
-                 ijk0(1) <= m % dimension(1) + 1 .and. &
-                 ijk0(2) <= m % dimension(2) .and. &
-                 ijk0(3) <= m % dimension(3)) then
-              ijk0(1) = ijk0(1) - 1
-              matching_bins(i_filter_surf) = IN_RIGHT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
+                ! Inward current on d1 max surface
+                if (ijk0(d1) > 1 .and. ijk0(d1) <= m % dimension(d1) + 1)  then
+                  ijk0(d1) = ijk0(d1) - 1
+                  matching_bins(i_filter_surf) = d1 * 2 + 6
+                  matching_bins(i_filter_mesh) = &
+                       mesh_indices_to_bin(m, ijk0)
+                  filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                       * t % stride) + 1
 !$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(1) = ijk0(1) + 1
-            end if
+                  t % results(1, filter_index) % value = &
+                       t % results(1, filter_index) % value + p % wgt
+                  ijk0(d1) = ijk0(d1) + 1
+                end if
 
-            ijk0(1) = ijk0(1) - 1
-            xyz_cross(1) = xyz_cross(1) - m % width(1)
+                ijk0(d1) = ijk0(d1) - 1
+                xyz_cross(d1) = xyz_cross(d1) - m % width(d1)
+              end if
+            end if
           end if
-        elseif (distance == d(2)) then
-          if (uvw(2) > 0) then
-
-            ! OUT_FRONT
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_FRONT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-
-            ! IN_BACK
-            if (ijk0(1) >= 1 .and. ijk0(2) >= 0 .and. ijk0(3) >= 1 .and. &
-                 ijk0(1) <= m % dimension(1) .and. &
-                 ijk0(2) <  m % dimension(2) .and. &
-                 ijk0(3) <= m % dimension(3)) then
-              ijk0(2) = ijk0(2) + 1
-              matching_bins(i_filter_surf) = IN_BACK
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(2) = ijk0(2) - 1
-            end if
-
-            ijk0(2) = ijk0(2) + 1
-            xyz_cross(2) = xyz_cross(2) + m % width(2)
-          else
-
-            ! OUT_BACK
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_BACK
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-
-            ! IN_FRONT
-            if (ijk0(1) >= 1 .and. ijk0(2) > 1 .and. ijk0(3) >= 1 .and. &
-                 ijk0(1) <= m % dimension(1) .and. &
-                 ijk0(2) <= m % dimension(2) + 1 .and. &
-                 ijk0(3) <= m % dimension(3)) then
-              ijk0(2) = ijk0(2) - 1
-              matching_bins(i_filter_surf) = IN_FRONT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(2) = ijk0(2) + 1
-            end if
-
-            ijk0(2) = ijk0(2) - 1
-            xyz_cross(2) = xyz_cross(2) - m % width(2)
-          end if
-        else if (distance == d(3)) then
-          if (uvw(3) > 0) then
-
-            ! OUT_TOP
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_TOP
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-
-            ! IN_BOTTOM
-            if (ijk0(1) >= 1 .and. ijk0(2) >= 1 .and. ijk0(3) >= 0 .and. &
-                 ijk0(1) <= m % dimension(1) .and. &
-                 ijk0(2) <= m % dimension(2) .and. &
-                 ijk0(3) <  m % dimension(3)) then
-              ijk0(3) = ijk0(3) + 1
-              matching_bins(i_filter_surf) = IN_BOTTOM
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(3) = ijk0(3) - 1
-            end if
-
-            ijk0(3) = ijk0(3) + 1
-            xyz_cross(3) = xyz_cross(3) + m % width(3)
-          else
-
-            ! OUT_BOTTOM
-            if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_BOTTOM
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-
-            ! IN_TOP
-            if (ijk0(1) >= 1 .and. ijk0(2) >= 1 .and. ijk0(3) > 1 .and. &
-                 ijk0(1) <= m % dimension(1) .and. &
-                 ijk0(2) <= m % dimension(2) .and. &
-                 ijk0(3) <= m % dimension(3) + 1) then
-              ijk0(3) = ijk0(3) - 1
-              matching_bins(i_filter_surf) = IN_TOP
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-              ijk0(3) = ijk0(3) + 1
-            end if
-
-            ijk0(3) = ijk0(3) - 1
-            xyz_cross(3) = xyz_cross(3) - m % width(3)
-          end if
-        end if
+        end do
 
         ! Calculate new coordinates
         xyz0 = xyz0 + distance * uvw

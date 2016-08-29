@@ -622,8 +622,8 @@ def _close_random_pack(domain, particles, contraction_rate):
         if i in rods_map:
             j, rod = rods_map.pop(i)
             del rods_map[j]
-            rod[1] = None
-            rod[2] = None
+            rod[1] = removed
+            rod[2] = removed
 
     def pop_rod():
         """Remove and return the shortest rod.
@@ -639,7 +639,7 @@ def _close_random_pack(domain, particles, contraction_rate):
 
         while rods:
             d, i, j = heappop(rods)
-            if i is not None and j is not None:
+            if i is not removed and j is not removed:
                 del rods_map[i]
                 del rods_map[j]
                 return d, i, j
@@ -844,6 +844,9 @@ def _close_random_pack(domain, particles, contraction_rate):
 
     n_particles = len(particles)
     diameter = 2*domain.particle_radius
+
+    # Flag for marking rods that have been removed from priority queue
+    removed = -1
 
     # Outer diameter initially set to arbitrary value that yields pf of 1
     initial_outer_diameter = 2*(domain.volume/(n_particles*4/3*pi))**(1/3)

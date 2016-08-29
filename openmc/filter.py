@@ -17,6 +17,13 @@ _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
                  'distribcell', 'delayedgroup']
 
+_CURRENT_NAMES = {1: 'x-min out', 2: 'x-max out',
+                  3: 'y-min out', 4: 'y-max out',
+                  5: 'z-min out', 6: 'z-max out',
+                  7: 'x-min in', 8: 'x-max in',
+                  9: 'y-min in', 10: 'y-max in',
+                  11: 'z-min in', 12: 'z-max in'}
+
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only
     tally events when the particle is in a certain cell and energy range.
@@ -781,18 +788,7 @@ class Filter(object):
             filter_bins = np.repeat(self.bins, self.stride)
             tile_factor = data_size / len(filter_bins)
             filter_bins = np.tile(filter_bins, tile_factor)
-            filter_bins = [x if x != 1  else 'x-min out' for x in filter_bins]
-            filter_bins = [x if x != 2  else 'x-max out' for x in filter_bins]
-            filter_bins = [x if x != 3  else 'y-min out' for x in filter_bins]
-            filter_bins = [x if x != 4  else 'y-max out' for x in filter_bins]
-            filter_bins = [x if x != 5  else 'z-min out' for x in filter_bins]
-            filter_bins = [x if x != 6  else 'z-max out' for x in filter_bins]
-            filter_bins = [x if x != 7  else 'x-min in'  for x in filter_bins]
-            filter_bins = [x if x != 8  else 'x-max in'  for x in filter_bins]
-            filter_bins = [x if x != 9  else 'y-min in'  for x in filter_bins]
-            filter_bins = [x if x != 10 else 'y-max in'  for x in filter_bins]
-            filter_bins = [x if x != 11 else 'z-min in'  for x in filter_bins]
-            filter_bins = [x if x != 12 else 'z-max in'  for x in filter_bins]
+            filter_bins = [_CURRENT_NAMES[x] for x in filter_bins]
             df = pd.concat([df, pd.DataFrame({self.type : filter_bins})])
 
         # universe, material, surface, cell, and cellborn filters

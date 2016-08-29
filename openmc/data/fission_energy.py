@@ -9,6 +9,7 @@ from .data import ATOMIC_SYMBOL
 from .endf_utils import read_float, read_CONT_line, identify_nuclide
 from .function import Function1D, Tabulated1D, Polynomial, Sum
 import openmc.checkvalue as cv
+from openmc.mixin import EqualityMixin
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -189,7 +190,7 @@ def write_compact_458_library(endf_files, output_name='fission_Q_data.h5',
     out.close()
 
 
-class FissionEnergyRelease(object):
+class FissionEnergyRelease(EqualityMixin):
     """Energy relased by fission reactions.
 
     Energy is carried away from fission reactions by many different particles.
@@ -560,7 +561,7 @@ class FissionEnergyRelease(object):
         self.delayed_photons.to_hdf5(group, 'delayed_photons')
         self.betas.to_hdf5(group, 'betas')
         self.neutrinos.to_hdf5(group, 'neutrinos')
-        
+
         if isinstance(self.prompt_neutrons, Polynomial):
             # Add the polynomials for the relevant components together. Use a
             # Polynomial((0.0, -1.0)) to subtract incident energy.

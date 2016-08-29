@@ -5,12 +5,13 @@ from numbers import Real, Integral
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc.mixin import EqualityMixin
 
 INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
                         4: 'log-linear', 5: 'log-log'}
 
 
-class Function1D(object):
+class Function1D(EqualityMixin):
     """A function of one independent variable with HDF5 support."""
 
     __metaclass__ = ABCMeta
@@ -389,7 +390,7 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
         return cls(dataset.value)
 
 
-class Sum(object):
+class Sum(EqualityMixin):
     """Sum of multiple functions.
 
     This class allows you to create a callable object which represents the sum

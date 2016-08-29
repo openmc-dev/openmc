@@ -153,7 +153,7 @@ element settings {
       attribute lower_left { list { xsd:double+ } }) &
     (element upper_right { list { xsd:double+ } } |
       attribute upper_right { list { xsd:double+ } })
-  }+ &
+  }* &
 
   element uniform_fs{
     (element dimension { list { xsd:positiveInteger+ } } |

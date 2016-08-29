@@ -67,6 +67,11 @@ class Plot(object):
     col_spec : dict
         Dictionary indicating that certain cells/materials (keys) should be
         colored with a specific RGB (values)
+    level : int
+        Universe depth to plot at
+    meshlines : dict
+        Dictionary defining type, id, linewidth and color of a regular mesh
+        to be plotted on top of a plot
 
     """
 
@@ -81,10 +86,12 @@ class Plot(object):
         self._color = 'cell'
         self._type = 'slice'
         self._basis = 'xy'
-        self._background = [0, 0, 0]
+        self._background = None
         self._mask_components = None
         self._mask_background = None
         self._col_spec = None
+        self._level = None
+        self._meshlines = None
 
     @property
     def id(self):
@@ -137,6 +144,14 @@ class Plot(object):
     @property
     def col_spec(self):
         return self._col_spec
+
+    @property
+    def level(self):
+        return self._level
+
+    @property
+    def meshlines(self):
+        return self._meshlines
 
     @id.setter
     def id(self, plot_id):
@@ -231,9 +246,9 @@ class Plot(object):
 
     @mask_components.setter
     def mask_components(self, mask_components):
-        cv.check_type('plot mask_components', mask_components, Iterable, Integral)
+        cv.check_type('plot mask components', mask_components, Iterable, Integral)
         for component in mask_components:
-            cv.check_greater_than('plot mask_components', component, 0, True)
+            cv.check_greater_than('plot mask components', component, 0, True)
         self._mask_components = mask_components
 
     @mask_background.setter
@@ -244,6 +259,45 @@ class Plot(object):
             cv.check_greater_than('plot mask background', rgb, 0, True)
             cv.check_less_than('plot mask background', rgb, 256)
         self._mask_background = mask_background
+
+    @level.setter
+    def level(self, plot_level):
+        cv.check_type('plot level', plot_level, Integral)
+        cv.check_greater_than('plot level', plot_level, 0, equality=True)
+        self._level = plot_level
+
+    @meshlines.setter
+    def meshlines(self, meshlines):
+        cv.check_type('plot meshlines', meshlines, dict)
+        if 'type' not in meshlines:
+            msg = 'Unable to set on plot the meshlines "{0}" which ' \
+                  'does not have a "type" key'.format(meshlines)
+            raise ValueError(msg)
+
+        elif meshlines['type'] not in ['tally', 'entropy', 'ufs', 'cmfd']:
+            msg = 'Unable to set the meshlines with ' \
+                  'type "{0}"'.format(meshlines['type'])
+            raise ValueError(msg)
+
+        if 'id' in meshlines:
+            cv.check_type('plot meshlines id', meshlines['id'], Integral)
+            cv.check_greater_than('plot meshlines id', meshlines['id'], 0,
+                                  equality=True)
+
+        if 'linewidth' in meshlines:
+            cv.check_type('plot mesh linewidth', meshlines['linewidth'], Integral)
+            cv.check_greater_than('plot mesh linewidth', meshlines['linewidth'],
+                                  0, equality=True)
+
+        if 'color' in meshlines:
+            cv.check_type('plot meshlines color', meshlines['color'], Iterable,
+                          Integral)
+            cv.check_length('plot meshlines color', meshlines['color'], 3)
+            for rgb in meshlines['color']:
+                cv.check_greater_than('plot meshlines color', rgb, 0, True)
+                cv.check_less_than('plot meshlines color', rgb, 256)
+
+        self._meshlines = meshlines
 
     def __repr__(self):
         string = 'Plot\n'
@@ -256,11 +310,16 @@ class Plot(object):
         string += '{0: <16}{1}{2}\n'.format('\tOrigin', '=\t', self._origin)
         string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._origin)
         string += '{0: <16}{1}{2}\n'.format('\tColor', '=\t', self._color)
-        string += '{0: <16}{1}{2}\n'.format('\tMask', '=\t',
+        string += '{0: <16}{1}{2}\n'.format('\tBackground', '=\t',
+                                            self._background)
+        string += '{0: <16}{1}{2}\n'.format('\tMask components', '=\t',
                                             self._mask_components)
-        string += '{0: <16}{1}{2}\n'.format('\tMask', '=\t',
+        string += '{0: <16}{1}{2}\n'.format('\tMask background', '=\t',
                                             self._mask_background)
         string += '{0: <16}{1}{2}\n'.format('\tCol Spec', '=\t', self._col_spec)
+        string += '{0: <16}{1}{2}\n'.format('\tLevel', '=\t', self._level)
+        string += '{0: <16}{1}{2}\n'.format('\tMeshlines', '=\t',
+                                            self._meshlines)
         return string
 
     def colorize(self, geometry, seed=1):
@@ -382,7 +441,7 @@ class Plot(object):
         subelement = ET.SubElement(element, "pixels")
         subelement.text = ' '.join(map(str, self._pixels))
 
-        if self._mask_background is not None:
+        if self._background is not None:
             subelement = ET.SubElement(element, "background")
             subelement.text = ' '.join(map(str, self._background))
 
@@ -399,6 +458,21 @@ class Plot(object):
                 str, self._mask_components)))
             subelement.set("background", ' '.join(map(
                 str, self._mask_background)))
+
+        if self._level is not None:
+            subelement = ET.SubElement(element, "level")
+            subelement.text = str(self._level)
+
+        if self._meshlines is not None:
+            subelement = ET.SubElement(element, "meshlines")
+            subelement.set("meshtype", self._meshlines['type'])
+            if self._meshlines['id'] is not None:
+                subelement.set("id", str(self._meshlines['id']))
+            if self._meshlines['linewidth'] is not None:
+                subelement.set("linewidth", str(self._meshlines['linewidth']))
+            if self._meshlines['color'] is not None:
+                subelement.set("color", ' '.join(map(
+                    str, self._meshlines['color'])))
 
         return element
 

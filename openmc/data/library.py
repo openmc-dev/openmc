@@ -3,9 +3,11 @@ import xml.etree.ElementTree as ET
 
 import h5py
 
+from openmc.mixin import EqualityMixin
 from openmc.clean_xml import clean_xml_indentation
 
-class DataLibrary(object):
+
+class DataLibrary(EqualityMixin):
     def __init__(self):
         self.libraries = []
 

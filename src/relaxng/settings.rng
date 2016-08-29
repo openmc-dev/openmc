@@ -625,7 +625,7 @@
         <data type="positiveInteger"/>
       </element>
     </optional>
-    <oneOrMore>
+    <zeroOrMore>
       <element name="volume_calc">
         <interleave>
           <choice>
@@ -694,7 +694,7 @@
           </choice>
         </interleave>
       </element>
-    </oneOrMore>
+    </zeroOrMore>
     <optional>
       <element name="uniform_fs">
         <interleave>

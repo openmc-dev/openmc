@@ -38,43 +38,56 @@ contains
     use omp_lib
 #endif
 
-    write(UNIT=OUTPUT_UNIT, FMT='(/11(A/))') &
-         '       .d88888b.                             888b     d888  .d8888b.', &
-         '      d88P" "Y88b                            8888b   d8888 d88P  Y88b', &
-         '      888     888                            88888b.d88888 888    888', &
-         '      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       ', &
-         '      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       ', &
-         '      888     888 888  888 88888888 888  888 888  Y8P  888 888    888', &
-         '      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P', &
-         '       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"', &
-         '__________________888______________________________________________________', &
-         '                  888', &
-         '                  888'
+    write(UNIT=OUTPUT_UNIT, FMT='(/23(A/))') &
+         '                               %%%%%%%%%%%%%%%', &
+         '                          %%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                                   %%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                                    %%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                ###############      %%%%%%%%%%%%%%%%%%%%%%%%', &
+         '               ##################     %%%%%%%%%%%%%%%%%%%%%%%', &
+         '               ###################     %%%%%%%%%%%%%%%%%%%%%%%', &
+         '               ####################     %%%%%%%%%%%%%%%%%%%%%%', &
+         '               #####################     %%%%%%%%%%%%%%%%%%%%%', &
+         '               ######################     %%%%%%%%%%%%%%%%%%%%', &
+         '               #######################     %%%%%%%%%%%%%%%%%%', &
+         '                #######################     %%%%%%%%%%%%%%%%%', &
+         '                ######################     %%%%%%%%%%%%%%%%%', &
+         '                 ####################     %%%%%%%%%%%%%%%%%', &
+         '                   #################     %%%%%%%%%%%%%%%%%', &
+         '                    ###############     %%%%%%%%%%%%%%%%', &
+         '                      ############     %%%%%%%%%%%%%%%', &
+         '                         ########     %%%%%%%%%%%%%%', &
+         '                                     %%%%%%%%%%%'
 
     ! Write version information
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     Copyright:      2011-2016 Massachusetts Institute of Technology'
+         '                  | The OpenMC Monte Carlo Code'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     License:        http://openmc.readthedocs.io/en/latest/license.html'
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",8X,I1,".",I1,".",I1)') &
+         '        Copyright | 2011-2016 Massachusetts Institute of Technology'
+    write(UNIT=OUTPUT_UNIT, FMT=*) &
+         '          License | http://openmc.readthedocs.io/en/latest/license.html'
+    write(UNIT=OUTPUT_UNIT, FMT='(11X,"Version | ",I1,".",I1,".",I1)') &
          VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Git SHA1:",7X,A)') GIT_SHA1
+    write(UNIT=OUTPUT_UNIT, FMT='(10X,"Git SHA1 | ",A)') GIT_SHA1
 #endif
 
     ! Write the date and time
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",6X,A)') &
-         time_stamp()
+    write(UNIT=OUTPUT_UNIT, FMT='(9X,"Date/Time | ",A)') time_stamp()
 
 #ifdef MPI
     ! Write number of processors
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"MPI Processes:",2X,A)') &
+    write(UNIT=OUTPUT_UNIT, FMT='(5X,"MPI Processes | ",A)') &
          trim(to_str(n_procs))
 #endif
 
 #ifdef _OPENMP
     ! Write number of OpenMP threads
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"OpenMP Threads:",1X,A)') &
+    write(UNIT=OUTPUT_UNIT, FMT='(4X,"OpenMP Threads | ",A)') &
          trim(to_str(omp_get_max_threads()))
 #endif
 

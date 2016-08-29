@@ -19,7 +19,6 @@ module mgxs_header
 
   type, abstract :: Mgxs
     character(len=104) :: name    ! name of dataset, e.g. 92235.03c
-    integer            :: zaid    ! Z and A identifier, e.g. 92235
     real(8)            :: awr     ! Atomic Weight Ratio
     real(8)            :: kT      ! temperature in MeV (k*T)
 
@@ -210,11 +209,6 @@ module mgxs_header
         call get_node_value(node_xsdata, "kT", this % kT)
       else
         this % kT = ZERO
-      end if
-      if (check_for_node(node_xsdata, "zaid")) then
-        call get_node_value(node_xsdata, "zaid", this % zaid)
-      else
-        this % zaid = 0
       end if
       if (check_for_node(node_xsdata, "awr")) then
         call get_node_value(node_xsdata, "awr", this % awr)
@@ -970,11 +964,6 @@ module mgxs_header
 
       ! Basic nuclide information
       write(unit_,*) 'MGXS Entry: ' // trim(this % name)
-      if (this % zaid > 0) then
-        write(unit_,*) '  ZAID = ' // trim(to_str(this % zaid))
-      else if (this % zaid < 0) then
-        write(unit_,*) '  Material id = ' // trim(to_str(-this % zaid))
-      end if
       if (this % awr > ZERO) then
         write(unit_,*) '  AWR = ' // trim(to_str(this % awr))
       end if
@@ -1319,7 +1308,6 @@ module mgxs_header
       else
         this % name      = mat % name
       end if
-      this % zaid        = -mat % id
       this % fissionable = mat % fissionable
       this % scatt_type  = scatt_type
 

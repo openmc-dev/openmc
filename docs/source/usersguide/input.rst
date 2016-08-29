@@ -281,6 +281,8 @@ based on the recommended value in LA-UR-14-24530_.
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
+.. _multipole_library:
+
 ``<multipole_library>`` Element
 -------------------------------
 
@@ -290,8 +292,8 @@ OpenMC can use it for on-the-fly Doppler-broadening of resolved resonance range
 cross sections. If this element is absent from the settings.xml file, the
 :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used.
 
-  .. note:: The <use_windowed_multipole> element must also be set to "true"
-    for windowed multipole functionality.
+  .. note:: The :ref:`temperature_method` must also be set to "multipole" for
+            windowed multipole functionality.
 
 ``<max_order>`` Element
 ---------------------------
@@ -707,6 +709,47 @@ survival biasing, otherwise known as implicit capture or absorption.
 
   *Default*: false
 
+.. _temperature_default:
+
+``<temperature_default>`` Element
+---------------------------------
+
+The ``<temperature_default>`` element specifies a default temperature in Kelvin
+that is to be applied to cells in the absence of an explicit cell temperature or
+a material default temperature.
+
+  *Default*: 293.6 K
+
+.. _temperature_method:
+
+``<temperature_method>`` Element
+--------------------------------
+
+The ``<temperature_method>`` element has an accepted value of "nearest" or
+"interpolation". A value of "nearest" indicates that for each cell, the nearest
+temperature at which cross sections are given is to be applied, within a given
+tolerance (see :ref:`temperature_tolerance`). A value of "interpolation"
+indicates that cross sections are to be interpolated between temperatures at
+which nuclear data are present. A value of "multipole" indicates that the
+windowed multipole method should be used to evaluate temperature-dependent cross
+sections in the resolved resonance range (a :ref:`windowed multipole library
+<multipole_library>` must also be available).
+
+  *Default*: "nearest"
+
+.. _temperature_tolerance:
+
+``<temperature_tolerance>`` Element
+-----------------------------------
+
+The ``<temperature_tolerance>`` element specifies a tolerance in Kelvin that is
+to be applied when the "nearest" temperature method is used. For example, if a
+cell temperature is 340 K and the tolerance is 15 K, then the closest
+temperature in the range of 325 K to 355 K will be used to evaluate cross
+sections.
+
+  *Default*: 10 K
+
 ``<threads>`` Element
 ---------------------
 
@@ -1083,7 +1126,9 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     specified for the "distributed temperature" feature. This will give each
     unique instance of the cell its own temperature.
 
-    *Default*: The temperature of the coldest nuclide in the cell's material(s)
+    *Default*: If a material default temperature is supplied, it is used. In the
+    absence of a material default temperature, the :ref:`global default
+    temperature <temperature_default>` is used.
 
   :rotation:
     If the cell is filled with a universe, this element specifies the angles in
@@ -1289,11 +1334,12 @@ Each ``material`` element can have the following attributes or sub-elements:
     *Default*: ""
 
   :temperature:
+    An element with no attributes which is used to set the default temperature
+    of the material in Kelvin.
 
-    An element with no attributes which is used to set the temperature of the
-    material.  This element accepts a maximum 6-character string that indicates
-    the default temperature rounded to the nearest integer in units of Kelvin,
-    e.g. "294K".
+    *Default*: If a material default temperature is not given and a cell
+    temperature is not specified, the :ref:`global default temperature
+    <temperature_default>` is used.
 
   :density:
     An element with attributes/sub-elements called ``value`` and ``units``. The
@@ -1408,19 +1454,6 @@ Each ``material`` element can have the following attributes or sub-elements:
 
 .. _IUPAC Isotopic Compositions of the Elements 2009:
     http://pac.iupac.org/publications/pac/pdf/2011/pdf/8302x0397.pdf
-
-``<default_temperature>`` Element
-------------------------
-
-In some circumstances, the temperature may be the same for many or
-all materials in a given problem. In this case, rather than specifying the
-``<temperature>`` element on every material, a ``<default_temperature>``
-element can be used to set the default material temperature for any material
-without an explicitly provided temperature. This element has no attributes and
-accepts a maximum 6-character string that indicates the default temperature
-rounded to the nearest integer in units of Kelvin, e.g. "294K".
-
-  *Default*: None
 
 ------------------------------------
 Tallies Specification -- tallies.xml

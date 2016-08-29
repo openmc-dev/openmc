@@ -4,7 +4,7 @@ element materials {
     (element name { xsd:string { maxLength="52" } } |
       attribute name { xsd:string { maxLength="52" } })? &
 
-    element temperature { xsd:string { maxLength = "6" } }? &
+    element temperature { xsd:double }? &
 
     element density {
       (element value { xsd:double } | attribute value { xsd:double })? &
@@ -41,7 +41,5 @@ element materials {
     element sab {
       (element name { xsd:string } | attribute name { xsd:string })
     }*
-  }+ &
-
-  element default_temperature { xsd:string { maxLength = "6" } }?
+  }+
 }

@@ -1,8 +1,6 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_temperature>294K</default_temperature>
-
 <!-- material 1: Water with 1511 PPM -->
   <material id="1">
     <density value="0.99823" units="g/cc" />

@@ -102,7 +102,6 @@ borated_water.add_s_alpha_beta('c_H_in_H2O')
 
 # Instantiate a Materials collection and export to XML
 materials_file = openmc.Materials([uo2, helium, zircaloy, borated_water])
-materials_file.default_temperature = '294K'
 materials_file.export_to_xml()
 
 

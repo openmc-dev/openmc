@@ -2,6 +2,7 @@ module input_xml
 
   use hdf5
 
+  use algorithm,        only: find
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
@@ -23,7 +24,8 @@ module input_xml
   use set_header,       only: SetChar
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
-                              starts_with, ends_with, tokenize, split_string
+                              starts_with, ends_with, tokenize, split_string, &
+                              zero_padded
   use tally_header,     only: TallyObject
   use tally_filter
   use tally_initialize, only: add_tallies
@@ -358,26 +360,6 @@ contains
 
     ! Copy random number seed if specified
     if (check_for_node(doc, "seed")) call get_node_value(doc, "seed", seed)
-
-    ! Energy grid methods
-    if (check_for_node(doc, "energy_grid")) then
-      call get_node_value(doc, "energy_grid", temp_str)
-    else
-      temp_str = 'logarithm'
-    end if
-    select case (trim(temp_str))
-    case ('nuclide')
-      grid_method = GRID_NUCLIDE
-    case ('material-union', 'union')
-      grid_method = GRID_MAT_UNION
-      if (trim(temp_str) == 'union') &
-           call warning('Energy grids will be unionized by material.  Global&
-           & energy grid unionization is no longer an allowed option.')
-    case ('logarithm', 'logarithmic', 'log')
-      grid_method = GRID_LOGARITHM
-    case default
-      call fatal_error("Unknown energy grid method: " // trim(temp_str))
-    end select
 
     ! Number of bins for logarithmic grid
     if (check_for_node(doc, "log_grid_bins")) then
@@ -978,14 +960,6 @@ contains
              trim(temp_str) == '0') output_summary = .false.
       end if
 
-      ! Check for cross sections option
-      if (check_for_node(node_output, "cross_sections")) then
-        call get_node_value(node_output, "cross_sections", temp_str)
-        temp_str = to_lower(temp_str)
-        if (trim(temp_str) == 'true' .or. &
-             trim(temp_str) == '1') output_xs = .true.
-      end if
-
       ! Check for ASCII tallies output option
       if (check_for_node(node_output, "tallies")) then
         call get_node_value(node_output, "tallies", temp_str)
@@ -1089,20 +1063,6 @@ contains
       end select
     end if
 
-    ! Check to see if windowed multipole functionality is requested
-    if (check_for_node(doc, "use_windowed_multipole")) then
-      call get_node_value(doc, "use_windowed_multipole", temp_str)
-      select case (to_lower(temp_str))
-      case ('true', '1')
-        multipole_active = .true.
-      case ('false', '0')
-        multipole_active = .false.
-      case default
-        call fatal_error("Unrecognized value for <use_windowed_multipole> in &
-             &settings.xml")
-      end select
-    end if
-
     call get_node_list(doc, "volume_calc", node_vol_list)
     n = get_list_size(node_vol_list)
     allocate(volume_calcs(n))
@@ -1110,6 +1070,27 @@ contains
       call get_list_item(node_vol_list, i, node_vol)
       call volume_calcs(i) % from_xml(node_vol)
     end do
+
+    ! Get temperature settings
+    if (check_for_node(doc, "temperature_default")) then
+      call get_node_value(doc, "temperature_default", temperature_default)
+    end if
+    if (check_for_node(doc, "temperature_method")) then
+      call get_node_value(doc, "temperature_method", temp_str)
+      select case (to_lower(temp_str))
+      case ('nearest')
+        temperature_method = TEMPERATURE_NEAREST
+      case ('interpolation')
+        temperature_method = TEMPERATURE_INTERPOLATION
+      case ('multipole')
+        temperature_method = TEMPERATURE_MULTIPOLE
+      case default
+        call fatal_error("Unknown temperature method: " // trim(temp_str))
+      end select
+    end if
+    if (check_for_node(doc, "temperature_tolerance")) then
+      call get_node_value(doc, "temperature_tolerance", temperature_tolerance)
+    end if
 
     ! Close settings XML file
     call close_xmldoc(doc)
@@ -2050,6 +2031,9 @@ contains
     integer :: i, j
     type(DictCharInt) :: library_dict
     type(Library), allocatable :: libraries(:)
+    type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
+    type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
+    real(8), allocatable :: material_temps(:)
 
     if (run_CE) then
       call read_ce_cross_sections_xml(libraries)
@@ -2076,12 +2060,18 @@ contains
     end if
 
     ! Parse data from materials.xml
-    call read_materials_xml(libraries, library_dict)
+    call read_materials_xml(libraries, library_dict, material_temps)
+
+    ! Assign temperatures to cells that don't have temperatures already assigned
+    call assign_temperatures(material_temps)
+
+    ! Determine desired temperatures for each nuclide and S(a,b) table
+    call get_temperatures(nuc_temps, sab_temps)
 
     ! Read continuous-energy cross sections
     if (run_CE .and. run_mode /= MODE_PLOTTING) then
       call time_read_xs%start()
-      call read_ce_cross_sections(libraries, library_dict)
+      call read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
       call time_read_xs%stop()
     end if
 
@@ -2092,9 +2082,10 @@ contains
     call library_dict % clear()
   end subroutine read_materials
 
-  subroutine read_materials_xml(libraries, library_dict)
+  subroutine read_materials_xml(libraries, library_dict, material_temps)
     type(Library), intent(in) :: libraries(:)
     type(DictCharInt), intent(inout) :: library_dict
+    real(8), allocatable, intent(out) :: material_temps(:)
 
     integer :: i              ! loop index for materials
     integer :: j              ! loop index for nuclides
@@ -2110,7 +2101,6 @@ contains
     logical :: file_exists    ! does materials.xml exist?
     logical :: sum_density    ! density is taken to be sum of nuclide densities
     character(20) :: name     ! name of isotope, e.g. 92235.03c
-    character(6) :: default_temperature ! Default temperature, e.g., '300K'
     character(MAX_WORD_LEN) :: units    ! units on density
     character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
@@ -2144,25 +2134,13 @@ contains
     ! Parse materials.xml file
     call open_xmldoc(doc, filename)
 
-    ! Copy default temperature
-    if (check_for_node(doc, "default_temperature")) then
-      call get_node_value(doc, "default_temperature", default_temperature)
-    else if (.not. run_CE) then
-      ! FIXME This is only necessary while MG mode does not have a
-      ! temperature dependent library implementation.
-      ! Set a default for MG mode to allow MG libraries to not include
-      ! temperatures
-      default_temperature = '294K'
-    else
-      default_temperature = ''
-    end if
-
     ! Get pointer to list of XML <material>
     call get_node_list(doc, "material", node_mat_list)
 
     ! Allocate cells array
     n_materials = get_list_size(node_mat_list)
     allocate(materials(n_materials))
+    allocate(material_temps(n_materials))
 
     ! Initialize count for number of nuclides/S(a,b) tables
     index_nuclide = 0
@@ -2192,14 +2170,11 @@ contains
         call get_node_value(node_mat, "name", mat % name)
       end if
 
-      ! Copy material temperature
+      ! Get material default temperature
       if (check_for_node(node_mat, "temperature")) then
-        call get_node_value(node_mat, "temperature", mat % temperature)
-      else if (default_temperature /= '') then
-        mat % temperature = default_temperature
+        call get_node_value(node_mat, "temperature", material_temps(i))
       else
-        call fatal_error("Must specify either a material temperature or a &
-                         &default temperature")
+        material_temps(i) = ERROR_REAL
       end if
 
       ! =======================================================================
@@ -5719,10 +5694,10 @@ contains
         ASSIGN_SAB: do k = 1, size(mat % i_sab_tables)
           ! In order to know which nuclide the S(a,b) table applies to, we need
           ! to search through the list of nuclides for one which has a matching
-          ! zaid
+          ! name
           associate (sab => sab_tables(mat % i_sab_tables(k)))
             FIND_NUCLIDE: do j = 1, size(mat % nuclide)
-              if (any(sab % zaid == nuclides(mat % nuclide(j)) % zaid)) then
+              if (any(sab % nuclides == nuclides(mat % nuclide(j)) % name)) then
                 mat % i_sab_nuclides(k) = j
                 exit FIND_NUCLIDE
               end if
@@ -5774,16 +5749,16 @@ contains
     end do
   end subroutine assign_sab_tables
 
-  subroutine read_ce_cross_sections(libraries, library_dict)
+  subroutine read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
     type(Library),   intent(in)      :: libraries(:)
     type(DictCharInt), intent(inout) :: library_dict
+    type(VectorReal), intent(in)     :: nuc_temps(:)
+    type(VectorReal), intent(in)     :: sab_temps(:)
 
     integer :: i, j
     integer :: i_library
     integer :: i_nuclide
     integer :: i_sab
-    integer :: index_nuc_zaid   ! index in nuclide ZAID
-    integer :: zaid             ! ZAID of nuclide
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
     logical :: mp_found     ! if windowed multipole libraries were found
@@ -5795,8 +5770,6 @@ contains
 !$omp parallel
     allocate(micro_xs(n_nuclides_total))
 !$omp end parallel
-
-    index_nuc_zaid = 0
 
     ! Read cross sections
     do i = 1, size(materials)
@@ -5813,8 +5786,8 @@ contains
           ! Read nuclide data from HDF5
           file_id = file_open(libraries(i_library) % path, 'r')
           group_id = open_group(file_id, name)
-          call nuclides(i_nuclide) % from_hdf5(group_id, &
-                                               materials(i) % temperature)
+          call nuclides(i_nuclide) % from_hdf5(group_id, nuc_temps(i_nuclide), &
+               temperature_method, temperature_tolerance)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -5824,23 +5797,19 @@ contains
 
           ! Determine if minimum/maximum energy for this nuclide is greater/less
           ! than the previous
-          energy_min_neutron = max(energy_min_neutron, nuclides(i_nuclide) % energy(1))
-          energy_max_neutron = min(energy_max_neutron, nuclides(i_nuclide) % energy(&
-               size(nuclides(i_nuclide) % energy)))
+          if (size(nuclides(i_nuclide) % grid) >= 1) then
+            energy_min_neutron = max(energy_min_neutron, &
+                 nuclides(i_nuclide) % grid(1) % energy(1))
+            energy_max_neutron = min(energy_max_neutron, nuclides(i_nuclide) % &
+                 grid(1) % energy(size(nuclides(i_nuclide) % grid(1) % energy)))
+          end if
 
           ! Add name and alias to dictionary
           call already_read % add(name)
 
-          ! Construct dictionary mapping nuclide zaids to [1,N] -- used for
-          ! unresolved resonance probability tables
-          zaid = nuclides(i_nuclide) % zaid
-          if (.not. nuc_zaid_dict % has_key(zaid)) then
-            index_nuc_zaid  = index_nuc_zaid + 1
-            call nuc_zaid_dict % add_key(zaid, index_nuc_zaid)
-          end if
-
           ! Read multipole file into the appropriate entry on the nuclides array
-          if (multipole_active) call read_multipole_data(i_nuclide)
+          if (temperature_method == TEMPERATURE_MULTIPOLE) &
+               call read_multipole_data(i_nuclide)
         end if
 
         ! Check if material is fissionable
@@ -5868,8 +5837,8 @@ contains
           ! Read S(a,b) data from HDF5
           file_id = file_open(libraries(i_library) % path, 'r')
           group_id = open_group(file_id, name)
-          call sab_tables(i_sab) % from_hdf5(group_id, &
-                                             materials(i) % temperature)
+          call sab_tables(i_sab) % from_hdf5(group_id, sab_temps(i_sab), &
+               temperature_tolerance)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -5879,14 +5848,13 @@ contains
       end do
     end do
 
-    n_nuc_zaid_total = index_nuc_zaid
-
     ! Associate S(a,b) tables with specific nuclides
     call assign_sab_tables()
 
     ! Show which nuclide results in lowest energy for neutron transport
     do i = 1, size(nuclides)
-      if (nuclides(i) % energy(nuclides(i) % n_grid) == energy_max_neutron) then
+      if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
+           == energy_max_neutron) then
         call write_message("Maximum neutron transport energy: " // &
              trim(to_str(energy_max_neutron)) // " MeV for " // &
              trim(adjustl(nuclides(i) % name)), 6)
@@ -5895,7 +5863,7 @@ contains
     end do
 
     ! If the user wants multipole, make sure we found a multipole library.
-    if (multipole_active) then
+    if (temperature_method == TEMPERATURE_MULTIPOLE) then
       mp_found = .false.
       do i = 1, size(nuclides)
         if (nuclides(i) % mp_present) then
@@ -5910,6 +5878,107 @@ contains
     end if
 
   end subroutine read_ce_cross_sections
+
+!===============================================================================
+! ASSIGN_TEMPERATURES If any cells have undefined temperatures, try to find
+! their temperatures from material or global default temperatures
+!===============================================================================
+
+  subroutine assign_temperatures(material_temps)
+    real(8), intent(in) :: material_temps(:)
+
+    integer :: i, j
+    integer :: i_material
+
+    do i = 1, n_cells
+      ! Ignore non-normal cells and cells with defined temperature.
+      if (cells(i) % material(1) == NONE) cycle
+      if (cells(i) % sqrtkT(1) /= ERROR_REAL) cycle
+
+      ! Set the number of temperatures equal to the number of materials.
+      deallocate(cells(i) % sqrtkT)
+      allocate(cells(i) % sqrtkT(size(cells(i) % material)))
+
+      ! Check each of the cell materials for temperature data.
+      do j = 1, size(cells(i) % material)
+        ! Arbitrarily set void regions to 0K.
+        if (cells(i) % material(j) == MATERIAL_VOID) then
+          cells(i) % sqrtkT(j) = ZERO
+          cycle
+        end if
+
+        ! Use material default or global default temperature
+        i_material = material_dict % get_key(cells(i) % material(j))
+        if (material_temps(i_material) /= ERROR_REAL) then
+          cells(i) % sqrtkT(j) = sqrt(K_BOLTZMANN * &
+               material_temps(i_material))
+        else
+          cells(i) % sqrtkT(j) = sqrt(K_BOLTZMANN * temperature_default)
+        end if
+      end do
+    end do
+  end subroutine assign_temperatures
+
+!===============================================================================
+! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table
+! appears at in the model. Later, this list is used to determine the actual
+! temperatures to read (which may be different if interpolation is used)
+!===============================================================================
+
+  subroutine get_temperatures(nuc_temps, sab_temps)
+    type(VectorReal), allocatable, intent(out) :: nuc_temps(:)
+    type(VectorReal), allocatable, intent(out) :: sab_temps(:)
+
+    integer :: i, j, k
+    integer :: i_nuclide    ! index in nuclides array
+    integer :: i_sab        ! index in S(a,b) array
+    integer :: i_material
+    real(8) :: temperature  ! temperature in Kelvin
+
+    allocate(nuc_temps(n_nuclides_total))
+    allocate(sab_temps(n_sab_tables))
+
+    do i = 1, size(cells)
+      do j = 1, size(cells(i) % material)
+        ! Skip any non-material cells and void materials
+        if (cells(i) % material(j) == NONE .or. &
+             cells(i) % material(j) == MATERIAL_VOID) cycle
+
+        ! Get temperature of cell (rounding to nearest integer)
+        if (size(cells(i) % sqrtkT) > 1) then
+          temperature = cells(i) % sqrtkT(j)**2 / K_BOLTZMANN
+        else
+          temperature = cells(i) % sqrtkT(1)**2 / K_BOLTZMANN
+        end if
+
+        i_material = material_dict % get_key(cells(i) % material(j))
+        associate (mat => materials(i_material))
+          NUC_NAMES_LOOP: do k = 1, size(mat % names)
+            ! Get index in nuc_temps array
+            i_nuclide = nuclide_dict % get_key(to_lower(mat % names(k)))
+
+            ! Add temperature if it hasn't already been added
+            if (find(nuc_temps(i_nuclide), temperature) == -1) then
+              call nuc_temps(i_nuclide) % push_back(temperature)
+            end if
+          end do NUC_NAMES_LOOP
+
+          if (mat % n_sab > 0) then
+            SAB_NAMES_LOOP: do k = 1, size(mat % sab_names)
+              ! Get index in nuc_temps array
+              i_sab = sab_dict % get_key(to_lower(mat % sab_names(k)))
+
+              ! Add temperature if it hasn't already been added
+              if (find(sab_temps(i_sab), temperature) == -1) then
+                call sab_temps(i_sab) % push_back(temperature)
+              end if
+            end do SAB_NAMES_LOOP
+          end if
+        end associate
+      end do
+    end do
+
+  end subroutine get_temperatures
 
 !===============================================================================
 ! READ_0K_ELASTIC_SCATTERING
@@ -5927,6 +5996,9 @@ contains
     real(8) :: xs_cdf_sum
     character(MAX_WORD_LEN) :: name
     type(Nuclide) :: resonant_nuc
+    type(VectorReal) :: temperature
+
+    call temperature % push_back(ZERO)
 
     do i = 1, size(nuclides_0K)
       if (nuc % name == nuclides_0K(i) % nuclide) then
@@ -5946,13 +6018,14 @@ contains
         ! Read nuclide data from HDF5
         file_id = file_open(libraries(i_library) % path, 'r')
         group_id = open_group(file_id, name)
-        call resonant_nuc % from_hdf5(group_id, '0K')
+        call resonant_nuc % from_hdf5(group_id, temperature, &
+             TEMPERATURE_NEAREST, 1000.0_8)
         call close_group(group_id)
         call file_close(file_id)
 
         ! Copy 0K energy grid and elastic scattering cross section
-        call move_alloc(TO=nuc % energy_0K, FROM=resonant_nuc % energy)
-        call move_alloc(TO=nuc % elastic_0K, FROM=resonant_nuc % elastic)
+        call move_alloc(TO=nuc % energy_0K, FROM=resonant_nuc % grid(1) % energy)
+        call move_alloc(TO=nuc % elastic_0K, FROM=resonant_nuc % sum_xs(1) % elastic)
         nuc % n_grid_0K = size(nuc % energy_0K)
 
         ! Build CDF for 0K elastic scattering
@@ -5987,18 +6060,22 @@ contains
 
     integer, intent(in) :: i_table  ! index in nuclides/sab_tables
 
-    integer :: i
     logical :: file_exists                 ! Does multipole library exist?
     character(7) :: readable               ! Is multipole library readable?
-    character(6) :: zaid_string            ! String of the ZAID
-    character(MAX_FILE_LEN+9) :: filename  ! Path to multipole xs library
+    character(MAX_FILE_LEN) :: filename  ! Path to multipole xs library
 
     ! For the time being, and I know this is a bit hacky, we just assume
-    ! that the file will be zaid.h5.
+    ! that the file will be ZZZAAAmM.h5.
     associate (nuc => nuclides(i_table))
 
-      write(zaid_string, '(I6.6)') nuc % zaid
-      filename = trim(path_multipole) // zaid_string // ".h5"
+      if (nuc % metastable > 0) then
+        filename = trim(path_multipole) // trim(zero_padded(nuc % Z, 3)) // &
+             trim(zero_padded(nuc % A, 3)) // 'm' // &
+             trim(to_str(nuc % metastable)) // ".h5"
+      else
+        filename = trim(path_multipole) // trim(zero_padded(nuc % Z, 3)) // &
+             trim(zero_padded(nuc % A, 3)) // ".h5"
+      end if
 
       ! Check if Multipole library exists and is readable
       inquire(FILE=filename, EXIST=file_exists, READ=readable)
@@ -6018,16 +6095,6 @@ contains
       ! Call the read routine
       call multipole_read(filename, nuc % multipole, i_table)
       nuc % mp_present = .true.
-
-      ! Recreate nu-fission cross section
-      if (nuc % fissionable) then
-        do i = 1, size(nuc % energy)
-          nuc % nu_fission(i) = nuc % nu(nuc % energy(i), EMISSION_TOTAL) * &
-               nuc % fission(i)
-        end do
-      else
-        nuc % nu_fission(:) = ZERO
-      end if
 
     end associate
 

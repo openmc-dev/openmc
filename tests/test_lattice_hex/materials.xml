@@ -1,9 +1,7 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_temperature>294K</default_temperature>
-
-<!-- Material 01: Water -->
+  <!-- Material 01: Water -->
   <material id="01">
     <density value="0.998" units="g/cc"/>
     <nuclide name="H1"  ao="2.0"/>
@@ -11,7 +9,7 @@
     <nuclide name="B10" ao="0.00085"/>
   </material>
 
-<!-- Material 13: Fuel (3.30%) -->
+  <!-- Material 13: Fuel (3.30%) -->
   <material id="13">
     <density value="10.371" units="g/cc"/>
     <nuclide name="U235" ao="0.033408078"/>
@@ -19,7 +17,7 @@
     <nuclide name="O16"  ao="2.0"/>
   </material>
 
-<!-- Material 21: Zircaloy -->
+  <!-- Material 21: Zircaloy -->
   <material id="21">
     <density value="6.44" units="g/cc" />
     <nuclide name="Zr90"  wo="0.501807"/>
@@ -29,7 +27,7 @@
     <nuclide name="Zr96"  wo="0.029133"/>
   </material>
 
-<!-- Material 22: Steel -->
+  <!-- Material 22: Steel -->
   <material id="22">
     <density value="7.9" units="g/cc"/>
     <nuclide name="Mn55" wo="2"/>

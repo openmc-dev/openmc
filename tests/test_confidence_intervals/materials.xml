@@ -2,7 +2,7 @@
 <materials>
 
   <material id="1">
-    <temperature>294K</temperature>
+    <temperature>294</temperature>
     <density value="4.5" units="g/cc" />
     <nuclide name="U235" ao="1.0" />
   </material>

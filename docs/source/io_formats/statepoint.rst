@@ -74,10 +74,6 @@ The current revision of the statepoint file format is 15.
 
     The mesh bin ID of current domain (each domain has a state_point file).
 
-**/source_present** (*int*)
-
-    Flag indicating whether the source be written separately.
-
 if run_mode == 'k-eigenvalue':
 
     **/n_inactive** (*int*)

@@ -274,7 +274,8 @@ class Plot(object):
                   'does not have a "type" key'.format(meshlines)
             raise ValueError(msg)
 
-        elif meshlines['type'] not in ['tally', 'entropy', 'ufs', 'cmfd']:
+        elif meshlines['type'] not in ['tally', 'entropy', 'ufs', 'cmfd',
+                                       'dd', 'domain_decomposition']:
             msg = 'Unable to set the meshlines with ' \
                   'type "{0}"'.format(meshlines['type'])
             raise ValueError(msg)
@@ -466,11 +467,11 @@ class Plot(object):
         if self._meshlines is not None:
             subelement = ET.SubElement(element, "meshlines")
             subelement.set("meshtype", self._meshlines['type'])
-            if self._meshlines['id'] is not None:
+            if 'id' in self._meshlines:
                 subelement.set("id", str(self._meshlines['id']))
-            if self._meshlines['linewidth'] is not None:
+            if 'linewidth' in self._meshlines:
                 subelement.set("linewidth", str(self._meshlines['linewidth']))
-            if self._meshlines['color'] is not None:
+            if 'color' in self._meshlines:
                 subelement.set("color", ' '.join(map(
                     str, self._meshlines['color'])))
 

@@ -2192,8 +2192,8 @@ attributes or sub-elements.  These are not used in "voxel" plots:
 
     :meshtype:
       The type of the mesh to be plotted. Valid options are "tally", "entropy",
-      "ufs", and "cmfd".  If plotting "tally" meshes, the id of the mesh to plot
-      must be specified with the ``id`` sub-element.
+      "ufs", "cmfd" and "dd"/"domain_decomposition". If plotting "tally" meshes,
+      the id of the mesh to plot must be specified with the ``id`` sub-element.
 
     :id:
       A single integer id number for the mesh specified on ``tallies.xml`` that

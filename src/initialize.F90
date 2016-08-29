@@ -88,7 +88,8 @@ contains
     ! XML files because we need the PRNG to be initialized first
     if (run_mode == MODE_PLOTTING) call read_plots_xml()
 
-    if (dd_run) call initialize_domain_decomp(domain_decomp)
+    if (dd_run .and. run_mode /= MODE_PLOTTING) &
+         call initialize_domain_decomp(domain_decomp)
 
     ! Set up universe structures
     call prepare_universes()

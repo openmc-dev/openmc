@@ -4593,6 +4593,15 @@ contains
                      &plot " // trim(to_str(pl % id)))
               end if
 
+            case ('dd', 'domain_decomposition')
+
+              if (.not. associated(domain_decomp % mesh)) then
+                call fatal_error("No DOMAIN DECOMPOSITION mesh for meshlines &
+                    &on plot " // trim(to_str(pl % id)))
+              end if
+
+              pl % meshlines_mesh => domain_decomp % mesh
+
             case default
               call fatal_error("Invalid type for meshlines on plot " &
                     // trim(to_str(pl % id)) // ": " // trim(meshtype))

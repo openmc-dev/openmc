@@ -239,6 +239,8 @@
                     <value>entropy</value>
                     <value>ufs</value>
                     <value>cmfd</value>
+                    <value>dd</value>
+                    <value>domain_decomposition</value>
                   </choice>
                 </element>
                 <attribute name="meshtype">
@@ -247,6 +249,8 @@
                     <value>entropy</value>
                     <value>ufs</value>
                     <value>cmfd</value>
+                    <value>dd</value>
+                    <value>domain_decomposition</value>
                   </choice>
                 </attribute>
               </choice>

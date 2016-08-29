@@ -30,8 +30,8 @@ element plots {
         attribute background { list { xsd:int+ } })
     }* &
     element meshlines {
-      (element meshtype { ( "tally" | "entropy" | "ufs" | "cmfd" ) } |
-        attribute meshtype { ( "tally" | "entropy" | "ufs" | "cmfd" ) }) &
+      (element meshtype { ( "tally" | "entropy" | "ufs" | "cmfd" | "dd" | "domain_decomposition") } |
+        attribute meshtype { ( "tally" | "entropy" | "ufs" | "cmfd" | "dd" | "domain_decomposition") }) &
       (element id { xsd:int } | attribute id { xsd:int })? &
       (element linewidth { xsd:int } | attribute linewidth { xsd:int }) &
       (element color { list { xsd:int+ } } |

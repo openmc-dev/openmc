@@ -11,8 +11,11 @@ from math import pi, sin, cos, floor, log10, sqrt
 from abc import ABCMeta, abstractproperty, abstractmethod
 
 import numpy as np
-import scipy.spatial
-from scipy.spatial.distance import cdist
+try:
+    import scipy.spatial
+    _SCIPY_AVAILABLE = True
+except ImportError:
+    _SCIPY_AVAILABLE = False
 
 import openmc
 import openmc.checkvalue as cv
@@ -250,7 +253,6 @@ class _CubicDomain(_Domain):
     """
 
     def __init__(self, length, particle_radius, center=[0., 0., 0.]):
-        self._length = None
         super(_CubicDomain, self).__init__(particle_radius, center)
         self.length = length
 
@@ -330,8 +332,6 @@ class _CylindricalDomain(_Domain):
     """
 
     def __init__(self, length, radius, particle_radius, center=[0., 0., 0.]):
-        self._length = None
-        self._radius = None
         super(_CylindricalDomain, self).__init__(particle_radius, center)
         self.length = length
         self.radius = radius
@@ -422,7 +422,6 @@ class _SphericalDomain(_Domain):
     """
 
     def __init__(self, radius, particle_radius, center=[0., 0., 0.]):
-        self._radius = None
         super(_SphericalDomain, self).__init__(particle_radius, center)
         self.radius = radius
 
@@ -435,7 +434,7 @@ class _SphericalDomain(_Domain):
         if self._limits is None:
             rlim = self.radius - self.particle_radius
             self._limits = [[x - rlim for x in self.center],
-                           [x + rlim for x in self.center]]
+                            [x + rlim for x in self.center]]
         return self._limits
 
     @property
@@ -443,7 +442,7 @@ class _SphericalDomain(_Domain):
         if self._cell_length is None:
             mesh_length = [2*self.radius, 2*self.radius, 2*self.radius]
             self._cell_length = [x/int(x/(4*self.particle_radius))
-                                for x in mesh_length]
+                                 for x in mesh_length]
         return self._cell_length
 
     @property
@@ -683,7 +682,7 @@ def _close_random_pack(domain, particles, contraction_rate):
 
         # Find the intersection between 'a' and 'b': a list of particles who
         # are each other's nearest neighbors and the distance between them
-        r = list([x for x in {tuple(x) for x in a} & {tuple(x) for x in b}])
+        r = list({tuple(x) for x in a} & {tuple(x) for x in b})
 
         # Remove duplicate rods and sort by distance
         r = map(list, set([(x[2], int(min(x[0:2])), int(max(x[0:2])))
@@ -804,7 +803,7 @@ def _close_random_pack(domain, particles, contraction_rate):
         # will be itself. Using argpartition, the k-th nearest neighbor is
         # placed at index k.
         idx = list(mesh[domain.mesh_cell(particles[i])])
-        dists = cdist([particles[i]], particles[idx])[0]
+        dists = scipy.spatial.distance.cdist([particles[i]], particles[idx])[0]
         if dists.size > 1:
             j = dists.argpartition(1)[1]
             return idx[j], dists[j]
@@ -838,6 +837,10 @@ def _close_random_pack(domain, particles, contraction_rate):
         # centers
         if rods:
             inner_diameter[0] = rods[0][0]
+
+    if not _SCIPY_AVAILABLE:
+        raise ImportError('SciPy must be installed to perform '
+                          'close random packing.')
 
     n_particles = len(particles)
     diameter = 2*domain.particle_radius
@@ -1004,10 +1007,15 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
 
     random.seed(seed)
 
-    # Set parameters for initial random sequential packing of particles.
+    # Calculate the particle radius used in the initial random sequential
+    # packing from the initial packing fraction
     initial_radius = (3/4 * initial_packing_fraction * domain.volume /
                       (pi * n_particles))**(1/3)
     domain.particle_radius = initial_radius
+
+    # Recalculate the limits for the initial random sequential packing using
+    # the desired final particle radius to ensure particles are fully contained
+    # within the domain during the close random pack
     domain.limits = [[x - initial_radius + radius for x in domain.limits[0]],
                      [x + initial_radius - radius for x in domain.limits[1]]]
 
@@ -1016,7 +1024,8 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
     particles = _random_sequential_pack(domain, n_particles)
 
     # Use the particle configuration produced in random sequential packing as a
-    # starting point for close random pack with the desired final particle radius
+    # starting point for close random pack with the desired final particle
+    # radius
     if initial_packing_fraction != packing_fraction:
         domain.particle_radius = radius
         _close_random_pack(domain, particles, contraction_rate)

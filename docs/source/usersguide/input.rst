@@ -2110,8 +2110,8 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     *Default*: None
 
   :meshlines:
-    The ``meshlines`` sub-element allows for plotting the boundaries of
-    a tally mesh on top of a plot. Only one ``meshlines`` element is allowed per
+    The ``meshlines`` sub-element allows for plotting the boundaries of a
+    regular mesh on top of a plot. Only one ``meshlines`` element is allowed per
     ``plot`` element, and it must contain as attributes or sub-elements a mesh
     type and a linewidth.  Optionally, a color may be specified for the overlay:
 

@@ -3297,22 +3297,6 @@ contains
 
             ! Check if total material was specified
             if (trim(sarray(j)) == 'total') then
-
-              ! Check if a delayedgroup filter is present for this tally
-              do l = 1, size(t % filters)
-                select type(filt => t % filters(l) % obj)
-                type is (DelayedGroupFilter)
-                  call warning("A delayedgroup filter was used on a total &
-                       &nuclide tally. Cross section libraries are not &
-                       &guaranteed to have the same delayed group structure &
-                       &across all isotopes. In particular, ENDF/B-VII.1 does &
-                       &not have a consistent delayed group structure across &
-                       &all isotopes while the JEFF 3.1.1 library has the same &
-                       &delayed group structure across all isotopes. Use with &
-                       &caution!")
-                end select
-              end do
-
               t % nuclide_bins(j) = -1
               cycle
             end if
@@ -3357,20 +3341,6 @@ contains
         allocate(t % nuclide_bins(1))
         t % nuclide_bins(1) = -1
         t % n_nuclide_bins = 1
-
-        ! Check if a delayedgroup filter is present for this tally
-        do l = 1, size(t % filters)
-          select type(filt => t % filters(l) % obj)
-          type is (DelayedGroupFilter)
-            call warning("A delayedgroup filter was used on a total nuclide &
-                 &tally. Cross section libraries are not guaranteed to have the&
-                 & same delayed group structure across all isotopes. In &
-                 &particular, ENDF/B-VII.1 does not have a consistent delayed &
-                 &group structure across all isotopes while the JEFF 3.1.1 &
-                 &library has the same delayed group structure across all &
-                 &isotopes. Use with caution!")
-          end select
-        end do
       end if
 
       ! =======================================================================

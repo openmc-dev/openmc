@@ -4597,7 +4597,7 @@ contains
 
               if (.not. associated(domain_decomp % mesh)) then
                 call fatal_error("No DOMAIN DECOMPOSITION mesh for meshlines &
-                    &on plot " // trim(to_str(pl % id)))
+                     &on plot " // trim(to_str(pl % id)))
               end if
 
               pl % meshlines_mesh => domain_decomp % mesh

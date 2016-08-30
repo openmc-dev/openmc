@@ -159,7 +159,8 @@ contains
       end if
 
       ! Indicate whether source bank is stored in statepoint
-      if (source_separate) then
+      ! Source will only be written to "domain_1.h5" file
+      if (source_separate .or. (dd_run .and. domain_decomp % meshbin /= 1)) then
         call write_dataset(file_id, "source_present", 0)
       else
         call write_dataset(file_id, "source_present", 1)
@@ -665,12 +666,6 @@ contains
     integer(HID_T) :: file_id
     character(MAX_FILE_LEN) :: filename
 
-    if (dd_run) then
-      if (master) call warning('Source bank writing not implemented for &
-           &domain decomposed runs.')
-      return
-    end if
-
     ! When using parallel HDF5, the file is written to collectively by all
     ! processes. With MPI-only, the file is opened and written by the master
     ! (note that the call to write_source_bank is by all processes since slave
@@ -698,6 +693,13 @@ contains
       else
         filename = trim(path_output) // 'statepoint.' // &
              zero_padded(current_batch, count_digits(n_max_batches))
+
+        ! For dd runs, source will only be written to first domain statepoint
+        if (dd_run) then
+          filename = trim(filename) // '.domain_' // &
+               & zero_padded(1, count_digits(domain_decomp % n_domains))
+        end if
+
         filename = trim(filename) // '.h5'
 
         if (master .or. parallel) then
@@ -1120,7 +1122,9 @@ contains
 
 #ifdef PHDF5
     ! Set size of total dataspace for all procs and rank
-    dims(1) = n_particles
+    ! Note work_index(n_procs) is the number of total source sites and equal to
+    ! n_particles for non-dd runs
+    dims(1) = work_index(n_procs)
     call h5screate_simple_f(1, dims, dspace, hdf5_err)
     call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, dspace, dset, hdf5_err)
 
@@ -1154,7 +1158,7 @@ contains
 
     if (master) then
       ! Create dataset big enough to hold all source sites
-      dims(1) = n_particles
+      dims(1) = work_index(n_procs)
       call h5screate_simple_f(1, dims, dspace, hdf5_err)
       call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, &
            dspace, dset, hdf5_err)

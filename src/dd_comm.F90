@@ -828,25 +828,6 @@ contains
       end if
     end do
 
-    ! At this point, the sampling of source sites is done and now we need to
-    ! figure out where to send source sites. Since it is possible that one
-    ! processor's share of the source bank spans more than just the immediate
-    ! neighboring processors, we have to perform an ALLGATHER to determine the
-    ! indices for all processors
-
-#ifdef MPI
-    ! First do an exclusive scan to get the starting indices for
-    start = 0_8
-    call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, &
-         MPI_COMM_WORLD, mpi_err)
-    if (rank == 0) start = 0_8
-    finish = start + index_temp
-
-    total = finish
-    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, &
-         MPI_COMM_WORLD, mpi_err)
-#endif
-
     ! Now that the sampling is complete, we need to ensure that we have exactly
     ! n_particles source sites. The way this is done in a reproducible manner is
     ! to sample the extra sites we need in the same way on each processor, or
@@ -1072,6 +1053,17 @@ contains
 
     work = index_local - 1
 
+#endif
+
+    ! Update the work_index which is not even for dd runs
+#ifdef MPI
+    call MPI_ALLGATHER(work, 1, MPI_INTEGER8, work_index(1:n_procs), 1, &
+         MPI_INTEGER8, MPI_COMM_WORLD, mpi_err)
+
+    work_index(0) = 0
+    do i = 1, n_procs
+      work_index(i) = work_index(i) + work_index(i-1)
+    end do
 #endif
 
     call time_bank_sendrecv % stop()

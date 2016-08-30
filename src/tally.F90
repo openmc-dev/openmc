@@ -2320,7 +2320,6 @@ contains
     integer :: i
     integer :: i_tally
     integer :: j                    ! loop indices
-    integer :: k                    ! loop indices
     integer :: d1                   ! dimension index
     integer :: d2                   ! dimension index
     integer :: d3                   ! dimension index
@@ -2340,9 +2339,6 @@ contains
     real(8) :: filt_score           ! score applied by filters
     logical :: start_in_mesh        ! particle's starting xyz in mesh?
     logical :: end_in_mesh          ! particle's ending xyz in mesh?
-    logical :: x_same               ! same starting/ending x index (i)
-    logical :: y_same               ! same starting/ending y index (j)
-    logical :: z_same               ! same starting/ending z index (k)
     type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
 
@@ -2398,96 +2394,6 @@ contains
         if (matching_bins(i_filter_energy) == NO_BIN_FOUND) cycle
       end if
 
-      ! =======================================================================
-      ! SPECIAL CASES WHERE TWO INDICES ARE THE SAME
-
-      ! Loop over the dimensions
-      do d1 = 1, 3
-
-        ! Get the other dimensions
-        d2 = mod(d1, 3) + 1
-        d3 = mod(d1 + 1, 3) + 1
-
-        ! If cell index in dimension d1 and d2 are the same and the cells is
-        ! within the mesh bounds
-        if (ijk0(d1) == ijk1(d1) .and. ijk0(d2) == ijk1(d2)) then
-
-          ! Only d3 crossings
-          if (uvw(d3) > 0) then
-
-            ! Loop over d3 cells
-            do j = ijk0(d3), ijk1(d3) - 1
-              ijk0(d3) = j
-
-              ! Outward current on d3 max surface
-              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-                matching_bins(i_filter_surf) = d3 * 2
-                matching_bins(i_filter_mesh) = &
-                     mesh_indices_to_bin(m, ijk0)
-                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                     * t % stride) + 1
-!$omp atomic
-                t % results(1, filter_index) % value = &
-                     t % results(1, filter_index) % value + p % wgt
-              end if
-
-              ! Inward current on d3 min surface
-              if (ijk0(d1) >= 1 .and. ijk0(d1) <= m % dimension(d1) .and. &
-                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                   j >= 0 .and. j < m % dimension(d3)) then
-                ijk0(d3) = j + 1
-                matching_bins(i_filter_surf) = d3 * 2 + 5
-                matching_bins(i_filter_mesh) = &
-                     mesh_indices_to_bin(m, ijk0)
-                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                     * t % stride) + 1
-!$omp atomic
-                t % results(1, filter_index) % value = &
-                     t % results(1, filter_index) % value + p % wgt
-                ijk0(d3) = j
-              end if
-            end do
-          else
-
-            do j = ijk0(d3), ijk1(d3) + 1, -1
-              ijk0(d3) = j
-
-              ! Outward current on d3 min surface
-              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-                matching_bins(i_filter_surf) = d3 * 2 - 1
-                matching_bins(i_filter_mesh) = &
-                     mesh_indices_to_bin(m, ijk0)
-                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                     * t % stride) + 1
-!$omp atomic
-                t % results(1, filter_index) % value = &
-                     t % results(1, filter_index) % value + p % wgt
-              end if
-
-              ! Inward current on d3 max surface
-              if (ijk0(d1) >= 1 .and. ijk0(d1) <= m % dimension(d1) .and. &
-                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                   j > 1 .and. j <= m % dimension(d3) + 1) then
-                ijk0(d3) = j - 1
-                matching_bins(i_filter_surf) = d3 * 2 + 6
-                matching_bins(i_filter_mesh) = &
-                     mesh_indices_to_bin(m, ijk0)
-                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                     * t % stride) + 1
-!$omp atomic
-                t % results(1, filter_index) % value = &
-                     t % results(1, filter_index) % value + p % wgt
-                ijk0(d3) = j
-              end if
-            end do
-          end if
-          cycle TALLY_LOOP
-        end if
-      end do
-
-      ! =======================================================================
-      ! GENERIC CASE
-
       ! Bounding coordinates
       do d1 = 1, 3
         if (uvw(d1) > 0) then
@@ -2497,14 +2403,13 @@ contains
         end if
       end do
 
-      do k = 1, n_cross
+      do j = 1, n_cross
         ! Reset scoring bin index
         matching_bins(i_filter_surf) = 0
 
         ! Calculate distance to each bounding surface. We need to treat
         ! special case where the cosine of the angle is zero since this would
         ! result in a divide-by-zero.
-
         do d1 = 1, 3
           if (uvw(d1) == 0) then
             d(d1) = INFINITY
@@ -2514,12 +2419,9 @@ contains
         end do
 
         ! Determine the closest bounding surface of the mesh cell by
-        ! calculating the minimum distance
-
+        ! calculating the minimum distance. Then use the minimum distance and
+        ! direction of the particle to determine which surface was crossed.
         distance = minval(d)
-
-        ! Now use the minimum distance and direction of the particle to
-        ! determine which surface was crossed
 
         ! Loop over the dimensions
         do d1 = 1, 3
@@ -2528,9 +2430,10 @@ contains
           d2 = mod(d1, 3) + 1
           d3 = mod(d1 + 1, 3) + 1
 
-          ! Check distance and dimension d2 and d3 indices
+          ! Check whether distance is the shortest distance
           if (distance == d(d1)) then
 
+            ! Check whether particle is moving in positive d1 direction
             if (uvw(d1) > 0) then
 
               ! Outward current on d1 max surface
@@ -2563,6 +2466,8 @@ contains
 
               ijk0(d1) = ijk0(d1) + 1
               xyz_cross(d1) = xyz_cross(d1) + m % width(d1)
+
+              ! The particle is moving in the negative d1 direction
             else
 
               ! Outward current on d1 min surface

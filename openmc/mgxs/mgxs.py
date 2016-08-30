@@ -337,7 +337,7 @@ class MGXS(object):
         if self.by_nuclide:
             return self.get_nuclides()
         else:
-            return 'sum'
+            return ['sum']
 
     @property
     def loaded_sp(self):
@@ -1483,7 +1483,7 @@ class MGXS(object):
         if self.by_nuclide and nuclides == 'sum':
 
             # Use tally summation to sum across all nuclides
-            query_nuclides = self.get_nuclides()
+            query_nuclides = [nuclides]
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
@@ -1503,7 +1503,7 @@ class MGXS(object):
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
-            query_nuclides = self.get_nuclides()
+            query_nuclides = self.nuclides
             df = self.xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 

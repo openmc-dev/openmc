@@ -1496,12 +1496,14 @@ class MGXS(object):
 
         # If the user requested a specific set of nuclides
         elif self.by_nuclide and nuclides != 'all':
+            query_nuclides = nuclides
             xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
+            query_nuclides = self.get_nuclides()
             df = self.xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 
@@ -1513,7 +1515,7 @@ class MGXS(object):
 
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
-        all_groups = np.repeat(all_groups, self.num_nuclides)
+        all_groups = np.repeat(all_groups, len(query_nuclides)) 
         if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
             df.rename(columns={'energy low [MeV]': 'group in'},
                       inplace=True)

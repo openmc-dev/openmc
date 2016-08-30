@@ -50,10 +50,22 @@ class StatePoint(object):
         Number of batches simulated
     date_and_time : str
         Date and time when simulation began
-    domain_decomp : bool
+    domain_decomp_on : bool
         Indicate whether domain decomposition is active
+    domain_number : int
+        Number of domains
     domain_id : int
         Id of current domain
+    domain_allow_leakage : bool
+        Indicate whether to allow particles leaking out of the mesh
+    domain_count_interactions : bool
+        Indicate whether to counts all particle interactions in current domain
+    domain_n_interaction : int
+        Number of particle interactions in current domain
+    domain_nodemap : numpy.ndarray
+        Load ditribution of all domains
+    domain_decomp_mesh : openmc.Mesh
+        Mesh object of domain decomposition
     entropy : numpy.ndarray
         Shannon entropy of fission source at each batch
     gen_per_batch : Integral
@@ -75,8 +87,6 @@ class StatePoint(object):
         Dictionary whose keys are mesh IDs and whose values are Mesh objects
     n_batches : int
         Number of batches
-    n_domains : int
-        Number of domains
     n_inactive : int
         Number of inactive batches
     n_particles : int
@@ -145,26 +155,27 @@ class StatePoint(object):
         self._sparse = False
 
         # Check domain decomposition
-        self._domain_decomp = False
+        self._domain_decomp_on = False
         try:
-            self._domain_decomp = self._f['domain_decomp'].value
+            self._domain_decomp_on = self._f['domain_decomp_on'].value > 0
         except: pass
 
-        # Search all domain specified statepoint files
-        if self._domain_decomp:
+        # Search and link all domain-specified statepoint files
+        if self._domain_decomp_on:
             if not '.domain_' in filename:
                 warnings.warn('Could not identify domain-specified statepoint '
-                              'files.', RuntimeWarning)
+                              'files.')
                 self._dd_files = None
             else:
-                if not filename.endswith('domain_1.h5'):
-                    warnings.warn('Only domain_1.h5 statepoint file contains '
-                             'correct global tally infomation.', RuntimeWarning)
+                if self._f['domain_decomp/domain_id'].value != 1:
+                    warnings.warn('Global tally infomation is incomplete in '
+                                  'this non-first-domain statepoint file.')
                 
-                dd_files = glob.glob(filename.split('.domain_')[0]+'.domain_*.h5')
-                if len(dd_files) != self._f['n_domains'].value:
-                    warnings.warn('Could not find all domain-specified statepoint'
-                                  ' files.', RuntimeWarning)
+                dd_files = glob.glob(\
+                    filename.split('.domain_')[0]+'.domain_*.h5')
+                if len(dd_files) != self._f['domain_decomp/n_domains'].value:
+                    warnings.warn('Could not find all domain-specified '
+                                  'statepoint files.')
                     self._dd_files = None
                 else:
                     self._dd_files = dd_files
@@ -226,12 +237,64 @@ class StatePoint(object):
         return self._f['date_and_time'].value.decode()
 
     @property
-    def domain_decomp(self):
-        return self._domain_decomp
+    def domain_decomp_on(self):
+        return self._domain_decomp_on
+
+    @property
+    def domain_number(self):
+        if self.domain_decomp_on:
+            return self._f['domain_decomp/n_domains'].value
+        else:
+            return None
 
     @property
     def domain_id(self):
-        return self._f['domain_id'].value
+        if self.domain_decomp_on:
+            return self._f['domain_decomp/domain_id'].value
+        else:
+            return None
+
+    @property
+    def domain_allow_leakage(self):
+        if self.domain_decomp_on:
+            return self._f['domain_decomp/allow_leakage'].value > 0
+        else:
+            return None
+
+    @property
+    def domain_count_interactions(self):
+        if self.domain_decomp_on:
+            return self._f['domain_decomp/count_interactions'].value > 0
+        else:
+            return None
+
+    @property
+    def domain_n_interaction(self):
+        if self.domain_decomp_on:
+            return self._f['domain_decomp/n_interaction'].value
+        else:
+            return None
+
+    @property
+    def domain_nodemap(self):
+        if self.domain_decomp_on:
+            return self._f['domain_decomp/nodemap'].value
+        else:
+            return None
+
+    @property
+    def domain_decomp_mesh(self):
+        if self.domain_decomp_on:
+            mesh = openmc.Mesh(name='domain decomposition mesh')
+            base = 'domain_decomp/mesh'
+            mesh.type = self._f['{0}/type'.format(base)].value.decode()
+            mesh.dimension = self._f['{0}/dimension'.format(base)].value
+            mesh.lower_left = self._f['{0}/lower_left'.format(base)].value
+            mesh.upper_right = self._f['{0}/upper_right'.format(base)].value
+            mesh.width = self._f['{0}/width'.format(base)].value
+            return mesh
+        else:
+            return None
 
     @property
     def entropy(self):
@@ -361,10 +424,6 @@ class StatePoint(object):
     @property
     def n_batches(self):
         return self._f['n_batches'].value
-
-    @property
-    def n_domains(self):
-        return self._f['n_domains'].value
 
     @property
     def n_inactive(self):
@@ -515,7 +574,7 @@ class StatePoint(object):
                 
                 # Merge on-the-fly tallies from all domain-specified statepoint
                 # files. Only sum and sum_sq data need to be updated.
-                if self.domain_decomp and self._dd_files:
+                if self.domain_decomp_on and self._dd_files:
                     # Initialize arrays for merged sum and sum_sq
                     sum = np.zeros((tally.num_filter_bins, 
                                     tally.num_nuclides*tally.num_scores))

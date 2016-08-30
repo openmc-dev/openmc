@@ -52,7 +52,7 @@ contains
     integer              :: otf_size_results_filters
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
-                      mesh_group, filter_group, runtime_group
+                      mesh_group, filter_group, runtime_group, dd_group
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
     type(RegularMesh), pointer :: meshp
@@ -123,13 +123,39 @@ contains
 
       ! Write domain decomposition information
       if (dd_run) then
-        call write_dataset(file_id, "domain_decomp", 1)
-        call write_dataset(file_id, "n_domains", domain_decomp % n_domains)
-        call write_dataset(file_id, "domain_id", domain_decomp % meshbin)
+        call write_dataset(file_id, "domain_decomp_on", 1)
+
+        dd_group = create_group(file_id, "domain_decomp")
+        call write_dataset(dd_group, "n_domains", domain_decomp % n_domains)
+        call write_dataset(dd_group, "domain_id", domain_decomp % meshbin)
+        if (domain_decomp % allow_truncation) then
+          call write_dataset(dd_group, "allow_leakage", 1)
+        else
+          call write_dataset(dd_group, "allow_leakage", 0)
+        end if
+        if (domain_decomp % count_interactions) then
+          call write_dataset(dd_group, "count_interactions", 1)
+        else
+          call write_dataset(dd_group, "count_interactions", 0)
+        end if
+        call write_dataset(dd_group, "n_interaction", &
+             domain_decomp % n_interaction)
+        call write_dataset(dd_group, "nodemap", &
+             domain_decomp % domain_load_dist)
+
+        ! dd mesh
+        meshp => domain_decomp % mesh
+        mesh_group = create_group(dd_group, "mesh")
+        call write_dataset(mesh_group, "type", "regular")
+        call write_dataset(mesh_group, "dimension", meshp % dimension)
+        call write_dataset(mesh_group, "lower_left", meshp % lower_left)
+        call write_dataset(mesh_group, "upper_right", meshp % upper_right)
+        call write_dataset(mesh_group, "width", meshp % width)
+        call close_group(mesh_group)
+
+        call close_group(dd_group)
       else
-        call write_dataset(file_id, "domain_decomp", 0)
-        call write_dataset(file_id, "n_domains", NONE)
-        call write_dataset(file_id, "domain_id", NONE)
+        call write_dataset(file_id, "domain_decomp_on", 0)
       end if
 
       ! Indicate whether source bank is stored in statepoint
@@ -901,6 +927,13 @@ contains
     if (int_array(1) /= REVISION_STATEPOINT) then
       call fatal_error("State point version does not match current version &
            &in OpenMC.")
+    end if
+
+    ! check domain decomposition
+    call read_dataset(int_array(1), file_id, "domain_decomp_on")
+    if (int_array(1) == 1) then
+      call fatal_error("Loading state point file of domain decomposed runs &
+           &is not implemented.")
     end if
 
     ! Read and overwrite random number seed

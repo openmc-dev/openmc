@@ -1484,7 +1484,7 @@ class MGXS(object):
 
             # Use tally summation to sum across all nuclides
             query_nuclides = [nuclides]
-            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            xs_tally = self.xs_tally.summation(nuclides=self.get_nuclides())
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 

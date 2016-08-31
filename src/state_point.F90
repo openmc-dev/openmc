@@ -26,6 +26,7 @@ module state_point
 
 #ifdef MPI
   use message_passing
+  use extend_arr,         only: extend_array
 #endif
 
   use hdf5
@@ -1117,6 +1118,7 @@ contains
     integer :: i
 #ifdef MPI
     type(Bank), allocatable, target :: temp_source(:)
+    integer :: alloc_err      ! allocation error code
 #endif
 #endif
 
@@ -1166,7 +1168,7 @@ contains
       ! Save source bank sites since the souce_bank array is overwritten below
 #ifdef MPI
       allocate(temp_source(work))
-      temp_source(:) = source_bank(:)
+      temp_source(:) = source_bank(1:work)
 #endif
 
       do i = 0, n_procs - 1
@@ -1177,6 +1179,10 @@ contains
 #ifdef MPI
         ! Receive source sites from other processes
         if (i > 0) then
+          ! For dd runs, it is possible other processors have more sources
+          if (size(source_bank) < dims(1)) &
+               call extend_array(source_bank, int(dims(1)), .false., alloc_err)
+
           call MPI_RECV(source_bank, int(dims(1)), MPI_BANK, i, i, &
                MPI_COMM_WORLD, MPI_STATUS_IGNORE, mpi_err)
         end if
@@ -1201,7 +1207,7 @@ contains
 
       ! Restore state of source bank
 #ifdef MPI
-      source_bank(:) = temp_source(:)
+      source_bank(1:work) = temp_source(:)
       deallocate(temp_source)
 #endif
     else

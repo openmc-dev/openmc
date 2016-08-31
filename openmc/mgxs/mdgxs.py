@@ -343,7 +343,7 @@ class MDGXS(MGXS):
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
             if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
-                query_nuclides = self.get_all_nuclides()
+                query_nuclides = self.get_nuclides()
             else:
                 query_nuclides = nuclides
         else:
@@ -553,7 +553,7 @@ class MDGXS(MGXS):
         # Construct a collection of the nuclides to report
         if self.by_nuclide:
             if nuclides == 'all':
-                nuclides = self.get_all_nuclides()
+                nuclides = self.get_nuclides()
             elif nuclides == 'sum':
                 nuclides = ['sum']
             else:
@@ -751,25 +751,27 @@ class MDGXS(MGXS):
         if self.by_nuclide and nuclides == 'sum':
 
             # Use tally summation to sum across all nuclides
-            query_nuclides = self.get_all_nuclides()
-            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            query_nuclides = [nuclides]
+            xs_tally = self.xs_tally.summation(nuclides=self.get_nuclides())
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 
             # Remove nuclide column since it is homogeneous and redundant
             if self.domain_type == 'mesh':
-                df.drop('nuclide', axis=1, level=0, inplace=True)
+                df.drop('sum(nuclide)', axis=1, level=0, inplace=True)
             else:
-                df.drop('nuclide', axis=1, inplace=True)
+                df.drop('sum(nuclide)', axis=1, inplace=True)
 
         # If the user requested a specific set of nuclides
         elif self.by_nuclide and nuclides != 'all':
+            query_nuclides = nuclides
             xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
+            query_nuclides = nuclides
             df = self.xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 
@@ -781,7 +783,7 @@ class MDGXS(MGXS):
 
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
-        all_groups = np.repeat(all_groups, self.num_nuclides)
+        all_groups = np.repeat(all_groups, len(query_nuclides))
         if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
             df.rename(columns={'energy low [MeV]': 'group in'},
                       inplace=True)
@@ -1239,7 +1241,7 @@ class ChiDelayed(MDGXS):
                 delayed_nu_fission_out = self.tallies['delayed-nu-fission-out']
 
                 # Sum out all nuclides
-                nuclides = self.get_all_nuclides()
+                nuclides = self.get_nuclides()
                 delayed_nu_fission_in = delayed_nu_fission_in.summation\
                                         (nuclides=nuclides)
                 delayed_nu_fission_out = delayed_nu_fission_out.summation\
@@ -1261,7 +1263,7 @@ class ChiDelayed(MDGXS):
 
             # Get chi delayed for all nuclides in the domain
             elif nuclides == 'all':
-                nuclides = self.get_all_nuclides()
+                nuclides = self.get_nuclides()
                 xs = self.xs_tally.get_values(filters=filters,
                                               filter_bins=filter_bins,
                                               nuclides=nuclides, value=value)

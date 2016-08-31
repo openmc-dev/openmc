@@ -334,11 +334,11 @@ contains
 
       else
         ! Determine temperature
-!!$        if (temperature_method == TEMPERATURE_MULTIPOLE) then
-!!$          kT = p % sqrtkT**2
-!!$        else
+        if (temperature_method == TEMPERATURE_MULTIPOLE) then
+          kT = p % sqrtkT**2
+        else
           kT = nuc % kTs(micro_xs(i_nuclide) % index_temp)
-!!$        end if
+        end if
 
         ! Perform collision physics for elastic scattering
         call elastic_scatter(i_nuclide, nuc % reactions(1), kT, &

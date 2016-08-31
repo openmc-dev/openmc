@@ -334,6 +334,7 @@ Functions
    :nosignatures:
 
    openmc.model.create_triso_lattice
+   openmc.model.pack_trisos
 
 --------------------------------------------
 :mod:`openmc.data` -- Nuclear Data Interface

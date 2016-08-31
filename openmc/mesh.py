@@ -187,15 +187,20 @@ class Mesh(object):
         of the mesh.
 
         For example the following code:
-        for mesh_index in mymesh.cell_generator():
-            print mesh_index
 
-        will produce the following output for a 3-D 2x2x2 mesh in mymesh:
-        [1, 1, 1]
-        [1, 1, 2]
-        [1, 2, 1]
-        [1, 2, 2]
-        ...
+        .. code-block:: python
+
+            for mesh_index in mymesh.cell_generator():
+                print mesh_index
+
+        will produce the following output for a 3-D 2x2x2 mesh in mymesh::
+
+            [1, 1, 1]
+            [1, 1, 2]
+            [1, 2, 1]
+            [1, 2, 2]
+            ...
+
 
         """
 

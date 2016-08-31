@@ -60,24 +60,9 @@ class TRISOTestHarness(PyAPITestHarness):
         inner_univ = openmc.Universe(cells=[c1, c2, c3, c4, c5])
 
         outer_radius = 422.5*1e-4
-        trisos = []
-        random.seed(1)
-        for i in range(100):
-            # Randomly sample location
-            lim = 0.5 - outer_radius*1.001
-            x = random.uniform(-lim, lim)
-            y = random.uniform(-lim, lim)
-            z = random.uniform(-lim, lim)
-            t = openmc.model.TRISO(outer_radius, inner_univ, (x, y, z))
-
-            # Make sure TRISO doesn't overlap with another
-            for tp in trisos:
-                xp, yp, zp = tp.center
-                distance = sqrt((x - xp)**2 + (y - yp)**2 + (z - zp)**2)
-                if distance <= 2*outer_radius:
-                    break
-            else:
-                trisos.append(t)
+        trisos = openmc.model.pack_trisos(
+            radius=outer_radius, fill=inner_univ, domain_shape='cube',
+            domain_length=1., domain_center=(0., 0., 0.), n_particles=100)
 
         # Define box to contain lattice
         min_x = openmc.XPlane(x0=-0.5, boundary_type='reflective')

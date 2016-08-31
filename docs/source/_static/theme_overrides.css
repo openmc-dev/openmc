@@ -16,3 +16,7 @@
 .wy-table, .rst-content table.docutils, .rst-content table.field-list {
     margin-bottom: 0px;
 }
+
+.wy-side-nav-search {
+    background-color: #343131;
+}

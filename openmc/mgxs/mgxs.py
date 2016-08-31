@@ -1490,9 +1490,9 @@ class MGXS(object):
 
             # Remove nuclide column since it is homogeneous and redundant
             if self.domain_type == 'mesh':
-                df.drop('nuclide', axis=1, level=0, inplace=True)
+                df.drop('sum(nuclide)', axis=1, level=0, inplace=True)
             else:
-                df.drop('nuclide', axis=1, inplace=True)
+                df.drop('sum(nuclide)', axis=1, inplace=True)
 
         # If the user requested a specific set of nuclides
         elif self.by_nuclide and nuclides != 'all':

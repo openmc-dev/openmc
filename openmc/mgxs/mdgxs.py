@@ -771,7 +771,7 @@ class MDGXS(MGXS):
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
-            query_nuclides = nuclides
+            query_nuclides = self.nuclides
             df = self.xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 

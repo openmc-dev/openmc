@@ -4,7 +4,7 @@ module initialize
   use constants
   use dict_header,     only: DictIntInt, ElemKeyValueII
   use set_header,      only: SetInt
-  use energy_grid,     only: logarithmic_grid, grid_method ! , unionized_grid
+  use energy_grid,     only: logarithmic_grid, grid_method
   use error,           only: fatal_error, warning
   use geometry,        only: neighbor_lists, count_instance, calc_offsets,    &
                              maximum_levels

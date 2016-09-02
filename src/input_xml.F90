@@ -3984,7 +3984,8 @@ contains
       end if
 
       ! If settings.xml trigger is turned on, create tally triggers
-      if (trigger_on) then
+      ! But if tally is on-the-fly allocated, triggers will be ignored 
+      if (trigger_on .and. .not. t % on_the_fly_allocation ) then
 
         ! Get list of trigger nodes for this tally
         call get_node_list(node_tal, "trigger", node_trigger_list)

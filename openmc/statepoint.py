@@ -571,15 +571,17 @@ class StatePoint(object):
 
                 # Add Tally to the global dictionary of all Tallies
                 tally.sparse = self.sparse
-                
+
                 # Merge on-the-fly tallies from all domain-specified statepoint
                 # files. Only sum and sum_sq data need to be updated.
-                if self.domain_decomp_on and self._dd_files:
+                otf_tally = self._f['{0}{1}/on_the_fly_allocation'.format(
+                                    base, tally_key)].value > 0
+                if self.domain_decomp_on and self._dd_files and otf_tally:
                     # Initialize arrays for merged sum and sum_sq
                     sum = np.zeros((tally.num_filter_bins, 
                                     tally.num_nuclides*tally.num_scores))
                     sum_sq = np.zeros((tally.num_filter_bins, 
-                                    tally.num_nuclides*tally.num_scores))
+                                       tally.num_nuclides*tally.num_scores))
 
                     # Loop for reading otf tallies and merging by filter bins
                     import h5py

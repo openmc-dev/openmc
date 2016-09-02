@@ -2694,15 +2694,9 @@ contains
       t => tallies(active_tallies % get_item(i))
       call write_message("Reducing tally" // trim(to_str(t % id)) // "...", 9)
 
-      if (.not. dd_run) then
-
-        if (t % on_the_fly_allocation) then
-          call fatal_error("On-the-fly tally reduction only implemented " // &
-                    "for domain-decomposed runs")
-        end if
-
-        ! For non-DD runs, the results array is always the same size and in the
-        ! same order
+      if (.not. t % on_the_fly_allocation) then
+        ! For non-otf tallies, the results array is always the same size and in
+        ! the same order
 
         m = t % total_score_bins
         n = t % total_filter_bins
@@ -2731,6 +2725,11 @@ contains
         deallocate(tally_temp)
 
       else
+        ! Reduce on-the-fly tallies for dd runs
+        if (.not. dd_run) then
+          call fatal_error("On-the-fly tally reduction only implemented " // &
+                    "for domain-decomposed runs")
+        end if
 
         ! Reduce tallies to local masters within each domain
         call reduce_otf_tally_results(t, domain_decomp % comm)

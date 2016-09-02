@@ -293,6 +293,7 @@ contains
 
           ! Write on-the-fly allocation tally info
           if (tally % on_the_fly_allocation) then
+            call write_dataset(tally_group, "on_the_fly_allocation", 1)
             otf_size_results_filters = tally % next_filter_idx - 1
             call write_dataset(tally_group, "otf_size_results_filters", &
                                otf_size_results_filters)
@@ -305,7 +306,7 @@ contains
                                filter_map_array)
             deallocate(filter_map_array)
           else
-            call write_dataset(tally_group, "otf_size_results_filters", NONE)
+            call write_dataset(tally_group, "on_the_fly_allocation", 0)
           end if
 
           ! Write filter information

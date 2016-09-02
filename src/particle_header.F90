@@ -138,6 +138,7 @@ module particle_header
     real(8)    :: stored_distance
     real(8)    :: fly_dd_distance
     real(8)    :: last_xyz(3)
+    real(8)    :: last_xyz_current(3)
     real(8)    :: stored_xyz(3)
     real(8)    :: stored_uvw(3)
     integer    :: type
@@ -203,19 +204,20 @@ contains
     type(Particle),       intent(in)  :: part
     type(ParticleBuffer), intent(out) :: buf
 
-    buf % id              = part % id
-    buf % type            = part % type
-    buf % wgt             = part % wgt
-    buf % E               = part % E
-    buf % last_xyz        = part % last_xyz
-    buf % surface         = part % surface
-    buf % cell_born       = part % cell_born
-    buf % n_collision     = part % n_collision
-    buf % stored_xyz      = part % stored_xyz
-    buf % stored_uvw      = part % stored_uvw
-    buf % prn_seed        = part % prn_seed
-    buf % stored_distance = part % stored_distance
-    buf % fly_dd_distance = part % fly_dd_distance
+    buf % id               = part % id
+    buf % type             = part % type
+    buf % wgt              = part % wgt
+    buf % E                = part % E
+    buf % last_xyz         = part % last_xyz
+    buf % last_xyz_current = part % last_xyz_current
+    buf % surface          = part % surface
+    buf % cell_born        = part % cell_born
+    buf % n_collision      = part % n_collision
+    buf % stored_xyz       = part % stored_xyz
+    buf % stored_uvw       = part % stored_uvw
+    buf % prn_seed         = part % prn_seed
+    buf % stored_distance  = part % stored_distance
+    buf % fly_dd_distance  = part % fly_dd_distance
 
   end subroutine particle_to_buffer
 
@@ -231,21 +233,22 @@ contains
 
     call part % initialize()
 
-    part % id              = buf % id
-    part % type            = buf % type
-    part % wgt             = buf % wgt
-    part % E               = buf % E
-    part % alive           = .true.
-    part % last_xyz        = buf % last_xyz
-    part % surface         = buf % surface
-    part % cell_born       = buf % cell_born
-    part % n_collision     = buf % n_collision
-    part % new_particle    = .false.
-    part % stored_xyz      = buf % stored_xyz
-    part % stored_uvw      = buf % stored_uvw
-    part % prn_seed        = buf % prn_seed
-    part % stored_distance = buf % stored_distance
-    part % fly_dd_distance = buf % fly_dd_distance
+    part % id               = buf % id
+    part % type             = buf % type
+    part % wgt              = buf % wgt
+    part % E                = buf % E
+    part % alive            = .true.
+    part % last_xyz         = buf % last_xyz
+    part % last_xyz_current = buf % last_xyz_current
+    part % surface          = buf % surface
+    part % cell_born        = buf % cell_born
+    part % n_collision      = buf % n_collision
+    part % new_particle     = .false.
+    part % stored_xyz       = buf % stored_xyz
+    part % stored_uvw       = buf % stored_uvw
+    part % prn_seed         = buf % prn_seed
+    part % stored_distance  = buf % stored_distance
+    part % fly_dd_distance  = buf % fly_dd_distance
 
   end subroutine buffer_to_particle
 

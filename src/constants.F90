@@ -364,7 +364,13 @@ module constants
        OUT_BACK   = 3,   &   ! y min
        OUT_FRONT  = 4,   &   ! y max
        OUT_BOTTOM = 5,   &   ! z min
-       OUT_TOP    = 6        ! z max
+       OUT_TOP    = 6,   &   ! z max
+       IN_LEFT    = 7,   &   ! x min
+       IN_RIGHT   = 8,   &   ! x max
+       IN_BACK    = 9,   &   ! y min
+       IN_FRONT   = 10,  &   ! y max
+       IN_BOTTOM  = 11,  &   ! z min
+       IN_TOP     = 12       ! z max
 
   ! Tally trigger types and threshold
   integer, parameter :: &

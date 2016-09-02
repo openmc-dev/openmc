@@ -158,9 +158,10 @@ contains
              E <= nuc % multipole % end_E/1.0e6_8) then
           use_mp = .true.
         else
-          ! If using multipole data but outside the RRR, just pick the first
-          ! temperature
-          i_temp = 1
+          ! If using multipole data but outside the RRR, pick the nearest
+          ! temperature. Note that there is no tolerance here, so this
+          ! temperature could be very far off!
+          i_temp = minloc(abs(nuclides(i_nuclide) % kTs - kT), dim=1)
         end if
       else
         ! If not using multipole data, do a linear search on temperature

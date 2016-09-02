@@ -100,7 +100,7 @@ class IncidentNeutron(EqualityMixin):
     Parameters
     ----------
     name : str
-        Name of the table
+        Name of the nuclide using the GND naming convention
     atomic_number : int
         Number of protons in the nucleus
     mass_number : int
@@ -133,7 +133,7 @@ class IncidentNeutron(EqualityMixin):
     metastable : int
         Metastable state of the nucleus. A value of zero indicates ground state.
     name : str
-        ZAID identifier of the table, e.g. 92235.
+        Name of the nuclide using the GND naming convention
     reactions : collections.OrderedDict
         Contains the cross sections, secondary angle and energy distributions,
         and other associated data for each reaction. The keys are the MT values
@@ -533,11 +533,6 @@ class IncidentNeutron(EqualityMixin):
 
         # Assign temperature to the running list
         kTs = [ace.temperature]
-
-        # If mass number hasn't been specified, make an educated guess
-        zaid, xs = ace.name.split('.')
-        name, element, Z, mass_number, metastable = \
-            _get_metadata(int(zaid), metastable_scheme)
 
         data = cls(name, Z, mass_number, metastable,
                    ace.atomic_weight_ratio, kTs)

@@ -1,8 +1,6 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_temperature>294K</default_temperature>
-
   <material id="1">
     <density value="7.5" units="g/cc" />
     <nuclide name="O16" ao="1.0" />

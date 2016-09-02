@@ -10,8 +10,6 @@
   ===============================================================
   -->
 
-  <default_temperature>294K</default_temperature>
-
   <!-- UO2-PuO2 Mixture -->
   <material id="1">
     <density value="9.54" units="g/cm3" />

@@ -128,6 +128,12 @@ element settings {
 
   element survival_biasing { xsd:boolean }? &
 
+  element temperature_default { xsd:double }? &
+
+  element temperature_method { xsd:string }? &
+
+  element temperature_tolerance { xsd:double }? &
+
   element threads { xsd:positiveInteger }? &
 
   element trace { list { xsd:positiveInteger+ } }? &

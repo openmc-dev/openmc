@@ -1,10 +1,10 @@
 module scattdata_header
 
+  use algorithm,  only: binary_search
   use constants
   use error,      only: fatal_error
   use math
   use random_lcg, only: prn
-  use search,     only: binary_search
 
   implicit none
 

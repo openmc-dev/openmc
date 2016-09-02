@@ -115,36 +115,31 @@ contains
     integer :: i
     character(12), allocatable :: nucnames(:)
     real(8), allocatable :: awrs(:)
-    integer, allocatable :: zaids(:)
 
     ! Write useful data from nuclide objects
     nuclide_group = create_group(file_id, "nuclides")
     call write_dataset(nuclide_group, "n_nuclides_total", n_nuclides_total)
 
-    ! Build array of nuclide names, awrs, and zaids
+    ! Build array of nuclide names and awrs
     allocate(nucnames(n_nuclides_total))
     allocate(awrs(n_nuclides_total))
-    allocate(zaids(n_nuclides_total))
     do i = 1, n_nuclides_total
       if (run_CE) then
         nucnames(i) = nuclides(i) % name
         awrs(i)     = nuclides(i) % awr
-        zaids(i)    = nuclides(i) % zaid
       else
         nucnames(i) = nuclides_MG(i) % obj % name
         awrs(i)     = nuclides_MG(i) % obj % awr
-        zaids(i)    = nuclides_MG(i) % obj % zaid
       end if
     end do
 
-    ! Write nuclide names, awrs and zaids
+    ! Write nuclide names and awrs
     call write_dataset(nuclide_group, "names", nucnames)
     call write_dataset(nuclide_group, "awrs", awrs)
-    call write_dataset(nuclide_group, "zaids", zaids)
 
     call close_group(nuclide_group)
 
-    deallocate(nucnames, awrs, zaids)
+    deallocate(nucnames, awrs)
 
   end subroutine write_nuclides
 
@@ -528,9 +523,6 @@ contains
 
       ! Write name for this material
       call write_dataset(material_group, "name", m % name)
-
-      ! Write temperature for this material
-      call write_dataset(material_group, "temperature", m % temperature)
 
       ! Write atom density with units
       call write_dataset(material_group, "atom_density", m % density)

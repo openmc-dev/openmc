@@ -13,9 +13,6 @@ module material_header
     integer, allocatable :: nuclide(:)      ! index in nuclides array
     real(8)              :: density         ! total atom density in atom/b-cm
     real(8), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
-    character(6)         :: temperature     ! Temperature of the material
-                                            ! as presented in the HDF5 library;
-                                            ! e.g., "300K"
 
     ! Energy grid information
     integer              :: n_grid    ! # of union material grid points

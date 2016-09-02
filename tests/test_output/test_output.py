@@ -19,10 +19,6 @@ class OutputTestHarness(TestHarness):
         assert summary[0].endswith('h5'),\
             'Summary file is not a HDF5 file.'
 
-        # Check for the cross sections.
-        assert os.path.exists(os.path.join(os.getcwd(), 'cross_sections.out')),\
-            'Cross section output file does not exist.'
-
     def _cleanup(self):
         TestHarness._cleanup(self)
         output = glob.glob(os.path.join(os.getcwd(), 'summary.*'))

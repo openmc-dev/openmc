@@ -2,12 +2,12 @@ module secondary_kalbach
 
   use hdf5, only: HID_T, HSIZE_T
 
+  use algorithm, only: binary_search
   use angleenergy_header, only: AngleEnergy
   use constants, only: ZERO, HALF, ONE, TWO, HISTOGRAM, LINEAR_LINEAR
   use hdf5_interface, only: read_attribute, read_dataset, open_dataset, &
        close_dataset, get_shape
   use random_lcg, only: prn
-  use search, only: binary_search
 
 !===============================================================================
 ! KalbachMann represents a correlated angle-energy distribution with the angular

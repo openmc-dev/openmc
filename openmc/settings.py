@@ -1,4 +1,4 @@
-from collections import Iterable, MutableSequence
+from collections import Iterable, MutableSequence, Mapping
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
@@ -78,8 +78,6 @@ class Settings(object):
         cross section library. If it is not set, the
         :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used. A
         multipole library is optional.
-    energy_grid : {'nuclide', 'logarithm', 'material-union'}
-        Set the method used to search energy grids.
     energy_mode : {'continuous-energy', 'multi-group'}
         Set whether the calculation should be continuous-energy or multi-group.
     max_order : int
@@ -103,6 +101,14 @@ class Settings(object):
         Coordinates of the lower-left point of the Shannon entropy mesh
     entropy_upper_right : tuple or list
         Coordinates of the upper-right point of the Shannon entropy mesh
+    temperature : dict
+        Defines a default temperature and method for treating intermediate
+        temperatures at which nuclear data doesn't exist. Accepted keys are
+        'default', 'method', and 'tolerance'. The value for 'default' should be
+        a float representing the default temperature in Kelvin. The value for
+        'method' should be 'nearest' or 'interpolation'. If the method is
+        'nearest', 'tolerance' indicates a range of temperature within which
+        cross sections may be used.
     trigger_active : bool
         Indicate whether tally triggers are used
     trigger_max_batches : int
@@ -130,9 +136,6 @@ class Settings(object):
         Coordinates of the lower-left point of the UFS mesh
     ufs_upper_right : tuple or list
         Coordinates of the upper-right point of the UFS mesh
-    use_windowed_multipole : bool
-        Whether or not windowed multipole can be used to evaluate resolved
-        resonance cross sections.
     resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
         The elastic scattering model to use for resonant isotopes
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
@@ -160,7 +163,6 @@ class Settings(object):
         self._confidence_intervals = None
         self._cross_sections = None
         self._multipole_library = None
-        self._energy_grid = None
         self._ptables = None
         self._run_cmfd = None
         self._seed = None
@@ -197,6 +199,8 @@ class Settings(object):
         self._trace = None
         self._track = None
 
+        self._temperature = {}
+
         # Cutoff subelement
         self._weight = None
         self._weight_avg = None
@@ -216,7 +220,6 @@ class Settings(object):
 
         self._settings_file = ET.Element("settings")
         self._run_mode_subelement = None
-        self._multipole_active = None
 
         self._resonance_scattering = cv.CheckedList(
             ResonanceScattering, 'resonance scattering models')
@@ -270,10 +273,6 @@ class Settings(object):
     @property
     def multipole_library(self):
         return self._multipole_library
-
-    @property
-    def energy_grid(self):
-        return self._energy_grid
 
     @property
     def ptables(self):
@@ -364,6 +363,10 @@ class Settings(object):
         return self._verbosity
 
     @property
+    def temperature(self):
+        return self._temperature
+
+    @property
     def trace(self):
         return self._trace
 
@@ -414,10 +417,6 @@ class Settings(object):
     @property
     def dd_count_interactions(self):
         return self._dd_count_interactions
-
-    @property
-    def use_windowed_multipole(self):
-        return self._multipole_active
 
     @property
     def resonance_scattering(self):
@@ -593,12 +592,6 @@ class Settings(object):
         cv.check_type('cross sections', multipole_library, basestring)
         self._multipole_library = multipole_library
 
-    @energy_grid.setter
-    def energy_grid(self, energy_grid):
-        cv.check_value('energy grid', energy_grid,
-                    ['nuclide', 'logarithm', 'material-union'])
-        self._energy_grid = energy_grid
-
     @ptables.setter
     def ptables(self, ptables):
         cv.check_type('probability tables', ptables, bool)
@@ -673,6 +666,21 @@ class Settings(object):
     def no_reduce(self, no_reduce):
         cv.check_type('no reduction option', no_reduce, bool)
         self._no_reduce = no_reduce
+
+    @temperature.setter
+    def temperature(self, temperature):
+        cv.check_type('temperature settings', temperature, Mapping)
+        for key, value in temperature.items():
+            cv.check_value('temperature key', key,
+                           ['default', 'method', 'tolerance'])
+            if key == 'default':
+                cv.check_type('default temperature', value, Real)
+            elif key == 'method':
+                cv.check_value('temperature method', value,
+                               ['nearest', 'interpolation', 'multipole'])
+            elif key == 'tolerance':
+                cv.check_type('temperature tolerance', value, Real)
+        self._temperature = temperature
 
     @threads.setter
     def threads(self, threads):
@@ -800,11 +808,6 @@ class Settings(object):
         cv.check_type('DD count interactions', interactions, bool)
 
         self._dd_count_interactions = interactions
-
-    @use_windowed_multipole.setter
-    def use_windowed_multipole(self, active):
-        cv.check_type('use_windowed_multipole', active, bool)
-        self._multipole_active = active
 
     @resonance_scattering.setter
     def resonance_scattering(self, res):
@@ -963,11 +966,6 @@ class Settings(object):
             element = ET.SubElement(self._settings_file, "multipole_library")
             element.text = str(self._multipole_library)
 
-    def _create_energy_grid_subelement(self):
-        if self._energy_grid is not None:
-            element = ET.SubElement(self._settings_file, "energy_grid")
-            element.text = str(self._energy_grid)
-
     def _create_ptables_subelement(self):
         if self._ptables is not None:
             element = ET.SubElement(self._settings_file, "ptables")
@@ -1050,6 +1048,13 @@ class Settings(object):
             element = ET.SubElement(self._settings_file, "no_reduce")
             element.text = str(self._no_reduce).lower()
 
+    def _create_temperature_subelements(self):
+        if self.temperature:
+            for key, value in self.temperature.items():
+                element = ET.SubElement(self._settings_file,
+                                        "temperature_{}".format(key))
+                element.text = str(value)
+
     def _create_threads_subelement(self):
         if self._threads is not None:
             element = ET.SubElement(self._settings_file, "threads")
@@ -1107,20 +1112,10 @@ class Settings(object):
             subelement = ET.SubElement(element, "count_interactions")
             subelement.text = str(self._dd_count_interactions).lower()
 
-    def _create_use_multipole_subelement(self):
-        if self._multipole_active is not None:
-            element = ET.SubElement(self._settings_file,
-                                    "use_windowed_multipole")
-            element.text = str(self._multipole_active)
-
     def _create_resonance_scattering_subelement(self):
         if len(self.resonance_scattering) > 0:
             elem = ET.SubElement(self._settings_file, 'resonance_scattering')
             for r in self.resonance_scattering:
-                if r.nuclide.name != r.nuclide_0K.name:
-                    raise ValueError("The nuclide and nuclide_0K attributes of "
-                                     "a ResonantScattering object must have "
-                                     "identical names.")
                 elem.append(r.to_xml_element())
 
     def export_to_xml(self):
@@ -1142,7 +1137,6 @@ class Settings(object):
         self._create_confidence_intervals()
         self._create_cross_sections_subelement()
         self._create_multipole_library_subelement()
-        self._create_energy_grid_subelement()
         self._create_energy_mode_subelement()
         self._create_max_order_subelement()
         self._create_ptables_subelement()
@@ -1155,11 +1149,11 @@ class Settings(object):
         self._create_no_reduce_subelement()
         self._create_threads_subelement()
         self._create_verbosity_subelement()
+        self._create_temperature_subelements()
         self._create_trace_subelement()
         self._create_track_subelement()
         self._create_ufs_subelement()
         self._create_dd_subelement()
-        self._create_use_multipole_subelement()
         self._create_resonance_scattering_subelement()
         self._create_volume_calcs_subelement()
 
@@ -1175,14 +1169,26 @@ class Settings(object):
 class ResonanceScattering(object):
     """Specification of the elastic scattering model for resonant isotopes
 
+    Parameters
+    ----------
+    nuclide : openmc.Nuclide
+        The nuclide affected by this resonance scattering treatment.
+    method : {'ARES', 'CXS', 'DBRC', 'WCM'}
+        The method used to sample outgoing scattering energies.  Valid options
+        are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
+        rejection correction), and 'WCM' (weight correction method).
+    E_min : float
+        The minimum energy above which the specified method is applied.  By
+        default, CXS will be used below E_min.
+    E_max : float
+        The maximum energy below which the specified method is applied.  By
+        default, the asymptotic target-at-rest model is applied  above E_max.
+
     Attributes
     ----------
     nuclide : openmc.Nuclide
         The nuclide affected by this resonance scattering treatment.
-    nuclide_0K : openmc.Nuclide
-        This should be the same isotope as the nuclide attribute above, but it
-        should have an xs attribute that identifies 0 Kelvin data.
-    method : str
+    method : {'ARES', 'CXS', 'DBRC', 'WCM'}
         The method used to sample outgoing scattering energies.  Valid options
         are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
         rejection correction), and 'WCM' (weight correction method).
@@ -1195,20 +1201,19 @@ class ResonanceScattering(object):
 
     """
 
-    def __init__(self):
-        self._nuclide = None
-        self._nuclide_0K = None
-        self._method = None
+    def __init__(self, nuclide, method='CXS', E_min=None, E_max=None):
         self._E_min = None
         self._E_max = None
+        self.nuclide = nuclide
+        self.method = method
+        if E_min is not None:
+            self.E_min = E_min
+        if E_max is not None:
+            self.E_max = E_max
 
     @property
     def nuclide(self):
         return self._nuclide
-
-    @property
-    def nuclide_0K(self):
-        return self._nuclide_0K
 
     @property
     def method(self):
@@ -1226,11 +1231,6 @@ class ResonanceScattering(object):
     def nuclide(self, nuc):
         cv.check_type('nuclide', nuc, Nuclide)
         self._nuclide = nuc
-
-    @nuclide_0K.setter
-    def nuclide_0K(self, nuc):
-        cv.check_type('nuclide_0K', nuc, Nuclide)
-        self._nuclide_0K = nuc
 
     @method.setter
     def method(self, m):

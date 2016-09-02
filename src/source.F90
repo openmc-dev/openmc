@@ -1,5 +1,11 @@
 module source
 
+  use hdf5, only: HID_T
+#ifdef MPI
+  use message_passing
+#endif
+
+  use algorithm,        only: binary_search
   use bank_header,      only: Bank
   use constants
   use distribution_univariate, only: Discrete
@@ -12,16 +18,9 @@ module source
   use output,           only: write_message
   use particle_header,  only: Particle
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream
-  use search,           only: binary_search
   use string,           only: to_str
   use math
   use state_point,      only: read_source_bank, write_source_bank
-
-#ifdef MPI
-  use message_passing
-#endif
-
-  use hdf5, only: HID_T
 
   implicit none
 

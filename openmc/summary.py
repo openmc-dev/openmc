@@ -83,11 +83,10 @@ class Summary(object):
         n_nuclides = self._f['nuclides/n_nuclides_total'].value
         names = self._f['nuclides/names'].value
         awrs = self._f['nuclides/awrs'].value
-        zaids = self._f['nuclides/zaids'].value
         for n in range(n_nuclides):
             name = names[n].decode()
             name = name[:name.find('.')]
-            self.nuclides[name] = (zaids[n], awrs[n])
+            self.nuclides[name] = awrs[n]
 
     def _read_geometry(self):
         # Read in and initialize the Materials and Geometry
@@ -113,7 +112,6 @@ class Summary(object):
             material_id = int(key.lstrip('material '))
             index = self._f['materials'][key]['index'].value
             name = self._f['materials'][key]['name'].value.decode()
-            temperature = self._f['materials'][key]['temperature'].value.decode()
             density = self._f['materials'][key]['atom_density'].value
             nuc_densities = self._f['materials'][key]['nuclide_densities'][...]
             nuclides = self._f['materials'][key]['nuclides'].value

@@ -32,7 +32,6 @@ moderator.add_s_alpha_beta('c_H_in_H2O')
 
 # Instantiate a Materials collection and export to XML
 materials_file = openmc.Materials([moderator, fuel])
-materials_file.default_temperature = '294K'
 materials_file.export_to_xml()
 
 

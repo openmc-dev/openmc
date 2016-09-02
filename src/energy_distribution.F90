@@ -2,12 +2,12 @@ module energy_distribution
 
   use hdf5
 
+  use algorithm,     only: binary_search
   use constants,     only: ZERO, ONE, HALF, TWO, PI, HISTOGRAM, LINEAR_LINEAR
   use endf_header,   only: Tabulated1D
   use hdf5_interface
   use math,          only: maxwell_spectrum, watt_spectrum
   use random_lcg,    only: prn
-  use search,        only: binary_search
 
 !===============================================================================
 ! ENERGYDISTRIBUTION (abstract) defines an energy distribution that is a

@@ -84,9 +84,10 @@ contains
 
       ! Calculate microscopic and macroscopic cross sections
       if (run_CE) then
-        ! If the material is the same as the last material and the energy of the
-        ! particle hasn't changed, we don't need to lookup cross sections again.
-        if (p % material /= p % last_material) call calculate_xs(p)
+        ! If the material is the same as the last material and the temperature
+        ! hasn't changed, we don't need to lookup cross sections again.
+        if (p % material /= p % last_material .or. &
+             p % sqrtkT /= p % last_sqrtkT) call calculate_xs(p)
       else
         ! Since the MGXS can be angle dependent, this needs to be done
         ! After every collision for the MGXS mode

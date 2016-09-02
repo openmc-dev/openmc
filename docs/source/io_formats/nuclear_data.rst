@@ -26,8 +26,9 @@ Incident Neutron Data
 temperature-dependent data set.  For example, the data set corresponding to
 300 Kelvin would be located at `300K`.
 
-:Datasets: - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
-   TTT (in Kelvin)
+:Datasets:
+           - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
+             TTT (in Kelvin)
 
 **/<nuclide name>/reactions/reaction_<mt>/**
 
@@ -44,11 +45,14 @@ temperature-dependent data set.  For example, the data set corresponding to
 temperature-dependent data set.  For example, the data set corresponding to
 300 Kelvin would be located at `300K`.
 
-:Attributes: - **threshold_idx** (*int*) -- Index on the energy grid that the
-               reaction threshold corresponds to for temperature TTT (in Kelvin)
+:Datasets:
+           - **xs** (*double[]*) -- Cross section values tabulated against the
+             nuclide energy grid for temperature TTT (in Kelvin)
 
-:Datasets: - **xs** (*double[]*) -- Cross section values tabulated against the
-   nuclide energy grid for temperature TTT (in Kelvin)
+             :Attributes:
+                          - **threshold_idx** (*int*) -- Index on the energy
+                            grid that the reaction threshold corresponds to for
+                            temperature TTT (in Kelvin)
 
 **/<nuclide name>/reactions/reaction_<mt>/product_<j>/**
 
@@ -112,7 +116,7 @@ Thermal Neutron Scattering Data
 **/<thermal name>/**
 
 :Attributes: - **atomic_weight_ratio** (*double*) -- Mass in units of neutron masses
-             - **zaids** (*int[]*) -- ZAID identifiers for which the thermal
+             - **nuclides** (*char[][]*) -- Names of nuclides for which the thermal
                scattering data applies to
              - **secondary_mode** (*char[]*) -- Indicates how the inelastic
                outgoing angle-energy distributions are represented ('equal',
@@ -124,8 +128,9 @@ Thermal Neutron Scattering Data
 temperature-dependent data set.  For example, the data set corresponding to
 300 Kelvin would be located at `300K`.
 
-:Datasets: - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
-   TTT (in Kelvin)
+:Datasets:
+           - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
+             TTT (in Kelvin)
 
 **/<thermal name>/elastic/<TTT>K/**
 

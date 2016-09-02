@@ -8,7 +8,7 @@ import h5py
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from .data import K_BOLTZMANN
+from .data import K_BOLTZMANN, ATOMIC_SYMBOL
 from .ace import Table, get_table
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D
@@ -156,7 +156,7 @@ class ThermalScattering(EqualityMixin):
     Parameters
     ----------
     name : str
-        ZAID identifier of the table, e.g. lwtr.10t.
+        Name of the material using GND convention, e.g. c_H_in_H2O
     atomic_weight_ratio : float
         Atomic mass ratio of the target nuclide.
     kTs : Iterable of float
@@ -174,7 +174,7 @@ class ThermalScattering(EqualityMixin):
         Inelastic scattering cross section derived in the incoherent
         approximation
     name : str
-        Name of the table, e.g. lwtr.20t.
+        Name of the material using GND convention, e.g. c_H_in_H2O
     temperatures : Iterable of str
         List of string representations the temperatures of the target nuclide
         in the data set.  The temperatures are strings of the temperature,
@@ -182,8 +182,8 @@ class ThermalScattering(EqualityMixin):
     kTs : Iterable of float
         List of temperatures of the target nuclide in the data set.
         The temperatures have units of MeV.
-    zaids : Iterable of int
-        ZAID identifiers that the thermal scattering data applies to
+    nuclides : Iterable of str
+        Nuclide names that the thermal scattering data applies to
 
     """
 
@@ -200,7 +200,7 @@ class ThermalScattering(EqualityMixin):
         self.inelastic_mu_out = {}
         self.inelastic_dist = {}
         self.secondary_mode = None
-        self.zaids = []
+        self.nuclides = []
 
     def __repr__(self):
         if hasattr(self, 'name'):
@@ -226,7 +226,7 @@ class ThermalScattering(EqualityMixin):
         # Write basic data
         g = f.create_group(self.name)
         g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
-        g.attrs['zaids'] = self.zaids
+        g.attrs['nuclides'] = np.string_(self.nuclides)
         g.attrs['secondary_mode'] = np.string_(self.secondary_mode)
         ktg = g.create_group('kTs')
         for i, temperature in enumerate(self.temperatures):
@@ -446,7 +446,7 @@ class ThermalScattering(EqualityMixin):
         temperatures = [str(int(round(kT / K_BOLTZMANN))) + "K" for kT in kTs]
 
         table = cls(name, atomic_weight_ratio, kTs)
-        table.zaids = group.attrs['zaids']
+        table.nuclides = [nuc.decode() for nuc in group.attrs['nuclides']]
         table.secondary_mode = group.attrs['secondary_mode'].decode()
 
         # Read thermal elastic scattering
@@ -628,8 +628,10 @@ class ThermalScattering(EqualityMixin):
                 table.elastic_mu_out[temperatures[0]].shape = \
                     (n_energy, n_mu)
 
-        # Get relevant ZAIDs
-        pairs = np.fromiter(map(lambda p: p[0], ace.pairs), int)
-        table.zaids = pairs[np.nonzero(pairs)]
+        # Get relevant nuclides
+        for zaid, awr in ace.pairs:
+            if zaid > 0:
+                Z, A = divmod(zaid, 1000)
+                table.nuclides.append(ATOMIC_SYMBOL[Z] + str(A))
 
         return table

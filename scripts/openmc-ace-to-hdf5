@@ -172,6 +172,8 @@ for filename in ace_libraries:
                     continue
 
         elif xs.endswith('t'):
+            # Adjust name to be the new thermal scattering name
+            name = openmc.data.get_thermal_name(name)
             # Thermal scattering data
             if name not in nuclides:
                 try:

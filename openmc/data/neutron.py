@@ -472,8 +472,8 @@ class IncidentNeutron(EqualityMixin):
                     tgroup = group['total_nu']
                     rx.derived_products.append(Product.from_hdf5(tgroup))
 
-        # Build summed reactions.  Start from the highest MT number because high
-        # MTs never depend on lower MTs.
+        # Build summed reactions.  Start from the highest MT number because
+        # high MTs never depend on lower MTs.
         for mt_sum in sorted(SUM_RULES, reverse=True):
             if mt_sum not in data:
                 rxs = [data[mt] for mt in SUM_RULES[mt_sum] if mt in data]
@@ -545,7 +545,7 @@ class IncidentNeutron(EqualityMixin):
         energy = ace.xss[ace.jxs[1]:ace.jxs[1] + n_energy]
         data.energy[strT] = energy
         total_xs = ace.xss[ace.jxs[1] + n_energy:ace.jxs[1] + 2 * n_energy]
-        absorption_xs = ace.xss[ace.jxs[1] + 2*n_energy:ace.jxs[1] +
+        absorption_xs = ace.xss[ace.jxs[1] + 2 * n_energy:ace.jxs[1] +
                                 3 * n_energy]
 
         # Create summed reactions (total and absorption)
@@ -553,9 +553,10 @@ class IncidentNeutron(EqualityMixin):
         total.xs[strT] = Tabulated1D(energy, total_xs)
         data.summed_reactions[1] = total
 
-        absorption = Reaction(27)
-        absorption.xs[strT] = Tabulated1D(energy, absorption_xs)
-        data.summed_reactions[27] = absorption
+        if np.count_nonzero(absorption_xs) > 0:
+            absorption = Reaction(27)
+            absorption.xs[strT] = Tabulated1D(energy, absorption_xs)
+            data.summed_reactions[27] = absorption
 
         # Read each reaction
         n_reaction = ace.nxs[4] + 1

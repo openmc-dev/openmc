@@ -1,82 +1,31 @@
 from collections import Iterable
 from numbers import Real, Integral
-from xml.etree import ElementTree as ET
 import sys
 
 import numpy as np
+import h5py
 
 import openmc
 import openmc.mgxs
 from openmc.checkvalue import check_type, check_value, check_greater_than, \
-    check_iterable_type
-from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
+    check_less_than, check_iterable_type
 
 if sys.version_info[0] >= 3:
     basestring = str
 
 # Supported incoming particle MGXS angular treatment representations
+_REPRESENTATION_ISOTROPIC = 1
+_REPRESENTATION_ANGLE = 2
+_SCATTER_TYPE_TABULAR = 3
+_SCATTER_TYPE_LEGENDRE = 4
+_SCATTER_TYPE_HISTOGRAM = 5
 _REPRESENTATIONS = ['isotropic', 'angle']
-
-
-def ndarray_to_string(arr):
-    """Converts a numpy ndarray in to a join with spaces between entries
-    similar to ' '.join(map(str,arr)) but applied to all sub-dimensions.
-
-    Parameters
-    ----------
-    arr : numpy.ndarray
-        Array to combine in to a string
-
-    Returns
-    -------
-    text : str
-        String representation of array in arr
-
-    """
-
-    shape = arr.shape
-    ndim = arr.ndim
-    tab = '    '
-    indent = '\n' + tab + tab
-    text = indent
-
-    if ndim == 1:
-        text += tab
-        for i in range(shape[0]):
-            text += '{:.7E} '.format(arr[i])
-        text += indent
-    elif ndim == 2:
-        for i in range(shape[0]):
-            text += tab
-            for j in range(shape[1]):
-                text += '{:.7E} '.format(arr[i, j])
-            text += indent
-    elif ndim == 3:
-        for i in range(shape[0]):
-            for j in range(shape[1]):
-                text += tab
-                for k in range(shape[2]):
-                    text += '{:.7E} '.format(arr[i, j, k])
-                text += indent
-    elif ndim == 4:
-        for i in range(shape[0]):
-            for j in range(shape[1]):
-                for k in range(shape[2]):
-                    text += tab
-                    for l in range(shape[3]):
-                        text += '{:.7E} '.format(arr[i, j, k, l])
-                    text += indent
-    elif ndim == 5:
-        for i in range(shape[0]):
-            for j in range(shape[1]):
-                for k in range(shape[2]):
-                    for l in range(shape[3]):
-                        text += tab
-                        for m in range(shape[4]):
-                            text += '{:.7E} '.format(arr[i, j, k, l, m])
-                        text += indent
-
-    return text
+_REPRESENTATIONS_TEXT = {'isotropic': _REPRESENTATION_ISOTROPIC,
+                         'angle': _REPRESENTATION_ANGLE}
+_SCATTER_TYPES = ['tabular', 'legendre', 'histogram']
+_SCATTER_TYPES_TEXT = {'tabular': _SCATTER_TYPE_TABULAR,
+                       'legendre': _SCATTER_TYPE_LEGENDRE,
+                       'histogram': _SCATTER_TYPE_HISTOGRAM}
 
 
 class XSdata(object):
@@ -85,40 +34,37 @@ class XSdata(object):
 
     Parameters
     ----------
-    name : str, optional
+    name : str
         Name of the mgxs data set.
     energy_groups : openmc.mgxs.EnergyGroups
         Energygroup structure
     representation : {'isotropic', 'angle'}, optional
         Method used in generating the MGXS (isotropic or angle-dependent flux
         weighting). Defaults to 'isotropic'
+    temperatures : numpy.ndarray
+        Temperatures (in units of Kelvin) of the provided datasets.  Defaults
+        to a single temperature at 300K.
 
     Attributes
     ----------
     name : str
         Unique identifier for the xsdata object
-    alias : str
-        Separate unique identifier for the xsdata object
     awr : float
         Atomic weight ratio of an isotope.  That is, the ratio of the mass
         of the isotope to the mass of a single neutron.
-    kT : float
-        Temperature (in units of MeV).
+    temperatures : numpy.ndarray
+        Temperatures (in units of Kelvin) of the provided datasets.  Defaults
+        to a single temperature at 300K.
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure
     fissionable : bool
         Whether or not this is a fissionable data set.
-    scatt_type : {'legendre', 'histogram', or 'tabular'}
+    scatter_type : {'legendre', 'histogram', or 'tabular'}
         Angular distribution representation (legendre, histogram, or tabular)
     order : int
         Either the Legendre order, number of bins, or number of points used to
         describe the angular distribution associated with each group-to-group
         transfer probability.
-    tabular_legendre : dict
-        Set how to treat the Legendre scattering kernel (tabular or leave in
-        Legendre polynomial form). Dict contains two keys: 'enable' and
-        'num_points'.  'enable' is a boolean and 'num_points' is the
-        number of points to use, if 'enable' is True.
     representation : {'isotropic', 'angle'}
         Method used in generating the MGXS (isotropic or angle-dependent flux
         weighting).
@@ -160,16 +106,16 @@ class XSdata(object):
         azimuthal angles times the number of polar angles, with the
         inner-dimension being groups, intermediate-dimension being azimuthal
         angles and outer-dimension being the polar angles.
-    scatter : numpy.ndarray
+    scatter_matrix : numpy.ndarray
         Scattering moment matrices presented with the columns representing
         incoming group and rows representing the outgoing group.  That is,
         down-scatter will be above the diagonal of the resultant matrix.  This
         matrix is repeated for every Legendre order (in order of increasing
-        orders) if ``scatt_type`` is "legendre"; otherwise, this matrix is
+        orders) if ``scatter_type`` is "legendre"; otherwise, this matrix is
         repeated for every bin of the histogram or tabular representation.
         Finally, if ``representation`` is "angle", the above is repeated for
         every azimuthal angle and every polar angle, in that order.
-    multiplicity : numpy.ndarray
+    multiplicity_matrix : numpy.ndarray
         Ratio of neutrons produced in scattering collisions to the neutrons
         which undergo scattering collisions; that is, the multiplicity provides
         the code with a scaling factor to account for neutrons produced in
@@ -218,29 +164,28 @@ class XSdata(object):
 
     """
 
-    def __init__(self, name, energy_groups, representation='isotropic'):
+    def __init__(self, name, energy_groups, temperatures=[300.],
+                 representation='isotropic'):
         # Initialize class attributes
-        self._name = name
-        self._energy_groups = energy_groups
-        self._representation = representation
-        self._alias = None
+        self.name = name
+        self.energy_groups = energy_groups
+        self.temperatures = temperatures
+        self.representation = representation
         self._awr = None
-        self._kT = None
         self._fissionable = False
-        self._scatt_type = 'legendre'
+        self._scatter_type = 'legendre'
         self._order = None
-        self._tabular_legendre = None
         self._num_polar = None
         self._num_azimuthal = None
-        self._total = None
-        self._absorption = None
-        self._scatter = None
-        self._multiplicity = None
-        self._fission = None
-        self._nu_fission = None
-        self._kappa_fission = None
-        self._chi = None
         self._use_chi = None
+        self._total = len(temperatures) * [None]
+        self._absorption = len(temperatures) * [None]
+        self._scatter_matrix = len(temperatures) * [None]
+        self._multiplicity_matrix = len(temperatures) * [None]
+        self._fission = len(temperatures) * [None]
+        self._nu_fission = len(temperatures) * [None]
+        self._kappa_fission = len(temperatures) * [None]
+        self._chi = len(temperatures) * [None]
 
     @property
     def name(self):
@@ -255,28 +200,24 @@ class XSdata(object):
         return self._representation
 
     @property
-    def alias(self):
-        return self._alias
-
-    @property
     def awr(self):
         return self._awr
 
     @property
-    def kT(self):
-        return self._kT
+    def fissionable(self):
+        return self._fissionable
 
     @property
-    def scatt_type(self):
-        return self._scatt_type
+    def temperatures(self):
+        return self._temperatures
+
+    @property
+    def scatter_type(self):
+        return self._scatter_type
 
     @property
     def order(self):
         return self._order
-
-    @property
-    def tabular_legendre(self):
-        return self._tabular_legendre
 
     @property
     def num_polar(self):
@@ -299,12 +240,12 @@ class XSdata(object):
         return self._absorption
 
     @property
-    def scatter(self):
-        return self._scatter
+    def scatter_matrix(self):
+        return self._scatter_matrix
 
     @property
-    def multiplicity(self):
-        return self._multiplicity
+    def multiplicity_matrix(self):
+        return self._multiplicity_matrix
 
     @property
     def fission(self):
@@ -324,36 +265,36 @@ class XSdata(object):
 
     @property
     def num_orders(self):
-        if (self._order is not None) and (self._scatt_type is not None):
-            if self._scatt_type is 'legendre':
+        if self._order is not None:
+            if self._scatter_type in (None, 'legendre'):
                 return self._order + 1
             else:
                 return self._order
 
     @property
     def vector_shape(self):
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             return (self.energy_groups.num_groups,)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             return (self.num_polar, self.num_azimuthal,
                     self.energy_groups.num_groups)
 
     @property
     def matrix_shape(self):
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             return (self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             return (self.num_polar, self.num_azimuthal,
                     self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
 
     @property
     def pn_matrix_shape(self):
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             return (self.num_orders, self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             return (self.num_polar, self.num_azimuthal, self.num_orders,
                     self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
@@ -380,13 +321,6 @@ class XSdata(object):
         check_value('representation', representation, _REPRESENTATIONS)
         self._representation = representation
 
-    @alias.setter
-    def alias(self, alias):
-        if alias is not None:
-            check_type('alias', alias, basestring)
-            self._alias = alias
-        else:
-            self._alias = self._name
 
     @awr.setter
     def awr(self, awr):
@@ -395,19 +329,28 @@ class XSdata(object):
         check_greater_than('awr', awr, 0.0)
         self._awr = awr
 
-    @kT.setter
-    def kT(self, kT):
-        # Check validity of type and that the kT value is >= 0
-        check_type('kT', kT, Real)
-        check_greater_than('kT', kT, 0.0, equality=True)
-        self._kT = kT
+    @fissionable.setter
+    def fissionable(self, fissionable):
+        check_type('fissionable', fissionable, bool)
+        self._fissionable = fissionable
 
-    @scatt_type.setter
-    def scatt_type(self, scatt_type):
+    @temperatures.setter
+    def temperatures(self, temperatures):
+        check_type('temperatures', temperatures, Iterable,
+                   expected_iter_type=Real)
+        # Convert to a numpy array so we can easily get the shape for
+        # checking
+        nptemperatures = np.asarray(temperatures)
+
+        check_value('temperatures dimensionality', nptemperatures.ndim, [1])
+
+        self._temperatures = nptemperatures
+
+    @scatter_type.setter
+    def scatter_type(self, scatter_type):
         # check to see it is of a valid type and value
-        check_value('scatt_type', scatt_type, ['legendre', 'histogram',
-                                               'tabular'])
-        self._scatt_type = scatt_type
+        check_value('scatter_type', scatter_type, _SCATTER_TYPES)
+        self._scatter_type = scatter_type
 
     @order.setter
     def order(self, order):
@@ -415,29 +358,6 @@ class XSdata(object):
         check_type('order', order, Integral)
         check_greater_than('order', order, 0, equality=True)
         self._order = order
-
-    @tabular_legendre.setter
-    def tabular_legendre(self, tabular_legendre):
-        # Check to make sure this is a dict and it has our keys with the
-        # right values.
-        check_type('tabular_legendre', tabular_legendre, dict)
-        if 'enable' in tabular_legendre:
-            enable = tabular_legendre['enable']
-            check_type('enable', enable, bool)
-        else:
-            msg = 'The tabular_legendre dict must include a value keyed by ' \
-                  '"enable"'
-            raise ValueError(msg)
-        if 'num_points' in tabular_legendre:
-            num_points = tabular_legendre['num_points']
-            check_type('num_points', num_points, Integral)
-            check_greater_than('num_points', num_points, 0)
-        else:
-            if not enable:
-                num_points = 1
-            else:
-                num_points = 33
-        self._tabular_legendre = {'enable': enable, 'num_points': num_points}
 
     @num_polar.setter
     def num_polar(self, num_polar):
@@ -457,42 +377,111 @@ class XSdata(object):
         check_type('use_chi', use_chi, bool)
         self._use_chi = use_chi
 
-    @total.setter
-    def total(self, total):
+    def set_total(self, total, temperature=300.):
+        """This method sets the cross section for this XSdata object at the
+        provided temperature.
+
+        Parameters
+        ----------
+        total: nd.nparray
+            Total Cross Section
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
+
+        See also
+        --------
+        openmc.mgxs_library.set_total_mgxs()
+
+        """
         check_type('total', total, Iterable, expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for
         # checking
         nptotal = np.asarray(total)
         check_value('total shape', nptotal.shape, [self.vector_shape])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
-        self._total = nptotal
+        i = self.temperatures.tolist().index(temperature)
+        self._total[i] = nptotal
 
-    @absorption.setter
-    def absorption(self, absorption):
+    def set_absorption(self, absorption, temperature=300.):
+        """This method sets the cross section for this XSdata object at the
+        provided temperature.
+
+        Parameters
+        ----------
+        absorption: nd.nparray
+            Absorption Cross Section
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
+
+        See also
+        --------
+        openmc.mgxs_library.set_absorption_mgxs()
+
+        """
         check_type('absorption', absorption, Iterable, expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for
         # checking
         npabsorption = np.asarray(absorption)
         check_value('absorption shape', npabsorption.shape,
                     [self.vector_shape])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
-        self._absorption = npabsorption
+        i = self.temperatures.tolist().index(temperature)
+        self._absorption[i] = npabsorption
 
-    @fission.setter
-    def fission(self, fission):
+    def set_fission(self, fission, temperature=300.):
+        """This method sets the cross section for this XSdata object at the
+        provided temperature.
+
+        Parameters
+        ----------
+        fission: nd.nparray
+            Fission Cross Section
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
+
+        See also
+        --------
+        openmc.mgxs_library.set_fission_mgxs()
+
+        """
         check_type('fission', fission, Iterable, expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for
         # checking
         npfission = np.asarray(fission)
         check_value('fission shape', npfission.shape, [self.vector_shape])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
-        self._fission = npfission
+        i = self.temperatures.tolist().index(temperature)
+        self._fission[i] = npfission
 
-        if np.sum(self._fission) > 0.0:
+        if np.sum(npfission) > 0.0:
             self._fissionable = True
 
-    @kappa_fission.setter
-    def kappa_fission(self, kappa_fission):
+    def set_kappa_fission(self, kappa_fission, temperature=300.):
+        """This method sets the cross section for this XSdata object at the
+        provided temperature.
+
+        Parameters
+        ----------
+        kappa_fission: nd.nparray
+            Kappa-Fission Cross Section
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
+
+        See also
+        --------
+        openmc.mgxs_library.set_kappa_fission_mgxs()
+
+        """
         check_type('kappa_fission', kappa_fission, Iterable,
                    expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for
@@ -500,18 +489,36 @@ class XSdata(object):
         npkappa_fission = np.asarray(kappa_fission)
         check_value('kappa fission shape', npkappa_fission.shape,
                     [self.vector_shape])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
-        self._kappa_fission = npkappa_fission
+        i = self.temperatures.tolist().index(temperature)
+        self._kappa_fission[i] = npkappa_fission
 
-        if np.sum(self._kappa_fission) > 0.0:
+        if np.sum(npkappa_fission) > 0.0:
             self._fissionable = True
 
-    @chi.setter
-    def chi(self, chi):
+    def set_chi(self, chi, temperature=300.):
+        """This method sets the cross section for this XSdata object at the
+        provided temperature.
+
+        Parameters
+        ----------
+        chi: nd.nparray
+            Fission Spectrum
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
+
+        See also
+        --------
+        openmc.mgxs_library.set_chi_mgxs()
+
+        """
         if self.use_chi is not None:
             if not self.use_chi:
-                msg = 'Providing "chi" when "nu-fission" already provided as a' \
-                      'matrix'
+                msg = 'Providing "chi" when "nu-fission" already provided ' \
+                      'as a matrix'
                 raise ValueError(msg)
 
         check_type('chi', chi, Iterable, expected_iter_type=Real)
@@ -522,25 +529,61 @@ class XSdata(object):
         if npchi.shape != self.vector_shape:
             msg = 'Provided chi iterable does not have the expected shape.'
             raise ValueError(msg)
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
-        self._chi = npchi
+        i = self.temperatures.tolist().index(temperature)
+        self._chi[i] = npchi
 
         if self.use_chi is not None:
             self.use_chi = True
 
-    @scatter.setter
-    def scatter(self, scatter):
+    def set_scatter_matrix(self, scatter, temperature=300.):
+        """This method sets the cross section for this XSdata object at the
+        provided temperature.
+
+        Parameters
+        ----------
+        scatter: nd.nparray
+            Scattering Matrix Cross Section
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
+
+        See also
+        --------
+        openmc.mgxs_library.set_scatter_matrix_mgxs()
+
+        """
         # Convert to a numpy array so we can easily get the shape for
         # checking
         npscatter = np.asarray(scatter)
         check_iterable_type('scatter', npscatter, Real,
                             max_depth=len(npscatter.shape))
         check_value('scatter shape', npscatter.shape, [self.pn_matrix_shape])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
-        self._scatter = npscatter
+        i = self.temperatures.tolist().index(temperature)
+        self._scatter_matrix[i] = npscatter
 
-    @multiplicity.setter
-    def multiplicity(self, multiplicity):
+    def set_multiplicity_matrix(self, multiplicity, temperature=300.):
+        """This method sets the cross section for this XSdata object at the
+        provided temperature.
+
+        Parameters
+        ----------
+        multiplicity: nd.nparray
+            Multiplicity Matrix Cross Section
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
+
+        See also
+        --------
+        openmc.mgxs_library.set_multiplicity_matrix_mgxs()
+
+        """
         # Convert to a numpy array so we can easily get the shape for
         # checking
         npmultiplicity = np.asarray(multiplicity)
@@ -548,11 +591,29 @@ class XSdata(object):
                             max_depth=len(npmultiplicity.shape))
         check_value('multiplicity shape', npmultiplicity.shape,
                     [self.matrix_shape])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
-        self._multiplicity = npmultiplicity
+        i = self.temperatures.tolist().index(temperature)
+        self._multiplicity_matrix[i] = npmultiplicity
 
-    @nu_fission.setter
-    def nu_fission(self, nu_fission):
+    def set_nu_fission(self, nu_fission, temperature=300.):
+        """This method sets the cross section for this XSdata object at the
+        provided temperature.
+
+        Parameters
+        ----------
+        nu_fission: nd.nparray
+            Nu-fission Cross Section
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
+
+        See also
+        --------
+        openmc.mgxs_library.set_nu_fission_mgxs()
+
+        """
         # The NuFissionXS class does not have the capability to produce
         # a fission matrix and therefore if this path is pursued, we know
         # chi must be used.
@@ -569,6 +630,8 @@ class XSdata(object):
 
         check_iterable_type('nu_fission', npnu_fission, Real,
                             max_depth=len(npnu_fission.shape))
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
         if self.use_chi is not None:
             if self.use_chi:
@@ -582,14 +645,18 @@ class XSdata(object):
                         [self.vector_shape, self.matrix_shape])
             # Find out if we have a nu-fission matrix or vector
             # and set a flag to allow other methods to check this later.
-            self.use_chi = (npnu_fission.shape == self.vector_shape)
+            if npnu_fission.shape == self.vector_shape:
+                self.use_chi = True
+            else:
+                self.use_chi = False
 
-        self._nu_fission = npnu_fission
-        if np.sum(self._nu_fission) > 0.0:
+        i = self.temperatures.tolist().index(temperature)
+        self._nu_fission[i] = npnu_fission
+        if np.sum(npnu_fission) > 0.0:
             self._fissionable = True
 
-    def set_total_mgxs(self, total, nuclide='total', xs_type='macro',
-                       subdomain='all'):
+    def set_total_mgxs(self, total, temperature=300., nuclide='total',
+                       xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.TotalXS or
         openmc.mgxs.TransportXS to be used to set the total cross section
         for this XSdata object.
@@ -599,6 +666,9 @@ class XSdata(object):
         total: openmc.mgxs.TotalXS or openmc.mgxs.TransportXS
             MGXS Object containing the total or transport cross section
             for the domain of interest.
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -621,16 +691,19 @@ class XSdata(object):
         check_value('energy_groups', total.energy_groups, [self.energy_groups])
         check_value('domain_type', total.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
+        i = self.temperatures.tolist().index(temperature)
         if self.representation is 'isotropic':
-            self._total = total.get_xs(nuclides=nuclide, xs_type=xs_type,
-                                       subdomains=subdomain)
+            self._total[i] = total.get_xs(nuclides=nuclide, xs_type=xs_type,
+                                          subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_absorption_mgxs(self, absorption, nuclide='total',
-                            xs_type='macro', subdomain=None):
+    def set_absorption_mgxs(self, absorption, temperature=300.,
+                            nuclide='total', xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.AbsorptionXS
         to be used to set the absorption cross section for this XSdata object.
 
@@ -639,6 +712,9 @@ class XSdata(object):
         absorption: openmc.mgxs.AbsorptionXS
             MGXS Object containing the absorption cross section
             for the domain of interest.
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -661,17 +737,20 @@ class XSdata(object):
                     [self.energy_groups])
         check_value('domain_type', absorption.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
+        i = self.temperatures.tolist().index(temperature)
         if self.representation is 'isotropic':
-            self._absorption = absorption.get_xs(nuclides=nuclide,
-                                                 xs_type=xs_type,
-                                                 subdomains=subdomain)
+            self._absorption[i] = absorption.get_xs(nuclides=nuclide,
+                                                    xs_type=xs_type,
+                                                    subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_fission_mgxs(self, fission, nuclide='total', xs_type='macro',
-                         subdomain=None):
+    def set_fission_mgxs(self, fission, temperature=300., nuclide='total',
+                         xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.FissionXS
         to be used to set the fission cross section for this XSdata object.
 
@@ -680,6 +759,9 @@ class XSdata(object):
         fission: openmc.mgxs.FissionXS
             MGXS Object containing the fission cross section
             for the domain of interest.
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -702,17 +784,20 @@ class XSdata(object):
                     [self.energy_groups])
         check_value('domain_type', fission.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
+        i = self.temperatures.tolist().index(temperature)
         if self.representation is 'isotropic':
-            self._fission = fission.get_xs(nuclides=nuclide,
-                                           xs_type=xs_type,
-                                           subdomains=subdomain)
+            self._fission[i] = fission.get_xs(nuclides=nuclide,
+                                              xs_type=xs_type,
+                                              subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_nu_fission_mgxs(self, nu_fission, nuclide='total',
-                            xs_type='macro', subdomain=None):
+    def set_nu_fission_mgxs(self, nu_fission, temperature=300.,
+                            nuclide='total', xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.NuFissionXS
         to be used to set the nu-fission cross section for this XSdata object.
 
@@ -721,6 +806,9 @@ class XSdata(object):
         nu_fission: openmc.mgxs.NuFissionXS
             MGXS Object containing the nu-fission cross section
             for the domain of interest.
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -744,11 +832,14 @@ class XSdata(object):
                     [self.energy_groups])
         check_value('domain_type', nu_fission.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
+        i = self.temperatures.tolist().index(temperature)
         if self.representation is 'isotropic':
-            self._nu_fission = nu_fission.get_xs(nuclides=nuclide,
-                                                 xs_type=xs_type,
-                                                 subdomains=subdomain)
+            self._nu_fission[i] = nu_fission.get_xs(nuclides=nuclide,
+                                                    xs_type=xs_type,
+                                                    subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -761,8 +852,9 @@ class XSdata(object):
         if np.sum(self._nu_fission) > 0.0:
             self._fissionable = True
 
-    def set_kappa_fission_mgxs(self, k_fission, nuclide='total',
-                               xs_type='macro', subdomain=None):
+    def set_kappa_fission_mgxs(self, k_fission, temperature=300.,
+                               nuclide='total', xs_type='macro',
+                               subdomain=None):
         """This method allows for an openmc.mgxs.KappaFissionXS
         to be used to set the kappa-fission cross section for this XSdata
         object.
@@ -772,6 +864,9 @@ class XSdata(object):
         kappa_fission: openmc.mgxs.KappaFissionXS
             MGXS Object containing the kappa-fission cross section
             for the domain of interest.
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -794,17 +889,20 @@ class XSdata(object):
                     [self.energy_groups])
         check_value('domain_type', k_fission.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
+        i = self.temperatures.tolist().index(temperature)
         if self.representation is 'isotropic':
-            self._kappa_fission = k_fission.get_xs(nuclides=nuclide,
-                                                   xs_type=xs_type,
-                                                   subdomains=subdomain)
+            self._kappa_fission[i] = k_fission.get_xs(nuclides=nuclide,
+                                                      xs_type=xs_type,
+                                                      subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_chi_mgxs(self, chi, nuclide='total', xs_type='macro',
-                     subdomain=None):
+    def set_chi_mgxs(self, chi, temperature=300., nuclide='total',
+                     xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.Chi
         to be used to set chi for this XSdata object.
 
@@ -812,6 +910,9 @@ class XSdata(object):
         ----------
         chi: openmc.mgxs.Chi
             MGXS Object containing chi for the domain of interest.
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -839,10 +940,13 @@ class XSdata(object):
         check_value('energy_groups', chi.energy_groups, [self.energy_groups])
         check_value('domain_type', chi.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
+        i = self.temperatures.tolist().index(temperature)
         if self.representation is 'isotropic':
-            self._chi = chi.get_xs(nuclides=nuclide,
-                                   xs_type=xs_type, subdomains=subdomain)
+            self._chi[i] = chi.get_xs(nuclides=nuclide,
+                                      xs_type=xs_type, subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -850,8 +954,9 @@ class XSdata(object):
         if self.use_chi is not None:
             self.use_chi = True
 
-    def set_scatter_mgxs(self, scatter, nuclide='total', xs_type='macro',
-                         subdomain=None):
+    def set_scatter_matrix_mgxs(self, scatter, temperature=300.,
+                                nuclide='total', xs_type='macro',
+                                subdomain=None):
         """This method allows for an openmc.mgxs.ScatterMatrixXS
         to be used to set the scatter matrix cross section for this XSdata
         object.  If the XSdata.order attribute has not yet been set, then
@@ -862,6 +967,9 @@ class XSdata(object):
         scatter: openmc.mgxs.ScatterMatrixXS
             MGXS Object containing the scatter matrix cross section
             for the domain of interest.
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -884,8 +992,10 @@ class XSdata(object):
                     [self.energy_groups])
         check_value('domain_type', scatter.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
 
-        if self.scatt_type != 'legendre':
+        if (self.scatter_type != 'legendre'):
             msg = 'Anisotropic scattering representations other than ' \
                   'Legendre expansions have not yet been implemented in ' \
                   'openmc.mgxs.'
@@ -901,13 +1011,14 @@ class XSdata(object):
             check_value('legendre_order', scatter.legendre_order,
                         [self.order])
 
+        i = self.temperatures.tolist().index(temperature)
         if self.representation is 'isotropic':
             # Get the scattering orders in the outermost dimension
-            self._scatter = np.zeros((self.num_orders,
-                                      self.energy_groups.num_groups,
-                                      self.energy_groups.num_groups))
+            self._scatter_matrix[i] = np.zeros((self.num_orders,
+                                                self.energy_groups.num_groups,
+                                                self.energy_groups.num_groups))
             for moment in range(self.num_orders):
-                self._scatter[moment, :, :] = \
+                self._scatter_matrix[i][moment, :, :] = \
                     scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
                                    moment=moment, subdomains=subdomain)
 
@@ -915,10 +1026,12 @@ class XSdata(object):
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_multiplicity_mgxs(self, nuscatter, scatter=None, nuclide='total',
-                              xs_type='macro', subdomain=None):
+    def set_multiplicity_matrix_mgxs(self, nuscatter, scatter=None,
+                                     temperature=300., nuclide='total',
+                                     xs_type='macro', subdomain=None):
         """This method allows for either the direct use of only an
-        openmc.mgxs.MultiplicityMatrixXS OR an openmc.mgxs.NuScatterMatrixXS and
+        openmc.mgxs.MultiplicityMatrixXS OR
+        an openmc.mgxs.NuScatterMatrixXS and
         openmc.mgxs.ScatterMatrixXS to be used to set the scattering
         multiplicity for this XSdata object. Multiplicity,
         in OpenMC parlance, is a factor used to account for the production
@@ -935,6 +1048,9 @@ class XSdata(object):
         scatter: openmc.mgxs.ScatterMatrixXS
             MGXS Object containing the scattering matrix cross section
             for the domain of interest.
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset. Defaults
+            to 300K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -958,6 +1074,9 @@ class XSdata(object):
                     [self.energy_groups])
         check_value('domain_type', nuscatter.domain_type,
                     ['universe', 'cell', 'material', 'mesh'])
+        check_type('temperature', temperature, Real)
+        check_value('temperature', temperature, self.temperatures)
+
         if scatter is not None:
             check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
             if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrixXS):
@@ -970,108 +1089,92 @@ class XSdata(object):
             check_value('domain_type', scatter.domain_type,
                         ['universe', 'cell', 'material', 'mesh'])
 
+        i = self.temperatures.tolist().index(temperature)
         if self.representation is 'isotropic':
             nuscatt = nuscatter.get_xs(nuclides=nuclide,
                                        xs_type=xs_type, moment=0,
                                        subdomains=subdomain)
             if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrixXS):
-                self._multiplicity = nuscatt
+                self._multiplicity_matrix[i] = nuscatt
             else:
                 scatt = scatter.get_xs(nuclides=nuclide,
                                        xs_type=xs_type, moment=0,
                                        subdomains=subdomain)
-                self._multiplicity = np.divide(nuscatt, scatt)
+                self._multiplicity_matrix[i] = np.divide(nuscatt, scatt)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
-        self._multiplicity = np.nan_to_num(self._multiplicity)
+        self._multiplicity_matrix[i] = \
+            np.nan_to_num(self._multiplicity_matrix[i])
 
-    def _get_xsdata_xml(self):
-        element = ET.Element('xsdata')
-        element.set('name', self._name)
+    def _get_xsdata_group(self, file, compression):
+        if compression is not None:
+            check_type("compression", compression, Integral)
+            check_greater_than("compression", compression, 0, equality=True)
+            check_less_than("compression", compression, 9, equality=True)
 
-        if self._alias is not None:
-            subelement = ET.SubElement(element, 'alias')
-            subelement.text = self.alias
+        grp = file.create_group(self.name)
+        if self.awr is not None:
+            grp.attrs['awr'] = self.awr
+        if self.fissionable is not None:
+            grp.attrs['fissionable'] = self.fissionable
+        if self.representation is not None:
+            grp.attrs['representation'] = \
+                np.string_(_REPRESENTATIONS_TEXT[self.representation])
+            if self.representation == 'angle':
+                if self.num_azimuthal is not None:
+                    grp.attrs['num-azimuthal'] = self.num_azimuthal
+                if self.num_polar is not None:
+                    grp.attrs['num-polar'] = self.num_polar
+        if self.scatter_type is not None:
+            grp.attrs['scatter-type'] = \
+                np.string_(_SCATTER_TYPES_TEXT[self.scatter_type])
+        if self.order is not None:
+            grp.attrs['order'] = self.order
 
-        if self._kT is not None:
-            subelement = ET.SubElement(element, 'kT')
-            subelement.text = str(self._kT)
-
-        if self._awr is not None:
-            subelement = ET.SubElement(element, 'awr')
-            subelement.text = str(self._awr)
-
-        if self._fissionable is not None:
-            subelement = ET.SubElement(element, 'fissionable')
-            subelement.text = str(self._fissionable)
-
-        if self._representation is not None:
-            subelement = ET.SubElement(element, 'representation')
-            subelement.text = self._representation
-
-        if self._representation == 'angle':
-            if self._num_azimuthal is not None:
-                subelement = ET.SubElement(element, 'num_azimuthal')
-                subelement.text = str(self._num_azimuthal)
-            if self._num_polar is not None:
-                subelement = ET.SubElement(element, 'num_polar')
-                subelement.text = str(self._num_polar)
-
-        if self._scatt_type is not None:
-            subelement = ET.SubElement(element, 'scatt_type')
-            subelement.text = self._scatt_type
-
-        if self._order is not None:
-            subelement = ET.SubElement(element, 'order')
-            subelement.text = str(self._order)
-
-        if self._tabular_legendre is not None:
-            subelement = ET.SubElement(element, 'tabular_legendre')
-            subelement.set('enable', str(self._tabular_legendre['enable']))
-            subelement.set('num_points',
-                           str(self._tabular_legendre['num_points']))
-
-        if self._total is not None:
-            subelement = ET.SubElement(element, 'total')
-            subelement.text = ndarray_to_string(self._total)
-
-        if self._absorption is not None:
-            subelement = ET.SubElement(element, 'absorption')
-            subelement.text = ndarray_to_string(self._absorption)
-
-        if self._scatter is not None:
-            subelement = ET.SubElement(element, 'scatter')
-            subelement.text = ndarray_to_string(self._scatter)
-
-        if self._multiplicity is not None:
-            subelement = ET.SubElement(element, 'multiplicity')
-            subelement.text = ndarray_to_string(self._multiplicity)
-
-        if self._fissionable:
-            if self._fission is not None:
-                subelement = ET.SubElement(element, 'fission')
-                subelement.text = ndarray_to_string(self._fission)
-
-            if self._kappa_fission is not None:
-                subelement = ET.SubElement(element, 'k_fission')
-                subelement.text = ndarray_to_string(self._kappa_fission)
-
-            if self._nu_fission is not None:
-                subelement = ET.SubElement(element, 'nu_fission')
-                subelement.text = ndarray_to_string(self._nu_fission)
-
-            if self._chi is not None:
-                subelement = ET.SubElement(element, 'chi')
-                subelement.text = ndarray_to_string(self._chi)
-
-        return element
+        # Create the temperature datasets
+        for i, temperature in enumerate(self.temperatures):
+            xsgrp = grp.create_group(str(np.round(temperature)) + "K")
+            if self._total[i] is not None:
+                xsgrp.create_dataset("total", data=self._total[i],
+                                     compression=compression)
+            if self._absorption[i] is not None:
+                xsgrp.create_dataset("absorption", data=self._absorption[i],
+                                     compression=compression)
+            if self._scatter_matrix[i] is not None:
+                xsgrp.create_dataset("scatter matrix",
+                                     data=self._scatter_matrix[i],
+                                     compression=compression)
+            if self._multiplicity_matrix[i] is not None:
+                xsgrp.create_dataset("multiplicity matrix",
+                                     data=self._multiplicity_matrix[i],
+                                     compression=compression)
+            if self.fissionable:
+                if self._fission[i] is not None:
+                    xsgrp.create_dataset("fission", data=self._fission[i],
+                                         compression=compression)
+                if self._kappa_fission[i] is not None:
+                    xsgrp.create_dataset("kappa-fission",
+                                         data=self._kappa_fission[i],
+                                         compression=compression)
+                if self._chi[i] is not None:
+                    xsgrp.create_dataset("chi", data=self._chi[i],
+                                         compression=compression)
+                if self._nu_fission[i] is not None:
+                    xsgrp.create_dataset("nu-fission",
+                                         data=self._nu_fission[i],
+                                         compression=compression)
 
 
 class MGXSLibrary(object):
     """Multi-Group Cross Sections file used for an OpenMC simulation.
     Corresponds directly to the MG version of the cross_sections.xml input
     file.
+
+    Parameters
+    ----------
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energygroup structure
 
     Attributes
     ----------
@@ -1084,10 +1187,9 @@ class MGXSLibrary(object):
     """
 
     def __init__(self, energy_groups):
-        self._xsdatas = []
-        self._energy_groups = energy_groups
+        self.energy_groups = energy_groups
         self._inverse_velocities = None
-        self._cross_sections_file = ET.Element('cross_sections')
+        self._xsdatas = []
 
     @property
     def inverse_velocities(self):
@@ -1096,6 +1198,10 @@ class MGXSLibrary(object):
     @property
     def energy_groups(self):
         return self._energy_groups
+
+    @property
+    def temperatures(self):
+        return self._temperatures
 
     @property
     def xsdatas(self):
@@ -1163,52 +1269,35 @@ class MGXSLibrary(object):
 
         self._xsdatas.remove(xsdata)
 
-    def _create_groups_subelement(self):
-        if self._energy_groups is not None:
-            element = ET.SubElement(self._cross_sections_file, 'groups')
-            element.text = str(self._energy_groups.num_groups)
-
-    def _create_group_structure_subelement(self):
-        if self._energy_groups is not None:
-            element = ET.SubElement(self._cross_sections_file,
-                                    'group_structure')
-            element.text = ' '.join(map(str, self._energy_groups.group_edges))
-
-    def _create_inverse_velocities_subelement(self):
-        if self._inverse_velocities is not None:
-            element = ET.SubElement(self._cross_sections_file,
-                                    'inverse_velocities')
-            element.text = ' '.join(map(str, self._inverse_velocities))
-
-    def _create_xsdata_subelements(self):
-        for xsdata in self._xsdatas:
-            xml_element = xsdata._get_xsdata_xml()
-            self._cross_sections_file.append(xml_element)
-
-    def export_to_xml(self, filename='mgxs.xml'):
-        """Create an mgxs.xml file that can be used for a
-        simulation.
+    def export_to_hdf5(self, filename='mgxs.h5', compression=None):
+        """Create an mgxs.h5 file that can be used for a simulation.
 
         Parameters
         ----------
-        filename : str, optional
-            filename of file, default is mgxs.xml
+        filename : str
+            Filename of file, default is mgxs.xml.
+        compression : None or int
+            The compression level to use in the datasets within the hdf5 file.
+            A value of None implies no compression, numbers between 0 and 9
+            refer to the compression level using the gzip algorithm.
+            Defaults to None.
 
         """
 
-        # Reset xml element tree
-        self._cross_sections_file.clear()
+        check_type('filename', filename, basestring)
+        if compression is not None:
+            check_type("compression", compression, Integral)
+            check_greater_than("compression", compression, 0, equality=True)
+            check_less_than("compression", compression, 9, equality=True)
 
-        self._create_groups_subelement()
-        self._create_group_structure_subelement()
-        self._create_inverse_velocities_subelement()
-        self._create_xsdata_subelements()
+        # Create and write to the HDF5 file
+        file = h5py.File(filename, "w")
+        file.attrs['groups'] = self.energy_groups.num_groups
+        file.attrs['group structure'] = self.energy_groups.group_edges
+        if self.inverse_velocities is not None:
+            file.attrs['inverse velocities'] = self.inverse_velocities
 
-        # Clean the indentation in the file to be user-readable
-        sort_xml_elements(self._cross_sections_file)
-        clean_xml_indentation(self._cross_sections_file)
+        for xsdata in self._xsdatas:
+            xsdata._get_xsdata_group(file, compression)
 
-        # Write the XML Tree to the xsdatas.xml file
-        tree = ET.ElementTree(self._cross_sections_file)
-        tree.write(filename, xml_declaration=True,
-                   encoding='utf-8', method='xml')
+        file.close()

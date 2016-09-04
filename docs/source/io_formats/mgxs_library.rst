@@ -62,7 +62,8 @@ data for the nuclide or material that it represents.
                ignored otherwise.
             - **scatter-type** (*char[]*) -- The representation of the
               scattering angular distribution.  The options are either
-              "legendre", "histogram", or "tabular".
+              "legendre", "histogram", or "tabular".  If not provided, the
+              default of "legendre" will be assumed.
             - **order** (*int*) -- Either the Legendre order, number of bins,
               or number of points (depending on the value of `scatter-type`)
               used to describe the angular distribution associated with each group-to-group transfer probability.

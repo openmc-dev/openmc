@@ -57,6 +57,9 @@ module mgxs_header
     logical :: fissionable  ! mgxs object is fissionable?
     integer :: scatter_type ! either legendre, histogram, or tabular.
 
+    ! Caching information
+    integer :: index_temp ! temperature index for nuclide
+
   contains
     procedure(mgxs_from_hdf5_), deferred :: from_hdf5 ! Load the data
     procedure(mgxs_combine_),  deferred  :: combine   ! initializes object
@@ -67,6 +70,7 @@ module mgxs_header
     procedure(mgxs_sample_scatter_), deferred :: sample_scatter
     ! Calculate the material specific MGXS data from the nuclides
     procedure(mgxs_calculate_xs_), deferred   :: calculate_xs
+    procedure :: find_temperature => mgxs_find_temperature
   end type Mgxs
 
 !===============================================================================
@@ -106,10 +110,9 @@ module mgxs_header
       integer, intent(in)                 :: max_order  ! Maximum requested order
     end subroutine mgxs_combine_
 
-    pure function mgxs_get_xs_(this, t, xstype, gin, gout, uvw, mu) result(xs_val)
+    pure function mgxs_get_xs_(this, xstype, gin, gout, uvw, mu) result(xs_val)
       import Mgxs
       class(Mgxs), intent(in)       :: this
-      integer, intent(in)           :: t      ! Temperature index of data
       character(*), intent(in)      :: xstype ! Cross Section Type
       integer, intent(in)           :: gin    ! Incoming Energy group
       integer, optional, intent(in) :: gout   ! Outgoing Group
@@ -118,20 +121,18 @@ module mgxs_header
       real(8)                       :: xs_val ! Resultant xs
     end function mgxs_get_xs_
 
-    function mgxs_sample_fission_(this, t, gin, uvw) result(gout)
+    function mgxs_sample_fission_(this, gin, uvw) result(gout)
       import Mgxs
       class(Mgxs), intent(in) :: this
-      integer, intent(in)     :: t      ! Temperature index
       integer, intent(in)     :: gin    ! Incoming energy group
       real(8), intent(in)     :: uvw(3) ! Particle Direction
       integer                 :: gout   ! Sampled outgoing group
 
     end function mgxs_sample_fission_
 
-    subroutine mgxs_sample_scatter_(this, t, uvw, gin, gout, mu, wgt)
+    subroutine mgxs_sample_scatter_(this, uvw, gin, gout, mu, wgt)
       import Mgxs
       class(Mgxs), intent(in)       :: this
-      integer, intent(in)           :: t      ! Temperature index of data
       real(8),        intent(in)    :: uvw(3) ! Incoming neutron direction
       integer,        intent(in)    :: gin    ! Incoming neutron group
       integer,        intent(out)   :: gout   ! Sampled outgoin group
@@ -139,10 +140,9 @@ module mgxs_header
       real(8),        intent(inout) :: wgt    ! Particle weight
     end subroutine mgxs_sample_scatter_
 
-    subroutine mgxs_calculate_xs_(this, t, gin, uvw, xs)
+    subroutine mgxs_calculate_xs_(this, gin, uvw, xs)
       import Mgxs, MaterialMacroXS
       class(Mgxs),           intent(in)    :: this
-      integer,               intent(in)    :: t      ! Temperature index
       integer,               intent(in)    :: gin    ! Incoming neutron group
       real(8),               intent(in)    :: uvw(3) ! Incoming neutron direction
       type(MaterialMacroXS), intent(inout) :: xs     ! Resultant Mgxs Data
@@ -1006,7 +1006,7 @@ module mgxs_header
 
     subroutine mgxsiso_combine(this, temps, mat, nuclides, groups, max_order)
       class(MgxsIso), intent(inout)       :: this ! The Mgxs to initialize
-      type(VectorReal), intent(in)        :: temps ! Temperatures to obtain
+      type(VectorReal), intent(in)        :: temps ! Temperatures to obtain [MeV]
       type(Material), pointer, intent(in) :: mat  ! base material
       type(MgxsContainer), intent(in)     :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                 :: groups     ! Number of E groups
@@ -1406,15 +1406,17 @@ module mgxs_header
 ! MGXS*_GET_XS returns the requested data cross section data
 !===============================================================================
 
-    pure function mgxsiso_get_xs(this, t, xstype, gin, gout, uvw, mu) result(xs)
+    pure function mgxsiso_get_xs(this, xstype, gin, gout, uvw, mu) result(xs)
       class(MgxsIso), intent(in)    :: this   ! The Xs to get data from
-      integer, intent(in)           :: t      ! Temperature index of data
       character(*) , intent(in)     :: xstype ! Type of xs requested
       integer, intent(in)           :: gin    ! Incoming Energy group
       integer, optional, intent(in) :: gout   ! Outgoing Energy group
       real(8), optional, intent(in) :: uvw(3) ! Requested Angle
       real(8), optional, intent(in) :: mu     ! Change in angle
       real(8)                       :: xs ! Requested x/s
+      integer                       :: t ! temperature index
+
+      t = this % index_temp
 
       select case(xstype)
       case('total')
@@ -1494,9 +1496,8 @@ module mgxs_header
       end select
     end function mgxsiso_get_xs
 
-    pure function mgxsang_get_xs(this, t, xstype, gin, gout, uvw, mu) result(xs)
+    pure function mgxsang_get_xs(this, xstype, gin, gout, uvw, mu) result(xs)
       class(MgxsAngle), intent(in)  :: this   ! The Mgxs to initialize
-      integer, intent(in)           :: t      ! Temperature index of data
       character(*) , intent(in)     :: xstype ! Type of xs requested
       integer, intent(in)           :: gin    ! Incoming Energy group
       integer, optional, intent(in) :: gout   ! Outgoing Energy group
@@ -1504,7 +1505,9 @@ module mgxs_header
       real(8), optional, intent(in) :: mu     ! Change in angle
       real(8)                       :: xs ! Requested x/s
 
-      integer :: iazi, ipol
+      integer :: iazi, ipol, t
+
+      t = this % index_temp
 
       if (present(uvw)) then
         call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
@@ -1594,9 +1597,8 @@ module mgxs_header
 ! MGXS*_SAMPLE_FISSION_ENERGY samples the outgoing energy from a fission event
 !===============================================================================
 
-    function mgxsiso_sample_fission_energy(this, t, gin, uvw) result(gout)
+    function mgxsiso_sample_fission_energy(this, gin, uvw) result(gout)
       class(MgxsIso), intent(in) :: this   ! Data to work with
-      integer, intent(in)        :: t      ! Temperature index of data
       integer, intent(in)        :: gin    ! Incoming energy group
       real(8), intent(in)        :: uvw(3) ! Particle Direction
       integer                    :: gout   ! Sampled outgoing group
@@ -1605,18 +1607,17 @@ module mgxs_header
 
       xi = prn()
       gout = 1
-      prob = this % xs(t) % chi(gout,gin)
+      prob = this % xs(this % index_temp) % chi(gout,gin)
 
       do while (prob < xi)
         gout = gout + 1
-        prob = prob + this % xs(t) % chi(gout,gin)
+        prob = prob + this % xs(this % index_temp) % chi(gout,gin)
       end do
 
     end function mgxsiso_sample_fission_energy
 
-    function mgxsang_sample_fission_energy(this, t, gin, uvw) result(gout)
+    function mgxsang_sample_fission_energy(this, gin, uvw) result(gout)
       class(MgxsAngle), intent(in) :: this  ! Data to work with
-      integer, intent(in)          :: t      ! Temperature index of data
       integer, intent(in)          :: gin    ! Incoming energy group
       real(8), intent(in)          :: uvw(3) ! Particle Direction
       integer                      :: gout   ! Sampled outgoing group
@@ -1628,11 +1629,11 @@ module mgxs_header
 
       xi = prn()
       gout = 1
-      prob = this % xs(t) % chi(gout, gin, iazi, ipol)
+      prob = this % xs(this % index_temp) % chi(gout, gin, iazi, ipol)
 
       do while (prob < xi)
         gout = gout + 1
-        prob = prob + this % xs(t) % chi(gout, gin, iazi, ipol)
+        prob = prob + this % xs(this % index_temp) % chi(gout, gin, iazi, ipol)
       end do
 
     end function mgxsang_sample_fission_energy
@@ -1641,22 +1642,20 @@ module mgxs_header
 ! MGXS*_SAMPLE_SCATTER Selects outgoing energy and angle after a scatter event
 !===============================================================================
 
-    subroutine mgxsiso_sample_scatter(this, t, uvw, gin, gout, mu, wgt)
+    subroutine mgxsiso_sample_scatter(this, uvw, gin, gout, mu, wgt)
       class(MgxsIso), intent(in)    :: this
-      integer,        intent(in)    :: t      ! Temperature index
       real(8),        intent(in)    :: uvw(3) ! Incoming neutron direction
       integer,        intent(in)    :: gin    ! Incoming neutron group
       integer,        intent(out)   :: gout   ! Sampled outgoin group
       real(8),        intent(out)   :: mu     ! Sampled change in angle
       real(8),        intent(inout) :: wgt    ! Particle weight
 
-      call this % xs(t) % scatter % sample(gin, gout, mu, wgt)
+      call this % xs(this % index_temp) % scatter % sample(gin, gout, mu, wgt)
 
     end subroutine mgxsiso_sample_scatter
 
-    subroutine mgxsang_sample_scatter(this, t, uvw, gin, gout, mu, wgt)
+    subroutine mgxsang_sample_scatter(this, uvw, gin, gout, mu, wgt)
       class(MgxsAngle), intent(in)    :: this
-      integer,          intent(in)    :: t      ! Temperature index
       real(8),          intent(in)    :: uvw(3) ! Incoming neutron direction
       integer,          intent(in)    :: gin    ! Incoming neutron group
       integer,          intent(out)   :: gout   ! Sampled outgoin group
@@ -1666,7 +1665,8 @@ module mgxs_header
       integer :: iazi, ipol ! Angular indices
 
       call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
-      call this % xs(t) % scatter(iazi, ipol) % obj % sample(gin, gout, mu, wgt)
+      call this % xs(this % index_temp) % scatter(iazi, ipol) % obj % sample( &
+           gin, gout, mu, wgt)
 
     end subroutine mgxsang_sample_scatter
 
@@ -1675,24 +1675,22 @@ module mgxs_header
 ! for the material the particle is currently traveling through.
 !===============================================================================
 
-    subroutine mgxsiso_calculate_xs(this, t, gin, uvw, xs)
+    subroutine mgxsiso_calculate_xs(this, gin, uvw, xs)
       class(MgxsIso),        intent(in)    :: this
-      integer,               intent(in)    :: t      ! Temperature index
       integer,               intent(in)    :: gin    ! Incoming neutron group
       real(8),               intent(in)    :: uvw(3) ! Incoming neutron direction
       type(MaterialMacroXS), intent(inout) :: xs     ! Resultant Mgxs Data
 
-      xs % total         = this % xs(t) % total(gin)
-      xs % elastic       = this % xs(t) % scatter % scattxs(gin)
-      xs % absorption    = this % xs(t) % absorption(gin)
-      xs % fission       = this % xs(t) % fission(gin)
-      xs % nu_fission    = this % xs(t) % nu_fission(gin)
+      xs % total         = this % xs(this % index_temp) % total(gin)
+      xs % elastic       = this % xs(this % index_temp) % scatter % scattxs(gin)
+      xs % absorption    = this % xs(this % index_temp) % absorption(gin)
+      xs % fission       = this % xs(this % index_temp) % fission(gin)
+      xs % nu_fission    = this % xs(this % index_temp) % nu_fission(gin)
 
     end subroutine mgxsiso_calculate_xs
 
-    subroutine mgxsang_calculate_xs(this, t, gin, uvw, xs)
+    subroutine mgxsang_calculate_xs(this, gin, uvw, xs)
       class(MgxsAngle),      intent(in)    :: this
-      integer,               intent(in)    :: t      ! Temperature index
       integer,               intent(in)    :: gin    ! Incoming neutron group
       real(8),               intent(in)    :: uvw(3) ! Incoming neutron direction
       type(MaterialMacroXS), intent(inout) :: xs     ! Resultant Mgxs Data
@@ -1700,16 +1698,41 @@ module mgxs_header
       integer :: iazi, ipol
 
       call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
-      xs % total         = this % xs(t) % total(gin, iazi, ipol)
-      xs % elastic       = this % xs(t) % scatter(iazi, ipol) % obj % scattxs(gin)
-      xs % absorption    = this % xs(t) % absorption(gin, iazi, ipol)
-      xs % fission       = this % xs(t) % fission(gin, iazi, ipol)
-      xs % nu_fission    = this % xs(t) % nu_fission(gin, iazi, ipol)
+      xs % total         = this % xs(this % index_temp) % &
+           total(gin, iazi, ipol)
+      xs % elastic       = this % xs(this % index_temp) % &
+           scatter(iazi, ipol) % obj % scattxs(gin)
+      xs % absorption    = this % xs(this % index_temp) % &
+           absorption(gin, iazi, ipol)
+      xs % fission       = this % xs(this % index_temp) % &
+           fission(gin, iazi, ipol)
+      xs % nu_fission    = this % xs(this % index_temp) % &
+           nu_fission(gin, iazi, ipol)
 
     end subroutine mgxsang_calculate_xs
 
 !===============================================================================
-! find_angle finds the closest angle on the data grid and returns that index
+! MGXS_FIND_TEMPERATURE sets the temperature index for the given
+! sqrt(temperature), (with temperature in units of MeV)
+!===============================================================================
+
+    pure subroutine mgxs_find_temperature(this, sqrtkT, tolerance)
+      class(Mgxs), intent(in) :: this
+      real(8), intent(in)     :: sqrtkT    ! Temperature (in units of of MeV)
+      real(8), intent(in)     :: tolerance ! Temperature tolerance
+
+      real(8) :: kT
+      integer :: i_temp
+
+      kT = sqrtkT**2
+      do i_temp = 1, size(this % kTs)
+        if (abs(this % kTs(i_temp) - kT) < K_BOLTZMANN * tolerance) exit
+      end do
+
+    end subroutine mgxs_find_temperature
+
+!===============================================================================
+! FIND_ANGLE finds the closest angle on the data grid and returns that index
 !===============================================================================
 
     pure subroutine find_angle(polar, azimuthal, uvw, i_azi, i_pol)

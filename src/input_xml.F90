@@ -48,8 +48,8 @@ contains
 
     call read_settings_xml()
     call read_geometry_xml()
-    call read_materials()
     call read_tallies_xml()
+    call read_materials()
     if (cmfd_run) call configure_cmfd()
 
   end subroutine read_input_xml
@@ -1356,11 +1356,7 @@ contains
       ! Read cell temperatures.  If the temperature is not specified, set it to
       ! ERROR_REAL for now.  During initialization we'll replace ERROR_REAL with
       ! the temperature from the material data.
-      if (.not. run_CE) then
-        ! Cell temperatures are not used for MG mode.
-        allocate(c % sqrtkT(1))
-        c % sqrtkT(1) = ZERO
-      else if (check_for_node(node_cell, "temperature")) then
+      if (check_for_node(node_cell, "temperature")) then
         n = get_arraysize_double(node_cell, "temperature")
         if (n > 0) then
           ! Make sure this is a "normal" cell.
@@ -2038,7 +2034,7 @@ contains
     if (run_CE) then
       call read_ce_cross_sections_xml(libraries)
     else
-      call read_mg_cross_sections_xml(libraries)
+      call read_mg_cross_sections_header(libraries)
     end if
 
     ! Creating dictionary that maps the name of the material to the entry
@@ -2069,10 +2065,16 @@ contains
     call get_temperatures(nuc_temps, sab_temps)
 
     ! Read continuous-energy cross sections
-    if (run_CE .and. run_mode /= MODE_PLOTTING) then
-      call time_read_xs%start()
-      call read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
-      call time_read_xs%stop()
+    if (run_mode /= MODE_PLOTTING) then
+      call time_read_xs % start()
+      if (run_CE) then
+        call read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
+      else
+        ! Create material macroscopic data for MGXS
+        call read_mgxs(nuc_temps)
+        call create_macro_xs()
+      end if
+      call time_read_xs % stop()
     end if
 
     ! Normalize atom/weight percents
@@ -4601,44 +4603,43 @@ contains
 
   end subroutine read_ce_cross_sections_xml
 
-  subroutine read_mg_cross_sections_xml(libraries)
+  subroutine read_mg_cross_sections_header(libraries)
     type(Library), allocatable, intent(out) :: libraries(:)
 
     integer :: i           ! loop index
     integer :: n_libraries
-    logical :: file_exists ! does cross_sections.xml exist?
-    type(Node), pointer :: doc => null()
-    type(Node), pointer :: node_xsdata => null()
-    type(NodeList), pointer :: node_xsdata_list => null()
+    logical :: file_exists ! does mgxs.h5 exist?
+    integer(HID_T) :: file_id
     real(8), allocatable :: rev_energy_bins(:)
+    character(len=255), allocatable :: names(:)
 
-    ! Check if mgxs.xml exists
+    ! Check if mgxs.h5 exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-      ! Could not find mgxs.xml file
-      call fatal_error("Cross sections XML file '" &
+      ! Could not find mgxs.h5 file
+      call fatal_error("Cross sections HDF5 file '" &
            // trim(path_cross_sections) // "' does not exist!")
     end if
 
-    call write_message("Reading cross sections XML file...", 5)
+    call write_message("Reading cross sections HDF5 file...", 5)
 
-    ! Parse mgxs.xml file
-    call open_xmldoc(doc, path_cross_sections)
+    ! Open file for reading
+    file_id = file_open(path_cross_sections, 'r', parallel=.true.)
 
-    if (check_for_node(doc, "groups")) then
+    if (check_attribute(file_id, "groups")) then
       ! Get neutron group count
-      call get_node_value(doc, "groups", energy_groups)
+      call read_attribute(energy_groups, file_id, "groups")
     else
-      call fatal_error("groups element must exist!")
+      call fatal_error("'groups' attribute must exist!")
     end if
 
     allocate(rev_energy_bins(energy_groups + 1))
     allocate(energy_bins(energy_groups + 1))
-    if (check_for_node(doc, "group_structure")) then
+    if (check_attribute(file_id, "group structure")) then
       ! Get neutron group structure
-      call get_node_array(doc, "group_structure", energy_bins)
+      call read_attribute(energy_bins, file_id, "group structure")
     else
-      call fatal_error("group_structures element must exist!")
+      call fatal_error("'group structure' attribute must exist!")
     end if
 
     ! First reverse the order of energy_groups
@@ -4650,9 +4651,9 @@ contains
     end do
 
     allocate(inverse_velocities(energy_groups))
-    if (check_for_node(doc, "inverse_velocities")) then
+    if (check_attribute(file_id, "inverse velocities")) then
       ! Get inverse velocities
-      call get_node_array(doc, "inverse_velocities", inverse_velocities)
+      call read_attribute(inverse_velocities, file_id, "inverse velocities")
     else
       ! If not given, estimate them by using average energy in group which is
       ! assumed to be the midpoint
@@ -4663,31 +4664,28 @@ contains
       end do
     end if
 
-    ! Get node list of all <xsdata>
-    call get_node_list(doc, "xsdata", node_xsdata_list)
-    n_libraries = get_list_size(node_xsdata_list)
+    ! Get the datasets present in the library
+    call get_groups(file_id, names)
+    n_libraries = size(names)
 
-    ! Allocate xs_listings array
+    ! Allocate libraries array
     if (n_libraries == 0) then
-      call fatal_error("At least one <xsdata> element must be present in &
-                       &mgxs.xml file!")
+      call fatal_error("At least one MGXS data set must be present in &
+                       &mgxs library file!")
     else
       allocate(libraries(n_libraries))
     end if
 
     do i = 1, n_libraries
-      ! Get pointer to xsdata table XML node
-      call get_list_item(node_xsdata_list, i, node_xsdata)
-
       ! Get name of material
       allocate(libraries(i) % materials(1))
-      call get_node_value(node_xsdata, "name", libraries(i) % materials(1))
+      libraries(i) % materials(1) = names(i)
     end do
 
-    ! Close cross sections XML file
-    call close_xmldoc(doc)
+    ! Close MGXS HDF file
+    call file_close(file_id)
 
-  end subroutine read_mg_cross_sections_xml
+  end subroutine read_mg_cross_sections_header
 
 !===============================================================================
 ! EXPAND_NATURAL_ELEMENT converts natural elements specified using an <element>

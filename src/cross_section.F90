@@ -161,6 +161,7 @@ contains
           ! If using multipole data but outside the RRR, pick the nearest
           ! temperature. Note that there is no tolerance here, so this
           ! temperature could be very far off!
+          kT = sqrtkT**2
           i_temp = minloc(abs(nuclides(i_nuclide) % kTs - kT), dim=1)
         end if
       else

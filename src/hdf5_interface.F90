@@ -74,6 +74,7 @@ module hdf5_interface
     module procedure read_attribute_integer_2D
     module procedure read_attribute_string
     module procedure read_attribute_string_1D
+    module procedure read_attribute_logical
   end interface read_attribute
 
   interface write_attribute
@@ -84,14 +85,17 @@ module hdf5_interface
 
   public :: write_dataset
   public :: read_dataset
+  public :: check_attribute
   public :: write_attribute
   public :: read_attribute
   public :: file_create
   public :: file_open
   public :: file_close
   public :: create_group
+  public :: check_group
   public :: open_group
   public :: close_group
+  public :: check_dataset
   public :: open_dataset
   public :: close_dataset
   public :: get_shape
@@ -246,6 +250,52 @@ contains
   end subroutine get_groups
 
 !===============================================================================
+! CHECK_ATTRIBUTE Checks to see if an attribute exists in the object
+!===============================================================================
+
+  function check_attribute(object_id, name) result(exists)
+    integer(HID_T), intent(in) :: object_id
+    character(*),   intent(in) :: name ! name of group
+    logical :: exists
+
+    integer :: hdf5_err ! HDF5 error code
+
+    ! Check if attribute exists
+    call h5aexists_by_name_f(object_id, '.', trim(name), exists, hdf5_err)
+
+  end function check_attribute
+
+!===============================================================================
+! CHECK_GROUP Checks to see if a group exists in the object
+!===============================================================================
+
+  function check_group(object_id, name) result(exists)
+    integer(HID_T), intent(in) :: object_id
+    character(*),   intent(in) :: name ! name of group
+    logical :: exists
+
+    integer :: hdf5_err ! HDF5 error code
+
+    ! Check if group exists
+    call h5ltpath_valid_f(object_id, trim(name), .true., exists, hdf5_err)
+
+  end function check_group
+
+!===============================================================================
+! CHECK_DATASET Checks to see if a dataset exists in the object
+!===============================================================================
+
+  function check_dataset(object_id, name) result(exists)
+    integer(HID_T), intent(in) :: object_id
+    character(*),   intent(in) :: name ! name of group
+    logical :: exists
+
+    ! Wrap check_group since the method used there will work here too
+    exists = check_group(object_id, name)
+
+  end function check_dataset
+
+!===============================================================================
 ! GET_DATASETS Gets a list of all the datasets in a given location.
 !===============================================================================
 
@@ -296,7 +346,7 @@ contains
     integer :: hdf5_err ! HDF5 error code
 
     ! Check if group exists
-    call h5ltpath_valid_f(group_id, trim(name), .true., exists, hdf5_err)
+    exists = check_group(group_id, name)
 
     ! open group if it exists
     if (exists) then
@@ -319,7 +369,7 @@ contains
     logical :: exists   ! does the group exist
 
     ! Check if group exists
-    call h5ltpath_valid_f(group_id, trim(name), .true., exists, hdf5_err)
+    exists = check_group(group_id, name)
 
     ! create group
     if (exists) then
@@ -357,7 +407,7 @@ contains
     integer :: hdf5_err ! HDF5 error code
 
     ! Check if group exists
-    call h5ltpath_valid_f(group_id, trim(name), .true., exists, hdf5_err)
+    exists = check_group(group_id, name)
 
     ! open group if it exists
     if (exists) then
@@ -2486,6 +2536,28 @@ contains
     call h5tclose_f(filetype, hdf5_err)
     call h5tclose_f(memtype, hdf5_err)
   end subroutine read_attribute_string_1D_explicit
+
+  subroutine read_attribute_logical(buffer, obj_id, name)
+    logical,        intent(inout), target :: buffer
+    integer(HID_T), intent(in)            :: obj_id
+    character(*),   intent(in)            :: name
+
+    integer, target :: int_buffer
+    integer         :: hdf5_err
+    integer(HID_T)  :: attr_id
+    type(c_ptr)     :: f_ptr
+
+    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
+    f_ptr = c_loc(int_buffer)
+    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+    call h5aclose_f(attr_id, hdf5_err)
+    ! Convert to Fortran logical
+    if (int_buffer == 0) then
+      buffer = .false.
+    else
+      buffer = .true.
+    end if
+  end subroutine read_attribute_logical
 
   subroutine get_shape(obj_id, dims)
     integer(HID_T),   intent(in)  :: obj_id

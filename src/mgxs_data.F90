@@ -172,7 +172,6 @@ contains
   subroutine create_macro_xs()
     integer :: i_mat ! index in materials array
     type(Material), pointer :: mat ! current material
-    integer :: scatt_type
 
     allocate(macro_xs(n_materials))
 
@@ -182,9 +181,6 @@ contains
       ! Check to see how our nuclides are represented
       ! Force all to be the same type
       ! Therefore type(nuclides(mat % nuclide(1)) % obj) dictates type(macroxs)
-      ! At the same time, we will find the scattering type, as that will dictate
-      ! how we allocate the scatter object within macroxs
-      scatt_type = nuclides_MG(mat % nuclide(1)) % obj % scatt_type
       select type(nuc => nuclides_MG(mat % nuclide(1)) % obj)
       type is (MgxsIso)
         allocate(MgxsIso :: macro_xs(i_mat) % obj)
@@ -192,7 +188,7 @@ contains
         allocate(MgxsAngle :: macro_xs(i_mat) % obj)
       end select
       call macro_xs(i_mat) % obj % combine(mat, nuclides_MG, energy_groups, &
-                                           max_order, scatt_type)
+                                           max_order)
     end do
   end subroutine create_macro_xs
 

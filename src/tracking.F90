@@ -93,8 +93,7 @@ contains
         ! After every collision for the MGXS mode
         if (p % material /= MATERIAL_VOID) then
           ! Update the temperature index
-          call macro_xs(p % material) % obj % find_temperature(p % sqrtkT, &
-               temperature_tolerance)
+          call macro_xs(p % material) % obj % find_temperature(p % sqrtkT)
           ! Get the data
           call macro_xs(p % material) % obj % calculate_xs(p % g, &
                p % coord(p % n_coord) % uvw, material_xs)

@@ -1,6 +1,7 @@
 module mgxs_data
 
 use constants
+  use algorithm,       only: find
   use error,           only: fatal_error
   use global
   use hdf5
@@ -28,6 +29,7 @@ contains
     integer :: i_nuclide    ! index in nuclides array
     character(20)  :: name  ! name of library to load
     integer :: representation ! Data representation
+    character(MAX_LINE_LEN) :: temp_str
     type(Material), pointer :: mat
     type(SetChar) :: already_read
     integer(HID_T) :: file_id
@@ -99,9 +101,12 @@ contains
 
           ! First find out the data representation
           if (check_attribute(xsdata_group, "representation")) then
-            call read_attribute(representation, xsdata_group, "representation")
-            if (representation /= MGXS_ISOTROPIC .and. &
-                 representation /= MGXS_ANGLE) then
+            call read_attribute(temp_str, xsdata_group, "representation")
+            if (trim(temp_str) == 'isotropic') then
+              representation = MGXS_ISOTROPIC
+            else if (trim(temp_str) == 'angle') then
+              representation = MGXS_ANGLE
+            else
               call fatal_error("Invalid Data Representation!")
             end if
           else
@@ -179,7 +184,9 @@ contains
         allocate(MgxsAngle :: macro_xs(i_mat) % obj)
       end select
       call macro_xs(i_mat) % obj % combine(kTs(i_mat), mat, nuclides_MG, &
-                                           energy_groups, max_order)
+                                           energy_groups, max_order, &
+                                           temperature_tolerance, &
+                                           temperature_method)
     end do
   end subroutine create_macro_xs
 

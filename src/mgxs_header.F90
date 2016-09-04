@@ -6,6 +6,7 @@ module mgxs_header
   use hdf5, only: HID_T, HSIZE_T, SIZE_T, h5iget_name_f
   use h5lt, only: h5ltpath_valid_f
 
+  use algorithm,       only: find, sort
   use constants,       only: MAX_FILE_LEN, ZERO, ONE, TWO, PI
   use error,           only: fatal_error
   use hdf5_interface
@@ -100,7 +101,8 @@ module mgxs_header
       integer, intent(in)          :: max_order   ! Maximum requested order
     end subroutine mgxs_from_hdf5_
 
-    subroutine mgxs_combine_(this, temps, mat, nuclides, groups, max_order)
+    subroutine mgxs_combine_(this, temps, mat, nuclides, groups, max_order, &
+                             tolerance, method)
       import Mgxs, Material, MgxsContainer, VectorReal
       class(Mgxs), intent(inout)          :: this ! The Mgxs to initialize
       type(VectorReal), intent(in)        :: temps ! Temperatures to obtain
@@ -108,6 +110,8 @@ module mgxs_header
       type(MgxsContainer), intent(in)     :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                 :: groups     ! Number of E groups
       integer, intent(in)                 :: max_order  ! Maximum requested order
+      real(8), intent(in)                 :: tolerance  ! Tolerance on method
+      integer, intent(in)                 :: method     ! Type of temperature access
     end subroutine mgxs_combine_
 
     pure function mgxs_get_xs_(this, xstype, gin, gout, uvw, mu) result(xs_val)
@@ -206,12 +210,11 @@ module mgxs_header
 
       integer :: hdf5_err
       integer(SIZE_T) :: name_len, name_file_len
-      integer(HID_T) :: kT_group, kT_dset
+      integer(HID_T) :: kT_group
       character(MAX_FILE_LEN), allocatable :: dset_names(:)
       real(8), allocatable :: temps_available(:) ! temperatures available
       real(8) :: temp_desired
       real(8) :: temp_actual
-      logical :: exists
       character(MAX_WORD_LEN) :: temp_str
       real(8) :: dangle
       integer :: ipol, iazi
@@ -236,6 +239,7 @@ module mgxs_header
       do i = 1, size(dset_names)
         ! Read temperature value
         call read_dataset(temps_available(i), kT_group, trim(dset_names(i)))
+        ! Convert MeV to Kelvin
         temps_available(i) = temps_available(i) / K_BOLTZMANN
       end do
 
@@ -377,7 +381,7 @@ module mgxs_header
       real(8), allocatable    :: input_scatt(:, :, :)
       real(8), allocatable    :: temp_scatt(:, :, :)
       real(8)                 :: dmu, mu, norm
-      integer                 :: order, order_dim, gin, gout, l, arr_len
+      integer                 :: order, order_dim, gin, gout, l
       integer                 :: legendre_mu_points, imu
       type(VectorInt)         :: temps_to_read
       integer                 :: t
@@ -387,12 +391,13 @@ module mgxs_header
                           temps_to_read, order_dim)
       !!!TODO: Fix
       enable_leg_mu = .True.
+      legendre_mu_points = 33
 
       ! Load the more specific data
       do t = 1, temps_to_read % size()
         associate(xs => this % xs(t))
           ! Get temperature as a string
-          temp_str = trim(to_str(temps_to_read % data(i))) // "K"
+          temp_str = trim(to_str(temps_to_read % data(t))) // "K"
           xsdata_grp = open_group(xs_id, trim(temp_str))
           if (this % fissionable) then
             allocate(xs % nu_fission(groups))
@@ -619,8 +624,8 @@ module mgxs_header
       real(8), allocatable    :: scatt_coeffs(:, :, :, :, :)
       real(8), allocatable    :: input_scatt(:, :, :, :, :)
       real(8), allocatable    :: temp_scatt(:, :, :, :, :)
-      real(8)                 :: dmu, mu, norm, dangle
-      integer                 :: order, order_dim, gin, gout, l, arr_len
+      real(8)                 :: dmu, mu, norm
+      integer                 :: order, order_dim, gin, gout, l
       integer                 :: legendre_mu_points, imu, ipol, iazi
       type(VectorInt)         :: temps_to_read
       integer                 :: t
@@ -630,12 +635,13 @@ module mgxs_header
                           temps_to_read, order_dim)
       !!!TODO: Fix
       enable_leg_mu = .True.
+      legendre_mu_points = 33
 
       ! Load the more specific data
       do t = 1, temps_to_read % size()
         associate(xs => this % xs(t))
           ! Get temperature as a string
-          temp_str = trim(to_str(temps_to_read % data(i))) // "K"
+          temp_str = trim(to_str(temps_to_read % data(t))) // "K"
           xsdata_grp = open_group(xs_id, trim(temp_str))
           if (this % fissionable) then
             if (check_dataset(xsdata_grp, "chi")) then
@@ -899,16 +905,17 @@ module mgxs_header
 ! MGXS*_COMBINE Builds a macroscopic Mgxs object from microscopic Mgxs objects
 !===============================================================================
 
-    subroutine mgxs_combine(this, temps, mat, nuclides, scatter_type, order_dim)
+    subroutine mgxs_combine(this, temps, mat, nuclides, max_order, &
+                            scatter_type, order_dim)
       class(Mgxs), intent(inout)          :: this ! The Mgxs to initialize
       type(VectorReal), intent(in)        :: temps ! Temperatures to obtain
       type(Material), pointer, intent(in) :: mat  ! base material
       type(MgxsContainer), intent(in)     :: nuclides(:) ! List of nuclides to harvest from
+      integer, intent(in)                 :: max_order  ! Maximum requested order
       integer, intent(out)                :: scatter_type ! Type of scatter
       integer, intent(out)                :: order_dim    ! Scattering data order size
 
-      integer :: t, mat_max_order, max_order, order, n_pol, n_azi
-      real(8) :: dangle
+      integer :: t, mat_max_order, order
 
       ! Fill in meta-data from material information
       if (mat % name == "") then
@@ -924,7 +931,7 @@ module mgxs_header
 
       allocate(this % kTs(temps % size()))
       do t = 1, temps % size()
-        this % kTs(t) = temps % data(i)
+        this % kTs(t) = temps % data(t)
       end do
 
       ! Allocate the XS object for the number of temperatures
@@ -1004,20 +1011,23 @@ module mgxs_header
 
     end subroutine mgxs_combine
 
-    subroutine mgxsiso_combine(this, temps, mat, nuclides, groups, max_order)
+    subroutine mgxsiso_combine(this, temps, mat, nuclides, groups, max_order, &
+                               tolerance, method)
       class(MgxsIso), intent(inout)       :: this ! The Mgxs to initialize
       type(VectorReal), intent(in)        :: temps ! Temperatures to obtain [MeV]
       type(Material), pointer, intent(in) :: mat  ! base material
       type(MgxsContainer), intent(in)     :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                 :: groups     ! Number of E groups
       integer, intent(in)                 :: max_order  ! Maximum requested order
+      real(8), intent(in)                 :: tolerance  ! Tolerance on method
+      integer, intent(in)                 :: method     ! Type of temperature access
 
       integer :: i            ! loop index over nuclides
       integer :: t            ! Index in to temps
       integer :: gin, gout    ! group indices
       real(8) :: atom_density ! atom density of a nuclide
       real(8) :: norm, nuscatt
-      integer :: mat_max_order, order, order_dim, nuc_order_dim
+      integer :: order_dim, nuc_order_dim
       real(8), allocatable :: temp_mult(:, :), mult_num(:, :), mult_denom(:, :)
       real(8), allocatable :: scatt_coeffs(:, :, :)
       integer :: nuc_t
@@ -1025,7 +1035,8 @@ module mgxs_header
       integer :: scatter_type
 
       ! Set the meta-data
-      call mgxs_combine(this, temps, mat, nuclides, scatter_type, order_dim)
+      call mgxs_combine(this, temps, mat, nuclides, max_order, scatter_type, &
+                        order_dim)
 
       ! Create the Xs Data for each temperature
       TEMP_LOOP: do t = 1, temps % size()
@@ -1067,11 +1078,11 @@ module mgxs_header
               ! Determine actual temperatures to read
               temp_desired = temps % data(i)
               nuc_t = minloc(abs(nuc % kTs - temp_desired), dim=1)
-              temp_actual = nuc % kTs(i_closest)
+              temp_actual = nuc % kTs(nuc_t)
               if (abs(temp_actual - temp_desired) >= tolerance) then
                 call fatal_error("MGXS library does not contain cross sections &
                      &for " // trim(this % name) // " at or near " // &
-                     trim(to_str(nint(temp_desired))) // " K.")
+                     trim(to_str(nint(temp_desired / K_BOLTZMANN))) // " K.")
               end if
 
             case (TEMPERATURE_INTERPOLATION)
@@ -1174,13 +1185,16 @@ module mgxs_header
 
     end subroutine mgxsiso_combine
 
-    subroutine mgxsang_combine(this, temps, mat, nuclides, groups, max_order)
+    subroutine mgxsang_combine(this, temps, mat, nuclides, groups, max_order, &
+                               tolerance, method)
       class(MgxsAngle), intent(inout)     :: this ! The Mgxs to initialize
       type(VectorReal), intent(in)        :: temps ! Temperatures to obtain
       type(Material), pointer, intent(in) :: mat  ! base material
       type(MgxsContainer), intent(in)     :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                 :: groups     ! Number of E groups
       integer, intent(in)                 :: max_order  ! Maximum requested order
+      real(8), intent(in)                 :: tolerance  ! Tolerance on method
+      integer, intent(in)                 :: method     ! Type of temperature access
 
       integer :: i             ! loop index over nuclides
       integer :: t             ! temperature loop index
@@ -1188,7 +1202,7 @@ module mgxs_header
       real(8) :: atom_density  ! atom density of a nuclide
       integer :: ipol, iazi, n_pol, n_azi
       real(8) :: norm, nuscatt
-      integer :: mat_max_order, order, order_dim, nuc_order_dim
+      integer :: order_dim, nuc_order_dim
       real(8), allocatable :: temp_mult(:, :, :, :), mult_num(:, :, :, :)
       real(8), allocatable :: mult_denom(:, :, :, :), scatt_coeffs(:, :, :, :, :)
       integer :: nuc_t
@@ -1196,7 +1210,8 @@ module mgxs_header
       integer :: scatter_type
 
       ! Set the meta-data
-      call mgxs_combine(this, temps, mat, nuclides, scatter_type, order_dim)
+      call mgxs_combine(this, temps, mat, nuclides, max_order, scatter_type, &
+                        order_dim)
 
       ! Get the number of each polar and azi angles and make sure all the
       ! NuclideAngle types have the same number of these angles
@@ -1268,11 +1283,11 @@ module mgxs_header
               ! Determine actual temperatures to read
               temp_desired = temps % data(i)
               nuc_t = minloc(abs(nuc % kTs - temp_desired), dim=1)
-              temp_actual = nuc % kTs(i_closest)
+              temp_actual = nuc % kTs(nuc_t)
               if (abs(temp_actual - temp_desired) >= tolerance) then
                 call fatal_error("MGXS library does not contain cross sections &
                      &for " // trim(this % name) // " at or near " // &
-                     trim(to_str(nint(temp_desired))) // " K.")
+                     trim(to_str(nint(temp_desired / K_BOLTZMANN))) // " K.")
               end if
 
             case (TEMPERATURE_INTERPOLATION)
@@ -1325,7 +1340,7 @@ module mgxs_header
                       nuscatt = nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % scattxs(gin) * &
                            nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % energy(gin) % data(gout)
                       mult_num(iazi, ipol, gout, gin) = &
-                           mult_num(iazi, ipo, gout, gin) + atom_density * &
+                           mult_num(iazi, ipol, gout, gin) + atom_density * &
                            nuscatt
                       if (nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % mult(gin) % data(gout) > ZERO) then
                         mult_denom(iazi, ipol, gout, gin) = &
@@ -1716,18 +1731,11 @@ module mgxs_header
 ! sqrt(temperature), (with temperature in units of MeV)
 !===============================================================================
 
-    pure subroutine mgxs_find_temperature(this, sqrtkT, tolerance)
-      class(Mgxs), intent(in) :: this
-      real(8), intent(in)     :: sqrtkT    ! Temperature (in units of of MeV)
-      real(8), intent(in)     :: tolerance ! Temperature tolerance
+    pure subroutine mgxs_find_temperature(this, sqrtkT)
+      class(Mgxs), intent(inout) :: this
+      real(8), intent(in)        :: sqrtkT    ! Temperature (in units of of MeV)
 
-      real(8) :: kT
-      integer :: i_temp
-
-      kT = sqrtkT**2
-      do i_temp = 1, size(this % kTs)
-        if (abs(this % kTs(i_temp) - kT) < K_BOLTZMANN * tolerance) exit
-      end do
+      this % index_temp = minloc(abs(this % kTs - (sqrtkT * sqrtkT)), dim=1)
 
     end subroutine mgxs_find_temperature
 

@@ -907,8 +907,11 @@ class Library(object):
             # the provided order or the Library's order.
             xsdata.order = min(order, self.legendre_order)
 
+        # Right now only 'legendre' data and isotropic weighting is supported
+        self.scatter_type = 'legendre'
+        self.representation = 'isotropic'
+
         if nuclide is not 'total':
-            xsdata.zaid = self._nuclides[nuclide][0]
             xsdata.awr = self._nuclides[nuclide][1]
 
         if subdomain is None:

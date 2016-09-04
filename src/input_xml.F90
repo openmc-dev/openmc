@@ -16,6 +16,7 @@ module input_xml
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
   use mesh_header,      only: RegularMesh
+  use mgxs_data,        only: create_macro_xs, read_mgxs
   use multipole,        only: multipole_read
   use output,           only: write_message
   use plot_header

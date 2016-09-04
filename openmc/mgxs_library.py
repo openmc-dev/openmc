@@ -20,13 +20,7 @@ _SCATTER_TYPE_TABULAR = 3
 _SCATTER_TYPE_LEGENDRE = 4
 _SCATTER_TYPE_HISTOGRAM = 5
 _REPRESENTATIONS = ['isotropic', 'angle']
-_REPRESENTATIONS_TEXT = {'isotropic': _REPRESENTATION_ISOTROPIC,
-                         'angle': _REPRESENTATION_ANGLE}
 _SCATTER_TYPES = ['tabular', 'legendre', 'histogram']
-_SCATTER_TYPES_TEXT = {'tabular': _SCATTER_TYPE_TABULAR,
-                       'legendre': _SCATTER_TYPE_LEGENDRE,
-                       'histogram': _SCATTER_TYPE_HISTOGRAM}
-
 
 class XSdata(object):
     """A multi-group cross section data set providing all the
@@ -43,7 +37,7 @@ class XSdata(object):
         weighting). Defaults to 'isotropic'
     temperatures : numpy.ndarray
         Temperatures (in units of Kelvin) of the provided datasets.  Defaults
-        to a single temperature at 300K.
+        to a single temperature at 294K.
 
     Attributes
     ----------
@@ -54,7 +48,7 @@ class XSdata(object):
         of the isotope to the mass of a single neutron.
     temperatures : numpy.ndarray
         Temperatures (in units of Kelvin) of the provided datasets.  Defaults
-        to a single temperature at 300K.
+        to a single temperature at 294K.
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure
     fissionable : bool
@@ -164,7 +158,7 @@ class XSdata(object):
 
     """
 
-    def __init__(self, name, energy_groups, temperatures=[300.],
+    def __init__(self, name, energy_groups, temperatures=[294.],
                  representation='isotropic'):
         # Initialize class attributes
         self.name = name
@@ -377,7 +371,7 @@ class XSdata(object):
         check_type('use_chi', use_chi, bool)
         self._use_chi = use_chi
 
-    def set_total(self, total, temperature=300.):
+    def set_total(self, total, temperature=294.):
         """This method sets the cross section for this XSdata object at the
         provided temperature.
 
@@ -387,7 +381,7 @@ class XSdata(object):
             Total Cross Section
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
 
         See also
         --------
@@ -405,7 +399,7 @@ class XSdata(object):
         i = self.temperatures.tolist().index(temperature)
         self._total[i] = nptotal
 
-    def set_absorption(self, absorption, temperature=300.):
+    def set_absorption(self, absorption, temperature=294.):
         """This method sets the cross section for this XSdata object at the
         provided temperature.
 
@@ -415,7 +409,7 @@ class XSdata(object):
             Absorption Cross Section
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
 
         See also
         --------
@@ -434,7 +428,7 @@ class XSdata(object):
         i = self.temperatures.tolist().index(temperature)
         self._absorption[i] = npabsorption
 
-    def set_fission(self, fission, temperature=300.):
+    def set_fission(self, fission, temperature=294.):
         """This method sets the cross section for this XSdata object at the
         provided temperature.
 
@@ -444,7 +438,7 @@ class XSdata(object):
             Fission Cross Section
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
 
         See also
         --------
@@ -465,7 +459,7 @@ class XSdata(object):
         if np.sum(npfission) > 0.0:
             self._fissionable = True
 
-    def set_kappa_fission(self, kappa_fission, temperature=300.):
+    def set_kappa_fission(self, kappa_fission, temperature=294.):
         """This method sets the cross section for this XSdata object at the
         provided temperature.
 
@@ -475,7 +469,7 @@ class XSdata(object):
             Kappa-Fission Cross Section
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
 
         See also
         --------
@@ -498,7 +492,7 @@ class XSdata(object):
         if np.sum(npkappa_fission) > 0.0:
             self._fissionable = True
 
-    def set_chi(self, chi, temperature=300.):
+    def set_chi(self, chi, temperature=294.):
         """This method sets the cross section for this XSdata object at the
         provided temperature.
 
@@ -508,7 +502,7 @@ class XSdata(object):
             Fission Spectrum
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
 
         See also
         --------
@@ -538,7 +532,7 @@ class XSdata(object):
         if self.use_chi is not None:
             self.use_chi = True
 
-    def set_scatter_matrix(self, scatter, temperature=300.):
+    def set_scatter_matrix(self, scatter, temperature=294.):
         """This method sets the cross section for this XSdata object at the
         provided temperature.
 
@@ -548,7 +542,7 @@ class XSdata(object):
             Scattering Matrix Cross Section
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
 
         See also
         --------
@@ -567,7 +561,7 @@ class XSdata(object):
         i = self.temperatures.tolist().index(temperature)
         self._scatter_matrix[i] = npscatter
 
-    def set_multiplicity_matrix(self, multiplicity, temperature=300.):
+    def set_multiplicity_matrix(self, multiplicity, temperature=294.):
         """This method sets the cross section for this XSdata object at the
         provided temperature.
 
@@ -577,7 +571,7 @@ class XSdata(object):
             Multiplicity Matrix Cross Section
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
 
         See also
         --------
@@ -597,7 +591,7 @@ class XSdata(object):
         i = self.temperatures.tolist().index(temperature)
         self._multiplicity_matrix[i] = npmultiplicity
 
-    def set_nu_fission(self, nu_fission, temperature=300.):
+    def set_nu_fission(self, nu_fission, temperature=294.):
         """This method sets the cross section for this XSdata object at the
         provided temperature.
 
@@ -607,7 +601,7 @@ class XSdata(object):
             Nu-fission Cross Section
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
 
         See also
         --------
@@ -655,7 +649,7 @@ class XSdata(object):
         if np.sum(npnu_fission) > 0.0:
             self._fissionable = True
 
-    def set_total_mgxs(self, total, temperature=300., nuclide='total',
+    def set_total_mgxs(self, total, temperature=294., nuclide='total',
                        xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.TotalXS or
         openmc.mgxs.TransportXS to be used to set the total cross section
@@ -668,7 +662,7 @@ class XSdata(object):
             for the domain of interest.
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -702,7 +696,7 @@ class XSdata(object):
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_absorption_mgxs(self, absorption, temperature=300.,
+    def set_absorption_mgxs(self, absorption, temperature=294.,
                             nuclide='total', xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.AbsorptionXS
         to be used to set the absorption cross section for this XSdata object.
@@ -714,7 +708,7 @@ class XSdata(object):
             for the domain of interest.
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -749,7 +743,7 @@ class XSdata(object):
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_fission_mgxs(self, fission, temperature=300., nuclide='total',
+    def set_fission_mgxs(self, fission, temperature=294., nuclide='total',
                          xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.FissionXS
         to be used to set the fission cross section for this XSdata object.
@@ -761,7 +755,7 @@ class XSdata(object):
             for the domain of interest.
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -796,7 +790,7 @@ class XSdata(object):
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_nu_fission_mgxs(self, nu_fission, temperature=300.,
+    def set_nu_fission_mgxs(self, nu_fission, temperature=294.,
                             nuclide='total', xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.NuFissionXS
         to be used to set the nu-fission cross section for this XSdata object.
@@ -808,7 +802,7 @@ class XSdata(object):
             for the domain of interest.
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -852,7 +846,7 @@ class XSdata(object):
         if np.sum(self._nu_fission) > 0.0:
             self._fissionable = True
 
-    def set_kappa_fission_mgxs(self, k_fission, temperature=300.,
+    def set_kappa_fission_mgxs(self, k_fission, temperature=294.,
                                nuclide='total', xs_type='macro',
                                subdomain=None):
         """This method allows for an openmc.mgxs.KappaFissionXS
@@ -866,7 +860,7 @@ class XSdata(object):
             for the domain of interest.
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -901,7 +895,7 @@ class XSdata(object):
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_chi_mgxs(self, chi, temperature=300., nuclide='total',
+    def set_chi_mgxs(self, chi, temperature=294., nuclide='total',
                      xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.Chi
         to be used to set chi for this XSdata object.
@@ -912,7 +906,7 @@ class XSdata(object):
             MGXS Object containing chi for the domain of interest.
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -954,7 +948,7 @@ class XSdata(object):
         if self.use_chi is not None:
             self.use_chi = True
 
-    def set_scatter_matrix_mgxs(self, scatter, temperature=300.,
+    def set_scatter_matrix_mgxs(self, scatter, temperature=294.,
                                 nuclide='total', xs_type='macro',
                                 subdomain=None):
         """This method allows for an openmc.mgxs.ScatterMatrixXS
@@ -969,7 +963,7 @@ class XSdata(object):
             for the domain of interest.
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -1027,7 +1021,7 @@ class XSdata(object):
             raise ValueError(msg)
 
     def set_multiplicity_matrix_mgxs(self, nuscatter, scatter=None,
-                                     temperature=300., nuclide='total',
+                                     temperature=294., nuclide='total',
                                      xs_type='macro', subdomain=None):
         """This method allows for either the direct use of only an
         openmc.mgxs.MultiplicityMatrixXS OR
@@ -1050,7 +1044,7 @@ class XSdata(object):
             for the domain of interest.
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 300K
+            to 294K
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -1119,22 +1113,26 @@ class XSdata(object):
         if self.fissionable is not None:
             grp.attrs['fissionable'] = self.fissionable
         if self.representation is not None:
-            grp.attrs['representation'] = \
-                np.string_(_REPRESENTATIONS_TEXT[self.representation])
+            grp.attrs['representation'] = np.string_(self.representation)
             if self.representation == 'angle':
                 if self.num_azimuthal is not None:
                     grp.attrs['num-azimuthal'] = self.num_azimuthal
                 if self.num_polar is not None:
                     grp.attrs['num-polar'] = self.num_polar
         if self.scatter_type is not None:
-            grp.attrs['scatter-type'] = \
-                np.string_(_SCATTER_TYPES_TEXT[self.scatter_type])
+            grp.attrs['scatter-type'] = np.string_(self.scatter_type)
         if self.order is not None:
             grp.attrs['order'] = self.order
 
+        ktg = grp.create_group('kTs')
+        for temperature in self.temperatures:
+            temp_label = str(int(np.round(temperature))) + "K"
+            kT = temperature * openmc.data.K_BOLTZMANN
+            ktg.create_dataset(temp_label, data=kT)
+
         # Create the temperature datasets
         for i, temperature in enumerate(self.temperatures):
-            xsgrp = grp.create_group(str(np.round(temperature)) + "K")
+            xsgrp = grp.create_group(str(int(np.round(temperature))) + "K")
             if self._total[i] is not None:
                 xsgrp.create_dataset("total", data=self._total[i],
                                      compression=compression)

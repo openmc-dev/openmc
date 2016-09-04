@@ -288,9 +288,12 @@ class Mesh(object):
                    openmc.YPlane(y0=self.upper_right[1],
                                  boundary_type=bc[3])]
         if twod:
-            zplanes = [openmc.ZPlane(z0=np.finfo(np.float).min,
+            # Would prefer to have the z ranges be the max supported float, but
+            # these values are apparently different between python and Fortran.
+            # Choosing a safe and sane default.
+            zplanes = [openmc.ZPlane(z0=-1000.,
                                      boundary_type='reflective'),
-                       openmc.ZPlane(z0=np.finfo(np.float).max,
+                       openmc.ZPlane(z0=1000.,
                                      boundary_type='reflective')]
         else:
             zplanes = [openmc.ZPlane(z0=self.lower_left[2],

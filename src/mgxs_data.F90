@@ -1,6 +1,6 @@
 module mgxs_data
 
-use constants
+  use constants
   use algorithm,       only: find
   use error,           only: fatal_error
   use global
@@ -184,10 +184,14 @@ contains
       type is (MgxsAngle)
         allocate(MgxsAngle :: macro_xs(i_mat) % obj)
       end select
-      call macro_xs(i_mat) % obj % combine(kTs(i_mat), mat, nuclides_MG, &
-                                           energy_groups, max_order, &
-                                           temperature_tolerance, &
-                                           temperature_method)
+      ! Do not read materials which we do not actually use in the problem to
+      ! save space
+      if (allocated(kTs(i_mat) % data)) then
+        call macro_xs(i_mat) % obj % combine(kTs(i_mat), mat, nuclides_MG, &
+                                             energy_groups, max_order, &
+                                             temperature_tolerance, &
+                                             temperature_method)
+      end if
     end do
   end subroutine create_macro_xs
 

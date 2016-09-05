@@ -70,13 +70,13 @@ if __name__ == '__main__':
         raise ValueError("Invalid XML file type")
 
     # Get old metadata
-    temp = tree.find('group_structure').text
+    temp = tree.find('group_structure').text.strip()
     temp = np.array(temp.split())
     group_structure = temp.astype(np.float)
     energy_groups = openmc.mgxs.EnergyGroups(group_structure)
     temp = tree.find('inverse_velocities')
     if temp is not None:
-        temp = temp.text
+        temp = temp.text.strip()
         temp = np.array(temp.split())
         inverse_velocities = temp.astype(np.float)
     else:
@@ -87,36 +87,36 @@ if __name__ == '__main__':
 
     # Now move on to the cross section data itself
     for xsdata_elem in root.iter('xsdata'):
-        name = xsdata_elem.find('name').text
+        name = xsdata_elem.find('name').text.strip()
 
         temperature = xsdata_elem.find('kT')
         if temperature is not None:
             temperature = \
-                float(temperature.text) / openmc.data.K_BOLTZMANN
+                float(temperature.text.strip()) / openmc.data.K_BOLTZMANN
         else:
             temperature = 294.
         temperatures = [temperature]
 
         awr = xsdata_elem.find('awr')
         if awr is not None:
-            awr = float(awr.text)
+            awr = float(awr.text.strip())
 
         representation = xsdata_elem.find('representation')
         if representation is not None:
-            representation = representation.text
+            representation = representation.text.strip()
         else:
             representation = 'isotropic'
         if representation == 'angle':
-            n_azi = int(xsdata_elem.find('num_azimuthal').text)
-            n_pol = int(xsdata_elem.find('num_polar').text)
+            n_azi = int(xsdata_elem.find('num_azimuthal').text.strip())
+            n_pol = int(xsdata_elem.find('num_polar').text.strip())
 
         scatter_type = xsdata_elem.find('scatt_type')
         if scatter_type is not None:
-            scatter_type = scatter_type.text
+            scatter_type = scatter_type.text.strip()
         else:
             scatter_type = 'legendre'
 
-        order = int(xsdata_elem.find('order').text)
+        order = int(xsdata_elem.find('order').text.strip())
 
         tab_leg = xsdata_elem.find('tabular_legendre')
         if tab_leg is not None:
@@ -155,19 +155,19 @@ if __name__ == '__main__':
 
         temp = xsdata_elem.find('total')
         if temp is not None:
-            temp = temp.text
+            temp = temp.text.strip()
             temp = np.array(temp.split())
             total = temp.astype(np.float)
             total = np.reshape(total, xsd[i].vector_shape)
             xsd[i].set_total(total, temperature)
 
-        temp = xsdata_elem.find('absorption').text
+        temp = xsdata_elem.find('absorption').text.strip()
         temp = np.array(temp.split())
         absorption = temp.astype(np.float)
         absorption = np.reshape(absorption, xsd[i].vector_shape)
         xsd[i].set_absorption(absorption, temperature)
 
-        temp = xsdata_elem.find('scatter').text
+        temp = xsdata_elem.find('scatter').text.strip()
         temp = np.array(temp.split())
         temp = temp.astype(np.float)
         scatter = np.reshape(temp, xsd[i].pn_matrix_shape)
@@ -175,7 +175,7 @@ if __name__ == '__main__':
 
         temp = xsdata_elem.find('multiplicity')
         if temp is not None:
-            temp = temp.text
+            temp = temp.text.strip()
             temp = np.array(temp.split())
             temp = temp.astype(np.float)
             multiplicity = np.reshape(temp, xsd[i].matrix_shape)
@@ -183,7 +183,7 @@ if __name__ == '__main__':
 
         temp = xsdata_elem.find('fission')
         if temp is not None:
-            temp = temp.text
+            temp = temp.text.strip()
             temp = np.array(temp.split())
             fission = temp.astype(np.float)
             fission = np.reshape(fission, xsd[i].vector_shape)
@@ -191,7 +191,7 @@ if __name__ == '__main__':
 
         temp = xsdata_elem.find('kappa_fission')
         if temp is not None:
-            temp = temp.text
+            temp = temp.text.strip()
             temp = np.array(temp.split())
             kappa_fission = temp.astype(np.float)
             kappa_fission = np.reshape(kappa_fission, xsd[i].vector_shape)
@@ -199,7 +199,7 @@ if __name__ == '__main__':
 
         temp = xsdata_elem.find('chi')
         if temp is not None:
-            temp = temp.text
+            temp = temp.text.strip()
             temp = np.array(temp.split())
             chi = temp.astype(np.float)
             chi = np.reshape(chi, xsd[i].vector_shape)
@@ -209,7 +209,7 @@ if __name__ == '__main__':
 
         temp = xsdata_elem.find('nu_fission')
         if temp is not None:
-            temp = temp.text
+            temp = temp.text.strip()
             temp = np.array(temp.split())
             temp = temp.astype(np.float)
             if chi is not None:
@@ -225,5 +225,4 @@ if __name__ == '__main__':
 
     lib.add_xsdatas(xsd)
 
-    print(args['output'])
     lib.export_to_hdf5(args['output'], compression=args['compression'])

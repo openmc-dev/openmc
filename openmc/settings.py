@@ -101,6 +101,13 @@ class Settings(object):
         Coordinates of the lower-left point of the Shannon entropy mesh
     entropy_upper_right : tuple or list
         Coordinates of the upper-right point of the Shannon entropy mesh
+    tabular_legendre : dict
+        Determines if a multi-group scattering moment kernel expanded via
+        Legendre polynomials is to be converted to a tabular distribution or
+        not. Accepted keys are 'enable', and 'num_points'. The value for
+        'enable' is a bool stating whether the conversion to tabular is
+        performed; the value for 'num_points' sets the number of points to use
+        in the tabular distribution, should 'enable' be True.
     temperature : dict
         Defines a default temperature and method for treating intermediate
         temperatures at which nuclear data doesn't exist. Accepted keys are
@@ -198,6 +205,8 @@ class Settings(object):
 
         self._trace = None
         self._track = None
+
+        self._tabular_legendre = {}
 
         self._temperature = {}
 
@@ -361,6 +370,10 @@ class Settings(object):
     @property
     def verbosity(self):
         return self._verbosity
+
+    @property
+    def tabular_legendre(self):
+        return self._tabular_legendre
 
     @property
     def temperature(self):
@@ -666,6 +679,19 @@ class Settings(object):
     def no_reduce(self, no_reduce):
         cv.check_type('no reduction option', no_reduce, bool)
         self._no_reduce = no_reduce
+
+    @tabular_legendre.setter
+    def tabular_legendre(self, tabular_legendre):
+        cv.check_type('tabular_legendre settings', tabular_legendre, Mapping)
+        for key, value in tabular_legendre.items():
+            cv.check_value('tabular_legendre key', key,
+                           ['enable', 'num_points'])
+            if key == 'enable':
+                cv.check_type('enable tabular_legendre', value, bool)
+            elif key == 'num_points':
+                cv.check_type('num_points tabular_legendre', value, Integral)
+                cv.check_greater_than('num_points tabular_legendre', value, 0)
+        self._tabular_legendre = tabular_legendre
 
     @temperature.setter
     def temperature(self, temperature):
@@ -1048,6 +1074,14 @@ class Settings(object):
             element = ET.SubElement(self._settings_file, "no_reduce")
             element.text = str(self._no_reduce).lower()
 
+    def _create_tabular_legendre_subelements(self):
+        if self.tabular_legendre:
+            element = ET.SubElement(self._settings_file, "tabular_legendre")
+            subelement = ET.SubElement(element, "enable")
+            subelement.text = str(self._tabular_legendre['enable']).lower()
+            subelement = ET.SubElement(element, "num_points")
+            subelement.text = str(self._tabular_legendre['num_points'])
+
     def _create_temperature_subelements(self):
         if self.temperature:
             for key, value in self.temperature.items():
@@ -1149,6 +1183,7 @@ class Settings(object):
         self._create_no_reduce_subelement()
         self._create_threads_subelement()
         self._create_verbosity_subelement()
+        self._create_tabular_legendre_subelements()
         self._create_temperature_subelements()
         self._create_trace_subelement()
         self._create_track_subelement()

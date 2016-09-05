@@ -92,6 +92,7 @@ contains
     type(Node), pointer :: node_trigger   => null()
     type(Node), pointer :: node_keff_trigger => null()
     type(Node), pointer :: node_vol => null()
+    type(Node), pointer :: node_tab_leg => null()
     type(NodeList), pointer :: node_scat_list => null()
     type(NodeList), pointer :: node_source_list => null()
     type(NodeList), pointer :: node_vol_list => null()
@@ -1091,6 +1092,31 @@ contains
     end if
     if (check_for_node(doc, "temperature_tolerance")) then
       call get_node_value(doc, "temperature_tolerance", temperature_tolerance)
+    end if
+
+    ! Check for tabular_legendre options
+    if (check_for_node(doc, "tabular_legendre")) then
+
+      ! Get pointer to tabular_legendre node
+      call get_node_ptr(doc, "tabular_legendre", node_tab_leg)
+
+      ! Check for enable option
+      if (check_for_node(node_tab_leg, "enable")) then
+        call get_node_value(node_tab_leg, "enable", temp_str)
+        temp_str = to_lower(temp_str)
+        if (trim(temp_str) == 'false' .or. &
+             trim(temp_str) == '0') legendre_to_tabular = .false.
+      end if
+
+      ! Check for the number of points
+      if (check_for_node(node_tab_leg, "num_points")) then
+        call get_node_value(node_tab_leg, "num_points", &
+             legendre_to_tabular_points)
+        if (legendre_to_tabular_points <= 1 .and. (.not. run_CE)) then
+          call fatal_error("The 'num_points' subelement/attribute of the &
+               &'tabular_legendre' element must contain a value greater than 1")
+        end if
+      end if
     end if
 
     ! Close settings XML file

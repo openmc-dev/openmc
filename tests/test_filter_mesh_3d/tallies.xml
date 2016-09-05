@@ -13,4 +13,9 @@
     <scores>total</scores>
   </tally>
 
+  <tally id="2">
+    <filter type="mesh" bins="1" />
+    <scores>current</scores>
+  </tally>
+
 </tallies>

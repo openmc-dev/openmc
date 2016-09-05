@@ -2783,8 +2783,8 @@ contains
 
       ! Determine number of dimensions for mesh
       n = get_arraysize_integer(node_mesh, "dimension")
-      if (n /= 2 .and. n /= 3) then
-        call fatal_error("Mesh must be two or three dimensions.")
+      if (n /= 1 .and. n /= 2 .and. n /= 3) then
+        call fatal_error("Mesh must be one, two, or three dimensions.")
       end if
       m % n_dimension = n
 
@@ -3700,7 +3700,9 @@ contains
             type is (SurfaceFilter)
               filt % n_bins = 4 * m % n_dimension
               allocate(filt % surfaces(4 * m % n_dimension))
-              if (m % n_dimension == 2) then
+              if (m % n_dimension == 1) then
+                filt % surfaces = (/ OUT_LEFT, OUT_RIGHT, IN_LEFT, IN_RIGHT /)
+              elseif (m % n_dimension == 2) then
                 filt % surfaces = (/ OUT_LEFT, OUT_RIGHT, OUT_BACK, OUT_FRONT, &
                      IN_LEFT, IN_RIGHT, IN_BACK, IN_FRONT /)
               elseif (m % n_dimension == 3) then

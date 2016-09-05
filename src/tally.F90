@@ -10,7 +10,7 @@ module tally
                               mesh_intersects_1d, mesh_intersects_2d, &
                               mesh_intersects_3d
   use mesh_header,      only: RegularMesh
-  use output,           only: header, write_message
+  use output,           only: header
   use particle_header,  only: LocalCoord, Particle
   use search,           only: binary_search
   use string,           only: to_str

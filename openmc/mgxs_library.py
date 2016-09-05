@@ -355,13 +355,13 @@ class XSdata(object):
     @num_polar.setter
     def num_polar(self, num_polar):
         # Make sure we have positive ints
-        check_value('num_polar', num_polar, Integral)
+        check_type('num_polar', num_polar, Integral)
         check_greater_than('num_polar', num_polar, 0)
         self._num_polar = num_polar
 
     @num_azimuthal.setter
     def num_azimuthal(self, num_azimuthal):
-        check_value('num_azimuthal', num_azimuthal, Integral)
+        check_type('num_azimuthal', num_azimuthal, Integral)
         check_greater_than('num_azimuthal', num_azimuthal, 0)
         self._num_azimuthal = num_azimuthal
 

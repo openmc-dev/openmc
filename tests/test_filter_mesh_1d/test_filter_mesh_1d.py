@@ -3,9 +3,9 @@
 import os
 import sys
 sys.path.insert(0, os.pardir)
-from testing_harness import TestHarness
+from testing_harness import HashedTestHarness
 
 
 if __name__ == '__main__':
-    harness = TestHarness('statepoint.10.*', True)
+    harness = HashedTestHarness('statepoint.10.*', True)
     harness.main()

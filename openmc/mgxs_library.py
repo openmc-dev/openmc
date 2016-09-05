@@ -315,7 +315,6 @@ class XSdata(object):
         check_value('representation', representation, _REPRESENTATIONS)
         self._representation = representation
 
-
     @awr.setter
     def awr(self, awr):
         # Check validity of type and that the awr value is > 0
@@ -370,6 +369,31 @@ class XSdata(object):
     def use_chi(self, use_chi):
         check_type('use_chi', use_chi, bool)
         self._use_chi = use_chi
+
+    def add_temperature(self, temperature):
+        """This method re-sizes the attributes of this XSdata object so that it
+        can accomodate an additional temperature.  Note that the set_* methods
+        will still need to be executed.
+
+        Parameters
+        ----------
+        temperature : float
+            Temperature (in units of Kelvin) of the provided dataset.
+
+        """
+        check_type('temperature', temperature, Real)
+
+        temp_store = self.temperatures.tolist().append(temperature)
+        self.temperatures = temp_store
+
+        self._total.append(None)
+        self._absorption.append(None)
+        self._scatter_matrix.append(None)
+        self._multiplicity_matrix.append(None)
+        self._fission.append(None)
+        self._nu_fission.append(None)
+        self._kappa_fission.append(None)
+        self._chi.append(None)
 
     def set_total(self, total, temperature=294.):
         """This method sets the cross section for this XSdata object at the

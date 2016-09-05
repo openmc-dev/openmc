@@ -923,7 +923,7 @@ module mgxs_header
       if (mat % name == "") then
         this % name = trim(to_str(mat % id))
       else
-        this % name = mat % name
+        this % name = trim(mat % name)
       end if
       this % fissionable = mat % fissionable
 
@@ -992,15 +992,16 @@ module mgxs_header
         do i = 1, mat % n_nuclides
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
           type is (MgxsIso)
-            if (size(nuc % xs(1) % scatter % dist(1) % data, dim=1) > &
-                mat_max_order) &
+            if (size(nuc % xs(1) % scatter % dist(1) % data, &
+                     dim=1) > mat_max_order) &
                  mat_max_order = size(nuc % xs(1) % scatter % dist(1) % data, &
                                       dim=1)
           type is (MgxsAngle)
-            if (size(nuc % xs(1) % scatter(1, 1) % obj % dist(1) % data, dim=1) > &
-                mat_max_order) &
-                 mat_max_order = size(nuc % xs(1) % scatter(1, 1) % obj % dist(1) % data, &
-                                      dim=1)
+            if (size(nuc % xs(1) % scatter(1, 1) % obj % dist(1) % data, &
+                     dim=1) > mat_max_order) &
+                 mat_max_order = &
+                     size(nuc % xs(1) % scatter(1, 1) % obj % dist(1) % data, &
+                          dim=1)
           end select
         end do
 

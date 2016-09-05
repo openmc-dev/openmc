@@ -128,6 +128,12 @@ module global
   ! Maximum Data Order
   integer :: max_order
 
+  ! Whether or no to convert Legendres to tabulars
+  logical :: legendre_to_tabular = .True.
+
+  ! Number of points to use in the Legendre to tabular conversion
+  integer :: legendre_to_tabular_points = 33
+
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 

@@ -88,7 +88,8 @@ module mgxs_header
 
   abstract interface
     subroutine mgxs_from_hdf5_(this, xs_id, groups, temperature, method, &
-                               tolerance, get_kfiss, get_fiss, max_order)
+                               tolerance, get_kfiss, get_fiss, max_order, &
+                               legendre_to_tabular, legendre_to_tabular_points)
       import Mgxs, HID_T, VectorReal
       class(Mgxs), intent(inout)   :: this        ! Working Object
       integer(HID_T), intent(in)   :: xs_id       ! Library data
@@ -99,6 +100,9 @@ module mgxs_header
       logical, intent(in)          :: get_kfiss   ! Need Kappa-Fission?
       logical, intent(in)          :: get_fiss    ! Should we get fiss data?
       integer, intent(in)          :: max_order   ! Maximum requested order
+      logical, intent(in)          :: legendre_to_tabular ! Convert Legendres to Tabular?
+      integer, intent(in)          :: legendre_to_tabular_points ! Number of points to use
+                                                                 ! in that  conversion
     end subroutine mgxs_from_hdf5_
 
     subroutine mgxs_combine_(this, temps, mat, nuclides, groups, max_order, &
@@ -361,7 +365,8 @@ module mgxs_header
     end subroutine mgxs_from_hdf5
 
     subroutine mgxsiso_from_hdf5(this, xs_id, groups, temperature, method, &
-                                 tolerance, get_kfiss, get_fiss, max_order)
+                                 tolerance, get_kfiss, get_fiss, max_order, &
+                                 legendre_to_tabular, legendre_to_tabular_points)
       class(MgxsIso), intent(inout) :: this        ! Working Object
       integer(HID_T), intent(in)    :: xs_id       ! Group in H5 file
       integer, intent(in)           :: groups      ! Number of Energy groups
@@ -371,27 +376,25 @@ module mgxs_header
       logical, intent(in)           :: get_kfiss   ! Need Kappa-Fission?
       logical, intent(in)           :: get_fiss    ! Should we get fiss data?
       integer, intent(in)           :: max_order   ! Maximum requested order
+      logical, intent(in)           :: legendre_to_tabular ! Convert Legendres to Tabular?
+      integer, intent(in)           :: legendre_to_tabular_points ! Number of points to use
+                                                                  ! in that  conversion
 
       character(MAX_LINE_LEN) :: temp_str
       integer(HID_T)          :: xsdata_grp
-      logical                 :: enable_leg_mu
       real(8), allocatable    :: temp_arr(:), temp_2d(:, :)
       real(8), allocatable    :: temp_mult(:, :)
       real(8), allocatable    :: scatt_coeffs(:, :, :)
       real(8), allocatable    :: input_scatt(:, :, :)
       real(8), allocatable    :: temp_scatt(:, :, :)
       real(8)                 :: dmu, mu, norm
-      integer                 :: order, order_dim, gin, gout, l
-      integer                 :: legendre_mu_points, imu
+      integer                 :: order, order_dim, gin, gout, l, imu
       type(VectorInt)         :: temps_to_read
       integer                 :: t
 
       ! Call generic data gathering routine (will populate the metadata)
       call mgxs_from_hdf5(this, xs_id, temperature, method, tolerance, &
                           temps_to_read, order_dim)
-      !!!TODO: Fix
-      enable_leg_mu = .True.
-      legendre_mu_points = 33
 
       ! Load the more specific data
       do t = 1, temps_to_read % size()
@@ -508,10 +511,10 @@ module mgxs_header
             ! provided as Legendre coefficients), and the user requested that
             ! these legendres be converted to tabular form (note xs is also
             ! the default behavior), convert that now.
-            if (this % scatter_type == ANGLE_LEGENDRE .and. enable_leg_mu) then
+            if (this % scatter_type == ANGLE_LEGENDRE .and. legendre_to_tabular) then
               ! Convert input parameters to what we need for the rest.
               this % scatter_type = ANGLE_TABULAR
-              order_dim = legendre_mu_points
+              order_dim = legendre_to_tabular_points
               order = order_dim
               dmu = TWO / real(order - 1, 8)
 
@@ -605,7 +608,8 @@ module mgxs_header
     end subroutine mgxsiso_from_hdf5
 
     subroutine mgxsang_from_hdf5(this, xs_id, groups, temperature, method, &
-                                 tolerance, get_kfiss, get_fiss, max_order)
+                                 tolerance, get_kfiss, get_fiss, max_order, &
+                                 legendre_to_tabular, legendre_to_tabular_points)
       class(MgxsAngle), intent(inout) :: this        ! Working Object
       integer(HID_T), intent(in)      :: xs_id       ! Group in H5 file
       integer, intent(in)             :: groups      ! Number of Energy groups
@@ -615,27 +619,25 @@ module mgxs_header
       logical, intent(in)             :: get_kfiss   ! Need Kappa-Fission?
       logical, intent(in)             :: get_fiss    ! Should we get fiss data?
       integer, intent(in)             :: max_order   ! Maximum requested order
+      logical, intent(in)             :: legendre_to_tabular ! Convert Legendres to Tabular?
+      integer, intent(in)             :: legendre_to_tabular_points ! Number of points to use
+                                                                    ! in that  conversion
 
       character(MAX_LINE_LEN) :: temp_str
       integer(HID_T)          :: xsdata_grp
-      logical                 :: enable_leg_mu
       real(8), allocatable    :: temp_arr(:), temp_4d(:, :, :, :)
       real(8), allocatable    :: temp_mult(:, :, :, :)
       real(8), allocatable    :: scatt_coeffs(:, :, :, :, :)
       real(8), allocatable    :: input_scatt(:, :, :, :, :)
       real(8), allocatable    :: temp_scatt(:, :, :, :, :)
       real(8)                 :: dmu, mu, norm
-      integer                 :: order, order_dim, gin, gout, l
-      integer                 :: legendre_mu_points, imu, ipol, iazi
+      integer                 :: order, order_dim, gin, gout, l, imu, ipol, iazi
       type(VectorInt)         :: temps_to_read
       integer                 :: t
 
       ! Call generic data gathering routine (will populate the metadata)
       call mgxs_from_hdf5(this, xs_id, temperature, method, tolerance, &
                           temps_to_read, order_dim)
-      !!!TODO: Fix
-      enable_leg_mu = .True.
-      legendre_mu_points = 33
 
       ! Load the more specific data
       do t = 1, temps_to_read % size()
@@ -794,11 +796,11 @@ module mgxs_header
             ! provided as Legendre coefficients), and the user requested that
             ! these legendres be converted to tabular form (note xs is also
             ! the default behavior), convert that now.
-            if (this % scatter_type == ANGLE_LEGENDRE .and. enable_leg_mu) then
+            if (this % scatter_type == ANGLE_LEGENDRE .and. legendre_to_tabular) then
 
               ! Convert input parameters to what we need for the rest.
               this % scatter_type = ANGLE_TABULAR
-              order_dim = legendre_mu_points
+              order_dim = legendre_to_tabular_points
               order = order_dim
               dmu = TWO / real(order - 1, 8)
 

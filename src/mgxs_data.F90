@@ -125,7 +125,8 @@ contains
           ! Now read in the data specific to the type we just declared
           call nuclides_MG(i_nuclide) % obj % from_hdf5(xsdata_group, &
                energy_groups, temps(i_nuclide), temperature_method, &
-               temperature_tolerance, get_kfiss, get_fiss, max_order)
+               temperature_tolerance, get_kfiss, get_fiss, max_order, &
+               legendre_to_tabular, legendre_to_tabular_points)
 
           ! Add name to dictionary
           call already_read % add(name)

@@ -1859,6 +1859,11 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |deposited locally. Units are MeV per source        |
         |                      |paticle.                                           |
         +----------------------+---------------------------------------------------+
+        |decay-rate            |The delayed-nu-fission-weighted decay rate where   |
+        |                      |the decay rate is in units of inverse seconds.     |
+        |                      |This score type is not used in the                 |
+        |                      |multi-group :ref:`energy_mode`.                    |
+        +----------------------+---------------------------------------------------+
 
     .. note::
        The ``analog`` estimator is actually identical to the ``collision``

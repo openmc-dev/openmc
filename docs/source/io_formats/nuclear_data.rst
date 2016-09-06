@@ -133,7 +133,7 @@ Reaction Products
 :Attributes: - **particle** (*char[]*) -- Type of particle
              - **emission_mode** (*char[]*) -- Emission mode (prompt, delayed,
                total)
-             - **decay_rate** (*double*) -- Rate of decay in inverse seconds
+             - **decay_rate** (*double*) -- Rate of decay in inverse shakes
              - **n_distribution** (*int*) -- Number of angle/energy
                distributions
 :Datasets:

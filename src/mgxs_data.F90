@@ -20,9 +20,7 @@ contains
 ! nuclides and sab_tables arrays
 !===============================================================================
 
-  subroutine read_mgxs(temps)
-    type(VectorReal), allocatable :: temps(:)
-
+  subroutine read_mgxs()
     integer :: i            ! index in materials array
     integer :: j            ! index over nuclides in material
     integer :: i_xsdata     ! index in <xsdata> list
@@ -38,6 +36,7 @@ contains
     logical :: get_kfiss, get_fiss
     integer :: l
     type(DictCharInt) :: xsdata_dict
+    type(VectorReal), allocatable :: temps(:)
 
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
@@ -48,6 +47,9 @@ contains
     end if
 
     call write_message("Loading Cross Section Data...", 5)
+
+    ! Get temperatures
+    call get_temperatures(temps)
 
     ! Open file for reading
     file_id = file_open(path_cross_sections, 'r', parallel=.true.)
@@ -233,6 +235,52 @@ contains
     end do
 
   end subroutine get_mat_kTs
+
+!===============================================================================
+! GET_TEMPERATURES returns a list of temperatures that each MGXS table
+! appears at in the model. Later, this list is used to determine the actual
+! temperatures to read (which may be different if interpolation is used)
+!===============================================================================
+
+  subroutine get_temperatures(temps)
+    type(VectorReal), allocatable, intent(out) :: temps(:)
+
+    integer :: i, j, k
+    integer :: i_nuclide    ! index in nuclides array
+    integer :: i_material
+    real(8) :: temperature  ! temperature in Kelvin
+
+    allocate(temps(n_nuclides_total))
+
+    do i = 1, size(cells)
+      do j = 1, size(cells(i) % material)
+        ! Skip any non-material cells and void materials
+        if (cells(i) % material(j) == NONE .or. &
+             cells(i) % material(j) == MATERIAL_VOID) cycle
+
+        ! Get temperature of cell (rounding to nearest integer)
+        if (size(cells(i) % sqrtkT) > 1) then
+          temperature = cells(i) % sqrtkT(j)**2 / K_BOLTZMANN
+        else
+          temperature = cells(i) % sqrtkT(1)**2 / K_BOLTZMANN
+        end if
+
+        i_material = material_dict % get_key(cells(i) % material(j))
+        associate (mat => materials(i_material))
+          NUC_NAMES_LOOP: do k = 1, size(mat % names)
+            ! Get index in temps array
+            i_nuclide = nuclide_dict % get_key(to_lower(mat % names(k)))
+
+            ! Add temperature if it hasn't already been added
+            if (find(temps(i_nuclide), temperature) == -1) then
+              call temps(i_nuclide) % push_back(temperature)
+            end if
+          end do NUC_NAMES_LOOP
+        end associate
+      end do
+    end do
+
+  end subroutine get_temperatures
 
 
 end module mgxs_data

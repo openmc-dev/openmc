@@ -49,9 +49,17 @@ contains
 
     call read_settings_xml()
     call read_geometry_xml()
-    call read_tallies_xml()
     call read_materials()
+    call read_tallies_xml()
     if (cmfd_run) call configure_cmfd()
+
+    if (.not. run_CE) then
+      ! Create material macroscopic data for MGXS
+      call time_read_xs % start()
+      call read_mgxs()
+      call create_macro_xs()
+      call time_read_xs % stop()
+    end if
 
   end subroutine read_input_xml
 
@@ -2092,15 +2100,9 @@ contains
     call get_temperatures(nuc_temps, sab_temps)
 
     ! Read continuous-energy cross sections
-    if (run_mode /= MODE_PLOTTING) then
+    if (run_CE .and. run_mode /= MODE_PLOTTING) then
       call time_read_xs % start()
-      if (run_CE) then
-        call read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
-      else
-        ! Create material macroscopic data for MGXS
-        call read_mgxs(nuc_temps)
-        call create_macro_xs()
-      end if
+      call read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
       call time_read_xs % stop()
     end if
 

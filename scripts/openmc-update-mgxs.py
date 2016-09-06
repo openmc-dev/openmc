@@ -42,18 +42,20 @@ def parse_args():
     # Create argument parser
     parser = argparse.ArgumentParser(description=description,
                                      formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('-c', '--compression', type=int,
-                        help='input XML file')
     parser.add_argument('-i', '--input', type=argparse.FileType('r'),
                         help='input XML file')
     parser.add_argument('-o', '--output', nargs='?', default='',
                         help='output file, in HDF5 format')
+    parser.add_argument('-c', '--compression', type=int,
+                        help='HDF5 Compression Level')
     args = vars(parser.parse_args())
 
     if args['output'] == '':
-        fname = args['input'].name.split('.')
-        fname[-1] = '.h5'
-        args['output'] = ''.join(fname)
+        filename = args['input'].name
+        extension = filename[filename.rfind('.'):]
+        if extension == '.xml':
+            filename = filename[:filename.rfind('.')] + '.h5'
+        args['output'] = filename
 
     # Parse and return commandline arguments.
     return args

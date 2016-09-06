@@ -893,7 +893,7 @@ class MGInputSet(InputSet):
         self.settings.source = Source(space=Box([0.0, 0.0, 0.0],
                                                 [10.0, 10.0, 2.0]))
         self.settings.energy_mode = "multi-group"
-        self.settings.cross_sections = "../1d_mgxs.xml"
+        self.settings.cross_sections = "../1d_mgxs.h5"
 
     def build_defualt_plots(self):
         plot = openmc.Plot()

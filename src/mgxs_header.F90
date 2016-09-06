@@ -691,7 +691,7 @@ module mgxs_header
               if (check_dataset(xsdata_grp, "nu-fission")) then
                 allocate(temp_arr(groups * groups * this % n_azi * this % n_pol))
                 call read_dataset(temp_arr, xsdata_grp, "nu-fission")
-                allocate(temp_4d(groups, groups, this % n_azi,this % n_pol))
+                allocate(temp_4d(groups, groups, this % n_azi, this % n_pol))
                 temp_4d(:, :, :, :) = reshape(temp_arr, (/groups, groups, &
                      this % n_azi, this % n_pol/))
                 deallocate(temp_arr)
@@ -1241,25 +1241,25 @@ module mgxs_header
       ! Create the Xs Data for each temperature
       TEMP_LOOP: do t = 1, temps % size()
         ! Allocate and initialize the data needed for macro_xs(i_mat) object
-        allocate(this % xs(t) % total(n_azi, n_pol, groups))
+        allocate(this % xs(t) % total(groups, n_azi, n_pol))
         this % xs(t) % total = ZERO
-        allocate(this % xs(t) % absorption(n_azi, n_pol, groups))
+        allocate(this % xs(t) % absorption(groups, n_azi, n_pol))
         this % xs(t) % absorption = ZERO
-        allocate(this % xs(t) % fission(n_azi, n_pol, groups))
+        allocate(this % xs(t) % fission(groups, n_azi, n_pol))
         this % xs(t) % fission = ZERO
-        allocate(this % xs(t) % k_fission(n_azi, n_pol, groups))
+        allocate(this % xs(t) % k_fission(groups, n_azi, n_pol))
         this % xs(t) % k_fission = ZERO
-        allocate(this % xs(t) % nu_fission(n_azi, n_pol, groups))
+        allocate(this % xs(t) % nu_fission(groups, n_azi, n_pol))
         this % xs(t) % nu_fission = ZERO
-        allocate(this % xs(t) % chi(n_azi, n_pol, groups, groups))
+        allocate(this % xs(t) % chi(groups, groups, n_azi, n_pol))
         this % xs(t) % chi = ZERO
-        allocate(temp_mult(n_azi, n_pol, groups, groups))
+        allocate(temp_mult(groups, groups, n_azi, n_pol))
         temp_mult = ZERO
-        allocate(mult_num(n_azi, n_pol, groups, groups))
+        allocate(mult_num(groups, groups, n_azi, n_pol))
         mult_num = ZERO
-        allocate(mult_denom(n_azi, n_pol, groups, groups))
+        allocate(mult_denom(groups, groups, n_azi, n_pol))
         mult_denom = ZERO
-        allocate(scatt_coeffs(n_azi, n_pol, order_dim, groups, groups))
+        allocate(scatt_coeffs(order_dim, groups, groups, n_azi, n_pol))
         scatt_coeffs = ZERO
 
         allocate(this % xs(t) % scatter(n_azi, n_pol))
@@ -1342,18 +1342,18 @@ module mgxs_header
                            nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % gmax(gin)
                       nuscatt = nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % scattxs(gin) * &
                            nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % energy(gin) % data(gout)
-                      mult_num(iazi, ipol, gout, gin) = &
-                           mult_num(iazi, ipol, gout, gin) + atom_density * &
+                      mult_num(gout, gin, iazi, ipol) = &
+                           mult_num(gout, gin, iazi, ipol) + atom_density * &
                            nuscatt
                       if (nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % mult(gin) % data(gout) > ZERO) then
-                        mult_denom(iazi, ipol, gout, gin) = &
-                             mult_denom(iazi, ipol, gout, gin) + atom_density * &
+                        mult_denom(gout, gin, iazi, ipol) = &
+                             mult_denom(gout, gin, iazi, ipol) + atom_density * &
                              nuscatt / &
                              nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % mult(gin) % data(gout)
                       else
                         ! Avoid division by zero
-                        mult_denom(iazi, ipol, gout, gin) = &
-                             mult_denom(iazi, ipol, gout, gin) + atom_density
+                        mult_denom(gout, gin, iazi, ipol) = &
+                             mult_denom(gout, gin, iazi, ipol) + atom_density
                       end if
                     end do
                   end do
@@ -1361,8 +1361,8 @@ module mgxs_header
                   ! Get the complete scattering matrix
                   nuc_order_dim = &
                        size(nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % dist(1) % data, dim=1)
-                  scatt_coeffs(iazi, ipol, 1:min(nuc_order_dim, order_dim), :, :) = &
-                       scatt_coeffs(iazi, ipol, 1:min(nuc_order_dim, order_dim), :, :) + &
+                  scatt_coeffs(1:min(nuc_order_dim, order_dim), :, :, iazi, ipol) = &
+                       scatt_coeffs(1:min(nuc_order_dim, order_dim), :, :, iazi, ipol) + &
                        atom_density * &
                        nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % get_matrix(min(nuc_order_dim, order_dim))
                 end do
@@ -1376,12 +1376,12 @@ module mgxs_header
               do iazi = 1, n_azi
                 do gin = 1, groups
                   do gout = 1, groups
-                    if (mult_denom(iazi, ipol, gout, gin) > ZERO) then
-                      temp_mult(iazi, ipol, gout, gin) = &
-                           mult_num(iazi, ipol, gout, gin) / &
-                           mult_denom(iazi, ipol, gout, gin)
+                    if (mult_denom(gout, gin, iazi, ipol) > ZERO) then
+                      temp_mult(gout, gin, iazi, ipol) = &
+                           mult_num(gout, gin, iazi, ipol) / &
+                           mult_denom(gout, gin, iazi, ipol)
                     else
-                      temp_mult(iazi, ipol, gout, gin) = ONE
+                      temp_mult(gout, gin, iazi, ipol) = ONE
                     end if
                   end do
                 end do
@@ -1392,8 +1392,8 @@ module mgxs_header
             do ipol = 1, n_pol
               do iazi = 1, n_azi
                 call this % xs(t) % scatter(iazi, ipol) % obj % init(&
-                     temp_mult(iazi, ipol, :, :), &
-                     scatt_coeffs(iazi, ipol, :, :, :))
+                     temp_mult(:, :, iazi, ipol), &
+                     scatt_coeffs(:, :, :, iazi, ipol))
               end do
             end do
 
@@ -1402,10 +1402,10 @@ module mgxs_header
               do ipol = 1, n_pol
                 do iazi = 1, n_azi
                   do gin = 1, groups
-                    norm =  sum(this % xs(t) % chi(iazi, ipol, :, gin))
+                    norm =  sum(this % xs(t) % chi(:, gin, iazi, ipol))
                     if (norm > ZERO) then
-                      this % xs(t) % chi(iazi, ipol, :, gin) = &
-                           this % xs(t) % chi(iazi, ipol, :, gin) / norm
+                      this % xs(t) % chi(:, gin, iazi, ipol) = &
+                           this % xs(t) % chi(:, gin, iazi, ipol) / norm
                     end if
                   end do
                 end do

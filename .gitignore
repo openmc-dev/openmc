@@ -50,6 +50,7 @@ tests/ctestscript.run
 
 # HDF5 files
 *.h5
+!tests/1d_mgxs.h5
 
 # Build files
 src/CMakeCache.txt

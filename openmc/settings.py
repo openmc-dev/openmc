@@ -106,7 +106,7 @@ class Settings(object):
         temperatures at which nuclear data doesn't exist. Accepted keys are
         'default', 'method', and 'tolerance'. The value for 'default' should be
         a float representing the default temperature in Kelvin. The value for
-        'method' should be 'nearest' or 'interpolation'. If the method is
+        'method' should be 'nearest' or 'multipole'. If the method is
         'nearest', 'tolerance' indicates a range of temperature within which
         cross sections may be used.
     trigger_active : bool

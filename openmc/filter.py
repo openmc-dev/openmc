@@ -419,7 +419,7 @@ class Filter(object):
             # Filter bins for distribcells are "IDs" of each unique placement
             # of the Cell in the Geometry (integers starting at 0)
             elif self.type == 'distribcell':
-                filter_index = filter_bin
+                filter_index = filter_bin[0]
 
             # Use ID for all other Filters (e.g., material, cell, etc.)
             else:

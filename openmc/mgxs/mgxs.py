@@ -779,16 +779,18 @@ class MGXS(object):
         if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
+            filters.append(self.domain_type)
+            filter_bins.append([])
             for subdomain in subdomains:
-                filters.append(self.domain_type)
-                filter_bins.append((subdomain,))
+                filter_bins[-1].append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(groups, basestring):
             cv.check_iterable_type('groups', groups, Integral)
+            filters.append('energy')
+            filter_bins.append([])
             for group in groups:
-                filters.append('energy')
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+                filter_bins[-1].append((self.energy_groups.get_group_bounds(group),))
 
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
@@ -804,7 +806,7 @@ class MGXS(object):
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
             xs = xs_tally.get_values(filters=filters,
                                      filter_bins=filter_bins, value=value)
-        else:
+        else:            
             xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
                                           nuclides=query_nuclides, value=value)
 
@@ -1774,17 +1776,18 @@ class MatrixMGXS(MGXS):
         if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
+            filters.append(self.domain_type)
+            filter_bins.append([])
             for subdomain in subdomains:
-                filters.append(self.domain_type)
-                filter_bins.append((subdomain,))
+                filter_bins[-1].append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(in_groups, basestring):
             cv.check_iterable_type('groups', in_groups, Integral)
+            filters.append('energy')
+            filter_bins.append([])
             for group in in_groups:
-                filters.append('energy')
-                filter_bins.append((
-                    self.energy_groups.get_group_bounds(group),))
+                filter_bins[-1].append((self.energy_groups.get_group_bounds(group),))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(out_groups, basestring):
@@ -3602,16 +3605,18 @@ class ScatterMatrixXS(MatrixMGXS):
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
+            filters.append(self.domain_type)
+            filter_bins.append([])
             for subdomain in subdomains:
-                filters.append(self.domain_type)
-                filter_bins.append((subdomain,))
+                filter_bins[-1].append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(in_groups, basestring):
             cv.check_iterable_type('groups', in_groups, Integral)
+            filter.append('energy')
+            filter_bins.append([])
             for group in in_groups:
-                filters.append('energy')
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+                filter_bins[-1].append((self.energy_groups.get_group_bounds(group),))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(out_groups, basestring):
@@ -4591,16 +4596,18 @@ class Chi(MGXS):
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
+            filters.append(self.domain_type)
+            filter_bins.append([])
             for subdomain in subdomains:
-                filters.append(self.domain_type)
-                filter_bins.append((subdomain,))
+                filter_bins[-1].append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(groups, basestring):
             cv.check_iterable_type('groups', groups, Integral)
+            filters.append('energyout')
+            filter_bins.append([])
             for group in groups:
-                filters.append('energyout')
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+                filter_bins[-1].append((self.energy_groups.get_group_bounds(group),))
 
         # If chi was computed for each nuclide in the domain
         if self.by_nuclide:

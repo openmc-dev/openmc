@@ -1275,7 +1275,7 @@ class Tally(object):
         """
 
         cv.check_iterable_type('filters', filters, basestring)
-        cv.check_iterable_type('filter_bins', filter_bins, tuple)
+        cv.check_iterable_type('filter_bins', filter_bins, tuple, max_depth=2)
 
         # Determine the score indices from any of the requested scores
         if filters:
@@ -1309,7 +1309,7 @@ class Tally(object):
 
                     # Create list of cell instance IDs for distribcell Filters
                     elif self_filter.type == 'distribcell':
-                        bins = np.arange(self_filter.num_bins)
+                        bins = [(i,) for i in range(self_filter.num_bins)]
 
                     # Create list of IDs for bins for all other filter types
                     else:
@@ -3228,8 +3228,8 @@ class Tally(object):
                 if self_filter.type == filter_type:
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
-                    mean = np.mean(mean, axis=i, keepdims=True)
-                    std_dev = np.mean(std_dev**2, axis=i, keepdims=True)
+                    mean = np.nanmean(mean, axis=i, keepdims=True)
+                    std_dev = np.nanmean(std_dev**2, axis=i, keepdims=True)
                     std_dev /= len(bin_indices)
                     std_dev = np.sqrt(std_dev)
 
@@ -3253,8 +3253,8 @@ class Tally(object):
             axis_index = self.num_filters
             mean = np.take(mean, indices=nuclide_bins, axis=axis_index)
             std_dev = np.take(std_dev, indices=nuclide_bins, axis=axis_index)
-            mean = np.mean(mean, axis=axis_index, keepdims=True)
-            std_dev = np.mean(std_dev**2, axis=axis_index, keepdims=True)
+            mean = np.nanmean(mean, axis=axis_index, keepdims=True)
+            std_dev = np.nanmean(std_dev**2, axis=axis_index, keepdims=True)
             std_dev /= len(nuclide_bins)
             std_dev = np.sqrt(std_dev)
 
@@ -3272,8 +3272,8 @@ class Tally(object):
             axis_index = self.num_filters + 1
             mean = np.take(mean, indices=score_bins, axis=axis_index)
             std_dev = np.take(std_dev, indices=score_bins, axis=axis_index)
-            mean = np.sum(mean, axis=axis_index, keepdims=True)
-            std_dev = np.sum(std_dev**2, axis=axis_index, keepdims=True)
+            mean = np.nanmean(mean, axis=axis_index, keepdims=True)
+            std_dev = np.nanmean(std_dev**2, axis=axis_index, keepdims=True)
             std_dev /= len(score_bins)
             std_dev = np.sqrt(std_dev)
 

@@ -29,7 +29,6 @@ class DistribmatTestHarness(PyAPITestHarness):
         light_fuel.add_nuclide('U235', 1.0)
 
         mats_file = openmc.Materials([moderator, dense_fuel, light_fuel])
-        mats_file.default_temperature = '294K'
         mats_file.export_to_xml()
 
 

@@ -118,20 +118,27 @@ Temperature-dependent data, provided for temperature <TTT>K.
 
 Data specific to neutron scattering for the temperature <TTT>K
 
-:Datasets: - **g_out bounds** (*int[2]* or *int[][][2]) --
-             Minimum (most energetic) and maximum (most thermal) outgoing groups
-             with non-zero values of the scattering matrix. These group numbers
-             use the standard ordering where the fastest neutron energy group
-             is group 1 while the most thermal neutron energy group is group G.
+:Datasets: - **g_min** (*int[]* or *int[][][]) --
+             Minimum (most energetic) outgoing groups with non-zero values of
+             the scattering matrix. These group numbers use the standard
+             ordering where the fastest neutron energy group is group 1 while
+             the slowest neutron energy group is group G.
              The dimensionality of `g_out bounds` is:
-             `g_out bounds][g_in][g_out]`, or
-             `g_out bounds[num-polar][num-azimuthal][g_in][g_out]`.
+             `g_min[g_in]`, or `g_min[num-polar][num-azimuthal][g_in]`.
              The former is used when `representation` is "isotropic", and the
              latter when `representation` is "angle".
-           - **scatter matrix** (*double[][]* or *double[][][][]*) --
-             Flattened representation of the scattering moment matrices where
-             the [g_in] and [g_out] indices are flattened. The pre-flattened
-             array is shaped as follows (in row-major format):
+           - **g_max** (*int[]* or *int[][][]) --
+             Maximum (least energetic) outgoing groups with non-zero values of
+             the scattering matrix. These group numbers use the standard
+             ordering where the fastest neutron energy group is group 1 while
+             the slowest neutron energy group is group G.
+             The dimensionality of `g_out bounds` is:
+             `g_max[g_in]`, or `g_max[num-polar][num-azimuthal][g_in]`.
+             The former is used when `representation` is "isotropic", and the
+             latter when `representation` is "angle".
+           - **scatter matrix** (*double[]*) -- Flattened representation of the
+             scattering moment matrices. The pre-flattened array is shaped as
+             follows (in row-major format):
              `scatter matrix[order(+1)][g_in][g_out]`, or
              `scatter matrix[num-polar][num-azimuthal][order(+1)][g_in][g_out]`
              The former is used when `representation` is "isotropic", and the
@@ -141,13 +148,12 @@ Data specific to neutron scattering for the temperature <TTT>K
              Finally, the g_out dimension has a dimensionality of
              `g_out bounds`[0] to `g_out bounds`[1].
            - **multiplicity matrix** (*double[]*) -- Flattened representation of
-             the scattering moment matrices where the [g_in] and [g_out] indices
-             are flattened. This dataset provides the code with a scaling factor
-             to account for neutrons being produced in (n,xn) reactions. This
-             is assumed isotropic and therefore is not repeated for every
-             Legendre moment or histogram/tabular bin. This dataset is optional,
-             if it is not provided no multiplication (i.e., values of 1.0) will
-             be assumed.
+             the scattering moment matrices. This dataset provides the code with
+             a scaling factor to account for neutrons being produced in (n,xn)
+             reactions. This is assumed isotropic and therefore is not repeated
+             for every Legendre moment or histogram/tabular bin. This dataset is
+             optional, if it is not provided no multiplication (i.e., values of
+             1.0) will be assumed.
              The pre-flattened array is shaped as follows (in row-major format):
              `multiplicity matrix[g_in][g_out]`, or
              `multiplicity matrix[num-polar][num-azimuthal][g_in][g_out]`

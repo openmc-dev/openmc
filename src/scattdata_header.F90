@@ -42,18 +42,20 @@ module scattdata_header
 
   contains
     procedure(scattdata_init_), deferred   :: init   ! Initializes ScattData
+    ! Initializes ScattData from a dense matrix
+    procedure(scattdata_init_dense_), deferred :: init_from_dense
     procedure(scattdata_calc_f_), deferred :: calc_f ! Calculates f, given mu
     procedure(scattdata_sample_), deferred :: sample ! sample the scatter event
     procedure :: get_matrix => scattdata_get_matrix  ! Rebuild scattering matrix
   end type ScattData
 
   abstract interface
-    subroutine scattdata_init_(this, mult, coeffs)
+    subroutine scattdata_init_dense_(this, mult, coeffs)
       import ScattData
       class(ScattData), intent(inout) :: this            ! Object to work with
       real(8), intent(in)             :: mult(:, :)      ! Scatter Prod'n Matrix
       real(8), intent(in)             :: coeffs(:, :, :) ! Coefficients to use
-    end subroutine scattdata_init_
+    end subroutine scattdata_init_dense_
 
     pure function scattdata_calc_f_(this, gin, gout, mu) result(f)
       import ScattData
@@ -79,9 +81,9 @@ module scattdata_header
     ! Maximal value for rejection sampling from rectangle
     type(Jagged1D), allocatable :: max_val(:) ! (Gin % data(Gout))
   contains
-    procedure :: init       => scattdatalegendre_init
-    procedure :: calc_f     => scattdatalegendre_calc_f
-    procedure :: sample     => scattdatalegendre_sample
+    procedure :: init_from_dense => scattdatalegendre_init_from_dense
+    procedure :: calc_f          => scattdatalegendre_calc_f
+    procedure :: sample          => scattdatalegendre_sample
   end type ScattDataLegendre
 
   type, extends(ScattData)      :: ScattDataHistogram
@@ -90,10 +92,10 @@ module scattdata_header
     ! Histogram of f(mu) (dist has CDF)
     type(Jagged2D), allocatable :: fmu(:) ! (Gin % data(Order/Nmu x Gout)
   contains
-    procedure :: init       => scattdatahistogram_init
-    procedure :: calc_f     => scattdatahistogram_calc_f
-    procedure :: sample     => scattdatahistogram_sample
-    procedure :: get_matrix => scattdatahistogram_get_matrix
+    procedure :: init_from_dense => scattdatahistogram_init_from_dense
+    procedure :: calc_f          => scattdatahistogram_calc_f
+    procedure :: sample          => scattdatahistogram_sample
+    procedure :: get_matrix      => scattdatahistogram_get_matrix
   end type ScattDataHistogram
 
   type, extends(ScattData)      :: ScattDataTabular
@@ -102,10 +104,10 @@ module scattdata_header
     ! PDF of f(mu) (dist has CDF)
     type(Jagged2D), allocatable :: fmu(:) ! (Gin % data(Order/Nmu x Gout)
   contains
-    procedure :: init       => scattdatatabular_init
-    procedure :: calc_f     => scattdatatabular_calc_f
-    procedure :: sample     => scattdatatabular_sample
-    procedure :: get_matrix => scattdatatabular_get_matrix
+    procedure :: init_from_dense => scattdatatabular_init_from_dense
+    procedure :: calc_f          => scattdatatabular_calc_f
+    procedure :: sample          => scattdatatabular_sample
+    procedure :: get_matrix      => scattdatatabular_get_matrix
   end type ScattDataTabular
 
 !===============================================================================
@@ -122,7 +124,7 @@ contains
 ! SCATTDATA*_INIT builds the scattdata object
 !===============================================================================
 
-    subroutine scattdata_init(this, order, energy, mult)
+    subroutine scattdata_init_from_dense(this, order, energy, mult)
       class(ScattData), intent(inout) :: this         ! Object to work on
       integer, intent(in)             :: order        ! Data Order
       real(8), intent(inout)          :: energy(:, :) ! Energy Transfer Matrix
@@ -167,9 +169,9 @@ contains
         this % gmin(gin) = gmin
         this % gmax(gin) = gmax
       end do
-    end subroutine scattdata_init
+    end subroutine scattdata_init_from_dense
 
-    subroutine scattdatalegendre_init(this, mult, coeffs)
+    subroutine scattdatalegendre_init_from_dense(this, mult, coeffs)
       class(ScattDataLegendre), intent(inout) :: this            ! Object to work on
       real(8), intent(in)                     :: mult(:, :)      ! Scatter Prod'n Matrix
       real(8), intent(in)                     :: coeffs(:, :, :) ! Coefficients to use
@@ -206,7 +208,7 @@ contains
         end do
       end do
 
-      call scattdata_init(this, order, energy, mult)
+      call scattdata_init_from_dense(this, order, energy, mult)
 
       allocate(this % max_val(groups))
       ! Set dist values from matrix and initialize max_val
@@ -244,9 +246,9 @@ contains
                this % max_val(gin) % data(gout) * 1.1_8
         end do
       end do
-    end subroutine scattdatalegendre_init
+    end subroutine scattdatalegendre_init_from_dense
 
-    subroutine scattdatahistogram_init(this, mult, coeffs)
+    subroutine scattdatahistogram_init_from_dense(this, mult, coeffs)
       class(ScattDataHistogram), intent(inout) :: this   ! Object to work on
       real(8), intent(in)                      :: mult(:, :)     ! Scatter Prod'n Matrix
       real(8), intent(in)                      :: coeffs(:, :, :) ! Coefficients to use
@@ -283,7 +285,7 @@ contains
         end do
       end do
 
-      call scattdata_init(this, order, energy, mult)
+      call scattdata_init_from_dense(this, order, energy, mult)
 
       allocate(this % mu(order))
       this % dmu = TWO / real(order, 8)
@@ -321,9 +323,9 @@ contains
         end do
       end do
 
-    end subroutine scattdatahistogram_init
+    end subroutine scattdatahistogram_init_from_dense
 
-    subroutine scattdatatabular_init(this, mult, coeffs)
+    subroutine scattdatatabular_init_from_dense(this, mult, coeffs)
       class(ScattDataTabular), intent(inout) :: this   ! Object to work on
       real(8), intent(in)                    :: mult(:, :)   ! Scatter Prod'n Matrix
       real(8), intent(in)                    :: coeffs(:, :, :) ! Coefficients to use
@@ -378,7 +380,7 @@ contains
           energy(gout, gin) = norm
         end do
       end do
-      call scattdata_init(this, order, energy, mult)
+      call scattdata_init_from_dense(this, order, energy, mult)
 
       ! Calculate f(mu) and integrate it so we can avoid rejection sampling
       allocate(this % fmu(groups))
@@ -415,7 +417,7 @@ contains
           end if
         end do
       end do
-    end subroutine scattdatatabular_init
+    end subroutine scattdatatabular_init_from_dense
 
 !===============================================================================
 ! SCATTDATA_*_CALC_F Calculates the value of f given mu (and gin,gout pair)

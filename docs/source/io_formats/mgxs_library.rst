@@ -56,17 +56,18 @@ data for the nuclide or material that it represents.
                that the azimuthal angular domain is subdivided if the
                `representation` attribute is "angle". This parameter is
                ignored otherwise.
-            - **num-polar** (*int*) -- Number of equal width angular bins
+             - **num-polar** (*int*) -- Number of equal width angular bins
                that the polar angular domain is subdivided if the
                `representation` attribute is "angle". This parameter is
                ignored otherwise.
-            - **scatter-type** (*char[]*) -- The representation of the
-              scattering angular distribution.  The options are either
-              "legendre", "histogram", or "tabular".  If not provided, the
-              default of "legendre" will be assumed.
-            - **order** (*int*) -- Either the Legendre order, number of bins,
-              or number of points (depending on the value of `scatter-type`)
-              used to describe the angular distribution associated with each group-to-group transfer probability.
+             - **scatter-type** (*char[]*) -- The representation of the
+               scattering angular distribution.  The options are either
+               "legendre", "histogram", or "tabular".  If not provided, the
+               default of "legendre" will be assumed.
+             - **order** (*int*) -- Either the Legendre order, number of bins,
+               or number of points (depending on the value of `scatter-type`)
+               used to describe the angular distribution associated with each
+               group-to-group transfer probability.
 
 **/<library name>/kTs/**
 
@@ -86,30 +87,6 @@ Temperature-dependent data, provided for temperature <TTT>K.
              This is a 1-D vector if `representation` is "isotropic", or a 3-D
              vector if `representation` is "angle" with dimensions of
              [groups, azimuthal, polar].
-           - **scatter matrix** (*double[][][]* or *double[][][][][]*) --
-             Scattering moment matrices. This dataset requires the scattering
-             moment matrices presented with the columns representing incoming
-             group and rows representing the outgoing group. That is,
-             down-scatter will be above the diagonal of the resultant matrix.
-             This matrix is repeated for every Legendre order (in order of
-             increasing orders) if `scatter-type` is "legendre"; otherwise, this
-             matrix is repeated for every bin of the histogram or tabular
-             representation.  Finally, if ``representation`` is "angle", the
-             above is repeated for every azimuthal angle and every polar angle,
-             in that order.
-           - **multiplicity matrix** (*double[][]* or *double[][][][]*) --
-             Scattering multiplicity matrices.
-             This dataset provides the ratio of neutrons produced in scattering
-             collisions to the neutrons which undergo scattering collisions;
-             that is, the multiplicity provides the code with a scaling factor
-             to account for neutrons being produced in (n,xn) reactions. This
-             information is assumed isotropic and therefore is not repeated for
-             every Legendre moment or histogram/tabular bin.  This matrix
-             follows the same arrangement as described for the `scatter`
-             dataset, with the exception of the data needed to provide the
-             scattering type information.
-             This dataset is optional, if it is not provided no multiplication
-             (i.e., values of 1.0) will be assumed.
            - **fission** (*double[]* or *double[][][]*) -- Fission
              cross section.
              This is a 1-D vector if `representation` is "isotropic", or a 3-D
@@ -136,3 +113,45 @@ Temperature-dependent data, provided for temperature <TTT>K.
              spectra as well and thus will have one additional dimension
              for the outgoing energy group.  In this case, `nu-fission` has the
              same dimensionality as `multiplicity matrix`.
+
+**/<library name>/<TTT>K/scatter data/**
+
+Data specific to neutron scattering for the temperature <TTT>K
+
+:Datasets: - **g_out bounds** (*int[2]* or *int[][][2]) --
+             Minimum (most energetic) and maximum (most thermal) outgoing groups
+             with non-zero values of the scattering matrix. These group numbers
+             use the standard ordering where the fastest neutron energy group
+             is group 1 while the most thermal neutron energy group is group G.
+             The dimensionality of `g_out bounds` is:
+             `g_out bounds][g_in][g_out]`, or
+             `g_out bounds[num-polar][num-azimuthal][g_in][g_out]`.
+             The former is used when `representation` is "isotropic", and the
+             latter when `representation` is "angle".
+           - **scatter matrix** (*double[][]* or *double[][][][]*) --
+             Flattened representation of the scattering moment matrices where
+             the [g_in] and [g_out] indices are flattened. The pre-flattened
+             array is shaped as follows (in row-major format):
+             `scatter matrix[order(+1)][g_in][g_out]`, or
+             `scatter matrix[num-polar][num-azimuthal][order(+1)][g_in][g_out]`
+             The former is used when `representation` is "isotropic", and the
+             latter when `representation` is "angle".  Note that if the value of
+             `scatter-type` is "legendre", the order dimension will be one
+             larger than the value of `order`, otherwise it will match `order`.
+             Finally, the g_out dimension has a dimensionality of
+             `g_out bounds`[0] to `g_out bounds`[1].
+           - **multiplicity matrix** (*double[]*) -- Flattened representation of
+             the scattering moment matrices where the [g_in] and [g_out] indices
+             are flattened. This dataset provides the code with a scaling factor
+             to account for neutrons being produced in (n,xn) reactions. This
+             is assumed isotropic and therefore is not repeated for every
+             Legendre moment or histogram/tabular bin. This dataset is optional,
+             if it is not provided no multiplication (i.e., values of 1.0) will
+             be assumed.
+             The pre-flattened array is shaped as follows (in row-major format):
+             `multiplicity matrix[g_in][g_out]`, or
+             `multiplicity matrix[num-polar][num-azimuthal][g_in][g_out]`
+             The former is used when `representation` is "isotropic", and the
+             latter when `representation` is "angle". Finally, the g_out
+             dimension has a dimensionality of `g_out bounds`[0] to
+             `g_out bounds`[1].

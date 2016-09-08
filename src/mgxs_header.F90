@@ -380,18 +380,16 @@ module mgxs_header
       integer, intent(in)           :: legendre_to_tabular_points ! Number of points to use
                                                                   ! in that  conversion
 
-      character(MAX_LINE_LEN) :: temp_str
-      integer(HID_T)          :: xsdata_grp, scatt_grp
-      real(8), allocatable    :: temp_arr(:), temp_2d(:, :)
-      real(8), allocatable    :: scatt_coeffs(:, :, :)
-      real(8), allocatable    :: temp_scatt(:, :, :)
-      real(8)                 :: dmu, mu, norm
-      integer                 :: order, order_dim, gin, gout, l, imu, length
-      type(VectorInt)         :: temps_to_read
-      integer                 :: t
-      type(Jagged2D)          :: input_scatt(:)
-      type(Jagged1D)          :: temp_mult(:)
-      integer, allocatable    :: gmin(:), gmax(:)
+      character(MAX_LINE_LEN)     :: temp_str
+      integer(HID_T)              :: xsdata_grp, scatt_grp
+      real(8), allocatable        :: temp_arr(:), temp_2d(:, :)
+      real(8)                     :: dmu, mu, norm
+      integer                     :: order, order_dim, gin, gout, l, imu, length
+      type(VectorInt)             :: temps_to_read
+      integer                     :: t
+      type(Jagged2D), allocatable :: input_scatt(:), scatt_coeffs(:)
+      type(Jagged1D), allocatable :: temp_mult(:)
+      integer, allocatable        :: gmin(:), gmax(:)
 
       ! Call generic data gathering routine (will populate the metadata)
       call mgxs_from_hdf5(this, xs_id, temperature, method, tolerance, &
@@ -480,28 +478,20 @@ module mgxs_header
             call fatal_error("Must provide absorption!")
           end if
 
-          ! Get multiplication data if present
-          allocate(temp_mult(groups, groups))
-          if (check_dataset(xsdata_grp, "multiplicity matrix")) then
-            call read_dataset(temp_mult, xsdata_grp, "multiplicity matrix")
-          else
-            temp_mult(:, :) = ONE
-          end if
-
           ! Get scattering data
           if (.not. check_group(xsdata_grp, "scatter data")) &
                call fatal_error("Must provide 'scatter data'")
           scatt_grp = open_group(xsdata_grp, 'scatter data')
           ! First get the outgoing group boundary indices
           if (check_dataset(xsdata_grp, "g_min")) then
-            allocate(g_min(groups))
-            call read_dataset(g_min, scatt_grp, "g_min")
+            allocate(gmin(groups))
+            call read_dataset(gmin, scatt_grp, "g_min")
           else
             call fatal_error("'g_min' for the scatter matrix must be provided")
           end if
           if (check_dataset(xsdata_grp, "g_max")) then
-            allocate(g_max(groups))
-            call read_dataset(g_max, scatt_grp, "g_max")
+            allocate(gmax(groups))
+            call read_dataset(gmax, scatt_grp, "g_max")
           else
             call fatal_error("'g_max' for the scatter matrix must be provided")
           end if
@@ -510,11 +500,11 @@ module mgxs_header
           ! to hold the flattened data
           length = 0
           do gin = 1, groups
-            length = length + order_dim * (g_max(gin) - gmin(gin) + 1)
+            length = length + order_dim * (gmax(gin) - gmin(gin) + 1)
           end do
           ! Allocate flattened array
           allocate(temp_arr(length))
-          jf (.not. check_dataset(scatt_grp, 'scatter matrix') &
+          if (.not. check_dataset(scatt_grp, 'scatter matrix')) &
                call fatal_error("'scatter matrix' must be provided")
           call read_dataset(temp_arr, scatt_grp, "scatter matrix")
 
@@ -542,7 +532,6 @@ module mgxs_header
           end if
 
           allocate(scatt_coeffs(gin))
-
           if (this % scatter_type == ANGLE_LEGENDRE .and. &
               legendre_to_tabular) then
             this % scatter_type = ANGLE_TABULAR
@@ -576,7 +565,7 @@ module mgxs_header
                 ! Now that we have the integral, lets ensure that the distribution
                 ! is normalized such that it preserves the original scattering xs
                 if (norm > ZERO) then
-                  scatt_coeffs(gin) % data(i:, gout) = &
+                  scatt_coeffs(gin) % data(:, gout) = &
                        scatt_coeffs(gin) % data(:, gout) * &
                        input_scatt(gin) % data(1, gout)
                 end if
@@ -597,11 +586,11 @@ module mgxs_header
           ! to hold the flattened data
           length = 0
           do gin = 1, groups
-            length = length + (g_max(gin) - gmin(gin) + 1)
+            length = length + (gmax(gin) - gmin(gin) + 1)
           end do
           ! Allocate flattened array
           allocate(temp_arr(length))
-          jf (.not. check_dataset(scatt_grp, 'multiplicity matrix') &
+          if (.not. check_dataset(scatt_grp, 'multiplicity matrix')) &
                call fatal_error("'multiplicity matrix' must be provided")
           call read_dataset(temp_arr, scatt_grp, "multiplicity matrix")
 
@@ -674,17 +663,16 @@ module mgxs_header
       integer, intent(in)             :: legendre_to_tabular_points ! Number of points to use
                                                                     ! in that  conversion
 
-      character(MAX_LINE_LEN) :: temp_str
-      integer(HID_T)          :: xsdata_grp
-      real(8), allocatable    :: temp_arr(:), temp_4d(:, :, :, :)
-      real(8), allocatable    :: temp_mult(:, :, :, :)
-      real(8), allocatable    :: scatt_coeffs(:, :, :, :, :)
-      real(8), allocatable    :: input_scatt(:, :, :, :, :)
-      real(8), allocatable    :: temp_scatt(:, :, :, :, :)
-      real(8)                 :: dmu, mu, norm
-      integer                 :: order, order_dim, gin, gout, l, imu, ipol, iazi
-      type(VectorInt)         :: temps_to_read
-      integer                 :: t
+      character(MAX_LINE_LEN)     :: temp_str
+      integer(HID_T)              :: xsdata_grp, scatt_grp
+      real(8), allocatable        :: temp_arr(:), temp_4d(:, :, :, :)
+      real(8)                     :: dmu, mu, norm
+      integer                     :: order, order_dim, gin, gout, l, imu
+      type(VectorInt)             :: temps_to_read
+      integer                     :: t, length, ipol, iazi
+      type(Jagged2D), allocatable :: input_scatt(:, :, :), scatt_coeffs(:, :, :)
+      type(Jagged1D), allocatable :: temp_mult(:, :, :)
+      integer, allocatable        :: gmin(:, :, :), gmax(:, :, :)
 
       ! Call generic data gathering routine (will populate the metadata)
       call mgxs_from_hdf5(this, xs_id, temperature, method, tolerance, &
@@ -807,115 +795,167 @@ module mgxs_header
             call fatal_error("Must provide absorption!")
           end if
 
-          ! Get multiplication data if present
-          allocate(temp_mult(groups,groups, this % n_azi, this % n_pol))
-          if (check_dataset(xsdata_grp, "multiplicity matrix")) then
-            call read_dataset(temp_mult, xsdata_grp, "multiplicity matrix")
-          else
-            temp_mult(:, :, :, :) = ONE
-          end if
-
           ! Get scattering data
-          ! The input is gathered in the more user-friendly facing format of
-          ! Gout x Gin x Order x Azi x Pol.  We will get it in that format in
-          ! input_scatt, but then need to convert it to a more useful ordering
-          ! for processing (Order x Gout x Gin x Azi x Pol).
-          allocate(input_scatt(groups, groups, order_dim, this % n_azi, &
-                               this % n_pol))
-          if (check_dataset(xsdata_grp, "scatter matrix")) then
-            allocate(temp_arr(groups * groups * order_dim * this % n_azi * &
-                              this % n_pol))
-            call read_dataset(temp_arr, xsdata_grp, "scatter matrix")
-            input_scatt(:, :, :, :, :) = reshape(temp_arr, (/groups, groups, &
-                 order_dim, this % n_azi, this % n_pol/))
-            deallocate(temp_arr)
-
-            ! Compare the number of orders given with the maximum order of the
-            ! problem.  Strip off the supefluous orders if needed.
-            if (this % scatter_type == ANGLE_LEGENDRE) then
-              order = min(order_dim - 1, max_order)
-              order_dim = order + 1
-            end if
-
-            allocate(temp_scatt(groups, groups, order_dim, this % n_azi, &
-                                this % n_pol))
-            temp_scatt(:, :, :, :, :) = input_scatt(:, :, 1:order_dim, :, :)
-
-            ! Take input format (groups, groups, order) and convert to
-            ! the more useful format needed for scattdata: (order, groups, groups)
-            ! However, if scatt_type was ANGLE_LEGENDRE (i.e., the data was
-            ! provided as Legendre coefficients), and the user requested that
-            ! these legendres be converted to tabular form (note xs is also
-            ! the default behavior), convert that now.
-            if (this % scatter_type == ANGLE_LEGENDRE .and. legendre_to_tabular) then
-
-              ! Convert input parameters to what we need for the rest.
-              this % scatter_type = ANGLE_TABULAR
-              order_dim = legendre_to_tabular_points
-              order = order_dim
-              dmu = TWO / real(order - 1, 8)
-
-              allocate(scatt_coeffs(order_dim, groups, groups, this % n_azi, &
-                                    this % n_pol))
-              do ipol = 1, this % n_pol
-                do iazi = 1, this % n_azi
-                  do gin = 1, groups
-                    do gout = 1, groups
-                      norm = ZERO
-                      do imu = 1, order_dim
-                        if (imu == 1) then
-                          mu = -ONE
-                        else if (imu == order_dim) then
-                          mu = ONE
-                        else
-                          mu = -ONE + real(imu - 1, 8) * dmu
-                        end if
-                        scatt_coeffs(imu, gout, gin, iazi, ipol) = &
-                             evaluate_legendre(temp_scatt(gout, gin, :, iazi, ipol), mu)
-                        ! Ensure positivity of distribution
-                        if (scatt_coeffs(imu, gout, gin, iazi, ipol) < ZERO) &
-                             scatt_coeffs(imu, gout, gin, iazi, ipol) = ZERO
-                        ! And accrue the integral
-                        if (imu > 1) then
-                          norm = norm + HALF * dmu * &
-                               (scatt_coeffs(imu - 1, gout, gin, iazi, ipol) + &
-                                scatt_coeffs(imu, gout, gin, iazi, ipol))
-                        end if
-                      end do
-                      ! Now that we have the integral, lets ensure that the distribution
-                      ! is normalized such that it preserves the original scattering xs
-                      if (norm > ZERO) then
-                        scatt_coeffs(:, gout, gin, iazi, ipol) = &
-                             scatt_coeffs(:, gout, gin, iazi, ipol) * &
-                             temp_scatt(gout, gin, 1, iazi, ipol) / norm
-                      end if
-                    end do
-                  end do
-                end do
-              end do
-            else
-              ! Sticking with current representation, carry forward but change
-              ! the array ordering
-              allocate(scatt_coeffs(order_dim, groups, groups, this % n_azi, &
-                                    this % n_pol))
-              do ipol = 1, this % n_pol
-                do iazi = 1, this % n_azi
-                  do gin = 1, groups
-                    do gout = 1, groups
-                      do l = 1, order_dim
-                        scatt_coeffs(l, gout, gin, iazi, ipol) = &
-                             temp_scatt(gout, gin, l, iazi, ipol)
-                      end do
-                    end do
-                  end do
-                end do
-              end do
-            end if
-            deallocate(temp_scatt)
+          if (.not. check_group(xsdata_grp, "scatter data")) &
+               call fatal_error("Must provide 'scatter data'")
+          scatt_grp = open_group(xsdata_grp, 'scatter data')
+          ! First get the outgoing group boundary indices
+          if (check_dataset(xsdata_grp, "g_min")) then
+            allocate(gmin(groups, this % n_azi, this % n_pol))
+            call read_dataset(gmin, scatt_grp, "g_min")
           else
-            call fatal_error("Must provide scatter matrix!")
+            call fatal_error("'g_min' for the scatter matrix must be provided")
+          end if
+          if (check_dataset(xsdata_grp, "g_max")) then
+            allocate(gmax(groups, this % n_azi, this % n_pol))
+            call read_dataset(gmax, scatt_grp, "g_max")
+          else
+            call fatal_error("'g_max' for the scatter matrix must be provided")
           end if
 
+          ! Now use this information to find the length of a container array
+          ! to hold the flattened data
+          length = 0
+          do ipol = 1, this % n_pol
+            do iazi = 1, this % n_azi
+              do gin = 1, groups
+                length = length + order_dim * (gmax(gin, iazi, ipol) - &
+                                               gmin(gin, iazi, ipol) + 1)
+              end do
+            end do
+          end do
+          ! Allocate flattened array
+          allocate(temp_arr(length))
+          if (.not. check_dataset(scatt_grp, 'scatter matrix')) &
+               call fatal_error("'scatter matrix' must be provided")
+          call read_dataset(temp_arr, scatt_grp, "scatter matrix")
+
+          ! Convert temp_arr to a jagged array ((gin) % data(l, gout)) for passing
+          ! to ScattData
+          allocate(input_scatt(groups, this % n_azi, this % n_pol))
+          index = 1
+          do ipol = 1, this % n_pol
+            do iazi = 1, this % n_azi
+              do gin = 1, groups
+                allocate(input_scatt(gin, iazi, ipol) % data(order_dim, &
+                     gmin(gin, iazi, ipol):gmax(gin, iazi, ipol)))
+                do l = 1, order_dim
+                  do gout = gmin(gin, iazi, ipol), gmax(gin, iazi, ipol)
+                    input_scatt(gin, iazi, ipol) % data(l, gout) = &
+                         temp_arr(index)
+                    index = index + 1
+                  end do ! gout
+                end do ! order
+              end do ! gin
+            end do ! iazi
+          end do ! ipol
+          deallocate(temp_arr)
+
+          ! Finally convert the legendre to tabular if needed
+          ! Compare the number of orders given with the maximum order of the
+          ! problem.  Strip off the supefluous orders if needed.
+          if (this % scatter_type == ANGLE_LEGENDRE) then
+            order = min(order_dim - 1, max_order)
+            order_dim = order + 1
+          end if
+
+          allocate(scatt_coeffs(gin, this % n_azi, this % n_pol))
+          if (this % scatter_type == ANGLE_LEGENDRE .and. &
+              legendre_to_tabular) then
+            this % scatter_type = ANGLE_TABULAR
+            order_dim = legendre_to_tabular_points
+            order = order_dim
+            dmu = TWO / real(order - 1, 8)
+            do ipol = 1, this % n_pol
+              do iazi = 1, this % n_azi
+                do gin = 1, groups
+                  allocate(scatt_coeffs(gin, iazi, ipol) % data(&
+                       order_dim, groups))
+                  do gout = gmin(gin, iazi, ipol), gmax(gin, iazi, ipol)
+                    norm = ZERO
+                    do imu = 1, order_dim
+                      if (imu == 1) then
+                        mu = -ONE
+                      else if (imu == order_dim) then
+                        mu = ONE
+                      else
+                        mu = -ONE + real(imu - 1, 8) * dmu
+                      end if
+                      scatt_coeffs(gin, iazi, ipol) % data(imu, gout) = &
+                           evaluate_legendre(&
+                           input_scatt(gin, iazi, ipol) % data(:, gout), mu)
+                      ! Ensure positivity of distribution
+                      if (scatt_coeffs(gin, iazi, ipol) % data(imu, gout) < ZERO) &
+                           scatt_coeffs(gin, iazi, ipol) % data(imu, gout) = ZERO
+                      ! And accrue the integral
+                      if (imu > 1) then
+                        norm = norm + HALF * dmu * &
+                             (scatt_coeffs(gin, iazi, ipol) % data(imu - 1, gout) + &
+                              scatt_coeffs(gin, iazi, ipol) % data(imu, gout))
+                      end if
+                    end do ! mu
+                    ! Now that we have the integral, lets ensure that the distribution
+                    ! is normalized such that it preserves the original scattering xs
+                    if (norm > ZERO) then
+                      scatt_coeffs(gin, iazi, ipol) % data(:, gout) = &
+                           scatt_coeffs(gin, iazi, ipol) % data(:, gout) * &
+                           input_scatt(gin, iazi, ipol) % data(1, gout)
+                    end if
+                  end do ! gout
+                end do ! gin
+              end do ! iazi
+            end do ! ipol
+          else
+            ! Sticking with current representation, carry forward but change
+            ! the array ordering
+            do ipol = 1, this % n_pol
+              do iazi = 1, this % n_azi
+                do gin = 1, groups
+                  allocate(scatt_coeffs(gin, iazi, ipol) % data(order_dim, groups))
+                  scatt_coeffs(gin, iazi, ipol) % data(:, :) = &
+                       input_scatt(gin, iazi, ipol) % data(:, :)
+                end do
+              end do
+            end do
+          end if
+          deallocate(input_scatt)
+
+          ! Now get the multiplication matrix
+          ! Now use this information to find the length of a container array
+          ! to hold the flattened data
+          length = 0
+          do ipol = 1, this % n_pol
+            do iazi = 1, this % n_azi
+              do gin = 1, groups
+                length = length + (gmax(gin, iazi, ipol) - gmin(gin, iazi, ipol) + 1)
+              end do
+            end do
+          end do
+          ! Allocate flattened array
+          allocate(temp_arr(length))
+          if (.not. check_dataset(scatt_grp, 'multiplicity matrix')) &
+               call fatal_error("'multiplicity matrix' must be provided")
+          call read_dataset(temp_arr, scatt_grp, "multiplicity matrix")
+
+          ! Convert temp_arr to a jagged array ((gin) % data(gout)) for passing
+          ! to ScattData
+          allocate(temp_mult(groups, this % n_azi, this % n_pol))
+          index = 1
+          do ipol = 1, this % n_pol
+            do iazi = 1, this % n_azi
+              do gin = 1, groups
+                allocate(temp_mult(gin, iazi, ipol) % data( &
+                     gmin(gin, iazi, ipol):gmax(gin, iazi, ipol)))
+                do gout = gmin(gin, iazi, ipol), gmax(gin, iazi, ipol)
+                  temp_mult(gin, iazi, ipol) % data(gout) = temp_arr(index)
+                  index = index + 1
+                end do
+              end do
+            end do
+          end do
+          deallocate(temp_arr)
+
+          ! Allocate and initialize our ScattData Object.
           allocate(xs % scatter(this % n_azi, this % n_pol))
           do ipol = 1, this % n_pol
             do iazi = 1,  this % n_azi
@@ -929,9 +969,22 @@ module mgxs_header
               end if
 
               ! Initialize the ScattData Object
-              call xs % scatter(iazi, ipol) % obj % init(&
-                   temp_mult(:, :, iazi, ipol), &
-                   scatt_coeffs(:, :, :, iazi, ipol))
+              call xs % scatter(iazi, ipol) % obj % init(gmin(:, iazi, ipol), &
+                   gmax(:, iazi, ipol), temp_mult(:, iazi, ipol), &
+                   scatt_coeffs(:, iazi, ipol))
+            end do
+          end do
+
+          ! Check sigA to ensure it is not 0 since it is
+          ! often divided by in the tally routines
+          ! (This may happen with Helium data)
+          do ipol = 1, this % n_pol
+            do iazi = 1,  this % n_azi
+              do gin = 1, groups
+                if (xs % absorption(gin, iazi, ipol) == ZERO) then
+                  xs % absorption(gin, iazi, ipol) = 1E-10_8
+                end if
+              end do
             end do
           end do
 
@@ -946,6 +999,18 @@ module mgxs_header
               end do
             end do
           end if
+
+          ! Finally, check sigT to ensure it is not 0 since it is
+          ! often divided by in the tally routines
+          do ipol = 1, this % n_pol
+            do iazi = 1,  this % n_azi
+              do gin = 1, groups
+                if (xs % total(gin, iazi, ipol) == ZERO) then
+                  xs % total(gin, iazi, ipol) = 1E-10_8
+                end if
+              end do
+            end do
+          end do
 
           ! Close the groups we have opened and deallocate
           call close_group(xsdata_grp)
@@ -1087,6 +1152,10 @@ module mgxs_header
       integer :: nuc_t
       real(8) :: temp_actual, temp_desired
       integer :: scatter_type
+      type(Jagged2D), allocatable :: nuc_matrix(:)
+      integer, allocatable :: gmin(:), gmax(:)
+      type(Jagged2D), allocatable :: jagged_scatt(:)
+      type(Jagged1D), allocatable :: jagged_mult(:)
 
       ! Set the meta-data
       call mgxs_combine(this, temps, mat, nuclides, max_order, scatter_type, &
@@ -1170,7 +1239,13 @@ module mgxs_header
                 end if
               end if
 
-              ! Get the multiplication matrix
+              ! We will next gather the multiplicaity and scattering matrices.
+              ! To avoid multiple re-allocations as we resize the storage
+              ! matrix (and/or to avoidlots of duplicate code), we will use a
+              ! dense matrix for this storage, with a reduction to the sparse
+              ! format at the end.
+
+              ! Get the multiplicity matrix
               ! To combine from nuclidic data we need to use the final relationship
               ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
               !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
@@ -1199,10 +1274,18 @@ module mgxs_header
 
               ! Get the complete scattering matrix
               nuc_order_dim = size(nuc % xs(nuc_t) % scatter % dist(1) % data, dim=1)
-              scatt_coeffs(1:min(nuc_order_dim, order_dim), :, :) = &
-                   scatt_coeffs(1:min(nuc_order_dim, order_dim), :, :) + &
-                   atom_density * &
-                   nuc % xs(nuc_t) % scatter % get_matrix(min(nuc_order_dim, order_dim))
+              nuc_order_dim = min(nuc_order_dim, order_dim)
+              call nuc % xs(nuc_t) % scatter % get_matrix(nuc_order_dim, &
+                   nuc_matrix)
+              do gin = 1, groups
+                do gout = nuc % xs(nuc_t) % scatter % gmin(gin), &
+                     nuc % xs(nuc_t) % scatter % gmax(gin)
+                  scatt_coeffs(1:nuc_order_dim, gout, gin) = &
+                       scatt_coeffs(1: nuc_order_dim, gout, gin) + &
+                       atom_density * nuc_matrix(gin) % data(1:nuc_order_dim, gout)
+                end do
+              end do
+
             type is (MgxsAngle)
               call fatal_error("Invalid passing of MgxsAngle to MgxsIso object")
             end select
@@ -1218,8 +1301,13 @@ module mgxs_header
               end do
             end do
 
+            ! Now create our jagged data from the dense data
+            call jagged_from_dense_2D(scatt_coeffs, jagged_scatt)
+            call jagged_from_dense_1D(temp_mult, jagged_mult, gmin, gmax)
+
             ! Initialize the ScattData Object
-            call this % xs(t) % scatter % init_from_dense(temp_mult, scatt_coeffs)
+            call this % xs(t) % scatter % init(gmin, gmax, jagged_mult, &
+                 jagged_scatt)
 
             ! Now normalize chi
             if (mat % fissionable) then
@@ -1232,7 +1320,8 @@ module mgxs_header
             end if
 
             ! Deallocate temporaries
-            deallocate(scatt_coeffs, temp_mult, mult_num, mult_denom)
+            deallocate(jagged_mult, jagged_scatt, gmin, gmax, scatt_coeffs, &
+                       temp_mult, mult_num, mult_denom)
           end associate ! nuc
         end do NUC_LOOP
       end do TEMP_LOOP
@@ -1262,6 +1351,10 @@ module mgxs_header
       integer :: nuc_t
       real(8) :: temp_actual, temp_desired
       integer :: scatter_type
+      type(Jagged2D), allocatable :: nuc_matrix(:)
+      integer, allocatable :: gmin(:), gmax(:)
+      type(Jagged2D), allocatable :: jagged_scatt(:)
+      type(Jagged1D), allocatable :: jagged_mult(:)
 
       ! Set the meta-data
       call mgxs_combine(this, temps, mat, nuclides, max_order, scatter_type, &
@@ -1375,7 +1468,13 @@ module mgxs_header
                 end if
               end if
 
-              ! Get the multiplication matrix
+              ! We will next gather the multiplicaity and scattering matrices.
+              ! To avoid multiple re-allocations as we resize the storage
+              ! matrix (and/or to avoidlots of duplicate code), we will use a
+              ! dense matrix for this storage, with a reduction to the sparse
+              ! format at the end.
+
+              ! Get the multiplicity matrix
               ! To combine from nuclidic data we need to use the final relationship
               ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
               !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
@@ -1411,20 +1510,31 @@ module mgxs_header
 
                   ! Get the complete scattering matrix
                   nuc_order_dim = &
-                       size(nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % dist(1) % data, dim=1)
-                  scatt_coeffs(1:min(nuc_order_dim, order_dim), :, :, iazi, ipol) = &
-                       scatt_coeffs(1:min(nuc_order_dim, order_dim), :, :, iazi, ipol) + &
-                       atom_density * &
-                       nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % get_matrix(min(nuc_order_dim, order_dim))
-                end do
-              end do
+                       size(nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % &
+                       dist(1) % data, dim=1)
+                  nuc_order_dim = min(nuc_order_dim, order_dim)
+                  call nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % &
+                       get_matrix(nuc_order_dim, nuc_matrix)
+                  do gin = 1, groups
+                    do gout = &
+                         nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % gmin(gin), &
+                         nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % gmax(gin)
+                      scatt_coeffs(1:nuc_order_dim, gout, gin, iazi, ipol) = &
+                           scatt_coeffs(1: nuc_order_dim, gout, gin, iazi, ipol) + &
+                           atom_density * nuc_matrix(gin) % data(1:nuc_order_dim, gout)
+                    end do ! gout
+                  end do ! gin
+                end do ! iazi
+              end do ! ipol
             type is (MgxsIso)
               call fatal_error("Invalid passing of MgxsIso to MgxsAngle object")
             end select
 
-            ! Obtain temp_mult
+            ! Obtain temp_mult, create jaged arrays and initialize the
+            ! ScattData object.
             do ipol = 1, n_pol
               do iazi = 1, n_azi
+                ! Obtain temp_mult
                 do gin = 1, groups
                   do gout = 1, groups
                     if (mult_denom(gout, gin, iazi, ipol) > ZERO) then
@@ -1436,15 +1546,17 @@ module mgxs_header
                     end if
                   end do
                 end do
-              end do
-            end do
 
-            ! Initialize the ScattData Object
-            do ipol = 1, n_pol
-              do iazi = 1, n_azi
-                call this % xs(t) % scatter(iazi, ipol) % obj % init_from_dense(&
-                     temp_mult(:, :, iazi, ipol), &
-                     scatt_coeffs(:, :, :, iazi, ipol))
+                ! Create the Jagged arrays
+                call jagged_from_dense_2D(scatt_coeffs(:, :, :, iazi, ipol), &
+                                          jagged_scatt)
+                call jagged_from_dense_1D(temp_mult(:, :, iazi, ipol), &
+                                          jagged_mult, gmin, gmax)
+
+                ! Initialize the ScattData Object
+                ! Initialize the ScattData Object
+                call this % xs(t) % scatter(iazi, ipol) % obj % init(gmin, &
+                     gmax, jagged_mult, jagged_scatt)
               end do
             end do
 
@@ -1464,7 +1576,8 @@ module mgxs_header
             end if
 
             ! Deallocate temporaries
-            deallocate(scatt_coeffs, temp_mult, mult_num, mult_denom)
+            deallocate(jagged_mult, jagged_scatt, gmin, gmax, scatt_coeffs, &
+                       temp_mult, mult_num, mult_denom)
           end associate ! nuc
         end do NUC_LOOP
       end do TEMP_LOOP

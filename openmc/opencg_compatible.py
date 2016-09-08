@@ -689,13 +689,14 @@ def get_openmc_cell(opencg_cell):
         translation = np.asarray(opencg_cell.translation, dtype=np.float64)
         openmc_cell.translation = translation
 
-    surfaces = []
-    operators = []
-    for surface, halfspace in opencg_cell.surfaces.values():
-        surfaces.append(get_openmc_surface(surface))
-        operators.append(operator.neg if halfspace == -1 else operator.pos)
-    openmc_cell.region = openmc.Intersection(
-        *[op(s) for op, s in zip(operators, surfaces)])
+    if opencg_cell.surfaces:
+        surfaces = []
+        operators = []
+        for surface, halfspace in opencg_cell.surfaces.values():
+            surfaces.append(get_openmc_surface(surface))
+            operators.append(operator.neg if halfspace == -1 else operator.pos)
+        openmc_cell.region = openmc.Intersection(
+            *[op(s) for op, s in zip(operators, surfaces)])
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell
@@ -911,6 +912,7 @@ def get_openmc_lattice(opencg_lattice):
     if lattice_id in OPENMC_LATTICES:
         return OPENMC_LATTICES[lattice_id]
 
+    name = opencg_lattice.name
     dimension = opencg_lattice.dimension
     width = opencg_lattice.width
     offset = opencg_lattice.offset
@@ -941,7 +943,7 @@ def get_openmc_lattice(opencg_lattice):
                  ((np.array(width, dtype=np.float64) *
                    np.array(dimension, dtype=np.float64))) / -2.0
 
-    openmc_lattice = openmc.RectLattice(lattice_id=lattice_id)
+    openmc_lattice = openmc.RectLattice(lattice_id=lattice_id, name=name)
     openmc_lattice.pitch = width
     openmc_lattice.universes = universe_array
     openmc_lattice.lower_left = lower_left
@@ -995,13 +997,17 @@ def get_opencg_geometry(openmc_geometry):
     return opencg_geometry
 
 
-def get_openmc_geometry(opencg_geometry):
+def get_openmc_geometry(opencg_geometry, compatible=False):
     """Return an OpenMC geometry corresponding to an OpenCG geometry.
 
     Parameters
     ----------
     opencg_geometry : opencg.Geometry
         OpenCG geometry
+    compatible : bool
+        Whether the OpenCG geometry is compatible with OpenMC's geometric
+        primitives. This should be set to False if the OpenCG geometry
+        uses SquarePrism surfaces. False by default.
 
     Returns
     -------
@@ -1017,9 +1023,6 @@ def get_openmc_geometry(opencg_geometry):
     opencg_geometry.assign_auto_ids()
     opencg_geometry = copy.deepcopy(opencg_geometry)
 
-    # Update Cell bounding boxes in Geometry
-    opencg_geometry.update_bounding_boxes()
-
     # Clear dictionaries and auto-generated ID
     OPENMC_SURFACES.clear()
     OPENCG_SURFACES.clear()
@@ -1031,12 +1034,13 @@ def get_openmc_geometry(opencg_geometry):
     OPENCG_LATTICES.clear()
 
     # Make the entire geometry "compatible" before assigning auto IDs
-    universes = opencg_geometry.get_all_universes()
-    for universe in universes.values():
-        if not isinstance(universe, opencg.Lattice):
-            make_opencg_cells_compatible(universe)
+    if not compatible:
+        universes = opencg_geometry.get_all_universes()
+        for universe in universes.values():
+            if not isinstance(universe, opencg.Lattice):
+                make_opencg_cells_compatible(universe)
 
-    opencg_geometry.assign_auto_ids()
+        opencg_geometry.assign_auto_ids()
 
     opencg_root_universe = opencg_geometry.root_universe
     openmc_root_universe = get_openmc_universe(opencg_root_universe)

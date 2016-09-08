@@ -17,6 +17,7 @@ module global
   use tally_header,     only: TallyObject, TallyResult
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
+  use volume_header,    only: VolumeCalculation
 
 #ifdef MPIF08
   use mpi_f08
@@ -34,6 +35,8 @@ module global
   type(SurfaceContainer), allocatable, target :: surfaces(:)
   type(Material),         allocatable, target :: materials(:)
   type(ObjectPlot),       allocatable, target :: plots(:)
+
+  type(VolumeCalculation), allocatable :: volume_calcs(:)
 
   ! Size of main arrays
   integer :: n_cells     ! # of cells
@@ -74,9 +77,6 @@ module global
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict
 
-  ! Default xs identifier (e.g. 70c or 300K)
-  character(5):: default_xs
-
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
 
@@ -99,13 +99,10 @@ module global
   ! What to assume for expanding natural elements
   integer :: default_expand = ENDF_BVII1
 
-  ! Whether or not windowed multipole cross sections should be used.
-  logical :: multipole_active = .false.
-
-  ! Total amount of nuclide ZAID and dictionary of nuclide ZAID and index --
-  ! this is used when sampling unresolved resonance probability tables
-  integer(8)       :: n_nuc_zaid_total
-  type(DictIntInt) :: nuc_zaid_dict
+  ! Default temperature and method for choosing temperatures
+  integer :: temperature_method = TEMPERATURE_NEAREST
+  real(8) :: temperature_tolerance = 10.0_8
+  real(8) :: temperature_default = 293.6_8
 
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
@@ -430,7 +427,6 @@ module global
 
   ! Various output options
   logical :: output_summary = .true.
-  logical :: output_xs      = .false.
   logical :: output_tallies = .true.
 
   ! ============================================================================

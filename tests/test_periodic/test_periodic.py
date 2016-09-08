@@ -13,7 +13,7 @@ class PeriodicTest(PyAPITestHarness):
         water = openmc.Material(1)
         water.add_nuclide('H1', 2.0)
         water.add_nuclide('O16', 1.0)
-        water.add_s_alpha_beta('c_H_in_H2O', '71t')
+        water.add_s_alpha_beta('c_H_in_H2O')
         water.set_density('g/cc', 1.0)
 
         fuel = openmc.Material(2)
@@ -21,7 +21,7 @@ class PeriodicTest(PyAPITestHarness):
         fuel.set_density('g/cc', 4.5)
 
         materials = openmc.Materials((water, fuel))
-        materials.default_xs = '71c'
+        materials.default_temperature = '294K'
         materials.export_to_xml()
 
         # Define geometry

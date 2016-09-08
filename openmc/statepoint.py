@@ -2,6 +2,7 @@ import sys
 import re
 import os
 import warnings
+import glob
 
 import numpy as np
 
@@ -22,8 +23,9 @@ class StatePoint(object):
     filename : str
         Path to file to load
     autolink : bool, optional
-        Whether to automatically link in metadata from a summary.h5
-        file. Defaults to True.
+        Whether to automatically link in metadata from a summary.h5 file and
+        stochastic volume calculation results from volume_*.h5 files. Defaults
+        to True.
 
     Attributes
     ----------
@@ -142,6 +144,12 @@ class StatePoint(object):
             if os.path.exists(path_summary):
                 su = openmc.Summary(path_summary)
                 self.link_with_summary(su)
+
+            path_volume = os.path.join(os.path.dirname(filename), 'volume_*.h5')
+            for path_i in glob.glob(path_volume):
+                if re.search(r'volume_\d+\.h5', path_i):
+                    vol = openmc.VolumeCalculation.from_hdf5(path_i)
+                    self.add_volume_information(vol)
 
     def close(self):
         self._f.close()
@@ -481,6 +489,18 @@ class StatePoint(object):
             for tally_id in self.tallies:
                 self.tallies[tally_id].sparse = self.sparse
 
+    def add_volume_information(self, volume_calc):
+        """Add volume information to the geometry within the file
+
+        Parameters
+        ----------
+        volume_calc : openmc.VolumeCalculation
+            Results from a stochastic volume calculation
+
+        """
+        if self.summary is not None:
+            self.summary.add_volume_information(volume_calc)
+
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None, exact_filters=False,
                   exact_nuclides=False, exact_scores=False):
@@ -662,7 +682,7 @@ class StatePoint(object):
                 if isinstance(tally_filter, openmc.SurfaceFilter):
                     surface_ids = []
                     for bin in tally_filter.bins:
-                        surface_ids.append(summary.surfaces[bin].id)
+                        surface_ids.append(bin)
                     tally_filter.bins = surface_ids
 
                 if isinstance(tally_filter, (openmc.CellFilter,

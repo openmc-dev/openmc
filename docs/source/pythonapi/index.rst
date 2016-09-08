@@ -27,6 +27,8 @@ Example Jupyter Notebooks
     examples/mgxs-part-ii
     examples/mgxs-part-iii
     examples/mgxs-part-iv
+    examples/mdgxs-part-i
+    examples/mdgxs-part-ii
     examples/nuclear-data
 
 ------------------------------------
@@ -284,6 +286,19 @@ Multi-group Cross Sections
     openmc.mgxs.TotalXS
     openmc.mgxs.TransportXS
 
+Multi-delayed-group Cross Sections
+----------------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclassinherit.rst
+
+    openmc.mgxs.MDGXS
+    openmc.mgxs.ChiDelayed
+    openmc.mgxs.DelayedNuFissionXS
+    openmc.mgxs.Beta
+
 Multi-group Cross Section Libraries
 -----------------------------------
 
@@ -319,6 +334,7 @@ Functions
    :nosignatures:
 
    openmc.model.create_triso_lattice
+   openmc.model.pack_trisos
 
 --------------------------------------------
 :mod:`openmc.data` -- Nuclear Data Interface
@@ -348,6 +364,7 @@ Core Classes
     openmc.data.Tabulated1D
     openmc.data.ThermalScattering
     openmc.data.CoherentElastic
+    openmc.data.FissionEnergyRelease
 
 Angle-Energy Distributions
 --------------------------
@@ -381,21 +398,22 @@ Classes
 +++++++
 
 .. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myclass.rst
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
 
-   openmc.data.ace.Library
-   openmc.data.ace.Table
+    openmc.data.ace.Library
+    openmc.data.ace.Table
 
 Functions
 +++++++++
 
 .. autosummary::
-   :toctree: generated
-   :nosignatures:
+    :toctree: generated
+    :nosignatures:
 
-   openmc.data.ace.ascii_to_binary
+    openmc.data.ace.ascii_to_binary
+    openmc.data.write_compact_458_library
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

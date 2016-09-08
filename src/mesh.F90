@@ -1,13 +1,13 @@
 module mesh
 
-  use constants
-  use global
-  use mesh_header
-  use search,          only: binary_search
-
 #ifdef MPI
   use message_passing
 #endif
+
+  use algorithm,  only: binary_search
+  use constants
+  use global
+  use mesh_header
 
   implicit none
 
@@ -93,30 +93,21 @@ contains
 ! use in a TallyObject results array
 !===============================================================================
 
-  pure function mesh_indices_to_bin(m, ijk, surface_current) result(bin)
+  pure function mesh_indices_to_bin(m, ijk) result(bin)
     type(RegularMesh), intent(in) :: m
     integer, intent(in)           :: ijk(:)
-    logical, intent(in), optional :: surface_current
     integer                       :: bin
 
+    integer :: n_x ! number of mesh cells in x direction
     integer :: n_y ! number of mesh cells in y direction
-    integer :: n_z ! number of mesh cells in z direction
 
-    if (present(surface_current)) then
-      n_y = m % dimension(2) + 1
-    else
-      n_y = m % dimension(2)
-    end if
+    n_x = m % dimension(1)
+    n_y = m % dimension(2)
 
     if (m % n_dimension == 2) then
-      bin = (ijk(1) - 1)*n_y + ijk(2)
+      bin = (ijk(2) - 1)*n_x + ijk(1)
     elseif (m % n_dimension == 3) then
-      if (present(surface_current)) then
-        n_z = m % dimension(3) + 1
-      else
-        n_z = m % dimension(3)
-      end if
-      bin = (ijk(1) - 1)*n_y*n_z + (ijk(2) - 1)*n_z + ijk(3)
+      bin = (ijk(3) - 1)*n_y*n_x + (ijk(2) - 1)*n_x + ijk(1)
     end if
 
   end function mesh_indices_to_bin
@@ -131,19 +122,19 @@ contains
     integer, intent(in)           :: bin
     integer, intent(out)          :: ijk(:)
 
+    integer :: n_x ! number of mesh cells in x direction
     integer :: n_y ! number of mesh cells in y direction
-    integer :: n_z ! number of mesh cells in z direction
 
+    n_x = m % dimension(1)
     n_y = m % dimension(2)
 
     if (m % n_dimension == 2) then
-      ijk(1) = (bin - 1)/n_y + 1
-      ijk(2) = mod(bin - 1, n_y) + 1
+      ijk(1) = mod(bin - 1, n_x) + 1
+      ijk(2) = (bin - 1)/n_x + 1
     else if (m % n_dimension == 3) then
-      n_z = m % dimension(3)
-      ijk(1) = (bin - 1)/(n_y*n_z) + 1
-      ijk(2) = mod(bin - 1, n_y*n_z)/n_z + 1
-      ijk(3) = mod(bin - 1, n_z) + 1
+      ijk(1) = mod(bin - 1, n_x) + 1
+      ijk(2) = mod(bin - 1, n_x*n_y)/n_x + 1
+      ijk(3) = (bin - 1)/(n_x*n_y) + 1
     end if
 
   end subroutine bin_to_mesh_indices

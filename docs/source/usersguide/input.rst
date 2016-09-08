@@ -281,6 +281,8 @@ based on the recommended value in LA-UR-14-24530_.
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
+.. _multipole_library:
+
 ``<multipole_library>`` Element
 -------------------------------
 
@@ -290,8 +292,8 @@ OpenMC can use it for on-the-fly Doppler-broadening of resolved resonance range
 cross sections. If this element is absent from the settings.xml file, the
 :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used.
 
-  .. note:: The <use_windowed_multipole> element must also be set to "true"
-    for windowed multipole functionality.
+  .. note:: The :ref:`temperature_method` must also be set to "multipole" for
+            windowed multipole functionality.
 
 ``<max_order>`` Element
 ---------------------------
@@ -395,19 +397,16 @@ attributes or sub-elements:
 
   :scatterer:
     An element with attributes/sub-elements called ``nuclide``, ``method``,
-    ``xs_label``, ``xs_label_0K``, ``E_min``, and ``E_max``. The ``nuclide``
-    attribute is the name, as given by the ``name`` attribute within the
-    ``nuclide`` sub-element of the ``material`` element in ``materials.xml``,
-    of the nuclide to which a resonance scattering treatment is to be applied.
+    ``E_min``, and ``E_max``. The ``nuclide`` attribute is the name, as given
+    by the ``name`` attribute within the ``nuclide`` sub-element of the
+    ``material`` element in ``materials.xml``, of the nuclide to which a
+    resonance scattering treatment is to be applied.
     The ``method`` attribute gives the type of resonance scattering treatment
     that is to be applied to the ``nuclide``.  Acceptable inputs - none of
     which are case-sensitive - for the ``method`` attribute are ``ARES``,
     ``CXS``, ``WCM``, and ``DBRC``.  Descriptions of each of these methods
-    are documented here_.  The ``xs_label`` attribute gives the label for the
-    cross section data of the ``nuclide`` at a given temperature.  The
-    ``xs_label_0K`` gives the label for the 0 K cross section data for the
-    ``nuclide``.  The ``E_min`` attribute gives the minimum energy above
-    which the ``method`` is applied.  The ``E_max`` attribute gives the
+    are documented here_.  The ``E_min`` attribute gives the minimum energy
+    above which the ``method`` is applied.  The ``E_max`` attribute gives the
     maximum energy below which the ``method`` is applied.  One example would
     be as follows:
 
@@ -419,16 +418,12 @@ attributes or sub-elements:
           <scatterer>
             <nuclide>U-238</nuclide>
             <method>ARES</method>
-            <xs_label>92238.72c</xs_label>
-            <xs_label_0K>92238.00c</xs_label_0K>
             <E_min>5.0e-6</E_min>
             <E_max>40.0e-6</E_max>
          </scatterer>
          <scatterer>
             <nuclide>Pu-239</nuclide>
             <method>dbrc</method>
-            <xs_label>94239.72c</xs_label>
-            <xs_label_0K>94239.00c</xs_label_0K>
             <E_min>0.01e-6</E_min>
             <E_max>210.0e-6</E_max>
           </scatterer>
@@ -714,6 +709,45 @@ survival biasing, otherwise known as implicit capture or absorption.
 
   *Default*: false
 
+.. _temperature_default:
+
+``<temperature_default>`` Element
+---------------------------------
+
+The ``<temperature_default>`` element specifies a default temperature in Kelvin
+that is to be applied to cells in the absence of an explicit cell temperature or
+a material default temperature.
+
+  *Default*: 293.6 K
+
+.. _temperature_method:
+
+``<temperature_method>`` Element
+--------------------------------
+
+The ``<temperature_method>`` element has an accepted value of "nearest" or
+"interpolation". A value of "nearest" indicates that for each cell, the nearest
+temperature at which cross sections are given is to be applied, within a given
+tolerance (see :ref:`temperature_tolerance`). A value of "multipole" indicates
+that the windowed multipole method should be used to evaluate
+temperature-dependent cross sections in the resolved resonance range (a
+:ref:`windowed multipole library <multipole_library>` must also be available).
+
+  *Default*: "nearest"
+
+.. _temperature_tolerance:
+
+``<temperature_tolerance>`` Element
+-----------------------------------
+
+The ``<temperature_tolerance>`` element specifies a tolerance in Kelvin that is
+to be applied when the "nearest" temperature method is used. For example, if a
+cell temperature is 340 K and the tolerance is 15 K, then the closest
+temperature in the range of 325 K to 355 K will be used to evaluate cross
+sections.
+
+  *Default*: 10 K
+
 ``<threads>`` Element
 ---------------------
 
@@ -835,6 +869,35 @@ displayed. This element takes the following attributes:
     The specified verbosity between 1 and 10.
 
     *Default*: 5
+
+``<volume_calc>`` Element
+-------------------------
+
+The ``<volume_calc>`` element indicates that a stochastic volume calculation
+should be run at the beginning of the simulation. This element has the following
+sub-elements/attributes:
+
+  :cells:
+    The unique IDs of cells for which the volume should be estimated.
+
+    *Default*: None
+
+  :samples:
+    The number of samples used to estimate volumes.
+
+    *Default*: None
+
+  :lower_left:
+     The lower-left Cartesian coordinates of a bounding box that is used to
+     sample points within.
+
+     *Default*: None
+
+  :upper_right:
+     The upper-right Cartesian coordinates of a bounding box that is used to
+     sample points within.
+
+     *Default*: None
 
 --------------------------------------
 Geometry Specification -- geometry.xml
@@ -1061,7 +1124,9 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     specified for the "distributed temperature" feature. This will give each
     unique instance of the cell its own temperature.
 
-    *Default*: The temperature of the coldest nuclide in the cell's material(s)
+    *Default*: If a material default temperature is supplied, it is used. In the
+    absence of a material default temperature, the :ref:`global default
+    temperature <temperature_default>` is used.
 
   :rotation:
     If the cell is filled with a universe, this element specifies the angles in
@@ -1266,6 +1331,14 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: ""
 
+  :temperature:
+    An element with no attributes which is used to set the default temperature
+    of the material in Kelvin.
+
+    *Default*: If a material default temperature is not given and a cell
+    temperature is not specified, the :ref:`global default temperature
+    <temperature_default>` is used.
+
   :density:
     An element with attributes/sub-elements called ``value`` and ``units``. The
     ``value`` attribute is the numeric value of the density while the ``units``
@@ -1286,17 +1359,16 @@ Each ``material`` element can have the following attributes or sub-elements:
               ``nuclide``, ``element``, or ``sab`` quantity.
 
   :nuclide:
-    An element with attributes/sub-elements called ``name``, ``xs``, and ``ao``
+    An element with attributes/sub-elements called ``name``, and ``ao``
     or ``wo``. The ``name`` attribute is the name of the cross-section for a
-    desired nuclide while the ``xs`` attribute is the cross-section
-    identifier. Finally, the ``ao`` and ``wo`` attributes specify the atom or
+    desired nuclide. Finally, the ``ao`` and ``wo`` attributes specify the atom or
     weight percent of that nuclide within the material, respectively. One
     example would be as follows:
 
     .. code-block:: xml
 
-        <nuclide name="H-1" xs="70c" ao="2.0" />
-        <nuclide name="O-16" xs="70c" ao="1.0" />
+        <nuclide name="H1" ao="2.0" />
+        <nuclide name="O16" ao="1.0" />
 
     .. note:: If one nuclide is specified in atom percent, all others must also
               be given in atom percent. The same applies for weight percentages.
@@ -1320,11 +1392,10 @@ Each ``material`` element can have the following attributes or sub-elements:
     Specifies that a natural element is present in the material. The natural
     element is split up into individual isotopes based on `IUPAC Isotopic
     Compositions of the Elements 2009`_. This element has
-    attributes/sub-elements called ``name``, ``xs``, and ``ao``. The ``name``
-    attribute is the atomic symbol of the element while the ``xs`` attribute is
-    the cross-section identifier. Finally, the ``ao`` attribute specifies the
-    atom percent of the element within the material, respectively. One example
-    would be as follows:
+    attributes/sub-elements called ``name``, and ``ao``. The ``name``
+    attribute is the atomic symbol of the element. Finally, the ``ao``
+    attribute specifies the atom percent of the element within the material,
+    respectively. One example would be as follows:
 
     .. code-block:: xml
 
@@ -1354,10 +1425,9 @@ Each ``material`` element can have the following attributes or sub-elements:
               multi-group :ref:`energy_mode`.
 
   :sab:
-    Associates an S(a,b) table with the material. This element has
-    attributes/sub-elements called ``name`` and ``xs``. The ``name`` attribute
-    is the name of the S(a,b) table that should be associated with the material,
-    and ``xs`` is the cross-section identifier for the table.
+    Associates an S(a,b) table with the material. This element has one
+    attribute/sub-element called ``name``. The ``name`` attribute
+    is the name of the S(a,b) table that should be associated with the material.
 
     *Default*: None
 
@@ -1368,14 +1438,13 @@ Each ``material`` element can have the following attributes or sub-elements:
     recognizes that some multi-group libraries may be providing material
     specific macroscopic cross sections instead of always providing nuclide
     specific data like in the continuous-energy case.  To that end, the
-    macroscopic element has attributes/sub-elements called ``name``, and ``xs``.
+    macroscopic element has one attribute/sub-element called ``name``.
     The ``name`` attribute is the name of the cross-section for a
-    desired nuclide while the ``xs`` attribute is the cross-section
-    identifier. One example would be as follows:
+    desired nuclide. One example would be as follows:
 
     .. code-block:: xml
 
-        <macroscopic name="UO2" xs="71c" />
+        <macroscopic name="UO2" />
 
     .. note:: This element is only used in the multi-group :ref:`energy_mode`.
 
@@ -1383,18 +1452,6 @@ Each ``material`` element can have the following attributes or sub-elements:
 
 .. _IUPAC Isotopic Compositions of the Elements 2009:
     http://pac.iupac.org/publications/pac/pdf/2011/pdf/8302x0397.pdf
-
-``<default_xs>`` Element
-------------------------
-
-In some circumstances, the cross-section identifier may be the same for many or
-all nuclides in a given problem. In this case, rather than specifying the
-``xs=...`` attribute on every nuclide, a ``<default_xs>`` element can be used to
-set the default cross-section identifier for any nuclide without an identifier
-explicitly listed. This element has no attributes and accepts a 3-letter string
-that indicates the default cross-section identifier, e.g. "70c".
-
-  *Default*: None
 
 ------------------------------------
 Tallies Specification -- tallies.xml
@@ -1809,6 +1866,27 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |:math:`\gamma`-rays are assumed to deposit their   |
         |                      |energy locally. Units are MeV per source particle. |
         +----------------------+---------------------------------------------------+
+        |fission-q-prompt      |The prompt fission energy production rate. This    |
+        |                      |energy comes in the form of fission fragment       |
+        |                      |nuclei, prompt neutrons, and prompt                |
+        |                      |:math:`\gamma`-rays. This value depends on the     |
+        |                      |incident energy and it requires that the nuclear   |
+        |                      |data library contains the optional fission energy  |
+        |                      |release data. Energy is assumed to be deposited    |
+        |                      |locally. Units are MeV per source particle.        |
+        +----------------------+---------------------------------------------------+
+        |fission-q-recoverable |The recoverable fission energy production rate.    |
+        |                      |This energy comes in the form of fission fragment  |
+        |                      |nuclei, prompt and delayed neutrons, prompt and    |
+        |                      |delayed :math:`\gamma`-rays, and delayed           |
+        |                      |:math:`\beta`-rays. This tally differs from the    |
+        |                      |kappa-fission tally in that it is dependent on     |
+        |                      |incident neutron energy and it requires that the   |
+        |                      |nuclear data library contains the optional fission |
+        |                      |energy release data. Energy is assumed to be       |
+        |                      |deposited locally. Units are MeV per source        |
+        |                      |paticle.                                           |
+        +----------------------+---------------------------------------------------+
 
     .. note::
        The ``analog`` estimator is actually identical to the ``collision``
@@ -2055,8 +2133,8 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     *Default*: None
 
   :meshlines:
-    The ``meshlines`` sub-element allows for plotting the boundaries of
-    a tally mesh on top of a plot. Only one ``meshlines`` element is allowed per
+    The ``meshlines`` sub-element allows for plotting the boundaries of a
+    regular mesh on top of a plot. Only one ``meshlines`` element is allowed per
     ``plot`` element, and it must contain as attributes or sub-elements a mesh
     type and a linewidth.  Optionally, a color may be specified for the overlay:
 

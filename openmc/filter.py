@@ -20,6 +20,12 @@ _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
                  'distribcell', 'delayedgroup']
 
+_CURRENT_NAMES = {1: 'x-min out', 2: 'x-max out',
+                  3: 'y-min out', 4: 'y-max out',
+                  5: 'z-min out', 6: 'z-max out',
+                  7: 'x-min in', 8: 'x-max in',
+                  9: 'y-min in', 10: 'y-max in',
+                  11: 'z-min in', 12: 'z-max in'}
 class FilterMeta(ABCMeta):
     def __new__(cls, name, bases, namespace, **kwargs):
         if not name.endswith('Filter'):
@@ -260,7 +266,7 @@ class Filter(with_metaclass(FilterMeta, object)):
             cell instance ID for 'distribcell' Filters. The bin is a 2-tuple of
             floats for 'energy' and 'energyout' filters corresponding to the
             energy boundaries of the bin of interest. The bin is an (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
             interest.
 
         Returns
@@ -387,7 +393,6 @@ class Filter(with_metaclass(FilterMeta, object)):
         filter_bins = np.repeat(self.bins, self.stride)
         tile_factor = data_size / len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
-        filter_bins = filter_bins
         df = pd.concat([df, pd.DataFrame(
             {self.short_name.lower() : filter_bins})])
 
@@ -416,7 +421,22 @@ class UniverseFilter(IntegralFilter): pass
 class MaterialFilter(IntegralFilter): pass
 class CellFilter(IntegralFilter): pass
 class CellbornFilter(IntegralFilter): pass
-class SurfaceFilter(IntegralFilter): pass
+
+
+class SurfaceFilter(IntegralFilter):
+    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+        # Initialize Pandas DataFrame
+        import pandas as pd
+        df = pd.DataFrame()
+
+        filter_bins = np.repeat(self.bins, self.stride)
+        tile_factor = data_size / len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        filter_bins = [_CURRENT_NAMES[x] for x in filter_bins]
+        df = pd.concat([df, pd.DataFrame(
+            {self.short_name.lower() : filter_bins})])
+
+        return df
 
 
 class MeshFilter(Filter):

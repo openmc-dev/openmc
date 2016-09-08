@@ -15,6 +15,7 @@ Data Files
    nuclear_data
    mgxs_library
    data_wmp
+   fission_energy
 
 ------------
 Output Files
@@ -30,3 +31,4 @@ Output Files
    particle_restart
    track
    voxel
+   volume

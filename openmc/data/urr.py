@@ -4,9 +4,10 @@ from numbers import Integral, Real
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc.mixin import EqualityMixin
 
 
-class ProbabilityTables(object):
+class ProbabilityTables(EqualityMixin):
     r"""Unresolved resonance region probability tables.
 
     Parameters

@@ -28,6 +28,9 @@ MOCK_MODULES = ['numpy', 'numpy.polynomial', 'numpy.polynomial.polynomial',
                 'h5py', 'pandas', 'opencg']
 sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
+import numpy as np
+np.polynomial.Polynomial = MagicMock
+
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -126,7 +129,7 @@ if not on_rtd:
     html_theme = 'sphinx_rtd_theme'
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
-html_logo = '_images/openmc200px.png'
+html_logo = '_images/openmc_logo.png'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".

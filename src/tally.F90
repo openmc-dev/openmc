@@ -1,7 +1,11 @@
 module tally
 
+#ifdef MPI
+  use message_passing
+#endif
+
+  use algorithm,        only: binary_search
   use constants
-  use endf_header,      only: Constant1D
   use error,            only: fatal_error
   use geometry_header
   use global
@@ -12,14 +16,9 @@ module tally
   use mesh_header,      only: RegularMesh
   use output,           only: header
   use particle_header,  only: LocalCoord, Particle
-  use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult
   use tally_filter
-
-#ifdef MPI
-  use message_passing
-#endif
 
   implicit none
 
@@ -89,6 +88,7 @@ contains
     integer :: l                    ! loop index for nuclides in material
     integer :: m                    ! loop index for reactions
     integer :: q                    ! loop index for scoring bins
+    integer :: i_temp               ! temperature index
     integer :: i_nuc                ! index in nuclides array (from material)
     integer :: i_energy             ! index in nuclide energy grid
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
@@ -247,24 +247,17 @@ contains
         ! reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          ! Don't waste time on very common reactions we know have multiplicities
-          ! of one.
+          ! Don't waste time on very common reactions we know have
+          ! multiplicities of one.
           score = p % last_wgt * flux
         else
-          m = nuclides(p%event_nuclide)%reaction_index% &
+          m = nuclides(p % event_nuclide) % reaction_index % &
                get_key(p % event_MT)
 
           ! Get yield and apply to score
-          associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            select type (yield => rxn % products(1) % yield)
-            type is (Constant1D)
-              ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y * flux
-            class default
-              ! the yield was already incorporated in to p % wgt per the
-              ! scattering routine
-              score = p % wgt * flux
-            end select
+          associate (rxn => nuclides(p % event_nuclide) % reactions(m))
+            score = p % last_wgt * flux &
+                 * rxn % products(1) % yield % evaluate(p % last_E)
           end associate
         end if
 
@@ -289,16 +282,9 @@ contains
                get_key(p % event_MT)
 
           ! Get yield and apply to score
-          associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            select type (yield => rxn % products(1) % yield)
-            type is (Constant1D)
-              ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y * flux
-            class default
-              ! the yield was already incorporated in to p % wgt per the
-              ! scattering routine
-              score = p % wgt * flux
-            end select
+          associate (rxn => nuclides(p % event_nuclide) % reactions(m))
+            score = p % last_wgt * flux &
+                 * rxn % products(1) % yield % evaluate(p % last_E)
           end associate
         end if
 
@@ -324,15 +310,8 @@ contains
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
-            select type (yield => rxn % products(1) % yield)
-            type is (Constant1D)
-              ! Grab the yield from the reaction
-              score = p % last_wgt * yield % y * flux
-            class default
-              ! the yield was already incorporated in to p % wgt per the
-              ! scattering routine
-              score = p % wgt * flux
-            end select
+            score = p % last_wgt * flux &
+                 * rxn % products(1) % yield % evaluate(p % last_E)
           end associate
         end if
 
@@ -703,14 +682,14 @@ contains
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
             ! calculate fraction of absorptions that would have resulted in
-            ! fission scale by kappa-fission
-            associate (nuc => nuclides(p%event_nuclide))
-              if (micro_xs(p%event_nuclide)%absorption > ZERO .and. &
-                   nuc%fissionable) then
-                score = p%absorb_wgt * &
-                     nuc%reactions(nuc%index_fission(1))%Q_value * &
-                     micro_xs(p%event_nuclide)%fission / &
-                     micro_xs(p%event_nuclide)%absorption * flux
+            ! fission scaled by kappa-fission
+            associate (nuc => nuclides(p % event_nuclide))
+              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
+                   nuc % fissionable) then
+                score = p % absorb_wgt * &
+                     nuc % reactions(nuc % index_fission(1)) % Q_value * &
+                     micro_xs(p % event_nuclide) % fission / &
+                     micro_xs(p % event_nuclide) % absorption * flux
               end if
             end associate
           else
@@ -719,12 +698,12 @@ contains
             ! All fission events will contribute, so again we can use
             ! particle's weight entering the collision as the estimate for
             ! the fission energy production rate
-            associate (nuc => nuclides(p%event_nuclide))
-              if (nuc%fissionable) then
-                score = p%last_wgt * &
-                     nuc%reactions(nuc%index_fission(1))%Q_value * &
-                     micro_xs(p%event_nuclide)%fission / &
-                     micro_xs(p%event_nuclide)%absorption * flux
+            associate (nuc => nuclides(p % event_nuclide))
+              if (nuc % fissionable) then
+                score = p % last_wgt * &
+                     nuc % reactions(nuc % index_fission(1)) % Q_value * &
+                     micro_xs(p % event_nuclide) % fission / &
+                     micro_xs(p % event_nuclide) % absorption * flux
               end if
             end associate
           end if
@@ -732,22 +711,23 @@ contains
         else
           if (i_nuclide > 0) then
             associate (nuc => nuclides(i_nuclide))
-              if (nuc%fissionable) then
-                score = nuc%reactions(nuc%index_fission(1))%Q_value * &
-                     micro_xs(i_nuclide)%fission * atom_density * flux
+              if (nuc % fissionable) then
+                score = nuc % reactions(nuc % index_fission(1)) % Q_value * &
+                     micro_xs(i_nuclide) % fission * atom_density * flux
               end if
             end associate
           else
-            do l = 1, materials(p%material)%n_nuclides
+            do l = 1, materials(p % material) % n_nuclides
               ! Determine atom density and index of nuclide
-              atom_density_ = materials(p%material)%atom_density(l)
-              i_nuc = materials(p%material)%nuclide(l)
+              atom_density_ = materials(p % material) % atom_density(l)
+              i_nuc = materials(p % material) % nuclide(l)
 
               ! If nuclide is fissionable, accumulate kappa fission
               associate(nuc => nuclides(i_nuc))
                 if (nuc % fissionable) then
-                  score = score + nuc%reactions(nuc%index_fission(1))%Q_value * &
-                       micro_xs(i_nuc)%fission * atom_density_ * flux
+                  score = score + &
+                       nuc % reactions(nuc % index_fission(1)) % Q_value * &
+                       micro_xs(i_nuc) % fission * atom_density_ * flux
                 end if
               end associate
             end do
@@ -772,6 +752,123 @@ contains
           end if
         end if
 
+      case (SCORE_FISS_Q_PROMPT)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing) then
+            ! No fission events occur if survival biasing is on -- need to
+            ! calculate fraction of absorptions that would have resulted in
+            ! fission scaled by Q-value
+            associate (nuc => nuclides(p % event_nuclide))
+              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
+                   allocated(nuc % fission_q_prompt)) then
+                score = p % absorb_wgt &
+                     * nuc % fission_q_prompt % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption * flux
+              end if
+            end associate
+          else
+            ! Skip any non-absorption events
+            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
+            ! All fission events will contribute, so again we can use
+            ! particle's weight entering the collision as the estimate for
+            ! the fission energy production rate
+            associate (nuc => nuclides(p % event_nuclide))
+              if (allocated(nuc % fission_q_prompt)) then
+                score = p % last_wgt &
+                     * nuc % fission_q_prompt % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption * flux
+              end if
+            end associate
+          end if
+
+        else
+          if (t % estimator == ESTIMATOR_COLLISION) then
+            E = p % last_E
+          else
+            E = p % E
+          end if
+
+          if (i_nuclide > 0) then
+            if (allocated(nuclides(i_nuclide) % fission_q_prompt)) then
+              score = micro_xs(i_nuclide) % fission * atom_density * flux &
+                      * nuclides(i_nuclide) % fission_q_prompt % evaluate(E)
+            else
+              score = ZERO
+            end if
+          else
+            score = ZERO
+            do l = 1, materials(p % material) % n_nuclides
+              atom_density_ = materials(p % material) % atom_density(l)
+              i_nuc = materials(p % material) % nuclide(l)
+              if (allocated(nuclides(i_nuc) % fission_q_prompt)) then
+                score = score + micro_xs(i_nuc) % fission * atom_density_ &
+                        * flux &
+                        * nuclides(i_nuc) % fission_q_prompt % evaluate(E)
+              end if
+            end do
+          end if
+        end if
+
+      case (SCORE_FISS_Q_RECOV)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing) then
+            ! No fission events occur if survival biasing is on -- need to
+            ! calculate fraction of absorptions that would have resulted in
+            ! fission scaled by Q-value
+            associate (nuc => nuclides(p % event_nuclide))
+              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
+                   allocated(nuc % fission_q_recov)) then
+                score = p % absorb_wgt &
+                     * nuc % fission_q_recov % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption * flux
+              end if
+            end associate
+          else
+            ! Skip any non-absorption events
+            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
+            ! All fission events will contribute, so again we can use
+            ! particle's weight entering the collision as the estimate for
+            ! the fission energy production rate
+            associate (nuc => nuclides(p % event_nuclide))
+              if (allocated(nuc % fission_q_recov)) then
+                score = p % last_wgt &
+                     * nuc % fission_q_recov % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption * flux
+              end if
+            end associate
+          end if
+
+        else
+          if (t % estimator == ESTIMATOR_COLLISION) then
+            E = p % last_E
+          else
+            E = p % E
+          end if
+
+          if (i_nuclide > 0) then
+            if (allocated(nuclides(i_nuclide) % fission_q_recov)) then
+              score = micro_xs(i_nuclide) % fission * atom_density * flux &
+                      * nuclides(i_nuclide) % fission_q_recov % evaluate(E)
+            else
+              score = ZERO
+            end if
+          else
+            score = ZERO
+            do l = 1, materials(p % material) % n_nuclides
+              atom_density_ = materials(p % material) % atom_density(l)
+              i_nuc = materials(p % material) % nuclide(l)
+              if (allocated(nuclides(i_nuc) % fission_q_recov)) then
+                score = score + micro_xs(i_nuc) % fission * atom_density_ &
+                        * flux * nuclides(i_nuc) % fission_q_recov % evaluate(E)
+              end if
+            end do
+          end if
+        end if
+
       case default
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Any other score is assumed to be a MT number. Thus, we just need
@@ -791,16 +888,18 @@ contains
             if (i_nuclide > 0) then
               if (nuclides(i_nuclide)%reaction_index%has_key(score_bin)) then
                 m = nuclides(i_nuclide)%reaction_index%get_key(score_bin)
-                associate (rxn => nuclides(i_nuclide) % reactions(m))
 
-                  ! Retrieve index on nuclide energy grid and interpolation
-                  ! factor
-                  i_energy = micro_xs(i_nuclide) % index_grid
-                  f = micro_xs(i_nuclide) % interp_factor
-                  if (i_energy >= rxn % threshold) then
-                    score = ((ONE - f) * rxn % sigma(i_energy - &
-                         rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                         rxn%threshold + 2)) * atom_density * flux
+                ! Retrieve temperature and energy grid index and interpolation
+                ! factor
+                i_temp = micro_xs(i_nuclide) % index_temp
+                i_energy = micro_xs(i_nuclide) % index_grid
+                f = micro_xs(i_nuclide) % interp_factor
+
+                associate (xs => nuclides(i_nuclide) % reactions(m) % xs(i_temp))
+                  if (i_energy >= xs % threshold) then
+                    score = ((ONE - f) * xs % value(i_energy - &
+                         xs % threshold + 1) + f * xs % value(i_energy - &
+                         xs % threshold + 2)) * atom_density * flux
                   end if
                 end associate
               end if
@@ -815,15 +914,18 @@ contains
 
                 if (nuclides(i_nuc)%reaction_index%has_key(score_bin)) then
                   m = nuclides(i_nuc)%reaction_index%get_key(score_bin)
-                  associate (rxn => nuclides(i_nuc) % reactions(m))
-                    ! Retrieve index on nuclide energy grid and interpolation
-                    ! factor
-                    i_energy = micro_xs(i_nuc) % index_grid
-                    f = micro_xs(i_nuc) % interp_factor
-                    if (i_energy >= rxn % threshold) then
-                      score = score + ((ONE - f) * rxn % sigma(i_energy - &
-                           rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                           rxn%threshold + 2)) * atom_density_ * flux
+
+                  ! Retrieve temperature and energy grid index and interpolation
+                  ! factor
+                  i_temp = micro_xs(i_nuc) % index_temp
+                  i_energy = micro_xs(i_nuc) % index_grid
+                  f = micro_xs(i_nuc) % interp_factor
+
+                  associate (xs => nuclides(i_nuc) % reactions(m) % xs(i_temp))
+                    if (i_energy >= xs % threshold) then
+                      score = score + ((ONE - f) * xs % value(i_energy - &
+                           xs % threshold + 1) + f * xs % value(i_energy - &
+                           xs % threshold + 2)) * atom_density_ * flux
                     end if
                   end associate
                 end if
@@ -2224,13 +2326,16 @@ contains
     integer :: i
     integer :: i_tally
     integer :: j                    ! loop indices
-    integer :: k                    ! loop indices
+    integer :: d1                   ! dimension index
+    integer :: d2                   ! dimension index
+    integer :: d3                   ! dimension index
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: n_cross              ! number of surface crossings
     integer :: filter_index         ! index of scoring bin
     integer :: i_filter_mesh        ! index of mesh filter in filters array
     integer :: i_filter_surf        ! index of surface filter in filters
+    integer :: i_filter_energy      ! index of energy filter in filters
     real(8) :: uvw(3)               ! cosine of angle of particle
     real(8) :: xyz0(3)              ! starting/intermediate coordinates
     real(8) :: xyz1(3)              ! ending coordinates of particle
@@ -2240,9 +2345,6 @@ contains
     real(8) :: filt_score           ! score applied by filters
     logical :: start_in_mesh        ! particle's starting xyz in mesh?
     logical :: end_in_mesh          ! particle's ending xyz in mesh?
-    logical :: x_same               ! same starting/ending x index (i)
-    logical :: y_same               ! same starting/ending y index (j)
-    logical :: z_same               ! same starting/ending z index (k)
     type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
 
@@ -2255,9 +2357,10 @@ contains
       i_tally = active_current_tallies % get_item(i)
       t => tallies(i_tally)
 
-      ! Get index for mesh and surface filters
+      ! Get index for mesh, surface, and energy filters
       i_filter_mesh = t % find_filter(FILTER_MESH)
       i_filter_surf = t % find_filter(FILTER_SURFACE)
+      i_filter_energy = t % find_filter(FILTER_ENERGYIN)
 
       ! Get pointer to mesh
       select type(filt => t % filters(i_filter_mesh) % obj)
@@ -2269,7 +2372,7 @@ contains
       call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
       call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
 
-      ! Check to if start or end is in mesh -- if not, check if track still
+      ! Check to see if start or end is in mesh -- if not, check if track still
       ! intersects with mesh
       if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
         if (m % n_dimension == 2) then
@@ -2290,238 +2393,122 @@ contains
 
       ! Determine incoming energy bin.  We need to tell the energy filter this
       ! is a tracklength tally so it uses the pre-collision energy.
-      j = t % find_filter(FILTER_ENERGYIN)
-      if (j > 0) then
-        call t % filters(i) % obj % get_next_bin(p, ESTIMATOR_TRACKLENGTH, &
-             & NO_BIN_FOUND, matching_bins(j), filt_score)
-        if (matching_bins(j) == NO_BIN_FOUND) cycle
+      if (i_filter_energy > 0) then
+        call t % filters(i_filter_energy) % obj % get_next_bin(p, &
+             ESTIMATOR_TRACKLENGTH, NO_BIN_FOUND, &
+             matching_bins(i_filter_energy), filt_score)
+        if (matching_bins(i_filter_energy) == NO_BIN_FOUND) cycle
       end if
-
-      ! =======================================================================
-      ! SPECIAL CASES WHERE TWO INDICES ARE THE SAME
-
-      x_same = (ijk0(1) == ijk1(1))
-      y_same = (ijk0(2) == ijk1(2))
-      z_same = (ijk0(3) == ijk1(3))
-
-      if (x_same .and. y_same) then
-        ! Only z crossings
-        if (uvw(3) > 0) then
-          do j = ijk0(3), ijk1(3) - 1
-            ijk0(3) = j
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_TOP
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-          end do
-        else
-          do j = ijk0(3) - 1, ijk1(3), -1
-            ijk0(3) = j
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = IN_TOP
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-          end do
-        end if
-        cycle
-      elseif (x_same .and. z_same) then
-        ! Only y crossings
-        if (uvw(2) > 0) then
-          do j = ijk0(2), ijk1(2) - 1
-            ijk0(2) = j
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_FRONT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-          end do
-        else
-          do j = ijk0(2) - 1, ijk1(2), -1
-            ijk0(2) = j
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = IN_FRONT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-          end do
-        end if
-        cycle
-      elseif (y_same .and. z_same) then
-        ! Only x crossings
-        if (uvw(1) > 0) then
-          do j = ijk0(1), ijk1(1) - 1
-            ijk0(1) = j
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_RIGHT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-          end do
-        else
-          do j = ijk0(1) - 1, ijk1(1), -1
-            ijk0(1) = j
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = IN_RIGHT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                   * t % stride) + 1
-!$omp atomic
-              t % results(1, filter_index) % value = &
-                   t % results(1, filter_index) % value + p % wgt
-            end if
-          end do
-        end if
-        cycle
-      end if
-
-      ! =======================================================================
-      ! GENERIC CASE
 
       ! Bounding coordinates
-      do j = 1, 3
-        if (uvw(j) > 0) then
-          xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
+      do d1 = 1, 3
+        if (uvw(d1) > 0) then
+          xyz_cross(d1) = m % lower_left(d1) + ijk0(d1) * m % width(d1)
         else
-          xyz_cross(j) = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
+          xyz_cross(d1) = m % lower_left(d1) + (ijk0(d1) - 1) * m % width(d1)
         end if
       end do
 
-      do k = 1, n_cross
+      do j = 1, n_cross
         ! Reset scoring bin index
         matching_bins(i_filter_surf) = 0
 
         ! Calculate distance to each bounding surface. We need to treat
         ! special case where the cosine of the angle is zero since this would
         ! result in a divide-by-zero.
-
-        do j = 1, 3
-          if (uvw(j) == 0) then
-            d(j) = INFINITY
+        do d1 = 1, 3
+          if (uvw(d1) == 0) then
+            d(d1) = INFINITY
           else
-            d(j) = (xyz_cross(j) - xyz0(j))/uvw(j)
+            d(d1) = (xyz_cross(d1) - xyz0(d1))/uvw(d1)
           end if
         end do
 
         ! Determine the closest bounding surface of the mesh cell by
-        ! calculating the minimum distance
-
+        ! calculating the minimum distance. Then use the minimum distance and
+        ! direction of the particle to determine which surface was crossed.
         distance = minval(d)
 
-        ! Now use the minimum distance and diretion of the particle to
-        ! determine which surface was crossed
+        ! Loop over the dimensions
+        do d1 = 1, 3
 
-        if (distance == d(1)) then
-          if (uvw(1) > 0) then
-            ! Crossing into right mesh cell -- this is treated as outgoing
-            ! current from (i,j,k)
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_RIGHT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-            end if
-            ijk0(1) = ijk0(1) + 1
-            xyz_cross(1) = xyz_cross(1) + m % width(1)
-          else
-            ! Crossing into left mesh cell -- this is treated as incoming
-            ! current in (i-1,j,k)
-            ijk0(1) = ijk0(1) - 1
-            xyz_cross(1) = xyz_cross(1) - m % width(1)
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = IN_RIGHT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-            end if
-          end if
-        elseif (distance == d(2)) then
-          if (uvw(2) > 0) then
-            ! Crossing into front mesh cell -- this is treated as outgoing
-            ! current in (i,j,k)
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_FRONT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-            end if
-            ijk0(2) = ijk0(2) + 1
-            xyz_cross(2) = xyz_cross(2) + m % width(2)
-          else
-            ! Crossing into back mesh cell -- this is treated as incoming
-            ! current in (i,j-1,k)
-            ijk0(2) = ijk0(2) - 1
-            xyz_cross(2) = xyz_cross(2) - m % width(2)
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = IN_FRONT
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-            end if
-          end if
-        else if (distance == d(3)) then
-          if (uvw(3) > 0) then
-            ! Crossing into top mesh cell -- this is treated as outgoing
-            ! current in (i,j,k)
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = OUT_TOP
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-            end if
-            ijk0(3) = ijk0(3) + 1
-            xyz_cross(3) = xyz_cross(3) + m % width(3)
-          else
-            ! Crossing into bottom mesh cell -- this is treated as incoming
-            ! current in (i,j,k-1)
-            ijk0(3) = ijk0(3) - 1
-            xyz_cross(3) = xyz_cross(3) - m % width(3)
-            if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              matching_bins(i_filter_surf) = IN_TOP
-              matching_bins(i_filter_mesh) = &
-                   mesh_indices_to_bin(m, ijk0 + 1, .true.)
-            end if
-          end if
-        end if
+          ! Get the other dimensions
+          d2 = mod(d1, 3) + 1
+          d3 = mod(d1 + 1, 3) + 1
 
-        ! Determine scoring index
-        if (matching_bins(i_filter_surf) > 0) then
-          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-               * t % stride) + 1
+          ! Check whether distance is the shortest distance
+          if (distance == d(d1)) then
 
-          ! Check for errors
-          if (filter_index <= 0 .or. filter_index > &
-               t % total_filter_bins) then
-            call fatal_error("Score index outside range.")
-          end if
+            ! Check whether particle is moving in positive d1 direction
+            if (uvw(d1) > 0) then
 
-          ! Add to surface current tally
+              ! Outward current on d1 max surface
+              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
+                matching_bins(i_filter_surf) = d1 * 2
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
 !$omp atomic
-          t % results(1, filter_index) % value = &
-               t % results(1, filter_index) % value + p % wgt
-        end if
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
+              end if
+
+              ! Inward current on d1 min surface
+              if (ijk0(d1) >= 0 .and. ijk0(d1) < m % dimension(d1) .and. &
+                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                   ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+                ijk0(d1) = ijk0(d1) + 1
+                matching_bins(i_filter_surf) = d1 * 2 + 5
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
+!$omp atomic
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
+                ijk0(d1) = ijk0(d1) - 1
+              end if
+
+              ijk0(d1) = ijk0(d1) + 1
+              xyz_cross(d1) = xyz_cross(d1) + m % width(d1)
+
+              ! The particle is moving in the negative d1 direction
+            else
+
+              ! Outward current on d1 min surface
+              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
+                matching_bins(i_filter_surf) = d1 * 2 - 1
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
+!$omp atomic
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
+              end if
+
+              ! Inward current on d1 max surface
+              if (ijk0(d1) > 1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and. &
+                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                   ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3))  then
+                ijk0(d1) = ijk0(d1) - 1
+                matching_bins(i_filter_surf) = d1 * 2 + 6
+                matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, ijk0)
+                filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                     * t % stride) + 1
+!$omp atomic
+                t % results(1, filter_index) % value = &
+                     t % results(1, filter_index) % value + p % wgt
+                ijk0(d1) = ijk0(d1) + 1
+              end if
+
+              ijk0(d1) = ijk0(d1) - 1
+              xyz_cross(d1) = xyz_cross(d1) - m % width(d1)
+            end if
+          end if
+        end do
 
         ! Calculate new coordinates
         xyz0 = xyz0 + distance * uvw

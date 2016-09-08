@@ -27,12 +27,12 @@ class TRISOTestHarness(PyAPITestHarness):
         porous_carbon = openmc.Material()
         porous_carbon.set_density('g/cm3', 1.0)
         porous_carbon.add_nuclide('C0', 1.0)
-        porous_carbon.add_s_alpha_beta('c_Graphite', '71t')
+        porous_carbon.add_s_alpha_beta('c_Graphite')
 
         ipyc = openmc.Material()
         ipyc.set_density('g/cm3', 1.90)
         ipyc.add_nuclide('C0', 1.0)
-        ipyc.add_s_alpha_beta('c_Graphite', '71t')
+        ipyc.add_s_alpha_beta('c_Graphite')
 
         sic = openmc.Material()
         sic.set_density('g/cm3', 3.20)
@@ -42,12 +42,12 @@ class TRISOTestHarness(PyAPITestHarness):
         opyc = openmc.Material()
         opyc.set_density('g/cm3', 1.87)
         opyc.add_nuclide('C0', 1.0)
-        opyc.add_s_alpha_beta('c_Graphite', '71t')
+        opyc.add_s_alpha_beta('c_Graphite')
 
         graphite = openmc.Material()
         graphite.set_density('g/cm3', 1.1995)
         graphite.add_nuclide('C0', 1.0)
-        graphite.add_s_alpha_beta('c_Graphite', '71t')
+        graphite.add_s_alpha_beta('c_Graphite')
 
         # Create TRISO particles
         spheres = [openmc.Sphere(R=r*1e-4)
@@ -60,24 +60,9 @@ class TRISOTestHarness(PyAPITestHarness):
         inner_univ = openmc.Universe(cells=[c1, c2, c3, c4, c5])
 
         outer_radius = 422.5*1e-4
-        trisos = []
-        random.seed(1)
-        for i in range(100):
-            # Randomly sample location
-            lim = 0.5 - outer_radius*1.001
-            x = random.uniform(-lim, lim)
-            y = random.uniform(-lim, lim)
-            z = random.uniform(-lim, lim)
-            t = openmc.model.TRISO(outer_radius, inner_univ, (x, y, z))
-
-            # Make sure TRISO doesn't overlap with another
-            for tp in trisos:
-                xp, yp, zp = tp.center
-                distance = sqrt((x - xp)**2 + (y - yp)**2 + (z - zp)**2)
-                if distance <= 2*outer_radius:
-                    break
-            else:
-                trisos.append(t)
+        trisos = openmc.model.pack_trisos(
+            radius=outer_radius, fill=inner_univ, domain_shape='cube',
+            domain_length=1., domain_center=(0., 0., 0.), n_particles=100)
 
         # Define box to contain lattice
         min_x = openmc.XPlane(x0=-0.5, boundary_type='reflective')
@@ -108,7 +93,6 @@ class TRISOTestHarness(PyAPITestHarness):
         settings.export_to_xml()
 
         mats = openmc.Materials([fuel, porous_carbon, ipyc, sic, opyc, graphite])
-        mats.default_xs = '71c'
         mats.export_to_xml()
 
 

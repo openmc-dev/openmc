@@ -4,7 +4,7 @@ module initialize
   use constants
   use dict_header,     only: DictIntInt, ElemKeyValueII
   use set_header,      only: SetInt
-  use energy_grid,     only: logarithmic_grid, grid_method, unionized_grid
+  use energy_grid,     only: logarithmic_grid, grid_method
   use error,           only: fatal_error, warning
   use geometry,        only: neighbor_lists, count_instance, calc_offsets,    &
                              maximum_levels
@@ -17,7 +17,7 @@ module initialize
   use material_header, only: Material
   use mgxs_data,       only: read_mgxs, create_macro_xs
   use output,          only: title, header, print_version, write_message,     &
-                             print_usage, write_xs_summary, print_plot
+                             print_usage, print_plot
   use random_lcg,      only: initialize_prng
   use state_point,     only: load_state_point
   use string,          only: to_str, starts_with, ends_with, str_to_int
@@ -111,20 +111,8 @@ contains
     if (run_mode /= MODE_PLOTTING) then
       ! Construct information needed for nuclear data
       if (run_CE) then
-        ! Set undefined cell temperatures to match the material data.
-        call lookup_material_temperatures()
-
-        ! Construct unionized or log energy grid for cross-sections
-        select case (grid_method)
-        case (GRID_NUCLIDE)
-          continue
-        case (GRID_MAT_UNION)
-          call time_unionize%start()
-          call unionized_grid()
-          call time_unionize%stop()
-        case (GRID_LOGARITHM)
-          call logarithmic_grid()
-        end select
+        ! Construct log energy grid for cross-sections
+        call logarithmic_grid()
       else
         ! Create material macroscopic data for MGXS
         call time_read_xs%start()
@@ -158,9 +146,6 @@ contains
       else
         ! Write summary information
         if (output_summary) call write_summary()
-
-        ! Write cross section information
-        if (output_xs) call write_xs_summary()
       end if
     end if
 
@@ -1004,58 +989,5 @@ contains
     call cell_list % clear()
 
   end subroutine allocate_offsets
-
-!===============================================================================
-! LOOKUP_MATERIAL_TEMPERATURES If any cells have undefined temperatures, try to
-! find their temperatures from material data.
-!===============================================================================
-
-  subroutine lookup_material_temperatures()
-    integer :: i, j, k
-    real(8) :: min_temp
-    logical :: warning_given
-
-    warning_given = .false.
-    do i = 1, n_cells
-      ! Ignore non-normal cells and cells with defined temperature.
-      if (cells(i) % type /= CELL_NORMAL) cycle
-      if (cells(i) % sqrtkT(1) /= ERROR_REAL) cycle
-
-      ! Set the number of temperatures equal to the number of materials.
-      deallocate(cells(i) % sqrtkT)
-      allocate(cells(i) % sqrtkT(size(cells(i) % material)))
-
-      ! Check each of the cell materials for temperature data.
-      do j = 1, size(cells(i) % material)
-        ! Arbitrarily set void regions to 0K.
-        if (cells(i) % material(j) == MATERIAL_VOID) then
-          cells(i) % sqrtkT(j) = ZERO
-          cycle
-        end if
-
-        associate (mat => materials(cells(i) % material(j)))
-          ! Find the temperature of the coldest nuclide.
-          min_temp = nuclides(mat % nuclide(1)) % kT
-          do k = 2, mat % n_nuclides
-            ! Warn the user if the nuclides don't have identical temperatues.
-            if (nuclides(mat % nuclide(k)) % kT /= min_temp &
-                 .and. .not. warning_given .and. multipole_active) then
-              call warning("OpenMC cannot &
-                   &identify the temperature of at least one cell. For the &
-                   &purposes of multipole cross section evaluations, all cells &
-                   &with unknown temperature will be set to the coldest &
-                   &temperature found in the nuclear data for that cell's &
-                   &material")
-              warning_given = .true.
-            end if
-            min_temp = min(min_temp, nuclides(mat % nuclide(k)) % kT)
-          end do
-
-          ! Set the temperature for this cell instance.
-          cells(i) % sqrtkT(j) = sqrt(min_temp)
-        end associate
-      end do
-    end do
-  end subroutine lookup_material_temperatures
 
 end module initialize

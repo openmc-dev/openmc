@@ -7,7 +7,7 @@ OpenMC Monte Carlo Particle Transport Code
 
 The OpenMC project aims to provide a fully-featured Monte Carlo particle
 transport code based on modern methods. It is a constructive solid geometry,
-continuous-energy transport code that uses ACE format cross sections. The
+continuous-energy transport code that uses HDF5 format cross sections. The
 project started under the Computational Reactor Physics Group at MIT.
 
 Complete documentation on the usage of OpenMC is hosted on Read the Docs at

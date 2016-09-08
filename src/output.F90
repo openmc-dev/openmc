@@ -38,43 +38,56 @@ contains
     use omp_lib
 #endif
 
-    write(UNIT=OUTPUT_UNIT, FMT='(/11(A/))') &
-         '       .d88888b.                             888b     d888  .d8888b.', &
-         '      d88P" "Y88b                            8888b   d8888 d88P  Y88b', &
-         '      888     888                            88888b.d88888 888    888', &
-         '      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       ', &
-         '      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       ', &
-         '      888     888 888  888 88888888 888  888 888  Y8P  888 888    888', &
-         '      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P', &
-         '       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"', &
-         '__________________888______________________________________________________', &
-         '                  888', &
-         '                  888'
+    write(UNIT=OUTPUT_UNIT, FMT='(/23(A/))') &
+         '                               %%%%%%%%%%%%%%%', &
+         '                          %%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                                   %%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                                    %%%%%%%%%%%%%%%%%%%%%%%%', &
+         '                ###############      %%%%%%%%%%%%%%%%%%%%%%%%', &
+         '               ##################     %%%%%%%%%%%%%%%%%%%%%%%', &
+         '               ###################     %%%%%%%%%%%%%%%%%%%%%%%', &
+         '               ####################     %%%%%%%%%%%%%%%%%%%%%%', &
+         '               #####################     %%%%%%%%%%%%%%%%%%%%%', &
+         '               ######################     %%%%%%%%%%%%%%%%%%%%', &
+         '               #######################     %%%%%%%%%%%%%%%%%%', &
+         '                #######################     %%%%%%%%%%%%%%%%%', &
+         '                ######################     %%%%%%%%%%%%%%%%%', &
+         '                 ####################     %%%%%%%%%%%%%%%%%', &
+         '                   #################     %%%%%%%%%%%%%%%%%', &
+         '                    ###############     %%%%%%%%%%%%%%%%', &
+         '                      ############     %%%%%%%%%%%%%%%', &
+         '                         ########     %%%%%%%%%%%%%%', &
+         '                                     %%%%%%%%%%%'
 
     ! Write version information
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     Copyright:      2011-2016 Massachusetts Institute of Technology'
+         '                  | The OpenMC Monte Carlo Code'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     License:        http://openmc.readthedocs.io/en/latest/license.html'
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",8X,I1,".",I1,".",I1)') &
+         '        Copyright | 2011-2016 Massachusetts Institute of Technology'
+    write(UNIT=OUTPUT_UNIT, FMT=*) &
+         '          License | http://openmc.readthedocs.io/en/latest/license.html'
+    write(UNIT=OUTPUT_UNIT, FMT='(11X,"Version | ",I1,".",I1,".",I1)') &
          VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Git SHA1:",7X,A)') GIT_SHA1
+    write(UNIT=OUTPUT_UNIT, FMT='(10X,"Git SHA1 | ",A)') GIT_SHA1
 #endif
 
     ! Write the date and time
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",6X,A)') &
-         time_stamp()
+    write(UNIT=OUTPUT_UNIT, FMT='(9X,"Date/Time | ",A)') time_stamp()
 
 #ifdef MPI
     ! Write number of processors
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"MPI Processes:",2X,A)') &
+    write(UNIT=OUTPUT_UNIT, FMT='(5X,"MPI Processes | ",A)') &
          trim(to_str(n_procs))
 #endif
 
 #ifdef _OPENMP
     ! Write number of OpenMP threads
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"OpenMP Threads:",1X,A)') &
+    write(UNIT=OUTPUT_UNIT, FMT='(4X,"OpenMP Threads | ",A)') &
          trim(to_str(omp_get_max_threads()))
 #endif
 
@@ -316,57 +329,6 @@ contains
     write(ou,*)
 
   end subroutine print_particle
-
-!===============================================================================
-! WRITE_XS_SUMMARY writes information about each nuclide and S(a,b) table to a
-! file called cross_sections.out. This file shows the list of reactions as well
-! as information about their secondary angle/energy distributions, how much
-! memory is consumed, thresholds, etc.
-!===============================================================================
-
-  subroutine write_xs_summary()
-
-    integer :: i       ! loop index
-    integer :: unit_xs ! cross_sections.out file unit
-    character(MAX_FILE_LEN)  :: path ! path of summary file
-
-    ! Create filename for log file
-    path = trim(path_output) // "cross_sections.out"
-
-    ! Open log file for writing
-    open(NEWUNIT=unit_xs, FILE=path, STATUS='replace', ACTION='write')
-
-    if (run_CE) then
-      ! Write header
-      call header("CROSS SECTION TABLES", unit=unit_xs)
-
-      NUCLIDE_LOOP: do i = 1, n_nuclides_total
-        ! Print information about nuclide
-        call nuclides(i) % print(unit=unit_xs)
-      end do NUCLIDE_LOOP
-
-      SAB_TABLES_LOOP: do i = 1, n_sab_tables
-        ! Print information about S(a,b) table
-        call sab_tables(i) % print(unit=unit_xs)
-      end do SAB_TABLES_LOOP
-    else
-      ! Write header
-      call header("MGXS LIBRARY TABLES", unit=unit_xs)
-      NuclideMG_LOOP: do i = 1, n_nuclides_total
-        ! Print information about nuclide
-        call nuclides_mg(i) % obj % print(unit=unit_xs)
-      end do NuclideMG_LOOP
-      call header("MATERIAL MGXS TABLES", unit=unit_xs)
-      MATERIAL_LOOP: do i = 1, n_materials
-        ! Print information about Materials
-        call macro_xs(i) % obj % print(unit=unit_xs)
-      end do MATERIAL_LOOP
-    end if
-
-    ! Close cross section summary file
-    close(unit_xs)
-
-  end subroutine write_xs_summary
 
 !===============================================================================
 ! PRINT_COLUMNS displays a header listing what physical values will displayed
@@ -776,6 +738,8 @@ contains
     score_names(abs(SCORE_DELAYED_NU_FISSION)) = "Delayed-Nu-Fission Rate"
     score_names(abs(SCORE_PROMPT_NU_FISSION))  = "Prompt-Nu-Fission Rate"
     score_names(abs(SCORE_INVERSE_VELOCITY))   = "Flux-Weighted Inverse Velocity"
+    score_names(abs(SCORE_FISS_Q_PROMPT))      = "Prompt fission power"
+    score_names(abs(SCORE_FISS_Q_RECOV))       = "Recoverable fission power"
 
     ! Create filename for tally output
     filename = trim(path_output) // "tallies.out"
@@ -1032,121 +996,112 @@ contains
                    matching_bins(i_filter_ein)))
             end if
 
-            ! Left Surface
+            ! Get the bin for this mesh cell
             matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i-1, j, k /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_RIGHT
+                 mesh_indices_to_bin(m, (/ i, j, k /))
+
+            ! Left Surface
+            matching_bins(i_filter_surf) = OUT_LEFT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Left", &
+                 "Outgoing Current on Left", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            matching_bins(i_filter_surf) = OUT_RIGHT
+            matching_bins(i_filter_surf) = IN_LEFT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Left", &
+                 "Incoming Current on Left", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Right Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_RIGHT
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Right", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Right", &
+                 "Outgoing Current on Right", &
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
+
+            matching_bins(i_filter_surf) = IN_RIGHT
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
+            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 "Incoming Current on Right", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Back Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j-1, k /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_FRONT
+            matching_bins(i_filter_surf) = OUT_BACK
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Back", &
+                 "Outgoing Current on Back", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            matching_bins(i_filter_surf) = OUT_FRONT
+            matching_bins(i_filter_surf) = IN_BACK
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Back", &
+                 "Incoming Current on Back", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Front Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_FRONT
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Front", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Front", &
+                 "Net Current on Front", &
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
+
+            matching_bins(i_filter_surf) = IN_FRONT
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
+            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 "Net Current on Front", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Bottom Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_TOP
+            matching_bins(i_filter_surf) = OUT_BOTTOM
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Bottom", &
+                 "Outgoing Current on Bottom", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            matching_bins(i_filter_surf) = OUT_TOP
+            matching_bins(i_filter_surf) = IN_BOTTOM
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Bottom", &
+                 "Incoming Current on Bottom", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Top Surface
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
-            matching_bins(i_filter_surf) = IN_TOP
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Incoming Current from Top", &
-                 to_str(t % results(1,filter_index) % sum), &
-                 trim(to_str(t % results(1,filter_index) % sum_sq))
-
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                  * t % stride) + 1
             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                 "Outgoing Current to Top", &
+                 "Outgoing Current on Top", &
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
+
+            matching_bins(i_filter_surf) = IN_TOP
+            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+                 * t % stride) + 1
+            write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                 "Incoming Current on Top", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
           end do
-
         end do
       end do
     end do

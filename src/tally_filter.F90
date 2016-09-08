@@ -1,5 +1,6 @@
 module tally_filter
 
+  use algorithm,           only: binary_search
   use constants,           only: ONE, NO_BIN_FOUND, FP_PRECISION
   use dict_header,         only: DictIntInt
   use geometry_header,     only: BASE_UNIVERSE, RectLattice, HexLattice
@@ -10,7 +11,6 @@ module tally_filter
                                  get_mesh_indices, mesh_indices_to_bin, &
                                  mesh_intersects_2d, mesh_intersects_3d
   use particle_header,     only: Particle
-  use search,              only: binary_search
   use string,              only: to_str
   use tally_filter_header, only: TallyFilter, TallyFilterContainer
 
@@ -295,8 +295,12 @@ contains
           search_iter = 0
           do while (any(ijk0(:m % n_dimension) < 1) &
                .or. any(ijk0(:m % n_dimension) > m % dimension))
-            if (search_iter == MAX_SEARCH_ITER) call fatal_error("Failed to &
-                 &find a mesh intersection on a tally mesh filter.")
+            if (search_iter == MAX_SEARCH_ITER) then
+              call warning("Failed to find a mesh intersection on a tally mesh &
+                   &filter.")
+              next_bin = NO_BIN_FOUND
+              return
+            end if
 
             do j = 1, m % n_dimension
               if (abs(uvw(j)) < FP_PRECISION) then
@@ -315,6 +319,8 @@ contains
             else
               ijk0(j) = ijk0(j) - 1
             end if
+
+            search_iter = search_iter + 1
           end do
           distance = d(j)
           xyz0 = xyz0 + distance * uvw

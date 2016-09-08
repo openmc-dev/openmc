@@ -1,5 +1,11 @@
 module source
 
+  use hdf5, only: HID_T
+#ifdef MPI
+  use message_passing
+#endif
+
+  use algorithm,        only: binary_search
   use bank_header,      only: Bank
   use constants
   use distribution_univariate, only: Discrete
@@ -12,16 +18,9 @@ module source
   use output,           only: write_message
   use particle_header,  only: Particle
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream
-  use search,           only: binary_search
   use string,           only: to_str
   use math
   use state_point,      only: read_source_bank, write_source_bank
-
-#ifdef MPI
-  use message_passing
-#endif
-
-  use hdf5, only: HID_T
 
   implicit none
 
@@ -107,7 +106,8 @@ contains
     real(8) :: r(3)       ! sampled coordinates
     logical :: found      ! Does the source particle exist within geometry?
     type(Particle) :: p   ! Temporary particle for using find_cell
-    integer, save :: num_resamples = 0 ! Number of resamples encountered
+    integer, save :: n_accept = 0  ! Number of samples accepted
+    integer, save :: n_reject = 0  ! Number of samples rejected
 
     ! Set weight to one by default
     site % wgt = ONE
@@ -143,13 +143,6 @@ contains
 
       ! Now search to see if location exists in geometry
       call find_cell(p, found)
-      if (.not. found) then
-        num_resamples = num_resamples + 1
-        if (num_resamples == MAX_EXTSRC_RESAMPLES) then
-          call fatal_error("Maximum number of external source spatial &
-               &resamples reached!")
-        end if
-      end if
 
       ! Check if spatial site is in fissionable material
       select type (space => external_source(i) % space)
@@ -162,7 +155,20 @@ contains
           end if
         end if
       end select
+
+      ! Check for rejection
+      if (.not. found) then
+        n_reject = n_reject + 1
+        if (n_reject >= EXTSRC_REJECT_THRESHOLD .and. &
+             real(n_accept, 8)/n_reject <= EXTSRC_REJECT_FRACTION) then
+          call fatal_error("More than 95% of external source sites sampled &
+               &were rejected. Please check your external source definition.")
+        end if
+      end if
     end do
+
+    ! Increment number of accepted samples
+    n_accept = n_accept + 1
 
     call p % clear()
 

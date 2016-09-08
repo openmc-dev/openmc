@@ -56,6 +56,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
     @property
     def interpolation(self):
         return self._interpolation
+
     @property
     def energy(self):
         return self._energy

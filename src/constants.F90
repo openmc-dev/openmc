@@ -54,7 +54,8 @@ module constants
 
   ! Maximum number of external source spatial resamples to encounter before an
   ! error is thrown.
-  integer, parameter :: MAX_EXTSRC_RESAMPLES = 10000
+  integer, parameter :: EXTSRC_REJECT_THRESHOLD = 10000
+  real(8), parameter :: EXTSRC_REJECT_FRACTION = 0.05
 
   ! ============================================================================
   ! PHYSICAL CONSTANTS
@@ -267,6 +268,12 @@ module constants
        JENDL_33   = 7, &
        JENDL_40   = 8
 
+  ! Temperature treatment method
+  integer, parameter :: &
+       TEMPERATURE_NEAREST = 1, &
+       TEMPERATURE_INTERPOLATION = 2, &
+       TEMPERATURE_MULTIPOLE = 3
+
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS
 
@@ -289,7 +296,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 21
+  integer, parameter :: N_SCORE_TYPES = 23
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -311,7 +318,9 @@ module constants
        SCORE_EVENTS             = -18, & ! number of events
        SCORE_DELAYED_NU_FISSION = -19, & ! delayed neutron production rate
        SCORE_PROMPT_NU_FISSION  = -20, & ! prompt neutron production rate
-       SCORE_INVERSE_VELOCITY   = -21    ! flux-weighted inverse velocity
+       SCORE_INVERSE_VELOCITY   = -21, & ! flux-weighted inverse velocity
+       SCORE_FISS_Q_PROMPT      = -22, & ! prompt fission Q-value
+       SCORE_FISS_Q_RECOV       = -23    ! recoverable fission Q-value
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -356,12 +365,18 @@ module constants
 
   ! Tally surface current directions
   integer, parameter :: &
-       IN_RIGHT  = 1,   &
-       OUT_RIGHT = 2,   &
-       IN_FRONT  = 3,   &
-       OUT_FRONT = 4,   &
-       IN_TOP    = 5,   &
-       OUT_TOP   = 6
+       OUT_LEFT   = 1,   &   ! x min
+       OUT_RIGHT  = 2,   &   ! x max
+       OUT_BACK   = 3,   &   ! y min
+       OUT_FRONT  = 4,   &   ! y max
+       OUT_BOTTOM = 5,   &   ! z min
+       OUT_TOP    = 6,   &   ! z max
+       IN_LEFT    = 7,   &   ! x min
+       IN_RIGHT   = 8,   &   ! x max
+       IN_BACK    = 9,   &   ! y min
+       IN_FRONT   = 10,  &   ! y max
+       IN_BOTTOM  = 11,  &   ! z min
+       IN_TOP     = 12       ! z max
 
   ! Tally trigger types and threshold
   integer, parameter :: &
@@ -380,11 +395,12 @@ module constants
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS
 
-  integer, parameter :: N_STREAMS = 4
+  integer, parameter :: N_STREAMS = 5
   integer, parameter :: STREAM_TRACKING   = 1
   integer, parameter :: STREAM_TALLIES    = 2
   integer, parameter :: STREAM_SOURCE     = 3
   integer, parameter :: STREAM_URR_PTABLE = 4
+  integer, parameter :: STREAM_VOLUME     = 5
 
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
@@ -396,12 +412,6 @@ module constants
   ! input file!
   integer, parameter :: ERROR_INT  = -huge(0)
   real(8), parameter :: ERROR_REAL = -huge(0.0_8) * 0.917826354_8
-
-  ! Energy grid methods
-  integer, parameter :: &
-       GRID_NUCLIDE    = 1, & ! unique energy grid for each nuclide
-       GRID_MAT_UNION  = 2, & ! material union grids with pointers
-       GRID_LOGARITHM  = 3    ! lethargy mapping
 
   ! Running modes
   integer, parameter ::        &

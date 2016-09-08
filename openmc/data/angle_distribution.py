@@ -4,11 +4,12 @@ from numbers import Real
 import numpy as np
 
 import openmc.checkvalue as cv
+from openmc.mixin import EqualityMixin
 from openmc.stats import Univariate, Tabular, Uniform
 from .function import INTERPOLATION_SCHEME
 
 
-class AngleDistribution(object):
+class AngleDistribution(EqualityMixin):
     """Angle distribution as a function of incoming energy
 
     Parameters

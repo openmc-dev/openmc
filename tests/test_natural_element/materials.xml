@@ -3,8 +3,6 @@
 
   <!-- pu-met-fast-021 case 2 -->
 
-  <default_xs>71c</default_xs>
-
   <!-- Plutonium -->
   <material id="1">
     <density value="18.5345" units="g/cm3" />

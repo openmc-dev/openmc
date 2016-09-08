@@ -7,7 +7,6 @@ import openmc
 from openmc.stats import Box
 from openmc.source import Source
 
-
 class MultipoleTestHarness(PyAPITestHarness):
     def _build_inputs(self):
         ####################
@@ -24,29 +23,20 @@ class MultipoleTestHarness(PyAPITestHarness):
         dense_fuel.add_nuclide('U235', 1.0)
 
         mats_file = openmc.Materials([moderator, dense_fuel])
-        mats_file.default_xs = '71c'
         mats_file.export_to_xml()
-
 
         ####################
         # Geometry
         ####################
 
-        c1 = openmc.Cell(cell_id=1)
-        c1.fill = moderator
-        mod_univ = openmc.Universe(universe_id=1)
-        mod_univ.add_cell(c1)
+        c1 = openmc.Cell(cell_id=1, fill=moderator)
+        mod_univ = openmc.Universe(universe_id=1, cells=(c1,))
 
         r0 = openmc.ZCylinder(R=0.3)
-        c11 = openmc.Cell(cell_id=11)
-        c11.region = -r0
-        c11.fill = dense_fuel
+        c11 = openmc.Cell(cell_id=11, fill=dense_fuel, region=-r0)
         c11.temperature = [500, 0, 700, 800]
-        c12 = openmc.Cell(cell_id=12)
-        c12.region = +r0
-        c12.fill = moderator
-        fuel_univ = openmc.Universe(universe_id=11)
-        fuel_univ.add_cells((c11, c12))
+        c12 = openmc.Cell(cell_id=12, fill=moderator, region=+r0)
+        fuel_univ = openmc.Universe(universe_id=11, cells=(c11, c12))
 
         lat = openmc.RectLattice(lattice_id=101)
         lat.dimension = [2, 2]
@@ -61,16 +51,11 @@ class MultipoleTestHarness(PyAPITestHarness):
         y1 = openmc.YPlane(y0=3.0)
         for s in [x0, x1, y0, y1]:
             s.boundary_type = 'reflective'
-        c101 = openmc.Cell(cell_id=101)
-        c101.region = +x0 & -x1 & +y0 & -y1
-        c101.fill = lat
-        root_univ = openmc.Universe(universe_id=0)
-        root_univ.add_cell(c101)
+        c101 = openmc.Cell(cell_id=101, fill=lat, region=+x0 & -x1 & +y0 & -y1)
+        root_univ = openmc.Universe(universe_id=0, cells=(c101,))
 
-        geometry = openmc.Geometry()
-        geometry.root_universe = root_univ
+        geometry = openmc.Geometry(root_univ)
         geometry.export_to_xml()
-
 
         ####################
         # Settings
@@ -82,9 +67,8 @@ class MultipoleTestHarness(PyAPITestHarness):
         sets_file.particles = 1000
         sets_file.source = Source(space=Box([-1, -1, -1], [1, 1, 1]))
         sets_file.output = {'summary': True}
-        sets_file.use_windowed_multipole=True
+        sets_file.temperature = {'method': 'multipole'}
         sets_file.export_to_xml()
-
 
         ####################
         # Plots

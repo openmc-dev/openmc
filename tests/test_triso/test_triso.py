@@ -27,12 +27,12 @@ class TRISOTestHarness(PyAPITestHarness):
         porous_carbon = openmc.Material()
         porous_carbon.set_density('g/cm3', 1.0)
         porous_carbon.add_nuclide('C0', 1.0)
-        porous_carbon.add_s_alpha_beta('c_Graphite', '71t')
+        porous_carbon.add_s_alpha_beta('c_Graphite')
 
         ipyc = openmc.Material()
         ipyc.set_density('g/cm3', 1.90)
         ipyc.add_nuclide('C0', 1.0)
-        ipyc.add_s_alpha_beta('c_Graphite', '71t')
+        ipyc.add_s_alpha_beta('c_Graphite')
 
         sic = openmc.Material()
         sic.set_density('g/cm3', 3.20)
@@ -42,12 +42,12 @@ class TRISOTestHarness(PyAPITestHarness):
         opyc = openmc.Material()
         opyc.set_density('g/cm3', 1.87)
         opyc.add_nuclide('C0', 1.0)
-        opyc.add_s_alpha_beta('c_Graphite', '71t')
+        opyc.add_s_alpha_beta('c_Graphite')
 
         graphite = openmc.Material()
         graphite.set_density('g/cm3', 1.1995)
         graphite.add_nuclide('C0', 1.0)
-        graphite.add_s_alpha_beta('c_Graphite', '71t')
+        graphite.add_s_alpha_beta('c_Graphite')
 
         # Create TRISO particles
         spheres = [openmc.Sphere(R=r*1e-4)
@@ -93,7 +93,6 @@ class TRISOTestHarness(PyAPITestHarness):
         settings.export_to_xml()
 
         mats = openmc.Materials([fuel, porous_carbon, ipyc, sic, opyc, graphite])
-        mats.default_xs = '71c'
         mats.export_to_xml()
 
 

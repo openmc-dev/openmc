@@ -25,7 +25,7 @@ moderator = openmc.Material(material_id=41, name='moderator')
 moderator.set_density('g/cc', 1.0)
 moderator.add_nuclide(h1, 2.)
 moderator.add_nuclide(o16, 1.)
-moderator.add_s_alpha_beta('c_H_in_H2O', '71t')
+moderator.add_s_alpha_beta('c_H_in_H2O')
 
 fuel = openmc.Material(material_id=40, name='fuel')
 fuel.set_density('g/cc', 4.5)
@@ -33,7 +33,6 @@ fuel.add_nuclide(u235, 1.)
 
 # Instantiate a Materials collection and export to XML
 materials_file = openmc.Materials([moderator, fuel])
-materials_file.default_xs = '71c'
 materials_file.export_to_xml()
 
 

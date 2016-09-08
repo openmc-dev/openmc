@@ -1,20 +1,18 @@
 <?xml version="1.0"?>
 <materials>
 
-  <default_xs>71c</default_xs>
-
   <material id="1">
     <density value="4.5" units="g/cc" />
     <nuclide name="U235" ao="1.0" />
     <nuclide name="H1" ao="1.0" />
-    <sab name="c_H_in_H2O" xs="71t" />
+    <sab name="c_H_in_H2O" />
   </material>
 
   <material id="2">
     <density value="4.5" units="g/cc" />
     <nuclide name="U235" ao="1.0" />
     <nuclide name="C0" ao="1.0" />
-    <sab name="c_Graphite" xs="71t" />
+    <sab name="c_Graphite" />
   </material>
 
   <material id="3">
@@ -22,8 +20,8 @@
     <nuclide name="U235" ao="1.0" />
     <nuclide name="Be9" ao="1.0" />
     <nuclide name="O16" ao="1.0" />
-    <sab name="c_Be_in_BeO" xs="71t" />
-    <sab name="c_O_in_BeO" xs="71t" />
+    <sab name="c_Be_in_BeO" />
+    <sab name="c_O_in_BeO" />
   </material>
 
   <material id="4">
@@ -36,8 +34,8 @@
     <nuclide name="Zr96"  ao="0.05" />
     <nuclide name="U235"  ao="0.1" />
     <nuclide name="U238"  ao="0.15" />
-    <sab name="c_Zr_in_ZrH" xs="71t" />
-    <sab name="c_H_in_ZrH" xs="71t" />
+    <sab name="c_Zr_in_ZrH" />
+    <sab name="c_H_in_ZrH" />
   </material>
 
 </materials>

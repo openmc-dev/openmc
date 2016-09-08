@@ -213,13 +213,13 @@ contains
 
   subroutine cmfd_reweight(new_weights)
 
+    use algorithm,   only: binary_search
     use constants,   only: ZERO, ONE
     use error,       only: warning, fatal_error
     use global,      only: meshes, source_bank, work, n_user_meshes, cmfd, &
                            master
     use mesh_header, only: RegularMesh
     use mesh,        only: count_bank_sites, get_mesh_indices
-    use search,      only: binary_search
     use string,      only: to_str
 
 #ifdef MPI

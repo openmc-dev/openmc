@@ -11,8 +11,8 @@
   -->
   <xsdata>
     <!-- Meta data for this data -->
-    <name>UO2.300K</name>
-    <alias>UO2.300K</alias>
+    <name>UO2</name>
+    <alias>UO2</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>true</fissionable>
@@ -67,8 +67,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>MOX1.300K</name>
-    <alias>MOX1.300K</alias>
+    <name>MOX1</name>
+    <alias>MOX1</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>true</fissionable>
@@ -124,8 +124,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>MOX2.300K</name>
-    <alias>MOX2.300K</alias>
+    <name>MOX2</name>
+    <alias>MOX2</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>true</fissionable>
@@ -180,8 +180,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>MOX3.300K</name>
-    <alias>MOX3.300K</alias>
+    <name>MOX3</name>
+    <alias>MOX3</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>true</fissionable>
@@ -236,8 +236,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>FC.300K</name>
-    <alias>FC.300K</alias>
+    <name>FC</name>
+    <alias>FC</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>true</fissionable>
@@ -286,8 +286,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>GT.300K</name>
-    <alias>GT.300K</alias>
+    <name>GT</name>
+    <alias>GT</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>false</fissionable>
@@ -318,8 +318,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>LWTR.300K</name>
-    <alias>LWTR.300K</alias>
+    <name>LWTR</name>
+    <alias>LWTR</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>false</fissionable>
@@ -351,8 +351,8 @@
 
   <xsdata>
     <!-- Meta data for this data -->
-    <name>CR.300K</name>
-    <alias>CR.300K</alias>
+    <name>CR</name>
+    <alias>CR</alias>
     <kT> 2.53E-8 </kT> <!-- in MeV -->
     <order>0</order>
     <fissionable>false</fissionable>

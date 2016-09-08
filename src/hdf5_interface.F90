@@ -73,6 +73,7 @@ module hdf5_interface
     module procedure read_attribute_integer_1D
     module procedure read_attribute_integer_2D
     module procedure read_attribute_string
+    module procedure read_attribute_string_1D
   end interface read_attribute
 
   interface write_attribute
@@ -95,6 +96,8 @@ module hdf5_interface
   public :: close_dataset
   public :: get_shape
   public :: write_attribute_string
+  public :: get_groups
+  public :: get_datasets
 
 contains
 
@@ -203,6 +206,82 @@ contains
 
     call h5fclose_f(file_id, hdf5_err)
   end subroutine file_close
+
+!===============================================================================
+! GET_GROUPS Gets a list of all the groups in a given location.
+!===============================================================================
+
+  subroutine get_groups(object_id, names)
+    integer(HID_T), intent(in)  :: object_id
+    character(len=255), allocatable, intent(out) :: names(:)
+
+    integer :: n_members, i, group_count, type
+    integer :: hdf5_err
+    character(len=255) :: name
+
+
+    ! Get number of members in this location
+    call h5gn_members_f(object_id, './', n_members, hdf5_err)
+
+    ! Get the number of groups
+    group_count = 0
+    do i = 0, n_members - 1
+      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
+      if (type == H5G_GROUP_F) then
+        group_count = group_count + 1
+      end if
+    end do
+
+    ! Now we can allocate the storage for the ids
+    allocate(names(group_count))
+    group_count = 0
+    do i = 0, n_members - 1
+      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
+      if (type == H5G_GROUP_F) then
+        group_count = group_count + 1
+        names(group_count) = trim(name)
+      end if
+    end do
+
+  end subroutine get_groups
+
+!===============================================================================
+! GET_DATASETS Gets a list of all the datasets in a given location.
+!===============================================================================
+
+  subroutine get_datasets(object_id, names)
+    integer(HID_T), intent(in)  :: object_id
+    character(len=255), allocatable, intent(out) :: names(:)
+
+    integer :: n_members, i, dset_count, type
+    integer :: hdf5_err
+    character(len=255) :: name
+
+
+    ! Get number of members in this location
+    call h5gn_members_f(object_id, './', n_members, hdf5_err)
+
+    ! Get the number of datasets
+    dset_count = 0
+    do i = 0, n_members - 1
+      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
+      if (type == H5G_DATASET_F ) then
+        dset_count = dset_count + 1
+      end if
+    end do
+
+    ! Now we can allocate the storage for the ids
+    allocate(names(dset_count))
+    dset_count = 0
+    do i = 0, n_members - 1
+      call h5gget_obj_info_idx_f(object_id, "./", i, name, type, hdf5_err)
+      if (type == H5G_DATASET_F ) then
+        dset_count = dset_count + 1
+        names(dset_count) = trim(name)
+      end if
+    end do
+
+  end subroutine get_datasets
 
 !===============================================================================
 ! OPEN_GROUP opens an existing HDF5 group
@@ -2346,6 +2425,66 @@ contains
     call h5tclose_f(filetype, hdf5_err)
     call h5tclose_f(memtype, hdf5_err)
   end subroutine read_attribute_string
+
+  subroutine read_attribute_string_1D(buffer, obj_id, name)
+    character(*), target, allocatable, intent(inout) :: buffer(:)
+    integer(HID_T), intent(in) :: obj_id
+    character(*),   intent(in) :: name
+
+    integer          :: hdf5_err
+    integer(HID_T)   :: space_id
+    integer(HID_T)   :: attr_id
+    integer(HSIZE_T) :: dims(1)
+    integer(HSIZE_T) :: maxdims(1)
+
+    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
+
+    if (allocated(buffer)) then
+      dims(:) = shape(buffer)
+    else
+      call h5aget_space_f(attr_id, space_id, hdf5_err)
+      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
+      allocate(buffer(dims(1)))
+      call h5sclose_f(space_id, hdf5_err)
+    end if
+
+    call read_attribute_string_1D_explicit(attr_id, dims, buffer)
+    call h5aclose_f(attr_id, hdf5_err)
+  end subroutine read_attribute_string_1D
+
+  subroutine read_attribute_string_1D_explicit(attr_id, dims, buffer)
+    integer(HID_T),       intent(in)    :: attr_id
+    integer(HSIZE_T),     intent(in)    :: dims(1)
+    character(*), target, intent(inout) :: buffer(dims(1))
+
+    integer :: hdf5_err
+    integer(HID_T) :: filetype
+    integer(HID_T) :: memtype
+    integer(SIZE_T) :: size
+    integer(SIZE_T) :: n
+    type(c_ptr) :: f_ptr
+
+    ! Make sure buffer is large enough
+    call h5aget_type_f(attr_id, filetype, hdf5_err)
+    call h5tget_size_f(filetype, size, hdf5_err)
+    if (size > len(buffer(1)) + 1) then
+      call fatal_error("Character buffer is not long enough to &
+           &read HDF5 string array.")
+    end if
+
+    ! Get datatype in memory based on Fortran character
+    n = len(buffer(1))
+    call h5tcopy_f(H5T_FORTRAN_S1, memtype, hdf5_err)
+    call h5tset_size_f(memtype, n, hdf5_err)
+
+    ! Get pointer to start of string
+    f_ptr = c_loc(buffer(1)(1:1))
+
+    call h5aread_f(attr_id, memtype, f_ptr, hdf5_err)
+
+    call h5tclose_f(filetype, hdf5_err)
+    call h5tclose_f(memtype, hdf5_err)
+  end subroutine read_attribute_string_1D_explicit
 
   subroutine get_shape(obj_id, dims)
     integer(HID_T),   intent(in)  :: obj_id

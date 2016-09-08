@@ -4,8 +4,8 @@
     <group_structure>  0.0000000E+00 2.0000000E+01  </group_structure>
 
     <xsdata>
-        <name>  uo2_iso.71c  </name>
-        <alias>  uo2_iso.71c  </alias>
+        <name>  uo2_iso  </name>
+        <alias>  uo2_iso  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  5  </order>
         <fissionable>  true  </fissionable>
@@ -44,8 +44,8 @@
     </xsdata>
 
     <xsdata>
-        <name>  clad_iso.71c  </name>
-        <alias>  clad_iso.71c  </alias>
+        <name>  clad_iso  </name>
+        <alias>  clad_iso  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  5  </order>
         <fissionable>  false  </fissionable>
@@ -75,8 +75,8 @@
     </xsdata>
 
     <xsdata>
-        <name>  lwtr_iso.71c  </name>
-        <alias>  lwtr_iso.71c  </alias>
+        <name>  lwtr_iso  </name>
+        <alias>  lwtr_iso  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  5  </order>
         <fissionable>  false  </fissionable>
@@ -106,8 +106,8 @@
     </xsdata>
 
     <xsdata>
-        <name>  uo2_iso_mu.71c  </name>
-        <alias>  uo2_iso_mu.71c  </alias>
+        <name>  uo2_iso_mu  </name>
+        <alias>  uo2_iso_mu  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  32  </order>
         <fissionable>  true  </fissionable>
@@ -199,8 +199,8 @@
     </xsdata>
 
     <xsdata>
-        <name>  clad_iso_mu.71c  </name>
-        <alias>  clad_iso_mu.71c  </alias>
+        <name>  clad_iso_mu  </name>
+        <alias>  clad_iso_mu  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  32  </order>
         <fissionable>  false  </fissionable>
@@ -283,8 +283,8 @@
     </xsdata>
 
     <xsdata>
-        <name>  lwtr_iso_mu.71c  </name>
-        <alias>  lwtr_iso_mu.71c  </alias>
+        <name>  lwtr_iso_mu  </name>
+        <alias>  lwtr_iso_mu  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  32  </order>
         <fissionable>  false  </fissionable>
@@ -367,8 +367,8 @@
     </xsdata>
 
     <xsdata>
-        <name>  uo2_ang.71c  </name>
-        <alias>  uo2_ang.71c  </alias>
+        <name>  uo2_ang  </name>
+        <alias>  uo2_ang  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  5  </order>
         <fissionable>  true  </fissionable>
@@ -1246,8 +1246,8 @@
     </xsdata>
 
     <xsdata>
-        <name>  clad_ang.71c  </name>
-        <alias>  clad_ang.71c  </alias>
+        <name>  clad_ang  </name>
+        <alias>  clad_ang  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  5  </order>
         <fissionable>  false  </fissionable>
@@ -1930,8 +1930,8 @@
     </xsdata>
 
     <xsdata>
-        <name>  lwtr_ang.71c  </name>
-        <alias>  lwtr_ang.71c  </alias>
+        <name>  lwtr_ang  </name>
+        <alias>  lwtr_ang  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  5  </order>
         <fissionable>  false  </fissionable>
@@ -2614,8 +2614,8 @@
     </xsdata>
 
     <xsdata>
-        <name>  uo2_ang_mu.71c  </name>
-        <alias>  uo2_ang_mu.71c  </alias>
+        <name>  uo2_ang_mu  </name>
+        <alias>  uo2_ang_mu  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  32  </order>
         <fissionable>  true  </fissionable>
@@ -5158,8 +5158,8 @@
     </xsdata>
 
     <xsdata>
-        <name>  clad_ang_mu.71c  </name>
-        <alias>  clad_ang_mu.71c  </alias>
+        <name>  clad_ang_mu  </name>
+        <alias>  clad_ang_mu  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  32  </order>
         <fissionable>  false  </fissionable>
@@ -7507,8 +7507,8 @@
     </xsdata>
 
     <xsdata>
-        <name>  lwtr_ang_mu.71c  </name>
-        <alias>  lwtr_ang_mu.71c  </alias>
+        <name>  lwtr_ang_mu  </name>
+        <alias>  lwtr_ang_mu  </alias>
         <kT>  2.5300000E-08  </kT>
         <order>  32  </order>
         <fissionable>  false  </fissionable>

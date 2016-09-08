@@ -724,31 +724,13 @@ class Materials(cv.CheckedList):
     materials : Iterable of openmc.Material
         Materials to add to the collection
 
-    Attributes
-    ----------
-    default_temperature : str
-        The default temperature identifier applied to a material when none is
-        specified. The units are in Kelvin and the temperature rounded to the
-        nearest integer. For example, a tempreature of 293.6K would be
-        provided as '294K'
-
     """
 
     def __init__(self, materials=None):
         super(Materials, self).__init__(Material, 'materials collection')
-        self._default_temperature = None
         self._materials_file = ET.Element("materials")
         if materials is not None:
             self += materials
-
-    @property
-    def default_temperature(self):
-        return self._default_temperature
-
-    @default_temperature.setter
-    def default_temperature(self, temperature):
-        cv.check_type('default_temperature', temperature, basestring)
-        self._default_temperature = temperature
 
     def add_material(self, material):
         """Append material to collection
@@ -831,11 +813,6 @@ class Materials(cv.CheckedList):
             material.make_isotropic_in_lab()
 
     def _create_material_subelements(self):
-        if self._default_temperature is not None:
-            subelement = ET.SubElement(self._materials_file,
-                                       "default_temperature")
-            subelement.text = self._default_temperature
-
         for material in self:
             xml_element = material.get_material_xml()
             self._materials_file.append(xml_element)

@@ -271,7 +271,6 @@ class InputSet(object):
         bot_fa.add_s_alpha_beta('c_H_in_H2O')
 
         # Define the materials file.
-        self.materials.default_temperature = '294K'
         self.materials += (fuel, clad, cold_water, hot_water, rpv_steel,
                            lower_rad_ref, upper_rad_ref, bot_plate,
                            bot_nozzle, top_nozzle, top_fa, bot_fa)
@@ -615,7 +614,6 @@ class PinCellInputSet(object):
         hot_water.add_s_alpha_beta('c_H_in_H2O')
 
         # Define the materials file.
-        self.materials.default_temperature = '294K'
         self.materials += (fuel, clad, hot_water)
 
         # Instantiate ZCylinder surfaces
@@ -717,7 +715,6 @@ class AssemblyInputSet(object):
         hot_water.add_s_alpha_beta('c_H_in_H2O')
 
         # Define the materials file.
-        self.materials.default_temperature = '294K'
         self.materials += (fuel, clad, hot_water)
 
         # Instantiate ZCylinder surfaces
@@ -845,7 +842,6 @@ class MGInputSet(InputSet):
         water.add_macroscopic(water_data)
 
         # Define the materials file.
-        self.materials.default_temperature = '294K'
         self.materials += (uo2, clad, water)
 
         # Define surfaces.

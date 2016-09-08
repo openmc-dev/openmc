@@ -87,7 +87,6 @@ contains
     real(8),           intent(in)    :: tolerance
 
     integer :: i, j
-    integer :: n
     integer :: t
     integer :: n_energy, n_energy_out, n_mu
     integer :: i_closest
@@ -98,7 +97,7 @@ contains
     integer(HID_T) :: elastic_group
     integer(HID_T) :: inelastic_group
     integer(HID_T) :: dset_id
-    integer(HID_T) :: kT_group, kT_dset
+    integer(HID_T) :: kT_group
     integer(HSIZE_T) :: dims2(2)
     integer(HSIZE_T) :: dims3(3)
     real(8), allocatable :: temp(:,:)

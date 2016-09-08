@@ -226,7 +226,7 @@ class ThermalScattering(EqualityMixin):
         # Write basic data
         g = f.create_group(self.name)
         g.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
-        g.attrs['nuclides'] = np.string_(self.nuclides)
+        g.attrs['nuclides'] = np.array(self.nuclides, dtype='S')
         g.attrs['secondary_mode'] = np.string_(self.secondary_mode)
         ktg = g.create_group('kTs')
         for i, temperature in enumerate(self.temperatures):

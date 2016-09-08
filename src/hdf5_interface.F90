@@ -2518,7 +2518,6 @@ contains
     call h5aget_type_f(attr_id, filetype, hdf5_err)
     call h5tget_size_f(filetype, size, hdf5_err)
     if (size > len(buffer(1)) + 1) then
-      print *, size, len(buffer(1))
       call fatal_error("Character buffer is not long enough to &
            &read HDF5 string array.")
     end if

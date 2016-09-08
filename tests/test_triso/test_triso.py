@@ -93,7 +93,6 @@ class TRISOTestHarness(PyAPITestHarness):
         settings.export_to_xml()
 
         mats = openmc.Materials([fuel, porous_carbon, ipyc, sic, opyc, graphite])
-        mats.default_temperature = '294K'
         mats.export_to_xml()
 
 

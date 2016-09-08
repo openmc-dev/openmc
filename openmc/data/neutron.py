@@ -23,8 +23,7 @@ if sys.version_info[0] >= 3:
 
 
 def _get_metadata(zaid, metastable_scheme='nndc'):
-    """Method to obtain the complete element name, element, Z, mass_number,
-    and metastable state
+    """Return basic identifying data for a nuclide with a given ZAID.
 
     Parameters
     ----------
@@ -283,8 +282,7 @@ class IncidentNeutron(EqualityMixin):
         self._urr = urr
 
     def add_temperature_from_ace(self, ace_or_filename, metastable_scheme='nndc'):
-        """Add data to the IncidentNeutron object from an ACE file at a
-        different temperature.
+        """Append data from an ACE file at a different temperature.
 
         Parameters
         ----------

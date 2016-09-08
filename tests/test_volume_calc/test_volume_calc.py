@@ -24,7 +24,6 @@ class VolumeTest(PyAPITestHarness):
         fuel.set_density('g/cc', 4.5)
 
         materials = openmc.Materials((water, fuel))
-        materials.default_temperature = '294K'
         materials.export_to_xml()
 
         cyl = openmc.ZCylinder(1, R=1.0, boundary_type='vacuum')

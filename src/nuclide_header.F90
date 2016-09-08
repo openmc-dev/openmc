@@ -194,7 +194,6 @@ module nuclide_header
     real(8),         intent(in)    :: tolerance
 
     integer :: i
-    integer :: n
     integer :: storage_type
     integer :: max_corder
     integer :: n_links
@@ -203,7 +202,7 @@ module nuclide_header
     integer :: n_temperature
     integer(HID_T) :: urr_group, nu_group
     integer(HID_T) :: energy_group, energy_dset
-    integer(HID_T) :: kT_group, kT_dset
+    integer(HID_T) :: kT_group
     integer(HID_T) :: rxs_group
     integer(HID_T) :: rx_group
     integer(HID_T) :: total_nu

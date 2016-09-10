@@ -567,7 +567,7 @@ module mgxs_header
                 if (norm > ZERO) then
                   scatt_coeffs(gin) % data(:, gout) = &
                        scatt_coeffs(gin) % data(:, gout) * &
-                       input_scatt(gin) % data(1, gout)
+                       input_scatt(gin) % data(1, gout) / norm
                 end if
               end do ! gout
             end do ! gin
@@ -1062,7 +1062,6 @@ module mgxs_header
       ! Determine the scattering type of our data and ensure all scattering orders
       ! are the same.
       scatter_type = nuclides(mat % nuclide(1)) % obj % scatter_type
-write(*,*) 'scatter_type', scatter_type
       select type(nuc => nuclides(mat % nuclide(1)) % obj)
       type is (MgxsIso)
         order = size(nuc % xs(1) % scatter % dist(1) % data, dim=1)
@@ -1319,8 +1318,6 @@ write(*,*) 'scatter_type', scatter_type
                 end if
               end do
             end if
-
-            write(*,*) this % scatter_type
 
             ! Deallocate temporaries
             deallocate(jagged_mult, jagged_scatt, gmin, gmax, scatt_coeffs, &
@@ -1901,7 +1898,7 @@ write(*,*) 'scatter_type', scatter_type
 ! sqrt(temperature), (with temperature in units of MeV)
 !===============================================================================
 
-    pure subroutine mgxs_find_temperature(this, sqrtkT)
+    subroutine mgxs_find_temperature(this, sqrtkT)
       class(Mgxs), intent(inout) :: this
       real(8), intent(in)        :: sqrtkT    ! Temperature (in units of of MeV)
 

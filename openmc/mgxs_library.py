@@ -14,13 +14,9 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 # Supported incoming particle MGXS angular treatment representations
-_REPRESENTATION_ISOTROPIC = 1
-_REPRESENTATION_ANGLE = 2
-_SCATTER_TYPE_TABULAR = 3
-_SCATTER_TYPE_LEGENDRE = 4
-_SCATTER_TYPE_HISTOGRAM = 5
 _REPRESENTATIONS = ['isotropic', 'angle']
 _SCATTER_TYPES = ['tabular', 'legendre', 'histogram']
+
 
 class XSdata(object):
     """A multi-group cross section data set providing all the

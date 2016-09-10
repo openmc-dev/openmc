@@ -3,8 +3,7 @@ module mgxs_header
   use, intrinsic :: ISO_FORTRAN_ENV
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5, only: HID_T, HSIZE_T, SIZE_T, h5iget_name_f
-  use h5lt, only: h5ltpath_valid_f
+  use hdf5, only: HID_T, HSIZE_T, SIZE_T
 
   use algorithm,       only: find, sort
   use constants,       only: MAX_FILE_LEN, ZERO, ONE, TWO, PI
@@ -212,8 +211,7 @@ module mgxs_header
       type(VectorInt), intent(out)   :: temps_to_read ! Temperatures to read
       integer, intent(out)           :: order_dim     ! Scattering data order size
 
-      integer :: hdf5_err
-      integer(SIZE_T) :: name_len, name_file_len
+      integer(SIZE_T) :: name_len
       integer(HID_T) :: kT_group
       character(MAX_FILE_LEN), allocatable :: dset_names(:)
       real(8), allocatable :: temps_available(:) ! temperatures available
@@ -225,7 +223,7 @@ module mgxs_header
 
       ! Get name of dataset from group
       name_len = len(this % name)
-      call h5iget_name_f(xs_id, this % name, name_len, name_file_len, hdf5_err)
+      this % name = get_name(xs_id, name_len)
 
       ! Get rid of leading '/'
       this % name = trim(this % name(2:))
@@ -452,8 +450,8 @@ module mgxs_header
             ! If we have a need* for the fission and kappa-fission x/s, get them
             ! (*Need is defined as will be using it to tally)
             if (get_fiss) then
-              allocate(xs % fission(groups))
               if (check_dataset(xsdata_grp, "fission")) then
+                allocate(xs % fission(groups))
                 call read_dataset(xs % fission, xsdata_grp, "fission")
               else
                 call fatal_error("Fission data missing, required due to fission&
@@ -461,8 +459,8 @@ module mgxs_header
               end if
             end if
             if (get_kfiss) then
-              allocate(xs % k_fission(groups))
               if (check_dataset(xsdata_grp, "kappa-fission")) then
+                allocate(xs % k_fission(groups))
                 call read_dataset(xs % k_fission, xsdata_grp, "kappa-fission")
               else
                 call fatal_error("kappa-fission data missing, required due to &
@@ -471,8 +469,8 @@ module mgxs_header
             end if
           end if
 
-          allocate(xs % absorption(groups))
           if (check_dataset(xsdata_grp, "absorption")) then
+            allocate(xs % absorption(groups))
             call read_dataset(xs % absorption, xsdata_grp, "absorption")
           else
             call fatal_error("Must provide absorption!")
@@ -581,30 +579,37 @@ module mgxs_header
           deallocate(input_scatt)
 
           ! Now get the multiplication matrix
-          ! Now use this information to find the length of a container array
-          ! to hold the flattened data
-          length = 0
-          do gin = 1, groups
-            length = length + (gmax(gin) - gmin(gin) + 1)
-          end do
-          ! Allocate flattened array
-          allocate(temp_arr(length))
-          if (.not. check_dataset(scatt_grp, 'multiplicity matrix')) &
-               call fatal_error("'multiplicity matrix' must be provided")
-          call read_dataset(temp_arr, scatt_grp, "multiplicity matrix")
-
-          ! Convert temp_arr to a jagged array ((gin) % data(gout)) for passing
-          ! to ScattData
-          allocate(temp_mult(groups))
-          index = 1
-          do gin = 1, groups
-            allocate(temp_mult(gin) % data(gmin(gin):gmax(gin)))
-            do gout = gmin(gin), gmax(gin)
-              temp_mult(gin) % data(gout) = temp_arr(index)
-              index = index + 1
+          if (check_dataset(scatt_grp, 'multiplicity matrix')) then
+            ! Now use this information to find the length of a container array
+            ! to hold the flattened data
+            length = 0
+            do gin = 1, groups
+              length = length + (gmax(gin) - gmin(gin) + 1)
             end do
-          end do
-          deallocate(temp_arr)
+            ! Allocate flattened array
+            allocate(temp_arr(length))
+            call read_dataset(temp_arr, scatt_grp, "multiplicity matrix")
+
+            ! Convert temp_arr to a jagged array ((gin) % data(gout)) for passing
+            ! to ScattData
+            allocate(temp_mult(groups))
+            index = 1
+            do gin = 1, groups
+              allocate(temp_mult(gin) % data(gmin(gin):gmax(gin)))
+              do gout = gmin(gin), gmax(gin)
+                temp_mult(gin) % data(gout) = temp_arr(index)
+                index = index + 1
+              end do
+            end do
+            deallocate(temp_arr)
+          else
+            ! Default to multiplicities of 1.0
+            allocate(temp_mult(groups))
+            do gin = 1, groups
+              allocate(temp_mult(gin) % data(gmin(gin):gmax(gin)))
+              temp_mult(gin) % data = ONE
+            end do
+          end if
 
           ! Allocate and initialize our ScattData Object.
           if (this % scatter_type == ANGLE_HISTOGRAM) then
@@ -641,6 +646,7 @@ module mgxs_header
 
           ! Close the groups we have opened and deallocate
           call close_group(xsdata_grp)
+          call close_group(scatt_grp)
           deallocate(scatt_coeffs, temp_mult)
         end associate ! xs
       end do ! Temperatures
@@ -689,7 +695,7 @@ module mgxs_header
             if (check_dataset(xsdata_grp, "chi")) then
               ! Chi was provided, that means we need chi and nu-fission vectors
               ! Get chi
-              allocate(temp_arr(1 * groups * this % n_azi * this % n_pol))
+              allocate(temp_arr(groups * this % n_azi * this % n_pol))
               call read_dataset(temp_arr, xsdata_grp, "chi")
               ! Initialize counter for temp_arr
               l = 0
@@ -920,39 +926,50 @@ module mgxs_header
           deallocate(input_scatt)
 
           ! Now get the multiplication matrix
-          ! Now use this information to find the length of a container array
-          ! to hold the flattened data
-          length = 0
-          do ipol = 1, this % n_pol
-            do iazi = 1, this % n_azi
-              do gin = 1, groups
-                length = length + (gmax(gin, iazi, ipol) - gmin(gin, iazi, ipol) + 1)
-              end do
-            end do
-          end do
-          ! Allocate flattened array
-          allocate(temp_arr(length))
-          if (.not. check_dataset(scatt_grp, 'multiplicity matrix')) &
-               call fatal_error("'multiplicity matrix' must be provided")
-          call read_dataset(temp_arr, scatt_grp, "multiplicity matrix")
-
-          ! Convert temp_arr to a jagged array ((gin) % data(gout)) for passing
-          ! to ScattData
-          allocate(temp_mult(groups, this % n_azi, this % n_pol))
-          index = 1
-          do ipol = 1, this % n_pol
-            do iazi = 1, this % n_azi
-              do gin = 1, groups
-                allocate(temp_mult(gin, iazi, ipol) % data( &
-                     gmin(gin, iazi, ipol):gmax(gin, iazi, ipol)))
-                do gout = gmin(gin, iazi, ipol), gmax(gin, iazi, ipol)
-                  temp_mult(gin, iazi, ipol) % data(gout) = temp_arr(index)
-                  index = index + 1
+          if (check_dataset(scatt_grp, 'multiplicity matrix')) then
+            ! Now use this information to find the length of a container array
+            ! to hold the flattened data
+            length = 0
+            do ipol = 1, this % n_pol
+              do iazi = 1, this % n_azi
+                do gin = 1, groups
+                  length = length + (gmax(gin, iazi, ipol) - gmin(gin, iazi, ipol) + 1)
                 end do
               end do
             end do
-          end do
-          deallocate(temp_arr)
+            ! Allocate flattened array
+            allocate(temp_arr(length))
+            call read_dataset(temp_arr, scatt_grp, "multiplicity matrix")
+            ! Convert temp_arr to a jagged array ((gin) % data(gout)) for passing
+            ! to ScattData
+            allocate(temp_mult(groups, this % n_azi, this % n_pol))
+            index = 1
+            do ipol = 1, this % n_pol
+              do iazi = 1, this % n_azi
+                do gin = 1, groups
+                  allocate(temp_mult(gin, iazi, ipol) % data( &
+                       gmin(gin, iazi, ipol):gmax(gin, iazi, ipol)))
+                  do gout = gmin(gin, iazi, ipol), gmax(gin, iazi, ipol)
+                    temp_mult(gin, iazi, ipol) % data(gout) = temp_arr(index)
+                    index = index + 1
+                  end do
+                end do
+              end do
+            end do
+            deallocate(temp_arr)
+          else
+            allocate(temp_mult(groups, this % n_azi, this % n_pol))
+            ! Default to multiplicities of 1.0
+            do ipol = 1, this % n_pol
+              do iazi = 1, this % n_azi
+                do gin = 1, groups
+                  allocate(temp_mult(gin, iazi, ipol) % data( &
+                       gmin(gin, iazi, ipol):gmax(gin, iazi, ipol)))
+                  temp_mult(gin, iazi, ipol) % data = ONE
+                end do
+              end do
+            end do
+          end if
 
           ! Allocate and initialize our ScattData Object.
           allocate(xs % scatter(this % n_azi, this % n_pol))
@@ -1013,6 +1030,7 @@ module mgxs_header
 
           ! Close the groups we have opened and deallocate
           call close_group(xsdata_grp)
+          call close_group(scatt_grp)
           deallocate(scatt_coeffs, temp_mult)
         end associate ! xs
       end do ! Temperatures
@@ -1220,22 +1238,22 @@ module mgxs_header
             type is (MgxsIso)
               ! Perform our operations which depend upon the type
               ! Add contributions to total, absorption, and fission data (if necessary)
-              this % xs(t) % total(:) = this % xs(t) % total(:) + &
-                   atom_density * nuc % xs(nuc_t) % total(:)
-              this % xs(t) % absorption(:) = this % xs(t) % absorption(:) + &
-                   atom_density * nuc % xs(nuc_t) % absorption(:)
+              this % xs(t) % total = this % xs(t) % total + &
+                   atom_density * nuc % xs(nuc_t) % total
+              this % xs(t) % absorption = this % xs(t) % absorption + &
+                   atom_density * nuc % xs(nuc_t) % absorption
               if (nuc % fissionable) then
-                this % xs(t) % chi(:, :) = this % xs(t) % chi(:, :) + &
-                     atom_density * nuc % xs(nuc_t) % chi(:, :)
-                this % xs(t) % nu_fission(:) = this % xs(t) % nu_fission(:) + &
-                     atom_density * nuc % xs(nuc_t) % nu_fission(:)
+                this % xs(t) % chi = this % xs(t) % chi + &
+                     atom_density * nuc % xs(nuc_t) % chi
+                this % xs(t) % nu_fission = this % xs(t) % nu_fission + &
+                     atom_density * nuc % xs(nuc_t) % nu_fission
                 if (allocated(nuc % xs(nuc_t) % fission)) then
-                  this % xs(t) % fission(:) = this % xs(t) % fission(:) + &
-                       atom_density * nuc % xs(nuc_t) % fission(:)
+                  this % xs(t) % fission = this % xs(t) % fission + &
+                       atom_density * nuc % xs(nuc_t) % fission
                 end if
                 if (allocated(nuc % xs(nuc_t) % k_fission)) then
-                  this % xs(t) % k_fission(:) = this % xs(t) % k_fission(:) + &
-                       atom_density * nuc % xs(nuc_t) % k_fission(:)
+                  this % xs(t) % k_fission = this % xs(t) % k_fission + &
+                       atom_density * nuc % xs(nuc_t) % k_fission
                 end if
               end if
 
@@ -1547,13 +1565,12 @@ module mgxs_header
                   end do
                 end do
 
-                ! Create the Jagged arrays
+                ! Now create our jagged data from the dense data
                 call jagged_from_dense_2D(scatt_coeffs(:, :, :, iazi, ipol), &
                                           jagged_scatt)
                 call jagged_from_dense_1D(temp_mult(:, :, iazi, ipol), &
                                           jagged_mult, gmin, gmax)
 
-                ! Initialize the ScattData Object
                 ! Initialize the ScattData Object
                 call this % xs(t) % scatter(iazi, ipol) % obj % init(gmin, &
                      gmax, jagged_mult, jagged_scatt)

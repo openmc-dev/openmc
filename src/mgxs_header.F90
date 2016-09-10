@@ -726,7 +726,11 @@ module mgxs_header
 
               ! Get nu_fission (as a vector)
               if (check_dataset(xsdata_grp, "nu-fission")) then
-                call read_dataset(xs % nu_fission, xsdata_grp, "nu-fission")
+                allocate(temp_arr(groups * this % n_azi * this % n_pol))
+                call read_dataset(temp_arr, xsdata_grp, "nu-fission")
+                xs % nu_fission = reshape(temp_arr, (/groups, this % n_azi, &
+                                                      this % n_pol/))
+                deallocate(temp_arr)
               else
                 call fatal_error("If fissionable, must provide nu-fission!")
               end if
@@ -774,8 +778,12 @@ module mgxs_header
             ! (*Need is defined as will be using it to tally)
             if (get_fiss) then
               if (check_dataset(xsdata_grp, "fission")) then
+                allocate(temp_arr(groups * this % n_azi * this % n_pol))
+                call read_dataset(temp_arr, xsdata_grp, "fission")
                 allocate(xs % fission(groups, this % n_azi, this % n_pol))
-                call read_dataset(xs % fission, xsdata_grp, "fission")
+                xs % fission = reshape(temp_arr, (/groups, this % n_azi, &
+                                                   this % n_pol/))
+                deallocate(temp_arr)
               else
                 call fatal_error("Fission data missing, required due to fission&
                                  & tallies in tallies.xml file!")
@@ -783,8 +791,12 @@ module mgxs_header
             end if
             if (get_kfiss) then
               if (check_dataset(xsdata_grp, "kappa-fission")) then
+                allocate(temp_arr(groups * this % n_azi * this % n_pol))
+                call read_dataset(temp_arr, xsdata_grp, "kappa-fission")
                 allocate(xs % k_fission(groups, this % n_azi, this % n_pol))
-                call read_dataset(xs % k_fission, xsdata_grp, "kappa-fission")
+                xs % k_fission = reshape(temp_arr, (/groups, this % n_azi, &
+                                                   this % n_pol/))
+                deallocate(temp_arr)
               else
                 call fatal_error("kappa_fission data missing, required due to &
                                  &kappa-fission tallies in tallies.xml file!")
@@ -793,8 +805,12 @@ module mgxs_header
           end if
 
           if (check_dataset(xsdata_grp, "absorption")) then
+            allocate(temp_arr(groups * this % n_azi * this % n_pol))
+            call read_dataset(temp_arr, xsdata_grp, "absorption")
             allocate(xs % absorption(groups, this % n_azi, this % n_pol))
-            call read_dataset(xs % absorption, xsdata_grp, "absorption")
+            xs % absorption = reshape(temp_arr, (/groups, this % n_azi, &
+                                                  this % n_pol/))
+            deallocate(temp_arr)
           else
             call fatal_error("Must provide absorption!")
           end if
@@ -805,14 +821,20 @@ module mgxs_header
           scatt_grp = open_group(xsdata_grp, 'scatter data')
           ! First get the outgoing group boundary indices
           if (check_dataset(scatt_grp, "g_min")) then
+            allocate(temp_arr(groups * this % n_azi * this % n_pol))
+            call read_dataset(temp_arr, scatt_grp, "g_min")
             allocate(gmin(groups, this % n_azi, this % n_pol))
-            call read_dataset(gmin, scatt_grp, "g_min")
+            gmin = reshape(temp_arr, (/groups, this % n_azi, this % n_pol/))
+            deallocate(temp_arr)
           else
             call fatal_error("'g_min' for the scatter matrix must be provided")
           end if
           if (check_dataset(scatt_grp, "g_max")) then
+            allocate(temp_arr(groups * this % n_azi * this % n_pol))
+            call read_dataset(temp_arr, scatt_grp, "g_max")
             allocate(gmax(groups, this % n_azi, this % n_pol))
-            call read_dataset(gmax, scatt_grp, "g_max")
+            gmax = reshape(temp_arr, (/groups, this % n_azi, this % n_pol/))
+            deallocate(temp_arr)
           else
             call fatal_error("'g_max' for the scatter matrix must be provided")
           end if
@@ -857,7 +879,7 @@ module mgxs_header
 
           ! Finally convert the legendre to tabular if needed
           ! Compare the number of orders given with the maximum order of the
-          ! problem.  Strip off the supefluous orders if needed.
+          ! problem.  Strip off the superfluous orders if needed.
           if (this % scatter_type == ANGLE_LEGENDRE) then
             order = min(order_dim - 1, max_order)
             order_dim = order + 1
@@ -904,7 +926,8 @@ module mgxs_header
                     if (norm > ZERO) then
                       scatt_coeffs(gin, iazi, ipol) % data(:, gout) = &
                            scatt_coeffs(gin, iazi, ipol) % data(:, gout) * &
-                           input_scatt(gin, iazi, ipol) % data(1, gout)
+                           input_scatt(gin, iazi, ipol) % data(1, gout) / &
+                           norm
                     end if
                   end do ! gout
                 end do ! gin
@@ -1006,7 +1029,11 @@ module mgxs_header
 
           allocate(xs % total(groups, this % n_azi, this % n_pol))
           if (check_dataset(xsdata_grp, "total")) then
-            call read_dataset(xs % total, xsdata_grp, "total")
+            allocate(temp_arr(groups * this % n_azi * this % n_pol))
+            call read_dataset(temp_arr, xsdata_grp, "total")
+            xs % total = reshape(temp_arr, (/groups, this % n_azi, &
+                                             this % n_pol/))
+            deallocate(temp_arr)
           else
             do ipol = 1, this % n_pol
               do iazi = 1, this % n_azi

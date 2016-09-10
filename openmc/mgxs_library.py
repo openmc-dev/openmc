@@ -1263,6 +1263,10 @@ class XSdata(object):
                                 for g_out in range(g_out_bounds[p, a, g_in, 0],
                                                    g_out_bounds[p, a, g_in, 1] + 1):
                                     flat_mult.append(matrix[g_in, g_out])
+                # And write it.
+                scatt_grp.create_dataset("multiplicity matrix",
+                                         data=np.array(flat_mult),
+                                         compression=compression)
                 # And finally, adjust g_out_bounds for 1-based group counting
                 # and write it.
                 g_out_bounds[:, :, :, :] += 1

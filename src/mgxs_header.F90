@@ -403,7 +403,7 @@ module mgxs_header
           xsdata_grp = open_group(xs_id, trim(temp_str))
           if (this % fissionable) then
             allocate(xs % nu_fission(groups))
-            allocate(xs % chi(groups,groups))
+            allocate(xs % chi(groups, groups))
             if (check_dataset(xsdata_grp, "chi")) then
               ! Chi was provided, that means we need chi and nu-fission vectors
               ! Get chi
@@ -483,13 +483,13 @@ module mgxs_header
                call fatal_error("Must provide 'scatter data'")
           scatt_grp = open_group(xsdata_grp, 'scatter data')
           ! First get the outgoing group boundary indices
-          if (check_dataset(xsdata_grp, "g_min")) then
+          if (check_dataset(scatt_grp, "g_min")) then
             allocate(gmin(groups))
             call read_dataset(gmin, scatt_grp, "g_min")
           else
             call fatal_error("'g_min' for the scatter matrix must be provided")
           end if
-          if (check_dataset(xsdata_grp, "g_max")) then
+          if (check_dataset(scatt_grp, "g_max")) then
             allocate(gmax(groups))
             call read_dataset(gmax, scatt_grp, "g_max")
           else
@@ -514,8 +514,8 @@ module mgxs_header
           index = 1
           do gin = 1, groups
             allocate(input_scatt(gin) % data(order_dim, gmin(gin):gmax(gin)))
-            do l = 1, order_dim
-              do gout = gmin(gin), gmax(gin)
+            do gout = gmin(gin), gmax(gin)
+              do l = 1, order_dim
                 input_scatt(gin) % data(l, gout) = temp_arr(index)
                 index = index + 1
               end do
@@ -531,7 +531,7 @@ module mgxs_header
             order_dim = order + 1
           end if
 
-          allocate(scatt_coeffs(gin))
+          allocate(scatt_coeffs(groups))
           if (this % scatter_type == ANGLE_LEGENDRE .and. &
               legendre_to_tabular) then
             this % scatter_type = ANGLE_TABULAR
@@ -539,7 +539,7 @@ module mgxs_header
             order = order_dim
             dmu = TWO / real(order - 1, 8)
             do gin = 1, groups
-              allocate(scatt_coeffs(gin) % data(order_dim, groups))
+              allocate(scatt_coeffs(gin) % data(order_dim, gmin(gin):gmax(gin)))
               do gout = gmin(gin), gmax(gin)
                 norm = ZERO
                 do imu = 1, order_dim
@@ -572,10 +572,9 @@ module mgxs_header
               end do ! gout
             end do ! gin
           else
-            ! Sticking with current representation, carry forward but change
-            ! the array ordering
+            ! Sticking with current representation
             do gin = 1, groups
-              allocate(scatt_coeffs(gin) % data(order_dim, groups))
+              allocate(scatt_coeffs(gin) % data(order_dim, gmin(gin):gmax(gin)))
               scatt_coeffs(gin) % data(:, :) = input_scatt(gin) % data(:, :)
             end do
           end if
@@ -642,7 +641,7 @@ module mgxs_header
 
           ! Close the groups we have opened and deallocate
           call close_group(xsdata_grp)
-          deallocate(input_scatt, scatt_coeffs, temp_mult)
+          deallocate(scatt_coeffs, temp_mult)
         end associate ! xs
       end do ! Temperatures
     end subroutine mgxsiso_from_hdf5
@@ -685,6 +684,8 @@ module mgxs_header
           temp_str = trim(to_str(temps_to_read % data(t))) // "K"
           xsdata_grp = open_group(xs_id, trim(temp_str))
           if (this % fissionable) then
+            allocate(xs % nu_fission(groups, this % n_azi, this % n_pol))
+            allocate(xs % chi(groups, groups, this % n_azi, this % n_pol))
             if (check_dataset(xsdata_grp, "chi")) then
               ! Chi was provided, that means we need chi and nu-fission vectors
               ! Get chi
@@ -783,9 +784,6 @@ module mgxs_header
                                  &kappa-fission tallies in tallies.xml file!")
               end if
             end if
-          else
-            xs % nu_fission(:, :, :) = ZERO
-            xs % chi(:, :, :, :) = ZERO
           end if
 
           if (check_dataset(xsdata_grp, "absorption")) then
@@ -800,13 +798,13 @@ module mgxs_header
                call fatal_error("Must provide 'scatter data'")
           scatt_grp = open_group(xsdata_grp, 'scatter data')
           ! First get the outgoing group boundary indices
-          if (check_dataset(xsdata_grp, "g_min")) then
+          if (check_dataset(scatt_grp, "g_min")) then
             allocate(gmin(groups, this % n_azi, this % n_pol))
             call read_dataset(gmin, scatt_grp, "g_min")
           else
             call fatal_error("'g_min' for the scatter matrix must be provided")
           end if
-          if (check_dataset(xsdata_grp, "g_max")) then
+          if (check_dataset(scatt_grp, "g_max")) then
             allocate(gmax(groups, this % n_azi, this % n_pol))
             call read_dataset(gmax, scatt_grp, "g_max")
           else
@@ -839,8 +837,8 @@ module mgxs_header
               do gin = 1, groups
                 allocate(input_scatt(gin, iazi, ipol) % data(order_dim, &
                      gmin(gin, iazi, ipol):gmax(gin, iazi, ipol)))
-                do l = 1, order_dim
-                  do gout = gmin(gin, iazi, ipol), gmax(gin, iazi, ipol)
+                do gout = gmin(gin, iazi, ipol), gmax(gin, iazi, ipol)
+                  do l = 1, order_dim
                     input_scatt(gin, iazi, ipol) % data(l, gout) = &
                          temp_arr(index)
                     index = index + 1
@@ -859,7 +857,7 @@ module mgxs_header
             order_dim = order + 1
           end if
 
-          allocate(scatt_coeffs(gin, this % n_azi, this % n_pol))
+          allocate(scatt_coeffs(groups, this % n_azi, this % n_pol))
           if (this % scatter_type == ANGLE_LEGENDRE .and. &
               legendre_to_tabular) then
             this % scatter_type = ANGLE_TABULAR
@@ -870,7 +868,8 @@ module mgxs_header
               do iazi = 1, this % n_azi
                 do gin = 1, groups
                   allocate(scatt_coeffs(gin, iazi, ipol) % data(&
-                       order_dim, groups))
+                       order_dim, &
+                       gmin(gin, iazi, ipol):gmax(gin, iazi, ipol)))
                   do gout = gmin(gin, iazi, ipol), gmax(gin, iazi, ipol)
                     norm = ZERO
                     do imu = 1, order_dim
@@ -906,12 +905,12 @@ module mgxs_header
               end do ! iazi
             end do ! ipol
           else
-            ! Sticking with current representation, carry forward but change
-            ! the array ordering
+            ! Sticking with current representation, carry forward
             do ipol = 1, this % n_pol
               do iazi = 1, this % n_azi
                 do gin = 1, groups
-                  allocate(scatt_coeffs(gin, iazi, ipol) % data(order_dim, groups))
+                  allocate(scatt_coeffs(gin, iazi, ipol) % data(order_dim, &
+                       gmin(gin, iazi, ipol):gmax(gin, iazi, ipol)))
                   scatt_coeffs(gin, iazi, ipol) % data(:, :) = &
                        input_scatt(gin, iazi, ipol) % data(:, :)
                 end do
@@ -1014,7 +1013,7 @@ module mgxs_header
 
           ! Close the groups we have opened and deallocate
           call close_group(xsdata_grp)
-          deallocate(input_scatt, scatt_coeffs, temp_mult)
+          deallocate(scatt_coeffs, temp_mult)
         end associate ! xs
       end do ! Temperatures
     end subroutine mgxsang_from_hdf5
@@ -1063,6 +1062,7 @@ module mgxs_header
       ! Determine the scattering type of our data and ensure all scattering orders
       ! are the same.
       scatter_type = nuclides(mat % nuclide(1)) % obj % scatter_type
+write(*,*) 'scatter_type', scatter_type
       select type(nuc => nuclides(mat % nuclide(1)) % obj)
       type is (MgxsIso)
         order = size(nuc % xs(1) % scatter % dist(1) % data, dim=1)
@@ -1125,7 +1125,7 @@ module mgxs_header
         ! the problem wide max scatt order and use whichever is lower
         order = min(mat_max_order, max_order)
         ! Ok, got our order, store the dimensionality
-        order_dim = order + 1
+        order_dim = order
       end if
 
     end subroutine mgxs_combine
@@ -1185,6 +1185,7 @@ module mgxs_header
         allocate(scatt_coeffs(order_dim,groups,groups))
         scatt_coeffs(:, :, :) = ZERO
 
+        this % scatter_type = scatter_type
         if (scatter_type == ANGLE_LEGENDRE) then
           allocate(ScattDataLegendre :: this % xs(t) % scatter)
         else if (scatter_type == ANGLE_TABULAR) then
@@ -1302,8 +1303,8 @@ module mgxs_header
             end do
 
             ! Now create our jagged data from the dense data
-            call jagged_from_dense_2D(scatt_coeffs, jagged_scatt)
-            call jagged_from_dense_1D(temp_mult, jagged_mult, gmin, gmax)
+            call jagged_from_dense_2D(scatt_coeffs, jagged_scatt, gmin, gmax)
+            call jagged_from_dense_1D(temp_mult, jagged_mult)
 
             ! Initialize the ScattData Object
             call this % xs(t) % scatter % init(gmin, gmax, jagged_mult, &
@@ -1318,6 +1319,8 @@ module mgxs_header
                 end if
               end do
             end if
+
+            write(*,*) this % scatter_type
 
             ! Deallocate temporaries
             deallocate(jagged_mult, jagged_scatt, gmin, gmax, scatt_coeffs, &
@@ -1557,6 +1560,7 @@ module mgxs_header
                 ! Initialize the ScattData Object
                 call this % xs(t) % scatter(iazi, ipol) % obj % init(gmin, &
                      gmax, jagged_mult, jagged_scatt)
+                deallocate(jagged_scatt, jagged_mult, gmin, gmax)
               end do
             end do
 
@@ -1576,8 +1580,7 @@ module mgxs_header
             end if
 
             ! Deallocate temporaries
-            deallocate(jagged_mult, jagged_scatt, gmin, gmax, scatt_coeffs, &
-                       temp_mult, mult_num, mult_denom)
+            deallocate(scatt_coeffs, temp_mult, mult_num, mult_denom)
           end associate ! nuc
         end do NUC_LOOP
       end do TEMP_LOOP

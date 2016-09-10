@@ -1079,8 +1079,9 @@ class Settings(object):
             element = ET.SubElement(self._settings_file, "tabular_legendre")
             subelement = ET.SubElement(element, "enable")
             subelement.text = str(self._tabular_legendre['enable']).lower()
-            subelement = ET.SubElement(element, "num_points")
-            subelement.text = str(self._tabular_legendre['num_points'])
+            if 'num_points' in self._tabular_legendre:
+                subelement = ET.SubElement(element, "num_points")
+                subelement.text = str(self._tabular_legendre['num_points'])
 
     def _create_temperature_subelements(self):
         if self.temperature:

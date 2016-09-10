@@ -102,6 +102,7 @@ module hdf5_interface
   public :: write_attribute_string
   public :: get_groups
   public :: get_datasets
+  public :: get_name
 
 contains
 
@@ -332,6 +333,27 @@ contains
     end do
 
   end subroutine get_datasets
+
+!===============================================================================
+! GET_NAME Obtains the name of the current group in group_id
+!===============================================================================
+
+  function get_name(group_id, name_len_) result(name)
+    integer(HID_T),            intent(in) :: group_id
+    integer(SIZE_T), optional, intent(in) :: name_len_
+
+    character(len=255) :: name ! name of group
+    integer(SIZE_T) :: name_len, name_file_len
+    integer :: hdf5_err ! HDF5 error code
+
+    if (present(name_len_)) then
+      name_len = name_len_
+    else
+      name_len = 255
+    end if
+
+    call h5iget_name_f(group_id, name, name_len, name_file_len, hdf5_err)
+  end function get_name
 
 !===============================================================================
 ! OPEN_GROUP opens an existing HDF5 group

@@ -737,7 +737,7 @@ coefficients. This element has the following attributes/sub-elements:
 
     *Default*: 33
 
-  .. note:: This element is not used in the multi-group :ref:`energy_mode`.
+  .. note:: This element is only used in the multi-group :ref:`energy_mode`.
 
 .. _temperature_default:
 

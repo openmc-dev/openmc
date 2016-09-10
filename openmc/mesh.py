@@ -291,6 +291,10 @@ class Mesh(object):
             # Would prefer to have the z ranges be the max supported float, but
             # these values are apparently different between python and Fortran.
             # Choosing a safe and sane default.
+            # Values of +/-1000 are used here as there seems to be an
+            # inconsistency between what numpy uses as the max float and what
+            # Fortran expects for a real(8), so this avoids code complication
+            # and achieves the same goal.
             zplanes = [openmc.ZPlane(z0=-1000.,
                                      boundary_type='reflective'),
                        openmc.ZPlane(z0=1000.,

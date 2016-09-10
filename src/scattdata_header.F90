@@ -155,7 +155,8 @@ contains
         allocate(this % energy(gin) % data(gmin(gin):gmax(gin)))
         this % energy(gin) % data(:) = energy(gin) % data(:)
         allocate(this % mult(gin) % data(gmin(gin):gmax(gin)))
-        this % mult(gin) % data(:) = mult(gin) % data(:)
+        this % mult(gin) % data(gmin(gin):gmax(gin)) = &
+             mult(gin) % data(gmin(gin):gmax(gin))
         allocate(this % dist(gin) % data(order, gmin(gin):gmax(gin)))
         this % dist(gin) % data = ZERO
       end do
@@ -280,6 +281,7 @@ contains
       ! Build energy transfer probability matrix from data in matrix
       ! while also normalizing matrix itself (making CDF of f(mu=1)=1)
       do gin = 1, groups
+        allocate(energy(gin) % data(gmin(gin):gmax(gin)))
         do gout = 1, groups
           norm = sum(matrix(gin) % data(:, gout))
           energy(gin) % data(gout) = norm
@@ -379,6 +381,7 @@ contains
       allocate(energy(groups))
       ! Build energy transfer probability matrix from data in matrix
       do gin = 1, groups
+        allocate(energy(gin) % data(gmin(gin):gmax(gin)))
         do gout = gmin(gin), gmax(gin)
           norm = ZERO
           do imu = 2, order
@@ -732,15 +735,16 @@ contains
 ! default is ZERO
 !===============================================================================
 
-    subroutine jagged_from_dense_1D(dense, jagged, lo_bounds, hi_bounds, key_)
+    subroutine jagged_from_dense_1D(dense, jagged, lo_bounds_, hi_bounds_, key_)
       real(8), intent(in)                        :: dense(:, :)
       type(Jagged1D), allocatable, intent(inout) :: jagged(:)
       real(8), intent(in), optional              :: key_
-      integer, intent(inout), allocatable, optional :: lo_bounds(:)
-      integer, intent(inout), allocatable, optional :: hi_bounds(:)
+      integer, intent(inout), allocatable, optional :: lo_bounds_(:)
+      integer, intent(inout), allocatable, optional :: hi_bounds_(:)
 
       real(8) :: key
       integer :: i, jmin, jmax
+      integer, allocatable :: lo_bounds(:), hi_bounds(:)
 
       if (present(key_)) then
         key = key_
@@ -748,23 +752,18 @@ contains
         key = ZERO
       end if
 
-      if (present(lo_bounds)) then
-        if (allocated(lo_bounds)) deallocate(lo_bounds)
-        allocate(lo_bounds(size(dense, dim=2)))
-      end if
-      if (present(hi_bounds)) then
-        if (allocated(hi_bounds)) deallocate(hi_bounds)
-        allocate(hi_bounds(size(dense, dim=2)))
-      end if
+      allocate(lo_bounds(size(dense, dim=2)))
+      allocate(hi_bounds(size(dense, dim=2)))
 
+      if (allocated(jagged)) deallocate(jagged)
       allocate(jagged(size(dense, dim=2)))
       do i = 1, size(dense, dim=2)
         ! Find the min and max j values
         do jmin = 1, size(dense, dim=1)
-          if (dense(jmin, i) > key) exit
+          if (dense(jmin, i) /= key) exit
         end do
         do jmax = size(dense, dim=1), 1, -1
-          if (dense(jmax, i) > key) exit
+          if (dense(jmax, i) /= key) exit
         end do
         ! Treat the case of all values matching the key
         if (jmin > jmax) then
@@ -776,21 +775,33 @@ contains
         allocate(jagged(i) % data(jmin:jmax))
         jagged(i) % data(jmin:jmax) = dense(jmin:jmax, i)
 
-        if (present(lo_bounds)) lo_bounds(i) = jmin
-        if (present(hi_bounds)) hi_bounds(i) = jmax
+        lo_bounds(i) = jmin
+        hi_bounds(i) = jmax
       end do
+
+      if (present(lo_bounds_)) then
+        if (allocated(lo_bounds_)) deallocate(lo_bounds_)
+        allocate(lo_bounds_(size(dense, dim=2)))
+        lo_bounds_ = lo_bounds
+      end if
+      if (present(hi_bounds_)) then
+        if (allocated(hi_bounds_)) deallocate(hi_bounds_)
+        allocate(hi_bounds_(size(dense, dim=2)))
+        hi_bounds_ = hi_bounds
+      end if
 
     end subroutine jagged_from_dense_1D
 
-    subroutine jagged_from_dense_2D(dense, jagged, lo_bounds, hi_bounds, key_)
+    subroutine jagged_from_dense_2D(dense, jagged, lo_bounds_, hi_bounds_, key_)
       real(8), intent(in)                        :: dense(:, :, :)
       type(Jagged2D), allocatable, intent(inout) :: jagged(:)
       real(8), intent(in), optional              :: key_
-      integer, intent(inout), allocatable, optional :: lo_bounds(:)
-      integer, intent(inout), allocatable, optional :: hi_bounds(:)
+      integer, intent(inout), allocatable, optional :: lo_bounds_(:)
+      integer, intent(inout), allocatable, optional :: hi_bounds_(:)
 
       real(8) :: key
       integer :: i, jmin, jmax
+      integer, allocatable :: lo_bounds(:), hi_bounds(:)
 
       if (present(key_)) then
         key = key_
@@ -798,23 +809,18 @@ contains
         key = ZERO
       end if
 
-      if (present(lo_bounds)) then
-        if (allocated(lo_bounds)) deallocate(lo_bounds)
-        allocate(lo_bounds(size(dense, dim=3)))
-      end if
-      if (present(hi_bounds)) then
-        if (allocated(hi_bounds)) deallocate(hi_bounds)
-        allocate(hi_bounds(size(dense, dim=3)))
-      end if
+      allocate(lo_bounds(size(dense, dim=3)))
+      allocate(hi_bounds(size(dense, dim=3)))
 
+      if (allocated(jagged)) deallocate(jagged)
       allocate(jagged(size(dense, dim=3)))
       do i = 1, size(dense, dim=3)
         ! Find the min and max j values
-        do jmin = 1, size(dense, dim=1)
-          if (sum(dense(:, jmin, i)) > key) exit
+        do jmin = 1, size(dense, dim=2)
+          if (any(dense(:, jmin, i) /= key)) exit
         end do
-        do jmax = size(dense, dim=1), 1, -1
-          if (sum(dense(:, jmax, i)) > key) exit
+        do jmax = size(dense, dim=2), 1, -1
+          if (any(dense(:, jmax, i) /= key)) exit
         end do
         ! Treat the case of all values matching the key
         if (jmin > jmax) then
@@ -826,9 +832,20 @@ contains
         allocate(jagged(i) % data(size(dense, dim=1), jmin:jmax))
         jagged(i) % data(:, jmin:jmax) = dense(:, jmin:jmax, i)
 
-        if (present(lo_bounds)) lo_bounds(i) = jmin
-        if (present(hi_bounds)) hi_bounds(i) = jmax
+        lo_bounds(i) = jmin
+        hi_bounds(i) = jmax
       end do
+
+      if (present(lo_bounds_)) then
+        if (allocated(lo_bounds_)) deallocate(lo_bounds_)
+        allocate(lo_bounds_(size(dense, dim=3)))
+        lo_bounds_ = lo_bounds
+      end if
+      if (present(hi_bounds_)) then
+        if (allocated(hi_bounds_)) deallocate(hi_bounds_)
+        allocate(hi_bounds_(size(dense, dim=3)))
+        hi_bounds_ = hi_bounds
+      end if
 
     end subroutine jagged_from_dense_2D
 

@@ -3198,7 +3198,7 @@ class Tally(object):
         std_dev = self.get_reshaped_data(value='std_dev')
 
         # Average across any filter bins specified by the user
-        if isinstnace(filter_type, openmc.filter.FilterMeta):
+        if isinstance(filter_type, openmc.filter.FilterMeta):
             find_filter = self.find_filter(filter_type)
 
             # If user did not specify filter bins, average across all bins
@@ -3219,7 +3219,7 @@ class Tally(object):
 
             # Average across the bins in the user-specified filter
             for i, self_filter in enumerate(self.filters):
-                if self_filter.type == filter_type:
+                if isinstance(self_filter, filter_type):
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
                     mean = np.mean(mean, axis=i, keepdims=True)

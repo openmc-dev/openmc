@@ -26,6 +26,8 @@ _CURRENT_NAMES = {1: 'x-min out', 2: 'x-max out',
                   7: 'x-min in', 8: 'x-max in',
                   9: 'y-min in', 10: 'y-max in',
                   11: 'z-min in', 12: 'z-max in'}
+
+
 class FilterMeta(ABCMeta):
     def __new__(cls, name, bases, namespace, **kwargs):
         if not name.endswith('Filter'):
@@ -105,11 +107,14 @@ class Filter(with_metaclass(FilterMeta, object)):
 
     @classmethod
     def from_hdf5(cls, group):
+        if group['type'].value.decode() == cls.short_name.lower():
+            out = cls(group['bins'].value)
+            out.num_bins = group['n_bins'].value
+            return out
+
         for subclass in cls.recursive_subclasses():
             if group['type'].value.decode() == subclass.short_name.lower():
-                out = subclass(group['bins'].value)
-                out.num_bins = group['n_bins'].value
-                return out
+                return subclass.from_hdf5(group)
 
         raise ValueError("Unrecognized Filter class: '"
                          + group['type'].value.decode() + "'")
@@ -440,6 +445,20 @@ class SurfaceFilter(IntegralFilter):
 
 
 class MeshFilter(Filter):
+    def __init__(self, bins):
+        self._mesh = None
+        super(MeshFilter, self).__init__(bins)
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, mesh):
+        cv.check_type('filter mesh', mesh, Mesh)
+        self._mesh = mesh
+        self.bins = mesh.id
+
     def check_bins(self, bins):
         if not len(bins) == 1:
             msg = 'Unable to add bins "{0}" to a MeshFilter since ' \
@@ -682,6 +701,22 @@ class DistribcellFilter(Filter):
         self._distribcell_paths = None
         super(DistribcellFilter, self).__init__(bins)
 
+    @classmethod
+    def from_hdf5(cls, group):
+        if group['type'].value.decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'].value.decode() + " instead")
+
+        out = cls(group['bins'].value)
+        out.num_bins = group['n_bins'].value
+
+        if 'paths' in group:
+            out.distribcell_paths = [str(path.decode()) for path in
+                                     group['paths'].value]
+
+        return out
+
     @property
     def distribcell_paths(self):
         return self._distribcell_paths
@@ -692,7 +727,6 @@ class DistribcellFilter(Filter):
         self._distribcell_paths = distribcell_paths
 
     def check_bins(self, bins):
-        bins = self._format_bins(bins)
         if not len(bins) == 1:
             msg = 'Unable to add bins "{0}" to a DistribcellFilter since ' \
                   'only a single distribcell can be used per tally'.format(bins)
@@ -705,6 +739,11 @@ class DistribcellFilter(Filter):
     def can_merge(self, other):
         # Distribcell filters cannot have more than one bin
         return False
+
+    def get_bin_index(self, filter_bin):
+        # Filter bins for distribcells are indices of each unique placement of
+        # the Cell in the Geometry (consecutive integers starting at 0).
+        return filter_bin
 
     def get_pandas_dataframe(self, data_size, distribcell_paths=True):
         # Initialize Pandas DataFrame

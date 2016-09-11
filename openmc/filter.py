@@ -664,8 +664,8 @@ class EnergyFilter(Filter):
         hi_bins = np.tile(hi_bins, tile_factor)
 
         # Add the new energy columns to the DataFrame.
-        df.loc[:, self.type + ' low [MeV]'] = lo_bins
-        df.loc[:, self.type + ' high [MeV]'] = hi_bins
+        df.loc[:, self.short_name.lower() + ' low [MeV]'] = lo_bins
+        df.loc[:, self.short_name.lower() + ' high [MeV]'] = hi_bins
 
         return df
 
@@ -885,7 +885,7 @@ class DistribcellFilter(Filter):
         filter_bins = np.repeat(filter_bins, self.stride)
         tile_factor = data_size / len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
-        df = pd.DataFrame({self.type : filter_bins})
+        df = pd.DataFrame({self.short_name.lower() : filter_bins})
 
         # If OpenCG level info DataFrame was created, concatenate
         # with DataFrame of distribcell instance IDs

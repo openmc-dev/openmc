@@ -4640,7 +4640,7 @@ contains
     logical :: file_exists ! does mgxs.h5 exist?
     integer(HID_T) :: file_id
     real(8), allocatable :: rev_energy_bins(:)
-    character(len=255), allocatable :: names(:)
+    character(len=MAX_WORD_LEN), allocatable :: names(:)
 
     ! Check if mgxs.h5 exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)

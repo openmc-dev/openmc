@@ -6,7 +6,7 @@ module mgxs_header
   use hdf5, only: HID_T, HSIZE_T, SIZE_T
 
   use algorithm,       only: find, sort
-  use constants,       only: MAX_FILE_LEN, ZERO, ONE, TWO, PI
+  use constants,       only: MAX_WORD_LEN, ZERO, ONE, TWO, PI
   use error,           only: fatal_error
   use hdf5_interface
   use material_header, only: material
@@ -49,9 +49,9 @@ module mgxs_header
 !===============================================================================
 
   type, abstract :: Mgxs
-    character(len=104)   :: name   ! name of dataset, e.g. 92235.03c
-    real(8)              :: awr    ! Atomic Weight Ratio
-    real(8), allocatable :: kTs(:) ! temperature in MeV (k*T)
+    character(len=MAX_WORD_LEN) :: name   ! name of dataset, e.g. UO2
+    real(8)                     :: awr    ! Atomic Weight Ratio
+    real(8), allocatable        :: kTs(:) ! temperature in MeV (k*T)
 
     ! Fission information
     logical :: fissionable  ! mgxs object is fissionable?
@@ -213,7 +213,7 @@ module mgxs_header
 
       integer(SIZE_T) :: name_len
       integer(HID_T) :: kT_group
-      character(MAX_FILE_LEN), allocatable :: dset_names(:)
+      character(MAX_WORD_LEN), allocatable :: dset_names(:)
       real(8), allocatable :: temps_available(:) ! temperatures available
       real(8) :: temp_desired
       real(8) :: temp_actual
@@ -506,6 +506,13 @@ module mgxs_header
                call fatal_error("'scatter matrix' must be provided")
           call read_dataset(temp_arr, scatt_grp, "scatter matrix")
 
+          ! Compare the number of orders given with the maximum order of the
+          ! problem.  Strip off the supefluous orders if needed.
+          if (this % scatter_type == ANGLE_LEGENDRE) then
+            order = min(order_dim - 1, max_order)
+            order_dim = order + 1
+          end if
+
           ! Convert temp_arr to a jagged array ((gin) % data(l, gout)) for passing
           ! to ScattData
           allocate(input_scatt(groups))
@@ -522,13 +529,6 @@ module mgxs_header
           deallocate(temp_arr)
 
           ! Finally convert the legendre to tabular if needed
-          ! Compare the number of orders given with the maximum order of the
-          ! problem.  Strip off the supefluous orders if needed.
-          if (this % scatter_type == ANGLE_LEGENDRE) then
-            order = min(order_dim - 1, max_order)
-            order_dim = order + 1
-          end if
-
           allocate(scatt_coeffs(groups))
           if (this % scatter_type == ANGLE_LEGENDRE .and. &
               legendre_to_tabular) then
@@ -573,7 +573,8 @@ module mgxs_header
             ! Sticking with current representation
             do gin = 1, groups
               allocate(scatt_coeffs(gin) % data(order_dim, gmin(gin):gmax(gin)))
-              scatt_coeffs(gin) % data(:, :) = input_scatt(gin) % data(:, :)
+              scatt_coeffs(gin) % data(:, :) = &
+                   input_scatt(gin) % data(1:order_dim, :)
             end do
           end if
           deallocate(input_scatt)
@@ -670,6 +671,7 @@ module mgxs_header
 
       character(MAX_LINE_LEN)     :: temp_str
       integer(HID_T)              :: xsdata_grp, scatt_grp
+      integer, allocatable        :: int_arr(:)
       real(8), allocatable        :: temp_arr(:), temp_4d(:, :, :, :)
       real(8)                     :: dmu, mu, norm
       integer                     :: order, order_dim, gin, gout, l, imu
@@ -821,20 +823,20 @@ module mgxs_header
           scatt_grp = open_group(xsdata_grp, 'scatter data')
           ! First get the outgoing group boundary indices
           if (check_dataset(scatt_grp, "g_min")) then
-            allocate(temp_arr(groups * this % n_azi * this % n_pol))
-            call read_dataset(temp_arr, scatt_grp, "g_min")
+            allocate(int_arr(groups * this % n_azi * this % n_pol))
+            call read_dataset(int_arr, scatt_grp, "g_min")
             allocate(gmin(groups, this % n_azi, this % n_pol))
-            gmin = reshape(temp_arr, (/groups, this % n_azi, this % n_pol/))
-            deallocate(temp_arr)
+            gmin = reshape(int_arr, (/groups, this % n_azi, this % n_pol/))
+            deallocate(int_arr)
           else
             call fatal_error("'g_min' for the scatter matrix must be provided")
           end if
           if (check_dataset(scatt_grp, "g_max")) then
-            allocate(temp_arr(groups * this % n_azi * this % n_pol))
-            call read_dataset(temp_arr, scatt_grp, "g_max")
+            allocate(int_arr(groups * this % n_azi * this % n_pol))
+            call read_dataset(int_arr, scatt_grp, "g_max")
             allocate(gmax(groups, this % n_azi, this % n_pol))
-            gmax = reshape(temp_arr, (/groups, this % n_azi, this % n_pol/))
-            deallocate(temp_arr)
+            gmax = reshape(int_arr, (/groups, this % n_azi, this % n_pol/))
+            deallocate(int_arr)
           else
             call fatal_error("'g_max' for the scatter matrix must be provided")
           end if
@@ -855,6 +857,13 @@ module mgxs_header
           if (.not. check_dataset(scatt_grp, 'scatter matrix')) &
                call fatal_error("'scatter matrix' must be provided")
           call read_dataset(temp_arr, scatt_grp, "scatter matrix")
+
+          ! Compare the number of orders given with the maximum order of the
+          ! problem.  Strip off the superfluous orders if needed.
+          if (this % scatter_type == ANGLE_LEGENDRE) then
+            order = min(order_dim - 1, max_order)
+            order_dim = order + 1
+          end if
 
           ! Convert temp_arr to a jagged array ((gin) % data(l, gout)) for passing
           ! to ScattData
@@ -878,13 +887,6 @@ module mgxs_header
           deallocate(temp_arr)
 
           ! Finally convert the legendre to tabular if needed
-          ! Compare the number of orders given with the maximum order of the
-          ! problem.  Strip off the superfluous orders if needed.
-          if (this % scatter_type == ANGLE_LEGENDRE) then
-            order = min(order_dim - 1, max_order)
-            order_dim = order + 1
-          end if
-
           allocate(scatt_coeffs(groups, this % n_azi, this % n_pol))
           if (this % scatter_type == ANGLE_LEGENDRE .and. &
               legendre_to_tabular) then
@@ -941,7 +943,7 @@ module mgxs_header
                   allocate(scatt_coeffs(gin, iazi, ipol) % data(order_dim, &
                        gmin(gin, iazi, ipol):gmax(gin, iazi, ipol)))
                   scatt_coeffs(gin, iazi, ipol) % data(:, :) = &
-                       input_scatt(gin, iazi, ipol) % data(:, :)
+                       input_scatt(gin, iazi, ipol) % data(1:order_dim, :)
                 end do
               end do
             end do

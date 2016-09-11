@@ -207,8 +207,8 @@ module nuclide_header
     integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
     character(MAX_WORD_LEN) :: temp_str
-    character(MAX_FILE_LEN), allocatable :: dset_names(:)
-    character(MAX_FILE_LEN), allocatable :: grp_names(:)
+    character(MAX_WORD_LEN), allocatable :: dset_names(:)
+    character(MAX_WORD_LEN), allocatable :: grp_names(:)
     real(8), allocatable :: temps_available(:) ! temperatures available
     real(8) :: temp_desired
     real(8) :: temp_actual

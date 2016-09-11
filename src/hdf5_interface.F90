@@ -218,12 +218,11 @@ contains
 
   subroutine get_groups(object_id, names)
     integer(HID_T), intent(in)  :: object_id
-    character(len=255), allocatable, intent(out) :: names(:)
+    character(len=150), allocatable, intent(out) :: names(:)
 
     integer :: n_members, i, group_count, type
     integer :: hdf5_err
-    character(len=255) :: name
-
+    character(len=150) :: name
 
     ! Get number of members in this location
     call h5gn_members_f(object_id, './', n_members, hdf5_err)
@@ -302,11 +301,11 @@ contains
 
   subroutine get_datasets(object_id, names)
     integer(HID_T), intent(in)  :: object_id
-    character(len=255), allocatable, intent(out) :: names(:)
+    character(len=150), allocatable, intent(out) :: names(:)
 
     integer :: n_members, i, dset_count, type
     integer :: hdf5_err
-    character(len=255) :: name
+    character(len=150) :: name
 
 
     ! Get number of members in this location
@@ -342,14 +341,14 @@ contains
     integer(HID_T),            intent(in) :: group_id
     integer(SIZE_T), optional, intent(in) :: name_len_
 
-    character(len=255) :: name ! name of group
+    character(len=150) :: name ! name of group
     integer(SIZE_T) :: name_len, name_file_len
     integer :: hdf5_err ! HDF5 error code
 
     if (present(name_len_)) then
       name_len = name_len_
     else
-      name_len = 255
+      name_len = 150
     end if
 
     call h5iget_name_f(group_id, name, name_len, name_file_len, hdf5_err)

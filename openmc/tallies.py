@@ -2974,11 +2974,13 @@ class Tally(object):
 
                 for filter_bin in filter_bins[i]:
                     bin_index = find_filter.get_bin_index(filter_bin)
-                    if filter_type in ['energy', 'energyout']:
+                    if filter_type in [openmc.filter.EnergyFilter,
+                                       openmc.filter.EnergyoutFilter]:
                         bin_indices.extend([bin_index])
                         bin_indices.extend([bin_index, bin_index+1])
                         num_bins += 1
-                    elif filter_type in ['distribcell', 'mesh']:
+                    elif filter_type in [openmc.filter.DistribcellFilter,
+                                         openmc.filter.MeshFilter]:
                         bin_indices = [0]
                         num_bins = find_filter.num_bins
                     else:
@@ -3010,9 +3012,8 @@ class Tally(object):
         scores : list of str
             A list of one or more score strings to sum across
             (e.g., ['absorption', 'nu-fission']; default is [])
-        filter_type : str
-            A filter type string (e.g., 'cell', 'energy') corresponding to the
-            filter bins to sum across
+        filter_type : openmc.filter.FilterMeta
+            Type of the filter, e.g. MeshFilter
         filter_bins : Iterable of int or tuple
             A list of the filter bins corresponding to the filter_type parameter
             Each bin in the list is the integer ID for 'material', 'surface',
@@ -3050,14 +3051,14 @@ class Tally(object):
         std_dev = self.get_reshaped_data(value='std_dev')
 
         # Sum across any filter bins specified by the user
-        if filter_type in _FILTER_TYPES:
+        if isinstance(filter_type, openmc.filter.FilterMeta):
             find_filter = self.find_filter(filter_type)
 
             # If user did not specify filter bins, sum across all bins
             if len(filter_bins) == 0:
                 bin_indices = np.arange(find_filter.num_bins)
 
-                if filter_type == 'distribcell':
+                if isinstance(find_filter, openmc.filter.DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
                 else:
                     num_bins = find_filter.num_bins
@@ -3071,7 +3072,7 @@ class Tally(object):
 
             # Sum across the bins in the user-specified filter
             for i, self_filter in enumerate(self.filters):
-                if self_filter.type == filter_type:
+                if isinstance(self_filter, filter_type):
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
                     mean = np.sum(mean, axis=i, keepdims=True)
@@ -3158,9 +3159,8 @@ class Tally(object):
         scores : list of str
             A list of one or more score strings to average across
             (e.g., ['absorption', 'nu-fission']; default is [])
-        filter_type : str
-            A filter type string (e.g., 'cell', 'energy') corresponding to the
-            filter bins to average across
+        filter_type : openmc.filter.FilterMeta
+            Type of the filter, e.g. MeshFilter
         filter_bins : Iterable of int or tuple
             A list of the filter bins corresponding to the filter_type parameter
             Each bin in the list is the integer ID for 'material', 'surface',
@@ -3198,14 +3198,14 @@ class Tally(object):
         std_dev = self.get_reshaped_data(value='std_dev')
 
         # Average across any filter bins specified by the user
-        if filter_type in _FILTER_TYPES:
+        if isinstnace(filter_type, openmc.filter.FilterMeta):
             find_filter = self.find_filter(filter_type)
 
             # If user did not specify filter bins, average across all bins
             if len(filter_bins) == 0:
                 bin_indices = np.arange(find_filter.num_bins)
 
-                if filter_type == 'distribcell':
+                if isinstance(find_filter, openmc.filter.DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
                 else:
                     num_bins = find_filter.num_bins

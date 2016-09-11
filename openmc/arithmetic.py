@@ -620,7 +620,8 @@ class AggregateFilter(object):
 
     def __init__(self, aggregate_filter=None, bins=None, aggregate_op=None):
 
-        self._type = '{0}({1})'.format(aggregate_op, aggregate_filter.type)
+        self._type = '{0}({1})'.format(aggregate_op,
+                                       aggregate_filter.short_name.lower())
         self._bins = None
         self._stride = None
 

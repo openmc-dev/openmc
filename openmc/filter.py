@@ -626,7 +626,9 @@ class EnergyFilter(Filter):
         return type(self)(sorted(merged_bins))
 
     def is_subset(self, other):
-        if len(self.bins) != len(other.bins):
+        if type(self) != type(other):
+            return False
+        elif len(self.bins) != len(other.bins):
             return False
         else:
             return np.allclose(self.bins, other.bins)

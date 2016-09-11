@@ -49,7 +49,7 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         self._input_set.geometry.root_universe = root_univ
 
         # Initialize a "distribcell" filter for the fuel pin cell
-        distrib_filter = openmc.Filter(type='distribcell', bins=[27])
+        distrib_filter = openmc.DistribcellFilter(27)
 
         # Initialize the tallies
         tally = openmc.Tally(name='distribcell tally', tally_id=27)

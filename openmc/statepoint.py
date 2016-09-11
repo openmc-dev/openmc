@@ -410,7 +410,10 @@ class StatePoint(object):
                     subsubbase = '{0}{1}'.format(subbase, j)
                     new_filter = openmc.Filter.from_hdf5(self._f[subsubbase])
                     if isinstance(new_filter, openmc.MeshFilter):
-                        new_filter.mesh = self.meshes[new_filter.bins[0]]
+                        mesh_ids = self._f['tallies/meshes/ids'].value
+                        mesh_keys = self._f['tallies/meshes/keys'].value
+                        key = mesh_keys[mesh_ids == new_filter.bins[0]][0]
+                        new_filter.mesh = self.meshes[key]
                     tally.filters.append(new_filter)
 
                 # Read Nuclide bins

@@ -700,8 +700,8 @@ class Tally(object):
             return False
 
         # Return False if only one tally has a delayed group filter
-        tally1_dg = self.contains_filter('delayedgroup')
-        tally2_dg = other.contains_filter('delayedgroup')
+        tally1_dg = self.contains_filter(openmc.filter.DelayedGroupFilter)
+        tally2_dg = other.contains_filter(openmc.filter.DelayedGroupFilter)
         if sum([tally1_dg, tally2_dg]) == 1:
             return False
 
@@ -1070,8 +1070,8 @@ class Tally(object):
 
         Parameters
         ----------
-        filter_type : str
-            Type of the filter, e.g. 'mesh'
+        filter_type : openmc.filter.FilterMeta
+            Type of the filter, e.g. MeshFilter
 
         Returns
         -------
@@ -1085,7 +1085,7 @@ class Tally(object):
 
         # Look through all of this Tally's Filters for the type requested
         for test_filter in self.filters:
-            if test_filter.type == filter_type:
+            if isinstance(test_filter, filter_type):
                 filter_found = True
                 break
 
@@ -2869,9 +2869,9 @@ class Tally(object):
         scores : list of str
             A list of one or more score strings
             (e.g., ['absorption', 'nu-fission']; default is [])
-        filters : list of str
-            A list of filter type strings
-            (e.g., ['mesh', 'energy']; default is [])
+        filters : Iterable of openmc.filter.FilterMeta
+            An iterable of filter types
+            (e.g., [MeshFilter, EnergyFilter]; default is [])
         filter_bins : list of Iterables
             A list of tuples of filter bins corresponding to the filter_types
             parameter (e.g., [(1,), ((0., 0.625e-6),)]; default is []). Each

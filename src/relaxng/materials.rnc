@@ -4,6 +4,8 @@ element materials {
     (element name { xsd:string { maxLength="52" } } |
       attribute name { xsd:string { maxLength="52" } })? &
 
+    element temperature { xsd:double }? &
+
     element density {
       (element value { xsd:double } | attribute value { xsd:double })? &
       (element units { xsd:string { maxLength = "10" } } |
@@ -12,8 +14,6 @@ element materials {
 
     element nuclide {
       (element name { xsd:string } | attribute name { xsd:string }) &
-      (element xs { xsd:string { maxLength = "5" } } |
-        attribute xs { xsd:string { maxLength = "5" } })? &
       (element scattering { ( "data" | "iso-in-lab" ) } |
         attribute scattering { ( "data" | "iso-in-lab" ) })? &
       (
@@ -24,16 +24,12 @@ element materials {
 
     element macroscopic {
       (element name { xsd:string } |
-        attribute name { xsd:string }) &
-      (element xs { xsd:string { maxLength = "5" } } |
-        attribute xs { xsd:string { maxLength = "5" } })
+        attribute name { xsd:string })
     }*  &
 
     element element {
       (element name { xsd:string { maxLength = "2" } } |
         attribute name { xsd:string { maxLength = "2" } }) &
-      (element xs { xsd:string { maxLength = "5" } } |
-        attribute xs { xsd:string { maxLength = "5" } })? &
       (element scattering { ( "data" | "iso-in-lab" ) } |
         attribute scattering { ( "data" | "iso-in-lab" ) })? &
       (
@@ -43,11 +39,7 @@ element materials {
     }*  &
 
     element sab {
-      (element name { xsd:string } | attribute name { xsd:string }) &
-      (element xs { xsd:string { maxLength = "5" } } |
-        attribute xs { xsd:string { maxLength = "5" } })?
+      (element name { xsd:string } | attribute name { xsd:string })
     }*
-  }+ &
-
-  element default_xs { xsd:string { maxLength = "5" } }?
+  }+
 }

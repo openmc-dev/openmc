@@ -3,8 +3,8 @@
 
   <material id="1">
     <density value="7.5" units="g/cc" />
-    <nuclide name="O16" xs="71c" ao="1.0" />
-    <nuclide name="U238" xs="71c" ao="0.0001" />
+    <nuclide name="O16" ao="1.0" />
+    <nuclide name="U238" ao="0.0001" />
   </material>
 
 </materials>

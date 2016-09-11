@@ -7,6 +7,7 @@ module reaction_header
   use hdf5_interface, only: read_attribute, open_group, close_group, &
        open_dataset, read_dataset, close_dataset, get_shape
   use product_header, only: ReactionProduct
+  use stl_vector,     only: VectorInt
   use string,         only: to_str, starts_with
 
   implicit none
@@ -16,12 +17,16 @@ module reaction_header
 ! distributions for a single reaction in a continuous-energy ACE-format table
 !===============================================================================
 
+  type TemperatureXS
+    integer :: threshold             ! Energy grid index of threshold
+    real(8), allocatable :: value(:) ! Cross section values
+  end type TemperatureXS
+
   type Reaction
     integer :: MT                      ! ENDF MT value
     real(8) :: Q_value                 ! Reaction Q value
-    integer :: threshold               ! Energy grid index of threshold
     logical :: scatter_in_cm           ! scattering system in center-of-mass?
-    real(8), allocatable :: sigma(:)   ! Cross section values
+    type(TemperatureXS), allocatable :: xs(:)
     type(ReactionProduct), allocatable :: products(:)
   contains
     procedure :: from_hdf5 => reaction_from_hdf5
@@ -29,9 +34,10 @@ module reaction_header
 
 contains
 
-  subroutine reaction_from_hdf5(this, group_id)
+  subroutine reaction_from_hdf5(this, group_id, temperatures)
     class(Reaction), intent(inout) :: this
     integer(HID_T),  intent(in)    :: group_id
+    type(VectorInt), intent(in)    :: temperatures
 
     integer :: i
     integer :: cm
@@ -41,24 +47,31 @@ contains
     integer :: n_links
     integer :: hdf5_err
     integer(HID_T) :: pgroup
-    integer(HID_T) :: xs
+    integer(HID_T) :: xs, temp_group
     integer(SIZE_T) :: name_len
     integer(HSIZE_T) :: dims(1)
     integer(HSIZE_T) :: j
     character(MAX_WORD_LEN) :: name
+    character(MAX_WORD_LEN) :: temp_str ! temperature dataset name, e.g. '294K'
 
     call read_attribute(this % Q_value, group_id, 'Q_value')
     call read_attribute(this % MT, group_id, 'mt')
-    call read_attribute(this % threshold, group_id, 'threshold_idx')
     call read_attribute(cm, group_id, 'center_of_mass')
     this % scatter_in_cm = (cm == 1)
 
-    ! Read cross section
-    xs = open_dataset(group_id, 'xs')
-    call get_shape(xs, dims)
-    allocate(this % sigma(dims(1)))
-    call read_dataset(this % sigma, xs)
-    call close_dataset(xs)
+    ! Read cross section and threshold_idx data
+    allocate(this % xs(temperatures % size()))
+    do i = 1, temperatures % size()
+      temp_str = trim(to_str(temperatures % data(i))) // "K"
+      temp_group = open_group(group_id, temp_str)
+      xs = open_dataset(temp_group, 'xs')
+      call read_attribute(this % xs(i) % threshold, xs, 'threshold_idx')
+      call get_shape(xs, dims)
+      allocate(this % xs(i) % value(dims(1)))
+      call read_dataset(this % xs(i) % value, xs)
+      call close_dataset(xs)
+      call close_group(temp_group)
+    end do
 
     ! Determine number of products
     call h5gget_info_f(group_id, storage_type, n_links, max_corder, hdf5_err)

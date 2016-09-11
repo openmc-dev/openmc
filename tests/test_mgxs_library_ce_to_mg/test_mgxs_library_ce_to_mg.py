@@ -83,6 +83,7 @@ class MGXSTestHarness(PyAPITestHarness):
             returncode = openmc.run(openmc_exec=self._opts.exe)
 
     def _cleanup(self):
+        return
         super(MGXSTestHarness, self)._cleanup()
         f = os.path.join(os.getcwd(), 'mgxs.xml')
         if os.path.exists(f):

@@ -268,6 +268,12 @@ module constants
        JENDL_33   = 7, &
        JENDL_40   = 8
 
+  ! Temperature treatment method
+  integer, parameter :: &
+       TEMPERATURE_NEAREST = 1, &
+       TEMPERATURE_INTERPOLATION = 2, &
+       TEMPERATURE_MULTIPOLE = 3
+
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS
 
@@ -407,12 +413,6 @@ module constants
   ! input file!
   integer, parameter :: ERROR_INT  = -huge(0)
   real(8), parameter :: ERROR_REAL = -huge(0.0_8) * 0.917826354_8
-
-  ! Energy grid methods
-  integer, parameter :: &
-       GRID_NUCLIDE    = 1, & ! unique energy grid for each nuclide
-       GRID_MAT_UNION  = 2, & ! material union grids with pointers
-       GRID_LOGARITHM  = 3    ! lethargy mapping
 
   ! Running modes
   integer, parameter ::        &

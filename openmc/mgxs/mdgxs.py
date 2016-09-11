@@ -1602,9 +1602,9 @@ class DecayRate(MDGXS):
     .. math::
 
        \langle \lambda_d \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr
-       \int_{4\pi} d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^d
+       \int_{4\pi} d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \lambda_d \nu^d
        \sigma_f (r, E') \psi(r, E', \Omega') \\
-       \langle \nu \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
+       \langle \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^d
        \sigma_f (r, E') \psi(r, E', \Omega') \\
        \lambda_d &= \frac{\langle \lambda_d \nu^d \sigma_f \phi \rangle}

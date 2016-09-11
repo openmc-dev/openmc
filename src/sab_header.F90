@@ -66,7 +66,7 @@ module sab_header
   end type SabData
 
   type SAlphaBeta
-    character(100) :: name     ! name of table, e.g. lwtr.10t
+    character(150) :: name     ! name of table, e.g. lwtr.10t
     real(8)        :: awr      ! weight of nucleus in neutron masses
     real(8), allocatable :: kTs(:)  ! temperatures in MeV (k*T)
     character(10), allocatable :: nuclides(:) ! List of valid nuclides
@@ -104,7 +104,7 @@ contains
     type(CorrelatedAngleEnergy) :: correlated_dist
 
     character(MAX_WORD_LEN) :: temp_str
-    character(MAX_FILE_LEN), allocatable :: dset_names(:)
+    character(MAX_WORD_LEN), allocatable :: dset_names(:)
     real(8), allocatable :: temps_available(:) ! temperatures available
     real(8) :: temp_desired
     real(8) :: temp_actual

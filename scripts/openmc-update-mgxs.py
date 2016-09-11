@@ -60,6 +60,20 @@ def parse_args():
     # Parse and return commandline arguments.
     return args
 
+def get_data(element, entry):
+    try:
+        value = element.find(entry).text
+    except:
+        if entry in element.attrib:
+            value = element.attrib[entry]
+        else:
+            value = None
+
+    if value is not None:
+        value = value.strip()
+
+    return value
+
 
 if __name__ == '__main__':
     args = parse_args()
@@ -67,9 +81,6 @@ if __name__ == '__main__':
     # Parse the XML data.
     tree = ET.parse(args['input'])
     root = tree.getroot()
-
-    if root.tag != 'library':
-        raise ValueError("Invalid XML file type")
 
     # Get old metadata
     temp = tree.find('group_structure').text.strip()
@@ -89,38 +100,34 @@ if __name__ == '__main__':
 
     # Now move on to the cross section data itself
     for xsdata_elem in root.iter('xsdata'):
-        name = xsdata_elem.find('name').text.strip()
+        name = get_data(xsdata_elem, 'name')
 
-        temperature = xsdata_elem.find('kT')
+        temperature = get_data(xsdata_elem, 'kT')
         if temperature is not None:
             temperature = \
-                float(temperature.text.strip()) / openmc.data.K_BOLTZMANN
+                float(temperature) / openmc.data.K_BOLTZMANN
         else:
             temperature = 294.
         temperatures = [temperature]
 
-        awr = xsdata_elem.find('awr')
+        awr = get_data(xsdata_elem, 'awr')
         if awr is not None:
-            awr = float(awr.text.strip())
+            awr = float(awr)
 
-        representation = xsdata_elem.find('representation')
-        if representation is not None:
-            representation = representation.text.strip()
-        else:
+        representation = get_data(xsdata_elem, 'representation')
+        if representation is None:
             representation = 'isotropic'
         if representation == 'angle':
-            n_azi = int(xsdata_elem.find('num_azimuthal').text.strip())
-            n_pol = int(xsdata_elem.find('num_polar').text.strip())
+            n_azi = int(get_data(xsdata_elem, 'num_azimuthal'))
+            n_pol = int(get_data(xsdata_elem, 'num_polar'))
 
-        scatter_type = xsdata_elem.find('scatt_type')
-        if scatter_type is not None:
-            scatter_type = scatter_type.text.strip()
-        else:
+        scatter_type = get_data(xsdata_elem, 'scatt_type')
+        if scatter_type is None:
             scatter_type = 'legendre'
 
-        order = int(xsdata_elem.find('order').text.strip())
+        order = int(get_data(xsdata_elem, 'order'))
 
-        tab_leg = xsdata_elem.find('tabular_legendre')
+        tab_leg = get_data(xsdata_elem, 'tabular_legendre')
         if tab_leg is not None:
             warnings.Warning('The tabular_legendre option has moved to the '
                              'settings.xml file and must be added manually')
@@ -128,7 +135,6 @@ if __name__ == '__main__':
         # Either add the data to a previously existing xsdata (if it is
         # for the same 'name' but a different temperature), or create a
         # new one.
-
         try:
             # It is in our list, so store that entry
             i = names.index(name)
@@ -155,53 +161,48 @@ if __name__ == '__main__':
         if i != -1:
             xsd[i].add_temperature(temperature)
 
-        temp = xsdata_elem.find('total')
+        temp = get_data(xsdata_elem, 'total')
         if temp is not None:
-            temp = temp.text.strip()
             temp = np.array(temp.split())
             total = temp.astype(np.float)
             total = np.reshape(total, xsd[i].vector_shape)
             xsd[i].set_total(total, temperature)
 
-        temp = xsdata_elem.find('absorption').text.strip()
+        temp = get_data(xsdata_elem, 'absorption')
         temp = np.array(temp.split())
         absorption = temp.astype(np.float)
         absorption = np.reshape(absorption, xsd[i].vector_shape)
         xsd[i].set_absorption(absorption, temperature)
 
-        temp = xsdata_elem.find('scatter').text.strip()
+        temp = get_data(xsdata_elem, 'scatter')
         temp = np.array(temp.split())
         temp = temp.astype(np.float)
         scatter = np.reshape(temp, xsd[i].pn_matrix_shape)
         xsd[i].set_scatter_matrix(scatter, temperature)
 
-        temp = xsdata_elem.find('multiplicity')
+        temp = get_data(xsdata_elem, 'multiplicity')
         if temp is not None:
-            temp = temp.text.strip()
             temp = np.array(temp.split())
             temp = temp.astype(np.float)
             multiplicity = np.reshape(temp, xsd[i].matrix_shape)
             xsd[i].set_multiplicity_matrix(multiplicity, temperature)
 
-        temp = xsdata_elem.find('fission')
+        temp = get_data(xsdata_elem, 'fission')
         if temp is not None:
-            temp = temp.text.strip()
             temp = np.array(temp.split())
             fission = temp.astype(np.float)
             fission = np.reshape(fission, xsd[i].vector_shape)
             xsd[i].set_fission(fission, temperature)
 
-        temp = xsdata_elem.find('kappa_fission')
+        temp = get_data(xsdata_elem, 'kappa_fission')
         if temp is not None:
-            temp = temp.text.strip()
             temp = np.array(temp.split())
             kappa_fission = temp.astype(np.float)
             kappa_fission = np.reshape(kappa_fission, xsd[i].vector_shape)
             xsd[i].set_kappa_fission(kappa_fission, temperature)
 
-        temp = xsdata_elem.find('chi')
+        temp = get_data(xsdata_elem, 'chi')
         if temp is not None:
-            temp = temp.text.strip()
             temp = np.array(temp.split())
             chi = temp.astype(np.float)
             chi = np.reshape(chi, xsd[i].vector_shape)
@@ -209,9 +210,8 @@ if __name__ == '__main__':
         else:
             chi = None
 
-        temp = xsdata_elem.find('nu_fission')
+        temp = get_data(xsdata_elem, 'nu_fission')
         if temp is not None:
-            temp = temp.text.strip()
             temp = np.array(temp.split())
             temp = temp.astype(np.float)
             if chi is not None:

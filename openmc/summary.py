@@ -83,11 +83,10 @@ class Summary(object):
         n_nuclides = self._f['nuclides/n_nuclides_total'].value
         names = self._f['nuclides/names'].value
         awrs = self._f['nuclides/awrs'].value
-        zaids = self._f['nuclides/zaids'].value
         for n in range(n_nuclides):
             name = names[n].decode()
             name = name[:name.find('.')]
-            self.nuclides[name] = (zaids[n], awrs[n])
+            self.nuclides[name] = awrs[n]
 
     def _read_geometry(self):
         # Read in and initialize the Materials and Geometry
@@ -124,22 +123,21 @@ class Summary(object):
             if 'sab_names' in self._f['materials'][key]:
                 sab_tables = self._f['materials'][key]['sab_names'].value
                 for sab_table in sab_tables:
-                    name, xs = sab_table.decode().split('.')
-                    material.add_s_alpha_beta(name, xs)
+                    name = sab_table.decode()
+                    material.add_s_alpha_beta(name)
 
             # Set the Material's density to atom/b-cm as used by OpenMC
             material.set_density(density=density, units='atom/b-cm')
 
             # Add all nuclides to the Material
             for fullname, density in zip(nuclides, nuc_densities):
-                fullname = fullname.decode().strip()
-                name, xs = fullname.split('.')
+                name = fullname.decode().strip()
 
                 if 'nat' in name:
-                    material.add_element(openmc.Element(name=name, xs=xs),
+                    material.add_element(openmc.Element(name=name),
                                          percent=density, percent_type='ao')
                 else:
-                    material.add_nuclide(openmc.Nuclide(name=name, xs=xs),
+                    material.add_nuclide(openmc.Nuclide(name=name),
                                          percent=density, percent_type='ao')
 
             # Add the Material to the global dictionary of all Materials

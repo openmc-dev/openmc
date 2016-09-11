@@ -28,13 +28,8 @@ contains
     integer(HID_T) :: group_id
 
     ! Intermediate loading components
-    character(len=10) :: version
-    integer :: NMT
-    integer :: i, j
-    integer, allocatable :: MT(:)
-    logical :: accumulated_fission
-    character(len=24) :: MT_n ! Takes the form '/nuclide/reactions/MT???'
     integer :: is_fissionable
+    character(len=10) :: version
 
     associate (nuc => nuclides(i_table))
 
@@ -80,110 +75,7 @@ contains
 
       call read_dataset(multipole % curvefit, group_id, "curvefit")
 
-      ! Delete ACE pointwise data
-      call read_dataset(nuc % n_grid, group_id, "n_grid")
-
-      deallocate(nuc % energy)
-      deallocate(nuc % total)
-      deallocate(nuc % elastic)
-      deallocate(nuc % fission)
-      deallocate(nuc % nu_fission)
-      deallocate(nuc % absorption)
-
-      allocate(nuc % energy(nuc % n_grid))
-      allocate(nuc % total(nuc % n_grid))
-      allocate(nuc % elastic(nuc % n_grid))
-      allocate(nuc % fission(nuc % n_grid))
-      allocate(nuc % nu_fission(nuc % n_grid))
-      allocate(nuc % absorption(nuc % n_grid))
-
-      nuc % total(:) = ZERO
-      nuc % absorption(:) = ZERO
-      nuc % fission(:) = ZERO
-
-      ! Read in new energy axis (converting eV to MeV)
-      call read_dataset(nuc % energy, group_id, "energy_points")
-      nuc % energy = nuc % energy / 1.0e6_8
-
-      ! Get count and list of MT tables
-      call read_dataset(NMT, group_id, "MT_count")
-      allocate(MT(NMT))
-
-      call read_dataset(MT, group_id, "MT_list")
-
       call close_group(group_id)
-
-      accumulated_fission = .false.
-
-      ! Loop over each MT entry and load it into a reaction.
-      do i = 1, NMT
-        write(MT_n, '(A, I3.3)') '/nuclide/reactions/MT', MT(i)
-
-        group_id = open_group(file_id, MT_n)
-
-        ! Each MT needs to be treated slightly differently.
-        select case (MT(i))
-          case(ELASTIC)
-            call read_dataset(nuc % elastic, group_id, "MT_sigma")
-            nuc % total(:) = nuc % total + nuc % elastic
-          case(N_FISSION)
-            call read_dataset(nuc % fission, group_id, "MT_sigma")
-            nuc % total(:) = nuc % total + nuc % fission
-            nuc % absorption(:) = nuc % absorption + nuc % fission
-            accumulated_fission = .true.
-          case default
-            ! Search through all of our secondary reactions
-            do j = 1, size(nuc % reactions)
-              if (nuc % reactions(j) % MT == MT(i)) then
-                ! Match found
-
-                ! Individual Fission components exist, so remove the combined
-                ! fission cross section.
-                if ( (MT(i) == N_F .or. MT(i) == N_NF .or. MT(i) == N_2NF &
-                      .or. MT(i) == N_3NF) .and. accumulated_fission) then
-                  nuc % total(:) = nuc % total - nuc % fission
-                  nuc % absorption(:) = nuc % absorption - nuc % fission
-                  nuc % fission(:) = ZERO
-                  accumulated_fission = .false.
-                end if
-
-                deallocate(nuc % reactions(j) % sigma)
-                allocate(nuc % reactions(j) % sigma(nuc % n_grid))
-
-                call read_dataset(nuc % reactions(j) % sigma, &
-                                  group_id, "MT_sigma")
-                call read_dataset(nuc % reactions(j) % Q_value, &
-                                  group_id, "Q_value")
-                call read_dataset(nuc % reactions(j) % threshold, &
-                                  group_id, "threshold")
-                nuc % reactions(j) % threshold = 1 ! TODO: reconsider implications.
-                nuc % reactions(j) % Q_value = nuc % reactions(j) % Q_value &
-                                               / 1.0e6_8
-
-                ! Accumulate total
-                if (MT(i) /= N_LEVEL .and. MT(i) <= N_DA) then
-                  nuc % total(:) = nuc % total + nuc % reactions(j) % sigma
-                end if
-
-                ! Accumulate absorption
-                if (MT(i) >= N_GAMMA .and. MT(i) <= N_DA) then
-                  nuc % absorption(:) = nuc % absorption &
-                                        + nuc % reactions(j) % sigma
-                end if
-
-                ! Accumulate fission (if needed)
-                if ( (MT(i) == N_F .or. MT(i) == N_NF .or. MT(i) == N_2NF &
-                      .or. MT(i) == N_3NF) ) then
-                  nuc % fission(:) = nuc % fission + nuc % reactions(j) % sigma
-                  nuc % absorption(:) = nuc % absorption &
-                                        + nuc % reactions(j) % sigma
-                end if
-              end if
-            end do
-        end select
-
-        call close_group(group_id)
-      end do
 
       ! Close file
       call file_close(file_id)

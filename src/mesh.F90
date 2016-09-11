@@ -1,13 +1,13 @@
 module mesh
 
-  use constants
-  use global
-  use mesh_header
-  use search,          only: binary_search
-
 #ifdef MPI
   use message_passing
 #endif
+
+  use algorithm,  only: binary_search
+  use constants
+  use global
+  use mesh_header
 
   implicit none
 

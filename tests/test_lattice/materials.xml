@@ -10,8 +10,6 @@
   ===============================================================
   -->
 
-  <default_xs>71c</default_xs>  
-
   <!-- UO2-PuO2 Mixture -->
   <material id="1">
     <density value="9.54" units="g/cm3" />
@@ -27,7 +25,7 @@
     <nuclide name="U238"  ao="2.0611e-02" />
     <nuclide name="O16"   ao="4.3779e-02" />
   </material>
-    
+
   <!-- Natural UO2 Layer -->
   <material id="2">
     <density value="9.286" units="g/cm3" />
@@ -37,7 +35,7 @@
     <nuclide name="U238"  ao="2.0525e-02" />
     <nuclide name="O16"   ao="4.1943e-02" />
   </material>
-    
+
   <!-- Cladding -->
   <material id="3">
     <density units="sum" />
@@ -75,7 +73,7 @@
     <nuclide name="Zr94" ao="7.4075e-03" />
     <nuclide name="Zr96" ao="1.1934e-03" />
   </material>
-    
+
   <!-- Moderator -->
   <material id="4">
     <density units="sum" />
@@ -88,9 +86,9 @@
     <!-- Boron at 1.7 ppm -->
     <nuclide name="B10" ao="1.8706e-08" />
     <nuclide name="B11" ao="7.5770e-08" />
-    <sab name="c_H_in_H2O" xs="71t" />
+    <sab name="c_H_in_H2O" />
   </material>
-    
+
   <!-- 6061 Aluminum -->
   <material id="5">
     <density units="sum" />
@@ -128,7 +126,7 @@
     <!-- Al at 5.8433e-2 atom/b-cm -->
     <nuclide name="Al27" ao="5.8433e-02" />
   </material>
-    
+
   <!-- Lead -->
   <material id="6">
     <density value="3.2174e-02" units="atom/b-cm" />

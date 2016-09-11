@@ -19,7 +19,6 @@ module mgxs_header
 
   type, abstract :: Mgxs
     character(len=104) :: name    ! name of dataset, e.g. 92235.03c
-    integer            :: zaid    ! Z and A identifier, e.g. 92235
     real(8)            :: awr     ! Atomic Weight Ratio
     real(8)            :: kT      ! temperature in MeV (k*T)
 
@@ -29,7 +28,6 @@ module mgxs_header
 
   contains
     procedure(mgxs_init_file_), deferred :: init_file ! Initialize the data
-    procedure(mgxs_print_),    deferred  :: print     ! Writes object info
     procedure(mgxs_get_xs_),   deferred  :: get_xs    ! Get the requested xs
     procedure(mgxs_combine_),  deferred  :: combine   ! initializes object
     ! Sample the outgoing energy from a fission event
@@ -63,12 +61,6 @@ module mgxs_header
       logical, intent(in)             :: get_fiss    ! Should we get fiss data?
       integer, intent(in)             :: max_order   ! Maximum requested order
     end subroutine mgxs_init_file_
-
-    subroutine mgxs_print_(this, unit)
-      import Mgxs
-      class(Mgxs),intent(in)     :: this
-      integer, optional, intent(in) :: unit
-    end subroutine mgxs_print_
 
     pure function mgxs_get_xs_(this,xstype,gin,gout,uvw,mu) result(xs)
       import Mgxs
@@ -150,7 +142,6 @@ module mgxs_header
 
   contains
     procedure :: init_file   => mgxsiso_init_file ! Initialize Nuclidic MGXS Data
-    procedure :: print       => mgxsiso_print   ! Writes nuclide info
     procedure :: get_xs      => mgxsiso_get_xs  ! Gets Size of Data w/in Object
     procedure :: combine     => mgxsiso_combine ! inits object
     procedure :: sample_fission_energy => mgxsiso_sample_fission_energy
@@ -181,7 +172,6 @@ module mgxs_header
 
   contains
     procedure :: init_file   => mgxsang_init_file ! Initialize Nuclidic MGXS Data
-    procedure :: print       => mgxsang_print   ! Writes nuclide info
     procedure :: get_xs      => mgxsang_get_xs  ! Gets Size of Data w/in Object
     procedure :: combine     => mgxsang_combine ! inits object
     procedure :: sample_fission_energy => mgxsang_sample_fission_energy
@@ -210,11 +200,6 @@ module mgxs_header
         call get_node_value(node_xsdata, "kT", this % kT)
       else
         this % kT = ZERO
-      end if
-      if (check_for_node(node_xsdata, "zaid")) then
-        call get_node_value(node_xsdata, "zaid", this % zaid)
-      else
-        this % zaid = 0
       end if
       if (check_for_node(node_xsdata, "awr")) then
         call get_node_value(node_xsdata, "awr", this % awr)
@@ -958,164 +943,6 @@ module mgxs_header
     end subroutine mgxsang_init_file
 
 !===============================================================================
-! MGXS*_PRINT displays information about a continuous-energy neutron
-! cross_section table and its reactions and secondary angle/energy distributions
-!===============================================================================
-
-    subroutine mgxs_print(this, unit_)
-      class(Mgxs), intent(in) :: this
-      integer, intent(in)           :: unit_
-
-      character(MAX_LINE_LEN) :: temp_str
-
-      ! Basic nuclide information
-      write(unit_,*) 'MGXS Entry: ' // trim(this % name)
-      if (this % zaid > 0) then
-        write(unit_,*) '  ZAID = ' // trim(to_str(this % zaid))
-      else if (this % zaid < 0) then
-        write(unit_,*) '  Material id = ' // trim(to_str(-this % zaid))
-      end if
-      if (this % awr > ZERO) then
-        write(unit_,*) '  AWR = ' // trim(to_str(this % awr))
-      end if
-      if (this % kT > ZERO) then
-        write(unit_,*) '  kT = ' // trim(to_str(this % kT))
-      end if
-      if (this % scatt_type == ANGLE_LEGENDRE) then
-        temp_str = "Legendre"
-        write(unit_,*) '  Scattering Type = ' // trim(temp_str)
-        select type(this)
-        type is (MgxsIso)
-          temp_str = to_str(size(this % scatter % dist(1) % data,dim=1) - 1)
-        end select
-        write(unit_,*) '    Scattering Order = ' // trim(temp_str)
-      else if (this % scatt_type == ANGLE_HISTOGRAM) then
-        temp_str = "Histogram"
-        write(unit_,*) '  Scattering Type = ' // trim(temp_str)
-        select type(this)
-        type is (MgxsIso)
-          temp_str = to_str(size(this % scatter % dist(1) % data,dim=1))
-        end select
-        write(unit_,*) '    Num. Distribution Bins = ' // trim(temp_str)
-      else if (this % scatt_type == ANGLE_TABULAR) then
-        temp_str = "Tabular"
-        write(unit_,*) '  Scattering Type = ' // trim(temp_str)
-        select type(this)
-        type is (MgxsIso)
-          temp_str = to_str(size(this % scatter % dist(1) % data,dim=1))
-        end select
-        write(unit_,*) '    Num. Distribution Points = ' // trim(temp_str)
-      end if
-      write(unit_,*) '  Fissionable = ', this % fissionable
-
-    end subroutine mgxs_print
-
-    subroutine mgxsiso_print(this, unit)
-
-      class(MgxsIso), intent(in) :: this
-      integer, optional, intent(in)  :: unit
-
-      integer :: unit_             ! unit to write to
-      integer :: size_total, size_scattmat, size_mgxs
-      integer :: gin
-
-      ! set default unit for writing information
-      if (present(unit)) then
-        unit_ = unit
-      else
-        unit_ = OUTPUT_UNIT
-      end if
-
-      ! Write Basic Nuclide Information
-      call mgxs_print(this, unit_)
-
-      ! Determine size of mgxs and scattering matrices
-      size_scattmat = 0
-      do gin = 1, size(this % scatter % energy)
-        size_scattmat = size_scattmat + &
-             2 * size(this % scatter % energy(gin) % data) + &
-             size(this % scatter % dist(gin) % data)
-      end do
-      size_scattmat = size_scattmat + size(this % scatter % scattxs)
-      size_scattmat = size_scattmat * 8
-
-      size_mgxs = size(this % total) + size(this % absorption) + &
-           size(this % nu_fission) + size(this % k_fission) + &
-           size(this % fission) + size(this % chi)
-      size_mgxs = size_mgxs * 8
-
-      ! Calculate total memory
-      size_total = size_scattmat + size_mgxs
-
-      ! Write memory used
-      write(unit_,*) '  Memory Requirements'
-      write(unit_,*) '    Cross sections = ' // trim(to_str(size_mgxs)) // ' bytes'
-      write(unit_,*) '    Scattering Matrices = ' // &
-           trim(to_str(size_scattmat)) // ' bytes'
-      write(unit_,*) '    Total = ' // trim(to_str(size_total)) // ' bytes'
-
-      ! Blank line at end of nuclide
-      write(unit_,*)
-
-    end subroutine mgxsiso_print
-
-    subroutine mgxsang_print(this, unit)
-
-      class(MgxsAngle), intent(in)  :: this
-      integer, optional, intent(in) :: unit
-
-      integer :: unit_             ! unit to write to
-      integer :: size_total, size_scattmat, size_mgxs
-      integer :: ipol, iazi, gin
-
-      ! set default unit for writing information
-      if (present(unit)) then
-        unit_ = unit
-      else
-        unit_ = OUTPUT_UNIT
-      end if
-
-      ! Write Basic Nuclide Information
-      call mgxs_print(this, unit_)
-
-      write(unit_,*) '  # of Polar Angles = ' // trim(to_str(this % n_pol))
-      write(unit_,*) '  # of Azimuthal Angles = ' // trim(to_str(this % n_azi))
-
-      ! Determine size of mgxs and scattering matrices
-      size_scattmat = 0
-      do ipol = 1, this % n_pol
-        do iazi = 1, this % n_azi
-          do gin = 1, size(this % scatter(iazi, ipol) % obj % energy)
-            size_scattmat = size_scattmat + &
-                 2 * size(this % scatter(iazi, ipol) % obj % energy(gin) % data) + &
-                 size(this % scatter(iazi, ipol) % obj % dist(gin) % data)
-          end do
-          size_scattmat = size_scattmat + &
-               size(this % scatter(iazi, ipol) % obj % scattxs)
-        end do
-      end do
-      size_scattmat = size_scattmat * 8
-
-      size_mgxs = size(this % total) + size(this % absorption) + &
-           size(this % nu_fission) + size(this % k_fission) + &
-           size(this % fission) + size(this % chi)
-      size_mgxs = size_mgxs * 8
-
-      ! Calculate total memory
-      size_total = size_scattmat + size_mgxs
-
-      ! Write memory used
-      write(unit_,*) '  Memory Requirements'
-      write(unit_,*) '    Cross sections = ' // trim(to_str(size_mgxs)) // ' bytes'
-      write(unit_,*) '    Scattering Matrices = ' // &
-           trim(to_str(size_scattmat)) // ' bytes'
-      write(unit_,*) '    Total = ' // trim(to_str(size_total)) // ' bytes'
-
-      ! Blank line at end of nuclide
-      write(unit_,*)
-    end subroutine mgxsang_print
-
-!===============================================================================
 ! MGXS*_GET_XS returns the requested data cross section data
 !===============================================================================
 
@@ -1319,7 +1146,6 @@ module mgxs_header
       else
         this % name      = mat % name
       end if
-      this % zaid        = -mat % id
       this % fissionable = mat % fissionable
       this % scatt_type  = scatt_type
 

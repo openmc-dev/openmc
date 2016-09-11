@@ -1,5 +1,10 @@
 module tally
 
+#ifdef MPI
+  use message_passing
+#endif
+
+  use algorithm,        only: binary_search
   use constants
   use error,            only: fatal_error
   use geometry_header
@@ -11,14 +16,9 @@ module tally
   use mesh_header,      only: RegularMesh
   use output,           only: header
   use particle_header,  only: LocalCoord, Particle
-  use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult
   use tally_filter
-
-#ifdef MPI
-  use message_passing
-#endif
 
   implicit none
 
@@ -88,6 +88,7 @@ contains
     integer :: l                    ! loop index for nuclides in material
     integer :: m                    ! loop index for reactions
     integer :: q                    ! loop index for scoring bins
+    integer :: i_temp               ! temperature index
     integer :: i_nuc                ! index in nuclides array (from material)
     integer :: i_energy             ! index in nuclide energy grid
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
@@ -1026,16 +1027,18 @@ contains
             if (i_nuclide > 0) then
               if (nuclides(i_nuclide)%reaction_index%has_key(score_bin)) then
                 m = nuclides(i_nuclide)%reaction_index%get_key(score_bin)
-                associate (rxn => nuclides(i_nuclide) % reactions(m))
 
-                  ! Retrieve index on nuclide energy grid and interpolation
-                  ! factor
-                  i_energy = micro_xs(i_nuclide) % index_grid
-                  f = micro_xs(i_nuclide) % interp_factor
-                  if (i_energy >= rxn % threshold) then
-                    score = ((ONE - f) * rxn % sigma(i_energy - &
-                         rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                         rxn%threshold + 2)) * atom_density * flux
+                ! Retrieve temperature and energy grid index and interpolation
+                ! factor
+                i_temp = micro_xs(i_nuclide) % index_temp
+                i_energy = micro_xs(i_nuclide) % index_grid
+                f = micro_xs(i_nuclide) % interp_factor
+
+                associate (xs => nuclides(i_nuclide) % reactions(m) % xs(i_temp))
+                  if (i_energy >= xs % threshold) then
+                    score = ((ONE - f) * xs % value(i_energy - &
+                         xs % threshold + 1) + f * xs % value(i_energy - &
+                         xs % threshold + 2)) * atom_density * flux
                   end if
                 end associate
               end if
@@ -1050,15 +1053,18 @@ contains
 
                 if (nuclides(i_nuc)%reaction_index%has_key(score_bin)) then
                   m = nuclides(i_nuc)%reaction_index%get_key(score_bin)
-                  associate (rxn => nuclides(i_nuc) % reactions(m))
-                    ! Retrieve index on nuclide energy grid and interpolation
-                    ! factor
-                    i_energy = micro_xs(i_nuc) % index_grid
-                    f = micro_xs(i_nuc) % interp_factor
-                    if (i_energy >= rxn % threshold) then
-                      score = score + ((ONE - f) * rxn % sigma(i_energy - &
-                           rxn%threshold + 1) + f * rxn % sigma(i_energy - &
-                           rxn%threshold + 2)) * atom_density_ * flux
+
+                  ! Retrieve temperature and energy grid index and interpolation
+                  ! factor
+                  i_temp = micro_xs(i_nuc) % index_temp
+                  i_energy = micro_xs(i_nuc) % index_grid
+                  f = micro_xs(i_nuc) % interp_factor
+
+                  associate (xs => nuclides(i_nuc) % reactions(m) % xs(i_temp))
+                    if (i_energy >= xs % threshold) then
+                      score = score + ((ONE - f) * xs % value(i_energy - &
+                           xs % threshold + 1) + f * xs % value(i_energy - &
+                           xs % threshold + 2)) * atom_density_ * flux
                     end if
                   end associate
                 end if

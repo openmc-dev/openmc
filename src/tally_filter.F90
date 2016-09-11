@@ -1,5 +1,6 @@
 module tally_filter
 
+  use algorithm,           only: binary_search
   use constants,           only: ONE, NO_BIN_FOUND, FP_PRECISION
   use dict_header,         only: DictIntInt
   use geometry_header,     only: BASE_UNIVERSE, RectLattice, HexLattice
@@ -10,7 +11,6 @@ module tally_filter
                                  get_mesh_indices, mesh_indices_to_bin, &
                                  mesh_intersects_2d, mesh_intersects_3d
   use particle_header,     only: Particle
-  use search,              only: binary_search
   use string,              only: to_str
   use tally_filter_header, only: TallyFilter, TallyFilterContainer
 

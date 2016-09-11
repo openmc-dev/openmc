@@ -2,10 +2,10 @@ module endf_header
 
   use hdf5, only: HID_T, HSIZE_T
 
+  use algorithm, only: binary_search
   use constants, only: ZERO, HISTOGRAM, LINEAR_LINEAR, LINEAR_LOG, &
        LOG_LINEAR, LOG_LOG
   use hdf5_interface
-  use search, only: binary_search
 
   implicit none
 
